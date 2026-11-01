@@ -37,7 +37,8 @@
     "gate:approve": "node scripts/approval-gate.js",
     "catalog:ingest": "node scripts/ingest-catalog.js",
     "catalog:sync": "node scripts/sync-gutenberg-catalog.js",
-    "translations:sync": "node scripts/ingest-translations.js"
+    "translations:sync": "node scripts/ingest-translations.js",
+    "quotes:sync": "node scripts/sync-featured-quotes.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

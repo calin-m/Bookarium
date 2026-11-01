@@ -354,6 +354,7 @@ export interface Database {
           download_count: number;
           max_author_death_year: number | null;
           min_author_birth_year: number | null;
+          quotes?: Json | null;
           content?: string | null;
           search_vector?: string | null;
           created_at: string;
@@ -373,6 +374,7 @@ export interface Database {
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
+          quotes?: Json | null;
           content?: string | null;
           search_vector?: string | null;
           created_at?: string;
@@ -392,6 +394,7 @@ export interface Database {
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
+          quotes?: Json | null;
           content?: string | null;
           search_vector?: string | null;
           created_at?: string;

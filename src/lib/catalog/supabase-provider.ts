@@ -5,7 +5,7 @@ import type {
   CatalogQueryResult,
 } from '@/types/catalog.types';
 import { CatalogProviderError } from '@/types/catalog.types';
-import type { GutendexBook, Author } from '@/types/book.types';
+import type { GutendexBook, Author, BookPassage } from '@/types/book.types';
 import type { Database, DatabaseBook } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -36,7 +36,7 @@ export function isSupabaseConfigured(): boolean {
  * Maps a database row from `public.books` to standard GutendexBook format.
  */
 export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
-  return {
+  const mapped: GutendexBook = {
     id: row.id,
     title: row.title,
     authors: (Array.isArray(row.authors) ? (row.authors as unknown as Author[]) : []),
@@ -52,6 +52,10 @@ export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
         : {},
     download_count: row.download_count ?? 0,
   };
+  if (Array.isArray(row.quotes) && row.quotes.length > 0) {
+    mapped.quotes = row.quotes as unknown as BookPassage[];
+  }
+  return mapped;
 }
 
 /**

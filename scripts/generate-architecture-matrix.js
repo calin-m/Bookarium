@@ -49,7 +49,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_book_curation: '`useBookshelfStore`',
     user_reading_habits: '`useHabitsStore`',
     user_accolades: '`useAccoladesStore`',
-    books: '`SupabaseCatalogProvider`',
+    books: '`SupabaseCatalogProvider` / `useFeaturedQuotes`',
     book_translations: '`useBookTranslations` / `SupabaseCatalogProvider`',
     reader_circles: '`useFellowshipStore`',
     symposium_sessions: '`useFellowshipStore`',
@@ -65,7 +65,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_book_curation: 'Personal 1–5 star ratings and reading status classification.',
     user_reading_habits: 'Reading streaks (5-min threshold), daily activity dates, annual challenge goals, completed books count, and dual immersion telemetry.',
     user_accolades: 'Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata.',
-    books: 'Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, and optional plain-text caching.',
+    books: 'Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, primary `quotes` JSONB (`10–16` multi-quote spreads per volume), and optional plain-text caching.',
     book_translations: 'Relational FRBR literary work clusters mapping Project Gutenberg editions across languages with zero false positives.',
     reader_circles: 'Mutual Literary Fellowship pairings (pending/accepted) with RLS participant isolation.',
     symposium_sessions: 'Dual-reading Literary Symposium sessions tracking shared volume progress and chapter coordinates for two fellows.',
@@ -375,6 +375,14 @@ function extractNodeScriptsCatalog() {
         'Queries Wikidata SPARQL endpoint for multilingual FRBR work clusters and populates public.book_translations with zero false positives.',
     },
     {
+      name: 'sync-featured-quotes.js',
+      file: 'scripts/sync-featured-quotes.js',
+      npmCommand: '`npm run quotes:sync`',
+      nodeApis: '`fs`, `path`',
+      responsibility:
+        'Resolves classic volumes via public.books.content and 3 dedicated per-mirror PGLAF workers (aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms) with independent 8.0s–16.0s randomized float delays and error circuit-breaker cooldowns, extracts 10–16 multi-quote spreads per volume, and updates public.books.quotes JSONB.',
+    },
+    {
       name: 'new-adr.js',
       file: 'scripts/new-adr.js',
       npmCommand: '`npm run adr:new -- "Title"`',
@@ -513,9 +521,9 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`).' },
     { path: 'public/', role: 'Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`).' },
     { path: 'supabase/', role: 'Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`).' },
-    { path: 'scripts/', role: '15 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
+    { path: 'scripts/', role: '16 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), PGLAF mirror-first featured quotes extraction (`sync-featured-quotes.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates.' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`), weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), and manual featured quotes ingestion (`quotes-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
 
   let auditTotals = { suites: 187, tests: '1,994' };
@@ -685,7 +693,7 @@ function generateMarkdown() {
     '        HookNetwork["📡 useNetworkStatus & useOfflineCatalogFallback\\n(Reactive Online/Offline Store & Adaptive Offline Catalog)"]',
     '        HookAutoHeal["🩺 useCollectionAutoHeal & useNotebookMetadataResolver\\n(Author Lifespan & Marginalia Metadata Auto-Rehydration)"]',
     '        HookCatalogFilters["🎛️ useCatalogFilters & useAccountSecurityActions\\n(Catalog Filter Staging & OWASP Account Security Workflows)"]',
-    '        QueryBooks["🔄 useBooks & usePrefetchNextPage\\n(Windowed Sub-Pages & Predictive Prefetch)"]',
+    '        QueryBooks["🔄 useBooks, useFeaturedQuotes & usePrefetchNextPage\\n(Windowed Sub-Pages, Primary Quotes JSONB & Predictive Prefetch)"]',
     '        QueryContent["🔄 useBookContent(url, bookId)\\n(Offline-Always IndexedDB Check to CDN Stream)"]',
     '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Relational Handoff)"]',
     '        Telemetry["📊 Vercel Telemetry\\n(Analytics & Speed Insights)"]',
@@ -718,6 +726,7 @@ function generateMarkdown() {
     '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]',
     '        SyncEngine["🔄 Gutenberg Catalog Sync Engine\\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]',
     '        SyncTranslations["🔄 Relational Translations Sync\\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]',
+    '        SyncQuotes["🔄 Featured Quotes Sync Engine\\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]',
     '        VercelEdge["⚡ Vercel Edge Platform\\n(Cookie-less Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -824,6 +833,8 @@ function generateMarkdown() {
     '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
     '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
+    '    SyncQuotes -->|Manual Dispatch Quotes JSONB Upsert| SupabaseCloud',
+    '    SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN',
     '    ',
     '    Views --> StateStores',
     '    HabitsCard --> StoreHabits',
@@ -1653,7 +1664,7 @@ function generateMarkdown() {
     '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
     '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, gutendex-provider"]',
     '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
-    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts)"]`,
+    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts)"]`,
     '    end',
     '',
     '    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]',
@@ -1695,9 +1706,11 @@ function generateMarkdown() {
     const scriptSuiteRole =
       baseName === 'ingest-translations.test.ts'
         ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
-        : baseName === 'bookarium-security.test.ts'
-          ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
-          : 'Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts.';
+        : baseName === 'sync-featured-quotes.test.ts'
+          ? 'Hermetic unit & integration tests verifying 3-worker per-mirror PGLAF quote extraction (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`), independent `8.0s–16.0s` float delay pacing, mirror circuit-breaker cooldowns, and `public.books.quotes` JSONB upserts.'
+          : baseName === 'bookarium-security.test.ts'
+            ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
+            : 'Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts.';
     lines.push(
       `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | ${scriptSuiteLayer} | ${scriptSuiteRole} |`
     );

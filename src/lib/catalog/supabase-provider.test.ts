@@ -613,6 +613,37 @@ describe('SupabaseCatalogProvider', () => {
       expect(gbResults).toHaveLength(1);
       expect(gbResults[0].bookId).toBe(1342);
     });
+
+    it('maps optional quotes JSONB array in mapDatabaseBookToGutendexBook when present', async () => {
+      const { mapDatabaseBookToGutendexBook } = await import('./supabase-provider');
+      const mappedWithQuotes = mapDatabaseBookToGutendexBook({
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: ['Classic'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 1000,
+        max_author_death_year: 1817,
+        min_author_birth_year: 1775,
+        quotes: [
+          {
+            chapterLabel: 'Chapter I',
+            openingLine: 'It is a truth universally acknowledged...',
+            quoteExcerpt: 'I declare after all there is no enjoyment like reading!',
+          },
+        ],
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      });
+
+      expect(mappedWithQuotes.quotes).toHaveLength(1);
+      expect(mappedWithQuotes.quotes?.[0].chapterLabel).toBe('Chapter I');
+    });
   });
 });
 

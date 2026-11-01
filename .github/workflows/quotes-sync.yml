@@ -1,0 +1,118 @@
+name: Featured Quotes Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Maximum books to sync (default: 25)'
+        required: false
+        type: string
+        default: '25'
+      min_delay_sec:
+        description: 'Minimum delay in seconds between mirror requests (supports integers or floats, default: 8)'
+        required: false
+        type: string
+        default: '8'
+      max_delay_sec:
+        description: 'Maximum delay in seconds between mirror requests (supports integers or floats, default: 16)'
+        required: false
+        type: string
+        default: '16'
+      target_count:
+        description: 'Target multi-quote spreads per book between 10 and 16 (default: 14)'
+        required: false
+        type: string
+        default: '14'
+      ids:
+        description: 'Optional comma-separated Gutenberg IDs (e.g. 1342,84,2701 — leave blank for all 25 curated classics)'
+        required: false
+        type: string
+        default: ''
+      force_refresh:
+        description: 'Force refresh books that already have >= 10 quotes (default: false)'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Dry run (extract quotes and generate supabase/seed_quotes.sql without database writes)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Extract & Sync Featured Book Quotes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Featured Quotes Ingestion
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_MIN_DELAY: ${{ github.event.inputs.min_delay_sec }}
+          INPUT_MAX_DELAY: ${{ github.event.inputs.max_delay_sec }}
+          INPUT_TARGET_COUNT: ${{ github.event.inputs.target_count }}
+          INPUT_IDS: ${{ github.event.inputs.ids }}
+          INPUT_FORCE: ${{ github.event.inputs.force_refresh }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          QUOTE_ARGS=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            QUOTE_ARGS="$QUOTE_ARGS --dry-run"
+          fi
+          if [ "$INPUT_FORCE" = "true" ]; then
+            QUOTE_ARGS="$QUOTE_ARGS --force"
+          fi
+          if [ -n "$INPUT_LIMIT" ]; then
+            if [[ ! "$INPUT_LIMIT" =~ ^[0-9]+$ ]]; then
+              echo "Error: limit input must be a positive integer." >&2
+              exit 1
+            fi
+            QUOTE_ARGS="$QUOTE_ARGS --limit=$INPUT_LIMIT"
+          fi
+          if [ -n "$INPUT_MIN_DELAY" ]; then
+            if [[ ! "$INPUT_MIN_DELAY" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+              echo "Error: min_delay_sec input must be a positive number." >&2
+              exit 1
+            fi
+            QUOTE_ARGS="$QUOTE_ARGS --min-delay=$INPUT_MIN_DELAY"
+          fi
+          if [ -n "$INPUT_MAX_DELAY" ]; then
+            if [[ ! "$INPUT_MAX_DELAY" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+              echo "Error: max_delay_sec input must be a positive number." >&2
+              exit 1
+            fi
+            QUOTE_ARGS="$QUOTE_ARGS --max-delay=$INPUT_MAX_DELAY"
+          fi
+          if [ -n "$INPUT_TARGET_COUNT" ]; then
+            if [[ ! "$INPUT_TARGET_COUNT" =~ ^(1[0-6])$ ]]; then
+              echo "Error: target_count input must be an integer between 10 and 16." >&2
+              exit 1
+            fi
+            QUOTE_ARGS="$QUOTE_ARGS --target-count=$INPUT_TARGET_COUNT"
+          fi
+          if [ -n "$INPUT_IDS" ]; then
+            if [[ ! "$INPUT_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+              echo "Error: ids input must be a comma-separated list of positive integers." >&2
+              exit 1
+            fi
+            QUOTE_ARGS="$QUOTE_ARGS --ids=$INPUT_IDS"
+          fi
+          node scripts/sync-featured-quotes.js $QUOTE_ARGS

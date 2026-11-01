@@ -125,7 +125,7 @@ Scans up to 120,000 characters of narrative chapters to dynamically harvest memo
 
 | Symbol | Signature | Contract / Rationale |
 |---|---|---|
-| `extractDynamicBookPassages` | `(rawText, book)` | Dynamically extracts authentic passages and literary quotes directly from raw Gutenberg book text. |
+| `extractDynamicBookPassages` | `(rawText, book, maxPassages (optional))` | Dynamically extracts authentic passages and literary quotes directly from raw Gutenberg book text. |
 
 ### `types.ts` — Type Contracts & Centralized Parser Configuration
 

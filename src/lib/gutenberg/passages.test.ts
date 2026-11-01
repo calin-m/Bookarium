@@ -311,5 +311,48 @@ ________________________________________________________________________
     expect(passages[1].openingLine).toContain('Real dialogue is spoken');
     expect(passages[2].openingLine).toContain('Another authentic quote');
   });
+
+  it('extracts up to maxPassages (10–16) spreads when maxPassages > 5 across multi-chapter and compact books', () => {
+    const twelveChapterText = Array.from({ length: 12 }, (_, idx) => {
+      const chNum = idx + 1;
+      return [
+        `CHAPTER ${chNum}`,
+        `Narrative opening paragraph for chapter number ${chNum} with rich prose and literary detail.`,
+        `"Dialogue quote one inside chapter number ${chNum} spoken with great conviction and clarity."`,
+        `"Dialogue quote two inside chapter number ${chNum} answering the philosophical inquiry."`,
+      ].join('\n\n');
+    }).join('\n\n');
+
+    const twelvePassages = extractDynamicBookPassages(
+      twelveChapterText,
+      { id: 1342, title: 'Pride and Prejudice' },
+      12
+    );
+    expect(twelvePassages).toHaveLength(12);
+    expect(twelvePassages[0].chapterLabel).toContain('Passage 1');
+
+    const compactTwoChapterManyParas = [
+      'CHAPTER I',
+      ...Array.from(
+        { length: 24 },
+        (_, idx) =>
+          `Paragraph number ${idx + 1} with extended literary narrative and reflection. "Spoken quote number ${idx + 1} inside the volume."`
+      ),
+      'CHAPTER II',
+      ...Array.from(
+        { length: 24 },
+        (_, idx) =>
+          `Second chapter paragraph ${idx + 1} continuing the classic tale across the sea. "Dialogue line ${idx + 1} in chapter two."`
+      ),
+    ].join('\n\n');
+
+    const tenPassages = extractDynamicBookPassages(
+      compactTwoChapterManyParas,
+      { id: 84, title: 'Frankenstein' },
+      10
+    );
+    expect(tenPassages.length).toBeGreaterThanOrEqual(6);
+    expect(tenPassages.length).toBeLessThanOrEqual(10);
+  });
 });
 

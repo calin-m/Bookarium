@@ -2,7 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { useBooks, fetchBooks, usePrefetchNextPage } from './useBooks';
+import {
+  useBooks,
+  fetchBooks,
+  usePrefetchNextPage,
+  fetchFeaturedQuotesMap,
+  useFeaturedQuotes,
+} from './useBooks';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 function createWrapper() {
@@ -427,6 +433,91 @@ describe('useBooks hook', () => {
 
     fetchSpy.mockRestore();
     (global as unknown as Record<string, unknown>).window = originalWindow;
+  });
+
+  it('fetches featured quotes map from Supabase with fail-safe fallback when unconfigured, offline, or errored', async () => {
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+
+    // 1. Empty IDs or unconfigured Supabase returns {}
+    expect(await fetchFeaturedQuotesMap([])).toEqual({});
+
+    const configSpy = vi
+      .spyOn(supabaseProviderModule, 'isSupabaseConfigured')
+      .mockReturnValue(true);
+
+    // 2. Offline browser returns {}
+    const onLineGetter = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+    expect(await fetchFeaturedQuotesMap([1342])).toEqual({});
+    onLineGetter.mockReturnValue(true);
+
+    // 3. Valid Supabase response maps valid BookPassage rows
+    const inMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 1342,
+            quotes: [
+              {
+                chapterLabel: 'Chapter I',
+                openingLine: 'It is a truth universally acknowledged...',
+                quoteExcerpt: 'I declare after all there is no enjoyment like reading!',
+              },
+              { invalid: true },
+            ],
+          },
+        ],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: 'column quotes does not exist' },
+      })
+      .mockRejectedValueOnce(new Error('Network failure'));
+
+    const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: inMock,
+        })),
+      })),
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+    const quotesMap = await fetchFeaturedQuotesMap([1342, 84]);
+    expect(quotesMap[1342]).toHaveLength(1);
+    expect(quotesMap[1342][0].chapterLabel).toBe('Chapter I');
+
+    // 4. PostgREST error or rejected promise safely returns {}
+    expect(await fetchFeaturedQuotesMap([1342])).toEqual({});
+    expect(await fetchFeaturedQuotesMap([1342])).toEqual({});
+
+    // 5. useFeaturedQuotes hook resolves quotes map
+    inMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 84,
+          quotes: [
+            {
+              chapterLabel: 'Letter I',
+              openingLine: 'You will rejoice to hear...',
+              quoteExcerpt: 'Beware; for I am fearless, and therefore powerful.',
+            },
+          ],
+        },
+      ],
+      error: null,
+    });
+
+    const { TestWrapper } = createWrapper();
+    const { result } = renderHook(() => useFeaturedQuotes([84]), {
+      wrapper: TestWrapper,
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[84]?.[0].chapterLabel).toBe('Letter I');
+
+    clientSpy.mockRestore();
+    configSpy.mockRestore();
   });
 });
 

@@ -10,6 +10,7 @@ import {
   handleCopyBookLinkClick,
 } from '@/components/ui/CursorTooltip';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
+import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
 
@@ -64,7 +65,14 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     return () => window.removeEventListener('resize', updateKinematics);
   }, []);
 
+  const { data: featuredQuotesMap } = useFeaturedQuotes([featuredBook.id]);
+  const supabaseBookQuotes =
+    featuredQuotesMap?.[featuredBook.id] ||
+    featuredBook.quotes ||
+    featuredBook.rawBook?.quotes;
+
   const {
+    passages,
     currentPassage,
     prevPassage,
     activePassageIndex,
@@ -77,7 +85,11 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     title: featuredBook.title,
     authors: featuredBook.rawBook?.authors || [{ name: featuredBook.author }],
     subjects: featuredBook.rawBook?.subjects || [featuredBook.primarySubject],
+    supabaseQuotes: supabaseBookQuotes,
+    enabled: false,
   });
+
+  const formatCleanQuote = (text?: string) => (text || '').replace(/^[“"'\s]+|[”"'\s]+$/g, '');
 
   const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
 
@@ -181,7 +193,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
             <span>Opening Line</span>
           </div>
           <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
-            &ldquo;{currentPassage.quoteExcerpt || featuredBook.openingLine}&rdquo;
+            &ldquo;{formatCleanQuote(currentPassage.quoteExcerpt || featuredBook.openingLine)}&rdquo;
           </p>
         </div>
 
@@ -197,63 +209,152 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
           <Button
             data-testid="hero-book-shuffle-btn"
             variant="outline"
+            disabled={isTurningLeaf || passages.length <= 1}
             onClick={shuffleNextPassage}
             title="Next Passage"
             className="h-10 px-3 shrink-0"
           >
-            <RotateCw className="w-3.5 h-3.5" />
+            <RotateCw className={`w-3.5 h-3.5 ${isTurningLeaf ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
     );
   }
 
-  const renderLeftPageContent = (passage: typeof currentPassage, maxWidthClass: string) => (
-    <>
-      <div>
-        <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-2.5 pb-1 border-b border-border">
-          <span className="flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Public Domain
-          </span>
-          <span>{passage.chapterLabel || featuredBook.volumeNumber}</span>
-        </div>
+  const isVeryLongTitle = featuredBook.title.length > 55;
+  const isLongTitle = featuredBook.title.length > 36;
 
+  const renderLeftPageContent = (passage: typeof currentPassage, maxWidthClass: string) => {
+    const hasSecondary = Boolean(passage.secondaryQuote);
+    return (
+      <>
         <div
-          data-copy-book-id={featuredBook.id}
-          data-tooltip={`${featuredBook.title} — by ${featuredBook.author}`}
-          onClick={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
-          onKeyDown={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
-          role="button"
-          tabIndex={0}
-          aria-label={`Copy link to ${featuredBook.title} by ${featuredBook.author}`}
-          className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 mb-2 hover:bg-muted/40 transition-colors"
+          data-testid="hero-book-left-page-body"
+          className="flex-1 min-h-0 flex flex-col justify-between overflow-hidden"
         >
-          <h3 className="text-xl sm:text-2xl font-serif font-bold leading-tight mb-1 text-foreground group-hover/copy:text-primary transition-colors text-balance">
-            {featuredBook.title}
-          </h3>
-          <p className="text-xs font-mono italic text-muted-foreground flex items-center min-w-0">
-            <span className="truncate">
-              by {featuredBook.author} ({featuredBook.year})
-            </span>
-            <CopyBookLinkIndicator bookId={featuredBook.id} />
+          <div className="shrink-0">
+            <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-1.5 pb-1 border-b border-border">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Public Domain
+              </span>
+              <span>{passage.chapterLabel || featuredBook.volumeNumber}</span>
+            </div>
+
+            <div
+              data-testid={`hero-3d-copy-meta-${featuredBook.id}`}
+              data-copy-book-id={featuredBook.id}
+              data-tooltip={`${featuredBook.title} — by ${featuredBook.author}`}
+              onClick={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
+              onKeyDown={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Copy link to ${featuredBook.title} by ${featuredBook.author}`}
+              className="group/copy cursor-pointer rounded-md px-1 py-0.5 mb-1.5 hover:bg-muted/40 transition-colors"
+            >
+              <h3
+                className={`font-serif font-bold leading-snug mb-0.5 text-foreground group-hover/copy:text-primary transition-colors text-balance ${
+                  isVeryLongTitle
+                    ? 'text-sm sm:text-base'
+                    : isLongTitle
+                    ? 'text-base sm:text-lg'
+                    : 'text-lg sm:text-xl'
+                }`}
+              >
+                {featuredBook.title}
+              </h3>
+              <p className="text-xs font-mono italic text-muted-foreground flex items-center min-w-0">
+                <span className="truncate">
+                  by {featuredBook.author} ({featuredBook.year})
+                </span>
+                <CopyBookLinkIndicator bookId={featuredBook.id} />
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden">
+            <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/40">
+              <p
+                className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
+                  !hasSecondary && !isLongTitle
+                    ? 'text-xs sm:text-[13px] line-clamp-5'
+                    : isVeryLongTitle
+                    ? 'text-xs line-clamp-3'
+                    : 'text-xs sm:text-[13px] line-clamp-3'
+                }`}
+              >
+                &ldquo;{formatCleanQuote(passage.openingLine)}&rdquo;
+              </p>
+            </div>
+
+            {passage.secondaryQuote && (
+              <div
+                data-testid="hero-book-secondary-quote"
+                className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
+              >
+                <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
+                <p
+                  className={`font-serif italic text-foreground leading-relaxed text-pretty ${
+                    isLongTitle ? 'text-xs line-clamp-2' : 'text-xs sm:text-[13px] line-clamp-3'
+                  }`}
+                >
+                  &ldquo;{formatCleanQuote(passage.secondaryQuote)}&rdquo;
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
+          <span className={`truncate ${maxWidthClass}`} title={featuredBook.primarySubject}>
+            {featuredBook.primarySubject}
+          </span>
+          <span className="opacity-60">p. 1</span>
+        </div>
+      </>
+    );
+  };
+
+  const renderRightPageBody = (passage: typeof currentPassage) => {
+    const hasSecondRightQuote = Boolean(passage.rightPageQuote2);
+    return (
+      <div
+        data-testid="hero-book-right-page-body"
+        className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden"
+      >
+        <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
+          <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
+          <p
+            className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${
+              hasSecondRightQuote ? 'line-clamp-3' : 'line-clamp-5'
+            }`}
+          >
+            &ldquo;{formatCleanQuote(passage.quoteExcerpt)}&rdquo;
           </p>
         </div>
 
-        <div className="relative pl-3 border-l-2 border-primary/40 my-2">
-          <p className="text-xs sm:text-[13px] font-serif italic text-foreground/90 leading-relaxed line-clamp-8 text-pretty">
-            &ldquo;{passage.openingLine}&rdquo;
-          </p>
-        </div>
-      </div>
+        {passage.rightPageQuote2 && (
+          <div
+            data-testid="hero-book-right-quote-2"
+            className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
+          >
+            <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
+            <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3 text-pretty">
+              &ldquo;{formatCleanQuote(passage.rightPageQuote2)}&rdquo;
+            </p>
+          </div>
+        )}
 
-      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border">
-        <span className={`truncate ${maxWidthClass}`} title={featuredBook.primarySubject}>
-          {featuredBook.primarySubject}
-        </span>
-        <span className="opacity-60">p. 1</span>
+        {passage.commentary && (
+          <p
+            data-testid="hero-book-commentary"
+            className="text-[11px] font-serif italic text-muted-foreground leading-snug px-1 line-clamp-2"
+          >
+            {passage.commentary}
+          </p>
+        )}
       </div>
-    </>
-  );
+    );
+  };
 
   return (
     <div
@@ -274,6 +375,9 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           togglePinState();
+        } else if (e.key === 'ArrowRight' && isBookOpen && !isTurningLeaf) {
+          e.preventDefault();
+          shuffleNextPassage();
         }
       }}
       aria-label={isBookOpen ? 'Click to close volume' : 'Click to pin open volume'}
@@ -285,40 +389,34 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
             key={`right-page-base-${featuredBook.id}-${activePassageIndex}`}
             className="animate-ink-appear flex flex-col justify-between h-full relative"
           >
-            <div>
-              <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
-                <span>{currentPassage.chapterLabel || 'Notable Passage'}</span>
-                <div className="flex items-center gap-2">
-                  <span className="opacity-60">p. 2</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPinState('closed');
-                    }}
-                    className="p-0.5 -mr-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    aria-label="Close volume"
-                    title="Close volume"
-                    data-testid="hero-book-close-btn"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
-                <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8 text-pretty">
-                  &ldquo;{currentPassage.quoteExcerpt}&rdquo;
-                </p>
+            <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-2 pb-1 border-b border-border shrink-0">
+              <span className="truncate pr-2">{currentPassage.chapterLabel || 'Notable Passage'}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="opacity-60">p. 2</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPinState('closed');
+                  }}
+                  className="p-0.5 -mr-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Close volume"
+                  title="Close volume"
+                  data-testid="hero-book-close-btn"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
+            {renderRightPageBody(currentPassage)}
+
             {/* Right Page Footer Actions */}
-            <div className="pt-2.5 border-t border-border flex items-center justify-between gap-2">
+            <div className="pt-2.5 mt-1 border-t border-border flex items-center justify-between gap-2 shrink-0">
               <Button
                 variant="outline"
                 size="chip"
+                disabled={isTurningLeaf || passages.length <= 1}
                 onClick={(e) => {
                   e.stopPropagation();
                   shuffleNextPassage(e);
@@ -326,8 +424,13 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
                 title="Shuffle to Next Passage in this Book"
                 aria-label="Shuffle to Next Passage in this Book"
                 data-testid="hero-book-shuffle-btn"
+                className="group/shuf"
               >
-                <RotateCw className="w-3 h-3 group-hover:rotate-180 transition-transform duration-500" />
+                <RotateCw
+                  className={`w-3 h-3 transition-transform duration-500 ${
+                    isTurningLeaf ? 'animate-spin' : 'group-hover/shuf:rotate-180'
+                  }`}
+                />
                 <span>Shuffle</span>
               </Button>
 
@@ -359,19 +462,12 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
           >
             {/* Front Face of Turning Leaf: Outgoing Right Page quote lifting away */}
             <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex flex-col justify-between text-foreground overflow-hidden">
-              <div>
-                <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
-                  <span>{prevPassage.chapterLabel || 'Notable Passage'}</span>
-                  <span className="opacity-60">p. 2</span>
-                </div>
-
-                <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
-                  <Quote className="w-4 h-4 text-primary/60 mb-1.5 shrink-0" />
-                  <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-8 text-pretty">
-                    &ldquo;{prevPassage.quoteExcerpt}&rdquo;
-                  </p>
-                </div>
+              <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-2 pb-1 border-b border-border shrink-0">
+                <span className="truncate pr-2">{prevPassage.chapterLabel || 'Notable Passage'}</span>
+                <span className="opacity-60 shrink-0">p. 2</span>
               </div>
+
+              {renderRightPageBody(prevPassage)}
             </div>
 
             {/* Back Face of Turning Leaf: Incoming Left Page title & quote landing onto left side */}
@@ -415,7 +511,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
               {/* Center Quote Excerpt */}
               <div className="my-3 p-3 rounded bg-stone-900 border border-stone-800">
                 <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4 text-pretty">
-                  &ldquo;{currentPassage.quoteExcerpt}&rdquo;
+                  &ldquo;{formatCleanQuote(currentPassage.quoteExcerpt)}&rdquo;
                 </p>
               </div>
 

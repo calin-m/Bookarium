@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useBookPassageShuffle } from './useBookPassageShuffle';
+import * as useBookContentModule from '@/hooks/queries/useBookContent';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBook: vi.fn().mockResolvedValue(null),
@@ -117,5 +118,87 @@ describe('useBookPassageShuffle', () => {
     expect(result.current.passages.length).toBeGreaterThan(0);
     expect(result.current.currentPassage.openingLine).toBeDefined();
     expect(result.current.currentPassage.chapterLabel).not.toContain('Volume Information');
+  });
+
+  it('automatically resets isTurningLeaf after 450ms safety timeout and normalizes string authors / id=0 fallback', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(
+      () =>
+        useBookPassageShuffle({
+          id: 35,
+          title: 'The Time Machine',
+          authors: 'H. G. Wells',
+          subjects: ['Science Fiction'],
+          enabled: false,
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    expect(result.current.passages.length).toBeGreaterThanOrEqual(2);
+
+    act(() => {
+      result.current.shuffleNextPassage();
+    });
+    expect(result.current.isTurningLeaf).toBe(true);
+    expect(result.current.activePassageIndex).toBe(1);
+
+    act(() => {
+      vi.advanceTimersByTime(460);
+    });
+    expect(result.current.isTurningLeaf).toBe(false);
+
+    const { result: emptyResult } = renderHook(
+      () =>
+        useBookPassageShuffle({
+          id: 0,
+          title: '',
+          authors: '',
+          enabled: false,
+        }),
+      { wrapper: createWrapper() }
+    );
+    expect(emptyResult.current.passages).toEqual([]);
+    expect(emptyResult.current.currentPassage.chapterLabel).toBe('Chapter I');
+
+    const { result: arrayStringResult } = renderHook(
+      () =>
+        useBookPassageShuffle({
+          id: 35,
+          title: 'The Time Machine',
+          authors: ['H. G. Wells'],
+          enabled: false,
+        }),
+      { wrapper: createWrapper() }
+    );
+    expect(arrayStringResult.current.passages.length).toBeGreaterThanOrEqual(2);
+
+    // Prioritizes supabaseQuotes when provided and merges with dynamicPassages when > 1
+    const contentSpy = vi.spyOn(useBookContentModule, 'useBookContent').mockReturnValue({
+      data: 'CHAPTER I\n\nFirst dynamic paragraph of a very long classic work with authentic dialogue. "Dynamic quote one from chapter one."\n\nCHAPTER II\n\nSecond dynamic paragraph continuing the story with more dialogue. "Dynamic quote two from chapter two."',
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useBookContentModule.useBookContent>);
+
+    const { result: supabasePriorityResult } = renderHook(
+      () =>
+        useBookPassageShuffle({
+          id: 1342,
+          title: 'Pride and Prejudice',
+          supabaseQuotes: [
+            {
+              chapterLabel: 'Supabase Passage I',
+              openingLine: 'Supabase opening line one',
+              quoteExcerpt: 'Supabase quote excerpt one',
+            },
+          ],
+          enabled: true,
+        }),
+      { wrapper: createWrapper() }
+    );
+    expect(supabasePriorityResult.current.passages[0].chapterLabel).toBe('Supabase Passage I');
+    contentSpy.mockRestore();
+
+    vi.useRealTimers();
   });
 });

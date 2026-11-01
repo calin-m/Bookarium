@@ -12,6 +12,7 @@ import {
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 import type { GutendexBook } from '@/types/book.types';
 
 const subscribeHourly = (callback: () => void) => {
@@ -49,10 +50,20 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
     return getDailyEditorialBook(activeHeroId, hourlyTimestamp, country);
   }, [heroBookId, country, hourlyTimestamp]);
 
-  // Defensive sanitization: trim outer quotes or whitespace so quotes are never doubled
+  const { data: featuredQuotesMap } = useFeaturedQuotes([book.id]);
+
+  // Prioritize primary Supabase public.books.quotes (10–16 quotes/book) with fallback to book.quoteExcerpt
   const displayQuote = useMemo(() => {
-    return book.quoteExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
-  }, [book.quoteExcerpt]);
+    const dbQuotes = featuredQuotesMap?.[book.id];
+    const hourIndex = Math.max(0, Math.floor(hourlyTimestamp / (1000 * 60 * 60)));
+    const candidatePassage =
+      Array.isArray(dbQuotes) && dbQuotes.length > 0
+        ? dbQuotes[hourIndex % dbQuotes.length]
+        : undefined;
+    const rawExcerpt =
+      candidatePassage?.quoteExcerpt || candidatePassage?.openingLine || book.quoteExcerpt;
+    return rawExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
+  }, [featuredQuotesMap, book.id, book.quoteExcerpt, hourlyTimestamp]);
 
   const handleStartReading = () => {
     const bookPayload: GutendexBook = {

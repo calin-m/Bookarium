@@ -85,5 +85,81 @@ describe('LiteraryQuotes component', () => {
     const headerDivider = container.querySelector('.border-b');
     expect(headerDivider).toHaveClass('pb-6', 'sm:pb-8');
   });
+
+  it('handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes', async () => {
+    const { vi } = await import('vitest');
+    const { act } = await import('@testing-library/react');
+    const hasMountedModule = await import('@/hooks/useHasMounted');
+    const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+
+    // 1. Pre-mount fallback (!hasMounted -> LITERARY_QUOTES.slice(0, 3))
+    const mountSpy = vi.spyOn(hasMountedModule, 'useHasMounted').mockReturnValueOnce(false);
+    const { unmount: unmountPre } = render(<LiteraryQuotes />);
+    expect(screen.getAllByRole('link', { name: /Read/i })).toHaveLength(3);
+    unmountPre();
+    mountSpy.mockRestore();
+
+    // 2. Deterministic shuffle selecting a Life+100 restricted quote (e.g. Sherlock Holmes id=6) then switching US -> MX to trigger backfill
+    vi.useFakeTimers();
+    const mathRandomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+
+    act(() => {
+      useJurisdictionStore.getState().setCountry('US');
+    });
+
+    render(<LiteraryQuotes />);
+    const shuffleBtn = screen.getByLabelText(/Discover more literary quotes/i);
+
+    // Rapid consecutive clicks to cover clearTimeout(shuffleTimerRef.current) and timer callback, ending on 3rd click ([id:4, id:5, id:6])
+    act(() => {
+      fireEvent.click(shuffleBtn);
+    });
+    act(() => {
+      fireEvent.click(shuffleBtn);
+      fireEvent.click(shuffleBtn);
+      vi.advanceTimersByTime(350);
+    });
+
+    // Switch to MX so restricted shuffled quote is filtered out and backfilled from safeQuotes pool
+    act(() => {
+      useJurisdictionStore.getState().setCountry('MX');
+    });
+    expect(screen.getAllByRole('link', { name: /Read/i })).toHaveLength(3);
+
+    act(() => {
+      useJurisdictionStore.getState().setCountry('US');
+    });
+    mathRandomSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it('expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes returns spreads', async () => {
+    const { vi } = await import('vitest');
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+
+    const quotesSpy = vi.spyOn(useBooksModule, 'useFeaturedQuotes').mockReturnValue({
+      data: {
+        1342: [
+          {
+            chapterLabel: 'Passage I • Pride and Prejudice',
+            openingLine: '“Primary Supabase Pride opening line with over twenty five letters.”',
+            quoteExcerpt: '“Primary Supabase Pride quote excerpt with over twenty five letters.”',
+          },
+          {
+            chapterLabel: 'Passage II • Pride and Prejudice',
+            openingLine: '“Secondary Supabase Pride opening line with over twenty five letters.”',
+            quoteExcerpt: '“Secondary Supabase Pride quote excerpt with over twenty five letters.”',
+          },
+        ],
+      },
+    } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
+
+    render(<LiteraryQuotes />);
+    expect(
+      screen.getByText(/Primary Supabase Pride quote excerpt with over twenty five letters/i)
+    ).toBeInTheDocument();
+
+    quotesSpy.mockRestore();
+  });
 });
 

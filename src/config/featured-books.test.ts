@@ -31,21 +31,22 @@ describe('featured-books configuration & passage selectors', () => {
       const specialIds = [1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35];
       for (const id of specialIds) {
         const passages = getBookPassages({ id, title: 'Lookup by ID' });
-        expect(passages.length).toBeGreaterThanOrEqual(1);
+        expect(passages.length).toBeGreaterThanOrEqual(2);
         expect(passages[0].openingLine.length).toBeGreaterThan(20);
         expect(passages[0].quoteExcerpt.length).toBeGreaterThan(10);
       }
     });
 
-    it('returns authentic featured passages for other featured books without fabricated quotes', () => {
+    it('returns authentic multi-spread featured passages for other featured books without fabricated quotes', () => {
       const byId = getBookPassages({ id: 2600, title: 'War and Peace' });
-      expect(byId).toHaveLength(1);
+      expect(byId).toHaveLength(2);
       expect(byId[0].chapterLabel).toContain('The Opening Incipit');
       expect(byId[0].secondaryQuote).toContain('Leo Tolstoy');
       expect(byId[0].quoteExcerpt).toBeDefined();
+      expect(byId[1].chapterLabel).toContain('Notable Passage');
 
       const byTitle = getBookPassages({ id: 999991, title: 'the metamorphosis' });
-      expect(byTitle).toHaveLength(1);
+      expect(byTitle).toHaveLength(2);
       expect(byTitle[0].secondaryQuote).toContain('Franz Kafka');
     });
 

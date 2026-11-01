@@ -640,6 +640,84 @@ describe('AdvancedFilterDrawer component', () => {
       expect(scrollableContainer).toBeInTheDocument();
       expect(scrollableContainer).toHaveClass('overscroll-contain');
     });
+
+    it('synchronizes external props on drawer open rerender, toggles chip deselection / All resets, and invokes individual fallback callbacks on Apply', () => {
+      const onEraChange = vi.fn();
+      const onSortChange = vi.fn();
+      const onTopicChange = vi.fn();
+      const onLanguageChange = vi.fn();
+      const onFormatChange = vi.fn();
+      const onClose = vi.fn();
+
+      const { rerender } = render(
+        <AdvancedFilterDrawer
+          isOpen={false}
+          onClose={onClose}
+          selectedEra=""
+          onEraChange={onEraChange}
+          selectedSort="descending"
+          onSortChange={onSortChange}
+          selectedTopic=""
+          onTopicChange={onTopicChange}
+          selectedLanguage=""
+          onLanguageChange={onLanguageChange}
+          selectedFormat=""
+          onFormatChange={onFormatChange}
+          onResetAll={vi.fn()}
+          activeFilterCount={0}
+        />
+      );
+
+      // Rerender with isOpen=true and updated external filter props (covers lines 84-97)
+      rerender(
+        <AdvancedFilterDrawer
+          isOpen={true}
+          onClose={onClose}
+          selectedEra="victorian,romantic"
+          onEraChange={onEraChange}
+          selectedSort="popular"
+          onSortChange={onSortChange}
+          selectedTopic="fiction,history"
+          onTopicChange={onTopicChange}
+          selectedLanguage="en,fr"
+          onLanguageChange={onLanguageChange}
+          selectedFormat="application/epub+zip,text/plain"
+          onFormatChange={onFormatChange}
+          onResetAll={vi.fn()}
+          activeFilterCount={8}
+        />
+      );
+
+      // Deselect an active era ('victorian' -> 'romantic', line 166)
+      fireEvent.click(screen.getByTestId('era-option-victorian'));
+      // Deselect an active topic ('fiction' -> 'history', line 179), then reset to All ('', lines 174-175)
+      fireEvent.click(screen.getByTestId('genre-facet-fiction'));
+      fireEvent.click(screen.getByTestId('genre-facet-all'));
+      // Re-select a topic so draftTopic !== selectedTopic on Apply
+      fireEvent.click(screen.getByTestId('genre-facet-philosophy'));
+
+      // Deselect an active language ('en' -> 'fr', lines 152-153)
+      fireEvent.click(screen.getByTestId('language-option-en'));
+
+      // Deselect an active format ('application/epub+zip' -> 'text/plain', line 192), then reset to All ('', lines 187-188)
+      fireEvent.click(screen.getByTestId('format-option-application-epub-zip'));
+      fireEvent.click(screen.getByTestId('format-option-all'));
+      // Re-select a format so draftFormat !== selectedFormat on Apply
+      fireEvent.click(screen.getByTestId('format-option-text-html'));
+
+      // Change sort so draftSort !== selectedSort on Apply
+      fireEvent.click(screen.getByTestId('sort-option-ascending'));
+
+      // Click Apply without onApplyFilters to trigger all 5 individual callbacks (lines 226-230)
+      fireEvent.click(screen.getByRole('button', { name: /Apply filters/i }));
+
+      expect(onEraChange).toHaveBeenCalledWith('romantic');
+      expect(onSortChange).toHaveBeenCalledWith('ascending');
+      expect(onTopicChange).toHaveBeenCalledWith('philosophy');
+      expect(onLanguageChange).toHaveBeenCalledWith('fr');
+      expect(onFormatChange).toHaveBeenCalledWith('text/html');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 });
 

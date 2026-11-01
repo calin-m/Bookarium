@@ -1,6 +1,12 @@
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+  QueryClient,
+  QueryClientContext,
+} from '@tanstack/react-query';
 import React, { useEffect } from 'react';
-import type { GutendexBook, GutendexResponse } from '@/types/book.types';
+import type { GutendexBook, GutendexResponse, BookPassage } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 import {
@@ -8,6 +14,8 @@ import {
   getJurisdictionRule,
   JURISDICTION_BASELINE_COUNTS,
 } from '@/lib/copyright-engine';
+import { createClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 
 export interface UseBooksParams {
   ids?: string | number;
@@ -292,4 +300,91 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
       staleTime: 5 * 60 * 1000,
     });
   }, [queryClient, nextParams, hasNextPage]);
+}
+
+/**
+ * Queries `public.books.quotes` from Supabase for a list of featured book IDs.
+ * Fail-safe: returns `{}` if Supabase is unconfigured, offline, or pre-migration.
+ */
+export async function fetchFeaturedQuotesMap(
+  bookIds: number[]
+): Promise<Record<number, BookPassage[]>> {
+  const uniqueIds = Array.from(
+    new Set(bookIds.filter((id) => Number.isInteger(id) && id > 0))
+  ).sort((a, b) => a - b);
+
+  if (uniqueIds.length === 0 || !isSupabaseConfigured()) {
+    return {};
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return {};
+  }
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('books')
+      .select('id, quotes')
+      .in('id', uniqueIds);
+
+    if (error || !Array.isArray(data)) {
+      return {};
+    }
+
+    const quotesMap: Record<number, BookPassage[]> = {};
+    for (const row of data) {
+      if (row && typeof row.id === 'number' && Array.isArray(row.quotes) && row.quotes.length > 0) {
+        const validPassages = (row.quotes as unknown[]).filter(
+          (item): item is BookPassage =>
+            Boolean(
+              item &&
+                typeof item === 'object' &&
+                typeof (item as BookPassage).openingLine === 'string' &&
+                typeof (item as BookPassage).quoteExcerpt === 'string'
+            )
+        );
+        if (validPassages.length > 0) {
+          quotesMap[row.id] = validPassages;
+        }
+      }
+    }
+    return quotesMap;
+  } catch {
+    return {};
+  }
+}
+
+const fallbackFeaturedQuotesClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+/**
+ * React Query hook fetching `public.books.quotes` (`10–16` passages per volume) from Supabase
+ * with a 1-hour cache and zero-error fallback to local TypeScript fixtures.
+ */
+export function useFeaturedQuotes(bookIds: number[], options: UseBooksOptions = {}) {
+  const contextClient = React.useContext(QueryClientContext);
+  const normalizedIds = React.useMemo(
+    () =>
+      Array.from(new Set(bookIds.filter((id) => Number.isInteger(id) && id > 0))).sort(
+        (a, b) => a - b
+      ),
+    [bookIds]
+  );
+
+  return useQuery(
+    {
+      queryKey: ['featured-quotes', normalizedIds],
+      queryFn: () => fetchFeaturedQuotesMap(normalizedIds),
+      staleTime: 60 * 60 * 1000, // 1 hour
+      gcTime: 2 * 60 * 60 * 1000, // 2 hours
+      enabled: (options.enabled ?? true) && normalizedIds.length > 0 && isSupabaseConfigured(),
+    },
+    contextClient ?? fallbackFeaturedQuotesClient
+  );
 }

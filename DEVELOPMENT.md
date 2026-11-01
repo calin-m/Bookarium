@@ -52,8 +52,9 @@ npm run report
 # Add a new Architecture Decision Record (ADR)
 npm run adr:new -- "Decision Title"
 
-# Public Domain Catalog Ingestion & Translation Pipelines
+# Public Domain Catalog Ingestion, Quotes & Translation Pipelines
 npm run catalog:sync
 npm run catalog:ingest
 npm run translations:sync
+npm run quotes:sync
 ```

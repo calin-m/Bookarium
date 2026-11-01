@@ -5,6 +5,8 @@
 
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { isBookPublicDomainInJurisdiction, type Author } from '@/lib/copyright-engine';
+import type { BookPassage } from '@/types/book.types';
+export type { BookPassage };
 
 export interface FeaturedHeroBook {
   id: number;
@@ -19,6 +21,7 @@ export interface FeaturedHeroBook {
   openingLine: string;
   license: string;
   primarySubject: string;
+  quotes?: BookPassage[];
 }
 
 export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
@@ -441,17 +444,6 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
 
 export const FEATURED_HERO_BOOK: FeaturedHeroBook = FEATURED_HERO_BOOKS[0];
 
-export interface BookPassage {
-  chapterLabel: string;
-  openingLine: string;
-  secondaryQuote?: string;
-  leftPageQuote2?: string;
-  quoteExcerpt: string;
-  rightPageQuote2?: string;
-  tertiaryQuote?: string;
-  commentary?: string;
-}
-
 export function getBookPassages(book: {
   id: number;
   title: string;
@@ -563,6 +555,14 @@ export function getBookPassages(book: {
           tertiaryQuote: '“There must have been moments even that afternoon when Daisy tumbled short of his dreams—because of the colossal vitality of his illusion.”',
           commentary: 'F. Scott Fitzgerald’s lyrical meditation on the American dream.',
         },
+        {
+          chapterLabel: 'Chapter IX • Against the Current',
+          openingLine: '“So we beat on, boats against the current, borne back ceaselessly into the past.”',
+          secondaryQuote: '“There must have been moments even that afternoon when Daisy tumbled short of his dreams—because of the colossal vitality of his illusion.”',
+          quoteExcerpt: '“Can’t repeat the past? he cried incredulously. Why of course you can!”',
+          rightPageQuote2: '“Reserving judgments is a matter of infinite hope.”',
+          commentary: 'Nick Carraway’s elegiac reflection on illusion, memory, and time.',
+        },
       ];
     }
 
@@ -577,6 +577,14 @@ export function getBookPassages(book: {
           rightPageQuote2: '“We’re all mad here. I’m mad. You’re mad. How do you know I’m mad? said Alice. You must be, said the Cat, or you wouldn’t have come here.”',
           tertiaryQuote: '“Begin at the beginning, the King said gravely, and go on till you come to the end: then stop.”',
           commentary: 'Lewis Carroll’s timeless masterpiece of whimsical logic.',
+        },
+        {
+          chapterLabel: 'Chapter VI • The Cheshire Cat',
+          openingLine: '“Would you tell me, please, which way I ought to go from here?” “That depends a good deal on where you want to get to,” said the Cat.',
+          secondaryQuote: '“It’s no use going back to yesterday, because I was a different person then.”',
+          quoteExcerpt: '“Begin at the beginning, the King said gravely, and go on till you come to the end: then stop.”',
+          rightPageQuote2: '“Who in the world am I? Ah, that’s the great puzzle!”',
+          commentary: 'Wonderland’s riddles on identity, curiosity, and sense.',
         },
       ];
     }
@@ -593,6 +601,14 @@ export function getBookPassages(book: {
           tertiaryQuote: '“Behind every exquisite thing that existed, there was something tragic.”',
           commentary: 'Oscar Wilde’s penetrating exploration of art, vanity, and the soul.',
         },
+        {
+          chapterLabel: 'Chapter II • The Portrait’s Secret',
+          openingLine: '“Those who find beautiful meanings in beautiful things are the cultivated. For these there is hope.”',
+          secondaryQuote: '“Behind every exquisite thing that existed, there was something tragic.”',
+          quoteExcerpt: '“Experience is merely the name men gave to their mistakes.”',
+          rightPageQuote2: '“To define is to limit.”',
+          commentary: 'Lord Henry Wotton’s paradoxical aphorisms in Basil Hallward’s studio.',
+        },
       ];
     }
 
@@ -607,6 +623,14 @@ export function getBookPassages(book: {
           rightPageQuote2: '“There is nothing more deceptive than an obvious fact.”',
           tertiaryQuote: '“To a great mind, nothing is little.”',
           commentary: 'Arthur Conan Doyle’s quintessential masterclass in deductive logic.',
+        },
+        {
+          chapterLabel: 'The Boscombe Valley Mystery',
+          openingLine: '“You see, but you do not observe. The distinction is clear, my dear Watson.”',
+          secondaryQuote: '“To a great mind, nothing is little.”',
+          quoteExcerpt: '“There is nothing more deceptive than an obvious fact.”',
+          rightPageQuote2: '“It has long been an axiom of mine that the little things are infinitely the most important.”',
+          commentary: 'Sherlock Holmes on the art of forensic observation at 221B Baker Street.',
         },
       ];
     }
@@ -623,6 +647,14 @@ export function getBookPassages(book: {
           tertiaryQuote: '“There is a reason why all things are as they are.”',
           commentary: 'Bram Stoker’s legendary gothic terror and epistolary romance.',
         },
+        {
+          chapterLabel: 'Chapter X • Van Helsing’s Resolve',
+          openingLine: '“Listen to them, the children of the night. What music they make!”',
+          secondaryQuote: '“There is a reason why all things are as they are.”',
+          quoteExcerpt: '“We learn from failure, not from success!”',
+          rightPageQuote2: '“No man knows till he has suffered from the night how sweet and how dear to his heart and eye the morning can be.”',
+          commentary: 'Professor Van Helsing on courage and resilience against the unknown.',
+        },
       ];
     }
 
@@ -637,6 +669,14 @@ export function getBookPassages(book: {
           rightPageQuote2: '“I wish you to know that you have been the last dream of my soul.”',
           tertiaryQuote: '“Liberty, equality, fraternity, or death; the last, much the easiest to bestow.”',
           commentary: 'Charles Dickens’ epic tapestry of sacrifice and resurrection in revolutionary Paris.',
+        },
+        {
+          chapterLabel: 'Book III • The Footsteps Die Out For Ever',
+          openingLine: '“A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other.”',
+          secondaryQuote: '“I wish you to know that you have been the last dream of my soul.”',
+          quoteExcerpt: '“It is a far, far better thing that I do, than I have ever done; it is a far, far better rest that I go to than I have ever known.”',
+          rightPageQuote2: '“Recalled to life.”',
+          commentary: 'Sydney Carton’s immortal final meditation on redemption and love.',
         },
       ];
     }
@@ -653,6 +693,14 @@ export function getBookPassages(book: {
           tertiaryQuote: '“We must live and learn, and the world is wide.”',
           commentary: 'H.G. Wells’ visionary founding text of speculative science fiction.',
         },
+        {
+          chapterLabel: 'Chapter IV • Time Travelling',
+          openingLine: '“Nature never appeals to intelligence until habit and instinct are useless. There is no intelligence where there is no change and no need of change.”',
+          secondaryQuote: '“We must live and learn, and the world is wide.”',
+          quoteExcerpt: '“Face this world. Learn its ways, watch it, be careful of too hasty guesses at its meaning. In the end you will find clues to it all.”',
+          rightPageQuote2: '“Looking at these stars suddenly dwarfed my own troubles and all the gravities of terrestrial life.”',
+          commentary: 'The Time Traveller’s voyage into the Year 802,701 and the deep future.',
+        },
       ];
     }
 
@@ -663,6 +711,14 @@ export function getBookPassages(book: {
         secondaryQuote: `“In the unfolding story of ${featured.title}, ${featured.author} explores timeless truths across ${featured.primarySubject.toLowerCase()}.”`,
         quoteExcerpt: featured.quoteExcerpt,
         commentary: `Preserved in complete unabridged form in the worldwide public domain (${featured.year}).`,
+      },
+      {
+        chapterLabel: 'Chapter II • Notable Passage',
+        openingLine: featured.quoteExcerpt,
+        secondaryQuote: featured.openingLine,
+        quoteExcerpt: `“In the unfolding story of ${featured.title}, ${featured.author} explores timeless truths across ${featured.primarySubject.toLowerCase()}.”`,
+        rightPageQuote2: featured.quoteExcerpt,
+        commentary: `${featured.title} by ${featured.author} — Project Gutenberg Volume #${featured.id}.`,
       },
     ];
   }

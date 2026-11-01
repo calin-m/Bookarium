@@ -3,15 +3,15 @@
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
 [![Current Release](https://img.shields.io/badge/Current%20Release-v2.8.1-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-40_of_45-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-87%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-41_of_47-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████████████░░]` **40/45 (89%)**
+`[█████████████████░░░]` **41/47 (87%)**
 
 ---
 
@@ -173,25 +173,29 @@
 - [x] **Full 32-Bookshelf & 20-Language Project Gutenberg Discovery Taxonomy (`catalog-filters.ts` & `AdvancedFilterDrawer.tsx`)** `✅ VERIFIED`
   Complete 32 Project Gutenberg Bookshelf & Subject categories and 20 top languages in `src/config/catalog-filters.ts` and `AdvancedFilterDrawer.tsx` with progressive `+ Show all 32 Bookshelves` / `+ Show all 20 Languages` disclosure, `bookshelves` GIN `search_vector` indexing (`public.books_search_vector_trigger()`), and MIME/topic provider parity (`supabase-provider.ts`, `gutendex-provider.ts`).
 - [x] **9-Rule `bookarium-security` AST Request-Taint Engine, OWASP Account Security, Rule 9 Account Deletion Parity & 4-Wave Modular Decomposition (`bookarium-security.js` & `verify-build.js`)** `✅ VERIFIED`
-  Custom 9-rule ESLint & Babel AST security and intra-procedural request-taint plugin (`scripts/eslint-rules/bookarium-security.js`), OWASP current-password re-authentication & inline recovery (`useAccountSecurityActions.ts`, `AccountSecuritySection.tsx`), atomic 11-table + `storage.objects` server-side erasure (`public.delete_current_user()`) with automated `Pass 0.75` Rule 9 Account Deletion Parity enforcement, 4-wave non-breaking component/hook/cloud-sync decomposition, and `100%` 1:1 co-located test coverage across `210` suites (`95/95/92/85` V8 coverage floor).
+  Custom 9-rule ESLint & Babel AST security and intra-procedural request-taint plugin (`scripts/eslint-rules/bookarium-security.js`), OWASP current-password re-authentication & inline recovery (`useAccountSecurityActions.ts`, `AccountSecuritySection.tsx`), atomic 11-table + `storage.objects` server-side erasure (`public.delete_current_user()`) with automated `Pass 0.75` Rule 9 Account Deletion Parity enforcement, 4-wave non-breaking component/hook/cloud-sync decomposition, and `100%` 1:1 co-located test coverage across `211` suites (`95/95/92/85` V8 coverage floor).
 
 ---
 
-### Milestone 10: Community Hub & Public Literary Agora (`Target: v2.9.0`)
-`[░░░░░░░░░░░░░░░░░░░░]` **0/5 (0%)**
+### Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Reader & Public Literary Agora (`Target: v2.9.0`)
+`[███░░░░░░░░░░░░░░░░░]` **1/7 (14%)**
 
-> Open literary agora, public volume discussions, community-wide reading challenges, curated commonplace quote showcases, and shareable social reading cards.
+> Chronological execution sequence: Supabase `public.books.quotes` (`10–16` quotes/book) primary quote store & manual first-batch ingestion, automated upsert-only quotes discovery cron & anonymized scholar-highlight promotion, dual-page spread reader mode, public volume discussions, community hub, reading challenges, and shareable reading cards.
 
-- [ ] **Bookarium Community Hub (`/?view=community`)** `⏳ PLANNED`
-  Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics across the scholar network.
+- [x] **Supabase `public.books.quotes` Primary Quote Store (`10–16` Quotes/Book), Manual First-Batch Ingestion & Frontend Read Integration** `✅ VERIFIED`
+  Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT '[]'::jsonb` column storing `10–16` structured multi-quote spreads per featured volume (`openingLine`, `secondaryQuote`, `quoteExcerpt`, `rightPageQuote2`, `commentary`, `chapterLabel`); build `scripts/sync-featured-quotes.js` and `.github/workflows/quotes-sync.yml` (`workflow_dispatch` manual trigger) to ingest the 25 classics in `featured-books.ts` and `literary-quotes.ts` (checking `public.books.content` in Supabase first before dispatching 3 dedicated per-mirror workers across official PGLAF bulk mirrors `aleph.gutenberg.org`, `gutenberg.pglaf.org`, and `gutenberg.readingroo.ms` with independent `8.0s–16.0s` randomized float delays and mirror error circuit-breaker cooldowns); and wire `HeroFeaturedBook3D`, `EditorialQuoteSection` (*Classic of the Day*), and `LiteraryQuotes` (*Words That Shaped Humanity*) via `useFeaturedQuotes` to read and shuffle their `10–16` quotes directly from `public.books.quotes` while retaining static TypeScript arrays strictly as zero-config and offline fallbacks.
+- [ ] **Automated Upsert-Only Quotes Discovery Cron & Anonymized Scholar-Highlight Promotion** `⏳ PLANNED`
+  Enable scheduled cron execution (`schedule`) in `.github/workflows/quotes-sync.yml` and `scripts/sync-featured-quotes.js` to periodically discover additional public-domain classics where `jsonb_array_length(quotes) < 10`, checking `public.books.content` first before polite PGLAF mirror fetching (`aleph.gutenberg.org`) and accumulating `10–16` multi-quote spreads via incremental upsert-only (never deleting previously extracted quotes so no volume is ever downloaded twice from Gutenberg); and blend in anonymized frequently highlighted public passages from `public.annotations` (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for RLS privacy and GDPR erasure)—reserving live Gutenberg pulls strictly for uncached volumes opened in Catalog, Bookshelf, and Favorites.
+- [ ] **Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)** `⏳ PLANNED`
+  Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.
 - [ ] **Public Volume Discussions & Shared Commonplace Quotes** `⏳ PLANNED`
   Reader commentary and scholarly reviews on individual book volumes with opt-in public publishing of highlighted excerpts from the Commonplace Notebook.
+- [ ] **Bookarium Community Hub (`/?view=community`)** `⏳ PLANNED`
+  Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics across the scholar network.
 - [ ] **Community Reading Challenges & Seasonal Anthologies** `⏳ PLANNED`
   Collective seasonal reading events (e.g., Gothic Autumn, Antiquity Odyssey) with shared community progress meters and commemorative participation badges.
 - [ ] **Shareable Reading Cards & Social Milestone Canvas Export** `⏳ PLANNED`
   Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
-- [ ] **Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)** `⏳ PLANNED`
-  Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.
 
 ---
 

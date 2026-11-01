@@ -51,6 +51,11 @@ vi.mock('@/hooks/queries/useBooks', () => ({
     mockUsePrefetchNextPage(...args);
     return vi.fn();
   },
+  useFeaturedQuotes: () => ({
+    data: {},
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock('@/hooks/queries/useBookContent', () => ({

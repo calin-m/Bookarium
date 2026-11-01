@@ -8,6 +8,17 @@ export interface Author {
   death_year?: number | null;
 }
 
+export interface BookPassage {
+  chapterLabel: string;
+  openingLine: string;
+  secondaryQuote?: string;
+  leftPageQuote2?: string;
+  quoteExcerpt: string;
+  rightPageQuote2?: string;
+  tertiaryQuote?: string;
+  commentary?: string;
+}
+
 export interface GutendexBook {
   id: number;
   title: string;
@@ -20,6 +31,7 @@ export interface GutendexBook {
   media_type: string;
   formats: Record<string, string>;
   download_count: number;
+  quotes?: BookPassage[];
 }
 
 export interface GutendexResponse {

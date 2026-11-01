@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202135%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.65%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202152%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.83%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2135 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2152 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,7 +110,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.8.1)
 
-- **Fluid Multi-Resolution Kinematics & Touch-Safe Dismissal for 3D Hero Book (`src/app/globals.css`, `src/components/presentation/HeroFeaturedBook3D.tsx`, `src/components/presentation/HeroFeaturedBook3D.test.tsx`, `docs/DECISIONS.md`, `ADR-080`)**: Implemented a dynamic layout formula computing real-time `--hero-open-scale` and `--hero-open-tx` based on available column width ($S = \min(0.84, \max(0.60, (W_{col}/2 + 12)/320))$ and $T = \text{round}(160 \times S \times 0.75)$), guaranteeing $\ge 20\text{px}$ clearance inside the right screen edge and $>40\text{px}$ clearance from left search text across any tablet resolution (from $1024\text{px}$ iPad to $1142\text{px}$ Lenovo Tab Plus 2K to $1280\text{px}$–$1536\text{px}+$ desktop); deployed granular 5-tier pre-hydration CSS fallbacks in `globals.css` ($1024\text{px}$, $1120\text{px}$, $1220\text{px}$, $1320\text{px}$, $1536\text{px}$); added document-level `pointerdown` / `touchstart` outside-tap dismissal; guarded `handleHoverChange` with canonical `useTouchDevice` to prevent synthesized touch events from resetting closed pin state; and added an accessible close button (`✕`) on the open page header.
+- **Fluid Multi-Resolution Kinematics, Touch-Safe Dismissal, Catalog-Unified Multi-Quote Spreads, Adaptive Page Clamping, Zero-Pull Homepage Gutenberg Shield, Supabase `public.books.quotes` Primary Quote Store (`10–16` Quotes/Book), 3-Worker Per-Mirror PGLAF Ingestion (`8.0s–16.0s` Float Pacing) & V8 CI Coverage Hardening (`supabase/schema.sql`, `src/types/database.types.ts`, `src/types/book.types.ts`, `package.json`, `.github/workflows/quotes-sync.yml`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`, `src/lib/gutenberg/passages.ts`, `src/lib/gutenberg/passages.test.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/catalog/supabase-provider.test.ts`, `src/hooks/queries/useBooks.ts`, `src/hooks/queries/useBooks.test.ts`, `src/app/globals.css`, `src/components/presentation/HeroFeaturedBook3D.tsx`, `src/components/presentation/HeroFeaturedBook3D.test.tsx`, `src/components/presentation/EditorialQuoteSection.tsx`, `src/components/presentation/EditorialQuoteSection.test.tsx`, `src/components/presentation/LiteraryQuotes.tsx`, `src/components/presentation/LiteraryQuotes.test.tsx`, `src/config/featured-books.ts`, `src/config/featured-books.test.ts`, `src/hooks/useBookPassageShuffle.ts`, `src/hooks/useBookPassageShuffle.test.ts`, `src/components/presentation/HeroSearch.test.tsx`, `src/components/presentation/AdvancedFilterDrawer.test.tsx`, `src/app/page.test.tsx`, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`, `ADR-080`)**: Implemented a dynamic layout formula computing real-time `--hero-open-scale` and `--hero-open-tx` based on available column width ($S = \min(0.84, \max(0.60, (W_{col}/2 + 12)/320))$ and $T = \text{round}(160 \times S \times 0.75)$), guaranteeing $\ge 20\text{px}$ clearance inside the right screen edge and $>40\text{px}$ clearance from left search text across any tablet resolution (from $1024\text{px}$ iPad to $1142\text{px}$ Lenovo Tab Plus 2K to $1280\text{px}$–$1536\text{px}+$ desktop); deployed granular 5-tier pre-hydration CSS fallbacks in `globals.css` ($1024\text{px}$, $1120\text{px}$, $1220\text{px}$, $1320\text{px}$, $1536\text{px}$) and `.no-scrollbar` utility rules; added document-level `pointerdown` / `touchstart` outside-tap dismissal, `useTouchDevice` hover guard, and an accessible close button (`✕`) on the open page header; unified `HeroFeaturedBook3D.tsx` quote spreads with `BookPreviewModal.tsx` (`secondaryQuote`, `rightPageQuote2`, `commentary`, outer quote-mark stripping, `overflow-hidden` page bodies with adaptive title sizing and quote `line-clamp` rules, Shuffle `disabled={isTurningLeaf || passages.length <= 1}` + spin icon, and `ArrowRight` keyboard shortcut when open); disabled live homepage Project Gutenberg fetches in `HeroFeaturedBook3D.tsx` (`enabled: false`), expanded all 20 featured classics in `featured-books.ts` to $\ge 2$ curated multi-quote spreads, preserved all curated spreads with a `450ms` `isTurningLeaf` reset safety timer in `useBookPassageShuffle.ts`, added idempotent `quotes JSONB NOT NULL DEFAULT '[]'::jsonb` to `public.books` (`supabase/schema.sql`, `database.types.ts`, `book.types.ts`), built `scripts/sync-featured-quotes.js` (`npm run quotes:sync`) and manual `.github/workflows/quotes-sync.yml` (`workflow_dispatch`) to check `public.books.content` first and dispatch 3 dedicated per-mirror workers across PGLAF bulk mirrors (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`) with independent `8.0s–16.0s` randomized float delays and mirror error circuit-breaker cooldowns, wired `useFeaturedQuotes` across `HeroFeaturedBook3D.tsx`, `EditorialQuoteSection.tsx`, and `LiteraryQuotes.tsx` with fail-safe fallback to `featured-books.ts` and `literary-quotes.ts`, and expanded V8 statement coverage across `211` co-located test suites.
 - **360-Degree Living Architecture Topology, Event/State-Flow Bus, Temporal Sequence Workflows, External Integration Contracts, Failure/Retry Matrix, 5-Layer Deployment Caching, AST Environment Variable Dependency Map, Security Matrix Migration & Executive README Directory (`scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `scripts/verify-build.js`, `docs/ARCHITECTURE.md`, `README.md`, `SECURITY.md`, `ADR-079`)**: Added `extractEnvironmentDependencyCatalog` to `scripts/lib/ast-parser.js` to parse variable names strictly from `.env.example` (zero secret values read) and traverse `src/**`, `next.config.ts`, `scripts/*.js`, and `.github/workflows/*.yml` via Babel AST (`process.env.<VAR>`) to map every consumer; enriched Diagrams 1 & 2 (`End-to-End System Context` and `Focus Reader State`) with refactored Wave 1–4 modules (`preferences-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`, `reader-bookmark-geometry.ts`, `ReaderRowBookmark.tsx`, `useReaderHabitTelemetry.ts`, `useOfflineCatalogFallback.ts`, `useNotebookMetadataResolver.ts`, `useAccountSecurityActions.ts`, `AccountTypographySubPanel.tsx`); expanded `scripts/generate-architecture-matrix.js` with 6 new living sections and 7 Mermaid diagrams (`## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology` + Client Storage & Account Erasure Parity Matrix, `## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)` across Cold Launch/Outbox Sync, Focus Reader/HTTP 451/Multi-Mirror/Worker AST, and Offline Queueing/Reconnect Replay, `## 🌍 External Integration & Boundary Contracts Map`, `## 🛡️ Failure Modes, Circuit Breakers & Retry Topology` across 10 runtime failure scenarios, `## 🚀 Deployment, Edge Caching & Operational Topology` with 5-Layer TTL Hierarchy & Hardware-Tier Performance Budgets, and `## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map`); migrated the 13-row `Enterprise Security & Resiliency Architecture` matrix to `SECURITY.md` (`## 🛡️ Enterprise Defense-in-Depth & Resiliency Matrix`); streamlined `README.md` to Diagram 1 + an 11-diagram interactive directory table; and updated `Pass 5` and Pillar 6 in `scripts/verify-build.js` to enforce 14-table RLS verification and diagram directory parity.
 - **Touch Spine Physics, 3D Preview Centering Parity, Scholar Sanctuary Ledger & Babel 8 / ESLint 10 Dependency Upgrades (`src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/app/globals.css`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/account/AccountIdentityCard.tsx`, `package.json`, `scripts/lib/ast-parser.js`, `scripts/generate-parser-docs.js`, `scripts/eslint-rules/bookarium-security.js`, `ADR-075`, `ADR-076`, `ADR-077`, `ADR-078`)**: Added controlled `isActive` touch spine selection with 1:1 cursor hover physical parity (`translate-y-0 scale-105 shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] origin-bottom z-30`), a `120ms` tap anticipation delay, and synchronized dismiss-to-return shelf animation (`ADR-075`); corrected open 3D book preview translation to true `0.5 * W` midpoint alignment across landscape tablet and desktop viewports with symmetric `-left-28 -right-28` floor shadow geometry (`ADR-076`); promoted the Account reading streak pill into the header identity row (`identity-streak-badge`) and redesigned the collection stat strip into a 5-column stacked Scholar Sanctuary Ledger (`ADR-077`); and upgraded `@babel/parser` and `@babel/traverse` in lockstep to `^8.0.8` (with ESTree `ImportExpression` AST visitor parity), `eslint` to `^10.13.0`, `@tanstack/react-query` to `^5.105.0`, `zustand` to `^5.0.16`, and `postcss` to `^8.5.32` (`ADR-078`).
 - **Reading Ledger Offline Author Preservation, Merge Guardrails & IndexedDB Self-Healing (`src/hooks/reader/useContinueReadingLedger.ts`, `src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`, `src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`, `ADR-070`)**: Resolved the issue where books saved for offline reading reverted to "Anonymous" on page refresh on `/bookmarks` by verifying authentic non-placeholder authors in `missingIds` to trigger background metadata fetching, preventing candidate books with placeholder authors from overwriting authentic domain authors in `setOrMergeBook`, healing placeholder authors in `bookDictionary` using `readingPositions`, resolving authentic authors from local shelf and reader stores before defaulting to "Anonymous" in `getAllOfflineBookMetas()` with asynchronous IndexedDB back-fill (`patchOfflineBookAuthors`), and updating `useReaderStore.enrichReadingPositions`, `saveReadingPosition`, and `useBookshelfStore.enrichSavedBooks` to heal placeholder authors when incoming fresh books provide authentic names without numeric lifespans.
@@ -316,7 +316,7 @@ flowchart TD
         HookNetwork["📡 useNetworkStatus & useOfflineCatalogFallback\n(Reactive Online/Offline Store & Adaptive Offline Catalog)"]
         HookAutoHeal["🩺 useCollectionAutoHeal & useNotebookMetadataResolver\n(Author Lifespan & Marginalia Metadata Auto-Rehydration)"]
         HookCatalogFilters["🎛️ useCatalogFilters & useAccountSecurityActions\n(Catalog Filter Staging & OWASP Account Security Workflows)"]
-        QueryBooks["🔄 useBooks & usePrefetchNextPage\n(Windowed Sub-Pages & Predictive Prefetch)"]
+        QueryBooks["🔄 useBooks, useFeaturedQuotes & usePrefetchNextPage\n(Windowed Sub-Pages, Primary Quotes JSONB & Predictive Prefetch)"]
         QueryContent["🔄 useBookContent(url, bookId)\n(Offline-Always IndexedDB Check to CDN Stream)"]
         QueryTranslate["🌐 useBookTranslations\n(International Editions Relational Handoff)"]
         Telemetry["📊 Vercel Telemetry\n(Analytics & Speed Insights)"]
@@ -349,6 +349,7 @@ flowchart TD
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
         SyncTranslations["🔄 Relational Translations Sync\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]
+        SyncQuotes["🔄 Featured Quotes Sync Engine\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]
         VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
     end
 
@@ -455,6 +456,8 @@ flowchart TD
     QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex
     SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud
     SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL
+    SyncQuotes -->|Manual Dispatch Quotes JSONB Upsert| SupabaseCloud
+    SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN
     
     Views --> StateStores
     HabitsCard --> StoreHabits
@@ -553,7 +556,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 | `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
 | `public.reader_circles` | Table (RLS) | Persistent two-way Fellow Scholar connections (`pending` / `accepted`) with `ON DELETE CASCADE` and strict participant-only RLS policies. |
 | `public.symposium_sessions` | Table (RLS) | Per-volume Literary Symposium reading pacts (`pending`, `active`, `completed`) with synchronized chapter/progress coordinates and participant-only RLS. |
-| `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms single-book copyright resolution and ~1–2s catalog searches, optional full plain-text caching (`content`) for instant reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
+| `public.books` | Table (RLS) | High-performance self-hosted public domain catalog with GIN full-text search (`search_vector`), indexed languages, subjects, download metrics, pre-computed author lifespan bounds (`max_author_death_year`, `min_author_birth_year`) for sub-50ms single-book copyright resolution and ~1–2s catalog searches, primary literary quote store (`quotes` JSONB storing `10–16` multi-quote spreads per featured volume), optional full plain-text caching (`content`) for instant reader streaming, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.book_translations` | Table (RLS) | Relational routing junction table linking Project Gutenberg volumes to canonical literary works and multi-language translations (FRBR model). Microscopic footprint (< 2.5 MB for 75,000 books), zero text duplication, foreign key cascading on book deletion, and public read RLS (`FOR SELECT USING (true)`). |
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 | `public.delete_current_user()` | RPC Function | Atomic server-side 11-table + `storage.objects` user data erasure prior to `auth.users` deletion (authenticated-only execution, null session guard, immutable `search_path`). |
@@ -573,7 +576,7 @@ npm run catalog:sync -- --limit=100
 npm run catalog:sync
 ```
 > [!TIP]
-> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). Two scheduled GitHub Actions workflows automate background catalog and translation updates while keeping your Supabase free tier active:
+> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). Three GitHub Actions workflows automate background catalog, translation, and literary quote updates while keeping your Supabase free tier active:
 >
 > 1. **Gutenberg Catalog Sync ([`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml))**:
 >    - **Schedule**: Every Sunday at `02:00 UTC`.
@@ -583,6 +586,10 @@ npm run catalog:sync
 >    - **Schedule**: Every Sunday at `03:00 UTC` (1 hour after catalog sync).
 >    - **Action**: Dedicated standalone workflow that clusters Wikidata translation statements into canonical literary works without re-streaming the full 78,000-book catalog.
 >    - **Manual Dispatch**: Can be triggered on-demand with custom inputs (`limit`, `update_existing`, `dry_run`) directly from the GitHub Actions tab.
+> 3. **Featured Quotes Sync ([`.github/workflows/quotes-sync.yml`](.github/workflows/quotes-sync.yml))**:
+>    - **Trigger**: On-demand `workflow_dispatch` manual trigger.
+>    - **Action**: Resolves unabridged classic volumes (checking `public.books.content` first before dispatching 3 dedicated per-mirror workers across PGLAF bulk mirrors `aleph.gutenberg.org`, `gutenberg.pglaf.org`, and `gutenberg.readingroo.ms`, each with its own independent `8.0s–16.0s` randomized float delay and error cooldown circuit breaker), extracts `10–16` multi-quote spreads per book, and updates `public.books.quotes` JSONB.
+>    - **Manual Dispatch**: Configurable inputs for `limit` (`default: 25`), `min_delay_sec` (`default: 8`), `max_delay_sec` (`default: 16`), `target_count` (`10–16`, `default: 14`), `ids` (comma-separated Gutenberg IDs), `force_refresh`, and `dry_run`.
 
 #### Option B: Curated Masterworks Starter Seed (10 Books)
 If you prefer a quick starter seed for local development:
@@ -608,6 +615,19 @@ npm run translations:sync -- --all
 npm run translations:sync -- --limit=200 --output=supabase/seed_translations.sql
 ```
 Paste and run [`supabase/seed_translations.sql`](supabase/seed_translations.sql) in your Supabase SQL Editor if seeding offline.
+
+#### Option D: Ingest Featured Literary Quotes (`10–16` Multi-Quote Spreads/Book)
+Populate `public.books.quotes` JSONB for the 25 featured classics (`HeroFeaturedBook3D`, `EditorialQuoteSection`, and `LiteraryQuotes`) using PGLAF bulk mirrors with randomized `8.0s–16.0s` float pacing:
+```bash
+# 1. Dry run (extract quotes and generate supabase/seed_quotes.sql without database writes):
+npm run quotes:sync -- --dry-run
+
+# 2. Sync specific classics by Gutenberg ID:
+npm run quotes:sync -- --ids=1342,84,2701
+
+# 3. Full live quotes ingestion for all 25 curated classics (8.0s–16.0s random float delay):
+npm run quotes:sync -- --limit=25 --min-delay=8 --max-delay=16 --target-count=14
+```
 
 Once seeded, `/api/books` automatically routes queries to your self-hosted Supabase PostgreSQL catalog with predictable ~1–2s catalog page responses and sub-50ms single-book lookups, eliminating the 20–60s wait times and timeouts common on public APIs.
 
@@ -660,6 +680,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (78,000+ titles) and batch-upserts into Supabase |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
+| `npm run quotes:sync` | Resolves classic volumes via `public.books.content` and 3 dedicated per-mirror PGLAF workers (`8.0s–16.0s` per-worker float pacing + cooldown circuit breaker), extracts `10–16` multi-quote spreads, and updates `public.books.quotes` (`--limit=N`, `--min-delay=S`, `--max-delay=S`, `--target-count=N`, `--ids=...`, `--force`, `--dry-run`) |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 

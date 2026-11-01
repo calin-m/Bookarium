@@ -110,6 +110,31 @@ describe('EditorialQuoteSection component', () => {
     expect(section).toHaveClass('custom-test-class');
   });
 
+  it('prioritizes Supabase public.books.quotes when useFeaturedQuotes returns spreads for the active classic', async () => {
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+    const currentHero = getHourlyHeroBook();
+    const expectedBook = getDailyEditorialBook(currentHero.id);
+
+    const quotesSpy = vi.spyOn(useBooksModule, 'useFeaturedQuotes').mockReturnValue({
+      data: {
+        [expectedBook.id]: [
+          {
+            chapterLabel: 'Passage I',
+            openingLine: '“Primary Supabase opening line for classic of the day.”',
+            quoteExcerpt: '“Primary Supabase quote excerpt for classic of the day.”',
+          },
+        ],
+      },
+    } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
+
+    render(<EditorialQuoteSection />);
+    expect(
+      screen.getByText(/Primary Supabase quote excerpt for classic of the day/i)
+    ).toBeInTheDocument();
+
+    quotesSpy.mockRestore();
+  });
+
   describe.each(FEATURED_HERO_BOOKS)(
     'universal rendering for "$title"',
     (targetBook) => {

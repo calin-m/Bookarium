@@ -6,17 +6,20 @@ import { parseGutenbergChapters } from './segmentation';
  */
 export function extractDynamicBookPassages(
   rawText: string | undefined | null,
-  book: { id: number; title: string; authors?: { name: string }[]; subjects?: string[] }
+  book: { id: number; title: string; authors?: { name: string }[]; subjects?: string[] },
+  maxPassages: number = 5
 ): DynamicBookPassage[] {
   if (!rawText || typeof rawText !== 'string' || rawText.trim().length < 50) {
     return [];
   }
 
   // Bound analysis window to prevent main thread blocking on massive books
+  const scanLimit =
+    maxPassages > 5
+      ? Math.max(GUTENBERG_PARSER_CONFIG.PASSAGE_SCAN_BYTES, 900 * 1024)
+      : GUTENBERG_PARSER_CONFIG.PASSAGE_SCAN_BYTES;
   const sampleText =
-    rawText.length > GUTENBERG_PARSER_CONFIG.PASSAGE_SCAN_BYTES
-      ? rawText.slice(0, GUTENBERG_PARSER_CONFIG.PASSAGE_SCAN_BYTES)
-      : rawText;
+    rawText.length > scanLimit ? rawText.slice(0, scanLimit) : rawText;
   const chapters = parseGutenbergChapters(sampleText);
   // Filter out pure preamble/license sections to focus on narrative chapters
   const narrativeChapters = chapters.filter(
@@ -175,6 +178,53 @@ export function extractDynamicBookPassages(
   };
 
   const passages: DynamicBookPassage[] = [];
+
+  if (maxPassages > 5) {
+    const clampedMax = Math.min(20, Math.max(6, Math.floor(maxPassages)));
+    const usedChapterIndices = new Set<number>();
+
+    if (targetChapters.length >= clampedMax) {
+      for (let i = 0; i < clampedMax; i++) {
+        const chIdx = Math.floor((i * (targetChapters.length - 1)) / (clampedMax - 1));
+        if (!usedChapterIndices.has(chIdx)) {
+          usedChapterIndices.add(chIdx);
+          passages.push(
+            createPassageFromChapter(
+              targetChapters[chIdx],
+              chIdx + 1,
+              `Passage ${passages.length + 1}`
+            )
+          );
+        }
+      }
+    } else {
+      targetChapters.forEach((ch, idx) => {
+        passages.push(createPassageFromChapter(ch, idx + 1, `Chapter ${idx + 1}`));
+      });
+
+      const allParas = targetChapters.flatMap((ch) => cleanParagraphs(ch.content));
+      const remaining = clampedMax - passages.length;
+      if (remaining > 0 && allParas.length >= 6) {
+        const chunk = Math.max(3, Math.floor(allParas.length / (remaining + 1)));
+        for (let i = 1; i <= remaining; i++) {
+          const startIdx = Math.min(allParas.length - 3, i * chunk);
+          const slice = allParas.slice(startIdx, startIdx + Math.max(6, chunk));
+          if (slice.length > 0) {
+            passages.push(
+              buildPassageFromParagraphs(
+                slice,
+                targetChapters[0].content,
+                `Passage ${passages.length + 1} • ${book.title}`,
+                `Dynamically extracted from the authentic unabridged text (ID #${book.id}).`
+              )
+            );
+          }
+        }
+      }
+    }
+
+    return passages.slice(0, clampedMax);
+  }
 
   if (targetChapters.length >= 5) {
     // 5 Passages across the entire narrative arc: Chapter 1, 2, 3, Mid-Book, Climax

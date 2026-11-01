@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getBookPassages, hasCuratedBookPassages, type BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg/passages';
 import { useBookContent } from '@/hooks/queries/useBookContent';
@@ -8,9 +8,10 @@ import { useBookContent } from '@/hooks/queries/useBookContent';
 export interface UseBookPassageShuffleParams {
   id: number;
   title: string;
-  authors?: Array<{ name: string }> | string;
+  authors?: Array<{ name: string } | string> | string;
   subjects?: string[];
   contentUrl?: string;
+  supabaseQuotes?: BookPassage[];
   enabled?: boolean;
 }
 
@@ -24,6 +25,7 @@ export function useBookPassageShuffle({
   authors = [],
   subjects = [],
   contentUrl,
+  supabaseQuotes,
   enabled = true,
 }: UseBookPassageShuffleParams) {
   const [activePassageIndex, setActivePassageIndex] = useState(0);
@@ -71,19 +73,34 @@ export function useBookPassageShuffle({
   }, [rawBookText, id, title, normalizedAuthors, subjects]);
 
   const passages: BookPassage[] = useMemo(() => {
-    // For non-curated catalog books (including all Newest Releases), prioritize dynamic book-specific passages
+    // Tier 1: Primary Supabase public.books.quotes (10–16 multi-quote spreads per book)
+    if (Array.isArray(supabaseQuotes) && supabaseQuotes.length > 0) {
+      if (dynamicPassages.length > 1) {
+        return [...supabaseQuotes, ...dynamicPassages.slice(1)];
+      }
+      return supabaseQuotes;
+    }
+
+    // Tier 2: For non-curated catalog books (including all Newest Releases), prioritize dynamic book-specific passages
     if (!isCuratedFeatured && dynamicPassages.length > 0) {
       return dynamicPassages;
     }
+
+    // Tier 3: Local curated fallback spreads (featured-books.ts)
     const baseFirstPassage = curatedPassages[0] || dynamicPassages[0];
     if (!baseFirstPassage) return [];
     if (dynamicPassages.length > 1) {
-      return [baseFirstPassage, ...dynamicPassages.slice(1)];
+      return [...(curatedPassages.length > 0 ? curatedPassages : [baseFirstPassage]), ...dynamicPassages.slice(1)];
     }
     return curatedPassages.length > 0 ? curatedPassages : [baseFirstPassage];
-  }, [isCuratedFeatured, curatedPassages, dynamicPassages]);
+  }, [supabaseQuotes, isCuratedFeatured, curatedPassages, dynamicPassages]);
 
-  const isLoadingPassages = Boolean(isFetching && dynamicPassages.length === 0 && !isCuratedFeatured);
+  const isLoadingPassages = Boolean(
+    isFetching &&
+      dynamicPassages.length === 0 &&
+      !isCuratedFeatured &&
+      (!supabaseQuotes || supabaseQuotes.length === 0)
+  );
 
   const currentPassage = passages[activePassageIndex] || {
     chapterLabel: 'Chapter I',
@@ -92,6 +109,16 @@ export function useBookPassageShuffle({
   };
 
   const prevPassage = passages[prevPassageIndex] || currentPassage;
+
+  // Safety fallback timer: ensures isTurningLeaf resets even when CSS animations are disabled
+  // (e.g. prefers-reduced-motion: reduce or 2D static presentation mode)
+  useEffect(() => {
+    if (!isTurningLeaf) return;
+    const timer = setTimeout(() => {
+      setIsTurningLeaf(false);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [isTurningLeaf]);
 
   const shuffleNextPassage = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();

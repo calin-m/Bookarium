@@ -87,6 +87,7 @@ describe('HeroFeaturedBook3D', () => {
     const copyBlock2D = screen.getByTestId('hero-2d-copy-meta-1342');
     expect(copyBlock2D).toHaveAttribute('data-tooltip', 'Pride and Prejudice — by Jane Austen');
     fireEvent.click(copyBlock2D);
+    fireEvent.keyDown(copyBlock2D, { key: 'Enter' });
     expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
     expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
   });
@@ -254,5 +255,70 @@ describe('HeroFeaturedBook3D', () => {
     // Synthesized mouseEnter on touch screen MUST NOT reset closed state
     fireEvent.mouseEnter(stage);
     expect(stage.className).toContain('book-closed');
+  });
+
+  it('renders multi-quote Catalog-aligned spreads, supports ArrowRight shuffle when open, and handles 3D copy-link actions', () => {
+    vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+      tier: 'high',
+      allowHeavyMotion: true,
+      enablePrefetching: true,
+      cores: 8,
+    });
+    vi.spyOn(touchHook, 'useTouchDevice').mockReturnValue(false);
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+    const stage = screen.getByRole('button', { name: /click to pin open volume/i });
+
+    // Open book
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-open');
+
+    // Verify secondaryQuote, rightPageQuote2, and commentary are rendered without double quotation marks
+    expect(screen.getAllByText(/no enjoyment like reading/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/You have bewitched me/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Elizabeth Bennet on intellectual independence/i)[0]).toBeInTheDocument();
+
+    // 3D copy-link click and keyDown
+    const copyBlocks3D = screen.getAllByTestId('hero-3d-copy-meta-1342');
+    fireEvent.click(copyBlocks3D[0]);
+    fireEvent.keyDown(copyBlocks3D[0], { key: 'Enter' });
+
+    // Clicking a child element inside [data-copy-book-id] stops stage toggle via handleBookClick guard
+    const childHeading = copyBlocks3D[0].querySelector('h3')!;
+    fireEvent.click(childHeading);
+    expect(stage.className).toContain('book-open');
+
+    // ArrowRight keyDown shuffles to next passage when book is open
+    fireEvent.keyDown(stage, { key: 'ArrowRight' });
+    expect(screen.getAllByText(/Darcy’s Confession/i)[0]).toBeInTheDocument();
+
+    // Verify Left and Right page bodies enforce overflow-hidden without overflow-y-auto or -mx-1 scrollbar triggers
+    const leftPageBody = screen.getAllByTestId('hero-book-left-page-body')[0];
+    const rightPageBody = screen.getAllByTestId('hero-book-right-page-body')[0];
+    expect(leftPageBody.className).toContain('overflow-hidden');
+    expect(leftPageBody.className).not.toContain('overflow-y-auto');
+    expect(rightPageBody.className).toContain('overflow-hidden');
+    expect(rightPageBody.className).not.toContain('overflow-y-auto');
+    expect(copyBlocks3D[0].className).not.toContain('-mx-1');
+  });
+
+  it('adaptively scales Left Page title typography for long (>36 chars) and very long (>55 chars) titles', () => {
+    const longTitleBook = {
+      ...mockFeaturedBook,
+      title: 'The Strange Case of Dr. Jekyll and Mr. Hyde', // 43 chars (>36)
+    };
+    const { unmount } = renderWithClient(<HeroFeaturedBook3D featuredBook={longTitleBook} />);
+    const longCopyBlock = screen.getAllByTestId('hero-3d-copy-meta-1342')[0];
+    expect(longCopyBlock.querySelector('h3')?.className).toContain('text-base sm:text-lg');
+    unmount();
+
+    const veryLongTitleBook = {
+      ...mockFeaturedBook,
+      title: 'Alice’s Adventures in Wonderland and Through the Looking-Glass', // 62 chars (>55)
+    };
+    renderWithClient(<HeroFeaturedBook3D featuredBook={veryLongTitleBook} />);
+    const veryLongCopyBlock = screen.getAllByTestId('hero-3d-copy-meta-1342')[0];
+    expect(veryLongCopyBlock.querySelector('h3')?.className).toContain('text-sm sm:text-base');
   });
 });

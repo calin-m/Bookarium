@@ -11,18 +11,71 @@ import {
 import { ROUTES } from '@/config/routes';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 
 export const LiteraryQuotes: React.FC = () => {
   const { country } = useJurisdiction();
   const hasMounted = useHasMounted();
 
-  const safeQuotes = useMemo(() => {
+  const baseSafeQuotes = useMemo(() => {
     if (!hasMounted) {
       return LITERARY_QUOTES.slice(0, 3);
     }
     const filtered = getJurisdictionSafeLiteraryQuotes(country);
     return filtered.length >= 3 ? filtered : LITERARY_QUOTES.slice(0, 3);
   }, [country, hasMounted]);
+
+  const quoteBookIds = useMemo(
+    () => Array.from(new Set(baseSafeQuotes.map((q) => q.bookId))),
+    [baseSafeQuotes]
+  );
+
+  const { data: featuredQuotesMap } = useFeaturedQuotes(quoteBookIds, {
+    enabled: hasMounted,
+  });
+
+  // Expand safeQuotes with primary Supabase public.books.quotes (10–16 passages per volume) when available
+  const safeQuotes = useMemo(() => {
+    if (!featuredQuotesMap || Object.keys(featuredQuotesMap).length === 0) {
+      return baseSafeQuotes;
+    }
+
+    const cleanQuoteText = (raw: string) => raw.replace(/^[“"'\s]+|[”"'\s]+$/g, '').trim();
+    const expanded: LiteraryQuote[] = [];
+    let syntheticId = 1000;
+
+    for (const item of baseSafeQuotes) {
+      const dbPassages = featuredQuotesMap[item.bookId];
+      if (Array.isArray(dbPassages) && dbPassages.length > 0) {
+        const firstPassage = dbPassages[0];
+        const primaryText = cleanQuoteText(
+          firstPassage.quoteExcerpt || firstPassage.openingLine || item.quote
+        );
+        expanded.push({
+          ...item,
+          quote: primaryText || item.quote,
+          citation: firstPassage.chapterLabel || item.citation,
+        });
+
+        for (let idx = 1; idx < dbPassages.length; idx++) {
+          const passage = dbPassages[idx];
+          const excerptText = cleanQuoteText(passage.quoteExcerpt || passage.openingLine || '');
+          if (excerptText.length >= 25) {
+            expanded.push({
+              ...item,
+              id: syntheticId++,
+              quote: excerptText,
+              citation: passage.chapterLabel || item.citation,
+            });
+          }
+        }
+      } else {
+        expanded.push(item);
+      }
+    }
+
+    return expanded;
+  }, [baseSafeQuotes, featuredQuotesMap]);
 
   // User-selected shuffled quotes (null when using default anthology selection)
   const [shuffledQuotes, setShuffledQuotes] = useState<LiteraryQuote[] | null>(null);

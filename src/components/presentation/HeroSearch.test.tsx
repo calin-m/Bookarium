@@ -258,4 +258,55 @@ describe('HeroSearch component', () => {
 
     expect(screen.getAllByText(new RegExp(hourlyBook.title, 'i'))[0]).toBeInTheDocument();
   });
+
+  it('synchronizes controlled search prop on rerender and supports featuredBook prop with or without rawBook', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const customFeatured = {
+      id: 35,
+      title: 'The Time Machine',
+      author: 'H. G. Wells',
+      year: '1895',
+      primarySubject: 'Science Fiction',
+      license: 'CC0 / Public Domain',
+      volumeNumber: 'Vol. 35',
+      quoteExcerpt: 'Face this world.',
+      openingLine: 'The Time Traveller was expounding a recondite matter to us.',
+    };
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <HeroSearch search="initial" featuredBook={customFeatured} />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByDisplayValue('initial')).toBeInTheDocument();
+    expect(screen.getAllByText(/The Time Machine/i)[0]).toBeInTheDocument();
+
+    const customWithRawBook = {
+      ...customFeatured,
+      title: 'The War of the Worlds',
+      rawBook: {
+        id: 36,
+        title: 'The War of the Worlds',
+        authors: [{ name: 'Wells, H. G.', birth_year: 1866, death_year: 1946 }],
+        translators: [],
+        subjects: ['Science fiction'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 45000,
+      },
+    };
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <HeroSearch search="updated query" featuredBook={customWithRawBook} />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByDisplayValue('updated query')).toBeInTheDocument();
+    expect(screen.getAllByText(/The War of the Worlds/i)[0]).toBeInTheDocument();
+  });
 });
