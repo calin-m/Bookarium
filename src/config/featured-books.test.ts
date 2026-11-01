@@ -27,26 +27,47 @@ describe('featured-books configuration & passage selectors', () => {
   });
 
   describe('getBookPassages', () => {
-    it('returns curated multi-chapter passages for each specially mapped featured book ID', () => {
+    it('prioritizes multi-spread passages from book.quotes when present on the volume', () => {
+      const enrichedPassages = [
+        {
+          chapterLabel: 'Passage I • Pride and Prejudice',
+          openingLine: '“It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.”',
+          quoteExcerpt: '“I declare after all there is no enjoyment like reading!”',
+          secondaryQuote: '— Jane Austen, Pride and Prejudice',
+        },
+        {
+          chapterLabel: 'Passage II • Pride and Prejudice',
+          openingLine: '“She is tolerable; but not handsome enough to tempt me; and I am in no humour at present to give consequence to young ladies.”',
+          quoteExcerpt: '“You must allow me to tell you how ardently I admire and love you.”',
+          secondaryQuote: '— Jane Austen, Pride and Prejudice',
+        },
+      ];
+      const passages = getBookPassages({
+        id: 1342,
+        title: 'Pride and Prejudice',
+        quotes: enrichedPassages,
+      });
+      expect(passages).toEqual(enrichedPassages);
+      expect(passages).toHaveLength(2);
+    });
+
+    it('returns the canonical 1-spread static fallback for featured books when Supabase quotes are not yet loaded', () => {
       const specialIds = [1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35];
       for (const id of specialIds) {
         const passages = getBookPassages({ id, title: 'Lookup by ID' });
-        expect(passages.length).toBeGreaterThanOrEqual(2);
+        expect(passages).toHaveLength(1);
         expect(passages[0].openingLine.length).toBeGreaterThan(20);
         expect(passages[0].quoteExcerpt.length).toBeGreaterThan(10);
       }
-    });
 
-    it('returns authentic multi-spread featured passages for other featured books without fabricated quotes', () => {
       const byId = getBookPassages({ id: 2600, title: 'War and Peace' });
-      expect(byId).toHaveLength(2);
+      expect(byId).toHaveLength(1);
       expect(byId[0].chapterLabel).toContain('The Opening Incipit');
       expect(byId[0].secondaryQuote).toContain('Leo Tolstoy');
       expect(byId[0].quoteExcerpt).toBeDefined();
-      expect(byId[1].chapterLabel).toContain('Notable Passage');
 
       const byTitle = getBookPassages({ id: 999991, title: 'the metamorphosis' });
-      expect(byTitle).toHaveLength(2);
+      expect(byTitle).toHaveLength(1);
       expect(byTitle[0].secondaryQuote).toContain('Franz Kafka');
     });
 

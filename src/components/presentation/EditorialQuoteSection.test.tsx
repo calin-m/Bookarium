@@ -110,7 +110,7 @@ describe('EditorialQuoteSection component', () => {
     expect(section).toHaveClass('custom-test-class');
   });
 
-  it('prioritizes Supabase public.books.quotes when useFeaturedQuotes returns spreads for the active classic', async () => {
+  it('prioritizes Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads for the active classic', async () => {
     const useBooksModule = await import('@/hooks/queries/useBooks');
     const currentHero = getHourlyHeroBook();
     const expectedBook = getDailyEditorialBook(currentHero.id);
@@ -127,11 +127,37 @@ describe('EditorialQuoteSection component', () => {
       },
     } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
 
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      data: [
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['Bildungsromans'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 35000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Great Expectations',
+              openingLine: '“My father’s family name being Pirrip.”',
+              quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
     render(<EditorialQuoteSection />);
     expect(
       screen.getByText(/Primary Supabase quote excerpt for classic of the day/i)
     ).toBeInTheDocument();
 
+    enrichedSpy.mockRestore();
     quotesSpy.mockRestore();
   });
 

@@ -320,21 +320,25 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('9. enforce-gutenberg-and-copyright-policy', () => {
-    it('flags copyright=true query strings, URLSearchParams.set("copyright", "true"), and direct fetch() to www.gutenberg.org', () => {
+    it('flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, and bare-hostname .includes("aleph.gutenberg.org")', () => {
       const violations = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',
-        `export async function badCatalogFetch() {
+        `export async function badCatalogFetch(url: string) {
           const params = new URLSearchParams();
           params.set('copyright', 'true');
           await fetch('https://gutendex.com/books?copyright=true');
           await fetch('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
+          if (url.includes('aleph.gutenberg.org')) {
+            return null;
+          }
         }`,
         'src/lib/catalog/gutendex-provider.ts'
       );
-      expect(violations).toHaveLength(3);
+      expect(violations).toHaveLength(4);
       expect(violations[0].message).toContain('setting "copyright" parameter to "true" is forbidden');
       expect(violations[1].message).toContain('"copyright=true" is forbidden');
       expect(violations[2].message).toContain('direct fetch() to www.gutenberg.org is forbidden');
+      expect(violations[3].message).toContain('Incomplete URL substring sanitization (CodeQL CWE-20)');
     });
 
     it('permits copyright=false and mirror-prioritized fetches', () => {

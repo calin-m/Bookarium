@@ -302,6 +302,22 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
   }, [queryClient, nextParams, hasNextPage]);
 }
 
+function filterValidBookPassages(rawQuotes: unknown): BookPassage[] {
+  if (!Array.isArray(rawQuotes)) return [];
+  return rawQuotes.filter(
+    (item): item is BookPassage =>
+      Boolean(
+        item &&
+          typeof item === 'object' &&
+          typeof (item as BookPassage).openingLine === 'string' &&
+          typeof (item as BookPassage).quoteExcerpt === 'string' &&
+          !String((item as BookPassage).commentary || '').startsWith(
+            'Bibliographic sentinel record'
+          )
+      )
+  );
+}
+
 /**
  * Queries `public.books.quotes` from Supabase for a list of featured book IDs.
  * Fail-safe: returns `{}` if Supabase is unconfigured, offline, or pre-migration.
@@ -334,16 +350,8 @@ export async function fetchFeaturedQuotesMap(
 
     const quotesMap: Record<number, BookPassage[]> = {};
     for (const row of data) {
-      if (row && typeof row.id === 'number' && Array.isArray(row.quotes) && row.quotes.length > 0) {
-        const validPassages = (row.quotes as unknown[]).filter(
-          (item): item is BookPassage =>
-            Boolean(
-              item &&
-                typeof item === 'object' &&
-                typeof (item as BookPassage).openingLine === 'string' &&
-                typeof (item as BookPassage).quoteExcerpt === 'string'
-            )
-        );
+      if (row && typeof row.id === 'number') {
+        const validPassages = filterValidBookPassages(row.quotes);
         if (validPassages.length > 0) {
           quotesMap[row.id] = validPassages;
         }
@@ -352,6 +360,68 @@ export async function fetchFeaturedQuotesMap(
     return quotesMap;
   } catch {
     return {};
+  }
+}
+
+/**
+ * Queries top popular quote-enriched books (`WHERE quotes <> '[]'::jsonb`) from `public.books`.
+ * Uses the partial index `idx_books_with_quotes_popular` for sub-10ms lookups.
+ */
+export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<GutendexBook[]> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return [];
+  }
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('books')
+      .select(
+        'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, quotes'
+      )
+      .neq('quotes', '[]')
+      .order('download_count', { ascending: false })
+      .limit(Math.max(1, Math.min(100, limit)));
+
+    if (error || !Array.isArray(data)) {
+      return [];
+    }
+
+    const books: GutendexBook[] = [];
+    for (const row of data) {
+      if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
+      const validPassages = filterValidBookPassages(row.quotes);
+      if (validPassages.length === 0) continue;
+
+      books.push({
+        id: row.id,
+        title: row.title,
+        authors: Array.isArray(row.authors)
+          ? (row.authors as unknown as GutendexBook['authors'])
+          : [],
+        translators: Array.isArray(row.translators)
+          ? (row.translators as unknown as GutendexBook['translators'])
+          : [],
+        subjects: Array.isArray(row.subjects) ? row.subjects : [],
+        bookshelves: Array.isArray(row.bookshelves) ? row.bookshelves : [],
+        languages: Array.isArray(row.languages) ? row.languages : ['en'],
+        copyright: typeof row.copyright === 'boolean' ? row.copyright : false,
+        media_type: typeof row.media_type === 'string' ? row.media_type : 'Text',
+        formats:
+          row.formats && typeof row.formats === 'object' && !Array.isArray(row.formats)
+            ? (row.formats as Record<string, string>)
+            : {},
+        download_count: typeof row.download_count === 'number' ? row.download_count : 0,
+        quotes: validPassages,
+      });
+    }
+    return books;
+  } catch {
+    return [];
   }
 }
 
@@ -384,6 +454,29 @@ export function useFeaturedQuotes(bookIds: number[], options: UseBooksOptions = 
       staleTime: 60 * 60 * 1000, // 1 hour
       gcTime: 2 * 60 * 60 * 1000, // 2 hours
       enabled: (options.enabled ?? true) && normalizedIds.length > 0 && isSupabaseConfigured(),
+    },
+    contextClient ?? fallbackFeaturedQuotesClient
+  );
+}
+
+/**
+ * React Query hook fetching all quote-enriched books (`quotes <> '[]'::jsonb`) from Supabase
+ * ordered by popularity (`download_count DESC`) to dynamically expand the Hero, Editorial,
+ * and Literary Quotes pools.
+ */
+export function useQuoteEnrichedBooks(
+  options: UseBooksOptions & { limit?: number } = {}
+) {
+  const contextClient = React.useContext(QueryClientContext);
+  const limit = options.limit ?? 60;
+
+  return useQuery(
+    {
+      queryKey: ['quote-enriched-books', limit],
+      queryFn: () => fetchQuoteEnrichedBooks(limit),
+      staleTime: 60 * 60 * 1000, // 1 hour
+      gcTime: 2 * 60 * 60 * 1000, // 2 hours
+      enabled: (options.enabled ?? true) && isSupabaseConfigured(),
     },
     contextClient ?? fallbackFeaturedQuotesClient
   );

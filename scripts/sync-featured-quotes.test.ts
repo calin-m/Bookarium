@@ -31,26 +31,30 @@ const SAMPLE_GUTENBERG_BOOK = [
 ].join('\n');
 
 describe('sync-featured-quotes pipeline', () => {
-  it('defines 25 unique classic books and strictly PGLAF mirror URLs (never www.gutenberg.org)', () => {
-    expect(quotesSync.CURATED_QUOTE_BOOKS).toHaveLength(25);
-    const uniqueIds = new Set(quotesSync.CURATED_QUOTE_BOOKS.map((b: { id: number }) => b.id));
-    expect(uniqueIds.size).toBe(25);
+  it('resolves PGLAF mirror URLs and never targets www.gutenberg.org', () => {
+    expect(quotesSync.resolveSelectedMirrors('pglaf,aleph')).toEqual([
+      'https://gutenberg.pglaf.org',
+      'https://aleph.gutenberg.org',
+    ]);
+    expect(quotesSync.resolveSelectedMirrors('invalid')).toEqual([
+      'https://gutenberg.pglaf.org',
+    ]);
 
     const singleMirrorUrls = quotesSync.buildSingleMirrorCandidateUrls(
       1342,
-      'https://aleph.gutenberg.org/'
+      'https://gutenberg.pglaf.org/'
     );
     expect(singleMirrorUrls).toEqual([
-      'https://aleph.gutenberg.org/1/3/4/1342/1342-0.txt',
-      'https://aleph.gutenberg.org/1/3/4/1342/1342.txt',
-      'https://aleph.gutenberg.org/1/3/4/1342/1342-8.txt',
+      'https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt',
+      'https://gutenberg.pglaf.org/1/3/4/1342/1342.txt',
+      'https://gutenberg.pglaf.org/1/3/4/1342/1342-8.txt',
     ]);
 
     const urls = quotesSync.buildMirrorCandidateUrls(1342);
     expect(urls.length).toBeGreaterThanOrEqual(6);
-    expect(urls[0]).toBe('https://aleph.gutenberg.org/1/3/4/1342/1342-0.txt');
+    expect(urls[0]).toBe('https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt');
     for (const url of urls) {
-      expect(url).not.toContain('www.gutenberg.org');
+      expect(new URL(url).hostname).not.toBe('www.gutenberg.org');
     }
 
     expect(quotesSync.buildGutenbergPathDir(8)).toBe('0/8');
@@ -58,32 +62,73 @@ describe('sync-featured-quotes pipeline', () => {
     expect(quotesSync.buildGutenbergPathDir(64317)).toBe('6/4/3/1/64317');
   });
 
-  it('parses CLI arguments and normalizes min/max float delays', () => {
+  it('parses CLI arguments including --delay-range, --mirrors, and --schedule-gate', () => {
     const parsed = quotesSync.parseCliArgs([
       '--dry-run',
       '--force',
+      '--schedule-gate',
       '--limit=10',
-      '--min-delay=12',
-      '--max-delay=8',
+      '--delay-range=7.5-15.5',
       '--target-count=15',
+      '--mirrors=pglaf,readingroo',
       '--ids=1342,84',
     ]);
     expect(parsed.dryRun).toBe(true);
     expect(parsed.force).toBe(true);
+    expect(parsed.scheduleGate).toBe(true);
     expect(parsed.limit).toBe(10);
-    expect(parsed.minDelaySec).toBe(12);
-    expect(parsed.maxDelaySec).toBe(12);
+    expect(parsed.minDelaySec).toBe(7.5);
+    expect(parsed.maxDelaySec).toBe(15.5);
     expect(parsed.targetCount).toBe(15);
+    expect(parsed.mirrors).toEqual([
+      'https://gutenberg.pglaf.org',
+      'https://gutenberg.readingroo.ms',
+    ]);
     expect(parsed.ids).toEqual([1342, 84]);
   });
 
-  it('computes randomized float delays between [8.0s, 16.0s] in milliseconds', () => {
+  it('computes randomized float delays and 6.0h–12.0h float schedule windows', async () => {
     expect(quotesSync.computeRandomDelayMs(8, 16, () => 0)).toBe(8000);
     expect(quotesSync.computeRandomDelayMs(8, 16, () => 0.5)).toBe(12000);
     expect(quotesSync.computeRandomDelayMs(8, 16, () => 1)).toBe(16000);
+
+    const windowMs = quotesSync.computeScheduleWindowMs('2026-11-01T12:00:00.000Z', 6, 12);
+    expect(windowMs).toBeGreaterThanOrEqual(6 * 3600 * 1000);
+    expect(windowMs).toBeLessThanOrEqual(12 * 3600 * 1000);
+
+    const mockScheduleSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          neq: vi.fn(() => ({
+            order: vi.fn(() => ({
+              limit: vi.fn(() => ({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { updated_at: '2026-11-01T12:00:00.000Z' },
+                }),
+              })),
+            })),
+          })),
+        })),
+      })),
+    };
+
+    const gateEarly = await quotesSync.evaluateScheduleGate(
+      mockScheduleSupabase,
+      { scheduleGate: true, minIntervalHours: 6, maxIntervalHours: 12 },
+      Date.parse('2026-11-01T14:00:00.000Z') // Only 2h elapsed (< 6h min)
+    );
+    expect(gateEarly.allowed).toBe(false);
+    expect(gateEarly.elapsedHours).toBe(2);
+
+    const gateReady = await quotesSync.evaluateScheduleGate(
+      mockScheduleSupabase,
+      { scheduleGate: true, minIntervalHours: 6, maxIntervalHours: 12 },
+      Date.parse('2026-11-02T02:00:00.000Z') // 14h elapsed (> 12h max)
+    );
+    expect(gateReady.allowed).toBe(true);
   });
 
-  it('extracts multi-quote spreads, wraps quotes cleanly, and merges upsert-only without duplicates', () => {
+  it('extracts multi-quote spreads, builds sentinel spreads, and merges upsert-only without duplicates', () => {
     expect(quotesSync.stripBoilerplateAndSplitParagraphs(null)).toEqual([]);
     expect(quotesSync.wrapCleanQuote('')).toBe('');
     expect(quotesSync.wrapCleanQuote('A'.repeat(300), 50).endsWith('…”')).toBe(true);
@@ -96,6 +141,13 @@ describe('sync-featured-quotes pipeline', () => {
     expect(spreads.length).toBeGreaterThanOrEqual(1);
     expect(spreads[0].openingLine).toContain('truth universally acknowledged');
     expect(spreads[0].quoteExcerpt.length).toBeGreaterThan(20);
+
+    const sentinel = quotesSync.buildSentinelQuoteSpread({
+      id: 99999,
+      title: 'Index Volume',
+      authors: [{ name: 'Compiler' }],
+    });
+    expect(sentinel.commentary).toContain('Bibliographic sentinel record');
 
     const existing = [
       {
@@ -152,7 +204,7 @@ describe('sync-featured-quotes pipeline', () => {
 
     const result = await quotesSync.fetchBookTextFromMirrors(1342, fetchMock);
     expect(result.text).toContain('truth universally acknowledged');
-    expect(result.mirrorUrl).toContain('gutenberg.pglaf.org');
+    expect(new URL(result.mirrorUrl).hostname).toBe('aleph.gutenberg.org');
 
     const failFetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
     await expect(quotesSync.fetchBookTextFromMirrors(1342, failFetch)).rejects.toThrow(
@@ -160,7 +212,7 @@ describe('sync-featured-quotes pipeline', () => {
     );
   });
 
-  it('loads environment variables from temp directory and executes runFeaturedQuotesSync across 3 per-mirror workers, cooldowns, and DB paths', async () => {
+  it('queries public.books by download_count DESC and executes runFeaturedQuotesSync across per-mirror workers, cooldowns, and sentinel fallbacks', async () => {
     const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quotes-env-'));
     try {
       fs.writeFileSync(path.join(tmpDir, '.env'), 'TEST_QUOTE_ENV="loaded_val"\n# comment\n', 'utf8');
@@ -170,7 +222,6 @@ describe('sync-featured-quotes pipeline', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
 
-    // Missing credentials without dryRun should throw
     await expect(
       quotesSync.runFeaturedQuotesSync(
         { dryRun: false },
@@ -184,36 +235,49 @@ describe('sync-featured-quotes pipeline', () => {
       quoteExcerpt: `Excerpt ${idx + 1}`,
     }));
 
+    const candidateRows = [
+      { id: 1342, title: 'Pride and Prejudice', quotes: existingTenQuotes, content: null },
+      { id: 84, title: 'Frankenstein', quotes: [], content: SAMPLE_GUTENBERG_BOOK },
+      { id: 2701, title: 'Moby Dick', quotes: [], content: null },
+      { id: 64317, title: 'The Great Gatsby', quotes: [], content: null },
+      { id: 11, title: 'Alice in Wonderland', quotes: [], content: null },
+      { id: 99999, title: 'Short Pamphlet', quotes: [], content: 'Too short to extract quotes from body' },
+    ];
+
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
-    const insertMock = vi.fn().mockResolvedValue({ error: null });
 
     const mockSupabase = {
       from: vi.fn(() => ({
         select: vi.fn(() => ({
-          eq: vi.fn((_col: string, id: number) => ({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data:
-                id === 1342
-                  ? { id: 1342, quotes: existingTenQuotes, content: null }
-                  : id === 84
-                    ? { id: 84, quotes: [], content: SAMPLE_GUTENBERG_BOOK }
-                    : id === 2701
-                      ? { id: 2701, quotes: [], content: null }
-                      : null,
-            }),
+          eq: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              contains: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  order: vi.fn(() => ({
+                    order: vi.fn(() => ({
+                      limit: vi.fn().mockResolvedValue({ data: candidateRows, error: null }),
+                    })),
+                  })),
+                })),
+              })),
+            })),
           })),
         })),
         update: vi.fn(() => ({
           eq: updateEqMock,
         })),
-        insert: insertMock,
       })),
     };
 
     // Simulate aleph returning 429 twice (triggering cooldown + worker halt), while pglaf & readingroo succeed
+    // and volume 99999 returning 404 (triggering sentinel spread persistence)
     const fetchMock = vi.fn(async (url: string) => {
-      if (url.includes('aleph.gutenberg.org')) {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.hostname === 'aleph.gutenberg.org') {
         return { ok: false, status: 429 };
+      }
+      if (parsedUrl.pathname.includes('/99999')) {
+        return { ok: false, status: 404 };
       }
       return {
         ok: true,
@@ -226,10 +290,11 @@ describe('sync-featured-quotes pipeline', () => {
 
     const summary = await quotesSync.runFeaturedQuotesSync(
       {
-        ids: [1342, 84, 2701, 64317, 11, 174],
+        limit: 6,
         minDelaySec: 8,
         maxDelaySec: 16,
         mirrorCooldownMs: 30000,
+        mirrors: ['pglaf', 'aleph', 'readingroo'],
       },
       {
         supabaseClient: mockSupabase,
@@ -243,16 +308,15 @@ describe('sync-featured-quotes pipeline', () => {
     expect(summary.processed).toBe(6);
     expect(summary.skippedExisting).toBe(1); // 1342 skipped (>=10 quotes)
     expect(summary.fromSupabaseContent).toBe(1); // 84 extracted from books.content
-    expect(summary.fromMirrors).toBe(4); // 2701, 64317, 11, 174 downloaded across healthy mirrors
-    expect(summary.updated).toBe(5); // 84 & 2701 updated, 64317, 11, 174 inserted
+    expect(summary.fromMirrors).toBe(3); // 2701, 64317, 11 downloaded across healthy mirrors
+    expect(summary.sentinelMarked).toBe(1); // 99999 marked with 1-item sentinel spread after 404
+    expect(summary.updated).toBe(4); // 84, 2701, 64317, 11 updated with multi-quote spreads
     expect(summary.mirrorBreakdown['https://aleph.gutenberg.org']).toBeUndefined();
     expect(
       (summary.mirrorBreakdown['https://gutenberg.pglaf.org'] || 0) +
         (summary.mirrorBreakdown['https://gutenberg.readingroo.ms'] || 0)
-    ).toBe(4);
+    ).toBe(3);
     expect(sleepMock).toHaveBeenCalledWith(30000); // Mirror cooldown sleep triggered on first 429
-    expect(updateEqMock).toHaveBeenCalledTimes(2);
-    expect(insertMock).toHaveBeenCalledTimes(3);
+    expect(updateEqMock).toHaveBeenCalledTimes(5); // 4 updated + 1 sentinel
   });
 });
-

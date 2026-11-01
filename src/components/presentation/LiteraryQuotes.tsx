@@ -9,9 +9,11 @@ import {
   type LiteraryQuote,
 } from '@/config/literary-quotes';
 import { ROUTES } from '@/config/routes';
+import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
+import { useFeaturedQuotes, useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
 
 export const LiteraryQuotes: React.FC = () => {
   const { country } = useJurisdiction();
@@ -34,18 +36,28 @@ export const LiteraryQuotes: React.FC = () => {
     enabled: hasMounted,
   });
 
+  const { data: quoteEnrichedBooks } = useQuoteEnrichedBooks({
+    enabled: hasMounted,
+  });
+
   // Expand safeQuotes with primary Supabase public.books.quotes (10–16 passages per volume) when available
   const safeQuotes = useMemo(() => {
-    if (!featuredQuotesMap || Object.keys(featuredQuotesMap).length === 0) {
+    const hasMap = Boolean(featuredQuotesMap && Object.keys(featuredQuotesMap).length > 0);
+    const hasEnriched = Boolean(quoteEnrichedBooks && quoteEnrichedBooks.length > 0);
+    if (!hasMap && !hasEnriched) {
       return baseSafeQuotes;
     }
 
     const cleanQuoteText = (raw: string) => raw.replace(/^[“"'\s]+|[”"'\s]+$/g, '').trim();
     const expanded: LiteraryQuote[] = [];
     let syntheticId = 1000;
+    const seenBookIds = new Set<number>();
 
     for (const item of baseSafeQuotes) {
-      const dbPassages = featuredQuotesMap[item.bookId];
+      seenBookIds.add(item.bookId);
+      const dbPassages =
+        featuredQuotesMap?.[item.bookId] ||
+        quoteEnrichedBooks?.find((b) => b.id === item.bookId)?.quotes;
       if (Array.isArray(dbPassages) && dbPassages.length > 0) {
         const firstPassage = dbPassages[0];
         const primaryText = cleanQuoteText(
@@ -74,8 +86,46 @@ export const LiteraryQuotes: React.FC = () => {
       }
     }
 
+    for (const dbBook of quoteEnrichedBooks || []) {
+      if (
+        seenBookIds.has(dbBook.id) ||
+        !Array.isArray(dbBook.quotes) ||
+        dbBook.quotes.length < 2 ||
+        !isBookPublicDomainInJurisdiction(dbBook, country).isAllowed
+      ) {
+        continue;
+      }
+      seenBookIds.add(dbBook.id);
+      const authorName = formatAuthorNames(dbBook.authors) || 'Classic Author';
+      const category = (formatPrimarySubject(dbBook.subjects) || 'Classic Literature').toUpperCase();
+      const firstAuthor = dbBook.authors?.[0];
+      const year =
+        firstAuthor?.birth_year && firstAuthor?.death_year
+          ? `${firstAuthor.birth_year}–${firstAuthor.death_year}`
+          : 'Classic';
+
+      for (const passage of dbBook.quotes) {
+        const excerptText = cleanQuoteText(passage.quoteExcerpt || passage.openingLine || '');
+        if (excerptText.length >= 25) {
+          expanded.push({
+            id: syntheticId++,
+            bookId: dbBook.id,
+            category,
+            year,
+            bookTitle: dbBook.title,
+            author: authorName,
+            authorBirthYear: firstAuthor?.birth_year ?? undefined,
+            authorDeathYear: firstAuthor?.death_year ?? undefined,
+            translators: dbBook.translators || [],
+            quote: excerptText,
+            citation: passage.chapterLabel || `${dbBook.title} • Vol. #${dbBook.id}`,
+          });
+        }
+      }
+    }
+
     return expanded;
-  }, [baseSafeQuotes, featuredQuotesMap]);
+  }, [baseSafeQuotes, featuredQuotesMap, quoteEnrichedBooks, country]);
 
   // User-selected shuffled quotes (null when using default anthology selection)
   const [shuffledQuotes, setShuffledQuotes] = useState<LiteraryQuote[] | null>(null);

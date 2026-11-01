@@ -56,6 +56,11 @@ vi.mock('@/hooks/queries/useBooks', () => ({
     isLoading: false,
     isError: false,
   }),
+  useQuoteEnrichedBooks: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock('@/hooks/queries/useBookContent', () => ({

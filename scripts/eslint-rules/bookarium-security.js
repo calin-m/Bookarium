@@ -1562,9 +1562,10 @@ const rules = {
     },
     create(context) {
       const filename = normalizeFilename(context);
-      if (isTestOrMockFile(filename)) return {};
+      const isTestFile = isTestOrMockFile(filename);
 
       function checkStringForCopyrightTrue(node, strValue) {
+        if (isTestFile) return;
         if (typeof strValue === 'string' && /(?:[?&]|^)copyright=true(?:&|$)/i.test(strValue)) {
           context.report({
             node,
@@ -1593,6 +1594,33 @@ const rules = {
         },
         CallExpression(node) {
           const { objectName, methodName } = getCalleeName(node);
+
+          // CodeQL CWE-20 (js/incomplete-url-substring-sanitization): forbid bare hostname .includes('...gutenberg...')
+          if (methodName === 'includes' && node.arguments && node.arguments.length === 1) {
+            const firstArg = node.arguments[0];
+            const argVal =
+              firstArg &&
+              (firstArg.type === 'Literal' || firstArg.type === 'StringLiteral') &&
+              typeof firstArg.value === 'string'
+                ? firstArg.value
+                : '';
+            if (
+              /^(?:[a-z0-9-]+\.)*(?:gutenberg\.org|pglaf\.org|readingroo\.ms|gutendex\.com)$/i.test(
+                argVal
+              )
+            ) {
+              context.report({
+                node: firstArg,
+                message:
+                  'Incomplete URL substring sanitization (CodeQL CWE-20): Parse hostname via new URL(url).hostname instead of .includes("' +
+                  argVal +
+                  '").',
+              });
+              return;
+            }
+          }
+
+          if (isTestFile) return;
 
           // Check URLSearchParams.set('copyright', 'true') / .append('copyright', 'true')
           if (methodName === 'set' || methodName === 'append') {

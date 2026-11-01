@@ -15,7 +15,9 @@ import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
 import { FEATURED_HERO_BOOKS, getJurisdictionSafeFeaturedBooks, type FeaturedHeroBook } from '@/config/featured-books';
 import type { GutendexBook } from '@/types/book.types';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
+import { useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
 import { LanguageSelector } from './LanguageSelector';
 import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
 
@@ -90,6 +92,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   const [query, setQuery] = useState(search);
   const [searchError, setSearchError] = useState<string | null>(null);
   const { country } = useJurisdiction();
+  const { data: quoteEnrichedBooks } = useQuoteEnrichedBooks();
 
   if (search !== prevSearch) {
     setPrevSearch(search);
@@ -102,25 +105,55 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
   // Stable active Featured Book: anchored deterministically by hour to prevent flash-on-refresh
   const activeFeatured: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
-    const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: GutendexBook } => ({
-      ...b,
-      rawBook: {
+    const dbBooksById = new Map<number, GutendexBook>(
+      (quoteEnrichedBooks || []).map((b) => [b.id, b])
+    );
+
+    const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: GutendexBook } => {
+      const dbMatch = dbBooksById.get(b.id);
+      const dbQuotes = dbMatch?.quotes && dbMatch.quotes.length > 0 ? dbMatch.quotes : b.quotes;
+      return {
+        ...b,
+        quotes: dbQuotes,
+        rawBook: dbMatch || ({
+          id: b.id,
+          title: b.title,
+          authors: [
+            {
+              name: b.author,
+              birth_year: b.authorBirthYear ?? null,
+              death_year: b.authorDeathYear ?? null,
+            },
+          ],
+          translators: b.translators || [],
+          subjects: [b.primarySubject],
+          languages: ['en'],
+          formats: {},
+          download_count: 50000,
+          quotes: dbQuotes,
+        } as GutendexBook),
+      };
+    };
+
+    const fromGutendexBook = (b: GutendexBook): FeaturedHeroBook & { rawBook: GutendexBook } => {
+      const firstPassage = Array.isArray(b.quotes) && b.quotes.length > 0 ? b.quotes[0] : undefined;
+      return {
         id: b.id,
         title: b.title,
-        authors: [
-          {
-            name: b.author,
-            birth_year: b.authorBirthYear ?? null,
-            death_year: b.authorDeathYear ?? null,
-          },
-        ],
+        author: formatAuthorNames(b.authors) || 'Anonymous',
+        authorBirthYear: b.authors?.[0]?.birth_year ?? null,
+        authorDeathYear: b.authors?.[0]?.death_year ?? null,
         translators: b.translators || [],
-        subjects: [b.primarySubject],
-        languages: ['en'],
-        formats: {},
-        download_count: 50000,
-      } as GutendexBook,
-    });
+        year: 'Public Domain',
+        primarySubject: formatPrimarySubject(b.subjects),
+        license: 'CC0 / Free',
+        volumeNumber: `Vol. #${b.id}`,
+        quoteExcerpt: firstPassage?.quoteExcerpt || 'Preserved in the public domain for all readers.',
+        openingLine: firstPassage?.openingLine || 'Preserved in the public domain for all readers.',
+        quotes: b.quotes,
+        rawBook: b,
+      };
+    };
 
     const targetCustom = featuredBook || (books && books.length > 0 ? books[0] : null);
     if (targetCustom) {
@@ -128,27 +161,27 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         return targetCustom as FeaturedHeroBook & { rawBook?: GutendexBook };
       }
       if ('authors' in targetCustom) {
-        const b = targetCustom as GutendexBook;
-        return {
-          id: b.id,
-          title: b.title,
-          author: formatAuthorNames(b.authors) || 'Anonymous',
-          year: 'Public Domain',
-          primarySubject: formatPrimarySubject(b.subjects),
-          license: 'CC0 / Free',
-          volumeNumber: `Vol. #${b.id}`,
-          quoteExcerpt: 'Preserved in the public domain for all readers.',
-          openingLine: 'Preserved in the public domain for all readers.',
-          rawBook: b,
-        };
+        return fromGutendexBook(targetCustom as GutendexBook);
       }
       return toHeroWithRawBook(targetCustom as FeaturedHeroBook);
     }
 
     const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
-    const heroList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
-    return toHeroWithRawBook(heroList[hourlyIndex % heroList.length]);
-  }, [featuredBook, books, hourlyIndex, country]);
+    const baseList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
+    const baseIds = new Set(baseList.map((b) => b.id));
+    const dynamicAdditions = (quoteEnrichedBooks || [])
+      .filter(
+        (b) =>
+          !baseIds.has(b.id) &&
+          Array.isArray(b.quotes) &&
+          b.quotes.length >= 2 &&
+          isBookPublicDomainInJurisdiction(b, country).isAllowed
+      )
+      .map(fromGutendexBook);
+
+    const combinedList = [...baseList.map(toHeroWithRawBook), ...dynamicAdditions];
+    return combinedList[hourlyIndex % combinedList.length];
+  }, [featuredBook, books, hourlyIndex, country, quoteEnrichedBooks]);
 
   const emitSearch = (val: string) => {
     setSearchError(null);

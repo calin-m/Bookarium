@@ -17,6 +17,7 @@ export interface CatalogQueryOptions {
   sort?: 'popular' | 'descending' | 'ascending' | '';
   mimeType?: string;
   ids?: string;
+  hasQuotes?: boolean;
   country: string; // ISO 3166-1 alpha-2, mandatory for legal jurisdiction
   includeRestrictedMetadata?: boolean;
 }

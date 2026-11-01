@@ -29,6 +29,34 @@ const mockFeaturedBook = {
   volumeNumber: 'Vol. #1342',
   quoteExcerpt: 'It is a truth universally acknowledged...',
   openingLine: 'It is a truth universally acknowledged that a single man in possession of a good fortune...',
+  quotes: [
+    {
+      chapterLabel: 'Chapter I • The Opening Incipit',
+      openingLine:
+        '“It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.”',
+      secondaryQuote:
+        '“She is tolerable; but not handsome enough to tempt me; and I am in no humour at present to give consequence to young ladies that are slighted by other men.”',
+      quoteExcerpt:
+        '“I declare after all there is no enjoyment like reading! How much sooner one tires of any thing than of a book! When I have a house of my own, I shall be miserable if I have not an excellent library.”',
+      rightPageQuote2:
+        '“You have bewitched me, body and soul, and I love, I love, I love you. I never wish to be parted from you from this day on.”',
+      commentary:
+        'Elizabeth Bennet on intellectual independence, wit, and the social comedy of Regency England.',
+    },
+    {
+      chapterLabel: 'Chapter XXXIV • Darcy’s Confession',
+      openingLine:
+        '“In vain I have struggled. It will not do. My feelings will not be repressed. You must allow me to tell you how ardently I admire and love you.”',
+      secondaryQuote:
+        '“Had you behaved in a more gentlemanlike manner, you could not have spared me the concern which I might have felt in refusing you.”',
+      quoteExcerpt:
+        '“I could easily forgive his pride, if he had not mortified mine.”',
+      rightPageQuote2:
+        '“There is a stubbornness about me that never can bear to be frightened at the will of others. My courage always rises at every attempt to intimidate me.”',
+      commentary:
+        'The dramatic turning point at Hunsford Parsonage where prejudice and pride collide head-on.',
+    },
+  ],
 };
 
 describe('HeroFeaturedBook3D', () => {

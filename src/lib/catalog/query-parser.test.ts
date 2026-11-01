@@ -58,12 +58,15 @@ describe('parseCatalogQuery', () => {
     expect(options.ids).toBe('1342,863');
   });
 
-  it('parses include_restricted_metadata flag', () => {
-    const req = new NextRequest('http://localhost:3000/api/books?ids=31635&include_restricted_metadata=true');
+  it('parses include_restricted_metadata and has_quotes flags', () => {
+    const req = new NextRequest(
+      'http://localhost:3000/api/books?ids=31635&include_restricted_metadata=true&has_quotes=true'
+    );
     const options = parseCatalogQuery(req);
 
     expect(options.ids).toBe('31635');
     expect(options.includeRestrictedMetadata).toBe(true);
+    expect(options.hasQuotes).toBe(true);
   });
 
   it('parses comma-separated languages into string array', () => {

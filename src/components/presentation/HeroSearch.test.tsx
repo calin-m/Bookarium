@@ -309,4 +309,36 @@ describe('HeroSearch component', () => {
     expect(screen.getByDisplayValue('updated query')).toBeInTheDocument();
     expect(screen.getAllByText(/The War of the Worlds/i)[0]).toBeInTheDocument();
   });
+
+  it('merges quote-enriched books from useQuoteEnrichedBooks into the featured candidate pool', async () => {
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      data: [
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['Bildungsromans'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 35000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Great Expectations',
+              openingLine: '“My father’s family name being Pirrip.”',
+              quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    renderWithClient(<HeroSearch search="" />);
+    expect(screen.getByText(/Featured Book/i)).toBeInTheDocument();
+    enrichedSpy.mockRestore();
+  });
 });

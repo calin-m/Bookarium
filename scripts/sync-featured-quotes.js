@@ -2,14 +2,16 @@
 /**
  * Bookarium — PGLAF Mirror-First Featured Quotes Extraction & Sync Pipeline
  *
- * Sequentially resolves unabridged plain-text volumes (checking `public.books.content` first,
- * then official PGLAF bulk mirrors `aleph.gutenberg.org`, `gutenberg.pglaf.org`, and
- * `gutenberg.readingroo.ms` with an 8.0s–16.0s randomized float delay between books),
- * extracts 10–16 multi-quote spreads per volume, and updates `public.books.quotes` JSONB.
+ * Queries `public.books` by `download_count DESC` (`WHERE quotes = '[]'::jsonb`),
+ * dispatches dedicated per-mirror PGLAF workers (`gutenberg.pglaf.org`,
+ * `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent `8.0s–16.0s`
+ * randomized float delays and error circuit-breaker cooldowns, extracts `10–16`
+ * multi-quote spreads per volume, and updates `public.books.quotes` JSONB.
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
- *   node scripts/sync-featured-quotes.js --limit=25 --min-delay=8 --max-delay=16
+ *   node scripts/sync-featured-quotes.js --limit=25 --delay-range=8-16 --mirrors=pglaf
+ *   node scripts/sync-featured-quotes.js --schedule-gate --mirrors=pglaf
  *   node scripts/sync-featured-quotes.js --ids=1342,84,2701 --force
  */
 
@@ -20,216 +22,16 @@ const { createClient } = require('@supabase/supabase-js');
 const USER_AGENT =
   'Bookarium/1.0 (+https://github.com/Synaptix1999/Bookarium; Public Domain Literary Sanctuary)';
 
-const GUTENBERG_MIRRORS = [
-  'https://aleph.gutenberg.org',
-  'https://gutenberg.pglaf.org',
-  'https://gutenberg.readingroo.ms',
-];
+const MIRROR_SHORTCUT_MAP = {
+  pglaf: 'https://gutenberg.pglaf.org',
+  aleph: 'https://aleph.gutenberg.org',
+  readingroo: 'https://gutenberg.readingroo.ms',
+};
 
-const CURATED_QUOTE_BOOKS = [
-  {
-    id: 1342,
-    title: 'Pride and Prejudice',
-    authors: [{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }],
-    translators: [],
-    subjects: ['Classic Romance & Social Satire'],
-    languages: ['en'],
-  },
-  {
-    id: 84,
-    title: 'Frankenstein',
-    authors: [{ name: 'Mary Wollstonecraft Shelley', birth_year: 1797, death_year: 1851 }],
-    translators: [],
-    subjects: ['Gothic Science Fiction & Horror'],
-    languages: ['en'],
-  },
-  {
-    id: 2701,
-    title: 'Moby Dick',
-    authors: [{ name: 'Herman Melville', birth_year: 1819, death_year: 1891 }],
-    translators: [],
-    subjects: ['Maritime Epic & Adventure'],
-    languages: ['en'],
-  },
-  {
-    id: 64317,
-    title: 'The Great Gatsby',
-    authors: [{ name: 'F. Scott Fitzgerald', birth_year: 1896, death_year: 1940 }],
-    translators: [],
-    subjects: ['Jazz Age & American Tragedy'],
-    languages: ['en'],
-  },
-  {
-    id: 11,
-    title: "Alice's Adventures in Wonderland",
-    authors: [{ name: 'Lewis Carroll', birth_year: 1832, death_year: 1898 }],
-    translators: [],
-    subjects: ['Literary Nonsense & Fantasy'],
-    languages: ['en'],
-  },
-  {
-    id: 174,
-    title: 'The Picture of Dorian Gray',
-    authors: [{ name: 'Oscar Wilde', birth_year: 1854, death_year: 1900 }],
-    translators: [],
-    subjects: ['Philosophical Fiction & Gothic'],
-    languages: ['en'],
-  },
-  {
-    id: 1661,
-    title: 'The Adventures of Sherlock Holmes',
-    authors: [{ name: 'Arthur Conan Doyle', birth_year: 1859, death_year: 1930 }],
-    translators: [],
-    subjects: ['Detective Mystery & Deduction'],
-    languages: ['en'],
-  },
-  {
-    id: 345,
-    title: 'Dracula',
-    authors: [{ name: 'Bram Stoker', birth_year: 1847, death_year: 1912 }],
-    translators: [],
-    subjects: ['Epistolary Gothic Horror'],
-    languages: ['en'],
-  },
-  {
-    id: 2554,
-    title: 'Crime and Punishment',
-    authors: [{ name: 'Fyodor Dostoevsky', birth_year: 1821, death_year: 1881 }],
-    translators: [{ name: 'Constance Garnett', birth_year: 1861, death_year: 1946 }],
-    subjects: ['Psychological & Philosophical Realism'],
-    languages: ['en'],
-  },
-  {
-    id: 2600,
-    title: 'War and Peace',
-    authors: [{ name: 'Leo Tolstoy', birth_year: 1828, death_year: 1910 }],
-    translators: [
-      { name: 'Aylmer Maude', birth_year: 1858, death_year: 1938 },
-      { name: 'Louise Maude', birth_year: 1855, death_year: 1939 },
-    ],
-    subjects: ['Historical Epic & Philosophy'],
-    languages: ['en'],
-  },
-  {
-    id: 1727,
-    title: 'The Odyssey',
-    authors: [{ name: 'Homer', birth_year: -800, death_year: -750 }],
-    translators: [{ name: 'Samuel Butler', birth_year: 1835, death_year: 1902 }],
-    subjects: ['Classical Epic Mythology'],
-    languages: ['en'],
-  },
-  {
-    id: 135,
-    title: 'Les Misérables',
-    authors: [{ name: 'Victor Hugo', birth_year: 1802, death_year: 1885 }],
-    translators: [{ name: 'Isabel Florence Hapgood', birth_year: 1850, death_year: 1928 }],
-    subjects: ['French Historical Epic & Redemption'],
-    languages: ['en'],
-  },
-  {
-    id: 768,
-    title: 'Wuthering Heights',
-    authors: [{ name: 'Emily Brontë', birth_year: 1818, death_year: 1848 }],
-    translators: [],
-    subjects: ['Yorkshire Gothic & Tragic Romance'],
-    languages: ['en'],
-  },
-  {
-    id: 5200,
-    title: 'Metamorphosis',
-    authors: [{ name: 'Franz Kafka', birth_year: 1883, death_year: 1924 }],
-    translators: [{ name: 'David Wyllie', birth_year: null, death_year: null }],
-    subjects: ['Existentialism & Absurdist Fiction'],
-    languages: ['en'],
-  },
-  {
-    id: 2680,
-    title: 'Meditations',
-    authors: [{ name: 'Marcus Aurelius', birth_year: 121, death_year: 180 }],
-    translators: [{ name: 'George Long', birth_year: 1800, death_year: 1879 }],
-    subjects: ['Stoic Philosophy & Ethics'],
-    languages: ['en'],
-  },
-  {
-    id: 164,
-    title: 'Twenty Thousand Leagues Under the Sea',
-    authors: [{ name: 'Jules Verne', birth_year: 1828, death_year: 1905 }],
-    translators: [{ name: 'Lewis Mercier', birth_year: 1800, death_year: 1875 }],
-    subjects: ['Submarine Adventure & Speculative Science'],
-    languages: ['en'],
-  },
-  {
-    id: 43,
-    title: 'The Strange Case of Dr. Jekyll and Mr. Hyde',
-    authors: [{ name: 'Robert Louis Stevenson', birth_year: 1850, death_year: 1894 }],
-    translators: [],
-    subjects: ['Psychological Mystery & Dualism'],
-    languages: ['en'],
-  },
-  {
-    id: 8800,
-    title: 'The Divine Comedy',
-    authors: [{ name: 'Dante Alighieri', birth_year: 1265, death_year: 1321 }],
-    translators: [{ name: 'Henry Francis Cary', birth_year: 1772, death_year: 1844 }],
-    subjects: ['Medieval Epic Poetry & Afterlife'],
-    languages: ['en'],
-  },
-  {
-    id: 996,
-    title: 'Don Quixote',
-    authors: [{ name: 'Miguel de Cervantes Saavedra', birth_year: 1547, death_year: 1616 }],
-    translators: [{ name: 'John Ormsby', birth_year: 1829, death_year: 1895 }],
-    subjects: ['Chivalric Satire & World Literature'],
-    languages: ['en'],
-  },
-  {
-    id: 76,
-    title: 'Adventures of Huckleberry Finn',
-    authors: [{ name: 'Mark Twain', birth_year: 1835, death_year: 1910 }],
-    translators: [],
-    subjects: ['Mississippi Satire & American Realism'],
-    languages: ['en'],
-  },
-  {
-    id: 98,
-    title: 'A Tale of Two Cities',
-    authors: [{ name: 'Charles Dickens', birth_year: 1812, death_year: 1870 }],
-    translators: [],
-    subjects: ['Historical Novel & French Revolution'],
-    languages: ['en'],
-  },
-  {
-    id: 1260,
-    title: 'Jane Eyre',
-    authors: [{ name: 'Charlotte Brontë', birth_year: 1816, death_year: 1855 }],
-    translators: [],
-    subjects: ['Victorian Romance & Bildungsroman'],
-    languages: ['en'],
-  },
-  {
-    id: 1184,
-    title: 'The Count of Monte Cristo',
-    authors: [{ name: 'Alexandre Dumas', birth_year: 1802, death_year: 1870 }],
-    translators: [],
-    subjects: ['Revenge Epic & Historical Adventure'],
-    languages: ['en'],
-  },
-  {
-    id: 132,
-    title: 'The Art of War',
-    authors: [{ name: 'Sun Tzu', birth_year: -544, death_year: -496 }],
-    translators: [{ name: 'Lionel Giles', birth_year: 1875, death_year: 1958 }],
-    subjects: ['Military Strategy & Philosophy'],
-    languages: ['en'],
-  },
-  {
-    id: 1232,
-    title: 'The Prince',
-    authors: [{ name: 'Niccolò Machiavelli', birth_year: 1469, death_year: 1527 }],
-    translators: [{ name: 'W. K. Marriott', birth_year: null, death_year: 1927 }],
-    subjects: ['Political Statecraft & Renaissance Philosophy'],
-    languages: ['en'],
-  },
+const GUTENBERG_MIRRORS = [
+  'https://gutenberg.pglaf.org',
+  'https://aleph.gutenberg.org',
+  'https://gutenberg.readingroo.ms',
 ];
 
 function loadEnv(rootDir = path.resolve(__dirname, '..')) {
@@ -261,16 +63,44 @@ function loadEnv(rootDir = path.resolve(__dirname, '..')) {
   return env;
 }
 
+/**
+ * Resolves a comma-separated list of mirror shortcodes (`pglaf,aleph,readingroo`)
+ * or full HTTPS mirror origins into canonical mirror base URLs.
+ */
+function resolveSelectedMirrors(rawMirrors) {
+  if (!rawMirrors) return [...GUTENBERG_MIRRORS];
+  const list = Array.isArray(rawMirrors)
+    ? rawMirrors
+    : String(rawMirrors)
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+
+  const resolved = [];
+  for (const item of list) {
+    if (MIRROR_SHORTCUT_MAP[item]) {
+      resolved.push(MIRROR_SHORTCUT_MAP[item]);
+    } else if (GUTENBERG_MIRRORS.includes(item.replace(/\/+$/, ''))) {
+      resolved.push(item.replace(/\/+$/, ''));
+    }
+  }
+  return resolved.length > 0 ? Array.from(new Set(resolved)) : ['https://gutenberg.pglaf.org'];
+}
+
 function parseCliArgs(argv = process.argv.slice(2)) {
   const options = {
     dryRun: false,
     force: false,
+    scheduleGate: false,
+    minIntervalHours: 6,
+    maxIntervalHours: 12,
     limit: 25,
     minDelaySec: 8,
     maxDelaySec: 16,
     mirrorCooldownMs: 30000,
     targetCount: 14,
     ids: null,
+    mirrors: [...GUTENBERG_MIRRORS],
   };
 
   for (const arg of argv) {
@@ -278,9 +108,19 @@ function parseCliArgs(argv = process.argv.slice(2)) {
       options.dryRun = true;
     } else if (arg === '--force') {
       options.force = true;
+    } else if (arg === '--schedule-gate') {
+      options.scheduleGate = true;
     } else if (arg.startsWith('--limit=')) {
       const val = parseInt(arg.split('=')[1], 10);
       if (Number.isInteger(val) && val > 0) options.limit = val;
+    } else if (arg.startsWith('--delay-range=')) {
+      const parts = arg.split('=')[1].split('-');
+      if (parts.length === 2) {
+        const minVal = parseFloat(parts[0]);
+        const maxVal = parseFloat(parts[1]);
+        if (Number.isFinite(minVal) && minVal >= 0) options.minDelaySec = minVal;
+        if (Number.isFinite(maxVal) && maxVal >= 0) options.maxDelaySec = maxVal;
+      }
     } else if (arg.startsWith('--min-delay=')) {
       const val = parseFloat(arg.split('=')[1]);
       if (Number.isFinite(val) && val >= 0) options.minDelaySec = val;
@@ -290,6 +130,8 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     } else if (arg.startsWith('--target-count=')) {
       const val = parseInt(arg.split('=')[1], 10);
       if (Number.isInteger(val) && val >= 10 && val <= 16) options.targetCount = val;
+    } else if (arg.startsWith('--mirrors=')) {
+      options.mirrors = resolveSelectedMirrors(arg.split('=')[1]);
     } else if (arg.startsWith('--ids=')) {
       const rawIds = arg
         .split('=')[1]
@@ -316,6 +158,66 @@ function computeRandomDelayMs(minSec = 8, maxSec = 16, rng = Math.random) {
   const high = Math.max(low, Math.max(minSec, maxSec));
   const randomSeconds = low + rng() * (high - low);
   return Math.round(randomSeconds * 1000);
+}
+
+/**
+ * Deterministically computes a randomized float schedule window in milliseconds
+ * between [minHours, maxHours] (default 6.0h to 12.0h, with minutes & seconds)
+ * seeded by the last batch's `updated_at` timestamp so stateless cron checks
+ * agree on the exact target wakeup time without wasting GitHub runner minutes.
+ */
+function computeScheduleWindowMs(seedTimestampIso, minHours = 6, maxHours = 12) {
+  const seedStr = String(seedTimestampIso || 'default-seed');
+  let hash = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash ^= seedStr.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const unitFloat = (hash >>> 0) / 4294967295;
+  const low = Math.max(1, Math.min(minHours, maxHours));
+  const high = Math.max(low, Math.max(minHours, maxHours));
+  const windowHours = low + unitFloat * (high - low);
+  return Math.round(windowHours * 3600 * 1000);
+}
+
+/**
+ * Evaluates whether the randomized 6.0h–12.0h float schedule window has elapsed
+ * since the most recent quote update in `public.books`.
+ */
+async function evaluateScheduleGate(supabase, options, nowMs = Date.now()) {
+  if (!options.scheduleGate || !supabase) {
+    return { allowed: true, elapsedHours: null, requiredWindowHours: null };
+  }
+
+  const { data } = await supabase
+    .from('books')
+    .select('updated_at')
+    .neq('quotes', '[]')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data || !data.updated_at) {
+    return { allowed: true, elapsedHours: null, requiredWindowHours: null };
+  }
+
+  const lastUpdatedMs = Date.parse(data.updated_at);
+  if (!Number.isFinite(lastUpdatedMs)) {
+    return { allowed: true, elapsedHours: null, requiredWindowHours: null };
+  }
+
+  const requiredWindowMs = computeScheduleWindowMs(
+    data.updated_at,
+    options.minIntervalHours,
+    options.maxIntervalHours
+  );
+  const elapsedMs = Math.max(0, nowMs - lastUpdatedMs);
+
+  return {
+    allowed: elapsedMs >= requiredWindowMs,
+    elapsedHours: Number((elapsedMs / 3600000).toFixed(2)),
+    requiredWindowHours: Number((requiredWindowMs / 3600000).toFixed(2)),
+  };
 }
 
 /**
@@ -547,6 +449,24 @@ function extractBookQuoteSpreads(rawText, book, targetCount = 14) {
 }
 
 /**
+ * Builds a 1-item bibliographic sentinel spread when a volume has no extractable narrative
+ * paragraphs or 404s across all mirrors, so `quotes` is no longer `'[]'::jsonb` and the
+ * volume is never re-queried in an endless loop on future runs.
+ */
+function buildSentinelQuoteSpread(book) {
+  const authorName =
+    Array.isArray(book.authors) && book.authors[0]?.name
+      ? book.authors[0].name
+      : 'Classic Author';
+  return {
+    chapterLabel: `Archival Edition • Vol. #${book.id}`,
+    openingLine: `“${book.title} — preserved in the Project Gutenberg Literary Archive.”`,
+    quoteExcerpt: `“Unabridged public domain edition by ${authorName} (Vol. #${book.id}).”`,
+    commentary: `Bibliographic sentinel record for Vol. #${book.id}.`,
+  };
+}
+
+/**
  * Upsert-only merge: preserves existing valid spreads and appends newly discovered spreads up to `maxCount`.
  */
 function mergeDistinctQuoteSpreads(existingQuotes, newSpreads, maxCount = 16) {
@@ -593,7 +513,66 @@ function buildSqlQuoteSeedStatement(bookId, quotesArray) {
 }
 
 /**
- * Executes the sequential featured quotes sync pipeline.
+ * Queries `public.books` for the next batch of candidate volumes to populate with quotes.
+ * - When `options.ids` is provided, fetches those specific IDs.
+ * - Otherwise, queries `public.books` where `quotes = '[]'::jsonb`, `copyright = false`,
+ *   `media_type = 'Text'`, and `languages @> ARRAY['en']`, ordered by `download_count DESC, id ASC`.
+ */
+async function fetchCandidateBooksFromSupabase(supabase, options) {
+  if (!supabase) {
+    if (options.ids && options.ids.length > 0) {
+      return options.ids.slice(0, options.limit).map((id) => ({
+        id,
+        title: `Gutenberg Volume #${id}`,
+        authors: [],
+        quotes: [],
+        content: null,
+      }));
+    }
+    return [];
+  }
+
+  if (options.ids && options.ids.length > 0) {
+    const { data, error } = await supabase
+      .from('books')
+      .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
+      .in('id', options.ids.slice(0, options.limit));
+    if (error) throw new Error(error.message);
+    const byId = new Map((data || []).map((row) => [row.id, row]));
+    return options.ids.slice(0, options.limit).map(
+      (id) =>
+        byId.get(id) || {
+          id,
+          title: `Gutenberg Volume #${id}`,
+          authors: [],
+          quotes: [],
+          content: null,
+        }
+    );
+  }
+
+  let query = supabase
+    .from('books')
+    .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
+    .eq('copyright', false)
+    .eq('media_type', 'Text')
+    .contains('languages', ['en']);
+
+  if (!options.force) {
+    query = query.eq('quotes', '[]');
+  }
+
+  const { data, error } = await query
+    .order('download_count', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(options.limit);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
+ * Executes the featured quotes sync pipeline with per-mirror worker pool & schedule gate.
  */
 async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   const env = deps.env || loadEnv();
@@ -619,71 +598,69 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     );
   }
 
-  const candidateBooks = options.ids
-    ? CURATED_QUOTE_BOOKS.filter((b) => options.ids.includes(b.id))
-    : CURATED_QUOTE_BOOKS;
-  const booksToProcess = candidateBooks.slice(0, options.limit);
-
   const summary = {
     processed: 0,
     updated: 0,
     skippedExisting: 0,
+    skippedByScheduleGate: false,
     fromSupabaseContent: 0,
     fromMirrors: 0,
+    sentinelMarked: 0,
     failed: 0,
     mirrorBreakdown: {},
     sqlStatements: [],
   };
 
-  async function persistExtractedBookQuotes(book, existingRow, existingQuotes, rawText) {
+  if (options.scheduleGate && supabase) {
+    const gate = await evaluateScheduleGate(supabase, options, deps.nowMs);
+    if (!gate.allowed) {
+      summary.skippedByScheduleGate = true;
+      logger.log(
+        `[Schedule Gate] Last quote sync was ${gate.elapsedHours}h ago; next randomized window (${gate.requiredWindowHours}h) not reached yet. Exiting cleanly.`
+      );
+      return summary;
+    }
+    const jitterMs = computeRandomDelayMs(5, 35, deps.rng);
+    logger.log(
+      `[Schedule Gate] Randomized window (${gate.requiredWindowHours ?? 0}h) elapsed. Applying ${(
+        jitterMs / 1000
+      ).toFixed(2)}s startup jitter...`
+    );
+    await sleepFn(jitterMs);
+  }
+
+  const booksToProcess = await fetchCandidateBooksFromSupabase(supabase, options);
+  if (booksToProcess.length === 0) {
+    logger.log('All eligible books in public.books already have quotes — nothing to sync.');
+    return summary;
+  }
+
+  async function saveQuotesToDatabase(book, quotesPayload) {
+    summary.sqlStatements.push(buildSqlQuoteSeedStatement(book.id, quotesPayload));
+    if (!options.dryRun && supabase) {
+      const { error: updateErr } = await supabase
+        .from('books')
+        .update({
+          quotes: quotesPayload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', book.id);
+      if (updateErr) throw new Error(updateErr.message);
+    }
+  }
+
+  async function persistExtractedBookQuotes(book, existingQuotes, rawText) {
     const extracted = extractBookQuoteSpreads(rawText, book, options.targetCount);
     const mergedQuotes = mergeDistinctQuoteSpreads(existingQuotes, extracted, 16);
 
     if (mergedQuotes.length === 0) {
-      summary.failed++;
+      const sentinel = [buildSentinelQuoteSpread(book)];
+      await saveQuotesToDatabase(book, sentinel);
+      summary.sentinelMarked++;
       return false;
     }
 
-    summary.sqlStatements.push(buildSqlQuoteSeedStatement(book.id, mergedQuotes));
-
-    if (!options.dryRun && supabase) {
-      if (existingRow) {
-        const { error: updateErr } = await supabase
-          .from('books')
-          .update({
-            quotes: mergedQuotes,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', book.id);
-        if (updateErr) throw new Error(updateErr.message);
-      } else {
-        const deathYears = book.authors
-          .map((a) => a.death_year)
-          .filter((y) => typeof y === 'number');
-        const birthYears = book.authors
-          .map((a) => a.birth_year)
-          .filter((y) => typeof y === 'number');
-        const { error: insertErr } = await supabase.from('books').insert({
-          id: book.id,
-          title: book.title,
-          authors: book.authors,
-          translators: book.translators || [],
-          subjects: book.subjects || [],
-          bookshelves: [],
-          languages: book.languages || ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: {},
-          download_count: 50000,
-          max_author_death_year: deathYears.length > 0 ? Math.max(...deathYears) : null,
-          min_author_birth_year: birthYears.length > 0 ? Math.min(...birthYears) : null,
-          quotes: mergedQuotes,
-          updated_at: new Date().toISOString(),
-        });
-        if (insertErr) throw new Error(insertErr.message);
-      }
-    }
-
+    await saveQuotesToDatabase(book, mergedQuotes);
     summary.updated++;
     return true;
   }
@@ -693,17 +670,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   for (const book of booksToProcess) {
     summary.processed++;
     try {
-      let existingRow = null;
-      if (supabase) {
-        const { data } = await supabase
-          .from('books')
-          .select('id, quotes, content')
-          .eq('id', book.id)
-          .maybeSingle();
-        existingRow = data || null;
-      }
-
-      const existingQuotes = Array.isArray(existingRow?.quotes) ? existingRow.quotes : [];
+      const existingQuotes = Array.isArray(book.quotes) ? book.quotes : [];
       if (existingQuotes.length >= 10 && !options.force) {
         summary.skippedExisting++;
         logger.log(
@@ -712,14 +679,13 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         continue;
       }
 
-      if (existingRow?.content && existingRow.content.trim().length >= 500) {
+      if (book.content && book.content.trim().length >= 500) {
         summary.fromSupabaseContent++;
         logger.log(`[Supabase Content] Using stored text for #${book.id} "${book.title}".`);
-        await persistExtractedBookQuotes(book, existingRow, existingQuotes, existingRow.content);
+        await persistExtractedBookQuotes(book, existingQuotes, book.content);
       } else {
         mirrorWorkQueue.push({
           book,
-          existingRow,
           existingQuotes,
           attemptedMirrors: new Set(),
         });
@@ -731,7 +697,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   }
 
   if (mirrorWorkQueue.length > 0) {
-    const mirrors = deps.mirrors || GUTENBERG_MIRRORS;
+    const mirrors = resolveSelectedMirrors(deps.mirrors || options.mirrors);
     const activeMirrors = new Set(mirrors);
     let inFlightCount = 0;
     const queueWaiters = [];
@@ -794,7 +760,6 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
           try {
             await persistExtractedBookQuotes(
               workItem.book,
-              workItem.existingRow,
               workItem.existingQuotes,
               fetchRes.text
             );
@@ -826,9 +791,20 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
           if (remainingHealthyMirrors.length > 0) {
             mirrorWorkQueue.push(workItem);
           } else {
-            summary.failed++;
+            if (!fetchRes.isMirrorLevelError) {
+              try {
+                await saveQuotesToDatabase(workItem.book, [
+                  buildSentinelQuoteSpread(workItem.book),
+                ]);
+                summary.sentinelMarked++;
+              } catch {
+                summary.failed++;
+              }
+            } else {
+              summary.failed++;
+            }
             logger.error(
-              `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted all healthy PGLAF mirrors.`
+              `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`
             );
           }
 
@@ -849,7 +825,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     const seedPath = path.resolve(__dirname, '..', 'supabase', 'seed_quotes.sql');
     const header = [
       '-- Bookarium Idempotent Featured Quotes Seed (Generated by scripts/sync-featured-quotes.js --dry-run)',
-      'ALTER TABLE public.books ADD COLUMN IF NOT EXISTS quotes JSONB NOT NULL DEFAULT \'[]\'::jsonb;',
+      "ALTER TABLE public.books ADD COLUMN IF NOT EXISTS quotes JSONB NOT NULL DEFAULT '[]'::jsonb;",
       '',
       ...summary.sqlStatements,
       '',
@@ -866,9 +842,9 @@ if (require.main === module) {
   runFeaturedQuotesSync(cliOptions)
     .then((res) => {
       console.log(
-        `Featured Quotes Sync complete: ${res.updated} updated, ${res.skippedExisting} skipped, ${res.failed} failed.`
+        `Featured Quotes Sync complete: ${res.updated} updated, ${res.skippedExisting} skipped, ${res.sentinelMarked} sentinel-marked, ${res.failed} failed.`
       );
-      process.exit(res.failed > 0 && res.updated === 0 ? 1 : 0);
+      process.exit(res.failed > 0 && res.updated === 0 && !res.skippedByScheduleGate ? 1 : 0);
     })
     .catch((err) => {
       console.error(`Fatal error in sync-featured-quotes: ${err.message}`);
@@ -879,11 +855,14 @@ if (require.main === module) {
 
 module.exports = {
   USER_AGENT,
+  MIRROR_SHORTCUT_MAP,
   GUTENBERG_MIRRORS,
-  CURATED_QUOTE_BOOKS,
   loadEnv,
+  resolveSelectedMirrors,
   parseCliArgs,
   computeRandomDelayMs,
+  computeScheduleWindowMs,
+  evaluateScheduleGate,
   buildGutenbergPathDir,
   buildSingleMirrorCandidateUrls,
   buildMirrorCandidateUrls,
@@ -892,8 +871,9 @@ module.exports = {
   stripBoilerplateAndSplitParagraphs,
   wrapCleanQuote,
   extractBookQuoteSpreads,
+  buildSentinelQuoteSpread,
   mergeDistinctQuoteSpreads,
   buildSqlQuoteSeedStatement,
+  fetchCandidateBooksFromSupabase,
   runFeaturedQuotesSync,
 };
-

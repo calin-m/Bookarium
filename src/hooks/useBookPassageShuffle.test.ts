@@ -23,6 +23,19 @@ function createWrapper() {
   return TestWrapper;
 }
 
+const mockSupabasePassages = [
+  {
+    chapterLabel: 'Passage I • Classic',
+    openingLine: '“First opening line from Supabase quotes column.”',
+    quoteExcerpt: '“First quote excerpt from Supabase quotes column.”',
+  },
+  {
+    chapterLabel: 'Passage II • Classic',
+    openingLine: '“Second opening line from Supabase quotes column.”',
+    quoteExcerpt: '“Second quote excerpt from Supabase quotes column.”',
+  },
+];
+
 describe('useBookPassageShuffle', () => {
   it('initializes with curated fallback passages for known books', () => {
     const { result } = renderHook(
@@ -50,6 +63,7 @@ describe('useBookPassageShuffle', () => {
           title: 'Pride and Prejudice',
           authors: [{ name: 'Jane Austen' }],
           subjects: ['Classic Literature'],
+          supabaseQuotes: mockSupabasePassages,
         }),
       { wrapper: createWrapper() }
     );
@@ -76,6 +90,7 @@ describe('useBookPassageShuffle', () => {
           title: 'Pride and Prejudice',
           authors: [{ name: 'Jane Austen' }],
           subjects: ['Classic Literature'],
+          supabaseQuotes: mockSupabasePassages,
         }),
       { wrapper: createWrapper() }
     );
@@ -129,6 +144,7 @@ describe('useBookPassageShuffle', () => {
           title: 'The Time Machine',
           authors: 'H. G. Wells',
           subjects: ['Science Fiction'],
+          supabaseQuotes: mockSupabasePassages,
           enabled: false,
         }),
       { wrapper: createWrapper() }
@@ -166,6 +182,7 @@ describe('useBookPassageShuffle', () => {
           id: 35,
           title: 'The Time Machine',
           authors: ['H. G. Wells'],
+          supabaseQuotes: mockSupabasePassages,
           enabled: false,
         }),
       { wrapper: createWrapper() }

@@ -115,7 +115,7 @@ All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context,
 
 ## 2. System Topology & Architectural Quick-Reference
 
-> **Complete Living Architecture Map**: For the full AST-generated C4 diagrams, component/store/hook/utility/config/type inventories, database tables/triggers/22 indexes, PWA asset catalog, and module dependency graph, see [`docs/ARCHITECTURE.md`](file:///docs/ARCHITECTURE.md).
+> **Complete Living Architecture Map**: For the full AST-generated C4 diagrams, component/store/hook/utility/config/type inventories, database tables/triggers/23 indexes, PWA asset catalog, and module dependency graph, see [`docs/ARCHITECTURE.md`](file:///docs/ARCHITECTURE.md).
 
 1. **Layer 1 — Edge Proxy, Geo-IP & App Router (`src/proxy.ts` & `src/app/`)**:
    - `src/proxy.ts` extracts client jurisdiction (`x-vercel-ip-country`, `?country=XX` dev override, `bookarium-geo-country` cookie) and refreshes Supabase SSR sessions.

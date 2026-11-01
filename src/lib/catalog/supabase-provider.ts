@@ -171,6 +171,11 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         query = query.overlaps('languages', options.languages);
       }
 
+      // Quote-enriched volumes filter (uses partial index idx_books_with_quotes_popular)
+      if (options.hasQuotes) {
+        query = query.neq('quotes', '[]');
+      }
+
       // Author era bounds
       if (options.authorYearStart !== undefined) {
         query = query.gte('max_author_death_year', options.authorYearStart);

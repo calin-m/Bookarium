@@ -729,6 +729,7 @@ CREATE INDEX IF NOT EXISTS idx_books_languages ON public.books USING GIN(languag
 CREATE INDEX IF NOT EXISTS idx_books_subjects ON public.books USING GIN(subjects);
 CREATE INDEX IF NOT EXISTS idx_books_download_count ON public.books(download_count DESC);
 CREATE INDEX IF NOT EXISTS idx_books_author_death_year ON public.books(max_author_death_year);
+CREATE INDEX IF NOT EXISTS idx_books_with_quotes_popular ON public.books(download_count DESC) WHERE quotes <> '[]'::jsonb;
 
 -- Row Level Security (RLS)
 ALTER TABLE public.books ENABLE ROW LEVEL SECURITY;

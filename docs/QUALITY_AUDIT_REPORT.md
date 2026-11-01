@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 01 Nov 2026 17:43:38 GMT  
+**Last Generated**: Sun, 01 Nov 2026 19:02:06 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2152 passed  
+**Total Verified Tests**: 2155 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2152 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2155 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.83%** (11511/11887) — *Target: $\ge$ 95%*
-- **Statements**: **95.47%** (12484/13076) — *Target: $\ge$ 95%*
-- **Functions**: **94.34%** (2685/2846) — *Target: $\ge$ 92%*
-- **Branches**: **88.16%** (11360/12885) — *Target: $\ge$ 85%*
+- **Lines**: **96.71%** (11559/11951) — *Target: $\ge$ 95%*
+- **Statements**: **95.32%** (12532/13146) — *Target: $\ge$ 95%*
+- **Functions**: **94.37%** (2699/2860) — *Target: $\ge$ 92%*
+- **Branches**: **87.92%** (11467/13042) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2152 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2155 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -467,7 +467,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 452 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 453 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -826,7 +826,7 @@
 - ✔ `filters out books protected in Life+100 jurisdiction (Mexico)`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
-- ✔ `prioritizes Supabase public.books.quotes when useFeaturedQuotes returns spreads for the active classic`
+- ✔ `prioritizes Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads for the active classic`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
@@ -884,7 +884,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
 - ✔ `handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit`
@@ -896,6 +896,7 @@
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
 - ✔ `should render the hourly hero book immediately on initial render without falling back to index 0`
 - ✔ `synchronizes controlled search prop on rerender and supports featuredBook prop with or without rawBook`
+- ✔ `merges quote-enriched books from useQuoteEnrichedBooks into the featured candidate pool`
 
 </details>
 
@@ -921,7 +922,7 @@
 - ✔ `maintains strictly unique quote IDs and Project Gutenberg bookIds across all anthology entries`
 - ✔ `applies responsive section and balanced header divider spacing classes`
 - ✔ `handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes`
-- ✔ `expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes returns spreads`
+- ✔ `expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads`
 
 </details>
 
@@ -1687,7 +1688,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 503 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 504 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1854,14 +1855,14 @@
 - ✔ `drops single-character search queries to protect upstream API`
 - ✔ `parses valid numeric page and limit while defaulting invalid values`
 - ✔ `parses author year bounds, sort directions, and mime_type`
-- ✔ `parses include_restricted_metadata flag`
+- ✔ `parses include_restricted_metadata and has_quotes flags`
 - ✔ `parses comma-separated languages into string array`
 - ✔ `resolves country code through the priority cascade`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (28 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1886,6 +1887,7 @@
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
+- ✔ `filters by non-empty quotes JSONB column when hasQuotes is true`
 - ✔ `returns empty array for invalid bookId`
 - ✔ `returns translations when cluster exists`
 - ✔ `gracefully returns empty array on database error`
@@ -2394,7 +2396,7 @@
 - ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, and missing RateLimiter`
 - ✔ `passes compliant public API route handlers that invoke RateLimiter.check()`
 - ✔ `flags describe.only, it.only, and expect(true).toBe(true) in test files`
-- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), and direct fetch() to www.gutenberg.org`
+- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, and bare-hostname .includes("aleph.gutenberg.org")`
 - ✔ `permits copyright=false and mirror-prioritized fetches`
 - ✔ `verifies zero AST or taint violations across the entire production src/ directory`
 
@@ -2423,12 +2425,12 @@
 <details>
 <summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (6 tests)</summary>
 
-- ✔ `defines 25 unique classic books and strictly PGLAF mirror URLs (never www.gutenberg.org)`
-- ✔ `parses CLI arguments and normalizes min/max float delays`
-- ✔ `computes randomized float delays between [8.0s, 16.0s] in milliseconds`
-- ✔ `extracts multi-quote spreads, wraps quotes cleanly, and merges upsert-only without duplicates`
+- ✔ `resolves PGLAF mirror URLs and never targets www.gutenberg.org`
+- ✔ `parses CLI arguments including --delay-range, --mirrors, and --schedule-gate`
+- ✔ `computes randomized float delays and 6.0h–12.0h float schedule windows`
+- ✔ `extracts multi-quote spreads, builds sentinel spreads, and merges upsert-only without duplicates`
 - ✔ `fetches book text from single mirror or across PGLAF mirrors with failover and classifies mirror-level errors`
-- ✔ `loads environment variables from temp directory and executes runFeaturedQuotesSync across 3 per-mirror workers, cooldowns, and DB paths`
+- ✔ `queries public.books by download_count DESC and executes runFeaturedQuotesSync across per-mirror workers, cooldowns, and sentinel fallbacks`
 
 </details>
 
@@ -2456,7 +2458,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 273 Tests)
+### 🔄 Hooks & React Query (28 Suites · 274 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
@@ -2482,7 +2484,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -2503,6 +2505,7 @@
 - ✔ `should fallback to setTimeout in usePrefetchNextPage and skip when hasNextPage is false`
 - ✔ `should handle server runtime non-ok status, invalid JSON, and copyright filtering`
 - ✔ `fetches featured quotes map from Supabase with fail-safe fallback when unconfigured, offline, or errored`
+- ✔ `fetches quote-enriched books from Supabase, filters sentinel records, and falls back when unconfigured or offline`
 
 </details>
 
@@ -3360,8 +3363,8 @@
 
 - ✔ `exports a curated list of featured hero books with Pride and Prejudice as primary default`
 - ✔ `identifies curated featured classic volumes by id or case-insensitive title`
-- ✔ `returns curated multi-chapter passages for each specially mapped featured book ID`
-- ✔ `returns authentic multi-spread featured passages for other featured books without fabricated quotes`
+- ✔ `prioritizes multi-spread passages from book.quotes when present on the volume`
+- ✔ `returns the canonical 1-spread static fallback for featured books when Supabase quotes are not yet loaded`
 - ✔ `synthesizes truthful bibliographic edition spread for non-featured catalog books without generic other-author quotes`
 - ✔ `allows all featured books in the US public domain`
 - ✔ `filters out Life+100 restricted authors or translators in Mexico (MX)`

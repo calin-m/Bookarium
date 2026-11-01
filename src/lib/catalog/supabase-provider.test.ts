@@ -239,6 +239,7 @@ describe('SupabaseCatalogProvider', () => {
     function createMockQueryBuilder(rows: DatabaseBook[], count = rows.length, error: any = null) {
       const builder: any = {
         eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
         in: vi.fn().mockReturnThis(),
         textSearch: vi.fn().mockReturnThis(),
         or: vi.fn().mockReturnThis(),
@@ -483,6 +484,21 @@ describe('SupabaseCatalogProvider', () => {
       // Runtime pass did not strip the book:
       expect(result.results).toHaveLength(1);
       expect(result.results[0].id).toBe(863);
+    });
+
+    it('filters by non-empty quotes JSONB column when hasQuotes is true', async () => {
+      const { client, builder } = createMockQueryBuilder([sampleDbRows[0]], 1);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const result = await provider.searchBooks({
+        page: 1,
+        limit: 32,
+        country: 'US',
+        hasQuotes: true,
+      });
+
+      expect(builder.neq).toHaveBeenCalledWith('quotes', '[]');
+      expect(result.results).toHaveLength(1);
     });
   });
 

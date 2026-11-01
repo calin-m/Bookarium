@@ -449,7 +449,12 @@ export function getBookPassages(book: {
   title: string;
   authors?: { name: string }[];
   subjects?: string[];
+  quotes?: BookPassage[];
 }): BookPassage[] {
+  if (Array.isArray(book.quotes) && book.quotes.length >= 2) {
+    return book.quotes;
+  }
+
   const featured = FEATURED_HERO_BOOKS.find(
     (f) => f.id === book.id || f.title.toLowerCase() === book.title.toLowerCase()
   );
@@ -458,250 +463,8 @@ export function getBookPassages(book: {
   const subject = formatPrimarySubject(book.subjects);
 
   if (featured) {
-    if (featured.id === 1342) {
-      return [
-        {
-          chapterLabel: 'Chapter I • The Opening Truth',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“I declare after all there is no enjoyment like reading! How much sooner one tires of any thing than of a book! When I have a house of my own, I shall be miserable if I have not an excellent library.”',
-          leftPageQuote2: '“There is a stubbornness about me that never can bear to be frightened at the will of others. My courage always rises with every attempt to intimidate me.”',
-          quoteExcerpt: '“In vain have I struggled. It will not do. My feelings will not be repressed. You must allow me to tell you how ardently I admire and love you.”',
-          rightPageQuote2: '“You have bewitched me, body and soul, and I love, I love, I love you. I never wish to be parted from you from this day on.”',
-          tertiaryQuote: '“Till this moment I never knew myself.”',
-          commentary: 'Volume I, Chapter XI — Elizabeth Bennet on intellectual independence.',
-        },
-        {
-          chapterLabel: 'Chapter XXXIV • Darcy’s Confession',
-          openingLine: '“There are few people whom I really love, and still fewer of whom I think well. The more I see of the world, the more am I dissatisfied with it; and every day confirms my belief of the inconsistency of all human characters.”',
-          secondaryQuote: '“The distance is nothing when one has a motive.”',
-          leftPageQuote2: '“I am only resolved to act in that manner, which will, in my own opinion, constitute my happiness, without reference to you, or to any person so wholly unconnected with me.”',
-          quoteExcerpt: '“I could easily forgive his pride, if he had not mortified mine.”',
-          rightPageQuote2: '“My good opinion once lost, is lost forever.”',
-          tertiaryQuote: '“Angry people are not always wise.”',
-          commentary: 'The climactic transformation of pride into genuine understanding.',
-        },
-        {
-          chapterLabel: 'Chapter LVI • Defiance of Convention',
-          openingLine: '“You may ask questions which I shall not choose to answer. The world is not to dictate to me where I should find my happiness or bestow my regard.”',
-          secondaryQuote: '“Do anything rather than marry without affection.”',
-          leftPageQuote2: '“We are all fools in love, but none so foolish as those who believe themselves immune.”',
-          quoteExcerpt: '“It is particularly incumbent on those who never change their opinion, to be secure of judging properly at first.”',
-          rightPageQuote2: '“I must learn to be content with being happier than I deserve.”',
-          tertiaryQuote: '“Think only of the past as its remembrance gives you pleasure.”',
-          commentary: 'A defining triumph of feminine autonomy in 19th-century literature.',
-        },
-      ];
-    }
-
-    if (featured.id === 84) {
-      return [
-        {
-          chapterLabel: 'Letter I • The Arctic Expedition',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“Life and death appeared to me ideal bounds, which I should first break through, and pour a torrent of light into our dark world. A new species would bless me as its creator.”',
-          leftPageQuote2: '“There is something at work in my soul which I do not understand.”',
-          quoteExcerpt: '“I was benevolent and good; misery made me a fiend. Make me happy, and I shall again be virtuous.”',
-          rightPageQuote2: '“All men hate the wretched; how, then, must I be hated, who am miserable beyond all living things! Yet you, my creator, detest and spurn me, thy creature.”',
-          tertiaryQuote: '“Beware; for I am fearless, and therefore powerful.”',
-          commentary: 'Volume I — The vaulting ambition of Victor Frankenstein.',
-        },
-        {
-          chapterLabel: 'Chapter X • Encounter on the Glacier',
-          openingLine: '“Learn from me, if not by my precepts, at least by my example, how dangerous is the acquirement of knowledge and how much happier that man is who believes his native town to be the world.”',
-          secondaryQuote: '“Seek happiness in tranquility and avoid ambition, even if it be only the apparently innocent one of distinguishing yourself in science and discoveries.”',
-          leftPageQuote2: '“Nothing is so painful to the human mind as a great and sudden change.”',
-          quoteExcerpt: '“If I cannot inspire love, I will cause fear! And chiefly towards you, my arch-enemy, because my creator, do I swear inextinguishable hatred.”',
-          rightPageQuote2: '“I had desired it with an ardour that far exceeded moderation; but now that I had finished, the beauty of the dream vanished, and breathless horror and disgust filled my heart.”',
-          tertiaryQuote: '“I shall die, and what I now feel be no longer felt.”',
-          commentary: 'The Creature’s profound plea for empathy and moral responsibility.',
-        },
-      ];
-    }
-
-    if (featured.id === 2701) {
-      return [
-        {
-          chapterLabel: 'Chapter I • Loomings',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; then, I account it high time to get to sea as soon as I can.”',
-          leftPageQuote2: '“There is, one knows not what sweet mystery about this sea, whose gently awful stirrings seem to speak of some hidden soul beneath.”',
-          quoteExcerpt: '“All visible objects, man, are but as pasteboard masks. But in each event—there, some unknown but still reasoning thing puts forth the mouldings of its features from behind the unreasoning mask.”',
-          rightPageQuote2: '“Talk not to me of blasphemy, man; I’d strike the sun if it insulted me.”',
-          tertiaryQuote: '“Towards thee I roll, thou all-destroying but unconquering whale; to the last I grapple with thee!”',
-          commentary: 'The legendary opening voyage of human contemplation.',
-        },
-        {
-          chapterLabel: 'Chapter XXXVI • The Quarter-Deck',
-          openingLine: '“It is not down in any map; true places never are.”',
-          secondaryQuote: '“Better sleep with a sober cannibal than a drunken Christian.”',
-          leftPageQuote2: '“I know not all that may be coming, but be it what it will, I’ll go to it laughing.”',
-          quoteExcerpt: '“There are certain queer times and occasions in this strange mixed affair we call life when a man takes this whole universe for a vast practical joke.”',
-          rightPageQuote2: '“As for me, I am tormented with an everlasting itch for things remote. I love to sail forbidden seas, and land on barbarous coasts.”',
-          tertiaryQuote: '“And the great shroud of the sea rolled on as it rolled five thousand years ago.”',
-          commentary: 'Captain Ahab’s cosmic defiance against fate.',
-        },
-      ];
-    }
-
-    if (featured.id === 64317) {
-      return [
-        {
-          chapterLabel: 'Chapter I • The Green Light',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“Reserving judgments is a matter of infinite hope. I am still a little afraid of missing something if I forget that a sense of the fundamental decencies is parcelled out unequally at birth.”',
-          leftPageQuote2: '“He looked at her the way all women want to be looked at by a man.”',
-          quoteExcerpt: '“Gatsby believed in the green light, the orgastic future that year by year recedes before us. It eluded us then, but that’s no matter—tomorrow we will run faster, stretch out our arms farther. And one fine morning—”',
-          rightPageQuote2: '“So we beat on, boats against the current, borne back ceaselessly into the past.”',
-          tertiaryQuote: '“There must have been moments even that afternoon when Daisy tumbled short of his dreams—because of the colossal vitality of his illusion.”',
-          commentary: 'F. Scott Fitzgerald’s lyrical meditation on the American dream.',
-        },
-        {
-          chapterLabel: 'Chapter IX • Against the Current',
-          openingLine: '“So we beat on, boats against the current, borne back ceaselessly into the past.”',
-          secondaryQuote: '“There must have been moments even that afternoon when Daisy tumbled short of his dreams—because of the colossal vitality of his illusion.”',
-          quoteExcerpt: '“Can’t repeat the past? he cried incredulously. Why of course you can!”',
-          rightPageQuote2: '“Reserving judgments is a matter of infinite hope.”',
-          commentary: 'Nick Carraway’s elegiac reflection on illusion, memory, and time.',
-        },
-      ];
-    }
-
-    if (featured.id === 11) {
-      return [
-        {
-          chapterLabel: 'Chapter I • Down the Rabbit-Hole',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“Curiouser and curiouser!” cried Alice (she was so much surprised, that for the moment she quite forgot how to speak good English).',
-          leftPageQuote2: '“It’s no use going back to yesterday, because I was a different person then.”',
-          quoteExcerpt: '“Why, sometimes I’ve believed as many as six impossible things before breakfast.”',
-          rightPageQuote2: '“We’re all mad here. I’m mad. You’re mad. How do you know I’m mad? said Alice. You must be, said the Cat, or you wouldn’t have come here.”',
-          tertiaryQuote: '“Begin at the beginning, the King said gravely, and go on till you come to the end: then stop.”',
-          commentary: 'Lewis Carroll’s timeless masterpiece of whimsical logic.',
-        },
-        {
-          chapterLabel: 'Chapter VI • The Cheshire Cat',
-          openingLine: '“Would you tell me, please, which way I ought to go from here?” “That depends a good deal on where you want to get to,” said the Cat.',
-          secondaryQuote: '“It’s no use going back to yesterday, because I was a different person then.”',
-          quoteExcerpt: '“Begin at the beginning, the King said gravely, and go on till you come to the end: then stop.”',
-          rightPageQuote2: '“Who in the world am I? Ah, that’s the great puzzle!”',
-          commentary: 'Wonderland’s riddles on identity, curiosity, and sense.',
-        },
-      ];
-    }
-
-    if (featured.id === 174) {
-      return [
-        {
-          chapterLabel: 'Preface • The Aesthetic Creed',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“The only way to get rid of a temptation is to yield to it. Resist it, and your soul grows sick with longing for the things it has forbidden to itself.”',
-          leftPageQuote2: '“Those who find beautiful meanings in beautiful things are the cultivated. For these there is hope.”',
-          quoteExcerpt: '“The books that the world calls immoral are books that show the world its own shame.”',
-          rightPageQuote2: '“I don’t want to be at the mercy of my emotions. I want to use them, to enjoy them, and to dominate them.”',
-          tertiaryQuote: '“Behind every exquisite thing that existed, there was something tragic.”',
-          commentary: 'Oscar Wilde’s penetrating exploration of art, vanity, and the soul.',
-        },
-        {
-          chapterLabel: 'Chapter II • The Portrait’s Secret',
-          openingLine: '“Those who find beautiful meanings in beautiful things are the cultivated. For these there is hope.”',
-          secondaryQuote: '“Behind every exquisite thing that existed, there was something tragic.”',
-          quoteExcerpt: '“Experience is merely the name men gave to their mistakes.”',
-          rightPageQuote2: '“To define is to limit.”',
-          commentary: 'Lord Henry Wotton’s paradoxical aphorisms in Basil Hallward’s studio.',
-        },
-      ];
-    }
-
-    if (featured.id === 1661) {
-      return [
-        {
-          chapterLabel: 'A Scandal in Bohemia',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“It is a capital mistake to theorize before one has data. Insensibly one begins to twist facts to suit theories, instead of theories to suit facts.”',
-          leftPageQuote2: '“You see, but you do not observe. The distinction is clear, my dear Watson.”',
-          quoteExcerpt: '“When you have eliminated the impossible, whatever remains, however improbable, must be the truth.”',
-          rightPageQuote2: '“There is nothing more deceptive than an obvious fact.”',
-          tertiaryQuote: '“To a great mind, nothing is little.”',
-          commentary: 'Arthur Conan Doyle’s quintessential masterclass in deductive logic.',
-        },
-        {
-          chapterLabel: 'The Boscombe Valley Mystery',
-          openingLine: '“You see, but you do not observe. The distinction is clear, my dear Watson.”',
-          secondaryQuote: '“To a great mind, nothing is little.”',
-          quoteExcerpt: '“There is nothing more deceptive than an obvious fact.”',
-          rightPageQuote2: '“It has long been an axiom of mine that the little things are infinitely the most important.”',
-          commentary: 'Sherlock Holmes on the art of forensic observation at 221B Baker Street.',
-        },
-      ];
-    }
-
-    if (featured.id === 345) {
-      return [
-        {
-          chapterLabel: 'Chapter II • Castle Dracula',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“Welcome to my house! Enter freely and of your own will! Come freely. Go safely; and leave something of the happiness you bring!”',
-          leftPageQuote2: '“Listen to them, the children of the night. What music they make!”',
-          quoteExcerpt: '“There are darknesses in life and there are lights, and you are one of the lights, the light of all lights.”',
-          rightPageQuote2: '“We learn from failure, not from success!”',
-          tertiaryQuote: '“There is a reason why all things are as they are.”',
-          commentary: 'Bram Stoker’s legendary gothic terror and epistolary romance.',
-        },
-        {
-          chapterLabel: 'Chapter X • Van Helsing’s Resolve',
-          openingLine: '“Listen to them, the children of the night. What music they make!”',
-          secondaryQuote: '“There is a reason why all things are as they are.”',
-          quoteExcerpt: '“We learn from failure, not from success!”',
-          rightPageQuote2: '“No man knows till he has suffered from the night how sweet and how dear to his heart and eye the morning can be.”',
-          commentary: 'Professor Van Helsing on courage and resilience against the unknown.',
-        },
-      ];
-    }
-
-    if (featured.id === 98) {
-      return [
-        {
-          chapterLabel: 'Book I • The Period',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“It is a far, far better thing that I do, than I have ever done; it is a far, far better rest that I go to than I have ever known.”',
-          leftPageQuote2: '“A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other.”',
-          quoteExcerpt: '“There is a prodigious strength in sorrow and despair. Crushed under mills that ground millions, they could not look up.”',
-          rightPageQuote2: '“I wish you to know that you have been the last dream of my soul.”',
-          tertiaryQuote: '“Liberty, equality, fraternity, or death; the last, much the easiest to bestow.”',
-          commentary: 'Charles Dickens’ epic tapestry of sacrifice and resurrection in revolutionary Paris.',
-        },
-        {
-          chapterLabel: 'Book III • The Footsteps Die Out For Ever',
-          openingLine: '“A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other.”',
-          secondaryQuote: '“I wish you to know that you have been the last dream of my soul.”',
-          quoteExcerpt: '“It is a far, far better thing that I do, than I have ever done; it is a far, far better rest that I go to than I have ever known.”',
-          rightPageQuote2: '“Recalled to life.”',
-          commentary: 'Sydney Carton’s immortal final meditation on redemption and love.',
-        },
-      ];
-    }
-
-    if (featured.id === 35) {
-      return [
-        {
-          chapterLabel: 'Chapter I • The Fourth Dimension',
-          openingLine: featured.openingLine,
-          secondaryQuote: '“We are always getting away from the present moment. Our mental existences are passing along the Time-Dimension with a uniform velocity from the cradle to the grave.”',
-          leftPageQuote2: '“Nature never appeals to intelligence until habit and instinct are useless.”',
-          quoteExcerpt: '“It is a law of nature we overlook, that intellectual versatility is the compensation for change, danger, and trouble.”',
-          rightPageQuote2: '“Face this world. Learn its ways, watch it, be careful of too hasty guesses at its meaning.”',
-          tertiaryQuote: '“We must live and learn, and the world is wide.”',
-          commentary: 'H.G. Wells’ visionary founding text of speculative science fiction.',
-        },
-        {
-          chapterLabel: 'Chapter IV • Time Travelling',
-          openingLine: '“Nature never appeals to intelligence until habit and instinct are useless. There is no intelligence where there is no change and no need of change.”',
-          secondaryQuote: '“We must live and learn, and the world is wide.”',
-          quoteExcerpt: '“Face this world. Learn its ways, watch it, be careful of too hasty guesses at its meaning. In the end you will find clues to it all.”',
-          rightPageQuote2: '“Looking at these stars suddenly dwarfed my own troubles and all the gravities of terrestrial life.”',
-          commentary: 'The Time Traveller’s voyage into the Year 802,701 and the deep future.',
-        },
-      ];
+    if (Array.isArray(featured.quotes) && featured.quotes.length >= 2) {
+      return featured.quotes;
     }
 
     return [
@@ -711,14 +474,6 @@ export function getBookPassages(book: {
         secondaryQuote: `“In the unfolding story of ${featured.title}, ${featured.author} explores timeless truths across ${featured.primarySubject.toLowerCase()}.”`,
         quoteExcerpt: featured.quoteExcerpt,
         commentary: `Preserved in complete unabridged form in the worldwide public domain (${featured.year}).`,
-      },
-      {
-        chapterLabel: 'Chapter II • Notable Passage',
-        openingLine: featured.quoteExcerpt,
-        secondaryQuote: featured.openingLine,
-        quoteExcerpt: `“In the unfolding story of ${featured.title}, ${featured.author} explores timeless truths across ${featured.primarySubject.toLowerCase()}.”`,
-        rightPageQuote2: featured.quoteExcerpt,
-        commentary: `${featured.title} by ${featured.author} — Project Gutenberg Volume #${featured.id}.`,
       },
     ];
   }

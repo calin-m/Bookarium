@@ -8,6 +8,8 @@ import {
   usePrefetchNextPage,
   fetchFeaturedQuotesMap,
   useFeaturedQuotes,
+  fetchQuoteEnrichedBooks,
+  useQuoteEnrichedBooks,
 } from './useBooks';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
@@ -515,6 +517,118 @@ describe('useBooks hook', () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[84]?.[0].chapterLabel).toBe('Letter I');
+
+    clientSpy.mockRestore();
+    configSpy.mockRestore();
+  });
+
+  it('fetches quote-enriched books from Supabase, filters sentinel records, and falls back when unconfigured or offline', async () => {
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+
+    // 1. Unconfigured returns []
+    const configSpy = vi
+      .spyOn(supabaseProviderModule, 'isSupabaseConfigured')
+      .mockReturnValueOnce(false)
+      .mockReturnValue(true);
+    expect(await fetchQuoteEnrichedBooks()).toEqual([]);
+
+    // 2. Offline returns []
+    const onLineGetter = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValueOnce(false);
+    expect(await fetchQuoteEnrichedBooks()).toEqual([]);
+    onLineGetter.mockRestore();
+
+    // 3. Valid rows + sentinel row filtering + error/reject handling
+    const limitMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 1400,
+            title: 'Great Expectations',
+            authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+            translators: [],
+            subjects: ['Bildungsromans'],
+            bookshelves: ['Best Books Ever'],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: { 'text/plain; charset=utf-8': 'https://gutenberg.pglaf.org/1/4/0/1400/1400-0.txt' },
+            download_count: 35000,
+            quotes: [
+              {
+                chapterLabel: 'Passage I • Great Expectations',
+                openingLine: '“My father’s family name being Pirrip, and my Christian name Philip.”',
+                quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+              },
+            ],
+          },
+          {
+            id: 29999,
+            title: 'Index Volume',
+            quotes: [
+              {
+                chapterLabel: 'Edition Record • Project Gutenberg',
+                openingLine: '“Index Volume” — preserved in the Bookarium archive.',
+                quoteExcerpt: 'Unabridged public domain text.',
+                commentary: 'Bibliographic sentinel record — automated passage extraction completed.',
+              },
+            ],
+          },
+        ],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Query error' },
+      })
+      .mockRejectedValueOnce(new Error('Connection error'));
+
+    const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          neq: vi.fn(() => ({
+            order: vi.fn(() => ({
+              limit: limitMock,
+            })),
+          })),
+        })),
+      })),
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+    const books = await fetchQuoteEnrichedBooks(30);
+    expect(books).toHaveLength(1);
+    expect(books[0].id).toBe(1400);
+    expect(books[0].quotes).toHaveLength(1);
+
+    expect(await fetchQuoteEnrichedBooks(30)).toEqual([]);
+    expect(await fetchQuoteEnrichedBooks(30)).toEqual([]);
+
+    // 4. useQuoteEnrichedBooks hook resolves enriched books
+    limitMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Great Expectations',
+              openingLine: '“My father’s family name being Pirrip.”',
+              quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+            },
+          ],
+        },
+      ],
+      error: null,
+    });
+
+    const { TestWrapper } = createWrapper();
+    const { result } = renderHook(() => useQuoteEnrichedBooks({ limit: 25 }), {
+      wrapper: TestWrapper,
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.[0]?.title).toBe('Great Expectations');
 
     clientSpy.mockRestore();
     configSpy.mockRestore();

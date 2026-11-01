@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle, WifiOff } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
+import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { StarRating } from '@/components/ui/StarRating';
@@ -218,6 +219,15 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   // and completely hidden in the main catalog view
   const isCuratable = activeView === 'bookshelf' || activeView === 'favorites';
 
+  const hasInlineBookQuotes = Boolean(book?.quotes && book.quotes.length >= 2);
+  const { data: featuredQuotesMap } = useFeaturedQuotes(
+    book?.id ? [book.id] : [],
+    { enabled: isOpen && !isUnavailableOffline && !hasInlineBookQuotes }
+  );
+  const supabaseQuotes =
+    (hasInlineBookQuotes ? book?.quotes : undefined) ||
+    (book?.id ? featuredQuotesMap?.[book.id] : undefined);
+
   const {
     passages,
     currentPassage,
@@ -233,6 +243,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     title: book?.title ?? '',
     authors: book?.authors ?? [],
     subjects: book?.subjects ?? [],
+    supabaseQuotes,
     enabled: isOpen && !isUnavailableOffline,
   });
 

@@ -46,8 +46,9 @@ export function useBookPassageShuffle({
     return hasCuratedBookPassages(id, title);
   }, [id, title]);
 
-  const targetBookId = enabled && id > 0 ? id : undefined;
-  const targetContentUrl = enabled && id > 0 ? contentUrl : undefined;
+  const hasMultiSpreadSupabaseQuotes = Array.isArray(supabaseQuotes) && supabaseQuotes.length >= 2;
+  const targetBookId = enabled && !hasMultiSpreadSupabaseQuotes && id > 0 ? id : undefined;
+  const targetContentUrl = enabled && !hasMultiSpreadSupabaseQuotes && id > 0 ? contentUrl : undefined;
   const { data: rawBookText, isFetching } = useBookContent(targetContentUrl, targetBookId);
 
   const curatedPassages = useMemo(() => {

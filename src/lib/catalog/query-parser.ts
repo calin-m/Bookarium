@@ -49,6 +49,7 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
 
   const mimeType = (searchParams.get('mime_type') || '').trim() || undefined;
   const ids = (searchParams.get('ids') || '').trim() || undefined;
+  const hasQuotes = searchParams.get('has_quotes') === 'true';
   const includeRestrictedMetadata = searchParams.get('include_restricted_metadata') === 'true';
 
   // Resolve user country through deterministic priority cascade
@@ -65,6 +66,7 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
     sort,
     mimeType,
     ids,
+    hasQuotes: hasQuotes || undefined,
     country,
     includeRestrictedMetadata: includeRestrictedMetadata || undefined,
   };

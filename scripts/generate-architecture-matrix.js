@@ -49,7 +49,7 @@ function extractDatabaseCatalog(rootDirPath) {
     user_book_curation: '`useBookshelfStore`',
     user_reading_habits: '`useHabitsStore`',
     user_accolades: '`useAccoladesStore`',
-    books: '`SupabaseCatalogProvider` / `useFeaturedQuotes`',
+    books: '`SupabaseCatalogProvider` / `useFeaturedQuotes` / `useQuoteEnrichedBooks`',
     book_translations: '`useBookTranslations` / `SupabaseCatalogProvider`',
     reader_circles: '`useFellowshipStore`',
     symposium_sessions: '`useFellowshipStore`',
@@ -96,6 +96,7 @@ function extractDatabaseCatalog(rootDirPath) {
     idx_books_languages: 'Inverted GIN index on `languages` TEXT[] for array-containment language filtering (`languages && ARRAY[...]`).',
     idx_books_subjects: 'Inverted GIN index on `subjects` TEXT[] for topic/subject facet containment queries.',
     idx_books_download_count: 'Descending B-Tree index on `(download_count DESC)` for popularity sorting across 78,000+ volumes.',
+    idx_books_with_quotes_popular: 'Partial descending B-Tree index on `(download_count DESC) WHERE quotes <> \'[]\'::jsonb` for sub-10ms lookups of quote-enriched volumes.',
     idx_books_author_death_year: 'B-Tree index on `(max_author_death_year)` for sub-50ms server-side jurisdictional copyright filtering.',
     idx_book_translations_book_id: 'B-Tree index on `(book_id)` for instant single-book translation lookups in `ReaderLanguageDrawer`.',
     idx_book_translations_work_id: 'B-Tree index on `(work_id)` for canonical FRBR literary work cluster traversal.',
@@ -121,6 +122,7 @@ function extractDatabaseCatalog(rootDirPath) {
     if (isGin) idxType = 'GIN Index';
     else if (isUnique && whereClause) idxType = 'Partial Unique Index';
     else if (isUnique) idxType = 'Unique B-Tree Index';
+    else if (whereClause) idxType = 'Partial B-Tree Index';
 
     indexes.push({
       name: idxName,
@@ -135,7 +137,7 @@ function extractDatabaseCatalog(rootDirPath) {
     {
       file: 'supabase/schema.sql',
       kind: 'Canonical Idempotent DDL & RLS Schema',
-      role: 'Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 22 explicit search/uniqueness indexes.',
+      role: 'Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 23 explicit search/uniqueness indexes.',
     },
     {
       file: 'supabase/seed_books.sql',
@@ -380,7 +382,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run quotes:sync`',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Resolves classic volumes via public.books.content and 3 dedicated per-mirror PGLAF workers (aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms) with independent 8.0s–16.0s randomized float delays and error circuit-breaker cooldowns, extracts 10–16 multi-quote spreads per volume, and updates public.books.quotes JSONB.',
+        'Queries public.books for unpopulated classics ordered by download_count DESC (WHERE quotes = \'[]\'::jsonb), enforces a deterministic 6.0h–12.0h float schedule gate on cron runs, dispatches selectable per-mirror PGLAF workers (gutenberg.pglaf.org default, aleph.gutenberg.org, gutenberg.readingroo.ms) with independent 8.0s–16.0s randomized float delays, extracts 10–16 multi-quote spreads (or a 1-item sentinel guard), and updates public.books.quotes JSONB.',
     },
     {
       name: 'new-adr.js',
@@ -520,10 +522,10 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'src/workers/', role: 'Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations.' },
     { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`).' },
     { path: 'public/', role: 'Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`).' },
-    { path: 'supabase/', role: 'Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`).' },
+    { path: 'supabase/', role: 'Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 23 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`).' },
     { path: 'scripts/', role: '16 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), PGLAF mirror-first featured quotes extraction (`sync-featured-quotes.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites.' },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`), weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), and manual featured quotes ingestion (`quotes-sync.yml`), plus Husky pre-commit quality gates.' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD (`ci.yml`), weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), and scheduled/manual featured quotes ingestion (`quotes-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
 
   let auditTotals = { suites: 187, tests: '1,994' };
@@ -1323,7 +1325,7 @@ function generateMarkdown() {
   );
 
   const hookRoles = {
-    useBooks: 'TanStack Query fetching catalog volumes with sub-pagination and client failover.',
+    useBooks: 'TanStack Query fetching catalog volumes (`useBooks`), featured book quotes (`useFeaturedQuotes`), and popular quote-enriched volumes (`useQuoteEnrichedBooks`) with sub-pagination and client failover.',
     useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
     useBookTranslations: 'TanStack Query aggregating international language translations and editions (gated when offline).',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',

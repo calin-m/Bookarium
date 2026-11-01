@@ -133,7 +133,7 @@ describe('LiteraryQuotes component', () => {
     vi.useRealTimers();
   });
 
-  it('expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes returns spreads', async () => {
+  it('expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads', async () => {
     const { vi } = await import('vitest');
     const useBooksModule = await import('@/hooks/queries/useBooks');
 
@@ -154,11 +154,37 @@ describe('LiteraryQuotes component', () => {
       },
     } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
 
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      data: [
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['Bildungsromans'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 35000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Great Expectations',
+              openingLine: '“My father’s family name being Pirrip and my Christian name Philip.”',
+              quoteExcerpt: '“Suffering has been stronger than all other teaching in my life.”',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
     render(<LiteraryQuotes />);
     expect(
       screen.getByText(/Primary Supabase Pride quote excerpt with over twenty five letters/i)
     ).toBeInTheDocument();
 
+    enrichedSpy.mockRestore();
     quotesSpy.mockRestore();
   });
 });

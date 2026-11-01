@@ -1,40 +1,53 @@
 name: Featured Quotes Sync
 
 on:
+  schedule:
+    # Wakes up every 2 hours; scripts/sync-featured-quotes.js enforces a randomized 6.0h–12.0h float window
+    - cron: '37 */2 * * *'
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Maximum books to sync (default: 25)'
+        description: 'Max books to sync'
         required: false
         type: string
         default: '25'
-      min_delay_sec:
-        description: 'Minimum delay in seconds between mirror requests (supports integers or floats, default: 8)'
+      delay_range:
+        description: 'Delay range in sec (min-max)'
         required: false
         type: string
-        default: '8'
-      max_delay_sec:
-        description: 'Maximum delay in seconds between mirror requests (supports integers or floats, default: 16)'
-        required: false
-        type: string
-        default: '16'
+        default: '8-16'
       target_count:
-        description: 'Target multi-quote spreads per book between 10 and 16 (default: 14)'
+        description: 'Quotes per book (10-16)'
         required: false
         type: string
         default: '14'
       ids:
-        description: 'Optional comma-separated Gutenberg IDs (e.g. 1342,84,2701 — leave blank for all 25 curated classics)'
+        description: 'Gutenberg IDs (blank = auto)'
         required: false
         type: string
         default: ''
+      mirror_pglaf:
+        description: 'Mirror: gutenberg.pglaf.org'
+        required: false
+        type: boolean
+        default: true
+      mirror_aleph:
+        description: 'Mirror: aleph.gutenberg.org'
+        required: false
+        type: boolean
+        default: false
+      mirror_readingroo:
+        description: 'Mirror: gutenberg.readingroo.ms'
+        required: false
+        type: boolean
+        default: false
       force_refresh:
-        description: 'Force refresh books that already have >= 10 quotes (default: false)'
+        description: 'Overwrite existing quotes'
         required: false
         type: boolean
         default: false
       dry_run:
-        description: 'Dry run (extract quotes and generate supabase/seed_quotes.sql without database writes)'
+        description: 'Dry run (no DB writes)'
         required: false
         type: boolean
         default: false
@@ -65,15 +78,37 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
-          INPUT_MIN_DELAY: ${{ github.event.inputs.min_delay_sec }}
-          INPUT_MAX_DELAY: ${{ github.event.inputs.max_delay_sec }}
+          INPUT_DELAY_RANGE: ${{ github.event.inputs.delay_range }}
           INPUT_TARGET_COUNT: ${{ github.event.inputs.target_count }}
           INPUT_IDS: ${{ github.event.inputs.ids }}
+          INPUT_MIRROR_PGLAF: ${{ github.event.inputs.mirror_pglaf }}
+          INPUT_MIRROR_ALEPH: ${{ github.event.inputs.mirror_aleph }}
+          INPUT_MIRROR_READINGROO: ${{ github.event.inputs.mirror_readingroo }}
           INPUT_FORCE: ${{ github.event.inputs.force_refresh }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           QUOTE_ARGS=""
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            QUOTE_ARGS="$QUOTE_ARGS --schedule-gate --mirrors=pglaf"
+          else
+            MIRRORS=""
+            if [ "$INPUT_MIRROR_PGLAF" != "false" ]; then
+              MIRRORS="pglaf"
+            fi
+            if [ "$INPUT_MIRROR_ALEPH" = "true" ]; then
+              MIRRORS="${MIRRORS:+$MIRRORS,}aleph"
+            fi
+            if [ "$INPUT_MIRROR_READINGROO" = "true" ]; then
+              MIRRORS="${MIRRORS:+$MIRRORS,}readingroo"
+            fi
+            if [ -z "$MIRRORS" ]; then
+              echo "Error: At least one mirror worker must be checked." >&2
+              exit 1
+            fi
+            QUOTE_ARGS="$QUOTE_ARGS --mirrors=$MIRRORS"
+          fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             QUOTE_ARGS="$QUOTE_ARGS --dry-run"
           fi
@@ -87,19 +122,12 @@ jobs:
             fi
             QUOTE_ARGS="$QUOTE_ARGS --limit=$INPUT_LIMIT"
           fi
-          if [ -n "$INPUT_MIN_DELAY" ]; then
-            if [[ ! "$INPUT_MIN_DELAY" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-              echo "Error: min_delay_sec input must be a positive number." >&2
+          if [ -n "$INPUT_DELAY_RANGE" ]; then
+            if [[ ! "$INPUT_DELAY_RANGE" =~ ^[0-9]+(\.[0-9]+)?-[0-9]+(\.[0-9]+)?$ ]]; then
+              echo "Error: delay_range input must be min-max numbers (e.g. 8-16)." >&2
               exit 1
             fi
-            QUOTE_ARGS="$QUOTE_ARGS --min-delay=$INPUT_MIN_DELAY"
-          fi
-          if [ -n "$INPUT_MAX_DELAY" ]; then
-            if [[ ! "$INPUT_MAX_DELAY" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-              echo "Error: max_delay_sec input must be a positive number." >&2
-              exit 1
-            fi
-            QUOTE_ARGS="$QUOTE_ARGS --max-delay=$INPUT_MAX_DELAY"
+            QUOTE_ARGS="$QUOTE_ARGS --delay-range=$INPUT_DELAY_RANGE"
           fi
           if [ -n "$INPUT_TARGET_COUNT" ]; then
             if [[ ! "$INPUT_TARGET_COUNT" =~ ^(1[0-6])$ ]]; then
