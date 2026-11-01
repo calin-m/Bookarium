@@ -28,7 +28,7 @@ Please ensure all checks below are verified prior to requesting review:
   - [ ] Coverage meets tiered V8 thresholds (`Lines >= 95%`, `Statements >= 95%`, `Functions >= 92%`, `Branches >= 85%`).
 - [ ] **Pass 4 (Living Documentation Sync)**: Ran `npm run docs:sync` to synchronize `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/QUALITY_AUDIT_REPORT.md`, `CHANGELOG.md`, `ROADMAP.md`, and `README.md`.
 - [ ] **Pass 5 (ADR Ledger, 16-Doc Checklist, 1:1 SQL$\leftrightarrow$TS Schema Parity & Dependency Graph)**: Sequential ADRs in `docs/DECISIONS.md`, 1:1 `supabase/schema.sql` $\leftrightarrow$ `src/types/database.types.ts` parity, 0 circular/orphan modules, and 100% co-located tests.
-- [ ] **Pass 6 (ESLint 9 AST Security & Knip Dead Code Hygiene)**: `npm run lint` (`0` errors, `0` warnings across all 9 `bookarium-security` AST rules) and `npx knip` (`0` unused files, exports, or dependencies).
+- [ ] **Pass 6 (ESLint 10 AST Security & Knip Dead Code Hygiene)**: `npm run lint` (`0` errors, `0` warnings across all 9 `bookarium-security` AST rules) and `npx knip` (`0` unused files, exports, or dependencies).
 - [ ] **Pass 7 (Production Build)**: `npm run build` compiles cleanly within the `< 10 MB` static bundle budget.
 - [ ] **Public Domain & Gutenberg Mirror Integrity**: All remote queries enforce `copyright=false` and prioritize official Project Gutenberg mirrors ahead of `www.gutenberg.org`.
 

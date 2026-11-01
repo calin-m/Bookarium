@@ -52,7 +52,7 @@ if (fs.existsSync(adrPath)) {
   if (adrMatches) adrCount = adrMatches.length;
 }
 
-// 2b. Live ESLint 9 & Knip Quality Audit Inspection
+// 2b. Live ESLint 10 & Knip Quality Audit Inspection
 let eslintErrors = 0;
 let eslintWarnings = 0;
 let knipIssues = [];
@@ -370,9 +370,9 @@ for (const [domainName, suites] of Object.entries(domainMap)) {
 
 mdContent += `---
 
-## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
+## 🧹 Static Analysis & Dead Code Audit (ESLint 10 & Knip)
 
-- **ESLint 9 Code Quality**: **${eslintErrors} errors**, **${eslintWarnings} warnings**
+- **ESLint 10 Code Quality**: **${eslintErrors} errors**, **${eslintWarnings} warnings**
 - **Knip Dead Code & Unused Exports**: **${knipIssues.length} issues** ${knipIssues.length === 0 ? '(0 unused files, 0 unused dependencies, 0 dead exports)' : ''}
 `;
 

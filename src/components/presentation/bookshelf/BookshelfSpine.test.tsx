@@ -487,12 +487,10 @@ describe('BookshelfSpine Component', () => {
 
     const innerActiveSpine = activeSpine.firstElementChild;
     expect(innerActiveSpine).toHaveClass(
-      '-translate-y-3.5',
+      'translate-y-0',
       'scale-105',
-      'ring-2',
-      'ring-primary/50',
-      'brightness-105',
       'z-30'
     );
+    expect(innerActiveSpine).not.toHaveClass('-translate-y-3.5', 'ring-2', 'ring-primary/50', 'brightness-105');
   });
 });

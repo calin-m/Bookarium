@@ -32,7 +32,7 @@ Every commit and pull request must pass all quality gateways with zero blockers:
 | **Pass 3** | Test Suite | Vitest Unit Suite & Coverage Floor | `vitest run --coverage` | Asserts all `210` unit/integration test suites (`2,131` tests) pass with tiered `95/95/92/85` code coverage (`Lines >= 95%`, `Statements >= 95%`, `Functions >= 92%`, `Branches >= 85%`). |
 | **Pass 4** | Living Docs | Living AST Documentation Sync | `docs:sync` toolchain | Programmatically recompiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md` from AST with zero drift. |
 | **Pass 5** | Governance & Parity | ADR, Schema, Graph & Test Co-Location | Markdown/SQL/TS AST verification | Validates contiguous numbering & schema in `docs/DECISIONS.md`, 16-file governance presence, 1:1 `supabase/schema.sql` $\leftrightarrow$ `src/types/database.types.ts` parity, 0 circular/orphan modules, and 100% 1:1 co-located test coverage across all executable files. |
-| **Pass 6** | Quality Suite | Code Quality & Dead Code Audit | ESLint 9 (`--max-warnings 0`) & Knip | Zero ESLint warnings/errors (including the 9-rule `bookarium-security` plugin), zero unreferenced dead files/exports, and zero orphan dependencies. |
+| **Pass 6** | Quality Suite | Code Quality & Dead Code Audit | ESLint 10 (`--max-warnings 0`) & Knip | Zero ESLint warnings/errors (including the 9-rule `bookarium-security` plugin), zero unreferenced dead files/exports, and zero orphan dependencies. |
 | **Pass 7** | Production Build | Next.js Production Build & Chunk Budget | `next build --webpack` | Optimized production Next.js bundle compilation within performance chunk budget. |
 
 ---
@@ -45,7 +45,7 @@ Bookarium provides a comprehensive suite of Node.js scripts in `scripts/` to aut
 | :--- | :--- | :--- |
 | `npm run verify` | [`scripts/verify-build.js`](../scripts/verify-build.js) | Full 7-Gateway Closed-Loop Quality Engine verification. |
 | `npm run security:audit` | [`scripts/verify-build.js`](../scripts/verify-build.js) `--security-only` | Rapid standalone execution of Pass 0.5 (Secrets & Boundaries), Pass 0.75 (7-Pillar SAST, OWASP & 9-Rule AST Taint Suite), and Pass 5 (ADR, Schema & 1:1 Test Co-Location). |
-| `npm run lint` | [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) | Executes ESLint 9 (`--max-warnings 0`) including the custom 9-rule `bookarium-security` AST & intra-procedural request-taint plugin. |
+| `npm run lint` | [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) | Executes ESLint 10 (`--max-warnings 0`) including the custom 9-rule `bookarium-security` AST & intra-procedural request-taint plugin. |
 | `npm run docs:sync` | Living Docs Toolchain | Programmatically re-compiles `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `ROADMAP.md`, `docs/GUTENBERG_PARSER.md`, and `docs/QUALITY_AUDIT_REPORT.md`. |
 | `npm run matrix:generate` | [`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js) | Analyzes Babel AST of all `src/` modules and `scripts/` to compile the living architecture matrix. |
 | `npm run changelog:generate` | [`scripts/generate-changelog.js`](../scripts/generate-changelog.js) | Compiles `CHANGELOG.md` and updates the `README.md` Latest Release block. |

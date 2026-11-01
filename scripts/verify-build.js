@@ -1408,7 +1408,7 @@ function pass5AdrValidation() {
 // -------------------------------------------------------------
 function pass6QualityAudit() {
   logHeader('Pass 6: Quality Suite (ESLint & Knip Audit)');
-  console.log(`${colors.dim}  ↳ Auditing ESLint 9 code quality & Core Web Vitals...${colors.reset}`);
+  console.log(`${colors.dim}  ↳ Auditing ESLint 10 code quality & Core Web Vitals...${colors.reset}`);
   const lintRes = runCommand(`${npmCmd} run lint`);
   if (!lintRes.success) {
     logFail('ESLint reported warnings or errors:');

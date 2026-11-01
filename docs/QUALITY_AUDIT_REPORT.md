@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 01 Nov 2026 11:30:16 GMT  
+**Last Generated**: Sun, 01 Nov 2026 12:07:39 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 210 passed  
 **Total Verified Tests**: 2131 passed  
@@ -18,7 +18,7 @@
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2131 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 77 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 78 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -27,9 +27,9 @@
 ## 📊 Code Coverage Metrics
 
 - **Lines**: **96.65%** (11359/11752) — *Target: $\ge$ 95%*
-- **Statements**: **95.21%** (12308/12926) — *Target: $\ge$ 95%*
+- **Statements**: **95.21%** (12307/12926) — *Target: $\ge$ 95%*
 - **Functions**: **94%** (2650/2819) — *Target: $\ge$ 92%*
-- **Branches**: **88.01%** (11211/12737) — *Target: $\ge$ 85%*
+- **Branches**: **88.01%** (11210/12737) — *Target: $\ge$ 85%*
 
 ---
 
@@ -3444,9 +3444,9 @@
 
 ---
 
-## 🧹 Static Analysis & Dead Code Audit (ESLint 9 & Knip)
+## 🧹 Static Analysis & Dead Code Audit (ESLint 10 & Knip)
 
-- **ESLint 9 Code Quality**: **0 errors**, **0 warnings**
+- **ESLint 10 Code Quality**: **0 errors**, **0 warnings**
 - **Knip Dead Code & Unused Exports**: **0 issues** (0 unused files, 0 unused dependencies, 0 dead exports)
 ---
 

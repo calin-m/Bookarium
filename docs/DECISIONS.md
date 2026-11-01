@@ -1824,7 +1824,7 @@
   1. **Missing Tactile Feedback on Touch Devices**: On desktop, hovering a mouse cursor over a book spine on the bookshelf applies CSS `:hover` transforms (`group-hover:scale-105 group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] origin-bottom transition-all duration-300 ease-out`), creating the physical sensation of stepping forward and drawing the volume out from the bookcase.
   2. **Abrupt Modal Overlays on Touch & Tablets**: Touch screens (smartphones, iPads, tablets, and touchscreen laptops) do not have persistent cursor hover. When tapping a spine, `BookshelfRack` immediately opened `BookshelfMobileModal` without any active state on the spine element itself. As a result, the volume on the shelf underneath never physically elevated or drew forward, and when the user dismissed the modal, the volume never animated back into the shelf slot.
 - **Decision**:
-  1. **Controlled Active Spine State (`isActive`)**: Added `isActive?: boolean` to `BookshelfSpineProps` in `src/components/presentation/bookshelf/BookshelfSpine.tsx`. When `isActive` is true, the spine's outer container is promoted to `z-30` (`data-active-spine="true"`), and the hardcover spine element applies an elevated physical transform (`-translate-y-3.5 scale-105 shadow-[0_20px_35px_-5px_rgba(0,0,0,0.75)] ring-2 ring-primary/50 brightness-105 z-30`).
+  1. **Controlled Active Spine State (`isActive` with 1:1 Cursor Hover Parity)**: Added `isActive?: boolean` to `BookshelfSpineProps` in `src/components/presentation/bookshelf/BookshelfSpine.tsx`. When `isActive` is true, the spine's outer container is promoted to `z-30` (`data-active-spine="true"`), and the hardcover spine element applies the exact same grounded physical transform as cursor hover (`translate-y-0 scale-105 shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] origin-bottom z-30`) — eliminating artificial colored rings/outlines, vertical floating lift, and brightness distortions, keeping the volume firmly seated on the wooden bookcase shelf.
   2. **Two-Phase Anticipation Choreography (`BookshelfRack.tsx`)**: In `BookshelfRack`, introduced `activeSpineBookId` state and `openModalTimerRef`. On touch or compact viewports, tapping a book spine immediately elevates the spine and applies a subtle `120ms` micro-lead delay before mounting `BookshelfMobileModal`. This allows the user's eye to clearly witness the volume stepping forward from the wooden shelf rail before the action modal blooms into view.
   3. **Visual Inspection Anchor & Synchronized Return**: While the modal is open, the volume remains visibly drawn out behind the transparent backdrop (`bg-transparent`), maintaining spatial orientation. When the modal is dismissed (via `closeMobileSheet`), `activeSpineBookId` resets to `null`, smoothly gliding the spine back down (`translate-y-0 scale-100` over `300ms ease-out`) into its exact shelf slot as the modal fades out.
   4. **Accessibility & Reduced Motion**: Preserved `motion-reduce:transition-none` on the spine element for users with vestibular sensitivities.
@@ -1866,6 +1866,27 @@
   - Dramatically improves mobile readability, hierarchy, and aesthetic polish in the Account Hub.
   - Establishes a clean separation between collection counts and habit streaks.
   - 100% 1:1 co-located test coverage across `AccountIdentityCard.test.tsx` and `src/app/account/page.test.tsx` with zero ESLint warnings.
+
+---
+
+## ADR-078: Babel 8 AST Engine, ESLint 10 Flat Config & Core Dependency Upgrades
+
+- **Date**: 2026-11-01
+- **Status**: Accepted
+- **Context**:
+  1. **Babel 8 Major Release & `ImportExpression` AST Shift**: `@babel/parser` v8 (`8.0.8`) and `@babel/traverse` v8 (`8.0.8`) transitioned to native ES modules (loaded via Node 22/24 `require(esm)`), bundled first-party TypeScript definitions (obsoleting `@types/babel__traverse`), and aligned dynamic `import('...')` nodes with the ESTree `ImportExpression` specification (`node.source.value`) instead of Babel 7's `CallExpression(callee: Import)`.
+  2. **ESLint 10 Major Release & Core Ecosystem Bumps**: ESLint v10 (`10.13.0`) finalized flat-config-only execution (`eslint.config.mjs`) and property-based `RuleContext` APIs (`context.filename`, `context.sourceCode`), alongside new releases of `@tanstack/react-query` (`5.105.0`), `zustand` (`5.0.16`), and `postcss` (`8.5.32`).
+- **Decision**:
+  1. **Lockstep Babel 8 Upgrade & Dual-Compatible `ImportExpression` Visitors (`package.json`, `scripts/lib/ast-parser.js`, `scripts/generate-parser-docs.js`, `scripts/eslint-rules/bookarium-security.js`)**:
+     - Upgraded `@babel/parser` and `@babel/traverse` in lockstep to `^8.0.8` and removed `@types/babel__traverse`.
+     - Normalized `@babel/traverse` module loading (`traverseModule.default || traverseModule`) and added `ImportExpression` AST visitors alongside `CallExpression` in `scripts/lib/ast-parser.js` and `scripts/eslint-rules/bookarium-security.js` (`no-client-server-boundary-violation`).
+  2. **ESLint 10 & Runtime Dependency Synchronization (`package.json`, `scripts/verify-build.js`, `scripts/generate-quality-report.js`)**:
+     - Upgraded `eslint` to `^10.13.0`, `@tanstack/react-query` to `^5.105.0`, `zustand` to `^5.0.16`, and `postcss` to `^8.5.32`.
+- **Consequences**:
+  - All 5 open Dependabot pull requests (`#15` through `#19`) are resolved in a single zero-drift, non-breaking upgrade.
+  - Dynamic `next/dynamic` imports and client/server boundary checks operate identically across Babel 8 AST and ESLint 10 ESTree parsers.
+  - Zero ESLint warnings/errors, zero Knip dead dependencies, and 100% pass rate across all 7 quality gateways.
+
 
 
 

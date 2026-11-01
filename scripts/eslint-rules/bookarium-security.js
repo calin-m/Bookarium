@@ -800,6 +800,17 @@ const rules = {
             }
           }
         },
+        ImportExpression(node) {
+          if (!isClientFile) return;
+          const arg0 = node.source;
+          if (
+            arg0 &&
+            (arg0.type === 'Literal' || arg0.type === 'StringLiteral') &&
+            typeof arg0.value === 'string'
+          ) {
+            checkImportSource(arg0, arg0.value);
+          }
+        },
         MemberExpression(node) {
           if (!isClientFile) return;
           if (isProcessEnvObject(node.object)) {
@@ -1641,7 +1652,8 @@ const rules = {
  */
 function runStandaloneAstSecurityAudit(rootDir) {
   const parser = require('@babel/parser');
-  const traverse = require('@babel/traverse').default;
+  const traverseModule = require('@babel/traverse');
+  const traverse = traverseModule.default || traverseModule;
 
   const srcDir = path.join(rootDir, 'src');
   const violations = [];

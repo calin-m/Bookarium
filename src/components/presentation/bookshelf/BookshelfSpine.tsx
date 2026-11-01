@@ -180,7 +180,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
       <div
         className={`relative w-full h-full rounded-t-sm bg-gradient-to-r ${palette.bg} origin-bottom transition-all duration-300 ease-out motion-reduce:transition-none flex flex-col justify-between p-2 sm:p-2.5 border-t border-white/25 overflow-hidden ${
           isActive
-            ? '-translate-y-3.5 scale-105 shadow-[0_20px_35px_-5px_rgba(0,0,0,0.75)] ring-2 ring-primary/50 brightness-105 z-30'
+            ? 'translate-y-0 scale-105 shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] z-30'
             : 'translate-y-0 scale-100 shadow-md group-hover:shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] group-hover:scale-105'
         } ${
           isRestricted || isUnavailableOffline

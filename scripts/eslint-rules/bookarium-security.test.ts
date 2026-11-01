@@ -3,7 +3,8 @@ import path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const parser = require('@babel/parser');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const traverse = require('@babel/traverse').default;
+const traverseModule = require('@babel/traverse');
+const traverse = traverseModule.default || traverseModule;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const bookariumSecurity = require('./bookarium-security');
 
@@ -134,12 +135,14 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         `'use client';
         import { createClient } from '@/lib/supabase/server';
         import fs from 'fs';
+        const loadMiddleware = () => import('@/lib/supabase/middleware');
         const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const { DATABASE_URL } = process.env;`,
         'src/components/reader/ReaderSurface.tsx'
       );
-      expect(violations.length).toBeGreaterThanOrEqual(4);
+      expect(violations.length).toBeGreaterThanOrEqual(5);
       expect(violations.some((v) => v.message.includes('@/lib/supabase/server'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('@/lib/supabase/middleware'))).toBe(true);
       expect(violations.some((v) => v.message.includes('"fs" is a server-only module'))).toBe(true);
       expect(violations.some((v) => v.message.includes('SUPABASE_SERVICE_ROLE_KEY'))).toBe(true);
       expect(violations.some((v) => v.message.includes('DATABASE_URL'))).toBe(true);

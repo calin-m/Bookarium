@@ -9,7 +9,8 @@
 const fs = require('fs');
 const path = require('path');
 const parser = require('@babel/parser');
-const traverse = require('@babel/traverse').default;
+const traverseModule = require('@babel/traverse');
+const traverse = traverseModule.default || traverseModule;
 
 /**
  * Recursively retrieves all TypeScript/TSX source files, excluding test and mock suites.
@@ -133,6 +134,16 @@ function analyzeDependencyGraph(srcDir, rootDir) {
               if (importSource.startsWith('@/') || importSource.startsWith('.')) {
                 internalImports.push(importSource);
               }
+            }
+          }
+        },
+        ImportExpression({ node }) {
+          const arg = node.source;
+          if (arg && (arg.type === 'StringLiteral' || arg.type === 'Literal') && arg.value) {
+            const importSource = arg.value;
+            rawImports.push(importSource);
+            if (importSource.startsWith('@/') || importSource.startsWith('.')) {
+              internalImports.push(importSource);
             }
           }
         },

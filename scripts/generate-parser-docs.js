@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const parser = require('@babel/parser');
-const traverse = require('@babel/traverse').default;
+const traverseModule = require('@babel/traverse');
+const traverse = traverseModule.default || traverseModule;
 
 const rootDir = path.resolve(__dirname, '..');
 const gutenbergDir = path.join(rootDir, 'src', 'lib', 'gutenberg');

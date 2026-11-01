@@ -815,7 +815,7 @@ Root build, compiler, styling, deployment, static analysis, and multi-agent gove
 | **`tailwind.config.ts`** | [`tailwind.config.ts`](tailwind.config.ts) | Editorial Design System & Theme Tokens | Defines Booksaw editorial color variables (`background`, `foreground`, `primary`, `surface-elevated`), serif/sans/mono font stacks, `shadow-booksaw` depth shadows, and 3D page-turn keyframes. |
 | **`postcss.config.mjs`** | [`postcss.config.mjs`](postcss.config.mjs) | Tailwind CSS v4 Oxide PostCSS Pipeline | Registers `@tailwindcss/postcss` v4 Oxide compiler plugin for zero-runtime CSS generation. |
 | **`src/app/globals.css`** | [`src/app/globals.css`](src/app/globals.css) | Global Theme Palettes & 3D Book Physics CSS | Configures `@import "tailwindcss"`, `@config "../../tailwind.config.ts"`, Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) CSS custom properties, 3D perspective book spreads (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars (`--reader-sb-*`). |
-| **`eslint.config.mjs`** | [`eslint.config.mjs`](eslint.config.mjs) | ESLint 9 Flat Config, Zero-Any & 9-Rule AST Security Gate | Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, strict `@typescript-eslint/no-explicit-any: "error"`, and the in-repo `bookarium-security` AST & intra-procedural taint plugin (9 rules) with `--max-warnings 0`. |
+| **`eslint.config.mjs`** | [`eslint.config.mjs`](eslint.config.mjs) | ESLint 10 Flat Config, Zero-Any & 9-Rule AST Security Gate | Enforces `eslint-config-next/core-web-vitals`, `eslint-config-next/typescript`, strict `@typescript-eslint/no-explicit-any: "error"`, and the in-repo `bookarium-security` AST & intra-procedural taint plugin (9 rules) with `--max-warnings 0`. |
 | **`knip.json`** | [`knip.json`](knip.json) | Dead Code & Orphan Dependency Auditor | Configures Knip entrypoints (`src/proxy.ts`, `src/workers/*.ts`, `src/components/motion/*.tsx`) to guarantee zero unused files, zero dead exports, and zero orphan dependencies in Pass 6. |
 | **`vitest.config.mts`** | [`vitest.config.mts`](vitest.config.mts) | Vitest Runner & Tiered V8 Coverage Gate (95/95/92/85) | Configures JSDOM test environment, `src/test/setup.ts` bootstrap, `maxWorkers: 4`, and hard V8 coverage thresholds (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`). |
 | **`.husky/pre-commit`** | [`.husky/pre-commit`](.husky/pre-commit) | Git Pre-Commit Quality & Approval Gate | Executes `npm run gate:approve` (`scripts/approval-gate.js`) and `npm run verify` (`scripts/verify-build.js`) prior to any commit creation. |
@@ -915,7 +915,7 @@ flowchart TD
 | **`public/`** | Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`). |
 | **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 22 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
 | **`scripts/`** | 15 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites. |
-| **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 77 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
+| **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 78 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
 | **`.github/workflows/ & .husky/`** | Automated GitHub Actions CI/CD (`ci.yml`) and weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), plus Husky pre-commit quality gates. |
 
 ### 2. Living Documentation & Governance Artifacts Catalog
@@ -924,7 +924,7 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | **[`README.md`](README.md)** | Hybrid (Curated + Script-Synced) | `scripts/generate-changelog.js` & `scripts/generate-quality-report.js` | Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks. |
 | **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** | 100% AST-Generated | `scripts/generate-architecture-matrix.js` | Complete full-repository C4 architecture map, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology. |
-| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | Append-Only Governance Ledger | `scripts/new-adr.js` (Validated in Pass 5) | Sequential Architectural Decision Records (ADR-001 through ADR-077) documenting context, trade-offs, and consequences. |
+| **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | Append-Only Governance Ledger | `scripts/new-adr.js` (Validated in Pass 5) | Sequential Architectural Decision Records (ADR-001 through ADR-078) documenting context, trade-offs, and consequences. |
 | **[`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md)** | 100% AST-Generated | `scripts/generate-parser-docs.js` | Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine. |
 | **[`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all 210 test suites and 2,131 tests. |
 | **[`docs/quality-audit-results.json`](docs/quality-audit-results.json)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals. |
@@ -1176,7 +1176,7 @@ Bookarium executes on **Node.js `>=22.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | :--- | :--- | :--- | :--- |
 | **`@supabase/ssr`** | `^0.12.7` | Production Runtime | Server-Side Rendering (SSR) cookie-based authentication and Supabase client creation. |
 | **`@supabase/supabase-js`** | `^2.118.0` | Production Runtime | Universal client for PostgreSQL, Row-Level Security, GIN search & cloud synchronization. |
-| **`@tanstack/react-query`** | `^5.104.3` | Production Runtime | Asynchronous server-state management, cache deduplication & windowed predictive prefetching. |
+| **`@tanstack/react-query`** | `^5.105.0` | Production Runtime | Asynchronous server-state management, cache deduplication & windowed predictive prefetching. |
 | **`@vercel/analytics`** | `^2.0.1` | Production Runtime | Privacy-preserving, cookie-less audience telemetry on Vercel Edge. |
 | **`@vercel/speed-insights`** | `^2.0.0` | Production Runtime | Real User Monitoring (RUM) for Core Web Vitals (LCP, FID, CLS, INP). |
 | **`clsx`** | `^2.1.1` | Production Runtime | Utility for constructing conditional classNames efficiently. |
@@ -1186,14 +1186,13 @@ Bookarium executes on **Node.js `>=22.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | **`react`** | `^19.3.1` | Production Runtime | React 19 declarative component and rendering engine. |
 | **`react-dom`** | `^19.3.1` | Production Runtime | DOM renderer for React 19. |
 | **`tailwind-merge`** | `^3.7.0` | Production Runtime | Deterministic conflict resolution for Tailwind utility classes with custom shadow groups. |
-| **`zustand`** | `^5.0.2` | Production Runtime | Lightweight client-side persistent state stores (IndexedDB, localStorage, outbox reconciliation). |
-| **`@babel/parser`** | `^7.29.9` | Development & AST Tooling | Babel parser generating ESTree AST for living documentation and architectural analysis. |
-| **`@babel/traverse`** | `^7.29.10` | Development & AST Tooling | AST node traversal for programmatic dependency graph and import/export extraction. |
+| **`zustand`** | `^5.0.16` | Production Runtime | Lightweight client-side persistent state stores (IndexedDB, localStorage, outbox reconciliation). |
+| **`@babel/parser`** | `^8.0.8` | Development & AST Tooling | Babel parser generating ESTree AST for living documentation and architectural analysis. |
+| **`@babel/traverse`** | `^8.0.8` | Development & AST Tooling | AST node traversal for programmatic dependency graph and import/export extraction. |
 | **`@tailwindcss/postcss`** | `^4.3.3` | Development & AST Tooling | PostCSS integration for Tailwind CSS v4 Oxide compilation. |
 | **`@testing-library/jest-dom`** | `^7.0.1` | Development & AST Tooling | Custom DOM matchers for accessible assertion verification. |
 | **`@testing-library/react`** | `^16.1.0` | Development & AST Tooling | Framework-agnostic React component testing verifying authentic user journeys. |
 | **`@testing-library/user-event`** | `^14.6.8` | Development & AST Tooling | Simulates authentic pointer and keyboard interactions in test suites. |
-| **`@types/babel__traverse`** | `^7.20.6` | Development & AST Tooling | TypeScript definitions for Babel AST traversal. |
 | **`@types/node`** | `^22.20.5` | Development & AST Tooling | TypeScript definitions for Node.js runtime and standard library APIs. |
 | **`@types/react`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React 19 core primitives. |
 | **`@types/react-dom`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React DOM. |
@@ -1201,13 +1200,13 @@ Bookarium executes on **Node.js `>=22.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | **`@vitest/coverage-v8`** | `^4.1.12` | Development & AST Tooling | Native V8 code coverage provider enforcing tiered 95/95/92/85% test thresholds. |
 | **`@vitest/ui`** | `^4.1.12` | Development & AST Tooling | Interactive graphical browser interface for Vitest execution. |
 | **`concurrently`** | `^10.0.6` | Development & AST Tooling | Parallel task orchestration for dev servers, watchers, and browser launchers. |
-| **`eslint`** | `^9.39.5` | Development & AST Tooling | Pluggable static analysis linter enforcing code quality and type safety. |
+| **`eslint`** | `^10.13.0` | Development & AST Tooling | Pluggable static analysis linter enforcing code quality and type safety. |
 | **`eslint-config-next`** | `^16.4.3` | Development & AST Tooling | Next.js 16 ESLint ruleset enforcing App Router, Core Web Vitals, and TypeScript standards. |
 | **`husky`** | `^9.1.7` | Development & AST Tooling | Git hooks orchestration gating pre-commit verification. |
 | **`jsdom`** | `^25.0.1` | Development & AST Tooling | Headless browser DOM environment for Node.js Vitest test execution. |
 | **`knip`** | `^6.41.0` | Development & AST Tooling | Static analysis auditor detecting unused dependencies, dead exports, and orphaned files. |
 | **`msw`** | `^2.15.0` | Development & AST Tooling | Mock Service Worker v2 intercepting network requests for isolated deterministic testing. |
-| **`postcss`** | `^8.5.30` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
+| **`postcss`** | `^8.5.32` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
 | **`tailwindcss`** | `^4.3.3` | Development & AST Tooling | Utility-first CSS framework v4 with Oxide compiler engine. |
 | **`typescript`** | `^5.9.3` | Development & AST Tooling | Static type system verifying strict compile-time safety (zero any). |
 | **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 210 unit and integration suites. |

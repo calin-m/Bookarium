@@ -195,7 +195,6 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 194) {
     '@testing-library/jest-dom': 'Custom DOM matchers for accessible assertion verification.',
     '@testing-library/react': 'Framework-agnostic React component testing verifying authentic user journeys.',
     '@testing-library/user-event': 'Simulates authentic pointer and keyboard interactions in test suites.',
-    '@types/babel__traverse': 'TypeScript definitions for Babel AST traversal.',
     '@types/node': 'TypeScript definitions for Node.js runtime and standard library APIs.',
     '@types/react': 'TypeScript definitions for React 19 core primitives.',
     '@types/react-dom': 'TypeScript definitions for React DOM.',
@@ -448,7 +447,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
     {
       name: 'eslint.config.mjs',
       file: 'eslint.config.mjs',
-      layer: `ESLint 9 Flat Config, Zero-Any & ${getSecurityPluginRuleCount()}-Rule AST Security Gate`,
+      layer: `ESLint 10 Flat Config, Zero-Any & ${getSecurityPluginRuleCount()}-Rule AST Security Gate`,
       responsibility:
         `Enforces \`eslint-config-next/core-web-vitals\`, \`eslint-config-next/typescript\`, strict \`@typescript-eslint/no-explicit-any: "error"\`, and the in-repo \`bookarium-security\` AST & intra-procedural taint plugin (${getSecurityPluginRuleCount()} rules) with \`--max-warnings 0\`.`,
     },
