@@ -56,7 +56,10 @@
   },
   "overrides": {
     "postcss-selector-parser": "^7.1.6",
-    "fast-glob": "npm:tinyglobby@^0.2.17"
+    "fast-glob": "npm:tinyglobby@^0.2.17",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
   },
   "devDependencies": {
     "@babel/parser": "^7.29.9",

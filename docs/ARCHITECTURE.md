@@ -1,7 +1,7 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-10-31`  
+> **Last Synchronized**: `2026-11-01`  
 > **Topology Health**: `209` Modules Analyzed • `847` Static Linkages • `0` Circular Dependencies • `0` Orphaned Modules
 
 ---
@@ -1212,6 +1212,7 @@ Bookarium executes on **Node.js `>=22.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 210 unit and integration suites. |
 | **`postcss-selector-parser`** | `^7.1.6` | Supply-Chain Security Override | Supply-chain override pinning selector parser to patched secure release. |
 | **`fast-glob`** | `npm:tinyglobby@^0.2.17` | Supply-Chain Security Override | Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities. |
+| **`@typescript-eslint/typescript-estree`** | `minimatch: ^11.0.1` | Supply-Chain Security Override | Supply-chain override upgrading transitive minimatch in typescript-estree to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249). |
 
 ---
 

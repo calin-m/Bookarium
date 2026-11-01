@@ -217,6 +217,8 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 194) {
     // Overrides
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
     'postcss-selector-parser': 'Supply-chain override pinning selector parser to patched secure release.',
+    '@typescript-eslint/typescript-estree':
+      'Supply-chain override upgrading transitive minimatch in typescript-estree to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249).',
   };
 
   if (pkg.dependencies) {
@@ -243,9 +245,15 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 194) {
 
   if (pkg.overrides) {
     for (const [name, version] of Object.entries(pkg.overrides)) {
+      const formattedVersion =
+        version && typeof version === 'object'
+          ? Object.entries(version)
+              .map(([subPkg, subVer]) => `${subPkg}: ${subVer}`)
+              .join(', ')
+          : version;
       packages.push({
         name,
-        version,
+        version: formattedVersion,
         tier: 'Supply-Chain Security Override',
         purpose: purposeMap[name] || 'Dependency security override.',
       });
