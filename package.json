@@ -62,7 +62,7 @@
     }
   },
   "devDependencies": {
-    "@babel/parser": "^7.29.9",
+    "@babel/parser": "^8.0.8",
     "@babel/traverse": "^7.29.10",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
