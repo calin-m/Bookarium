@@ -382,7 +382,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run quotes:sync`',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Queries public.books for unpopulated classics ordered by download_count DESC (WHERE quotes = \'[]\'::jsonb), enforces a deterministic 6.0h–12.0h float schedule gate on cron runs, dispatches selectable per-mirror PGLAF workers (gutenberg.pglaf.org default, aleph.gutenberg.org, gutenberg.readingroo.ms) with independent 8.0s–16.0s randomized float delays, extracts 10–16 multi-quote spreads (or a 1-item sentinel guard), and updates public.books.quotes JSONB.',
+        'Maintains a Two-Tier Bounded Quote Pool (`Top 1,000 Popular` by `download_count DESC` + `Rolling 128 Most Recent` by `id DESC`) in `public.books.quotes` (blending `20 Popular + 5 Recent` unpopulated English volumes per batch with cross-tier backfill and out-of-window auto-pruning), enforces a deterministic 6.0h–12.0h float schedule gate on cron runs, dispatches selectable per-mirror PGLAF workers (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays, and extracts 10–16 multi-quote spreads (or a 1-item sentinel guard).',
     },
     {
       name: 'new-adr.js',
@@ -695,7 +695,7 @@ function generateMarkdown() {
     '        HookNetwork["📡 useNetworkStatus & useOfflineCatalogFallback\\n(Reactive Online/Offline Store & Adaptive Offline Catalog)"]',
     '        HookAutoHeal["🩺 useCollectionAutoHeal & useNotebookMetadataResolver\\n(Author Lifespan & Marginalia Metadata Auto-Rehydration)"]',
     '        HookCatalogFilters["🎛️ useCatalogFilters & useAccountSecurityActions\\n(Catalog Filter Staging & OWASP Account Security Workflows)"]',
-    '        QueryBooks["🔄 useBooks, useFeaturedQuotes & usePrefetchNextPage\\n(Windowed Sub-Pages, Primary Quotes JSONB & Predictive Prefetch)"]',
+    '        QueryBooks["🔄 useBooks, useFeaturedQuotes, useQuoteEnrichedBooks & usePrefetchNextPage\\n(Windowed Sub-Pages, Primary Quotes JSONB, Live Enrichment & Predictive Prefetch)"]',
     '        QueryContent["🔄 useBookContent(url, bookId)\\n(Offline-Always IndexedDB Check to CDN Stream)"]',
     '        QueryTranslate["🌐 useBookTranslations\\n(International Editions Relational Handoff)"]',
     '        Telemetry["📊 Vercel Telemetry\\n(Analytics & Speed Insights)"]',
@@ -835,7 +835,7 @@ function generateMarkdown() {
     '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
     '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
-    '    SyncQuotes -->|Manual Dispatch Quotes JSONB Upsert| SupabaseCloud',
+    '    SyncQuotes -->|6.0h–12.0h Float-Gated Two-Tier Quotes JSONB Upsert & Prune| SupabaseCloud',
     '    SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN',
     '    ',
     '    Views --> StateStores',
@@ -1487,9 +1487,11 @@ function generateMarkdown() {
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `pg_catalog.csv.gz` (5.5MB) through gunzip and batch-upserts 78,000+ public domain titles with adaptive timeout division. |',
     '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting and atomic SQL generation. |',
+    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / `6.0h–12.0h` Float Cron | Maintains a Two-Tier Bounded Quote Pool (`Top 1,000 Popular + Rolling 128 Most Recent`) in `public.books.quotes` (`20 Popular + 5 Recent` blended batch + auto-pruning) across selectable PGLAF mirrors with `8.0s–16.0s` float pacing. |',
     '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
     '| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and chaining translation sync. |',
     '| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow clustering upstream Wikidata editions and syncing to `public.book_translations`. |',
+    '| **`quotes-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/quotes-sync.yml`](.github/workflows/quotes-sync.yml) | `cron: 37 * * * *` (`6.0h–12.0h` Gate) / On-Demand | Automated & manual GitHub Actions workflow populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`1,000 Popular + 128 Recent`) with compact per-mirror selection. |',
     '| **`ci.yml`** | GitHub Actions Workflow | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `push` / `pull_request` (`master`) | Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification. |'
   );
 
@@ -1709,7 +1711,7 @@ function generateMarkdown() {
       baseName === 'ingest-translations.test.ts'
         ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
         : baseName === 'sync-featured-quotes.test.ts'
-          ? 'Hermetic unit & integration tests verifying 3-worker per-mirror PGLAF quote extraction (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`), independent `8.0s–16.0s` float delay pacing, mirror circuit-breaker cooldowns, and `public.books.quotes` JSONB upserts.'
+          ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 1,000 Popular + Rolling 128 Most Recent`, `20 + 5` split with backfill), out-of-window auto-pruning, `6.0h–12.0h` float schedule gating, per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
           : baseName === 'bookarium-security.test.ts'
             ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
             : 'Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, and adaptive Supabase batch upserts.';
@@ -1903,7 +1905,7 @@ function generateMarkdown() {
     '    subgraph BookariumRuntime ["Bookarium Execution Tiers"]',
     '        BrowserTier["🖥️ Browser Client\\n(React 19 SPA, Service Worker v4, IndexedDB)"]',
     '        EdgeTier["⚡ Vercel Edge & Serverless (iad1)\\n(src/proxy.ts, /api/books/**, /auth/callback)"]',
-    '        CLITier["🛠️ GitHub Actions & Node.js CLI\\n(catalog-sync.yml, translations-sync.yml)"]',
+    '        CLITier["🛠️ GitHub Actions & Node.js CLI\\n(catalog-sync.yml, translations-sync.yml, quotes-sync.yml)"]',
     '    end',
     '',
     '    subgraph ExternalSystems ["External Public Domain & Cloud Infrastructure"]',
@@ -2014,7 +2016,7 @@ function generateMarkdown() {
     '',
     '    subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]',
     '        Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• In-Memory 24h Metadata LRU (1,000 entries) & Sliding-Window Rate Limiters"]',
-    '        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\\n• 14 RLS Tables • 22 B-Tree/GIN Indexes • 6 Stored Functions")]',
+    '        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\\n• 14 RLS Tables • 23 B-Tree/GIN Indexes • 6 Stored Functions")]',
     '        GutenbergUS["🏛️ Project Gutenberg & Gutendex Nodes (US-East Adjacent)"]',
     '    end',
     '',
@@ -2023,6 +2025,7 @@ function generateMarkdown() {
     '        ReleaseWorkflow["🏷️ .github/workflows/release.yml\\n(Tag v* -> Verified GitHub Release)"]',
     '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> sync-gutenberg-catalog.js)"]',
     '        TransCron["🕒 .github/workflows/translations-sync.yml\\n(Sundays 03:00 UTC / Chained -> ingest-translations.js)"]',
+    '        QuotesCron["🕒 .github/workflows/quotes-sync.yml\\n(6.0h–12.0h Float Gate -> sync-featured-quotes.js)"]',
     '    end',
     '',
     '    Client --> EdgeProxy',
@@ -2033,6 +2036,7 @@ function generateMarkdown() {
     '    CatalogCron -->|"Upsert 78k+ Volumes"| SupabaseUS',
     '    CatalogCron -->|"Triggers on Success"| TransCron',
     '    TransCron -->|"Upsert FRBR Clusters"| SupabaseUS',
+    '    QuotesCron -->|"Two-Tier Quotes JSONB Upsert & Prune"| SupabaseUS',
     '```',
     '',
     '### 2. 5-Layer Caching & TTL Hierarchy Matrix',
@@ -2043,7 +2047,7 @@ function generateMarkdown() {
     '| **L2: Browser Persistent** | `localStorage` (10 stores), `IndexedDB` (`bookarium-offline-db`), `CacheStorage` (`bookarium-app-shell-v4`) | User collections/outboxes, unabridged book texts (`offline-storage.ts`), and PWA App Shell + `/_next/static/` chunks | Persistent across restarts; SW `activate` prunes caches `!= bookarium-app-shell-v4` | Origin-locked; IndexedDB texts verified against active jurisdiction on read |',
     '| **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control`) | `GET /api/books` (`s-maxage=3600, swr=86400`); `GET /api/books/content` & `/translations` (`s-maxage=86400, swr=604800`) | 1h fresh / 24h SWR (Catalog); 24h fresh / 7d SWR (Content & Translations) | `Vary: x-vercel-ip-country, Accept-Encoding` prevents cross-border cache bleed |',
     '| **L4: Serverless In-Memory LRU** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts)), Supabase healthcheck (`supabase-provider.ts`), `/read/[id]` SSR metadata | `24h` TTL / `1,000` max entries (Metadata LRU); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by Gutenberg `bookId` |',
-    '| **L5: Database & Repo Seeds** | Supabase PostgreSQL & `supabase/seed_*.sql` | `78,000+` catalog rows (`public.books`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | Updated weekly by GitHub Actions cron workflows | Indexed by 22 explicit B-Tree & GIN `search_vector` indexes |',
+    '| **L5: Database & Repo Seeds** | Supabase PostgreSQL & `supabase/seed_*.sql` | `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 1,128` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by 23 explicit B-Tree & GIN `search_vector` indexes |',
     '',
     '### 3. Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix',
     '',

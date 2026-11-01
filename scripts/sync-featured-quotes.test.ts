@@ -62,7 +62,7 @@ describe('sync-featured-quotes pipeline', () => {
     expect(quotesSync.buildGutenbergPathDir(64317)).toBe('6/4/3/1/64317');
   });
 
-  it('parses CLI arguments including --delay-range, --mirrors, and --schedule-gate', () => {
+  it('parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool', () => {
     const parsed = quotesSync.parseCliArgs([
       '--dry-run',
       '--force',
@@ -70,6 +70,8 @@ describe('sync-featured-quotes pipeline', () => {
       '--limit=10',
       '--delay-range=7.5-15.5',
       '--target-count=15',
+      '--popular-pool=500',
+      '--recent-pool=64',
       '--mirrors=pglaf,readingroo',
       '--ids=1342,84',
     ]);
@@ -80,11 +82,77 @@ describe('sync-featured-quotes pipeline', () => {
     expect(parsed.minDelaySec).toBe(7.5);
     expect(parsed.maxDelaySec).toBe(15.5);
     expect(parsed.targetCount).toBe(15);
+    expect(parsed.popularPool).toBe(500);
+    expect(parsed.recentPool).toBe(64);
     expect(parsed.mirrors).toEqual([
       'https://gutenberg.pglaf.org',
       'https://gutenberg.readingroo.ms',
     ]);
     expect(parsed.ids).toEqual([1342, 84]);
+  });
+
+  it('blends Two-Tier candidates (20 Popular + 5 Recent) with overlap deduplication and automatic backfill, and prunes out-of-window quotes', async () => {
+    const popularRows = Array.from({ length: 30 }, (_, idx) => ({
+      id: idx + 1,
+      title: `Popular Book ${idx + 1}`,
+      quotes: idx < 5 ? [{ openingLine: 'Already quoted' }] : [],
+    }));
+    const recentRows = [
+      { id: 6, title: 'Popular Book 6 (Overlap)', quotes: [] },
+      ...Array.from({ length: 10 }, (_, idx) => ({
+        id: 1000 + idx,
+        title: `Recent Book ${1000 + idx}`,
+        quotes: [],
+      })),
+    ];
+
+    const blended = quotesSync.blendTwoTierCandidates(popularRows, recentRows, {
+      limit: 25,
+      force: false,
+    });
+    expect(blended.candidates).toHaveLength(25);
+    const popularSelected = blended.candidates.filter((b: { id: number }) => b.id < 100);
+    const recentSelected = blended.candidates.filter((b: { id: number }) => b.id >= 1000);
+    expect(popularSelected).toHaveLength(20);
+    expect(recentSelected).toHaveLength(5);
+
+    // Backfill test: when only 2 unpopulated recent books remain, Popular backfills the remaining 23 slots
+    const scarceRecent = [
+      { id: 2001, title: 'New Release 1', quotes: [] },
+      { id: 2002, title: 'New Release 2', quotes: [] },
+    ];
+    const backfilled = quotesSync.blendTwoTierCandidates(popularRows, scarceRecent, {
+      limit: 25,
+      force: false,
+    });
+    expect(backfilled.candidates).toHaveLength(25);
+    expect(backfilled.candidates.filter((b: { id: number }) => b.id >= 2000)).toHaveLength(2);
+    expect(backfilled.candidates.filter((b: { id: number }) => b.id < 100)).toHaveLength(23);
+
+    // Pruning test: resets quotes = [] on books outside (Top 1,000 Popular U Rolling 128 Recent)
+    const pruneInMock = vi.fn().mockResolvedValue({ error: null });
+    const mockPruneSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          neq: vi.fn().mockResolvedValue({
+            data: [{ id: 1 }, { id: 2001 }, { id: 99998 }, { id: 99999 }],
+            error: null,
+          }),
+        })),
+        update: vi.fn(() => ({
+          in: pruneInMock,
+        })),
+      })),
+    };
+    const allowedIds = new Set([1, 2001]);
+    const pruneRes = await quotesSync.pruneOutOfWindowBookQuotes(
+      mockPruneSupabase,
+      allowedIds,
+      { dryRun: false },
+      { log: vi.fn() }
+    );
+    expect(pruneRes.prunedCount).toBe(2);
+    expect(pruneInMock).toHaveBeenCalledWith('id', [99998, 99999]);
   });
 
   it('computes randomized float delays and 6.0h–12.0h float schedule windows', async () => {
@@ -245,18 +313,19 @@ describe('sync-featured-quotes pipeline', () => {
     ];
 
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+    const updateInMock = vi.fn().mockResolvedValue({ error: null });
 
     const mockSupabase = {
       from: vi.fn(() => ({
         select: vi.fn(() => ({
+          neq: vi.fn().mockResolvedValue({ data: [], error: null }),
           eq: vi.fn(() => ({
             eq: vi.fn(() => ({
               contains: vi.fn(() => ({
-                eq: vi.fn(() => ({
+                order: vi.fn(() => ({
+                  limit: vi.fn().mockResolvedValue({ data: [], error: null }),
                   order: vi.fn(() => ({
-                    order: vi.fn(() => ({
-                      limit: vi.fn().mockResolvedValue({ data: candidateRows, error: null }),
-                    })),
+                    limit: vi.fn().mockResolvedValue({ data: candidateRows, error: null }),
                   })),
                 })),
               })),
@@ -265,6 +334,7 @@ describe('sync-featured-quotes pipeline', () => {
         })),
         update: vi.fn(() => ({
           eq: updateEqMock,
+          in: updateInMock,
         })),
       })),
     };
@@ -305,8 +375,8 @@ describe('sync-featured-quotes pipeline', () => {
       }
     );
 
-    expect(summary.processed).toBe(6);
-    expect(summary.skippedExisting).toBe(1); // 1342 skipped (>=10 quotes)
+    expect(summary.processed).toBe(5);
+    expect(summary.skippedExisting).toBe(0); // 1342 already filtered out of Two-Tier candidate pool (>=10 quotes)
     expect(summary.fromSupabaseContent).toBe(1); // 84 extracted from books.content
     expect(summary.fromMirrors).toBe(3); // 2701, 64317, 11 downloaded across healthy mirrors
     expect(summary.sentinelMarked).toBe(1); // 99999 marked with 1-item sentinel spread after 404

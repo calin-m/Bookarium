@@ -3,6 +3,7 @@ name: Featured Quotes Sync
 on:
   schedule:
     # Wakes up every 2 hours; scripts/sync-featured-quotes.js enforces a randomized 6.0h–12.0h float window
+    # and syncs a blended 20 Popular (Top 1,000) + 5 Recent (Rolling 128) batch with out-of-window auto-pruning.
     - cron: '37 */2 * * *'
   workflow_dispatch:
     inputs:

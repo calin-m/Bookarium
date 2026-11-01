@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 01 Nov 2026 19:02:06 GMT  
+**Last Generated**: Sun, 01 Nov 2026 19:42:40 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2155 passed  
+**Total Verified Tests**: 2156 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2155 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2156 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.71%** (11559/11951) — *Target: $\ge$ 95%*
-- **Statements**: **95.32%** (12532/13146) — *Target: $\ge$ 95%*
-- **Functions**: **94.37%** (2699/2860) — *Target: $\ge$ 92%*
-- **Branches**: **87.92%** (11467/13042) — *Target: $\ge$ 85%*
+- **Lines**: **96.74%** (11562/11951) — *Target: $\ge$ 95%*
+- **Statements**: **95.37%** (12538/13146) — *Target: $\ge$ 95%*
+- **Functions**: **94.3%** (2697/2860) — *Target: $\ge$ 92%*
+- **Branches**: **87.85%** (11458/13042) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2155 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2156 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -1688,7 +1688,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 504 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 505 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2423,10 +2423,11 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs and never targets www.gutenberg.org`
-- ✔ `parses CLI arguments including --delay-range, --mirrors, and --schedule-gate`
+- ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
+- ✔ `blends Two-Tier candidates (20 Popular + 5 Recent) with overlap deduplication and automatic backfill, and prunes out-of-window quotes`
 - ✔ `computes randomized float delays and 6.0h–12.0h float schedule windows`
 - ✔ `extracts multi-quote spreads, builds sentinel spreads, and merges upsert-only without duplicates`
 - ✔ `fetches book text from single mirror or across PGLAF mirrors with failover and classifies mirror-level errors`

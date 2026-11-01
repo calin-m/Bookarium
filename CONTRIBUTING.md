@@ -26,7 +26,7 @@ If you discover a potential security vulnerability or sensitive data leak, pleas
 Before opening a PR, familiarize yourself with Bookarium's state and rendering paradigms:
 
 - **Framework**: Next.js 16 (App Router, Turbopack, standalone serverless output).
-- **Remote Data Fetching**: TanStack React Query (`useBooks`, `useFeaturedQuotes`, `useBookContent`, `useBookTranslations`).
+- **Remote Data Fetching**: TanStack React Query (`useBooks`, `useFeaturedQuotes`, `useQuoteEnrichedBooks`, `useBookContent`, `useBookTranslations`).
 - **Local-First State Management**: 10 Zustand stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`).
 - **Background Threading**: Web Workers (`src/workers/gutenberg.worker.ts`, `useGutenbergParserWorker.ts`) offloading chapter regex splitting and pagination spread math.
 - **Offline Persistence**: Dual-layer browser storage (localStorage for positions/preferences; IndexedDB for multi-megabyte unabridged book volumes) backed by an App Shell Service Worker (`public/sw.js`).
