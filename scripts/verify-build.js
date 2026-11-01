@@ -1331,7 +1331,7 @@ function pass5AdrValidation() {
       }
     }
 
-    // Reverse Dead-Link Check: Every ](src/...) or ](scripts/...) link in docs/ARCHITECTURE.md must exist on disk
+      // Reverse Dead-Link Check: Every ](src/...) or ](scripts/...) link in docs/ARCHITECTURE.md must exist on disk
     const archFileLinks = archContent.matchAll(/\]\(((?:src|scripts)\/[A-Za-z0-9_./-]+)\)/g);
     for (const linkMatch of archFileLinks) {
       const linkedRel = linkMatch[1].replace(/\/$/, '');
@@ -1341,6 +1341,59 @@ function pass5AdrValidation() {
       ) {
         docViolations.push(
           `Stale dead file reference "${linkedRel}" in docs/ARCHITECTURE.md (file was deleted or renamed; run "npm run docs:sync").`
+        );
+      }
+    }
+
+    // 360-Degree Architectural Topology & .env.example Variable Documentation Parity Check
+    const requiredArchSections = [
+      '## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology',
+      '## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)',
+      '## 🌍 External Integration & Boundary Contracts Map',
+      '## 🛡️ Failure Modes, Circuit Breakers & Retry Topology',
+      '## 🚀 Deployment, Edge Caching & Operational Topology',
+      '## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map',
+    ];
+    for (const reqSection of requiredArchSections) {
+      if (!archContent.includes(reqSection)) {
+        docViolations.push(
+          `Required 360-degree architecture section "${reqSection}" is missing from docs/ARCHITECTURE.md (run "npm run docs:sync").`
+        );
+      }
+    }
+
+    const envExamplePath = path.join(rootDir, '.env.example');
+    if (fs.existsSync(envExamplePath)) {
+      const envExLines = fs.readFileSync(envExamplePath, 'utf-8').split(/\r?\n/);
+      for (const line of envExLines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const envKey = trimmed.slice(0, eqIdx).trim();
+          if (envKey && !archContent.includes(`\`${envKey}\``)) {
+            docViolations.push(
+              `Environment variable "${envKey}" from .env.example is missing from docs/ARCHITECTURE.md (run "npm run docs:sync").`
+            );
+          }
+        }
+      }
+    }
+
+    // 1:1 Mermaid Diagram Sync Check between docs/ARCHITECTURE.md and README.md
+    const readmeFilePath = path.join(rootDir, 'README.md');
+    if (fs.existsSync(readmeFilePath)) {
+      const readmeText = fs.readFileSync(readmeFilePath, 'utf-8');
+      const archMermaidCount = (archContent.match(/```mermaid/g) || []).length;
+      const readmeDiagramsMatch = readmeText.match(
+        /<!-- BEGIN:architecture-diagrams -->([\s\S]*?)<!-- END:architecture-diagrams -->/
+      );
+      const readmeMermaidCount = readmeDiagramsMatch
+        ? (readmeDiagramsMatch[1].match(/```mermaid/g) || []).length
+        : 0;
+      if (archMermaidCount !== readmeMermaidCount) {
+        docViolations.push(
+          `README.md architecture diagram count (${readmeMermaidCount}) does not match docs/ARCHITECTURE.md (${archMermaidCount}) (run "npm run docs:sync").`
         );
       }
     }

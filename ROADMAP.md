@@ -3,15 +3,15 @@
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
 [![Current Release](https://img.shields.io/badge/Current%20Release-v2.8.1-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-91%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-40_of_44-blue?style=flat-square)](ROADMAP.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-40_of_45-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████████████░░]` **40/44 (91%)**
+`[██████████████████░░]` **40/45 (89%)**
 
 ---
 
@@ -178,7 +178,7 @@
 ---
 
 ### Milestone 10: Community Hub & Public Literary Agora (`Target: v2.9.0`)
-`[░░░░░░░░░░░░░░░░░░░░]` **0/4 (0%)**
+`[░░░░░░░░░░░░░░░░░░░░]` **0/5 (0%)**
 
 > Open literary agora, public volume discussions, community-wide reading challenges, curated commonplace quote showcases, and shareable social reading cards.
 
@@ -190,6 +190,8 @@
   Collective seasonal reading events (e.g., Gothic Autumn, Antiquity Odyssey) with shared community progress meters and commemorative participation badges.
 - [ ] **Shareable Reading Cards & Social Milestone Canvas Export** `⏳ PLANNED`
   Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
+- [ ] **Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)** `⏳ PLANNED`
+  Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.
 
 ---
 

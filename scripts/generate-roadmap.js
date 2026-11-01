@@ -405,6 +405,14 @@ const ROADMAP_MILESTONES = [
           fileExists('src/components/account/ShareableReadingCard.tsx') ||
           fileExists('src/lib/reading-card-export.ts'),
       },
+      {
+        title: 'Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)',
+        description: 'Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.',
+        check: () =>
+          fileContains('src/components/reader/ReaderSurface.tsx', 'two-page') ||
+          fileContains('src/components/reader/ReaderSurface.tsx', 'dual-page') ||
+          fileContains('src/stores/useReaderStore.ts', 'spreadMode'),
+      },
     ],
   },
 ];

@@ -1887,6 +1887,41 @@
   - Dynamic `next/dynamic` imports and client/server boundary checks operate identically across Babel 8 AST and ESLint 10 ESTree parsers.
   - Zero ESLint warnings/errors, zero Knip dead dependencies, and 100% pass rate across all 7 quality gateways.
 
+---
+
+## ADR-079: 360-Degree Living Architecture Topology — Event Bus, Sequence Workflows, External Boundaries, Resilience, Deployment & AST Env Dependency Mapping
+
+- **Date**: 2026-11-01
+- **Status**: Accepted
+- **Context**:
+  1. **Structural Inventory vs. Dynamic/Operational Architecture Gap**: While `docs/ARCHITECTURE.md` comprehensively mapped structural inventories (100% of `src/` components, hooks, stores, domain utilities, routes, configs, types, 14 PostgreSQL tables, 6 triggers/RPCs, 22 indexes, PWA assets, and CLI pipelines), an architectural completeness audit identified 9 operational and behavioral dimensions that were not explicitly modeled:
+     - Cross-store reactive event bus (`bookarium-offline-updated`, `supabase.auth.onAuthStateChange`, `online`/`offline` listeners, `beforeinstallprompt`, BroadcastChannel/Worker IPC) and inter-store state mutations.
+     - Client storage persistence keys (`10` `localStorage` keys, `IndexedDB` `bookarium-offline-db`, SSR cookies), conflict-resolution strategies (`LWW`, `MAX(...)`, union-minus-tombstone), and 3-layer GDPR Account Erasure parity.
+     - Temporal runtime execution sequence diagrams (`sequenceDiagram`) across cold boot + 6-store outbox reconciliation, Focus Reader launch + `HTTP 451` gatekeeping + multi-mirror failover + Web Worker AST segmentation, and offline mutation queueing + reconnect replay.
+     - External integration boundary contracts, outbound headers, timeouts, and security controls across Supabase, Gutendex, 4 Project Gutenberg mirrors, Wikidata SPARQL, Vercel Geo-IP headers, and browser SpeechSynthesis/Storage APIs.
+     - End-to-end failure modes, circuit breakers, retry/backoff policies, and self-healing degradation paths across all 10 runtime failure scenarios.
+     - Multi-tier deployment, 5-layer caching/TTL hierarchy, and runtime performance budgets/hardware-tier adaptation (`detectPerformanceTier`).
+     - Zero-secret AST-extracted environment variable binding catalog (`.env.example` variable names + AST `process.env.<VAR>` consumer discovery across `src/**`, `next.config.ts`, `scripts/*.js`, and `.github/workflows/*.yml`) and security trust-zone / intra-procedural request-taint boundaries.
+- **Decision**:
+  1. **AST Environment Variable Dependency Extractor (`scripts/lib/ast-parser.js`)**:
+     - Added and exported `extractEnvironmentDependencyCatalog(rootDir, srcDir)` which strictly reads variable names from `.env.example` (never reading `.env` or secret values) and traverses `src/**`, `next.config.ts`, `scripts/*.js`, and `.github/workflows/*.yml` via Babel AST (`MemberExpression` on `process.env.<VAR>`) to map every consuming module, runtime scope (`Client & Server (NEXT_PUBLIC_*)`, `Server / CLI Only (Secret)`, `Server / Edge Proxy`, `CI / Build`), fallback default, and failure behavior when omitted.
+  2. **9-Dimension Living Architecture Expansion & Automatic 1:1 `README.md` Diagram Synchronization (`scripts/generate-architecture-matrix.js`)**:
+     - Enriched Diagram 1 (`End-to-End System Context & Data Flow`) and Diagram 2 (`Focus Reader State & Typography Engine`) with `AccountTypographySubPanel`, `preferences-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`, `reader-bookmark-geometry.ts`, `ReaderRowBookmark.tsx`, `useReaderHabitTelemetry.ts`, `useOfflineCatalogFallback.ts`, `useNotebookMetadataResolver.ts`, and `useAccountSecurityActions.ts`.
+     - Added `## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology` (`flowchart TD` + Reactive Signals/Custom Events/Worker IPC Matrix + Client Storage, Conflict-Resolution & Account Erasure Parity Matrix).
+     - Added `## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)` with 3 end-to-end Mermaid `sequenceDiagram` workflows (Cold Launch & 6-Store Cloud Outbox Reconciliation; Focus Reader Launch, Jurisdictional Gatekeeping `HTTP 451`, Multi-Mirror Streaming & Worker AST; Offline Mutation Queueing, Adaptive Offline Catalog & Reconnect Outbox Replay).
+     - Added `## 🌍 External Integration & Boundary Contracts Map` (`flowchart LR` + External Integration Contracts, Timeouts & Security Matrix).
+     - Added `## 🛡️ Failure Modes, Circuit Breakers & Retry Topology` (`flowchart TD` + 10-Scenario Failure Mode, Degraded-State & Self-Healing Matrix).
+     - Added `## 🚀 Deployment, Edge Caching & Operational Topology` (`flowchart TD` + 5-Layer Caching & TTL Hierarchy Matrix + Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix).
+     - Added `## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map` (AST-Extracted Environment Variable Binding Matrix + Security Trust Zones & Intra-Procedural Request-Taint Topology Matrix).
+     - Upgraded `syncReadmeArchitectureDiagrams(architectureMarkdown)` to automatically discover and synchronize every Mermaid diagram in `docs/ARCHITECTURE.md` (all 11 diagrams) 1:1 into `README.md` (`<!-- BEGIN:architecture-diagrams --> ... <!-- END:architecture-diagrams -->`).
+  3. **Pass 5 Living Architecture, `.env.example` & 1:1 `README.md` Diagram Parity Gate (`scripts/verify-build.js`)**:
+     - Extended `pass5AdrValidation()` to verify that all 6 new 360-degree architectural sections and every environment variable key declared in `.env.example` are documented in `docs/ARCHITECTURE.md`, and that `README.md` contains the exact same number of Mermaid diagrams (`11`) as `docs/ARCHITECTURE.md`, alongside the existing forward/reverse `src/` and `scripts/` link checks.
+- **Consequences**:
+  - Elevates `docs/ARCHITECTURE.md` into a complete 360-degree architectural reference covering static structure, reactive event flows, temporal sequences, external boundaries, failure/retry resilience, deployment/caching layers, hardware-tier budgets, and zero-secret AST environment variable bindings.
+  - Zero secret exposure risk: only variable identifiers from `.env.example` and AST `process.env.<NAME>` references are inspected.
+  - Enforced automatically on every `npm run docs:sync`, `npm run security:audit`, and `npm run verify` execution.
+
+
 
 
 

@@ -1025,6 +1025,183 @@ function extractPublicAssetsCatalog(rootDir) {
   return assets.sort((a, b) => a.file.localeCompare(b.file));
 }
 
+/**
+ * Extracts environment variable definitions from .env.example (never reading .env or secret values)
+ * and AST-scans src/**, next.config.ts, scripts/**, and .github/workflows/*.yml for consuming modules.
+ */
+function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
+  const envExamplePath = path.join(rootDir, '.env.example');
+  const envVarNames = [];
+
+  if (fs.existsSync(envExamplePath)) {
+    const rawLines = fs.readFileSync(envExamplePath, 'utf-8').split(/\r?\n/);
+    for (const line of rawLines) {
+      const trimmed = line.trim();
+      const match = trimmed.match(/^(?:#\s*)?([A-Z][A-Z0-9_]+)=/);
+      if (match && !envVarNames.includes(match[1])) {
+        envVarNames.push(match[1]);
+      }
+    }
+  }
+
+  if (!envVarNames.includes('NODE_ENV')) {
+    envVarNames.push('NODE_ENV');
+  }
+
+  const varMetaMap = {
+    NEXT_PUBLIC_SITE_URL: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: 'Defaults to `https://bookarium.vercel.app` (`SITE_CONFIG.URL`) or request origin header.',
+      purpose: 'Canonical origin for OpenGraph metadata, `sitemap.xml`, `robots.txt`, shareable book links, and PKCE auth callback validation.',
+    },
+    NEXT_PUBLIC_SUPABASE_URL: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: '100% Zero-API-Key Guest Mode: Catalog fails over to Gutendex REST API; collections persist in `localStorage` & `IndexedDB`.',
+      purpose: 'Supabase project URL for PostgreSQL catalog queries (`public.books`), FRBR translations, SSR auth cookies, and 6-store cloud sync.',
+    },
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: '100% Zero-API-Key Guest Mode: Cloud sync and auth modals gracefully disable live network calls when unconfigured.',
+      purpose: 'Public anonymous JWT key scoped strictly by PostgreSQL Row-Level Security (`ENABLE ROW LEVEL SECURITY` across all 14 tables).',
+    },
+    NEXT_PUBLIC_LEGAL_CONTACT_FORM: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: 'Falls back to the repository GitHub Issue Tracker (`SITE_CONFIG.GITHUB_ISSUES_URL`) on `/copyright`.',
+      purpose: 'Optional external intake URL for confidential territorial copyright or DMCA inquiries.',
+    },
+    SUPABASE_SERVICE_ROLE_KEY: {
+      scope: 'CLI & CI Secret Only (`Client-Forbidden` via Pass 0.5 & AST Rule)',
+      fallback: 'CLI ingestion scripts fall back to `NEXT_PUBLIC_SUPABASE_ANON_KEY` or emit offline SQL seed artifacts (`supabase/seed_*.sql`).',
+      purpose: 'Privileged service-role credential used exclusively by offline Node.js CLI pipelines (`catalog:sync`, `translations:sync`, `catalog:ingest`) for bulk upserts.',
+    },
+    GUTENDEX_API_URL: {
+      scope: 'Edge / Server Route & Config Override',
+      fallback: 'Defaults to `https://gutendex.com/books` (`API_ENDPOINTS.GUTENDEX_BASE`).',
+      purpose: 'Upstream Gutendex public domain catalog endpoint for failover search and metadata resolution.',
+    },
+    DEV_COUNTRY: {
+      scope: 'Edge Proxy & Server Route Development Override',
+      fallback: 'Production uses Vercel Edge `x-vercel-ip-country` header -> `bookarium-geo-country` cookie -> IANA timezone inference -> `US` default.',
+      purpose: 'ISO 3166-1 alpha-2 country override (`US`, `GB`, `DE`, `MX`, `ES`) for local testing of multi-jurisdictional copyright rules (`Life+70`, `Life+80`, `Life+100`).',
+    },
+    NODE_ENV: {
+      scope: 'Framework & Build-Time Runtime Constant',
+      fallback: 'Set automatically by Next.js / Node.js (`development`, `production`, `test`).',
+      purpose: 'Strips `unsafe-eval` from production Content-Security-Policy, enables `Strict-Transport-Security` (`next.config.ts`), activates `public/sw.js` registration, and gates dev overrides.',
+    },
+  };
+
+  // Collect all candidate files to scan for process.env.<VAR> usage
+  const scanTargets = [];
+  for (const srcFile of getAllSourceFiles(srcDir)) {
+    scanTargets.push({
+      abs: srcFile,
+      rel: path.relative(rootDir, srcFile).replace(/\\/g, '/'),
+      kind: 'code',
+    });
+  }
+
+  const nextConfigPath = path.join(rootDir, 'next.config.ts');
+  if (fs.existsSync(nextConfigPath)) {
+    scanTargets.push({ abs: nextConfigPath, rel: 'next.config.ts', kind: 'code' });
+  }
+
+  const scriptsDir = path.join(rootDir, 'scripts');
+  if (fs.existsSync(scriptsDir)) {
+    for (const entry of fs.readdirSync(scriptsDir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith('.js')) {
+        scanTargets.push({
+          abs: path.join(scriptsDir, entry.name),
+          rel: `scripts/${entry.name}`,
+          kind: 'code',
+        });
+      }
+    }
+  }
+
+  const workflowsDir = path.join(rootDir, '.github', 'workflows');
+  if (fs.existsSync(workflowsDir)) {
+    for (const entry of fs.readdirSync(workflowsDir, { withFileTypes: true })) {
+      if (entry.isFile() && (entry.name.endsWith('.yml') || entry.name.endsWith('.yaml'))) {
+        scanTargets.push({
+          abs: path.join(workflowsDir, entry.name),
+          rel: `.github/workflows/${entry.name}`,
+          kind: 'yaml',
+        });
+      }
+    }
+  }
+
+  const consumersMap = new Map(envVarNames.map((v) => [v, []]));
+
+  for (const target of scanTargets) {
+    const content = fs.readFileSync(target.abs, 'utf-8');
+    const foundVars = new Set();
+
+    if (target.kind === 'code') {
+      try {
+        const ast = parser.parse(content, {
+          sourceType: 'unambiguous',
+          plugins: ['typescript', 'jsx'],
+        });
+        traverse(ast, {
+          MemberExpression({ node }) {
+            if (
+              node.object &&
+              node.object.type === 'MemberExpression' &&
+              node.object.object &&
+              node.object.object.type === 'Identifier' &&
+              node.object.object.name === 'process' &&
+              node.object.property &&
+              node.object.property.type === 'Identifier' &&
+              node.object.property.name === 'env' &&
+              node.property &&
+              node.property.type === 'Identifier'
+            ) {
+              const varName = node.property.name;
+              if (consumersMap.has(varName)) {
+                foundVars.add(varName);
+              }
+            }
+          },
+        });
+      } catch (_err) {
+        for (const v of envVarNames) {
+          if (new RegExp(`process\\.env\\.${v}\\b`).test(content)) {
+            foundVars.add(v);
+          }
+        }
+      }
+    } else {
+      for (const v of envVarNames) {
+        if (new RegExp(`\\b${v}\\b`).test(content)) {
+          foundVars.add(v);
+        }
+      }
+    }
+
+    for (const v of foundVars) {
+      consumersMap.get(v).push(target.rel);
+    }
+  }
+
+  return envVarNames.map((name) => {
+    const meta = varMetaMap[name] || {
+      scope: name.startsWith('NEXT_PUBLIC_') ? 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)' : 'Server / CLI Environment Variable',
+      fallback: 'Optional runtime configuration override.',
+      purpose: 'Application environment configuration parameter.',
+    };
+    const consumers = consumersMap.get(name) || [];
+    return {
+      name,
+      scope: meta.scope,
+      fallback: meta.fallback,
+      purpose: meta.purpose,
+      consumers,
+    };
+  });
+}
+
 module.exports = {
   getAllSourceFiles,
   resolveImportPath,
@@ -1040,5 +1217,6 @@ module.exports = {
   extractWorkerCatalog,
   extractTestHarnessCatalog,
   extractPublicAssetsCatalog,
+  extractEnvironmentDependencyCatalog,
 };
 
