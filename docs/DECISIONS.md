@@ -1905,7 +1905,7 @@
 - **Decision**:
   1. **AST Environment Variable Dependency Extractor (`scripts/lib/ast-parser.js`)**:
      - Added and exported `extractEnvironmentDependencyCatalog(rootDir, srcDir)` which strictly reads variable names from `.env.example` (never reading `.env` or secret values) and traverses `src/**`, `next.config.ts`, `scripts/*.js`, and `.github/workflows/*.yml` via Babel AST (`MemberExpression` on `process.env.<VAR>`) to map every consuming module, runtime scope (`Client & Server (NEXT_PUBLIC_*)`, `Server / CLI Only (Secret)`, `Server / Edge Proxy`, `CI / Build`), fallback default, and failure behavior when omitted.
-  2. **9-Dimension Living Architecture Expansion & Automatic 1:1 `README.md` Diagram Synchronization (`scripts/generate-architecture-matrix.js`)**:
+  2. **9-Dimension Living Architecture Expansion & Executive Overview Synchronization (`scripts/generate-architecture-matrix.js`, `SECURITY.md`, `README.md`)**:
      - Enriched Diagram 1 (`End-to-End System Context & Data Flow`) and Diagram 2 (`Focus Reader State & Typography Engine`) with `AccountTypographySubPanel`, `preferences-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`, `reader-bookmark-geometry.ts`, `ReaderRowBookmark.tsx`, `useReaderHabitTelemetry.ts`, `useOfflineCatalogFallback.ts`, `useNotebookMetadataResolver.ts`, and `useAccountSecurityActions.ts`.
      - Added `## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology` (`flowchart TD` + Reactive Signals/Custom Events/Worker IPC Matrix + Client Storage, Conflict-Resolution & Account Erasure Parity Matrix).
      - Added `## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)` with 3 end-to-end Mermaid `sequenceDiagram` workflows (Cold Launch & 6-Store Cloud Outbox Reconciliation; Focus Reader Launch, Jurisdictional Gatekeeping `HTTP 451`, Multi-Mirror Streaming & Worker AST; Offline Mutation Queueing, Adaptive Offline Catalog & Reconnect Outbox Replay).
@@ -1913,13 +1913,32 @@
      - Added `## 🛡️ Failure Modes, Circuit Breakers & Retry Topology` (`flowchart TD` + 10-Scenario Failure Mode, Degraded-State & Self-Healing Matrix).
      - Added `## 🚀 Deployment, Edge Caching & Operational Topology` (`flowchart TD` + 5-Layer Caching & TTL Hierarchy Matrix + Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix).
      - Added `## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map` (AST-Extracted Environment Variable Binding Matrix + Security Trust Zones & Intra-Procedural Request-Taint Topology Matrix).
-     - Upgraded `syncReadmeArchitectureDiagrams(architectureMarkdown)` to automatically discover and synchronize every Mermaid diagram in `docs/ARCHITECTURE.md` (all 11 diagrams) 1:1 into `README.md` (`<!-- BEGIN:architecture-diagrams --> ... <!-- END:architecture-diagrams -->`).
-  3. **Pass 5 Living Architecture, `.env.example` & 1:1 `README.md` Diagram Parity Gate (`scripts/verify-build.js`)**:
-     - Extended `pass5AdrValidation()` to verify that all 6 new 360-degree architectural sections and every environment variable key declared in `.env.example` are documented in `docs/ARCHITECTURE.md`, and that `README.md` contains the exact same number of Mermaid diagrams (`11`) as `docs/ARCHITECTURE.md`, alongside the existing forward/reverse `src/` and `scripts/` link checks.
+     - Migrated the 13-row `Enterprise Security & Resiliency Architecture` matrix from `README.md` to `SECURITY.md` (`## 🛡️ Enterprise Defense-in-Depth & Resiliency Matrix`), replacing it in `README.md` with a clean callout link.
+     - Upgraded `syncReadmeArchitectureDiagrams(architectureMarkdown)` to synchronize Diagram 1 (`End-to-End System Context & Data Flow`) + an executive directory table linking to all 11 interactive diagrams in `docs/ARCHITECTURE.md` into `README.md` (`<!-- BEGIN:architecture-diagrams --> ... <!-- END:architecture-diagrams -->`).
+  3. **Pass 5 Living Architecture, `.env.example`, 14-Table RLS & Diagram Directory Parity Gate (`scripts/verify-build.js`)**:
+     - Extended `pass5AdrValidation()` to verify that all 6 new 360-degree architectural sections and every environment variable key declared in `.env.example` are documented in `docs/ARCHITECTURE.md`, that `README.md` contains Diagram 1 and the 11-diagram directory table linking to `docs/ARCHITECTURE.md`, and updated Pillar 6 in `scripts/verify-build.js` to verify RLS across all 14 database tables (`13` public + `1` migration ledger).
 - **Consequences**:
   - Elevates `docs/ARCHITECTURE.md` into a complete 360-degree architectural reference covering static structure, reactive event flows, temporal sequences, external boundaries, failure/retry resilience, deployment/caching layers, hardware-tier budgets, and zero-secret AST environment variable bindings.
   - Zero secret exposure risk: only variable identifiers from `.env.example` and AST `process.env.<NAME>` references are inspected.
   - Enforced automatically on every `npm run docs:sync`, `npm run security:audit`, and `npm run verify` execution.
+
+---
+
+## ADR-080: Fluid Multi-Resolution Kinematics & Touch-Safe Dismissal for 3D Hero Book
+
+- **Date**: 2026-11-01
+- **Status**: Accepted
+- **Context**:
+  1. **Leftward Drift & Column Collision Across Varied Tablet Viewports**: In horizontal tablet viewports (standard iPad $1024\times 768$, Lenovo Tab Plus 2K $2000\times 1200$ with CSS width $\sim 1142\text{px}$–$1250\text{px}$, iPad Air $1180\text{px}$, iPad Pro $1194\text{px}$), the standing 3D hero book (`HeroFeaturedBook3D.tsx`) suffered from horizontal displacement. The 3D open-cover hinge flips the front cover $-180^\circ$ around its left spine. Under a previous `translateX(-15px)` setting and static `scale(0.70)`, the open 2-page spread center shifted $127\text{px}$ to the left, encroaching $111\text{px}$ into the left editorial search column on $1024\text{px}$ viewports while leaving $118\text{px}$ of empty dead space on the right. Conversely, on modern 2K tablets like the Lenovo Tab Plus, a static single-breakpoint scale left substantial unused column space.
+  2. **Failure to Close on Tablet Tap / Outside Tap**: The DOM stage container (`.hero-3d-stage`) is $320\text{px}$ wide. Tapping to the right of the visible book hit empty flex containers without click handlers. Furthermore, on touchscreens, tap synthesizes `mouseenter`, which re-opened the book via `handleHoverChange` resetting `'closed'` state to `'auto'`.
+- **Decision**:
+  1. **Continuous Fluid Kinematics via Dynamic CSS Variables (`HeroFeaturedBook3D.tsx`)**: Implemented a real-time layout formula computing `--hero-open-scale` and `--hero-open-tx` based on real-time column width ($S = \min(0.84, \max(0.60, (W_{col}/2 + 12)/320))$ and $T = \text{round}(160 \times S \times 0.75)$). This guarantees $\ge 20\text{px}$ clearance inside the right screen edge and $>40\text{px}$ clearance from left search text across any arbitrary tablet resolution (from $1024\text{px}$ iPad to $1142\text{px}$ Lenovo Tab Plus to $1280\text{px}$–$1536\text{px}+$ desktop) while GPU-accelerated CSS transitions handle 0.7s cubic-bezier physics.
+  2. **Granular 5-Tier CSS Fallbacks in `globals.css`**: Deployed tiered media queries ($1024\text{px}$, $1120\text{px}$, $1220\text{px}$, $1320\text{px}$, $1536\text{px}$) with fallback values for instant pre-hydration resilience.
+  3. **Touch-Safe Outside-Tap Dismissal & Hover Guard**: Added document `pointerdown` / `touchstart` outside-tap dismissal, guarded `handleHoverChange` with canonical `useTouchDevice` hook to ignore synthesized touch hover, and added an accessible close button (`✕`) in the open page header.
+- **Consequences**:
+  - Mathematical guarantee of zero left text collision and zero right screen bleed across all mobile, tablet, 2K Android tablet, and desktop viewports.
+  - Effortless dismissal on touchscreens via either tapping outside the book spread or tapping the explicit close affordance.
+  - 100% test coverage co-located in `HeroFeaturedBook3D.test.tsx` verifying fluid variables, outside tap, close button, and touch hover guards.
 
 
 

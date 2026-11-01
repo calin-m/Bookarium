@@ -301,16 +301,41 @@
 
 /* 3D Realistic Book Perspective & Opening Physics */
 
-/* Hero Spotlight: Tablet Landscape & Standard Desktop (1024px to 1535px) */
+/* Hero Spotlight: Tablet Landscape & Responsive Multi-Resolution Desktop (1024px+) */
 @media (min-width: 1024px) {
-  .hero-3d-stage.book-open .book-3d-rig,
-  .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
-    transform: translateX(-15px) translateY(-14px) scale(0.70) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
-  }
-
   .hero-3d-stage.book-open .book-3d-flipper,
   .hero-3d-stage:not(.book-closed):hover .book-3d-flipper {
     transform: rotateY(-180deg);
+  }
+
+  /* Default Fluid Open Rig using CSS Variables with 1024px-1119px Fallback */
+  .hero-3d-stage.book-open .book-3d-rig,
+  .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(var(--hero-open-tx, 68px)) translateY(-12px) scale(var(--hero-open-scale, 0.61)) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
+}
+
+/* Tablet Landscape Mid: 1120px to 1219px (Lenovo Tab Plus, iPad Air, 2K Android Tablets) */
+@media (min-width: 1120px) and (max-width: 1219px) {
+  .hero-3d-stage.book-open .book-3d-rig,
+  .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(var(--hero-open-tx, 80px)) translateY(-12px) scale(var(--hero-open-scale, 0.68)) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
+}
+
+/* Tablet Landscape High & Small Laptop: 1220px to 1319px (Lenovo Tab P12, Galaxy Tab S9, 1280px) */
+@media (min-width: 1220px) and (max-width: 1319px) {
+  .hero-3d-stage.book-open .book-3d-rig,
+  .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(var(--hero-open-tx, 90px)) translateY(-14px) scale(var(--hero-open-scale, 0.74)) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+  }
+}
+
+/* Large Tablet & Standard Desktop: 1320px to 1535px (iPad Pro 12.9", 1440p) */
+@media (min-width: 1320px) and (max-width: 1535px) {
+  .hero-3d-stage.book-open .book-3d-rig,
+  .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
+    transform: translateX(var(--hero-open-tx, 100px)) translateY(-14px) scale(var(--hero-open-scale, 0.79)) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
   }
 }
 
@@ -318,7 +343,7 @@
 @media (min-width: 1536px) {
   .hero-3d-stage.book-open .book-3d-rig,
   .hero-3d-stage:not(.book-closed):hover .book-3d-rig {
-    transform: translateX(55px) translateY(-14px) scale(0.84) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
+    transform: translateX(var(--hero-open-tx, 115px)) translateY(-14px) scale(var(--hero-open-scale, 0.84)) rotateX(6deg) rotateY(-2deg) rotateZ(-2deg);
   }
 }
 

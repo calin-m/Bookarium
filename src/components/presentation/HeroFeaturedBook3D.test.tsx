@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HeroFeaturedBook3D } from './HeroFeaturedBook3D';
 import * as perfTier from '@/hooks/usePerformanceTier';
+import * as touchHook from '@/hooks/useTouchDevice';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBook: vi.fn().mockResolvedValue(null),
@@ -173,5 +174,85 @@ describe('HeroFeaturedBook3D', () => {
     fireEvent.mouseEnter(stage);
     fireEvent.mouseLeave(stage);
     fireEvent.keyDown(stage, { key: 'Enter' });
+  });
+
+  it('dismisses open volume when clicking or tapping outside the 3D book stage', () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+
+    const stage = screen.getByRole('button', { name: /click to pin open volume/i });
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-open');
+
+    // Tapping outside stage on document dismisses open book
+    const outsideElement = document.createElement('div');
+    document.body.appendChild(outsideElement);
+    fireEvent.pointerDown(outsideElement);
+
+    expect(stage.className).toContain('book-closed');
+    document.body.removeChild(outsideElement);
+  });
+
+  it('dismisses open volume when clicking the explicit close button on open spread', () => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+
+    const stage = screen.getByRole('button', { name: /click to pin open volume/i });
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-open');
+
+    const closeBtn = screen.getByTestId('hero-book-close-btn');
+    expect(closeBtn).toBeInTheDocument();
+    fireEvent.click(closeBtn);
+
+    expect(stage.className).toContain('book-closed');
+  });
+
+  it('dynamically adapts fluid kinematics CSS variables across tablet landscape and desktop resolutions', () => {
+    // 1024px iPad landscape
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+
+    const stage = screen.getByRole('button', { name: /click to pin open volume/i });
+    expect(stage.style.getPropertyValue('--hero-open-scale')).toBe('0.61');
+    expect(stage.style.getPropertyValue('--hero-open-tx')).toBe('73px');
+
+    // 1142px Lenovo Tab Plus 2K landscape
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1142 });
+    fireEvent(window, new Event('resize'));
+    expect(stage.style.getPropertyValue('--hero-open-scale')).toBe('0.69');
+    expect(stage.style.getPropertyValue('--hero-open-tx')).toBe('83px');
+
+    // 1280px iPad Pro / Galaxy Tab / laptop
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+    fireEvent(window, new Event('resize'));
+    expect(stage.style.getPropertyValue('--hero-open-scale')).toBe('0.78');
+    expect(stage.style.getPropertyValue('--hero-open-tx')).toBe('93px');
+
+    // 1536px Wide Desktop
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1536 });
+    fireEvent(window, new Event('resize'));
+    expect(stage.style.getPropertyValue('--hero-open-scale')).toBe('0.84');
+    expect(stage.style.getPropertyValue('--hero-open-tx')).toBe('115px');
+  });
+
+  it('prevents synthesized touch hover from overriding closed state on touch devices', () => {
+    vi.spyOn(touchHook, 'useTouchDevice').mockReturnValue(true);
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1142 });
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+    const stage = screen.getByRole('button', { name: /click to pin open volume/i });
+
+    // Open book by clicking
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-open');
+
+    // Close book by clicking
+    fireEvent.click(stage);
+    expect(stage.className).toContain('book-closed');
+
+    // Synthesized mouseEnter on touch screen MUST NOT reset closed state
+    fireEvent.mouseEnter(stage);
+    expect(stage.className).toContain('book-closed');
   });
 });

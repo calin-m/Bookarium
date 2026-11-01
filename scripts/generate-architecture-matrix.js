@@ -2149,46 +2149,52 @@ function syncReadmeArchitectureDiagrams(architectureMarkdown) {
   const readmePath = path.join(rootDir, 'README.md');
   if (!fs.existsSync(readmePath)) return;
 
-  // Automatically discover and extract every Mermaid diagram and its nearest preceding ### heading
-  // from docs/ARCHITECTURE.md so that any new diagram is synced 1:1 into README.md automatically.
-  const lines = architectureMarkdown.split('\n');
-  const extractedDiagrams = [];
-  let currentSubHeading = '';
-  let inMermaid = false;
-  let currentMermaidLines = [];
-
-  for (const line of lines) {
-    if (!inMermaid && line.startsWith('### ')) {
-      currentSubHeading = line.replace(/^###\s+(?:\d+\.\s+)?/, '').trim();
-    } else if (!inMermaid && line.trim() === '```mermaid') {
-      inMermaid = true;
-      currentMermaidLines = ['```mermaid'];
-    } else if (inMermaid) {
-      currentMermaidLines.push(line);
-      if (line.trim() === '```') {
-        inMermaid = false;
-        extractedDiagrams.push({
-          title: currentSubHeading || `Architecture Diagram ${extractedDiagrams.length + 1}`,
-          mermaidBlock: currentMermaidLines.join('\n'),
-        });
-        currentMermaidLines = [];
-      }
+  // Extract Diagram 1 (End-to-End System Context & Data Flow)
+  const startMarker = '### 1. End-to-End System Context & Data Flow';
+  const startIdx = architectureMarkdown.indexOf(startMarker);
+  let diagram1Block = '';
+  if (startIdx !== -1) {
+    const mermaidStart = architectureMarkdown.indexOf('```mermaid', startIdx);
+    const mermaidEnd = architectureMarkdown.indexOf('```', mermaidStart + 10);
+    if (mermaidStart !== -1 && mermaidEnd !== -1) {
+      diagram1Block = architectureMarkdown.slice(mermaidStart, mermaidEnd + 3);
     }
   }
 
-  if (extractedDiagrams.length === 0) {
-    return;
-  }
+  // Count total diagrams in docs/ARCHITECTURE.md
+  const totalArchDiagrams = (architectureMarkdown.match(/```mermaid/g) || []).length;
 
-  const diagramSections = extractedDiagrams.map((d, idx) =>
-    [`### ${idx + 1}. ${d.title}`, '', d.mermaidBlock].join('\n')
-  );
+  const directoryRows = [
+    '| # | Architectural Diagram | Primary Layer & Subsystem | Living Architecture Specification |',
+    '|---|---|---|---|',
+    '| **1** | **End-to-End System Context & Data Flow** | Global System Context, Edge Proxy & Client SPA | [docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow](docs/ARCHITECTURE.md) |',
+    '| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/ARCHITECTURE.md#2-focus-reader-state--typography-engine](docs/ARCHITECTURE.md) |',
+    '| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |',
+    '| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |',
+    '| **5** | **Cold Launch & 6-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--6-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |',
+    '| **6** | **Focus Reader Launch & Multi-Mirror Stream** | HTTP 451 Gatekeeping, 4 Gutenberg Mirrors & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-multi-mirror-streaming--worker-ast](docs/ARCHITECTURE.md) |',
+    '| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v4, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |',
+    '| **8** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/ARCHITECTURE.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/ARCHITECTURE.md) |',
+    '| **9** | **External Integration Topology Diagram** | Boundary Contracts, Allowlisted Mirrors & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |',
+    '| **10** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Mirror Cascades & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |',
+    '| **11** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/ARCHITECTURE.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/ARCHITECTURE.md) |',
+  ];
 
   const replacementBlock = [
     '<!-- BEGIN:architecture-diagrams -->',
-    '## 🏛️ System Architecture Diagrams',
+    '## 🏛️ System Architecture',
     '',
-    diagramSections.join('\n\n---\n\n'),
+    '> For the complete living specification, comprehensive C4 models, temporal sequence workflows, and failure recovery trees, see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).',
+    '',
+    '### 1. End-to-End System Context & Data Flow',
+    '',
+    diagram1Block,
+    '',
+    '---',
+    '',
+    `### 📚 Living Architecture Directory (${totalArchDiagrams} Interactive Diagrams)`,
+    '',
+    directoryRows.join('\n'),
     '<!-- END:architecture-diagrams -->',
   ].join('\n');
 

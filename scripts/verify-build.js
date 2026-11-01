@@ -711,13 +711,14 @@ function pass075SecurityAndSastAudit() {
   if (fs.existsSync(schemaPath)) {
     const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
     const rlsViolations = [];
-    const tableMatches = [...schemaSql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z0-9_]+)/gi)];
-    const publicTables = [...new Set(tableMatches.map((m) => m[1]))];
+    const tableMatches = [...schemaSql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:public|supabase_migrations)\.[a-z0-9_]+)/gi)];
+    const dbTables = [...new Set(tableMatches.map((m) => m[1]))];
 
-    for (const tableName of publicTables) {
-      const rlsRegex = new RegExp(`ALTER\\s+TABLE\\s+public\\.${tableName}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
+    for (const tableName of dbTables) {
+      const escapedTable = tableName.replace('.', '\\.');
+      const rlsRegex = new RegExp(`ALTER\\s+TABLE\\s+${escapedTable}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
       if (!rlsRegex.test(schemaSql)) {
-        rlsViolations.push(`Table "public.${tableName}" is missing ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`);
+        rlsViolations.push(`Table "${tableName}" is missing ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`);
       }
     }
 
@@ -834,7 +835,9 @@ function pass075SecurityAndSastAudit() {
       rlsViolations.forEach((v) => console.error(`  - ${v}`));
       return false;
     }
-    logPass(`Pillar 6: Verified Row-Level Security across ${publicTables.length} public tables, 100% DDL/policy/trigger idempotency, write-policy isolation, account-deletion parity, and search_path hardening on all SECURITY DEFINER functions.`);
+    const publicTableCount = dbTables.filter((t) => t.startsWith('public.')).length;
+    const migrationTableCount = dbTables.length - publicTableCount;
+    logPass(`Pillar 6: Verified Row-Level Security across all ${dbTables.length} database tables (${publicTableCount} public tables + ${migrationTableCount} migration ledger), 100% DDL/policy/trigger idempotency, write-policy isolation, account-deletion parity, and search_path hardening on all SECURITY DEFINER functions.`);
   }
 
   // Pillar 7: HTTP Security Headers, Production CSP & Service Worker Cache Guard
@@ -1380,20 +1383,24 @@ function pass5AdrValidation() {
       }
     }
 
-    // 1:1 Mermaid Diagram Sync Check between docs/ARCHITECTURE.md and README.md
+    // Architecture Diagrams & Directory Parity Check between docs/ARCHITECTURE.md and README.md
     const readmeFilePath = path.join(rootDir, 'README.md');
     if (fs.existsSync(readmeFilePath)) {
       const readmeText = fs.readFileSync(readmeFilePath, 'utf-8');
       const archMermaidCount = (archContent.match(/```mermaid/g) || []).length;
-      const readmeDiagramsMatch = readmeText.match(
-        /<!-- BEGIN:architecture-diagrams -->([\s\S]*?)<!-- END:architecture-diagrams -->/
-      );
-      const readmeMermaidCount = readmeDiagramsMatch
-        ? (readmeDiagramsMatch[1].match(/```mermaid/g) || []).length
-        : 0;
-      if (archMermaidCount !== readmeMermaidCount) {
+      if (archMermaidCount < 11) {
         docViolations.push(
-          `README.md architecture diagram count (${readmeMermaidCount}) does not match docs/ARCHITECTURE.md (${archMermaidCount}) (run "npm run docs:sync").`
+          `docs/ARCHITECTURE.md is missing expected 360-degree diagrams (found ${archMermaidCount}, expected at least 11; run "npm run docs:sync").`
+        );
+      }
+      if (!readmeText.includes('End-to-End System Context & Data Flow') || !readmeText.includes('<!-- BEGIN:architecture-diagrams -->')) {
+        docViolations.push(
+          `README.md is missing executive System Context architecture diagram (run "npm run docs:sync").`
+        );
+      }
+      if (!readmeText.includes(`Living Architecture Directory (${archMermaidCount} Interactive Diagrams)`)) {
+        docViolations.push(
+          `README.md architecture directory count does not match docs/ARCHITECTURE.md (${archMermaidCount} diagrams; run "npm run docs:sync").`
         );
       }
     }

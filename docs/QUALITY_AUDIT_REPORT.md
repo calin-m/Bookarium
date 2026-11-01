@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 01 Nov 2026 13:26:17 GMT  
+**Last Generated**: Sun, 01 Nov 2026 15:02:47 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 210 passed  
-**Total Verified Tests**: 2131 passed  
+**Total Verified Tests**: 2135 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2131 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2135 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 79 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.65%** (11359/11752) — *Target: $\ge$ 95%*
-- **Statements**: **95.21%** (12307/12926) — *Target: $\ge$ 95%*
-- **Functions**: **94%** (2650/2819) — *Target: $\ge$ 92%*
-- **Branches**: **88.01%** (11210/12737) — *Target: $\ge$ 85%*
+- **Lines**: **96.65%** (11392/11786) — *Target: $\ge$ 95%*
+- **Statements**: **95.18%** (12341/12965) — *Target: $\ge$ 95%*
+- **Functions**: **94.12%** (2660/2826) — *Target: $\ge$ 92%*
+- **Branches**: **88.1%** (11235/12752) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2131 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2135 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -467,7 +467,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 441 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 445 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -864,7 +864,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
 - ✔ `triggers shuffle when shuffle button is clicked`
@@ -872,6 +872,10 @@
 - ✔ `renders static 2D presentation when hardware tier is low or heavy motion is disallowed`
 - ✔ `triggers read callback from 2D presentation mode`
 - ✔ `handles 3D stage pin toggling, hover transitions, keyboard Enter/Space, turning leaf animationEnd, and mobile guards`
+- ✔ `dismisses open volume when clicking or tapping outside the 3D book stage`
+- ✔ `dismisses open volume when clicking the explicit close button on open spread`
+- ✔ `dynamically adapts fluid kinematics CSS variables across tablet landscape and desktop resolutions`
+- ✔ `prevents synthesized touch hover from overriding closed state on touch devices`
 
 </details>
 

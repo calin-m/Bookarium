@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Sparkles, Quote, RotateCw, BookOpen } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Quote, RotateCw, BookOpen, X } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/CursorTooltip';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
+import { useTouchDevice } from '@/hooks/useTouchDevice';
 
 export interface HeroFeaturedBook3DProps {
   featuredBook: FeaturedHeroBook & { rawBook?: GutendexBook };
@@ -27,6 +28,41 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
 }) => {
   const [pinState, setPinState] = useState<'auto' | 'open' | 'closed'>('auto');
   const [isHovered, setIsHovered] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [kinematics, setKinematics] = useState<{ scale: number; tx: number }>({
+    scale: 0.70,
+    tx: 75,
+  });
+
+  // Dynamically compute fluid scale and centering translation across arbitrary tablet/desktop resolutions
+  useEffect(() => {
+    const updateKinematics = () => {
+      if (typeof window === 'undefined') return;
+      const width = window.innerWidth;
+      if (width < 1024) return;
+      // On wide desktop (2xl: 1536px+), HeroSearch switches to 2xl:justify-end with generous desktop margins
+      if (width >= 1536) {
+        setKinematics({ scale: 0.84, tx: 115 });
+        return;
+      }
+      // Container max-w-7xl (80rem = 1280px) minus 64px padding = 1216px max content
+      const contWidth = Math.min(width - 64, 1216);
+      const fr = Math.max(0, (contWidth - 616) / 12);
+      const colWidth = 5 * fr + 224;
+      // Guarantee >= 20px clearance inside the right screen edge and > 40px clearance from left search text
+      const targetScale = Math.min(0.84, Math.max(0.60, (colWidth / 2 + 12) / 320));
+      // T shifts the spine rightward so the open 2-page spread remains centered around the closed card
+      const targetTx = Math.round(160 * targetScale * 0.75);
+      setKinematics({
+        scale: Number(targetScale.toFixed(2)),
+        tx: targetTx,
+      });
+    };
+
+    updateKinematics();
+    window.addEventListener('resize', updateKinematics, { passive: true });
+    return () => window.removeEventListener('resize', updateKinematics);
+  }, []);
 
   const {
     currentPassage,
@@ -44,6 +80,26 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
   });
 
   const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
+
+  // Close open book when clicking or tapping anywhere outside the 3D book stage
+  useEffect(() => {
+    if (!isBookOpen) return;
+
+    const handlePointerDownOutside = (e: MouseEvent | TouchEvent | PointerEvent) => {
+      const target = e.target as Node | null;
+      if (stageRef.current && target && !stageRef.current.contains(target)) {
+        setPinState('closed');
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDownOutside);
+    document.addEventListener('touchstart', handlePointerDownOutside, { passive: true });
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDownOutside);
+      document.removeEventListener('touchstart', handlePointerDownOutside);
+    };
+  }, [isBookOpen]);
 
   const togglePinState = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -65,8 +121,11 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     togglePinState();
   };
 
+  const isTouchDevice = useTouchDevice();
+
   const handleHoverChange = (hovered: boolean) => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
+    if (isTouchDevice) return;
     setIsHovered(hovered);
     if (pinState === 'closed') {
       setPinState('auto');
@@ -198,6 +257,11 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
 
   return (
     <div
+      ref={stageRef}
+      style={{
+        '--hero-open-scale': kinematics.scale,
+        '--hero-open-tx': `${kinematics.tx}px`,
+      } as React.CSSProperties}
       className={`relative group cursor-pointer book-3d-stage hero-3d-stage ${
         pinState === 'open' ? 'book-open' : pinState === 'closed' ? 'book-closed' : ''
       }`}
@@ -224,7 +288,22 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
             <div>
               <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-3 pb-1 border-b border-border">
                 <span>{currentPassage.chapterLabel || 'Notable Passage'}</span>
-                <span className="opacity-60">p. 2</span>
+                <div className="flex items-center gap-2">
+                  <span className="opacity-60">p. 2</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPinState('closed');
+                    }}
+                    className="p-0.5 -mr-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    aria-label="Close volume"
+                    title="Close volume"
+                    data-testid="hero-book-close-btn"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               <div className="p-3.5 rounded-lg bg-card/60 border border-border shadow-xs mb-2">
@@ -383,7 +462,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
         />
         {/* Ambient Floor Shadow - Open 2-Page Spread State */}
         <div
-          className={`hidden lg:block absolute -bottom-6 -left-64 -right-8 h-8 bg-black/20 dark:bg-black/50 rounded-full blur-2xl pointer-events-none transition-opacity duration-700 ${
+          className={`hidden lg:block absolute -bottom-6 -left-52 -right-12 h-8 bg-black/20 dark:bg-black/50 rounded-full blur-2xl pointer-events-none transition-opacity duration-700 ${
             pinState === 'open' ? 'opacity-100' : pinState === 'closed' ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
           }`}
         />

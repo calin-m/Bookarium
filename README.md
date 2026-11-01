@@ -13,7 +13,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202131%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202135%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-96.65%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -68,13 +68,13 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2131 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2135 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 79 validated ADRs (ADR-001 through ADR-079) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, canonical auth redirect origin hardening, layered dual-band overlapping highlights, unified overlapping marginalia cards, >= 85% Vitest coverage enforcement, 7-layer author lifespan self-healing, tier-adaptive gliding active underline cradle, unified personal collection 'downloaded' filtering & smart bookshelf, zero-CLS layout stabilization, catalog pagination smooth-scroll stabilization & header brand page-1 reset, tablet bookshelf spine modal & dedicated bookmark resume CTA, dedicated Favorites cover grid, tablet Notebook toolbar & unified active-shelf clear action, 7-pillar SAST & OWASP security suite & zero-warning ESLint gate, interactive in-page row-snapping bookmark & tablet single-column Notebook layout, offline-first PWA resilience, adaptive offline catalog, bi-directional store outbox sync & Project Gutenberg mirror compliance, reading ledger offline author preservation, merge guardrails & IndexedDB self-healing, bookshelf cloud-sync metadata preservation & atomic store selectors, reflow-resilient `bookmark_text` anchoring, page brightness, single-tap immersive mode & 300ms global stylized tooltips (`ADR-072`), and the 9-rule custom ESLint & Babel AST security & request-taint plugin (`ADR-073`). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 80 validated ADRs (ADR-001 through ADR-080) governing zero-API keys, state architecture, SEO rate-shielding, Web Speech narration, offline IndexedDB engines, completed reading state latches, enterprise polymorphism/encapsulation, Vitest performance architecture, self-hosted Supabase catalog caching, autonomous full-catalog Gutenberg ingestion, root body modal portaling, Reader Circles & Literary Symposiums (Dual Reading), Tailwind CSS v4 Oxide & supply-chain hardening, WCAG 2.2 AA focus trapping, zero-any TypeScript strictness, overlay dynamic code-splitting, Phase 5 monolith decomposition, canonical auth redirect origin hardening, layered dual-band overlapping highlights, unified overlapping marginalia cards, >= 85% Vitest coverage enforcement, 7-layer author lifespan self-healing, tier-adaptive gliding active underline cradle, unified personal collection 'downloaded' filtering & smart bookshelf, zero-CLS layout stabilization, catalog pagination smooth-scroll stabilization & header brand page-1 reset, tablet bookshelf spine modal & dedicated bookmark resume CTA, dedicated Favorites cover grid, tablet Notebook toolbar & unified active-shelf clear action, 7-pillar SAST & OWASP security suite & zero-warning ESLint gate, interactive in-page row-snapping bookmark & tablet single-column Notebook layout, offline-first PWA resilience, adaptive offline catalog, bi-directional store outbox sync & Project Gutenberg mirror compliance, reading ledger offline author preservation, merge guardrails & IndexedDB self-healing, bookshelf cloud-sync metadata preservation & atomic store selectors, reflow-resilient `bookmark_text` anchoring, page brightness, single-tap immersive mode & 300ms global stylized tooltips (`ADR-072`), and the 9-rule custom ESLint & Babel AST security & request-taint plugin (`ADR-073`). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
@@ -110,9 +110,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.8.1)
 
-- **360-Degree Living Architecture Topology, Event/State-Flow Bus, Temporal Sequence Workflows, External Integration Contracts, Failure/Retry Matrix, 5-Layer Deployment Caching, AST Environment Variable Dependency Map & Automatic 11-Diagram `README.md` Sync (`scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `scripts/verify-build.js`, `docs/ARCHITECTURE.md`, `README.md`, `ADR-079`)**: Added `extractEnvironmentDependencyCatalog` to `scripts/lib/ast-parser.js` to parse variable names strictly from `.env.example` (zero secret values read) and traverse `src/**`, `next.config.ts`, `scripts/*.js`, and `.github/workflows/*.yml` via Babel AST (`process.env.<VAR>`) to map every consumer; enriched Diagrams 1 & 2 (`End-to-End System Context` and `Focus Reader State`) with refactored Wave 1–4 modules (`preferences-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`, `reader-bookmark-geometry.ts`, `ReaderRowBookmark.tsx`, `useReaderHabitTelemetry.ts`, `useOfflineCatalogFallback.ts`, `useNotebookMetadataResolver.ts`, `useAccountSecurityActions.ts`, `AccountTypographySubPanel.tsx`); expanded `scripts/generate-architecture-matrix.js` with 6 new living sections and 7 Mermaid diagrams (`## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology` + Client Storage & Account Erasure Parity Matrix, `## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)` across Cold Launch/Outbox Sync, Focus Reader/HTTP 451/Multi-Mirror/Worker AST, and Offline Queueing/Reconnect Replay, `## 🌍 External Integration & Boundary Contracts Map`, `## 🛡️ Failure Modes, Circuit Breakers & Retry Topology` across 10 runtime failure scenarios, `## 🚀 Deployment, Edge Caching & Operational Topology` with 5-Layer TTL Hierarchy & Hardware-Tier Performance Budgets, and `## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map`); upgraded `syncReadmeArchitectureDiagrams` so all 11 Mermaid diagrams in `docs/ARCHITECTURE.md` automatically synchronize 1:1 into `README.md`; and extended `Pass 5` in `scripts/verify-build.js` to enforce section, `.env.example` variable, and 1:1 `ARCHITECTURE.md`<->`README.md` Mermaid diagram parity.
+- **Fluid Multi-Resolution Kinematics & Touch-Safe Dismissal for 3D Hero Book (`src/app/globals.css`, `src/components/presentation/HeroFeaturedBook3D.tsx`, `src/components/presentation/HeroFeaturedBook3D.test.tsx`, `docs/DECISIONS.md`, `ADR-080`)**: Implemented a dynamic layout formula computing real-time `--hero-open-scale` and `--hero-open-tx` based on available column width ($S = \min(0.84, \max(0.60, (W_{col}/2 + 12)/320))$ and $T = \text{round}(160 \times S \times 0.75)$), guaranteeing $\ge 20\text{px}$ clearance inside the right screen edge and $>40\text{px}$ clearance from left search text across any tablet resolution (from $1024\text{px}$ iPad to $1142\text{px}$ Lenovo Tab Plus 2K to $1280\text{px}$–$1536\text{px}+$ desktop); deployed granular 5-tier pre-hydration CSS fallbacks in `globals.css` ($1024\text{px}$, $1120\text{px}$, $1220\text{px}$, $1320\text{px}$, $1536\text{px}$); added document-level `pointerdown` / `touchstart` outside-tap dismissal; guarded `handleHoverChange` with canonical `useTouchDevice` to prevent synthesized touch events from resetting closed pin state; and added an accessible close button (`✕`) on the open page header.
+- **360-Degree Living Architecture Topology, Event/State-Flow Bus, Temporal Sequence Workflows, External Integration Contracts, Failure/Retry Matrix, 5-Layer Deployment Caching, AST Environment Variable Dependency Map, Security Matrix Migration & Executive README Directory (`scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `scripts/verify-build.js`, `docs/ARCHITECTURE.md`, `README.md`, `SECURITY.md`, `ADR-079`)**: Added `extractEnvironmentDependencyCatalog` to `scripts/lib/ast-parser.js` to parse variable names strictly from `.env.example` (zero secret values read) and traverse `src/**`, `next.config.ts`, `scripts/*.js`, and `.github/workflows/*.yml` via Babel AST (`process.env.<VAR>`) to map every consumer; enriched Diagrams 1 & 2 (`End-to-End System Context` and `Focus Reader State`) with refactored Wave 1–4 modules (`preferences-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`, `reader-bookmark-geometry.ts`, `ReaderRowBookmark.tsx`, `useReaderHabitTelemetry.ts`, `useOfflineCatalogFallback.ts`, `useNotebookMetadataResolver.ts`, `useAccountSecurityActions.ts`, `AccountTypographySubPanel.tsx`); expanded `scripts/generate-architecture-matrix.js` with 6 new living sections and 7 Mermaid diagrams (`## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology` + Client Storage & Account Erasure Parity Matrix, `## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)` across Cold Launch/Outbox Sync, Focus Reader/HTTP 451/Multi-Mirror/Worker AST, and Offline Queueing/Reconnect Replay, `## 🌍 External Integration & Boundary Contracts Map`, `## 🛡️ Failure Modes, Circuit Breakers & Retry Topology` across 10 runtime failure scenarios, `## 🚀 Deployment, Edge Caching & Operational Topology` with 5-Layer TTL Hierarchy & Hardware-Tier Performance Budgets, and `## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map`); migrated the 13-row `Enterprise Security & Resiliency Architecture` matrix to `SECURITY.md` (`## 🛡️ Enterprise Defense-in-Depth & Resiliency Matrix`); streamlined `README.md` to Diagram 1 + an 11-diagram interactive directory table; and updated `Pass 5` and Pillar 6 in `scripts/verify-build.js` to enforce 14-table RLS verification and diagram directory parity.
 - **Touch Spine Physics, 3D Preview Centering Parity, Scholar Sanctuary Ledger & Babel 8 / ESLint 10 Dependency Upgrades (`src/components/presentation/bookshelf/BookshelfSpine.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/app/globals.css`, `src/components/presentation/BookPreviewModal.tsx`, `src/components/account/AccountIdentityCard.tsx`, `package.json`, `scripts/lib/ast-parser.js`, `scripts/generate-parser-docs.js`, `scripts/eslint-rules/bookarium-security.js`, `ADR-075`, `ADR-076`, `ADR-077`, `ADR-078`)**: Added controlled `isActive` touch spine selection with 1:1 cursor hover physical parity (`translate-y-0 scale-105 shadow-[0_16px_32px_-6px_rgba(0,0,0,0.65)] origin-bottom z-30`), a `120ms` tap anticipation delay, and synchronized dismiss-to-return shelf animation (`ADR-075`); corrected open 3D book preview translation to true `0.5 * W` midpoint alignment across landscape tablet and desktop viewports with symmetric `-left-28 -right-28` floor shadow geometry (`ADR-076`); promoted the Account reading streak pill into the header identity row (`identity-streak-badge`) and redesigned the collection stat strip into a 5-column stacked Scholar Sanctuary Ledger (`ADR-077`); and upgraded `@babel/parser` and `@babel/traverse` in lockstep to `^8.0.8` (with ESTree `ImportExpression` AST visitor parity), `eslint` to `^10.13.0`, `@tanstack/react-query` to `^5.105.0`, `zustand` to `^5.0.16`, and `postcss` to `^8.5.32` (`ADR-078`).
-- **Dynamic Spread-1 Passage Extraction, ASCII Border & Colophon Filtering, Gutenberg Boilerplate Filtering & Truthful Bibliographic Placeholders (`src/config/featured-books.ts`, `src/config/featured-books.test.ts`, `src/config/config.test.ts`, `src/lib/gutenberg/types.ts`, `src/lib/gutenberg/passages.ts`, `src/lib/gutenberg/passages.test.ts`, `src/hooks/useBookPassageShuffle.ts`, `src/hooks/useBookPassageShuffle.test.ts`, `src/components/presentation/NotablePassagesSpread.tsx`, `src/components/presentation/NotablePassagesSpread.test.tsx`, `src/components/presentation/BookPreviewModal.tsx`, `ADR-074`)**: Purged all generic cross-author quotes from `featured-books.ts`; replaced non-featured fallback spreads with a single truthful bibliographic edition spread derived strictly from the volume's own title, author, and Gutenberg ID; updated `useBookPassageShuffle` to immediately replace Spread 1 and all shuffle spreads with `dynamicPassages` as soon as `useBookContent` resolves; filtered Distributed Proofreading, Transcriber Notes, Illustration boilerplate, ASCII divider rules (`/[-_=*~]{4,}/`), framed copyright colophons (`Copyright 1927`), and underscore blank lines (`/_{3,}/`) in `passages.ts`; enforced a 25-letter threshold, 50% alphabetic density guard, and 15-letter quote floor in `findQuotesInParagraphs`; eliminated duplicate paragraph fallback repetitions across short chapters; and added live `Extracting Passages…` badge signaling and a dedicated extraction stage card (`notable-passage-loading`) in `NotablePassagesSpread` with a spinning `<Loader2 />`, uppercase `Extracting Volume Passages…` title, chapter-scanning explanation with `<Sparkles />`, and 3-line animated ink-scan pulse bars while text streams.
 - **Reading Ledger Offline Author Preservation, Merge Guardrails & IndexedDB Self-Healing (`src/hooks/reader/useContinueReadingLedger.ts`, `src/lib/offline-storage.ts`, `src/hooks/useOfflineBooks.ts`, `src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`, `ADR-070`)**: Resolved the issue where books saved for offline reading reverted to "Anonymous" on page refresh on `/bookmarks` by verifying authentic non-placeholder authors in `missingIds` to trigger background metadata fetching, preventing candidate books with placeholder authors from overwriting authentic domain authors in `setOrMergeBook`, healing placeholder authors in `bookDictionary` using `readingPositions`, resolving authentic authors from local shelf and reader stores before defaulting to "Anonymous" in `getAllOfflineBookMetas()` with asynchronous IndexedDB back-fill (`patchOfflineBookAuthors`), and updating `useReaderStore.enrichReadingPositions`, `saveReadingPosition`, and `useBookshelfStore.enrichSavedBooks` to heal placeholder authors when incoming fresh books provide authentic names without numeric lifespans.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -227,7 +227,9 @@ Bookarium is structured around five core engineering pillars:
 ---
 
 <!-- BEGIN:architecture-diagrams -->
-## 🏛️ System Architecture Diagrams
+## 🏛️ System Architecture
+
+> For the complete living specification, comprehensive C4 models, temporal sequence workflows, and failure recovery trees, see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).
 
 ### 1. End-to-End System Context & Data Flow
 
@@ -469,458 +471,21 @@ flowchart TD
 
 ---
 
-### 2. Focus Reader State & Typography Engine
+### 📚 Living Architecture Directory (11 Interactive Diagrams)
 
-```mermaid
-flowchart LR
-    subgraph ReaderState ["Zustand Reader & Fellowship Stores (useReaderStore • useFellowshipStore)"]
-        ActiveBook["Active Book Metadata"]
-        FontSize["Font Size: 12px - 36px"]
-        FontFamily["Font Family: Serif | Sans | Mono"]
-        LineHeight["Line Height: 1.2 - 2.6"]
-        Brightness["Page Brightness: 30% - 100%"]
-        ColumnWidth["Column Width: Narrow (576px) | Normal (768px) | Wide (1024px)"]
-        ReadingMode["Reading Mode: Paginated | Scroll"]
-        Theme["Theme: Light | Dark | Sepia"]
-        Progress["Global Page & Book Progress %"]
-        Positions["Reading Positions Map\n(exact chapter, page, row-snapped bookmarkRow & reflow-resilient bookmarkText)"]
-        FellowState["Active Symposium & Companion Coordinates\n(useFellowshipStore)"]
-    end
-
-    subgraph ParsingEngine ["Gutenberg Typography & Segmentation AST"]
-        RawText["Raw Plain Text Stream"]
-        WorkerPool["Persistent Web Worker Thread\n(useGutenbergParserWorker)\n• Kept alive across font/spacing tweaks\n• Chunked async main-thread fallback"]
-        Reflow["reflowGutenbergParagraphs\n(Normalizes 70-col hard wraps)"]
-        TOCFilter["Front-Matter TOC Suppressor"]
-        Segmentation["Chapter Section Segmentation"]
-        VirtualPages["Virtual Continuous Page Spread (5600 chars/pg)"]
-        
-        RawText --> WorkerPool
-        WorkerPool --> Reflow
-        Reflow --> TOCFilter
-        TOCFilter --> Segmentation
-        Segmentation --> VirtualPages
-    end
-
-    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx • useReaderHabitTelemetry)"]
-        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Tactile Single-Tap Immersive Slide)"]
-        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
-        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • reader-bookmark-geometry.ts • startRow->endRow Span)"]
-        ProgressBar["Top Reading Progress Indicator"]
-        ResumeToast["Exact-Page Auto-Resume Toast"]
-        FooterBar["Sticky Bottom Pagination & Page Jump (ReaderFooter • Tactile Single-Tap Immersive Slide)"]
-        TOC["Table of Contents Drawer (ReaderTocDrawer)"]
-        SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
-        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
-        Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]
-        AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
-        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]
-        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]
-        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
-    end
-
-    subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]
-        LSPrefs[("bookarium-reader-preferences & preferences-sync.ts\n(theme, font, spacing, brightness, readingProgress, readingPositions, public.profiles.preferences JSONB)")]
-        LSAnnot[("bookarium-annotations-storage & annotation-cloud-sync.ts\n(useAnnotationStore highlights & reflections)")]
-        IDBStorage[("IndexedDB (useOfflineBooks)\n(unabridged offline volumes)")]
-        CloudProgress[("⚡ Supabase Cloud\npublic.reading_progress & reader-cloud-sync.ts\n(2s Debounced Sync & Restore • scroll_offset & bookmark_text)")]
-        CloudSymposium[("⚡ Supabase Cloud\npublic.symposium_sessions, user_annotations & fellowship-cloud-sync.ts\n(Companion Progress & Fellow Marginalia)")]
-    end
-
-    Toolbar -->|"Adjust Size / Family / Width / Mode / Theme"| ReaderState
-    VirtualPages --> ReaderView
-    ReaderState --> ContentArea
-    FellowState -->|"Companion Progress & Milestone Dispatches"| SubHeader
-    ReaderState --> ProgressBar
-    ReaderState --> ResumeToast
-    FooterBar -->|"Page Flip / Jump"| ReaderState
-    TOC -->|"Select Chapter (p. X)"| ReaderState
-    SearchDrawer -->|"Jump to Match (p. X)"| ReaderState
-    LangDrawer -->|"Switch Translation"| ReaderState
-    Controls -->|"Tweak Settings"| ReaderState
-    AudioBar -->|"Sentence Highlight Sync"| ContentArea
-    HighlightPop <-->|"Select / Save Passage"| ContentArea
-    AnnotDrawer -->|"Render Highlights"| ContentArea
-    AnnotDrawer <--> LSAnnot
-    AnnotDrawer <-->|"Symposium RLS"| CloudSymposium
-    FellowState <-->|"Authenticated RLS"| CloudSymposium
-    ReaderView <--> IDBStorage
-    ReaderState <--> LSPrefs
-    ReaderState <-->|"Authenticated"| CloudProgress
-```
-
----
-
-### 3. Bookmarks & Continue Reading Ledger Architecture
-
-```mermaid
-flowchart TD
-    subgraph Storage ["Persistent State Stores"]
-        RS["📖 useReaderStore\n• readingPositions (chapter, page, bookmarkRow & bookmarkText — cleared on finished)\n• readingProgress (0-100%)\n• openReader(book) [warm cache]"]
-        BS["⚡ useBookshelfStore\n• savedBooks []\n• recentBooks [] (cached identity)\n• bookStatuses {} ('currently_reading', 'finished' resets bookmark)"]
-        IDB["📦 IndexedDB (useOfflineBooks)\n• offlineBookIds & offlineBooks (unabridged cache)"]
-    end
-
-    subgraph LedgerHook ["useContinueReadingLedger Hook"]
-        FilterActive["Active Telemetry Filter\n(readingPositions exists OR readingProgress > 0)\n⚠️ Excludes un-opened shelved books"]
-        MissingCheck{"Missing Identity or\nPlaceholder Author?"}
-        QueryMissing["🔄 useBooks(ids: missingIds)\n(TanStack Query - Catalog Seam)"]
-        EnrichDict["Enriched Book Dictionary (setOrMergeBook)\n(savedBooks + recentBooks + offlineBooks + queryResults • Author Merge Guardrails)"]
-        Parser["Canonical Utilities (@/lib/utils)\n• formatAuthorNames (reverse 'Last, First' & strip dates)\n• cleanBookTitle (strip Gutenberg prefixes)\n• formatRelativeTime ('Recently', '2h ago')"]
-        Assembly["Assemble ActiveReadingVolume[]\n• progress, chapter, coordinates, lastReadAt\n• status (in_progress / completed / on_hold)\n• isOffline / Not Downloaded badge • Line X & bookmarkText"]
-        FilterSort["Client Search & Status Filter\n• 'all' | 'in_progress' | 'completed' | 'on_hold'\n• CollectionSearchBar token matching\n• Multi-mode sort ('recent' | 'progress' | 'title' | 'author' | 'downloaded')"]
-    end
-
-    subgraph UI ["Presentation Layer (BookmarksView.tsx)"]
-        Header["SectionHeader ('Continue Reading & Bookmarks')\n• Eyebrow, Flank lines, Clear Bookmarks modal\n• Mark as Finished modal (conditional bookmark-reset notice)"]
-        Search["CollectionToolbar\n(Search, Sort & Downloaded Filter, Pagination)"]
-        Tabs["Filter Tabs (All, In Progress, Completed, On Hold)"]
-        Cards["BookmarkCard.tsx\n• Top-anchored silk ribbon (origin-top scale-y-110)\n• Card tap focuses/activates card (all viewports)\n• Unified Title/Author Link Copy (300ms Tooltip & Copied! Pill)\n• Reading coordinates & Line X badge\n• Favorite/Bookshelf curation & RemoveCollectionBookModal\n• 4-state square offline button & modal\n• Status dropdown selector (conditional bookmark-reset modal on Finished)\n• Desktop cursor-exit focus release (onDeactivate)"]
-        ResumeAction["Dedicated 1-Click Resume / Read Again CTA\n• Seed useReaderStore.openReader(book) [Warm Cache]\n• router.push('/read/' + id)"]
-    end
-
-    RS --> FilterActive
-    FilterActive --> MissingCheck
-    BS --> MissingCheck
-    IDB --> MissingCheck
-    MissingCheck -->|"Yes (e.g. un-shelved #55179)"| QueryMissing
-    QueryMissing --> EnrichDict
-    MissingCheck -->|"No"| EnrichDict
-    BS --> EnrichDict
-    IDB --> EnrichDict
-    EnrichDict --> Parser
-    Parser --> Assembly
-    IDB --> Assembly
-    IDB -->|"isBookOffline Filter"| FilterSort
-    Assembly --> FilterSort
-    FilterSort --> Cards
-    Header --> UI
-    Search --> FilterSort
-    Tabs --> FilterSort
-    Cards --> ResumeAction
-    ResumeAction -->|"Warm Reader Transition (0 CLS)"| RS
-```
-
----
-
-### 4. Cross-Store, Worker & DOM Event Bus Diagram
-
-```mermaid
-flowchart TD
-    subgraph BrowserEvents ["Browser, DOM & Auth Event Emitters"]
-        EvtAuth["🔐 supabase.auth.onAuthStateChange\n(SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT)"]
-        EvtOnline["📡 window online / offline Events\n(useNetworkStatus • useSyncExternalStore)"]
-        EvtIDB["📦 CustomEvent: bookarium-offline-books-updated\n& bookarium-offline-downloading"]
-        EvtVis["👁️ document.visibilitychange & window focus/blur\n(2-Minute Active Immersion Guard)"]
-        EvtSpeech["🔊 speechSynthesis.onvoiceschanged & boundary\n(Web Speech Neural Voice & Word Sync)"]
-    end
-
-    subgraph Coordinators ["Cross-Store Coordinators & Bridges"]
-        SyncCoord["🔄 syncAllStoresWithCloud (src/lib/sync-utils.ts)\n• Per-user in-flight mutex coalescing\n• Outbox flush -> Parallel Select -> LWW Merge"]
-        PrefsBridge["⚙️ Scholar Preferences Bridge (src/lib/preferences-sync.ts)\n• 13-key snapshot • Custom Defaults • Factory Reset\n• 2s debounced public.profiles.preferences JSONB sync"]
-        AutoHeal["🩺 useCollectionAutoHeal & isPlaceholderAuthor Guards\n• Scans Saved, Favorites, Positions, Annotations, Symposiums\n• Non-regressive author lifespan enrichment"]
-        Teardown["🧹 Account Erasure & Session Teardown\n• public.delete_current_user() RPC\n• clearLocalUserStores({ wipeDeviceStorage: true })"]
-    end
-
-    subgraph StoreCascades ["Reactive Cross-Store State Cascades"]
-        SAuth[("useAuthStore")]
-        SShelf[("useBookshelfStore")]
-        SReader[("useReaderStore")]
-        SHabits[("useHabitsStore")]
-        SAccolades[("useAccoladesStore")]
-        SFellow[("useFellowshipStore")]
-        SAnnot[("useAnnotationStore")]
-        SPrefs[("usePreferencesStore")]
-        STheme[("useThemeStore")]
-    end
-
-    subgraph WorkerIPC ["Off-Thread Worker & PWA Service Worker IPC"]
-        ParserWorker["⚙️ gutenberg.worker.ts\npostMessage: PARSE_BOOK -> PARSE_SUCCESS / PARSE_ERROR"]
-        SWChannel["🛡️ public/sw.js (bookarium-app-shell-v4)\npostMessage: CACHE_URLS -> App Shell & Chunk Warmup"]
-    end
-
-    EvtAuth --> SAuth
-    SAuth -->|"Authenticated Session"| SyncCoord
-    SAuth -->|"Sign-Out / Account Delete"| Teardown
-    EvtOnline -->|"Reconnect Flush"| SyncCoord
-    EvtOnline -->|"Flush Pending Profile Edits"| SAuth
-    SyncCoord --> SShelf
-    SyncCoord --> SReader
-    SyncCoord --> SAnnot
-    SyncCoord --> SHabits
-    SyncCoord --> SAccolades
-    SyncCoord --> SFellow
-    SyncCoord --> PrefsBridge
-    PrefsBridge <--> SPrefs
-    PrefsBridge <--> SReader
-    PrefsBridge <--> STheme
-    SShelf -->|"setReadingStatus(id, finished)\nResets bookmarkRow=0 & bookmarkText"| SReader
-    SShelf -->|"Finished Volume Telemetry"| SHabits
-    SHabits -->|"Streak & Immersion Milestones"| SAccolades
-    SFellow -->|"removeFellow / endSymposium\nPrunes fellowAnnotations"| SAnnot
-    EvtIDB -->|"Broadcast Cache Delta"| SShelf
-    EvtVis -->|"Active / Idle Tick"| SHabits
-    EvtSpeech -->|"TTS Immersion Bypass"| SHabits
-    AutoHeal --> SShelf
-    AutoHeal --> SReader
-    AutoHeal --> SAnnot
-    AutoHeal --> SFellow
-```
-
----
-
-### 5. Cold Launch, Edge Geo-IP Resolution, Hydration & 6-Store Cloud Outbox Reconciliation
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Reader as 👤 Reader Browser
-    participant Proxy as 🌐 src/proxy.ts (Edge)
-    participant Providers as ⚛️ src/app/providers.tsx
-    participant Local as 💾 localStorage & IndexedDB
-    participant Sync as 🔄 sync-utils.ts & preferences-sync.ts
-    participant Supabase as ⚡ Supabase Cloud (RLS)
-
-    Reader->>Proxy: GET / (or /bookshelf, /read/[id])
-    Proxy->>Proxy: Resolve country (x-vercel-ip-country -> ?country -> cookie)
-    Proxy->>Supabase: Refresh SSR Auth Session Cookie (updateSession)
-    Proxy-->>Reader: HTML Shell + Set-Cookie (bookarium-geo-country) + 7 OWASP Headers
-    Reader->>Providers: Mount RootLayout & Providers
-    Providers->>Local: Hydrate 10 Zustand Stores & IndexedDB Offline IDs (0ms)
-    Providers->>Supabase: supabase.auth.getSession() & onAuthStateChange
-    alt Authenticated Scholar & Navigator Online
-        Providers->>Sync: syncAllStoresWithCloud() (Per-User In-Flight Mutex)
-        Sync->>Supabase: 1. Flush Pending Outboxes (Bookshelf, Annotations, Pins, Symposiums, Profile)
-        Sync->>Supabase: 2. Parallel Promise.all Select across 11 User-Scoped Tables
-        Supabase-->>Sync: Cloud Rows (Scoped by auth.uid() & Symposium RLS)
-        Sync->>Local: 3. Filter Tombstones + LWW Timestamp Merge + Non-Regressive Author Merge
-        Sync->>Local: 4. Single-Commit Atomic Store Updates & Reconcile 13-Key Preferences JSONB
-    else Guest Mode or Offline
-        Providers->>Local: Operate 100% from LocalStorage & IndexedDB with Zero API Keys
-    end
-```
-
----
-
-### 6. Focus Reader Launch, Jurisdictional Gatekeeping (`HTTP 451`), Multi-Mirror Streaming & Worker AST
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Reader as 👤 Reader Browser
-    participant Hook as 📖 useBookContent & WorkerHook
-    participant IDB as 📦 IndexedDB (offline-storage.ts)
-    participant API as 🛡️ GET /api/books/content
-    participant Gate as ⚖️ metadata-cache & copyright-engine
-    participant Upstream as 🌐 Supabase DB / 4 Gutenberg Mirrors
-    participant Worker as ⚙️ gutenberg.worker.ts
-
-    Reader->>Hook: Navigate to /read/[id] (Warm Metadata from useReaderStore)
-    Hook->>IDB: getOfflineBook(bookId) (networkMode: always)
-    alt Cached in IndexedDB & Verified Public Domain in Jurisdiction
-        IDB-->>Hook: Return Unabridged Text Instantaneously (0ms, 100% Offline)
-    else Not Cached Locally (Online Fetch)
-        Hook->>API: GET /api/books/content?id=[id]&url=[mirrorUrl]
-        API->>API: bookContentRateLimiter.check() & url-validator.ts (HTTPS + Host Allowlist)
-        API->>Gate: resolveBookMetadata(id) (1. 24h LRU -> 2. Supabase -> 3. Gutendex -> 4. Featured)
-        Gate->>Gate: isBookPublicDomainInJurisdiction(authors, translators, country)
-        alt Restricted in Client Jurisdiction (e.g. Life+70 / Life+100)
-            Gate-->>API: Protected Status + Public Domain Unlock Year
-            API-->>Hook: HTTP 451 Unavailable For Legal Reasons
-            Hook-->>Reader: Render ReaderErrorView with Declarative CopyrightNoticeBanner
-        else Public Domain Verified
-            API->>Upstream: Fetch Text (Tier 1: Supabase plain_text -> Tier 2: aleph -> pglaf -> readingroo.ms -> www)
-            Upstream-->>API: Plain-Text Stream (UTF-8)
-            API-->>Hook: 200 OK (s-maxage=86400, Vary: x-vercel-ip-country)
-            Hook->>IDB: Auto-Cache Volume & Verified Author Lifespans in IndexedDB
-        end
-    end
-    Hook->>Worker: postMessage({ type: PARSE_BOOK, text, charsPerPage })
-    Worker->>Worker: reflowGutenbergParagraphs -> TOC Suppressor -> parseGutenbergChapters -> paginateChapterContent
-    Worker-->>Hook: PARSE_SUCCESS (Chapters AST & Virtual Page Spreads)
-    Hook-->>Reader: Render ReaderSurface & Scroll to Canonical bookmarkText DOM Range
-```
-
----
-
-### 7. Offline Mutation Queueing, Adaptive Offline Catalog & Reconnect Outbox Replay
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Reader as 👤 Reader Browser
-    participant Net as 📡 useNetworkStatus & sw.js (v4)
-    participant Catalog as 📚 Adaptive Offline Catalog
-    participant Stores as ⚡ Zustand Stores & Local Outboxes
-    participant Sync as 🔄 Bookshelf & 6-Store Sync Engine
-    participant Cloud as ⚡ Supabase Cloud
-
-    Reader->>Net: Device Loses Connectivity (window offline event)
-    Net-->>Reader: Navbar Red Offline Indicator (data-testid=navbar-offline-dot)
-    Reader->>Catalog: Browse / or /read/[id]
-    Net-->>Catalog: Serve Cached App Shell (sw.js v4) + IndexedDB Volumes (useOfflineCatalogFallback)
-    Catalog-->>Reader: Dim Uncached Books (isUnavailableOffline) with Not Downloaded Badges
-    Reader->>Stores: Mutate Library Offline (Save Book, Move Shelf, Pin Accolade, Read & Bookmark)
-    Stores->>Stores: Apply Optimistic State + Append Action to Persistent localStorage Outbox
-    Reader->>Net: Device Regains Connectivity (window online event)
-    Net->>Sync: Trigger syncAllStoresWithCloud() & flushPendingProfileUpdates()
-    Sync->>Sync: Acquire Per-User In-Flight Mutex (inFlightOutboxFlushes)
-    Sync->>Cloud: Replay Outbox Actions Sequentially & Upsert Latest Reading/Habit Coordinates
-    Cloud-->>Sync: 200 OK Confirmed
-    Sync->>Stores: Clear Replayed Outbox Entries & Reconcile Canonical Cloud State
-```
-
----
-
-### 8. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline
-
-```mermaid
-flowchart TD
-    subgraph SecurityGates ["Static Security, AST Taint & Boundary Gates (scripts/verify-build.js & eslint.config.mjs)"]
-        Pass05["🔒 Pass 0.5: Secret, File/Path, Env & Graph Scanner\n• Zero live tokens / private keys / service_role JWTs\n• File/Path & 5 MB ceiling • .env.example parity\n• Transitive Client->Server AST Graph Isolation"]
-        Pass075["🛡️ Pass 0.75: 7-Pillar SAST, Lockfile & AST Taint Suite\n• Lockfile SHA-512 & HTTPS npm registry + 0 High/Crit CVEs\n• 9-Rule AST & Request-Taint Engine (SSRF, Redirects, DOM XSS, Eval, Sinks)\n• MIT / copyright=false • 14-Table RLS, Write-Policy & search_path\n• 7 OWASP HTTP Security Headers & Service Worker Guard"]
-    end
-
-    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]
-        VitestCfg["⚙️ vitest.config.mts\n• jsdom environment • maxWorkers: 4\n• @/* path alias • V8 Coverage Provider"]
-        TestSetup["🧰 src/test/setup.ts\n• @testing-library/jest-dom/vitest\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\n• framer-motion synchronous forwardRef mock\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\n• Per-test localStorage.clear() & vi.clearAllMocks()"]
-        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\n• MSW v2 setupServer(...handlers) lifecycle\n• GET /api/books, /api/books/content, /api/books/translations\n• HTTPS Gutendex & 4 Allowlisted Gutenberg Mirrors\n• mockBooks & sampleBookText fixtures (0 external network calls)"]
-    end
-
-    subgraph TestTiers ["4-Tier Co-Located Test Suites (210 Suites)"]
-        Tier1["Tier 1: Pure Domain, Security & AST Suites\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]
-        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\n• useBooks, useBookContent, useBookTranslations\n• supabase-provider, gutendex-provider"]
-        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\n• bookshelf-cloud-sync, sync-utils, offline-storage"]
-        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\n• 86 UI Components + App Router Pages/Layouts + Web Worker\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts)"]
-    end
-
-    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]
-        V8Thresholds["📊 Tiered V8 Coverage Floor\n• Lines >= 95% • Statements >= 95%\n• Functions >= 92% • Branches >= 85%"]
-        QualityReport["📋 scripts/generate-quality-report.js\n• docs/QUALITY_AUDIT_REPORT.md\n• docs/quality-audit-results.json\n• README.md live badges"]
-    end
-
-    Pass05 --> Pass075
-    Pass075 --> VitestCfg
-    VitestCfg --> TestSetup
-    TestSetup --> MSWServer
-    TestSetup --> Tier1
-    MSWServer -->|"Hermetic HTTP Interception"| Tier2
-    TestSetup --> Tier3
-    MSWServer -->|"Global Zero-Network Safety Net"| Tier4
-    Tier1 --> V8Thresholds
-    Tier2 --> V8Thresholds
-    Tier3 --> V8Thresholds
-    Tier4 --> V8Thresholds
-    V8Thresholds --> QualityReport
-```
-
----
-
-### 9. External Integration Topology Diagram
-
-```mermaid
-flowchart LR
-    subgraph BookariumRuntime ["Bookarium Execution Tiers"]
-        BrowserTier["🖥️ Browser Client\n(React 19 SPA, Service Worker v4, IndexedDB)"]
-        EdgeTier["⚡ Vercel Edge & Serverless (iad1)\n(src/proxy.ts, /api/books/**, /auth/callback)"]
-        CLITier["🛠️ GitHub Actions & Node.js CLI\n(catalog-sync.yml, translations-sync.yml)"]
-    end
-
-    subgraph ExternalSystems ["External Public Domain & Cloud Infrastructure"]
-        SupaDB[("⚡ Supabase PostgreSQL & PostgREST\n(https://*.supabase.co/rest/v1/*)")]
-        SupaAuth["🔐 Supabase Auth API\n(https://*.supabase.co/auth/v1/*)"]
-        GutendexAPI["🌐 Gutendex REST API\n(https://gutendex.com/books)"]
-        GutenbergMirrors["📚 4 Allowlisted Gutenberg Mirrors\n1. aleph.gutenberg.org\n2. gutenberg.pglaf.org\n3. gutenberg.readingroo.ms\n4. www.gutenberg.org"]
-        GutenbergFeeds["📦 Gutenberg Catalog Feed\n(www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz)"]
-        WikidataAPI["🌍 Wikidata SPARQL Endpoint\n(https://query.wikidata.org/sparql)"]
-        VercelRUM["📊 Vercel Edge Telemetry & Google Fonts\n(vitals.vercel-insights.com • fonts.googleapis.com)"]
-    end
-
-    BrowserTier -->|"Anon JWT + RLS (6-Store Sync)"| SupaDB
-    BrowserTier -->|"Session / OAuth / Password Auth"| SupaAuth
-    BrowserTier -.->|"Direct 504 Failover (copyright=false)"| GutendexAPI
-    BrowserTier -.->|"Cover Art (img-src HTTPS)"| GutenbergMirrors
-    BrowserTier -.->|"Cookie-less Web Vitals"| VercelRUM
-    EdgeTier -->|"Primary Catalog & FRBR Lookups"| SupaDB
-    EdgeTier -->|"PKCE / OTP Code Exchange"| SupaAuth
-    EdgeTier -.->|"15s Timeout Catalog Failover"| GutendexAPI
-    EdgeTier -->|"Anti-SSRF Validated Text Stream"| GutenbergMirrors
-    CLITier -->|"Bulk Upsert (Service Role / Anon)"| SupaDB
-    CLITier -->|"Weekly Gzip Stream"| GutenbergFeeds
-    CLITier -->|"Weekly P2034/P407 FRBR Query"| WikidataAPI
-```
-
----
-
-### 10. Multi-Tier Failover & Self-Healing Decision Diagram
-
-```mermaid
-flowchart TD
-    subgraph CatalogResilience ["1. Catalog Search Resilience Cascade"]
-        CatReq["Catalog Query (/api/books)"] --> SupaHealth{"Supabase Configured &\n60s Healthcheck OK?"}
-        SupaHealth -->|"Yes"| SupaQuery["Query public.books (GIN + B-Tree)"]
-        SupaHealth -->|"No / Unreachable"| GutServer["Server Failover: gutendex-provider.ts (15s Timeout)"]
-        SupaQuery -->|"Error / Empty Seed"| GutServer
-        GutServer -->|"HTTP 502 / 504"| GutClient["Client Failover: useBooks.ts Direct Gutendex Fetch"]
-        GutClient -->|"Navigator Offline"| OfflineCat["Adaptive Offline Catalog (useOfflineCatalogFallback.ts)\nServes IndexedDB Volumes or CatalogOfflineView.tsx"]
-    end
-
-    subgraph ContentResilience ["2. Book Content Streaming Resilience Cascade"]
-        TxtReq["Open Volume (/read/[id])"] --> IDBCheck{"Cached in Browser\nIndexedDB?"}
-        IDBCheck -->|"Hit (0ms)"| RenderReader["Render Instantaneously Offline"]
-        IDBCheck -->|"Miss"| Tier1Supa{"Tier 1: public.books.content\nPresent in Supabase?"}
-        Tier1Supa -->|"Hit"| RenderReader
-        Tier1Supa -->|"Miss"| Mirror1["Tier 2A: aleph.gutenberg.org"]
-        Mirror1 -->|"Timeout / 404 / 5xx"| Mirror2["Tier 2B: gutenberg.pglaf.org"]
-        Mirror2 -->|"Timeout / 404 / 5xx"| Mirror3["Tier 2C: gutenberg.readingroo.ms"]
-        Mirror3 -->|"Timeout / 404 / 5xx"| Mirror4["Tier 2D: www.gutenberg.org"]
-        Mirror4 -->|"Success"| RenderReader
-    end
-
-    subgraph ComputeAndSync ["3. Worker Compute & Cloud Outbox Resilience"]
-        WorkerTask["Parse Gutenberg Plain Text"] --> WorkerAlive{"Web Worker Thread\nAvailable?"}
-        WorkerAlive -->|"Yes"| OffThread["Off-Thread AST Segmentation (gutenberg.worker.ts)"]
-        WorkerAlive -->|"Crash / Unsupported"| MainThread["Chunked Async Main-Thread Fallback (setTimeout 0)"]
-    end
-```
-
----
-
-### 11. Edge Routing, Regional Compute Pinning (`iad1`) & Autonomous Cron Topology
-
-```mermaid
-flowchart TD
-    subgraph GlobalClients ["Global Reader Devices"]
-        Client["🌍 Browser / Installed PWA\n(Desktop, Tablet, Mobile)"]
-    end
-
-    subgraph VercelEdgeNetwork ["Vercel Global Edge Network (PoPs Worldwide)"]
-        EdgeProxy["🛡️ src/proxy.ts & next.config.ts\n• Geo-IP Extraction (x-vercel-ip-country)\n• Clean Path Rewrites (/bookshelf, /favorites, /notebook, /bookmarks -> /)\n• 7 Mandatory OWASP Security Headers & Production CSP"]
-        EdgeCDN["⚡ Vercel Edge CDN SWR Cache\n• /api/books: s-maxage=3600, swr=86400\n• /api/books/content & translations: s-maxage=86400, swr=604800\n• PartitionKey: Vary: x-vercel-ip-country, Accept-Encoding"]
-    end
-
-    subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]
-        Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\n• In-Memory 24h Metadata LRU (1,000 entries) & Sliding-Window Rate Limiters"]
-        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\n• 14 RLS Tables • 22 B-Tree/GIN Indexes • 6 Stored Functions")]
-        GutenbergUS["🏛️ Project Gutenberg & Gutendex Nodes (US-East Adjacent)"]
-    end
-
-    subgraph GitHubOps ["GitHub Actions Autonomous CI/CD & Data Operations"]
-        CIWorkflow["✅ .github/workflows/ci.yml\n(Push / PR -> Node 22 -> 7-Gateway Quality Engine)"]
-        ReleaseWorkflow["🏷️ .github/workflows/release.yml\n(Tag v* -> Verified GitHub Release)"]
-        CatalogCron["🕒 .github/workflows/catalog-sync.yml\n(Sundays 02:00 UTC -> sync-gutenberg-catalog.js)"]
-        TransCron["🕒 .github/workflows/translations-sync.yml\n(Sundays 03:00 UTC / Chained -> ingest-translations.js)"]
-    end
-
-    Client --> EdgeProxy
-    EdgeProxy --> EdgeCDN
-    EdgeCDN -->|"Cache Miss / Revalidate"| Serverless
-    Serverless <-->|"<50ms Co-Located Query"| SupabaseUS
-    Serverless <-->|"Mirror Stream / Failover"| GutenbergUS
-    CatalogCron -->|"Upsert 78k+ Volumes"| SupabaseUS
-    CatalogCron -->|"Triggers on Success"| TransCron
-    TransCron -->|"Upsert FRBR Clusters"| SupabaseUS
-```
+| # | Architectural Diagram | Primary Layer & Subsystem | Living Architecture Specification |
+|---|---|---|---|
+| **1** | **End-to-End System Context & Data Flow** | Global System Context, Edge Proxy & Client SPA | [docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow](docs/ARCHITECTURE.md) |
+| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/ARCHITECTURE.md#2-focus-reader-state--typography-engine](docs/ARCHITECTURE.md) |
+| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |
+| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |
+| **5** | **Cold Launch & 6-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--6-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |
+| **6** | **Focus Reader Launch & Multi-Mirror Stream** | HTTP 451 Gatekeeping, 4 Gutenberg Mirrors & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-multi-mirror-streaming--worker-ast](docs/ARCHITECTURE.md) |
+| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v4, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |
+| **8** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/ARCHITECTURE.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/ARCHITECTURE.md) |
+| **9** | **External Integration Topology Diagram** | Boundary Contracts, Allowlisted Mirrors & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |
+| **10** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Mirror Cascades & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |
+| **11** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/ARCHITECTURE.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/ARCHITECTURE.md) |
 <!-- END:architecture-diagrams -->
 
 ---
@@ -1069,25 +634,9 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
 4. Click **Deploy** — Vercel will automatically build the Next.js 16 production bundle, configure edge caching, and provision serverless API proxies.
 ---
 
-## 🔒 Enterprise Security & Resiliency Architecture
+## 🔒 Enterprise Security & Defense-in-Depth
 
-Bookarium implements a defense-in-depth security model across the edge, serverless runtime, and client layers:
-
-| Security Vector | Implementation & File Path | Protection Mechanism |
-|---|---|---|
-| **Sliding-Window Rate Limiting** | [`src/lib/rate-limiter.ts`](src/lib/rate-limiter.ts) & [`src/lib/api-utils.ts`](src/lib/api-utils.ts) | Zero-dependency in-memory sliding-window rate limiter protecting upstream Project Gutenberg APIs (60 req/min on `/api/books`, 30 req/min on `/api/books/content`) with automatic 30s garbage collection, anti-spoofing IP resolution (prioritizing edge platform headers and rightmost hop extraction), and `429 Too Many Requests` status with `Retry-After`. |
-| **9-Rule ESLint & Babel AST Request-Taint Engine** | [`scripts/eslint-rules/bookarium-security.js`](scripts/eslint-rules/bookarium-security.js) & [`scripts/verify-build.js`](scripts/verify-build.js) | Dual-engine static security analyzer running continuously in ESLint 10 (`npm run lint`) and standalone Babel AST verification (`npm run security:audit`), enforcing 9 custom rules: `no-unsafe-fetch`, `no-unvalidated-redirect`, `no-client-server-boundary-violation`, `no-dangerous-execution`, `no-unsafe-dom-injection`, `no-tainted-request-sink` (intra-procedural request taint analysis from URL/header/cookie/body sources to fetch/redirect/DB/shell/fs/Prototype Pollution sinks), `no-secret-env-or-public-route-leak`, `no-focused-or-tautological-tests`, and `enforce-gutenberg-and-copyright-policy`. |
-| **Dual-Provider Failover & Cloud Outage Immunity** | [`src/lib/catalog/`](src/lib/catalog/), [`src/stores/useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) & [`src/lib/bookshelf-cloud-sync.ts`](src/lib/bookshelf-cloud-sync.ts) | Automatic Strangler Fig failover transparently degrading `/api/books` and `/api/books/content` from primary Supabase PostgreSQL to the upstream Gutendex REST API and Project Gutenberg harvest mirrors (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`) ahead of `www.gutenberg.org` upon database latency or cloud outages. Reading positions, bookmarks, audio telemetry, account profiles, annotations, and downloaded texts remain 100% functional offline via IndexedDB and local Zustand storage, with automatic `online` event reconciliation (`flushOutbox`). |
-| **HTTP Security Headers** | [`next.config.ts`](next.config.ts) | Enforces Content-Security-Policy (`default-src 'self'`, `frame-ancestors 'none'`), Cross-Origin-Opener-Policy (`same-origin`), HSTS (`max-age=63072000; includeSubDomains; preload`), Clickjacking defense (`X-Frame-Options: SAMEORIGIN`), MIME-type sniffing prevention (`X-Content-Type-Options: nosniff`), Referrer Policy (`strict-origin-when-cross-origin`), and Permissions Policy (`camera=(), microphone=(), geolocation=()`). |
-| **SSRF & Upstream Stream Bounding** | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) & [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) | Upstream URL whitelisting (`isSafeUpstreamUrl`) restricting fetches strictly to approved Project Gutenberg harvest mirrors and domains (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, `www.gutenberg.org`, `gutenberg.org`), strict numeric ID regex verification (`^\d{1,8}$`), `redirect: 'manual'` with relative `Location` origin resolution preventing open redirect hops, and a 15MB payload streaming threshold preventing memory exhaustion DoS. |
-| **Open Redirect & Canonical Auth Origin Defense** | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) & [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) | Path sanitization (`sanitizeRedirectPath`) guaranteeing OAuth and magic-link redirect paths strictly originate from trusted relative roots (`/^\/[^\/\\]/`), paired with canonical origin normalization (`resolveCanonicalAuthOrigin`, `buildAuthRedirectUrl`) so protected Vercel preview URLs never leak into outgoing confirmation emails and cross-device email verification (`token_hash` OTP and PKCE fallback) lands cleanly on the public domain. |
-| **Next.js Edge Session Proxy** | [`src/proxy.ts`](src/proxy.ts) & [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) | Lightweight edge proxy invoking `@supabase/ssr` `updateSession` to seamlessly refresh auth tokens and cookies across route transitions with non-blocking fallback handling. |
-| **ReDoS & Main Thread Protection** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | Non-backtracking regular expressions (`[^\n]{0,80}`) and bounded passage analysis window (capped at 120,000 characters) eliminating regular expression denial of service (ReDoS) and event loop freezing on massive multi-megabyte classical tomes. |
-| **LRU Pagination Memory Cache** | [`src/lib/gutenberg-parser.ts`](src/lib/gutenberg-parser.ts) | 500-entry memory cache (`Map<string, string[]>`) for paginated chapter views, delivering instant sub-millisecond virtual page turns with zero redundant recalculation. |
-| **Relational Data Purge & Account Deletion** | [`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts) | Comprehensive cascading cleanup across all 11 user-linked PostgreSQL tables (`symposium_sessions`, `reader_circles`, `user_accolades`, `user_annotations`, `reading_progress`, `user_favorites`, `user_book_curation`, `user_reading_habits`, `bookshelf_items`, `bookshelves`, `profiles`) with `delete_current_user` RPC execution (`auth.users` cascade), session revocation, and complete erasure of all 6 local Zustand/IndexedDB stores (`useBookshelfStore`, `useAnnotationStore`, `useHabitsStore`, `useAccoladesStore`, `useFellowshipStore`, `useReaderStore`). |
-| **Anti-Enumeration Scholar Sanctuaries** | [`src/components/profile/PrivateProfileNotice.tsx`](src/components/profile/PrivateProfileNotice.tsx) & [`src/app/u/[username]/page.tsx`](src/app/u/[username]/page.tsx) | Strict opt-in privacy default (`is_public = false`), unified "Scholar Sanctuary Not Found" state preventing user enumeration across private and non-existent profiles, and zero-PII exposure ensuring emails and auth credentials are never queried or rendered. |
-| **Datacenter Proximity & Edge Optimization** | [`vercel.json`](vercel.json) | Pins serverless execution to `iad1` (Washington D.C. / US-East) directly adjacent to Gutenberg/Gutendex nodes with dedicated memory and payload compression (`gzip, deflate, br`). |
-| **Jurisdictional Copyright & Geo-IP Resolution** | [`src/lib/country-resolver.ts`](src/lib/country-resolver.ts) & [`src/lib/copyright-engine.ts`](src/lib/copyright-engine.ts) | Strict territorial copyright compliance enforcing U.S. 17 U.S.C. § 304, Life+70 (EU/UK/CA/AU), Life+80 (CO/ES), and Life+100 (MX) rules with fail-closed author longevity heuristics. In production, Vercel edge IP headers (`x-vercel-ip-country`) strictly gate catalog filtering and return `HTTP 451 Unavailable For Legal Reasons` for protected text streams. In local development, automatically infers developer's physical country via System Timezone (`Europe/Bucharest` $\rightarrow$ `RO` / Life+70) with optional `.env.local` (`DEV_COUNTRY=XX`) and browser query override (`?country=XX`) support. |
+Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model across the edge, serverless runtime, and offline client layers. For the complete 13-vector security matrix, AST taint engine specifications, and vulnerability disclosure protocol, see [**SECURITY.md**](SECURITY.md).
 
 ---
 
