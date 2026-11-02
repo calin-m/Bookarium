@@ -1,11 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
+  CATALOG_DIFF_SELECT_COLUMNS,
   parseContributors,
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  areStringArraysEqual,
+  areContributorArraysEqual,
+  hasCatalogMetadataChanged,
+  deduplicateBatchById,
+  filterChangedOrNewBooks,
   upsertBatch,
+  reconcileWithdrawnCatalogBooks,
   fetchPopularCountsFromGutendex,
   syncPopularDownloadCounts,
 } = require('./sync-gutenberg-catalog');
@@ -348,6 +355,221 @@ describe('sync-gutenberg-catalog parser', () => {
       });
       expect(res.updatedCount).toBe(0);
       expect(silentLogger.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('Exact-Diff Catalog Metadata Comparison (hasCatalogMetadataChanged & filterChangedOrNewBooks)', () => {
+    const baseBook = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      translators: [],
+      subjects: ['England -- Fiction', 'Love stories'],
+      bookshelves: ['Best Books Ever'],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: buildStandardFormats(1342),
+      max_author_death_year: 1817,
+      min_author_birth_year: 1775,
+    };
+
+    it('ignores JSONB key-order differences when all catalog fields match byte-for-byte', () => {
+      const existingFromPostgres = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        // PostgreSQL JSONB returns keys sorted alphabetically
+        authors: [{ birth_year: 1775, death_year: 1817, name: 'Austen, Jane' }],
+        translators: [],
+        subjects: ['England -- Fiction', 'Love stories'],
+        bookshelves: ['Best Books Ever'],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        max_author_death_year: 1817,
+        min_author_birth_year: 1775,
+      };
+
+      expect(areStringArraysEqual(['en'], ['en'])).toBe(true);
+      expect(areContributorArraysEqual(existingFromPostgres.authors, baseBook.authors)).toBe(true);
+      expect(hasCatalogMetadataChanged(existingFromPostgres, baseBook)).toBe(false);
+    });
+
+    it('detects even a single-character, single-space, or lifespan year change across any catalog field', () => {
+      // Single character / space change in title
+      expect(
+        hasCatalogMetadataChanged(baseBook, { ...baseBook, title: 'Pride and  Prejudice' })
+      ).toBe(true);
+
+      // Author lifespan year added or corrected
+      expect(
+        hasCatalogMetadataChanged(
+          {
+            ...baseBook,
+            authors: [{ name: 'Austen, Jane', birth_year: null, death_year: null }],
+            max_author_death_year: null,
+            min_author_birth_year: null,
+          },
+          baseBook
+        )
+      ).toBe(true);
+
+      // Single space change inside a subject or bookshelf string
+      expect(
+        hasCatalogMetadataChanged(baseBook, {
+          ...baseBook,
+          subjects: ['England -- Fiction', 'Love  stories'],
+        })
+      ).toBe(true);
+
+      // Translator or language change
+      expect(
+        hasCatalogMetadataChanged(baseBook, {
+          ...baseBook,
+          translators: [{ name: 'Maude, Aylmer', birth_year: 1858, death_year: 1938 }],
+        })
+      ).toBe(true);
+      expect(
+        hasCatalogMetadataChanged(baseBook, {
+          ...baseBook,
+          languages: ['en', 'fr'],
+        })
+      ).toBe(true);
+    });
+
+    it('deduplicates duplicate book IDs within a batch and filters out unchanged rows while preserving quotes isolation', async () => {
+      const duplicateBatch = [
+        { ...baseBook, id: 1342, title: 'Old Duplicate Row' },
+        { ...baseBook, id: 1342, title: 'Pride and Prejudice' }, // Unchanged vs DB
+        { ...baseBook, id: 84, title: 'Frankenstein; Or, The Modern Prometheus (Revised)' }, // Changed title vs DB
+        { ...baseBook, id: 78001, title: 'Brand New Release' }, // New book not in DB
+      ];
+
+      expect(deduplicateBatchById(duplicateBatch)).toHaveLength(3);
+      expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('quotes');
+      expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('download_count');
+
+      const inMock = vi.fn().mockResolvedValue({
+        data: [
+          { ...baseBook, id: 1342, title: 'Pride and Prejudice' },
+          { ...baseBook, id: 84, title: 'Frankenstein; Or, The Modern Prometheus' },
+        ],
+        error: null,
+      });
+      const selectMock = vi.fn(() => ({ in: inMock }));
+      const mockSupabase = {
+        from: vi.fn(() => ({ select: selectMock })),
+      };
+
+      const result = await filterChangedOrNewBooks(mockSupabase, duplicateBatch, false);
+      expect(selectMock).toHaveBeenCalledWith(CATALOG_DIFF_SELECT_COLUMNS);
+      expect(result.insertedCount).toBe(1);
+      expect(result.updatedCount).toBe(1);
+      expect(result.unchangedCount).toBe(1);
+      expect(result.toUpsert.map((b: { id: number }) => b.id)).toEqual([84, 78001]);
+      for (const row of result.toUpsert) {
+        expect(row).not.toHaveProperty('quotes');
+      }
+
+      // Force overwrite mode (--update-existing) returns all deduplicated rows
+      const forced = await filterChangedOrNewBooks(mockSupabase, duplicateBatch, true);
+      expect(forced.toUpsert).toHaveLength(3);
+      expect(forced.updatedCount).toBe(3);
+    });
+  });
+
+  describe('Withdrawn-Book Reconciliation & Pruning (reconcileWithdrawnCatalogBooks)', () => {
+    it('skips pruning if activeCatalogIds is below the safety floor', async () => {
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const mockSupabase = { from: vi.fn() };
+      const smallSet = new Set([1, 2, 3]);
+
+      const res = await reconcileWithdrawnCatalogBooks(mockSupabase, smallSet, {
+        minCatalogSize: 50000,
+        logger: silentLogger,
+      });
+
+      expect(res.prunedCount).toBe(0);
+      expect(res.skippedReason).toBe('below-min-catalog-floor');
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+    });
+
+    it('scans public.books via keyset pagination, protects Hero classics, and deletes withdrawn book IDs', async () => {
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const activeIds = new Set([100, 200, 300]);
+      const deletedChunks: number[][] = [];
+
+      // DB has: 100 (active), 200 (active), 1342 (protected hero classic), 78050 (withdrawn), 78051 (withdrawn)
+      const dbPages = [
+        [{ id: 100 }, { id: 200 }, { id: 1342 }],
+        [{ id: 78050 }, { id: 78051 }],
+      ];
+      let pageCall = 0;
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            gt: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn().mockImplementation(async () => ({
+                  data: dbPages[pageCall++] || [],
+                  error: null,
+                })),
+              })),
+            })),
+          })),
+          delete: vi.fn(() => ({
+            in: vi.fn().mockImplementation(async (_col: string, ids: number[]) => {
+              deletedChunks.push(ids);
+              return { error: null };
+            }),
+          })),
+        })),
+      };
+
+      const res = await reconcileWithdrawnCatalogBooks(mockSupabase, activeIds, {
+        minCatalogSize: 3,
+        pageSize: 3,
+        deleteChunkSize: 1,
+        logger: silentLogger,
+      });
+
+      expect(res.prunedCount).toBe(2);
+      expect(res.prunedIds).toEqual([78050, 78051]);
+      expect(deletedChunks).toEqual([[78050], [78051]]);
+    });
+
+    it('triggers the maxPrunePerRun safety circuit breaker when candidate removals exceed cap', async () => {
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const activeIds = new Set([100, 200, 300]);
+      const deleteMock = vi.fn();
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            gt: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn().mockResolvedValue({
+                  data: [{ id: 78001 }, { id: 78002 }, { id: 78003 }],
+                  error: null,
+                }),
+              })),
+            })),
+          })),
+          delete: deleteMock,
+        })),
+      };
+
+      const res = await reconcileWithdrawnCatalogBooks(mockSupabase, activeIds, {
+        minCatalogSize: 3,
+        maxPrunePerRun: 2,
+        pageSize: 10,
+        logger: silentLogger,
+      });
+
+      expect(res.prunedCount).toBe(0);
+      expect(res.skippedReason).toBe('exceeded-max-prune-cap');
+      expect(deleteMock).not.toHaveBeenCalled();
     });
   });
 });

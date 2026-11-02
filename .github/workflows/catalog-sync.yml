@@ -11,7 +11,7 @@ on:
         required: false
         type: string
       update_existing:
-        description: 'Force overwrite existing books (default: false / skip existing)'
+        description: 'Force full rebuild of all records (leave false for smart diff sync)'
         required: false
         type: boolean
         default: false

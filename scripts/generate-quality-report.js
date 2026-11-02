@@ -136,9 +136,11 @@ function indexTestSuites() {
 
   const runtimeFileMap = new Map();
   let runtimeTotalTests = null;
+  let testResultsMtimeMs = 0;
 
   if (fs.existsSync(testResultsPath)) {
     try {
+      testResultsMtimeMs = fs.statSync(testResultsPath).mtimeMs;
       const parsed = JSON.parse(fs.readFileSync(testResultsPath, 'utf-8'));
       const isFullSuiteRun =
         Array.isArray(parsed.testResults) && parsed.testResults.length >= testFiles.length;
@@ -160,10 +162,16 @@ function indexTestSuites() {
   }
 
   let totalTestCount = 0;
+  let hasNewerTestFileThanSnapshot = false;
 
   for (const filePath of testFiles) {
     const relPath = path.relative(rootDir, filePath).replace(/\\/g, '/');
-    const runtimeInfo = runtimeFileMap.get(relPath);
+    const fileMtimeMs = fs.statSync(filePath).mtimeMs;
+    const isModifiedSinceSnapshot = testResultsMtimeMs > 0 && fileMtimeMs > testResultsMtimeMs;
+    if (isModifiedSinceSnapshot) {
+      hasNewerTestFileThanSnapshot = true;
+    }
+    const runtimeInfo = !isModifiedSinceSnapshot ? runtimeFileMap.get(relPath) : null;
 
     let testMatches;
     let testCount;
@@ -206,7 +214,8 @@ function indexTestSuites() {
     }
   }
 
-  const effectiveTotalTests = runtimeTotalTests || totalTestCount;
+  const effectiveTotalTests =
+    !hasNewerTestFileThanSnapshot && runtimeTotalTests ? runtimeTotalTests : totalTestCount;
   return { domainMap, totalTestCount: effectiveTotalTests, totalSuitesCount: testFiles.length };
 }
 

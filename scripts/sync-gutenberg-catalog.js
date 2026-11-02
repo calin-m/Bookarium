@@ -279,13 +279,131 @@ function streamGutenbergCatalog(onRecord, catalogUrl = 'https://www.gutenberg.or
   });
 }
 
-// 7. Safe Supabase Batch Upsert with Adaptive Timeout Sub-Batching
+// 7. Exact-Diff Catalog Metadata Comparison & Safe Supabase Batch Upsert
+const CATALOG_DIFF_SELECT_COLUMNS =
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, max_author_death_year, min_author_birth_year';
+
+const MIN_ACTIVE_CATALOG_FOR_PRUNE = 50000;
+const MAX_WITHDRAWN_PRUNE_PER_RUN = 500;
+const PROTECTED_HERO_BOOK_IDS = new Set([
+  1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35, 2600, 135, 2554, 1260,
+  768, 5200, 43, 1184, 1232, 132, 2680, 1727, 514, 2147, 164, 205, 76,
+]);
+
+function areStringArraysEqual(arrA, arrB) {
+  const a = Array.isArray(arrA) ? arrA : [];
+  const b = Array.isArray(arrB) ? arrB : [];
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function areContributorArraysEqual(arrA, arrB) {
+  const a = Array.isArray(arrA) ? arrA : [];
+  const b = Array.isArray(arrB) ? arrB : [];
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const itemA = a[i] || {};
+    const itemB = b[i] || {};
+    if ((itemA.name || '') !== (itemB.name || '')) return false;
+    if ((itemA.birth_year ?? null) !== (itemB.birth_year ?? null)) return false;
+    if ((itemA.death_year ?? null) !== (itemB.death_year ?? null)) return false;
+  }
+  return true;
+}
+
+function hasCatalogMetadataChanged(existingRow, incomingBook) {
+  if (!existingRow || !incomingBook) return true;
+  if ((existingRow.title || '') !== (incomingBook.title || '')) return true;
+  if (Boolean(existingRow.copyright) !== Boolean(incomingBook.copyright)) return true;
+  if ((existingRow.media_type || 'Text') !== (incomingBook.media_type || 'Text')) return true;
+  if ((existingRow.max_author_death_year ?? null) !== (incomingBook.max_author_death_year ?? null)) return true;
+  if ((existingRow.min_author_birth_year ?? null) !== (incomingBook.min_author_birth_year ?? null)) return true;
+  if (!areStringArraysEqual(existingRow.languages, incomingBook.languages)) return true;
+  if (!areStringArraysEqual(existingRow.subjects, incomingBook.subjects)) return true;
+  if (!areStringArraysEqual(existingRow.bookshelves, incomingBook.bookshelves)) return true;
+  if (!areContributorArraysEqual(existingRow.authors, incomingBook.authors)) return true;
+  if (!areContributorArraysEqual(existingRow.translators, incomingBook.translators)) return true;
+  return false;
+}
+
+function deduplicateBatchById(batch) {
+  if (!Array.isArray(batch) || batch.length === 0) return [];
+  const byId = new Map();
+  for (const item of batch) {
+    if (item && Number.isInteger(item.id) && item.id > 0) {
+      byId.set(item.id, item);
+    }
+  }
+  return Array.from(byId.values());
+}
+
+async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = false) {
+  const dedupedBatch = deduplicateBatchById(batch);
+  if (dedupedBatch.length === 0) {
+    return { toUpsert: [], insertedCount: 0, updatedCount: 0, unchangedCount: 0 };
+  }
+
+  if (shouldForceOverwrite || !supabase) {
+    return {
+      toUpsert: dedupedBatch,
+      insertedCount: 0,
+      updatedCount: dedupedBatch.length,
+      unchangedCount: 0,
+    };
+  }
+
+  const batchIds = dedupedBatch.map((b) => b.id);
+  const { data: existingRows, error } = await supabase
+    .from('books')
+    .select(CATALOG_DIFF_SELECT_COLUMNS)
+    .in('id', batchIds);
+
+  if (error) {
+    throw new Error(`Failed to query existing catalog rows for diff check: ${error.message}`);
+  }
+
+  const existingById = new Map();
+  if (Array.isArray(existingRows)) {
+    for (const row of existingRows) {
+      if (row && Number.isInteger(row.id)) {
+        existingById.set(row.id, row);
+      }
+    }
+  }
+
+  const toUpsert = [];
+  let insertedCount = 0;
+  let updatedCount = 0;
+  let unchangedCount = 0;
+
+  for (const incomingBook of dedupedBatch) {
+    const existingRow = existingById.get(incomingBook.id);
+    if (!existingRow) {
+      toUpsert.push(incomingBook);
+      insertedCount++;
+    } else if (hasCatalogMetadataChanged(existingRow, incomingBook)) {
+      toUpsert.push(incomingBook);
+      updatedCount++;
+    } else {
+      unchangedCount++;
+    }
+  }
+
+  return { toUpsert, insertedCount, updatedCount, unchangedCount };
+}
+
 async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true) {
+  const dedupedBatch = deduplicateBatchById(batch);
+  if (dedupedBatch.length === 0) return;
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const { error } = await supabase
         .from('books')
-        .upsert(batch, {
+        .upsert(dedupedBatch, {
           onConflict: 'id',
           ignoreDuplicates,
         });
@@ -297,10 +415,10 @@ async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true
     } catch (err) {
       // Adaptive split-and-conquer on statement timeouts
       const isTimeout = err.message && (err.message.includes('statement timeout') || err.message.includes('canceling statement'));
-      if (isTimeout && batch.length > 25) {
-        const mid = Math.floor(batch.length / 2);
-        await upsertBatch(supabase, batch.slice(0, mid), retries, ignoreDuplicates);
-        await upsertBatch(supabase, batch.slice(mid), retries, ignoreDuplicates);
+      if (isTimeout && dedupedBatch.length > 25) {
+        const mid = Math.floor(dedupedBatch.length / 2);
+        await upsertBatch(supabase, dedupedBatch.slice(0, mid), retries, ignoreDuplicates);
+        await upsertBatch(supabase, dedupedBatch.slice(mid), retries, ignoreDuplicates);
         return;
       }
 
@@ -311,6 +429,90 @@ async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true
       await new Promise((r) => setTimeout(r, backoffMs));
     }
   }
+}
+
+async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, options = {}) {
+  const logger = options.logger || console;
+  const minCatalogSize =
+    typeof options.minCatalogSize === 'number' ? options.minCatalogSize : MIN_ACTIVE_CATALOG_FOR_PRUNE;
+  const maxPrunePerRun =
+    typeof options.maxPrunePerRun === 'number' ? options.maxPrunePerRun : MAX_WITHDRAWN_PRUNE_PER_RUN;
+  const forcePrune = Boolean(options.forcePrune);
+  const pageSize = typeof options.pageSize === 'number' && options.pageSize > 0 ? options.pageSize : 1000;
+  const deleteChunkSize =
+    typeof options.deleteChunkSize === 'number' && options.deleteChunkSize > 0 ? options.deleteChunkSize : 100;
+
+  if (!supabase || !(activeCatalogIds instanceof Set)) {
+    return { prunedCount: 0, prunedIds: [], skippedReason: 'missing-client-or-set' };
+  }
+
+  if (activeCatalogIds.size < minCatalogSize) {
+    logger.warn(
+      `\n⚠ Skipping withdrawn-book reconciliation: active catalog set (${activeCatalogIds.size.toLocaleString()}) is below safety floor (${minCatalogSize.toLocaleString()}).`
+    );
+    return { prunedCount: 0, prunedIds: [], skippedReason: 'below-min-catalog-floor' };
+  }
+
+  logger.log('\n🧹 Reconciling catalog for withdrawn/removed Project Gutenberg volumes...');
+  const withdrawnIds = [];
+  let lastId = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('books')
+      .select('id')
+      .gt('id', lastId)
+      .order('id', { ascending: true })
+      .limit(pageSize);
+
+    if (error) {
+      throw new Error(`Failed to scan existing catalog IDs for reconciliation: ${error.message}`);
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+      break;
+    }
+
+    for (const row of data) {
+      if (row && Number.isInteger(row.id) && row.id > 0) {
+        lastId = row.id;
+        if (!activeCatalogIds.has(row.id) && !PROTECTED_HERO_BOOK_IDS.has(row.id)) {
+          withdrawnIds.push(row.id);
+        }
+      }
+    }
+
+    if (data.length < pageSize) {
+      break;
+    }
+  }
+
+  if (withdrawnIds.length === 0) {
+    logger.log('  ✔ Zero withdrawn books found (100% of Supabase catalog IDs remain active in Project Gutenberg).');
+    return { prunedCount: 0, prunedIds: [], skippedReason: null };
+  }
+
+  if (!forcePrune && withdrawnIds.length > maxPrunePerRun) {
+    logger.warn(
+      `  ⚠ Safety circuit breaker triggered: ${withdrawnIds.length.toLocaleString()} candidate removals exceed maxPrunePerRun (${maxPrunePerRun}). Pass --force-prune to override.`
+    );
+    return { prunedCount: 0, prunedIds: withdrawnIds, skippedReason: 'exceeded-max-prune-cap' };
+  }
+
+  let prunedCount = 0;
+  for (let i = 0; i < withdrawnIds.length; i += deleteChunkSize) {
+    const chunk = withdrawnIds.slice(i, i + deleteChunkSize);
+    const { error: deleteErr } = await supabase.from('books').delete().in('id', chunk);
+    if (deleteErr) {
+      throw new Error(`Failed to delete withdrawn catalog book IDs: ${deleteErr.message}`);
+    }
+    prunedCount += chunk.length;
+  }
+
+  logger.log(
+    `  ✔ Pruned ${prunedCount.toLocaleString()} withdrawn Project Gutenberg volume(s) (and their quotes): [${withdrawnIds.slice(0, 15).join(', ')}${withdrawnIds.length > 15 ? ', ...' : ''}]`
+  );
+  return { prunedCount, prunedIds: withdrawnIds, skippedReason: null };
 }
 
 // 8. Popularity Download Count Hydration from Gutendex (Top 500+ Public Domain Titles)
@@ -401,6 +603,8 @@ async function main() {
   const isHelp = args.includes('--help') || args.includes('-h');
   const isDryRun = args.includes('--dry-run');
   const shouldUpdateExisting = args.includes('--update-existing');
+  const noPrune = args.includes('--no-prune');
+  const forcePrune = args.includes('--force-prune');
   const limitArg = args.find((a) => a.startsWith('--limit='));
   const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : null;
   const languagesArg = args.find((a) => a.startsWith('--languages='));
@@ -419,7 +623,9 @@ Options:
   --limit=N             Ingest only the first N valid books (e.g. --limit=100)
   --languages=en,fr     Filter by ISO languages (default: all languages)
   --batch-size=N        Number of books per Supabase upsert (default: 200)
-  --update-existing     Force overwrite existing records (default: skip existing)
+  --update-existing     Force full overwrite of all existing records (default: smart exact-diff update preserving quotes)
+  --no-prune            Skip withdrawn-book reconciliation at the end of a full sync
+  --force-prune         Override the 500-book per-run safety cap during withdrawn-book pruning
   --help, -h            Show this help guide
 `);
     process.exit(0);
@@ -432,7 +638,9 @@ Options:
   console.log('📚 Bookarium Gutenberg Catalog Sync');
   console.log('====================================');
   console.log(`• Mode:        ${isDryRun ? 'DRY-RUN (No database writes)' : 'LIVE UPSERT'}`);
-  console.log(`• Strategy:    ${shouldUpdateExisting ? 'OVERWRITE (Update existing records)' : 'INCREMENTAL (Skip existing IDs)'}`);
+  console.log(
+    `• Strategy:    ${shouldUpdateExisting ? 'FORCE OVERWRITE (Rebuild all records)' : 'SMART EXACT-DIFF (Insert new + update changed metadata, preserving quotes)'}`
+  );
   console.log(`• Batch Size:  ${batchSize} books/request`);
   if (limit) console.log(`• Limit:       ${limit} books`);
   if (allowedLanguages) console.log(`• Languages:   ${Array.from(allowedLanguages).join(', ')}`);
@@ -463,9 +671,13 @@ Options:
 
   let totalParsed = 0;
   let totalAccepted = 0;
-  let totalUpserted = 0;
+  let totalProcessed = 0;
+  let totalInserted = 0;
+  let totalUpdated = 0;
+  let totalUnchanged = 0;
   let currentBatch = [];
   let isAborted = false;
+  const activeCatalogIds = new Set();
 
   const flushBatch = async () => {
     if (currentBatch.length === 0) return;
@@ -473,13 +685,25 @@ Options:
     currentBatch = [];
 
     if (!isDryRun && supabase) {
-      await upsertBatch(supabase, toSend, 3, !shouldUpdateExisting);
+      const { toUpsert, insertedCount, updatedCount, unchangedCount } = await filterChangedOrNewBooks(
+        supabase,
+        toSend,
+        shouldUpdateExisting
+      );
+      if (toUpsert.length > 0) {
+        await upsertBatch(supabase, toUpsert, 3, false);
+      }
+      totalInserted += insertedCount;
+      totalUpdated += updatedCount;
+      totalUnchanged += unchangedCount;
     }
-    totalUpserted += toSend.length;
+    totalProcessed += toSend.length;
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    const speed = Math.round(totalUpserted / (parseFloat(elapsed) || 1));
-    process.stdout.write(`\r  ↳ Upserted: ${totalUpserted.toLocaleString()} titles | ${speed} books/sec | ${elapsed}s elapsed`);
+    const speed = Math.round(totalProcessed / (parseFloat(elapsed) || 1));
+    process.stdout.write(
+      `\r  ↳ Processed: ${totalProcessed.toLocaleString()} | New: ${totalInserted.toLocaleString()} | Updated: ${totalUpdated.toLocaleString()} | Unchanged: ${totalUnchanged.toLocaleString()} | ${speed} books/s (${elapsed}s)`
+    );
 
     // Anti-throttling micro-pause
     await new Promise((r) => setTimeout(r, 75));
@@ -492,6 +716,8 @@ Options:
       totalParsed++;
       const book = normalizeCsvRow(row);
       if (!book) return;
+
+      activeCatalogIds.add(book.id);
 
       if (allowedLanguages) {
         const matchesLang = book.languages.some((l) => allowedLanguages.has(l));
@@ -519,7 +745,13 @@ Options:
     console.log(`\n\n✔ Sync Complete in ${totalSeconds} seconds!`);
     console.log(`  • Rows scanned:   ${totalParsed.toLocaleString()}`);
     console.log(`  • Valid texts:    ${totalAccepted.toLocaleString()}`);
-    console.log(`  • Titles synced:  ${totalUpserted.toLocaleString()}`);
+    console.log(`  • New inserted:   ${totalInserted.toLocaleString()}`);
+    console.log(`  • Diff updated:   ${totalUpdated.toLocaleString()}`);
+    console.log(`  • Unchanged skip: ${totalUnchanged.toLocaleString()}`);
+
+    if (!isDryRun && supabase && !limit && !allowedLanguages && !noPrune) {
+      await reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, { forcePrune });
+    }
 
     if (!isDryRun && supabase && !limit) {
       await syncPopularDownloadCounts(supabase);
@@ -537,12 +769,22 @@ Options:
 
 // Export for unit tests
 module.exports = {
+  CATALOG_DIFF_SELECT_COLUMNS,
+  MIN_ACTIVE_CATALOG_FOR_PRUNE,
+  MAX_WITHDRAWN_PRUNE_PER_RUN,
+  PROTECTED_HERO_BOOK_IDS,
   parseYear,
   parseContributors,
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  areStringArraysEqual,
+  areContributorArraysEqual,
+  hasCatalogMetadataChanged,
+  deduplicateBatchById,
+  filterChangedOrNewBooks,
   upsertBatch,
+  reconcileWithdrawnCatalogBooks,
   fetchPopularCountsFromGutendex,
   syncPopularDownloadCounts,
   loadEnv,
