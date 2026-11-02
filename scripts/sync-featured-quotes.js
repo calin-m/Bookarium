@@ -37,6 +37,25 @@ const GUTENBERG_MIRRORS = [
 const DEFAULT_POPULAR_POOL_SIZE = 500;
 const DEFAULT_RECENT_POOL_SIZE = 64;
 const DEFAULT_RECENT_BATCH_RATIO = 0.2;
+const MAX_BOOK_TEXT_BYTES = 15 * 1024 * 1024;
+const ALLOWED_PGLAF_MIRROR_HOSTS = new Set([
+  'gutenberg.pglaf.org',
+  'aleph.gutenberg.org',
+  'gutenberg.readingroo.ms',
+]);
+
+function isAllowedPglafMirrorUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  try {
+    const parsed = new URL(rawUrl);
+    return (
+      parsed.protocol === 'https:' &&
+      ALLOWED_PGLAF_MIRROR_HOSTS.has(parsed.hostname.toLowerCase())
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Canonical 27 Hero & Editorial Classic Book IDs (`FEATURED_HERO_BOOKS` in `src/config/featured-books.ts`).
@@ -299,6 +318,14 @@ async function fetchBookTextFromSingleMirror(
   const candidateUrls = buildSingleMirrorCandidateUrls(bookId, mirrorBaseUrl);
 
   for (const url of candidateUrls) {
+    if (!isAllowedPglafMirrorUrl(url)) {
+      return {
+        ok: false,
+        isMirrorLevelError: true,
+        status: 403,
+        error: `Blocked untrusted mirror URL: ${url}`,
+      };
+    }
     try {
       const response = await fetchFn(url, {
         headers: {
@@ -309,8 +336,33 @@ async function fetchBookTextFromSingleMirror(
       });
 
       if (response && response.ok) {
+        if (response.url && !isAllowedPglafMirrorUrl(response.url)) {
+          return {
+            ok: false,
+            isMirrorLevelError: true,
+            status: 403,
+            error: `Blocked redirect to untrusted host: ${response.url}`,
+          };
+        }
+        const contentLength =
+          response.headers && typeof response.headers.get === 'function'
+            ? parseInt(response.headers.get('content-length') || '0', 10)
+            : 0;
+        if (Number.isFinite(contentLength) && contentLength > MAX_BOOK_TEXT_BYTES) {
+          return {
+            ok: false,
+            isMirrorLevelError: false,
+            status: 413,
+            error: `Volume #${bookId} exceeds 15 MB text limit on ${mirrorBaseUrl}`,
+          };
+        }
         const text = await response.text();
-        if (text && text.trim().length >= 500 && !/<!DOCTYPE html/i.test(text.slice(0, 300))) {
+        if (
+          text &&
+          text.length <= MAX_BOOK_TEXT_BYTES &&
+          text.trim().length >= 500 &&
+          !/<!DOCTYPE html/i.test(text.slice(0, 300))
+        ) {
           return {
             ok: true,
             text,
@@ -560,7 +612,8 @@ async function fetchQuotedBookIds(supabase) {
     }
   }
   const { data, error } = await query;
-  if (error || !Array.isArray(data)) return new Set();
+  if (error) throw new Error(error.message);
+  if (!Array.isArray(data)) return new Set();
   return new Set(data.map((r) => r && r.id).filter((id) => Number.isInteger(id)));
 }
 
@@ -662,6 +715,7 @@ async function pruneOutOfWindowBookQuotes(
   if (
     !supabase ||
     !(popularPoolIds instanceof Set) ||
+    popularPoolIds.size === 0 ||
     (options.ids && options.ids.length > 0)
   ) {
     return { prunedCount: 0, prunedIds: [] };
@@ -715,7 +769,11 @@ async function pruneOutOfWindowBookQuotes(
 
   quotedRecentIds.sort((a, b) => b - a);
   const staleRecentIds = quotedRecentIds.slice(recentCap);
-  const staleIds = [...stalePopularIds, ...staleRecentIds];
+  const maxPrunePerRun =
+    typeof options.maxPrunePerRun === 'number' && options.maxPrunePerRun > 0
+      ? options.maxPrunePerRun
+      : Math.max((options.limit || 25) * 2, 64);
+  const staleIds = [...stalePopularIds, ...staleRecentIds].slice(0, maxPrunePerRun);
 
   if (staleIds.length === 0) {
     return { prunedCount: 0, prunedIds: [] };
@@ -775,16 +833,10 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
       .in('id', options.ids.slice(0, options.limit));
     if (error) throw new Error(error.message);
     const byId = new Map((data || []).map((row) => [row.id, row]));
-    return options.ids.slice(0, options.limit).map(
-      (id) =>
-        byId.get(id) || {
-          id,
-          title: `Gutenberg Volume #${id}`,
-          authors: [],
-          quotes: [],
-          content: null,
-        }
-    );
+    return options.ids
+      .slice(0, options.limit)
+      .filter((id) => byId.has(id))
+      .map((id) => byId.get(id));
   }
 
   const popularPoolLimit = options.popularPool || DEFAULT_POPULAR_POOL_SIZE;
@@ -793,27 +845,62 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
 
   const quotedIds = await fetchQuotedBookIds(supabase);
 
-  const isEligibleEnglishBook = (row) =>
+  const isEligibleCatalogBook = (row) =>
     row &&
     Number.isInteger(row.id) &&
     row.copyright !== true &&
-    (!row.media_type || row.media_type === 'Text') &&
+    (!row.media_type || row.media_type === 'Text');
+
+  const isEligibleEnglishBook = (row) =>
+    isEligibleCatalogBook(row) &&
     (!Array.isArray(row.languages) ||
       row.languages.length === 0 ||
       row.languages.includes('en'));
 
   const popularScanLimit = Math.max(popularPoolLimit * 2, 1000);
-  const { data: popularRaw, error: popularErr } = await supabase
+  let popularQuery = supabase
     .from('books')
     .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count')
-    .order('download_count', { ascending: false })
-    .limit(popularScanLimit);
+    .order('download_count', { ascending: false });
+  if (popularQuery && typeof popularQuery.order === 'function') {
+    const withIdTieBreaker = popularQuery.order('id', { ascending: true });
+    if (withIdTieBreaker && typeof withIdTieBreaker.limit === 'function') {
+      popularQuery = withIdTieBreaker;
+    }
+  }
+  const { data: popularRaw, error: popularErr } = await popularQuery.limit(popularScanLimit);
 
   if (popularErr) throw new Error(popularErr.message);
 
-  const popularData = (popularRaw || [])
-    .filter(isEligibleEnglishBook)
-    .sort((a, b) => (b.download_count || 0) - (a.download_count || 0) || a.id - b.id)
+  let heroRaw = [];
+  const heroSelectQuery = supabase
+    .from('books')
+    .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count');
+  if (heroSelectQuery && typeof heroSelectQuery.in === 'function') {
+    const { data: heroRows, error: heroErr } = await heroSelectQuery.in(
+      'id',
+      PRIORITY_HERO_BOOK_IDS
+    );
+    if (heroErr) throw new Error(heroErr.message);
+    if (Array.isArray(heroRows)) {
+      heroRaw = heroRows.filter((r) => r && PRIORITY_HERO_BOOK_ID_SET.has(r.id));
+    }
+  }
+
+  const combinedPopularMap = new Map();
+  for (const row of [...heroRaw, ...(popularRaw || [])]) {
+    if (isEligibleEnglishBook(row) && !combinedPopularMap.has(row.id)) {
+      combinedPopularMap.set(row.id, row);
+    }
+  }
+
+  const popularData = Array.from(combinedPopularMap.values())
+    .sort((a, b) => {
+      const aHero = PRIORITY_HERO_BOOK_ID_SET.has(a.id) ? 1 : 0;
+      const bHero = PRIORITY_HERO_BOOK_ID_SET.has(b.id) ? 1 : 0;
+      if (aHero !== bHero) return bHero - aHero;
+      return (b.download_count || 0) - (a.download_count || 0) || a.id - b.id;
+    })
     .slice(0, popularPoolLimit);
 
   let recentData = [];
@@ -830,9 +917,13 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
       .map((r) => r && r.id)
       .filter((id) => Number.isInteger(id));
     if (validRecentScanIds.length > 0) {
-      minRecentHorizonId = Math.min(...validRecentScanIds);
+      const maxRecentId = Math.max(...validRecentScanIds);
+      minRecentHorizonId = Math.max(
+        1,
+        Math.min(Math.min(...validRecentScanIds), maxRecentId - 5000)
+      );
     }
-    recentData = (recRows || []).filter(isEligibleEnglishBook).slice(0, recentPoolLimit);
+    recentData = (recRows || []).filter(isEligibleCatalogBook).slice(0, recentPoolLimit);
   }
 
   const { candidates, popularPoolIds, recentPoolIds, allowedPoolIds } = blendTwoTierCandidates(
@@ -908,6 +999,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     sqlStatements: [],
   };
 
+  let scheduleGateElapsedHours = null;
   if (options.scheduleGate && supabase) {
     const gate = await evaluateScheduleGate(supabase, options, deps.nowMs);
     if (!gate.allowed) {
@@ -917,13 +1009,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       );
       return summary;
     }
-    const jitterMs = computeRandomDelayMs(5, 35, deps.rng);
-    logger.log(
-      `[Schedule Gate] Randomized window (${gate.requiredWindowHours ?? 0}h) elapsed. Applying ${(
-        jitterMs / 1000
-      ).toFixed(2)}s startup jitter...`
-    );
-    await sleepFn(jitterMs);
+    scheduleGateElapsedHours = gate.requiredWindowHours ?? 0;
   }
 
   const booksToProcess = await fetchCandidateBooksFromSupabase(supabase, options);
@@ -941,6 +1027,16 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     }
     logger.log('All eligible books in the Two-Tier pool already have quotes — nothing to sync.');
     return summary;
+  }
+
+  if (options.scheduleGate && supabase) {
+    const jitterMs = computeRandomDelayMs(5, 35, deps.rng);
+    logger.log(
+      `[Schedule Gate] Randomized window (${scheduleGateElapsedHours}h) elapsed. Applying ${(
+        jitterMs / 1000
+      ).toFixed(2)}s startup jitter...`
+    );
+    await sleepFn(jitterMs);
   }
 
   async function saveQuotesToDatabase(book, quotesPayload) {
@@ -1179,7 +1275,9 @@ module.exports = {
   DEFAULT_POPULAR_POOL_SIZE,
   DEFAULT_RECENT_POOL_SIZE,
   DEFAULT_RECENT_BATCH_RATIO,
+  MAX_BOOK_TEXT_BYTES,
   PRIORITY_HERO_BOOK_IDS,
+  isAllowedPglafMirrorUrl,
   loadEnv,
   resolveSelectedMirrors,
   parseCliArgs,

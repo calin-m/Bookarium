@@ -286,7 +286,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run verify`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
     },
     {
       name: 'eslint-rules/bookarium-security.js',
@@ -318,7 +318,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run changelog:generate` (in `docs:sync`)',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Compiles CHANGELOG.md from SemVer release ledgers and synchronizes README.md Latest Release section.',
+        'Compiles CHANGELOG.md from SemVer release ledgers and synchronizes package.json, package-lock.json, SECURITY.md, .github/workflows/release.yml, and README.md Latest Release section.',
     },
     {
       name: 'generate-parser-docs.js',
@@ -358,7 +358,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run catalog:sync`',
       nodeApis: '`fs`, `path`, `zlib`, `https`, `readline`',
       responsibility:
-        'Streams pg_catalog.csv.gz from Project Gutenberg, parses CSV metadata on-the-fly, and synchronizes 78,000+ volumes into Supabase with author lifespan bounds.',
+        'Streams pg_catalog.csv.gz from Project Gutenberg, parses CSV metadata on-the-fly, synchronizes 78,000+ volumes into Supabase with author lifespan bounds, and hydrates download_count for Top 500+ popular titles from Gutendex.',
     },
     {
       name: 'ingest-catalog.js',
@@ -545,6 +545,16 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     }
   }
 
+  let maxMilestoneIdx = 11;
+  try {
+    const { ROADMAP_MILESTONES } = require('./generate-roadmap');
+    if (Array.isArray(ROADMAP_MILESTONES) && ROADMAP_MILESTONES.length > 0) {
+      maxMilestoneIdx = ROADMAP_MILESTONES.length - 1;
+    }
+  } catch {
+    // Fallback to default milestone count
+  }
+
   const livingDocs = [
     { file: 'README.md', mode: 'Hybrid (Curated + Script-Synced)', generator: '`scripts/generate-changelog.js` & `scripts/generate-quality-report.js`', role: 'Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks.' },
     { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated', generator: '`scripts/generate-architecture-matrix.js`', role: 'Complete 360° full-repository C4 architecture map, event/state-flow bus, temporal sequence workflows, external integration boundaries, failure/retry topology, edge deployment & 5-layer caching hierarchy, AST-verified environment variable bindings, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology.' },
@@ -552,7 +562,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { file: 'docs/GUTENBERG_PARSER.md', mode: '100% AST-Generated', generator: '`scripts/generate-parser-docs.js`', role: 'Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine.' },
     { file: 'docs/QUALITY_AUDIT_REPORT.md', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: `Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all ${auditTotals.suites} test suites and ${auditTotals.tests} tests.` },
     { file: 'docs/quality-audit-results.json', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: 'Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals.' },
-    { file: 'ROADMAP.md', mode: '100% AST-Generated', generator: '`scripts/generate-roadmap.js`', role: 'Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–10.' },
+    { file: 'ROADMAP.md', mode: '100% AST-Generated', generator: '`scripts/generate-roadmap.js`', role: `Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–${maxMilestoneIdx}.` },
     { file: 'CHANGELOG.md', mode: '100% Script-Generated', generator: '`scripts/generate-changelog.js`', role: 'Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions.' },
     { file: 'docs/PIPELINE_GUIDE.md', mode: 'Curated Engineering Runbook', generator: '_Source-of-Truth Runbook_', role: 'Operational guide for the 7-Gateway Quality Engine, GitHub Actions workflows, and catalog/translation ingestion pipelines.' },
     { file: 'DEVELOPMENT.md & CONTRIBUTING.md', mode: 'Curated Contributor Guides', generator: '_Source-of-Truth Guides_', role: 'Local development environment setup, testing standards, and conventional commit protocols.' },

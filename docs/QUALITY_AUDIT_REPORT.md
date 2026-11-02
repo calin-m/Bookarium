@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 02 Nov 2026 09:50:40 GMT  
+**Last Generated**: Mon, 02 Nov 2026 11:48:15 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2156 passed  
+**Total Verified Tests**: 2158 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2156 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2158 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.75%** (11587/11975) — *Target: $\ge$ 95%*
-- **Statements**: **95.39%** (12562/13169) — *Target: $\ge$ 95%*
-- **Functions**: **94.37%** (2700/2861) — *Target: $\ge$ 92%*
-- **Branches**: **87.92%** (11485/13062) — *Target: $\ge$ 85%*
+- **Lines**: **96.8%** (11596/11979) — *Target: $\ge$ 95%*
+- **Statements**: **95.43%** (12571/13173) — *Target: $\ge$ 95%*
+- **Functions**: **94.37%** (2703/2864) — *Target: $\ge$ 92%*
+- **Branches**: **88.01%** (11502/13068) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2156 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2158 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -1688,7 +1688,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 505 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 507 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2436,7 +2436,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -2456,6 +2456,8 @@
 - ✔ `normalizes multi-line and whitespace title strings cleanly`
 - ✔ `successfully upserts a batch when Supabase returns no error`
 - ✔ `adaptively splits the batch in half when encountering statement timeout`
+- ✔ `fetches popular download counts from Gutendex and updates matching public.books rows`
+- ✔ `gracefully handles network failures from Gutendex without throwing`
 
 </details>
 

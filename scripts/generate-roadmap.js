@@ -372,14 +372,15 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm10',
-    title: 'Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Reader & Public Literary Agora',
-    version: 'Target: v2.9.0',
-    badge: 'https://img.shields.io/badge/Milestone-v2.9.0-violet?style=flat-square',
-    description: 'Chronological execution sequence: Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `20 Popular + 5 Recent` blended batch ingestion & post-batch `1-for-1` sliding window auto-pruning, anonymized scholar-highlight promotion, dual-page spread reader mode, public volume discussions, community hub, reading challenges, and shareable reading cards.',
+    title: 'Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards',
+    version: 'v2.9.0 - v2.9.1 (Active: v2.9.0)',
+    badge: 'https://img.shields.io/badge/Milestone-v2.9.0--v2.9.1-violet?style=flat-square',
+    description: 'Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `20 Popular + 5 Recent` blended batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
     features: [
       {
-        title: 'Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `20 + 5` Ingestion (`6.0h–12.0h` Float Gate), Out-of-Window Auto-Pruning & Instant Preview Integration',
-        description: 'Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT \'[]\'::jsonb` column and partial popularity index `idx_books_with_quotes_popular` (`WHERE quotes <> \'[]\'::jsonb`); build `scripts/sync-featured-quotes.js` and `.github/workflows/quotes-sync.yml` (compact `workflow_dispatch` with per-mirror worker checkboxes defaulting to `gutenberg.pglaf.org` + `schedule` with a deterministic `6.0h–12.0h` float schedule gate `evaluateScheduleGate`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`), blending `20 Popular + 5 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), index-aligned ID-first candidate discovery (`fetchQuotedBookIds`), and post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), checking `public.books.content` first before polite PGLAF mirror fetching (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.',
+        title: '[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `20 + 5` Ingestion (`6.0h–12.0h` Float Gate), Out-of-Window Auto-Pruning & Instant Preview Integration',
+        targetMinVersion: '2.9.0',
+        description: 'Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT \'[]\'::jsonb` column and partial popularity index `idx_books_with_quotes_popular` (`WHERE quotes <> \'[]\'::jsonb`); build `scripts/sync-featured-quotes.js` and `.github/workflows/quotes-sync.yml` (compact `workflow_dispatch` with per-mirror worker checkboxes defaulting to `gutenberg.pglaf.org` + `schedule` with a deterministic `6.0h–12.0h` float schedule gate `evaluateScheduleGate`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by `download_count DESC, id ASC` + `Rolling 64 Most Recent` by `id DESC`), blending `20 Popular + 5 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), Priority Hero Book ID pinning, index-aligned ID-first candidate discovery (`fetchQuotedBookIds`), and burst-safe post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), checking `public.books.content` first before polite PGLAF mirror fetching (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.',
         check: () =>
           fileContains('supabase/schema.sql', 'quotes JSONB') &&
           fileContains('scripts/sync-featured-quotes.js', 'blendTwoTierCandidates') &&
@@ -387,14 +388,16 @@ const ROADMAP_MILESTONES = [
           fileContains('src/hooks/queries/useBooks.ts', 'useQuoteEnrichedBooks'),
       },
       {
-        title: 'Anonymized Scholar-Highlight Promotion into `public.books.quotes`',
+        title: '[Target: v2.9.0] Anonymized Scholar-Highlight Promotion into `public.books.quotes`',
+        targetMinVersion: '2.9.0',
         description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—reserving live Gutenberg mirror pulls strictly for uncached volumes opened by readers.',
         check: () =>
           fileContains('.github/workflows/quotes-sync.yml', 'schedule:') &&
           fileContains('scripts/sync-featured-quotes.js', 'promoteScholarHighlights'),
       },
       {
-        title: 'Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)',
+        title: '[Target: v2.9.0] Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)',
+        targetMinVersion: '2.9.0',
         description: 'Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.',
         check: () =>
           fileContains('src/components/reader/ReaderSurface.tsx', 'two-page') ||
@@ -402,32 +405,45 @@ const ROADMAP_MILESTONES = [
           fileContains('src/stores/useReaderStore.ts', 'spreadMode'),
       },
       {
-        title: 'Public Volume Discussions & Shared Commonplace Quotes',
+        title: '[Target: v2.9.1] Shareable Reading Cards & Social Milestone Canvas Export',
+        targetMinVersion: '2.9.1',
+        description: 'Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.',
+        check: () =>
+          fileExists('src/components/account/ShareableReadingCard.tsx') ||
+          fileExists('src/lib/reading-card-export.ts'),
+      },
+    ],
+  },
+  {
+    id: 'm11',
+    title: 'Milestone 11: Public Literary Agora & Community Hub',
+    version: 'Target: v2.10.0',
+    badge: 'https://img.shields.io/badge/Milestone-v2.10.0-indigo?style=flat-square',
+    description: 'Public volume discussions, shared commonplace quotes, the Bookarium Community Hub (`/?view=community`), and collective seasonal reading challenges.',
+    features: [
+      {
+        title: '[Target: v2.10.0] Public Volume Discussions & Shared Commonplace Quotes',
+        targetMinVersion: '2.10.0',
         description: 'Reader commentary and scholarly reviews on individual book volumes with opt-in public publishing of highlighted excerpts from the Commonplace Notebook.',
         check: () =>
           fileExists('src/components/community/BookDiscussionThread.tsx') ||
           fileExists('src/components/community/SharedQuoteCard.tsx'),
       },
       {
-        title: 'Bookarium Community Hub (`/?view=community`)',
+        title: '[Target: v2.10.0] Bookarium Community Hub (`/?view=community`)',
+        targetMinVersion: '2.10.0',
         description: 'Curated literary agora showcasing public reading activity, active community reading challenges, and trending public-domain classics across the scholar network.',
         check: () =>
           fileExists('src/components/presentation/CommunityView.tsx') ||
           fileContains('src/config/routes.ts', 'community'),
       },
       {
-        title: 'Community Reading Challenges & Seasonal Anthologies',
+        title: '[Target: v2.10.0] Community Reading Challenges & Seasonal Anthologies',
+        targetMinVersion: '2.10.0',
         description: 'Collective seasonal reading events (e.g., Gothic Autumn, Antiquity Odyssey) with shared community progress meters and commemorative participation badges.',
         check: () =>
           fileExists('src/components/community/CommunityChallengeCard.tsx') ||
           fileExists('src/stores/useCommunityStore.ts'),
-      },
-      {
-        title: 'Shareable Reading Cards & Social Milestone Canvas Export',
-        description: 'Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.',
-        check: () =>
-          fileExists('src/components/account/ShareableReadingCard.tsx') ||
-          fileExists('src/lib/reading-card-export.ts'),
       },
     ],
   },
@@ -528,8 +544,15 @@ This document is generated programmatically by \`scripts/generate-roadmap.js\` d
   return md;
 }
 
-// Generate and write file
-const roadmapContent = generateRoadmapMarkdown();
-const outputPath = path.join(rootDir, 'ROADMAP.md');
-fs.writeFileSync(outputPath, roadmapContent, 'utf-8');
-console.log(`✔ [SUCCESS] Living ROADMAP.md generated successfully (0% drift).`);
+// Generate and write file when invoked directly
+if (require.main === module) {
+  const roadmapContent = generateRoadmapMarkdown();
+  const outputPath = path.join(rootDir, 'ROADMAP.md');
+  fs.writeFileSync(outputPath, roadmapContent, 'utf-8');
+  console.log(`✔ [SUCCESS] Living ROADMAP.md generated successfully (0% drift).`);
+}
+
+module.exports = {
+  ROADMAP_MILESTONES,
+  generateRoadmapMarkdown,
+};

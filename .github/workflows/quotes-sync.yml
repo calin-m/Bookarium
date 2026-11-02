@@ -56,6 +56,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: featured-quotes-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     name: Extract & Sync Featured Book Quotes

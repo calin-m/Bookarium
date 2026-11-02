@@ -211,7 +211,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         query = query.order('id', { ascending: true });
       } else {
         // Default / 'popular'
-        query = query.order('download_count', { ascending: false });
+        query = query.order('download_count', { ascending: false }).order('id', { ascending: true });
       }
 
       // Pagination

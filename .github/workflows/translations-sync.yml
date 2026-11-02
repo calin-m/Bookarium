@@ -24,6 +24,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: gutenberg-translations-sync
+  cancel-in-progress: false
+
 jobs:
   sync-translations:
     name: Cluster & Sync Book Translations

@@ -182,6 +182,64 @@ describe('sync-featured-quotes pipeline', () => {
     );
     expect(pruneRes.prunedCount).toBe(3);
     expect(pruneInMock).toHaveBeenCalledWith('id', [400, 78002, 78001]);
+
+    // Failsafe: empty popularPoolIds aborts pruning to prevent accidental mass wipes
+    const emptyPoolPrune = await quotesSync.pruneOutOfWindowBookQuotes(
+      mockPruneSupabase,
+      new Set(),
+      { dryRun: false, recentPool: 2, minRecentHorizonId: 78000 },
+      { log: vi.fn() }
+    );
+    expect(emptyPoolPrune.prunedCount).toBe(0);
+
+    // Failsafe: maxPrunePerRun caps the number of books pruned in a single run
+    const cappedPrune = await quotesSync.pruneOutOfWindowBookQuotes(
+      mockPruneSupabase,
+      popularPoolIds,
+      { dryRun: false, recentPool: 2, minRecentHorizonId: 78000, maxPrunePerRun: 2 },
+      { log: vi.fn() }
+    );
+    expect(cappedPrune.prunedCount).toBe(2);
+    expect(cappedPrune.prunedIds).toEqual([400, 78002]);
+
+    // Failsafe: fetchQuotedBookIds throws when Supabase returns a query error
+    const errorQuotedSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          neq: vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'Supabase timeout on idx_books_with_quotes_popular' },
+          }),
+        })),
+      })),
+    };
+    await expect(quotesSync.fetchQuotedBookIds(errorQuotedSupabase)).rejects.toThrow(
+      /Supabase timeout/
+    );
+
+    // Strict public.books existence guard for manual --ids when Supabase is connected vs offline --dry-run
+    const offlineIds = await quotesSync.fetchCandidateBooksFromSupabase(null, {
+      ids: [1342, 999999],
+      limit: 10,
+    });
+    expect(offlineIds).toHaveLength(2);
+
+    const connectedByIdSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({
+            data: [{ id: 1342, title: 'Pride and Prejudice', quotes: [] }],
+            error: null,
+          }),
+        })),
+      })),
+    };
+    const connectedIds = await quotesSync.fetchCandidateBooksFromSupabase(connectedByIdSupabase, {
+      ids: [1342, 999999],
+      limit: 10,
+    });
+    expect(connectedIds).toHaveLength(1);
+    expect(connectedIds[0].id).toBe(1342);
   });
 
   it('computes randomized float delays and 6.0h–12.0h float schedule windows', async () => {
@@ -269,6 +327,44 @@ describe('sync-featured-quotes pipeline', () => {
   });
 
   it('fetches book text from single mirror or across PGLAF mirrors with failover and classifies mirror-level errors', async () => {
+    expect(quotesSync.isAllowedPglafMirrorUrl('https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt')).toBe(true);
+    expect(quotesSync.isAllowedPglafMirrorUrl('https://www.gutenberg.org/files/1342/1342-0.txt')).toBe(false);
+    expect(quotesSync.isAllowedPglafMirrorUrl('http://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt')).toBe(false);
+
+    const blockedMirrorRes = await quotesSync.fetchBookTextFromSingleMirror(
+      1342,
+      'https://www.gutenberg.org',
+      vi.fn()
+    );
+    expect(blockedMirrorRes.ok).toBe(false);
+    expect(blockedMirrorRes.status).toBe(403);
+
+    const redirectBlockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      url: 'https://www.gutenberg.org/files/1342/1342-0.txt',
+      text: async () => SAMPLE_GUTENBERG_BOOK,
+    });
+    const redirectBlocked = await quotesSync.fetchBookTextFromSingleMirror(
+      1342,
+      'https://aleph.gutenberg.org',
+      redirectBlockFetch
+    );
+    expect(redirectBlocked.ok).toBe(false);
+    expect(redirectBlocked.status).toBe(403);
+
+    const oversizedFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => String(quotesSync.MAX_BOOK_TEXT_BYTES + 1024) },
+      text: async () => SAMPLE_GUTENBERG_BOOK,
+    });
+    const oversizedRes = await quotesSync.fetchBookTextFromSingleMirror(
+      1342,
+      'https://aleph.gutenberg.org',
+      oversizedFetch
+    );
+    expect(oversizedRes.ok).toBe(false);
+    expect(oversizedRes.status).toBe(413);
+
     const rateLimitFetch = vi.fn().mockResolvedValue({ ok: false, status: 429 });
     const single429 = await quotesSync.fetchBookTextFromSingleMirror(
       1342,

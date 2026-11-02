@@ -1451,6 +1451,162 @@ function pass5AdrValidation() {
     // Git not available in isolated container
   }
 
+  // 8. SemVer Release Parity, Roadmap Version Floor, Latest-ADR Sync & Anti-Bloat Patch Cap Gate
+  function compareSemVer(a, b) {
+    const pa = String(a || '0.0.0')
+      .replace(/^v/i, '')
+      .split('.')
+      .map((n) => parseInt(n, 10) || 0);
+    const pb = String(b || '0.0.0')
+      .replace(/^v/i, '')
+      .split('.')
+      .map((n) => parseInt(n, 10) || 0);
+    for (let i = 0; i < 3; i++) {
+      if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+    }
+    return 0;
+  }
+
+  if (fs.existsSync(pkgJsonPath)) {
+    const pkgMeta = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
+    const pkgVersion = String(pkgMeta.version || '').trim();
+    if (!/^\d+\.\d+\.\d+$/.test(pkgVersion)) {
+      docViolations.push(
+        `Invalid SemVer version "${pkgVersion}" in package.json (expected MAJOR.MINOR.PATCH).`
+      );
+    } else {
+      const [majorVer, minorVer] = pkgVersion.split('.');
+      const majorMinor = `${majorVer}.${minorVer}`;
+
+      const lockPath = path.join(rootDir, 'package-lock.json');
+      if (fs.existsSync(lockPath)) {
+        const lockJson = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+        const rootPkgVer = lockJson.packages && lockJson.packages[''] && lockJson.packages[''].version;
+        if (lockJson.version !== pkgVersion || rootPkgVer !== pkgVersion) {
+          docViolations.push(
+            `Version drift in package-lock.json: found "${lockJson.version}" / "${rootPkgVer}", expected "${pkgVersion}" (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      const changelogPath = path.join(rootDir, 'CHANGELOG.md');
+      let topChangelogBlock = '';
+      if (fs.existsSync(changelogPath)) {
+        const changelogText = fs.readFileSync(changelogPath, 'utf-8');
+        const topVerMatch = changelogText.match(/^## \[([^\]]+)\]/m);
+        if (!topVerMatch || topVerMatch[1] !== pkgVersion) {
+          docViolations.push(
+            `Version drift in CHANGELOG.md: top release is "[${topVerMatch ? topVerMatch[1] : 'missing'}]", expected "[${pkgVersion}]" (run "npm run docs:sync").`
+          );
+        }
+        const blockRegex = new RegExp(
+          `^## \\[${pkgVersion.replace(/\./g, '\\.')}\\][\\s\\S]*?(?=\\r?\\n## \\[|(?![\\s\\S]))`,
+          'm'
+        );
+        const blockMatch = changelogText.match(blockRegex);
+        topChangelogBlock = blockMatch ? blockMatch[0] : '';
+      }
+
+      const readmePath = path.join(rootDir, 'README.md');
+      let latestReadmeBlock = '';
+      if (fs.existsSync(readmePath)) {
+        const readmeFull = fs.readFileSync(readmePath, 'utf-8');
+        const blockMatch = readmeFull.match(
+          /<!-- BEGIN:latest-release -->([\s\S]*?)<!-- END:latest-release -->/
+        );
+        latestReadmeBlock = blockMatch ? blockMatch[1] : '';
+        if (!latestReadmeBlock.includes(`## 🛠️ Latest Improvements (v${pkgVersion})`)) {
+          docViolations.push(
+            `Version drift in README.md Latest Improvements: expected "## 🛠️ Latest Improvements (v${pkgVersion})" (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      const roadmapPath = path.join(rootDir, 'ROADMAP.md');
+      if (fs.existsSync(roadmapPath)) {
+        const roadmapText = fs.readFileSync(roadmapPath, 'utf-8');
+        if (!roadmapText.includes(`Current%20Release-v${pkgVersion}`)) {
+          docViolations.push(
+            `Version drift in ROADMAP.md badge: expected "Current%20Release-v${pkgVersion}" (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      const securityPath = path.join(rootDir, 'SECURITY.md');
+      if (fs.existsSync(securityPath)) {
+        const securityText = fs.readFileSync(securityPath, 'utf-8');
+        if (
+          !securityText.includes(`| **${majorMinor}.x** |`) ||
+          !securityText.includes(`| < ${majorMinor}.0 |`)
+        ) {
+          docViolations.push(
+            `Version drift in SECURITY.md Supported Versions: expected "**${majorMinor}.x**" and "< ${majorMinor}.0" (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      const releaseWfPath = path.join(rootDir, '.github', 'workflows', 'release.yml');
+      if (fs.existsSync(releaseWfPath)) {
+        const releaseWfText = fs.readFileSync(releaseWfPath, 'utf-8');
+        if (!releaseWfText.includes(`default: 'v${pkgVersion}'`)) {
+          docViolations.push(
+            `Version drift in .github/workflows/release.yml: expected "default: 'v${pkgVersion}'" (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      // Latest ADR citation & Anti-Bloat Cap (<= 3 ADRs per release for >= 2.9.0)
+      if (matches.length > 0 && topChangelogBlock) {
+        const latestAdrId = `ADR-${String(matches.length).padStart(3, '0')}`;
+        if (!topChangelogBlock.includes(latestAdrId)) {
+          docViolations.push(
+            `Latest decision record ${latestAdrId} from docs/DECISIONS.md is not cited in top release [${pkgVersion}] of CHANGELOG.md (update scripts/generate-changelog.js and run "npm run docs:sync").`
+          );
+        }
+        if (latestReadmeBlock && !latestReadmeBlock.includes(latestAdrId)) {
+          docViolations.push(
+            `Latest decision record ${latestAdrId} from docs/DECISIONS.md is missing from README.md Latest Improvements (v${pkgVersion}) (run "npm run docs:sync").`
+          );
+        }
+        if (compareSemVer(pkgVersion, '2.9.0') >= 0) {
+          const citedAdrs = new Set(
+            [...topChangelogBlock.matchAll(/\bADR-\d{3}\b/g)].map((m) => m[0])
+          );
+          if (citedAdrs.size > 3) {
+            docViolations.push(
+              `SemVer Anti-Bloat Cap violation: Release [${pkgVersion}] in CHANGELOG.md cites ${citedAdrs.size} ADRs (${Array.from(citedAdrs).join(', ')}), exceeding the maximum of 3 ADRs per x.xx.xx release. Increment the version in scripts/generate-changelog.js and run "npm run docs:sync".`
+            );
+          }
+        }
+      }
+
+      // Roadmap Verified Feature Version Floor Gate
+      try {
+        const { ROADMAP_MILESTONES } = require('./generate-roadmap');
+        if (Array.isArray(ROADMAP_MILESTONES)) {
+          for (const milestone of ROADMAP_MILESTONES) {
+            for (const feat of milestone.features || []) {
+              if (
+                feat &&
+                feat.targetMinVersion &&
+                typeof feat.check === 'function' &&
+                feat.check()
+              ) {
+                if (compareSemVer(pkgVersion, feat.targetMinVersion) < 0) {
+                  docViolations.push(
+                    `Roadmap version floor violation: Feature "${feat.title}" in ${milestone.id.toUpperCase()} is verified on disk ([x]), requiring version >= ${feat.targetMinVersion}, but package.json is ${pkgVersion}.`
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        docViolations.push(`Failed to evaluate ROADMAP_MILESTONES version floor: ${err.message}`);
+      }
+    }
+  }
+
   if (docViolations.length > 0) {
     logFail(`ADR schema, governance checklist, SQL<->TS parity, dependency graph, doc parity, or test co-location failure(s):`);
     docViolations.forEach((v) => console.error(`  - ${v}`));

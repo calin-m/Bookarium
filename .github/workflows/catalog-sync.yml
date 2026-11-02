@@ -24,6 +24,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: gutenberg-catalog-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     name: Stream & Sync Gutenberg Catalog

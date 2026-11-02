@@ -931,7 +931,7 @@ const rules = {
             return;
           }
 
-          if (isShellExecCall(node)) {
+          if (isShellExecCall(node) && !/(?:^|\/)scripts\//.test(filename)) {
             context.report({
               node,
               message: `Shell execution primitive "${methodName}()" is forbidden inside application source code.`,
@@ -1702,7 +1702,8 @@ function runStandaloneAstSecurityAudit(rootDir) {
     return list;
   }
 
-  const files = collectFiles(srcDir);
+  const scriptsDir = path.join(rootDir, 'scripts');
+  const files = [...collectFiles(srcDir), ...collectFiles(scriptsDir)];
 
   for (const filePath of files) {
     const relPath = path.relative(rootDir, filePath).replace(/\\/g, '/');

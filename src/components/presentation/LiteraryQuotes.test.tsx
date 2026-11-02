@@ -174,6 +174,36 @@ describe('LiteraryQuotes component', () => {
               openingLine: '“My father’s family name being Pirrip and my Christian name Philip.”',
               quoteExcerpt: '“Suffering has been stronger than all other teaching in my life.”',
             },
+            {
+              chapterLabel: 'Passage II • Great Expectations',
+              openingLine: '“Take nothing on its looks; take everything on evidence.”',
+              quoteExcerpt: '“Heaven knows we need never be ashamed of our tears.”',
+            },
+          ],
+        },
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: ['Gothic fiction'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 85000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Frankenstein',
+              openingLine: '“You will rejoice to hear that no disaster has accompanied the commencement.”',
+              quoteExcerpt: '“Beware; for I am fearless, and therefore powerful.”',
+            },
+            {
+              chapterLabel: 'Passage II • Frankenstein',
+              openingLine: '“Nothing is so painful to the human mind as a great and sudden change.”',
+              quoteExcerpt: '“Life, although it may only be an accumulation of anguish, is dear to me.”',
+            },
           ],
         },
       ],
@@ -183,6 +213,10 @@ describe('LiteraryQuotes component', () => {
     expect(
       screen.getByText(/Primary Supabase Pride quote excerpt with over twenty five letters/i)
     ).toBeInTheDocument();
+    // Book #84 is already present with >=2 quotes in quoteEnrichedBooks, so it is excluded from useFeaturedQuotes IDs
+    const requestedIds = quotesSpy.mock.calls[0]?.[0] || [];
+    expect(requestedIds).not.toContain(84);
+    expect(requestedIds).toContain(1342);
 
     enrichedSpy.mockRestore();
     quotesSpy.mockRestore();

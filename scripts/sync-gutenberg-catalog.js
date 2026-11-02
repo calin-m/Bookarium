@@ -313,7 +313,89 @@ async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true
   }
 }
 
-// 8. Main Orchestrator
+// 8. Popularity Download Count Hydration from Gutendex (Top 500+ Public Domain Titles)
+async function fetchPopularCountsFromGutendex(pages = 16, fetchFn = globalThis.fetch) {
+  const popularEntries = [];
+  const seenIds = new Set();
+
+  for (let page = 1; page <= pages; page++) {
+    const url = `https://gutendex.com/books/?copyright=false&page=${page}`;
+    try {
+      const res = await fetchFn(url, {
+        headers: {
+          'User-Agent': 'Bookarium-Catalog-Sync/1.0 (https://bookarium.vercel.app)',
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res || !res.ok) break;
+      const data = await res.json();
+      if (!data || !Array.isArray(data.results) || data.results.length === 0) break;
+
+      for (const item of data.results) {
+        if (
+          item &&
+          Number.isInteger(item.id) &&
+          item.id > 0 &&
+          typeof item.download_count === 'number' &&
+          item.download_count > 0 &&
+          !seenIds.has(item.id)
+        ) {
+          seenIds.add(item.id);
+          popularEntries.push({
+            id: item.id,
+            download_count: item.download_count,
+          });
+        }
+      }
+      if (!data.next) break;
+    } catch {
+      break;
+    }
+  }
+
+  return popularEntries;
+}
+
+async function syncPopularDownloadCounts(supabase, options = {}) {
+  if (!supabase) return { updatedCount: 0 };
+  const pages = typeof options.pages === 'number' && options.pages > 0 ? options.pages : 16;
+  const fetchFn = options.fetchFn || globalThis.fetch;
+  const logger = options.logger || console;
+
+  logger.log(`\n🔥 Hydrating download_count for Top Popular Gutenberg titles (${pages} pages)...`);
+  const entries = await fetchPopularCountsFromGutendex(pages, fetchFn);
+  if (entries.length === 0) {
+    logger.warn('  ⚠ Warning: Could not retrieve popular download counts from Gutendex; keeping existing counts.');
+    return { updatedCount: 0 };
+  }
+
+  let updatedCount = 0;
+  const CHUNK_SIZE = 25;
+  const pauseMs = typeof options.pauseMs === 'number' && options.pauseMs >= 0 ? options.pauseMs : 50;
+  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+    const chunk = entries.slice(i, i + CHUNK_SIZE);
+    await Promise.all(
+      chunk.map(async (entry) => {
+        const { error } = await supabase
+          .from('books')
+          .update({ download_count: entry.download_count })
+          .eq('id', entry.id);
+        if (!error) {
+          updatedCount++;
+        }
+      })
+    );
+    if (pauseMs > 0 && i + CHUNK_SIZE < entries.length) {
+      await new Promise((r) => setTimeout(r, pauseMs));
+    }
+  }
+
+  logger.log(`  ✔ Hydrated download_count on ${updatedCount.toLocaleString()} popular volumes.`);
+  return { updatedCount };
+}
+
+// 9. Main Orchestrator
 async function main() {
   const args = process.argv.slice(2);
   const isHelp = args.includes('--help') || args.includes('-h');
@@ -439,6 +521,10 @@ Options:
     console.log(`  • Valid texts:    ${totalAccepted.toLocaleString()}`);
     console.log(`  • Titles synced:  ${totalUpserted.toLocaleString()}`);
 
+    if (!isDryRun && supabase && !limit) {
+      await syncPopularDownloadCounts(supabase);
+    }
+
     if (!isDryRun && supabase) {
       const { count } = await supabase.from('books').select('*', { count: 'exact', head: true });
       console.log(`  • Current Supabase Catalog Total: ${count ? count.toLocaleString() : 'N/A'} books`);
@@ -457,6 +543,8 @@ module.exports = {
   buildStandardFormats,
   normalizeCsvRow,
   upsertBatch,
+  fetchPopularCountsFromGutendex,
+  syncPopularDownloadCounts,
   loadEnv,
 };
 

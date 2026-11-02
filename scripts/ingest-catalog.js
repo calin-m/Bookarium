@@ -14,6 +14,14 @@ const path = require('path');
 const https = require('https');
 
 const rootDir = path.resolve(__dirname, '..');
+const pkgVersion = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')).version || '2.0';
+  } catch {
+    return '2.0';
+  }
+})();
+const INGEST_USER_AGENT = `Bookarium/${pkgVersion} (+https://github.com/calin-m/Bookarium)`;
 const seedSqlPath = path.join(rootDir, 'supabase', 'seed_books.sql');
 const seedContentSqlPath = path.join(rootDir, 'supabase', 'seed_books_content.sql');
 
@@ -222,7 +230,7 @@ function fetchJson(url) {
         url,
         {
           headers: {
-            'User-Agent': 'Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)',
+            'User-Agent': INGEST_USER_AGENT,
             Accept: 'application/json',
           },
         },
@@ -264,7 +272,7 @@ function fetchBookText(bookId) {
           url,
           {
             headers: {
-              'User-Agent': 'Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)',
+              'User-Agent': INGEST_USER_AGENT,
               Accept: 'text/plain; charset=utf-8',
             },
           },

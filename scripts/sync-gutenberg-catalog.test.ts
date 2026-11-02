@@ -6,6 +6,8 @@ const {
   buildStandardFormats,
   normalizeCsvRow,
   upsertBatch,
+  fetchPopularCountsFromGutendex,
+  syncPopularDownloadCounts,
 } = require('./sync-gutenberg-catalog');
 
 describe('sync-gutenberg-catalog parser', () => {
@@ -295,6 +297,57 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(calls[0].length).toBe(40);
       expect(calls[1].length).toBe(20);
       expect(calls[2].length).toBe(20);
+    });
+  });
+
+  describe('syncPopularDownloadCounts', () => {
+    it('fetches popular download counts from Gutendex and updates matching public.books rows', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          next: null,
+          results: [
+            { id: 1342, download_count: 55420 },
+            { id: 84, download_count: 85210 },
+          ],
+        }),
+      });
+
+      const entries = await fetchPopularCountsFromGutendex(2, fetchMock);
+      expect(entries).toEqual([
+        { id: 1342, download_count: 55420 },
+        { id: 84, download_count: 85210 },
+      ]);
+
+      const eqMock = vi.fn().mockResolvedValue({ error: null });
+      const updateMock = vi.fn(() => ({ eq: eqMock }));
+      const mockSupabase = {
+        from: vi.fn(() => ({ update: updateMock })),
+      };
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+
+      const res = await syncPopularDownloadCounts(mockSupabase, {
+        pages: 1,
+        fetchFn: fetchMock,
+        logger: silentLogger,
+      });
+      expect(res.updatedCount).toBe(2);
+      expect(updateMock).toHaveBeenCalledWith({ download_count: 55420 });
+      expect(eqMock).toHaveBeenCalledWith('id', 1342);
+    });
+
+    it('gracefully handles network failures from Gutendex without throwing', async () => {
+      const failFetch = vi.fn().mockRejectedValue(new Error('Gutendex unreachable'));
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const mockSupabase = { from: vi.fn() };
+
+      const res = await syncPopularDownloadCounts(mockSupabase, {
+        pages: 1,
+        fetchFn: failFetch,
+        logger: silentLogger,
+      });
+      expect(res.updatedCount).toBe(0);
+      expect(silentLogger.warn).toHaveBeenCalled();
     });
   });
 });

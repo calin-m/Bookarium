@@ -10,8 +10,8 @@ Security patches, dependency updates, and bug fixes are applied to the active re
 
 | Version | Supported | Notes |
 |---|:---:|---|
-| **2.8.x** | ✅ | **Active Release** (Recommended for all users and deployments) |
-| < 2.8.0 | ❌ | Older releases are not actively maintained; please upgrade to the latest release |
+| **2.9.x** | ✅ | **Active Release** (Recommended for all users and deployments) |
+| < 2.9.0 | ❌ | Older releases are not actively maintained; please upgrade to the latest release |
 
 ---
 

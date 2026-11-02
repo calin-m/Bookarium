@@ -27,17 +27,23 @@ export const LiteraryQuotes: React.FC = () => {
     return filtered.length >= 3 ? filtered : LITERARY_QUOTES.slice(0, 3);
   }, [country, hasMounted]);
 
-  const quoteBookIds = useMemo(
-    () => Array.from(new Set(baseSafeQuotes.map((q) => q.bookId))),
-    [baseSafeQuotes]
-  );
-
-  const { data: featuredQuotesMap } = useFeaturedQuotes(quoteBookIds, {
+  const { data: quoteEnrichedBooks } = useQuoteEnrichedBooks({
     enabled: hasMounted,
   });
 
-  const { data: quoteEnrichedBooks } = useQuoteEnrichedBooks({
-    enabled: hasMounted,
+  const quoteBookIds = useMemo(() => {
+    const enrichedIds = new Set(
+      (quoteEnrichedBooks || [])
+        .filter((b) => Array.isArray(b.quotes) && b.quotes.length >= 2)
+        .map((b) => b.id)
+    );
+    return Array.from(
+      new Set(baseSafeQuotes.map((q) => q.bookId).filter((id) => !enrichedIds.has(id)))
+    );
+  }, [baseSafeQuotes, quoteEnrichedBooks]);
+
+  const { data: featuredQuotesMap } = useFeaturedQuotes(quoteBookIds, {
+    enabled: hasMounted && quoteBookIds.length > 0,
   });
 
   // Expand safeQuotes with primary Supabase public.books.quotes (10–16 passages per volume) when available
