@@ -210,8 +210,8 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       } else if (options.sort === 'ascending') {
         query = query.order('id', { ascending: true });
       } else {
-        // Default / 'popular'
-        query = query.order('download_count', { ascending: false }).order('id', { ascending: true });
+        // Default / 'popular' (aligned 1:1 with single-column idx_books_download_count)
+        query = query.order('download_count', { ascending: false });
       }
 
       // Pagination

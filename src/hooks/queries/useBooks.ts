@@ -427,11 +427,43 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
 
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
+    const candidateIdSet = new Set<number>([
+      1342, 84, 2701, 64317, 11, 1661, 174, 345, 98, 1260, 768, 43, 1952, 2542, 1080, 1400, 46,
+      2591, 135, 1184, 2600, 2554, 5200, 132, 1232, 205, 844,
+    ]);
+    const idScanSpecs = [
+      { col: 'download_count', scanLimit: 200 },
+      { col: 'id', scanLimit: 64 },
+    ] as const;
+
+    for (const spec of idScanSpecs) {
+      const idSelect = supabase.from('books').select('id');
+      if (idSelect && typeof idSelect.order === 'function') {
+        const ordered = idSelect.order(spec.col, { ascending: false });
+        if (ordered && typeof ordered.limit === 'function') {
+          const { data: idRows } = await ordered.limit(spec.scanLimit);
+          if (Array.isArray(idRows)) {
+            for (const row of idRows) {
+              if (row && typeof row.id === 'number') {
+                candidateIdSet.add(row.id);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const baseSelect = supabase
       .from('books')
       .select(
         'id, title, authors, translators, subjects, languages, copyright, download_count, quotes'
-      )
+      );
+    const scopedSelect =
+      baseSelect && typeof baseSelect.in === 'function'
+        ? baseSelect.in('id', Array.from(candidateIdSet))
+        : baseSelect;
+
+    const { data, error } = await scopedSelect
       .neq('quotes', '[]')
       .order('download_count', { ascending: false })
       .limit(Math.max(1, Math.min(100, limit)));

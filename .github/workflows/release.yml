@@ -49,11 +49,15 @@ jobs:
             const rawTag = process.env.INPUT_TAG || process.env.GITHUB_REF_NAME || "";
             const tag = rawTag.replace(/^v/, "").trim();
             const changelog = fs.readFileSync("CHANGELOG.md", "utf8");
-            const escapedTag = tag.replace(/\./g, "\\.");
-            const regex = new RegExp("## \\[" + escapedTag + "\\][\\s\\S]*?(?=\\n## \\[|$)", "i");
-            const match = changelog.match(regex);
-            if (match) {
-              const cleaned = match[0].replace(/^## \\[.*?\\]\\s*-\\s*\\d{4}-\\d{2}-\\d{2}\\s*/i, "").trim();
+            const headerMarker = "## [" + tag + "]";
+            const startIdx = changelog.indexOf(headerMarker);
+            if (startIdx !== -1) {
+              const nextHeaderIdx = changelog.indexOf("\n## [", startIdx + headerMarker.length);
+              const rawSection =
+                nextHeaderIdx !== -1
+                  ? changelog.slice(startIdx, nextHeaderIdx)
+                  : changelog.slice(startIdx);
+              const cleaned = rawSection.replace(/^## \[.*?\]\s*-\s*\d{4}-\d{2}-\d{2}\s*/i, "").trim();
               fs.writeFileSync("RELEASE_NOTES.md", cleaned);
             } else {
               fs.writeFileSync("RELEASE_NOTES.md", "### Release v" + tag + "\n\nSee [CHANGELOG.md](CHANGELOG.md) for detailed notes.");

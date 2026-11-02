@@ -1620,6 +1620,42 @@ const rules = {
             }
           }
 
+          // CodeQL CWE-116 (js/incomplete-sanitization): forbid .replace(/\./g, '\\.') that escapes characters with backslash without escaping '\\'
+          if (methodName === 'replace' && node.arguments && node.arguments.length === 2) {
+            const [patternArg, replaceArg] = node.arguments;
+            const patternSource =
+              patternArg &&
+              ((patternArg.type === 'RegExpLiteral' && patternArg.pattern) ||
+                (patternArg.type === 'Literal' &&
+                  patternArg.regex &&
+                  patternArg.regex.pattern))
+                ? String(patternArg.pattern || patternArg.regex.pattern)
+                : '';
+            const replaceStr =
+              replaceArg &&
+              (replaceArg.type === 'Literal' || replaceArg.type === 'StringLiteral') &&
+              typeof replaceArg.value === 'string'
+                ? replaceArg.value
+                : '';
+
+            if (
+              patternSource &&
+              /^\\[.+*?^${}()|[\]'"]$/.test(patternSource) &&
+              /^\\[.+"'&]$/.test(replaceStr)
+            ) {
+              context.report({
+                node: patternArg,
+                message:
+                  'Incomplete string escaping or encoding (CodeQL CWE-116 / js/incomplete-sanitization): Regex .replace(/' +
+                  patternSource +
+                  '/g, ...) escapes "' +
+                  patternSource.slice(1) +
+                  '" without escaping backslash characters ("\\\\"). Escape all metacharacters (/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") or use deterministic indexOf() slicing.',
+              });
+              return;
+            }
+          }
+
           if (isTestFile) return;
 
           // Check URLSearchParams.set('copyright', 'true') / .append('copyright', 'true')

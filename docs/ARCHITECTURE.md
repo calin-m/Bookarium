@@ -855,39 +855,85 @@ Pure business logic, historical engines, and layout algorithms verified across *
 
 Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions CI/CD workflows (outside `src/`):
 
-| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility |
+### 1. GitHub Actions & Database Ingestion Topology
+
+```mermaid
+flowchart TD
+    subgraph Triggers ["GitHub Actions Triggers & Concurrency Locks"]
+        CatTrigger["🕒 catalog-sync.yml\n• cron: 0 2 * * 0 (Sundays 02:00 UTC) / workflow_dispatch\n• concurrency: gutenberg-catalog-sync"]
+        TransTrigger["🕒 translations-sync.yml\n• cron: 0 3 * * 0 (Sundays 03:00 UTC) / workflow_dispatch\n• concurrency: gutenberg-translations-sync"]
+        QuotesTrigger["🕒 quotes-sync.yml\n• cron: 37 */2 * * * (6.0h–12.0h Float Gate) / workflow_dispatch\n• concurrency: featured-quotes-sync"]
+        CITrigger["✅ ci.yml & release.yml\n• push / pull_request (master) & tags: v*\n• Node 22 + 7-Gateway Quality Engine"]
+    end
+
+    subgraph UpstreamFeeds ["External Public Domain Feeds & Authority Sources"]
+        FeedCSV["📦 Project Gutenberg Feed\npg_catalog.csv.gz (5.5MB Gzip Stream)"]
+        FeedGutendex["📊 Gutendex Popularity API\nTop 500+ download_count Hydration"]
+        FeedWikidata["🌐 Wikidata SPARQL + Offline Cache\nP2034 Gutenberg ID & P407 Language"]
+        FeedMirrors["🏛️ Official PGLAF Mirrors (8.0s–16.0s Float Delay)\ngutenberg.pglaf.org • aleph.gutenberg.org • gutenberg.readingroo.ms"]
+    end
+
+    subgraph NodePipelines ["Node.js CLI Engines (scripts/ • SUPABASE_SERVICE_ROLE_KEY)"]
+        ScriptCatalog["⚙️ scripts/sync-gutenberg-catalog.js\n• RFC 4180 Streaming CSV Parser & Lifespan Extractor\n• 100-Row Chunk Upsert + Adaptive 57014 Batch Halving\n• syncPopularDownloadCounts (50 IDs/chunk, 50ms pacing)"]
+        ScriptTrans["⚙️ scripts/ingest-translations.js\n• 5 Pipeline Blockers & 7 Hardening Defenses\n• Deterministic FRBR Cluster Upsert"]
+        ScriptQuotes["⚙️ scripts/sync-featured-quotes.js\n• Step 1: Pure Index Scans (idx_books_download_count LIMIT 1000 + books_pkey LIMIT 320)\n• Step 2: Primary-Key-Scoped fetchQuotedBookIds (.in(id, chunk).neq(quotes, []))\n• Step 3: 20 Popular + 5 Recent Blended Batch & 1-for-1 Sliding Window Auto-Prune"]
+    end
+
+    subgraph SupabaseTables ["Supabase PostgreSQL Catalog Tables (Read-Only for Anon / Written by Service Role)"]
+        TableBooks[("🗄️ public.books (78,000+ Rows)\n• books_pkey (id)\n• idx_books_download_count (download_count DESC)\n• idx_books_with_quotes_popular (WHERE quotes <> '[]')\n• idx_books_search_vector (GIN TSVECTOR)")]
+        TableTrans[("🗄️ public.book_translations (4,500+ Rows)\n• idx_book_translations_book_id\n• idx_book_translations_work_id\n• idx_book_translations_work_lang")]
+    end
+
+    CatTrigger --> ScriptCatalog
+    FeedCSV --> ScriptCatalog
+    FeedGutendex --> ScriptCatalog
+    ScriptCatalog -->|"Upsert 78k Metadata & Top 500 Counts"| TableBooks
+    ScriptCatalog -->|"Chains Step 2 on Sunday Run"| ScriptTrans
+    TransTrigger --> ScriptTrans
+    FeedWikidata --> ScriptTrans
+    ScriptTrans -->|"Upsert FRBR Edition Clusters"| TableTrans
+    QuotesTrigger --> ScriptQuotes
+    FeedMirrors --> ScriptQuotes
+    TableBooks -->|"Sub-15ms Index & PK Candidate Discovery"| ScriptQuotes
+    ScriptQuotes -->|"Upsert 10–16 Quotes/Book & Prune Out-of-Window (<=564 Pool)"| TableBooks
+```
+
+### 2. CLI Pipelines & GitHub Actions Workflows Inventory
+
+| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility & Database Index Contract |
 | :--- | :--- | :--- | :--- | :--- |
-| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `pg_catalog.csv.gz` (5.5MB) through gunzip and batch-upserts 78,000+ public domain titles with adaptive timeout division. |
-| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting and atomic SQL generation. |
-| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / `6.0h–12.0h` Float Cron | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` (`20 Popular + 5 Recent` blended batch + post-batch `1-for-1` sliding window auto-pruning) across selectable PGLAF mirrors with `8.0s–16.0s` float pacing. |
+| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `pg_catalog.csv.gz` (5.5MB) through gunzip, batch-upserts 78,000+ public domain titles via `books_pkey`, and hydrates `download_count` for Top 500+ popular titles (`idx_books_download_count`). |
+| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting (`idx_book_translations_cluster`). |
+| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / `6.0h–12.0h` Float Cron | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` via Primary-Key-Scoped `books_pkey` `.in('id', chunk).neq('quotes', '[]')` and single-column `idx_books_download_count` scans (`<25ms`), `20 Popular + 5 Recent` blended batch, and post-batch `1-for-1` sliding window auto-pruning across selectable PGLAF mirrors with `8.0s–16.0s` float pacing. |
 | **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |
-| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) | Automated CI cron workflow streaming newly added titles into Supabase and chaining translation sync. |
-| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow clustering upstream Wikidata editions and syncing to `public.book_translations`. |
-| **`quotes-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/quotes-sync.yml`](.github/workflows/quotes-sync.yml) | `cron: 37 * * * *` (`6.0h–12.0h` Gate) / On-Demand | Automated & manual GitHub Actions workflow populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) with compact per-mirror selection. |
-| **`ci.yml`** | GitHub Actions Workflow | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `push` / `pull_request` (`master`) | Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification. |
+| **`catalog-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow (`concurrency: gutenberg-catalog-sync`) streaming `pg_catalog.csv.gz` into `public.books`, hydrating `download_count` for Top 500+ popular titles from Gutendex, and chaining `ingest-translations.js`. |
+| **`translations-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml) | `cron: 0 3 * * 0` (Sundays) / On-Demand | Automated weekly CI cron workflow (`concurrency: gutenberg-translations-sync`) clustering upstream Wikidata `P2034`/`P407` editions and syncing to `public.book_translations` via `idx_book_translations_cluster`. |
+| **`quotes-sync.yml`** | GitHub Actions Workflow | [`.github/workflows/quotes-sync.yml`](.github/workflows/quotes-sync.yml) | `cron: 37 */2 * * *` (`6.0h–12.0h` Gate) / On-Demand | Automated & manual GitHub Actions workflow (`concurrency: featured-quotes-sync`) populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) via Primary-Key-Scoped `books_pkey` `.in('id', chunk).neq('quotes', '[]')` & single-column `idx_books_download_count` queries (`<25ms`). |
+| **`ci.yml`** | GitHub Actions Workflow | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | `push` / `pull_request` (`master`) | Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification on Node 22. |
+| **`release.yml`** | GitHub Actions Workflow | [`.github/workflows/release.yml`](.github/workflows/release.yml) | `push` (`tags: v*`) / On-Demand (`workflow_dispatch`) | Automated GitHub Release publisher triggered on `v*` tags or manual `workflow_dispatch`, executing the full 7-Gateway Quality Engine and extracting release notes from `CHANGELOG.md`. |
 
 ---
 
 ## 🗄️ Database Architecture & Row Level Security (RLS) Policies
 
-Bookarium uses Supabase PostgreSQL for optional cloud synchronization, verified across **14 Database Tables** with strict Row Level Security (Rule 9):
+Bookarium uses Supabase PostgreSQL for optional cloud synchronization and self-hosted catalog serving, verified across **14 Database Tables** with strict Row Level Security (Rule 9):
 
-| Table Name | RLS Governance | Client State Store | Domain Role & Security Description |
-| :--- | :--- | :--- | :--- |
-| **`supabase_migrations.schema_migrations`** | Enabled (`No Client Access`) | _Supabase CLI / Studio Tracker_ | Internal Supabase migration ledger preventing `42P01` dashboard warnings and tracking applied DDL versions with RLS enabled. |
-| **`public.profiles`** | Enabled (`auth.uid()`) | `useAuthStore` | User profile display name, `@username` handle, theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums). |
-| **`public.bookshelves`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Default master "General" shelf and custom user-created named shelves. |
-| **`public.bookshelf_items`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Books filed in specific shelves with user-scoped uniqueness constraints. |
-| **`public.user_favorites`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Cross-device synchronized favorited titles. |
-| **`public.reading_progress`** | Enabled (`auth.uid()`) | `useReaderStore` | Chapter index, progress %, in-page row bookmark offsets, highlighted bookmark line text (`bookmark_text`), and cached volume metadata. |
-| **`public.user_annotations`** | Enabled (`auth.uid()`) | `useAnnotationStore` | Passage text highlights (4 pastel palettes), scholarly notes, and cross-volume Symposium Fellow marginalia. |
-| **`public.user_book_curation`** | Enabled (`auth.uid()`) | `useBookshelfStore` | Personal 1–5 star ratings and reading status classification. |
-| **`public.user_reading_habits`** | Enabled (`auth.uid()`) | `useHabitsStore` | Reading streaks (5-min threshold), daily activity dates, annual challenge goals, completed books count, and dual immersion telemetry. |
-| **`public.user_accolades`** | Enabled (`auth.uid()`) | `useAccoladesStore` | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
-| **`public.books`** | Enabled (`Public Read`) | `SupabaseCatalogProvider` / `useFeaturedQuotes` / `useQuoteEnrichedBooks` | Self-hosted public domain catalog with GIN full-text search vector, pre-computed author lifespan bounds, primary `quotes` JSONB (`10–16` multi-quote spreads per volume), and optional plain-text caching. |
-| **`public.book_translations`** | Enabled (`Public Read`) | `useBookTranslations` / `SupabaseCatalogProvider` | Relational FRBR literary work clusters mapping Project Gutenberg editions across languages with zero false positives. |
-| **`public.reader_circles`** | Enabled (`auth.uid()`) | `useFellowshipStore` | Mutual Literary Fellowship pairings (pending/accepted) with RLS participant isolation. |
-| **`public.symposium_sessions`** | Enabled (`auth.uid()`) | `useFellowshipStore` | Dual-reading Literary Symposium sessions tracking shared volume progress and chapter coordinates for two fellows. |
+| Table Name | Read Access / RLS | Write Authority & Mutating Actors | Runtime Consumers (Stores, Providers & CLI) | Domain Role & Security Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **`supabase_migrations.schema_migrations`** | Enabled (`No Client Access`) | `service_role` / Supabase Migration Runner | _Supabase CLI / Studio Tracker_ | Internal Supabase migration ledger preventing `42P01` dashboard warnings and tracking applied DDL versions with RLS enabled. |
+| **`public.profiles`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useAuthStore` / `usePreferencesStore` | User profile display name, `@username` handle, theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums). |
+| **`public.bookshelves`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Default master "General" shelf and custom user-created named shelves. |
+| **`public.bookshelf_items`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Books filed in specific shelves with user-scoped uniqueness constraints. |
+| **`public.user_favorites`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Cross-device synchronized favorited titles. |
+| **`public.reading_progress`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useReaderStore` (`reader-cloud-sync.ts`) | Chapter index, progress %, in-page row bookmark offsets, highlighted bookmark line text (`bookmark_text`), and cached volume metadata. |
+| **`public.user_annotations`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useAnnotationStore` (`annotation-cloud-sync.ts`) | Passage text highlights (4 pastel palettes), scholarly notes, and cross-volume Symposium Fellow marginalia. |
+| **`public.user_book_curation`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Personal 1–5 star ratings and reading status classification. |
+| **`public.user_reading_habits`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useHabitsStore` | Reading streaks (5-min threshold), daily activity dates, annual challenge goals, completed books count, and dual immersion telemetry. |
+| **`public.user_accolades`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useAccoladesStore` | Unlocked literary accolades, timestamps, showcase pinning, and personal bookplate metadata. |
+| **`public.books`** | Enabled (`Public Read`) | `TO service_role` Only (`catalog-sync.yml`, `quotes-sync.yml`, CLI) | `SupabaseCatalogProvider` / `useFeaturedQuotes` / `useQuoteEnrichedBooks` / `sync-gutenberg-catalog.js` / `sync-featured-quotes.js` | Self-hosted public domain catalog (`78,000+` rows) with GIN full-text search vector, pre-computed author lifespan bounds, primary `quotes` JSONB (`10–16` multi-quote spreads per volume across the `<= 564` Two-Tier Bounded Quote Pool), and optional plain-text caching. |
+| **`public.book_translations`** | Enabled (`Public Read`) | `TO service_role` Only (`translations-sync.yml`, `catalog-sync.yml`, CLI) | `useBookTranslations` / `SupabaseCatalogProvider` / `ingest-translations.js` | Relational FRBR literary work clusters (`4,500+` rows) mapping Project Gutenberg editions across languages with zero false positives. |
+| **`public.reader_circles`** | Enabled (`auth.uid()`) | `auth.uid()` Participant (`requester_id` / `recipient_id`) | `useFellowshipStore` (`fellowship-cloud-sync.ts`) | Mutual Literary Fellowship pairings (pending/accepted) with RLS participant isolation. |
+| **`public.symposium_sessions`** | Enabled (`auth.uid()`) | `auth.uid()` Participant (`host_id` / `fellow_id`) | `useFellowshipStore` (`fellowship-cloud-sync.ts`) | Dual-reading Literary Symposium sessions tracking shared volume progress and chapter coordinates for two fellows. |
 
 ### 1. Stored Logic, Triggers & RPC Functions
 
@@ -938,6 +984,20 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 | [`supabase/seed_books.sql`](supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.4 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
 | [`supabase/seed_translations.sql`](supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
 | [`scripts/data/wikidata-translations-cache.json`](scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |
+
+### 4. Query-to-Index Execution Plan & 78k-Row Anti-Timeout Contracts
+
+Because `public.books` stores `78,000+` volumes (with `77,500+` rows having `download_count = 0` and optional wide `content TEXT` / `quotes JSONB` TOAST columns) under Supabase PostgREST's `8s` `statement_timeout`, every runtime and CLI query adheres to a strict index-alignment contract:
+
+| Query Caller & Module | PostgREST / SQL Query Shape | Target PostgreSQL Index | Chunk / Limit Bound | Enforced Anti-Timeout Invariants (Forbidden Anti-Patterns) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Catalog Search & Browse** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts)) | `SELECT <CATALOG_METADATA_COLUMNS> ... ORDER BY download_count DESC` (or `id ASC/DESC`) + optional `textSearch(search_vector)`, `overlaps(languages)`, `lte(max_author_death_year)` | `idx_books_download_count`, `idx_books_search_vector` (GIN), `idx_books_languages` (GIN), `idx_books_author_death_year`, `books_pkey` | `range(from, to)` (`<= 100` rows) + `count: "estimated"` | **Never** select `content` in catalog list queries (avoids TOAST decompression); **never** chain `.order('id', { ascending: true })` onto single-column `idx_books_download_count` (prevents sorting `77,500` `download_count = 0` rows). |
+| **Single-Book & Batch ID Lookup** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts), [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts)) | `SELECT ... FROM public.books WHERE id = $1` or `.in('id', normalizedIds)` (`useFeaturedQuotes`) | `books_pkey` (`INTEGER PRIMARY KEY`) | `1` to `100` IDs per query | Direct B-Tree Primary Key lookup (`< 2ms`); never falls back to sequential scan. |
+| **Quote-Enriched Books Discovery** ([`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) `fetchQuoteEnrichedBooks`) | Step 1: `select('id').order('download_count', DESC).limit(200)` + `order('id', DESC).limit(64)`; Step 2: `.in('id', candidateIds).neq('quotes', '[]').order('download_count', DESC).limit(60)` | `idx_books_download_count` + `books_pkey` (`.in('id', candidateIds)`) | `~260` candidate IDs -> `limit <= 100` | **Never** execute an unbounded `.neq('quotes', '[]').order('download_count', DESC)` without `.in('id', ...)` (prevents 78,000-row index walk when fewer than `LIMIT` rows have quotes). |
+| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) & `quotes-sync.yml`) | Step 1: `ORDER BY download_count DESC LIMIT 1000` + `.in('id', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320`; Step 2: `fetchQuotedBookIds` & `evaluateScheduleGate` via `.in('id', chunk).neq('quotes', '[]')`; Step 3: `.in('id', selectedIds)` for `content, quotes` | `idx_books_download_count` + `books_pkey` | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 25ms` total)**: `id ASC` tie-breaking is computed in memory in JS; `content` is hydrated only for the `<= 25` selected batch IDs; `fetchQuotedBookIds` and `evaluateScheduleGate` are strictly Primary-Key-Scoped. |
+| **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml`) | `upsert(batch, { onConflict: 'id' })` + `syncPopularDownloadCounts` (`update({ download_count }).eq('id', id)`) | `books_pkey` (`ON CONFLICT (id)`) & `idx_books_download_count` | `100` rows/batch (recursive halving `100 -> 50 -> 25` on `57014`); `50` IDs/chunk with `50ms` pacing | Adaptive batch-halving circuit breaker isolates any slow `trigger_books_search_vector` TSVECTOR batch without failing the 78k stream. |
+| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `idx_book_translations_work_id`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |
+| **6-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`) | User-scoped `.eq('user_id', user.id)` / `.or('requester_id.eq...,recipient_id.eq...')` with per-user in-flight Promise coalescing | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on `reading_progress` & `profiles.preferences`) | Every `WHERE user_id = auth.uid()` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID. |
 
 ---
 
@@ -1642,7 +1702,7 @@ Comprehensive inventory of standalone Node.js automation, ingestion, and verific
 | **`sync-gutenberg-catalog.js`** | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` | `fs`, `path`, `zlib`, `https`, `readline` | Streams pg_catalog.csv.gz from Project Gutenberg, parses CSV metadata on-the-fly, synchronizes 78,000+ volumes into Supabase with author lifespan bounds, and hydrates download_count for Top 500+ popular titles from Gutendex. |
 | **`ingest-catalog.js`** | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` | `fs`, `path`, `readline` | Direct CLI tool for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase. |
 | **`ingest-translations.js`** | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` | `fs`, `path`, `https` | Queries Wikidata SPARQL endpoint for multilingual FRBR work clusters and populates public.book_translations with zero false positives. |
-| **`sync-featured-quotes.js`** | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` | `fs`, `path` | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes` (blending `20 Popular + 5 Recent` unpopulated English volumes per batch with cross-tier backfill and post-batch `1-for-1` sliding window auto-pruning), enforces a deterministic 6.0h–12.0h float schedule gate on cron runs, dispatches selectable per-mirror PGLAF workers (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays, and extracts 10–16 multi-quote spreads (or a 1-item sentinel guard). |
+| **`sync-featured-quotes.js`** | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` | `fs`, `path` | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes` via Primary-Key-Scoped quote discovery (`books_pkey` `.in('id', chunk).neq('quotes', '[]')`) and single-column `idx_books_download_count` scans (`<25ms` total), blending `20 Popular + 5 Recent` unpopulated English volumes per batch with cross-tier backfill and post-batch `1-for-1` sliding window auto-pruning, enforcing a deterministic 6.0h–12.0h float schedule gate on cron runs, and dispatching selectable per-mirror PGLAF workers (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays. |
 | **`new-adr.js`** | [`scripts/new-adr.js`](scripts/new-adr.js) | `npm run adr:new -- "Title"` | `fs`, `path` | Scaffolds new Architectural Decision Records in docs/DECISIONS.md with auto-incremented sequential ID and schema verification. |
 | **`approval-gate.js`** | [`scripts/approval-gate.js`](scripts/approval-gate.js) | `npm run gate:approve` | `fs`, `path` | Pre-commit hook governance verifying mutation approval tokens (.agents/hooks.json). |
 | **`open-browser.js`** | [`scripts/open-browser.js`](scripts/open-browser.js) | `npm run dev:open` | `child_process` | Cross-platform development utility spawning default system browser with connection wait delay. |

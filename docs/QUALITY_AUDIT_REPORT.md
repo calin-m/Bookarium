@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 02 Nov 2026 11:48:15 GMT  
+**Last Generated**: Mon, 02 Nov 2026 13:03:25 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
 **Total Verified Tests**: 2158 passed  
@@ -26,10 +26,10 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.8%** (11596/11979) — *Target: $\ge$ 95%*
-- **Statements**: **95.43%** (12571/13173) — *Target: $\ge$ 95%*
-- **Functions**: **94.37%** (2703/2864) — *Target: $\ge$ 92%*
-- **Branches**: **88.01%** (11502/13068) — *Target: $\ge$ 85%*
+- **Lines**: **96.78%** (11607/11993) — *Target: $\ge$ 95%*
+- **Statements**: **95.38%** (12579/13187) — *Target: $\ge$ 95%*
+- **Functions**: **94.44%** (2705/2864) — *Target: $\ge$ 92%*
+- **Branches**: **88.06%** (11524/13086) — *Target: $\ge$ 85%*
 
 ---
 
@@ -2396,7 +2396,7 @@
 - ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, and missing RateLimiter`
 - ✔ `passes compliant public API route handlers that invoke RateLimiter.check()`
 - ✔ `flags describe.only, it.only, and expect(true).toBe(true) in test files`
-- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, and bare-hostname .includes("aleph.gutenberg.org")`
+- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
 - ✔ `permits copyright=false and mirror-prioritized fetches`
 - ✔ `verifies zero AST or taint violations across the entire production src/ directory`
 

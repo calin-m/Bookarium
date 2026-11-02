@@ -584,15 +584,32 @@ describe('useBooks hook', () => {
       })
       .mockRejectedValueOnce(new Error('Connection error'));
 
+    const inEnrichedMock = vi.fn(() => ({
+      neq: vi.fn(() => ({
+        order: vi.fn(() => ({
+          limit: limitMock,
+        })),
+      })),
+    }));
+
     const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
       from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          neq: vi.fn(() => ({
-            order: vi.fn(() => ({
-              limit: limitMock,
-            })),
-          })),
-        })),
+        select: vi.fn((cols: string) =>
+          cols === 'id'
+            ? {
+                order: vi.fn(() => ({
+                  limit: vi.fn().mockResolvedValue({ data: [{ id: 1400 }], error: null }),
+                })),
+              }
+            : {
+                in: inEnrichedMock,
+                neq: vi.fn(() => ({
+                  order: vi.fn(() => ({
+                    limit: limitMock,
+                  })),
+                })),
+              }
+        ),
       })),
     } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 

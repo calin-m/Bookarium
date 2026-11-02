@@ -202,6 +202,24 @@ describe('sync-featured-quotes pipeline', () => {
     expect(cappedPrune.prunedCount).toBe(2);
     expect(cappedPrune.prunedIds).toEqual([400, 78002]);
 
+    // Primary-Key-Scoped fetchQuotedBookIds (.in('id', chunk).neq('quotes', '[]'))
+    const scopedNeqMock = vi.fn().mockResolvedValue({
+      data: [{ id: 1342 }],
+      error: null,
+    });
+    const scopedInMock = vi.fn(() => ({ neq: scopedNeqMock }));
+    const scopedQuotedSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: scopedInMock,
+        })),
+      })),
+    };
+    const scopedSet = await quotesSync.fetchQuotedBookIds(scopedQuotedSupabase, [1342, 84]);
+    expect(Array.from(scopedSet)).toEqual([1342]);
+    expect(scopedInMock).toHaveBeenCalledWith('id', [1342, 84]);
+    expect(scopedNeqMock).toHaveBeenCalledWith('quotes', '[]');
+
     // Failsafe: fetchQuotedBookIds throws when Supabase returns a query error
     const errorQuotedSupabase = {
       from: vi.fn(() => ({

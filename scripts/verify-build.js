@@ -1352,6 +1352,8 @@ function pass5AdrValidation() {
     const requiredArchSections = [
       '## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology',
       '## ⏱️ Runtime Execution Workflows (Temporal Sequence Diagrams)',
+      '### 1. GitHub Actions & Database Ingestion Topology',
+      '### 4. Query-to-Index Execution Plan & 78k-Row Anti-Timeout Contracts',
       '## 🌍 External Integration & Boundary Contracts Map',
       '## 🛡️ Failure Modes, Circuit Breakers & Retry Topology',
       '## 🚀 Deployment, Edge Caching & Operational Topology',
@@ -1377,6 +1379,32 @@ function pass5AdrValidation() {
           if (envKey && !archContent.includes(`\`${envKey}\``)) {
             docViolations.push(
               `Environment variable "${envKey}" from .env.example is missing from docs/ARCHITECTURE.md (run "npm run docs:sync").`
+            );
+          }
+        }
+      }
+    }
+
+    // 1:1 .github/workflows/*.yml & Cron Schedule Parity Check against docs/ARCHITECTURE.md
+    const workflowsDir = path.join(rootDir, '.github', 'workflows');
+    if (fs.existsSync(workflowsDir)) {
+      const wfFiles = fs
+        .readdirSync(workflowsDir)
+        .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'));
+      for (const wfFile of wfFiles) {
+        const relWfPath = `.github/workflows/${wfFile}`;
+        if (!archContent.includes(relWfPath)) {
+          docViolations.push(
+            `GitHub Actions workflow "${relWfPath}" is missing from docs/ARCHITECTURE.md (update scripts/generate-architecture-matrix.js and run "npm run docs:sync").`
+          );
+        }
+        const wfText = fs.readFileSync(path.join(workflowsDir, wfFile), 'utf-8');
+        const cronMatch = wfText.match(/cron:\s*['"]([^'"]+)['"]/);
+        if (cronMatch && cronMatch[1]) {
+          const cronExpr = cronMatch[1].trim();
+          if (!archContent.includes(`cron: ${cronExpr}`)) {
+            docViolations.push(
+              `Cron schedule "cron: ${cronExpr}" for "${relWfPath}" is out of sync in docs/ARCHITECTURE.md (run "npm run docs:sync").`
             );
           }
         }
@@ -1499,12 +1527,18 @@ function pass5AdrValidation() {
             `Version drift in CHANGELOG.md: top release is "[${topVerMatch ? topVerMatch[1] : 'missing'}]", expected "[${pkgVersion}]" (run "npm run docs:sync").`
           );
         }
-        const blockRegex = new RegExp(
-          `^## \\[${pkgVersion.replace(/\./g, '\\.')}\\][\\s\\S]*?(?=\\r?\\n## \\[|(?![\\s\\S]))`,
-          'm'
-        );
-        const blockMatch = changelogText.match(blockRegex);
-        topChangelogBlock = blockMatch ? blockMatch[0] : '';
+        const headerToken = `## [${pkgVersion}]`;
+        const headerStart = changelogText.indexOf(headerToken);
+        if (headerStart !== -1) {
+          const nextSectionIdx = changelogText.indexOf(
+            '\n## [',
+            headerStart + headerToken.length
+          );
+          topChangelogBlock =
+            nextSectionIdx !== -1
+              ? changelogText.slice(headerStart, nextSectionIdx)
+              : changelogText.slice(headerStart);
+        }
       }
 
       const readmePath = path.join(rootDir, 'README.md');

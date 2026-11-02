@@ -225,22 +225,78 @@ function computeScheduleWindowMs(seedTimestampIso, minHours = 6, maxHours = 12) 
 /**
  * Evaluates whether the randomized 6.0h–12.0h float schedule window has elapsed
  * since the most recent quote update in `public.books`.
- * Uses `ORDER BY download_count DESC WHERE quotes <> '[]'::jsonb` so PostgreSQL
- * walks the partial B-Tree index `idx_books_with_quotes_popular` in <2ms.
+ * Queries `books_pkey` via `.in('id', chunk).neq('quotes', '[]')` across the
+ * candidate pool IDs (`idx_books_download_count` + `books_pkey`) so PostgreSQL
+ * never performs a 78,000-row table scan.
  */
 async function evaluateScheduleGate(supabase, options, nowMs = Date.now()) {
   if (!options.scheduleGate || !supabase) {
     return { allowed: true, elapsedHours: null, requiredWindowHours: null };
   }
 
-  const { data } = await supabase
-    .from('books')
-    .select('updated_at')
-    .neq('quotes', '[]')
-    .order('download_count', { ascending: false })
-    .limit(2000);
+  const candidateIdSet = new Set(PRIORITY_HERO_BOOK_IDS);
+  if (Array.isArray(options._scannedPoolIds)) {
+    for (const id of options._scannedPoolIds) {
+      if (Number.isInteger(id)) candidateIdSet.add(id);
+    }
+  } else {
+    const idScanCols = [
+      { col: 'download_count', limit: 200 },
+      { col: 'id', limit: 64 },
+    ];
+    for (const scan of idScanCols) {
+      const idSelect = supabase.from('books').select('id');
+      if (idSelect && typeof idSelect.order === 'function') {
+        const ordered = idSelect.order(scan.col, { ascending: false });
+        if (ordered && typeof ordered.limit === 'function') {
+          const { data: idRows } = await ordered.limit(scan.limit);
+          if (Array.isArray(idRows)) {
+            for (const r of idRows) {
+              if (r && Number.isInteger(r.id)) candidateIdSet.add(r.id);
+            }
+          }
+        }
+      }
+    }
+  }
 
-  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  const candidateIds = Array.from(candidateIdSet);
+  const CHUNK_SIZE = 200;
+  const rows = [];
+
+  for (let i = 0; i < candidateIds.length; i += CHUNK_SIZE) {
+    const chunk = candidateIds.slice(i, i + CHUNK_SIZE);
+    const baseSelect = supabase.from('books').select('updated_at');
+    let chunkData = null;
+
+    if (baseSelect && typeof baseSelect.in === 'function') {
+      const inQuery = baseSelect.in('id', chunk);
+      const finalQuery =
+        inQuery && typeof inQuery.neq === 'function'
+          ? inQuery.neq('quotes', '[]')
+          : inQuery;
+      const res = await finalQuery;
+      chunkData = res && res.data;
+    } else if (baseSelect && typeof baseSelect.neq === 'function') {
+      const neqQuery = baseSelect.neq('quotes', '[]');
+      const ordered =
+        neqQuery && typeof neqQuery.order === 'function'
+          ? neqQuery.order('download_count', { ascending: false })
+          : neqQuery;
+      const finalQuery =
+        ordered && typeof ordered.limit === 'function' ? ordered.limit(200) : ordered;
+      const res = await finalQuery;
+      chunkData = res && res.data;
+      i = candidateIds.length;
+    }
+
+    if (Array.isArray(chunkData)) {
+      rows.push(...chunkData);
+    } else if (chunkData) {
+      rows.push(chunkData);
+    }
+  }
+
   let latestUpdatedIso = null;
   let lastUpdatedMs = -Infinity;
   for (const row of rows) {
@@ -597,24 +653,80 @@ function buildSqlQuoteSeedStatement(bookId, quotesArray) {
 }
 
 /**
- * Fetches all book IDs in `public.books` that currently have populated quotes (`quotes <> '[]'::jsonb`).
- * Uses `.order('download_count', { ascending: false })` to walk `idx_books_with_quotes_popular` in <2ms.
+ * Fetches book IDs in `public.books` that currently have populated quotes (`quotes <> '[]'::jsonb`).
+ * Always scopes queries by Primary Key (`books_pkey`) in chunks of 200 IDs
+ * (`.in('id', chunk).neq('quotes', '[]')`) across the candidate window IDs so PostgreSQL
+ * performs <2ms B-Tree Primary Key lookups and never scans the 78,000-row table.
  */
-async function fetchQuotedBookIds(supabase) {
+async function fetchQuotedBookIds(supabase, scopedIds = null) {
   if (!supabase) return new Set();
-  let query = supabase.from('books').select('id').neq('quotes', '[]');
-  if (query && typeof query.order === 'function') {
-    const ordered = query.order('download_count', { ascending: false });
-    if (ordered && typeof ordered.limit === 'function') {
-      query = ordered.limit(2000);
-    } else if (ordered) {
-      query = ordered;
+
+  let targetIds = [];
+  if (scopedIds instanceof Set || Array.isArray(scopedIds)) {
+    targetIds = Array.from(scopedIds).filter((id) => Number.isInteger(id) && id > 0);
+  }
+
+  if (targetIds.length === 0) {
+    const discovered = new Set(PRIORITY_HERO_BOOK_IDS);
+    const scans = [
+      { col: 'download_count', limit: 1000 },
+      { col: 'id', limit: 320 },
+    ];
+    for (const scan of scans) {
+      const scanSelect = supabase.from('books').select('id');
+      if (scanSelect && typeof scanSelect.order === 'function') {
+        const ordered = scanSelect.order(scan.col, { ascending: false });
+        if (ordered && typeof ordered.limit === 'function') {
+          const { data: rows } = await ordered.limit(scan.limit);
+          if (Array.isArray(rows)) {
+            for (const r of rows) {
+              if (r && Number.isInteger(r.id)) discovered.add(r.id);
+            }
+          }
+        }
+      }
+    }
+    targetIds = Array.from(discovered);
+  }
+
+  const quotedIdSet = new Set();
+  const CHUNK_SIZE = 200;
+
+  for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
+    const chunk = targetIds.slice(i, i + CHUNK_SIZE);
+    const selectBuilder = supabase.from('books').select('id');
+
+    if (selectBuilder && typeof selectBuilder.in === 'function') {
+      const inQuery = selectBuilder.in('id', chunk);
+      const hasChainedNeq = inQuery && typeof inQuery.neq === 'function';
+      const finalQuery = hasChainedNeq ? inQuery.neq('quotes', '[]') : inQuery;
+      const { data, error } = await finalQuery;
+      if (error) throw new Error(error.message);
+      if (Array.isArray(data)) {
+        for (const r of data) {
+          if (!r || !Number.isInteger(r.id)) continue;
+          if (!hasChainedNeq && Array.isArray(r.quotes) && r.quotes.length === 0) continue;
+          quotedIdSet.add(r.id);
+        }
+      }
+    } else if (selectBuilder && typeof selectBuilder.neq === 'function') {
+      let query = selectBuilder.neq('quotes', '[]');
+      if (query && typeof query.order === 'function') {
+        const ordered = query.order('download_count', { ascending: false });
+        query = ordered && typeof ordered.limit === 'function' ? ordered.limit(2000) : ordered;
+      }
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      if (Array.isArray(data)) {
+        for (const r of data) {
+          if (r && Number.isInteger(r.id)) quotedIdSet.add(r.id);
+        }
+      }
+      break;
     }
   }
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  if (!Array.isArray(data)) return new Set();
-  return new Set(data.map((r) => r && r.id).filter((id) => Number.isInteger(id)));
+
+  return quotedIdSet;
 }
 
 /**
@@ -721,7 +833,10 @@ async function pruneOutOfWindowBookQuotes(
     return { prunedCount: 0, prunedIds: [] };
   }
 
-  const currentQuotedIds = await fetchQuotedBookIds(supabase);
+  const currentQuotedIds =
+    options._quotedIds instanceof Set
+      ? new Set(options._quotedIds)
+      : await fetchQuotedBookIds(supabase, options._scannedPoolIds);
   if (options.newlyQuotedIds instanceof Set) {
     for (const id of options.newlyQuotedIds) {
       if (Number.isInteger(id)) currentQuotedIds.add(id);
@@ -843,8 +958,6 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
   const recentPoolLimit =
     typeof options.recentPool === 'number' ? options.recentPool : DEFAULT_RECENT_POOL_SIZE;
 
-  const quotedIds = await fetchQuotedBookIds(supabase);
-
   const isEligibleCatalogBook = (row) =>
     row &&
     Number.isInteger(row.id) &&
@@ -858,17 +971,11 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
       row.languages.includes('en'));
 
   const popularScanLimit = Math.max(popularPoolLimit * 2, 1000);
-  let popularQuery = supabase
+  const { data: popularRaw, error: popularErr } = await supabase
     .from('books')
     .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count')
-    .order('download_count', { ascending: false });
-  if (popularQuery && typeof popularQuery.order === 'function') {
-    const withIdTieBreaker = popularQuery.order('id', { ascending: true });
-    if (withIdTieBreaker && typeof withIdTieBreaker.limit === 'function') {
-      popularQuery = withIdTieBreaker;
-    }
-  }
-  const { data: popularRaw, error: popularErr } = await popularQuery.limit(popularScanLimit);
+    .order('download_count', { ascending: false })
+    .limit(popularScanLimit);
 
   if (popularErr) throw new Error(popularErr.message);
 
@@ -884,6 +991,13 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     if (heroErr) throw new Error(heroErr.message);
     if (Array.isArray(heroRows)) {
       heroRaw = heroRows.filter((r) => r && PRIORITY_HERO_BOOK_ID_SET.has(r.id));
+    }
+  }
+
+  const allScannedIds = new Set(PRIORITY_HERO_BOOK_IDS);
+  for (const row of [...heroRaw, ...(popularRaw || [])]) {
+    if (row && Number.isInteger(row.id)) {
+      allScannedIds.add(row.id);
     }
   }
 
@@ -916,6 +1030,9 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     const validRecentScanIds = (recRows || [])
       .map((r) => r && r.id)
       .filter((id) => Number.isInteger(id));
+    for (const id of validRecentScanIds) {
+      allScannedIds.add(id);
+    }
     if (validRecentScanIds.length > 0) {
       const maxRecentId = Math.max(...validRecentScanIds);
       minRecentHorizonId = Math.max(
@@ -926,6 +1043,8 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     recentData = (recRows || []).filter(isEligibleCatalogBook).slice(0, recentPoolLimit);
   }
 
+  const quotedIds = await fetchQuotedBookIds(supabase, allScannedIds);
+
   const { candidates, popularPoolIds, recentPoolIds, allowedPoolIds } = blendTwoTierCandidates(
     popularData,
     recentData,
@@ -935,6 +1054,8 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
   options._recentPoolIds = recentPoolIds;
   options._minRecentHorizonId = minRecentHorizonId;
   options._allowedPoolIds = allowedPoolIds;
+  options._quotedIds = quotedIds;
+  options._scannedPoolIds = Array.from(allScannedIds);
 
   if (candidates.length > 0) {
     const candidateIds = candidates.map((c) => c.id);

@@ -309,7 +309,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(builder.gte).toHaveBeenCalledWith('max_author_death_year', 1750);
       expect(builder.lte).toHaveBeenCalledWith('min_author_birth_year', 1850);
       expect(builder.order).toHaveBeenCalledWith('download_count', { ascending: false });
-      expect(builder.order).toHaveBeenCalledWith('id', { ascending: true });
+      expect(builder.order).not.toHaveBeenCalledWith('id', { ascending: true });
     });
 
     it('queries books using GIN search_vector when only topic is provided', async () => {
