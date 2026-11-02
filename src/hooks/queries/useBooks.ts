@@ -16,6 +16,7 @@ import {
 } from '@/lib/copyright-engine';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
+import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface UseBooksParams {
   ids?: string | number;
@@ -363,9 +364,57 @@ export async function fetchFeaturedQuotesMap(
   }
 }
 
+export const QUOTE_ENRICHED_BOOKS_CACHE_KEY = 'bookarium-quote-enriched-books-v1' as const;
+
+export function readCachedQuoteEnrichedBooks(
+  limit: number = 60
+): { books: GutendexBook[]; updatedAt: number } | undefined {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return undefined;
+  }
+  try {
+    const raw = window.localStorage.getItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { books?: unknown; updatedAt?: unknown };
+    if (!Array.isArray(parsed?.books) || parsed.books.length === 0) {
+      return undefined;
+    }
+    const validBooks = (parsed.books as GutendexBook[])
+      .filter((b) => b && typeof b.id === 'number' && typeof b.title === 'string')
+      .slice(0, Math.max(1, Math.min(100, limit)));
+    if (validBooks.length === 0) return undefined;
+    return {
+      books: validBooks,
+      updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.localStorage === 'undefined' ||
+    !Array.isArray(books) ||
+    books.length === 0
+  ) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      QUOTE_ENRICHED_BOOKS_CACHE_KEY,
+      JSON.stringify({ updatedAt: Date.now(), books })
+    );
+  } catch {
+    // Ignore storage quota or private-browsing write errors
+  }
+}
+
 /**
  * Queries top popular quote-enriched books (`WHERE quotes <> '[]'::jsonb`) from `public.books`.
- * Uses the partial index `idx_books_with_quotes_popular` for sub-10ms lookups.
+ * Uses the partial index `idx_books_with_quotes_popular` for sub-10ms lookups and persists
+ * non-empty results to `localStorage` for instant 0ms page-refresh hydration.
  */
 export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<GutendexBook[]> {
   if (!isSupabaseConfigured()) {
@@ -373,7 +422,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
   }
 
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return [];
+    return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
   }
 
   try {
@@ -381,14 +430,14 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
     const { data, error } = await supabase
       .from('books')
       .select(
-        'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, quotes'
+        'id, title, authors, translators, subjects, languages, copyright, download_count, quotes'
       )
       .neq('quotes', '[]')
       .order('download_count', { ascending: false })
       .limit(Math.max(1, Math.min(100, limit)));
 
     if (error || !Array.isArray(data)) {
-      return [];
+      return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
     }
 
     const books: GutendexBook[] = [];
@@ -407,21 +456,21 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
           ? (row.translators as unknown as GutendexBook['translators'])
           : [],
         subjects: Array.isArray(row.subjects) ? row.subjects : [],
-        bookshelves: Array.isArray(row.bookshelves) ? row.bookshelves : [],
+        bookshelves: [],
         languages: Array.isArray(row.languages) ? row.languages : ['en'],
         copyright: typeof row.copyright === 'boolean' ? row.copyright : false,
-        media_type: typeof row.media_type === 'string' ? row.media_type : 'Text',
-        formats:
-          row.formats && typeof row.formats === 'object' && !Array.isArray(row.formats)
-            ? (row.formats as Record<string, string>)
-            : {},
+        media_type: 'Text',
+        formats: {},
         download_count: typeof row.download_count === 'number' ? row.download_count : 0,
         quotes: validPassages,
       });
     }
+    if (books.length > 0) {
+      writeCachedQuoteEnrichedBooks(books);
+    }
     return books;
   } catch {
-    return [];
+    return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
   }
 }
 
@@ -469,15 +518,28 @@ export function useQuoteEnrichedBooks(
 ) {
   const contextClient = React.useContext(QueryClientContext);
   const limit = options.limit ?? 60;
+  const hasMounted = useHasMounted();
+  const cached = React.useMemo(
+    () => (hasMounted ? readCachedQuoteEnrichedBooks(limit) : undefined),
+    [hasMounted, limit]
+  );
 
-  return useQuery(
+  const query = useQuery(
     {
       queryKey: ['quote-enriched-books', limit],
       queryFn: () => fetchQuoteEnrichedBooks(limit),
       staleTime: 60 * 60 * 1000, // 1 hour
       gcTime: 2 * 60 * 60 * 1000, // 2 hours
-      enabled: (options.enabled ?? true) && isSupabaseConfigured(),
+      enabled: (options.enabled ?? true) && hasMounted && isSupabaseConfigured(),
     },
     contextClient ?? fallbackFeaturedQuotesClient
+  );
+
+  return React.useMemo(
+    () => ({
+      ...query,
+      data: query.data && query.data.length > 0 ? query.data : cached?.books,
+    }),
+    [query, cached]
   );
 }

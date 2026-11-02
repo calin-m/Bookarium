@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 01 Nov 2026 19:42:40 GMT  
+**Last Generated**: Mon, 02 Nov 2026 09:50:40 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
 **Total Verified Tests**: 2156 passed  
@@ -26,10 +26,10 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.74%** (11562/11951) — *Target: $\ge$ 95%*
-- **Statements**: **95.37%** (12538/13146) — *Target: $\ge$ 95%*
-- **Functions**: **94.3%** (2697/2860) — *Target: $\ge$ 92%*
-- **Branches**: **87.85%** (11458/13042) — *Target: $\ge$ 85%*
+- **Lines**: **96.75%** (11587/11975) — *Target: $\ge$ 95%*
+- **Statements**: **95.39%** (12562/13169) — *Target: $\ge$ 95%*
+- **Functions**: **94.37%** (2700/2861) — *Target: $\ge$ 92%*
+- **Branches**: **87.92%** (11485/13062) — *Target: $\ge$ 85%*
 
 ---
 
@@ -826,7 +826,7 @@
 - ✔ `filters out books protected in Life+100 jurisdiction (Mexico)`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
-- ✔ `prioritizes Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads for the active classic`
+- ✔ `keeps the deterministic daily classic book and quote stable on refresh while enriching quotes in-place from useQuoteEnrichedBooks`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
@@ -896,7 +896,7 @@
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
 - ✔ `should render the hourly hero book immediately on initial render without falling back to index 0`
 - ✔ `synchronizes controlled search prop on rerender and supports featuredBook prop with or without rawBook`
-- ✔ `merges quote-enriched books from useQuoteEnrichedBooks into the featured candidate pool`
+- ✔ `enriches the hourly hero book in-place from useQuoteEnrichedBooks without swapping to a different book`
 
 </details>
 
@@ -2425,7 +2425,7 @@
 <details>
 <summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (7 tests)</summary>
 
-- ✔ `resolves PGLAF mirror URLs and never targets www.gutenberg.org`
+- ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
 - ✔ `blends Two-Tier candidates (20 Popular + 5 Recent) with overlap deduplication and automatic backfill, and prunes out-of-window quotes`
 - ✔ `computes randomized float delays and 6.0h–12.0h float schedule windows`

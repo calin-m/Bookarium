@@ -15,7 +15,6 @@ import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
 import { FEATURED_HERO_BOOKS, getJurisdictionSafeFeaturedBooks, type FeaturedHeroBook } from '@/config/featured-books';
 import type { GutendexBook } from '@/types/book.types';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
 import { LanguageSelector } from './LanguageSelector';
@@ -111,10 +110,25 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
     const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: GutendexBook } => {
       const dbMatch = dbBooksById.get(b.id);
-      const dbQuotes = dbMatch?.quotes && dbMatch.quotes.length > 0 ? dbMatch.quotes : b.quotes;
+      const dbQuotes = dbMatch?.quotes && dbMatch.quotes.length > 0 ? dbMatch.quotes : undefined;
+      let mergedQuotes = b.quotes;
+      if (dbQuotes) {
+        if (Array.isArray(b.quotes) && b.quotes.length > 0) {
+          mergedQuotes = [...b.quotes, ...dbQuotes];
+        } else {
+          const firstStaticSpread = {
+            chapterLabel: 'Chapter I • The Opening Incipit',
+            openingLine: b.openingLine,
+            secondaryQuote: `“In the unfolding story of ${b.title}, ${b.author} explores timeless truths across ${b.primarySubject.toLowerCase()}.”`,
+            quoteExcerpt: b.quoteExcerpt,
+            commentary: `Preserved in complete unabridged form in the worldwide public domain (${b.year}).`,
+          };
+          mergedQuotes = [firstStaticSpread, ...dbQuotes];
+        }
+      }
       return {
         ...b,
-        quotes: dbQuotes,
+        quotes: mergedQuotes,
         rawBook: dbMatch || ({
           id: b.id,
           title: b.title,
@@ -130,7 +144,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           languages: ['en'],
           formats: {},
           download_count: 50000,
-          quotes: dbQuotes,
+          quotes: mergedQuotes,
         } as GutendexBook),
       };
     };
@@ -168,19 +182,8 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
     const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
     const baseList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
-    const baseIds = new Set(baseList.map((b) => b.id));
-    const dynamicAdditions = (quoteEnrichedBooks || [])
-      .filter(
-        (b) =>
-          !baseIds.has(b.id) &&
-          Array.isArray(b.quotes) &&
-          b.quotes.length >= 2 &&
-          isBookPublicDomainInJurisdiction(b, country).isAllowed
-      )
-      .map(fromGutendexBook);
-
-    const combinedList = [...baseList.map(toHeroWithRawBook), ...dynamicAdditions];
-    return combinedList[hourlyIndex % combinedList.length];
+    const selectedHero = baseList[hourlyIndex % baseList.length];
+    return toHeroWithRawBook(selectedHero);
   }, [featuredBook, books, hourlyIndex, country, quoteEnrichedBooks]);
 
   const emitSearch = (val: string) => {

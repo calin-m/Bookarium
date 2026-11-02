@@ -31,7 +31,12 @@ const SAMPLE_GUTENBERG_BOOK = [
 ].join('\n');
 
 describe('sync-featured-quotes pipeline', () => {
-  it('resolves PGLAF mirror URLs and never targets www.gutenberg.org', () => {
+  it('resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org', () => {
+    expect(quotesSync.USER_AGENT).toBe(
+      'Bookarium-PublicDomain-Reader/1.0 (+https://github.com/calin-m/Bookarium)'
+    );
+    expect(quotesSync.DEFAULT_POPULAR_POOL_SIZE).toBe(500);
+    expect(quotesSync.DEFAULT_RECENT_POOL_SIZE).toBe(64);
     expect(quotesSync.resolveSelectedMirrors('pglaf,aleph')).toEqual([
       'https://gutenberg.pglaf.org',
       'https://aleph.gutenberg.org',
@@ -129,13 +134,37 @@ describe('sync-featured-quotes pipeline', () => {
     expect(backfilled.candidates.filter((b: { id: number }) => b.id >= 2000)).toHaveLength(2);
     expect(backfilled.candidates.filter((b: { id: number }) => b.id < 100)).toHaveLength(23);
 
-    // Pruning test: resets quotes = [] on books outside (Top 1,000 Popular U Rolling 128 Recent)
+    // Priority Hero Book IDs sorting test: ensures PRIORITY_HERO_BOOK_IDS (e.g. 205 Walden) sort ahead of higher download_count non-Hero books
+    expect(quotesSync.PRIORITY_HERO_BOOK_IDS).toHaveLength(27);
+    const mixedPriorityRows = [
+      { id: 90001, title: 'Non-Hero High Downloads', download_count: 90000, quotes: [] },
+      { id: 205, title: 'Walden', download_count: 15000, quotes: [] },
+      { id: 1342, title: 'Pride and Prejudice', download_count: 80000, quotes: [] },
+    ];
+    const heroPrioritized = quotesSync.blendTwoTierCandidates(mixedPriorityRows, [], {
+      limit: 2,
+      force: false,
+    });
+    expect(heroPrioritized.candidates.map((b: { id: number }) => b.id)).toEqual([1342, 205]);
+
+    // Post-batch Dual-Window (Top 500 Popular + Rolling 64 Most Recent) 1-for-1 sliding window prune test:
+    // - Protects popularPoolIds (1)
+    // - Prunes demoted Popular book (#400 < minRecentHorizonId 78000) even when Recent has space
+    // - Sorts quoted Recent IDs (>= 78000) by id DESC (78004, 78003, 78002, 78001),
+    //   keeps newest recentPool=2 (78004, 78003), and prunes oldest 2 (78002, 78001)
     const pruneInMock = vi.fn().mockResolvedValue({ error: null });
     const mockPruneSupabase = {
       from: vi.fn(() => ({
         select: vi.fn(() => ({
           neq: vi.fn().mockResolvedValue({
-            data: [{ id: 1 }, { id: 2001 }, { id: 99998 }, { id: 99999 }],
+            data: [
+              { id: 1 },
+              { id: 400 },
+              { id: 78001 },
+              { id: 78002 },
+              { id: 78003 },
+              { id: 78004 },
+            ],
             error: null,
           }),
         })),
@@ -144,15 +173,15 @@ describe('sync-featured-quotes pipeline', () => {
         })),
       })),
     };
-    const allowedIds = new Set([1, 2001]);
+    const popularPoolIds = new Set([1]);
     const pruneRes = await quotesSync.pruneOutOfWindowBookQuotes(
       mockPruneSupabase,
-      allowedIds,
-      { dryRun: false },
+      popularPoolIds,
+      { dryRun: false, recentPool: 2, minRecentHorizonId: 78000 },
       { log: vi.fn() }
     );
-    expect(pruneRes.prunedCount).toBe(2);
-    expect(pruneInMock).toHaveBeenCalledWith('id', [99998, 99999]);
+    expect(pruneRes.prunedCount).toBe(3);
+    expect(pruneInMock).toHaveBeenCalledWith('id', [400, 78002, 78001]);
   });
 
   it('computes randomized float delays and 6.0h–12.0h float schedule windows', async () => {
@@ -169,11 +198,9 @@ describe('sync-featured-quotes pipeline', () => {
         select: vi.fn(() => ({
           neq: vi.fn(() => ({
             order: vi.fn(() => ({
-              limit: vi.fn(() => ({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: { updated_at: '2026-11-01T12:00:00.000Z' },
-                }),
-              })),
+              limit: vi.fn().mockResolvedValue({
+                data: [{ updated_at: '2026-11-01T12:00:00.000Z' }],
+              }),
             })),
           })),
         })),
@@ -304,12 +331,66 @@ describe('sync-featured-quotes pipeline', () => {
     }));
 
     const candidateRows = [
-      { id: 1342, title: 'Pride and Prejudice', quotes: existingTenQuotes, content: null },
-      { id: 84, title: 'Frankenstein', quotes: [], content: SAMPLE_GUTENBERG_BOOK },
-      { id: 2701, title: 'Moby Dick', quotes: [], content: null },
-      { id: 64317, title: 'The Great Gatsby', quotes: [], content: null },
-      { id: 11, title: 'Alice in Wonderland', quotes: [], content: null },
-      { id: 99999, title: 'Short Pamphlet', quotes: [], content: 'Too short to extract quotes from body' },
+      {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        copyright: false,
+        media_type: 'Text',
+        languages: ['en'],
+        download_count: 50000,
+        quotes: existingTenQuotes,
+        content: null,
+      },
+      {
+        id: 84,
+        title: 'Frankenstein',
+        copyright: false,
+        media_type: 'Text',
+        languages: ['en'],
+        download_count: 45000,
+        quotes: [],
+        content: SAMPLE_GUTENBERG_BOOK,
+      },
+      {
+        id: 2701,
+        title: 'Moby Dick',
+        copyright: false,
+        media_type: 'Text',
+        languages: ['en'],
+        download_count: 40000,
+        quotes: [],
+        content: null,
+      },
+      {
+        id: 64317,
+        title: 'The Great Gatsby',
+        copyright: false,
+        media_type: 'Text',
+        languages: ['en'],
+        download_count: 35000,
+        quotes: [],
+        content: null,
+      },
+      {
+        id: 11,
+        title: 'Alice in Wonderland',
+        copyright: false,
+        media_type: 'Text',
+        languages: ['en'],
+        download_count: 30000,
+        quotes: [],
+        content: null,
+      },
+      {
+        id: 99999,
+        title: 'Short Pamphlet',
+        copyright: false,
+        media_type: 'Text',
+        languages: ['en'],
+        download_count: 25000,
+        quotes: [],
+        content: 'Too short to extract quotes from body',
+      },
     ];
 
     const updateEqMock = vi.fn().mockResolvedValue({ error: null });
@@ -318,19 +399,20 @@ describe('sync-featured-quotes pipeline', () => {
     const mockSupabase = {
       from: vi.fn(() => ({
         select: vi.fn(() => ({
-          neq: vi.fn().mockResolvedValue({ data: [], error: null }),
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              contains: vi.fn(() => ({
-                order: vi.fn(() => ({
-                  limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-                  order: vi.fn(() => ({
-                    limit: vi.fn().mockResolvedValue({ data: candidateRows, error: null }),
-                  })),
-                })),
-              })),
+          neq: vi.fn(() => ({
+            order: vi.fn(() => ({
+              limit: vi.fn().mockResolvedValue({ data: [{ id: 1342 }], error: null }),
             })),
           })),
+          order: vi.fn((col: string) => ({
+            limit: vi
+              .fn()
+              .mockResolvedValue({
+                data: col === 'download_count' ? candidateRows : [],
+                error: null,
+              }),
+          })),
+          in: vi.fn().mockResolvedValue({ data: candidateRows, error: null }),
         })),
         update: vi.fn(() => ({
           eq: updateEqMock,

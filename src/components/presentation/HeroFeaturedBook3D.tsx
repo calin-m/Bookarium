@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Sparkles, Quote, RotateCw, BookOpen, X } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
@@ -65,11 +65,25 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     return () => window.removeEventListener('resize', updateKinematics);
   }, []);
 
-  const { data: featuredQuotesMap } = useFeaturedQuotes([featuredBook.id]);
-  const supabaseBookQuotes =
-    featuredQuotesMap?.[featuredBook.id] ||
-    featuredBook.quotes ||
-    featuredBook.rawBook?.quotes;
+  const existingQuotes = featuredBook.quotes || featuredBook.rawBook?.quotes;
+  const hasExistingQuotes = Array.isArray(existingQuotes) && existingQuotes.length >= 2;
+  const { data: featuredQuotesMap } = useFeaturedQuotes([featuredBook.id], {
+    enabled: !hasExistingQuotes,
+  });
+  const supabaseBookQuotes = useMemo(() => {
+    const dbQuotes = featuredQuotesMap?.[featuredBook.id];
+    if (Array.isArray(dbQuotes) && dbQuotes.length > 0 && !hasExistingQuotes) {
+      const firstStaticSpread = {
+        chapterLabel: 'Chapter I • The Opening Incipit',
+        openingLine: featuredBook.openingLine,
+        secondaryQuote: `“In the unfolding story of ${featuredBook.title}, ${featuredBook.author} explores timeless truths across ${featuredBook.primarySubject.toLowerCase()}.”`,
+        quoteExcerpt: featuredBook.quoteExcerpt,
+        commentary: `Preserved in complete unabridged form in the worldwide public domain (${featuredBook.year}).`,
+      };
+      return [firstStaticSpread, ...dbQuotes];
+    }
+    return existingQuotes;
+  }, [featuredQuotesMap, featuredBook, existingQuotes, hasExistingQuotes]);
 
   const {
     passages,

@@ -7,12 +7,9 @@ import { Button } from '@/components/ui/Button';
 import {
   getDailyEditorialBook,
   getHourlyHeroBook,
-  getJurisdictionSafeFeaturedBooks,
   type FeaturedHeroBook,
 } from '@/config/featured-books';
 import { ROUTES } from '@/config/routes';
-import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useFeaturedQuotes, useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
@@ -58,65 +55,27 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
       return baseEditorial;
     }
 
-    const safeStatic = getJurisdictionSafeFeaturedBooks(country);
-    const staticIds = new Set(safeStatic.map((b) => b.id));
-    const dynamicEditorialBooks: FeaturedHeroBook[] = quoteEnrichedBooks
-      .filter(
-        (b) =>
-          !staticIds.has(b.id) &&
-          Array.isArray(b.quotes) &&
-          b.quotes.length >= 2 &&
-          isBookPublicDomainInJurisdiction(b, country).isAllowed
-      )
-      .map((b) => {
-        const firstPassage = b.quotes![0];
-        return {
-          id: b.id,
-          volumeNumber: `Vol. ${b.id}`,
-          title: b.title,
-          author: formatAuthorNames(b.authors) || 'Anonymous',
-          authorBirthYear: b.authors?.[0]?.birth_year ?? null,
-          authorDeathYear: b.authors?.[0]?.death_year ?? null,
-          translators: b.translators || [],
-          year: 'Public Domain',
-          openingLine: firstPassage?.openingLine || b.title,
-          quoteExcerpt: firstPassage?.quoteExcerpt || firstPassage?.openingLine || b.title,
-          license: 'CC0 / Public Domain',
-          primarySubject: formatPrimarySubject(b.subjects),
-          quotes: b.quotes,
-        };
-      });
-
-    if (dynamicEditorialBooks.length === 0) {
-      const enrichedMatch = quoteEnrichedBooks.find((b) => b.id === baseEditorial.id);
-      return enrichedMatch?.quotes?.length
-        ? { ...baseEditorial, quotes: enrichedMatch.quotes }
-        : baseEditorial;
-    }
-
-    const combinedPool = [...safeStatic, ...dynamicEditorialBooks];
-    const dayIndex = Math.floor(hourlyTimestamp / (1000 * 60 * 60 * 24));
-    let candidateIndex = ((dayIndex % combinedPool.length) + combinedPool.length) % combinedPool.length;
-    if (combinedPool[candidateIndex]?.id === activeHeroId && combinedPool.length > 1) {
-      candidateIndex = (candidateIndex + 1) % combinedPool.length;
-    }
-    const chosen = combinedPool[candidateIndex] || baseEditorial;
-    const dbMatch = quoteEnrichedBooks.find((b) => b.id === chosen.id);
-    return dbMatch?.quotes?.length ? { ...chosen, quotes: dbMatch.quotes } : chosen;
+    const enrichedMatch = quoteEnrichedBooks.find((b) => b.id === baseEditorial.id);
+    return enrichedMatch?.quotes?.length
+      ? { ...baseEditorial, quotes: enrichedMatch.quotes }
+      : baseEditorial;
   }, [heroBookId, country, hourlyTimestamp, quoteEnrichedBooks]);
 
-  const { data: featuredQuotesMap } = useFeaturedQuotes([book.id]);
+  const hasExistingQuotes = Array.isArray(book.quotes) && book.quotes.length >= 2;
+  const { data: featuredQuotesMap } = useFeaturedQuotes([book.id], {
+    enabled: !hasExistingQuotes,
+  });
 
-  // Prioritize primary Supabase public.books.quotes (10–16 quotes/book) with fallback to book.quoteExcerpt
+  // Prioritize primary Editorial quoteExcerpt for SSR/client stability, falling back to Supabase quotes
   const displayQuote = useMemo(() => {
     const dbQuotes = featuredQuotesMap?.[book.id] || book.quotes;
     const hourIndex = Math.max(0, Math.floor(hourlyTimestamp / (1000 * 60 * 60)));
     const candidatePassage =
-      Array.isArray(dbQuotes) && dbQuotes.length > 0
+      !book.quoteExcerpt && Array.isArray(dbQuotes) && dbQuotes.length > 0
         ? dbQuotes[hourIndex % dbQuotes.length]
         : undefined;
     const rawExcerpt =
-      candidatePassage?.quoteExcerpt || candidatePassage?.openingLine || book.quoteExcerpt;
+      book.quoteExcerpt || candidatePassage?.quoteExcerpt || candidatePassage?.openingLine || '';
     return rawExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
   }, [featuredQuotesMap, book.id, book.quotes, book.quoteExcerpt, hourlyTimestamp]);
 

@@ -596,12 +596,15 @@ describe('useBooks hook', () => {
       })),
     } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
     const books = await fetchQuoteEnrichedBooks(30);
     expect(books).toHaveLength(1);
     expect(books[0].id).toBe(1400);
     expect(books[0].quotes).toHaveLength(1);
 
-    expect(await fetchQuoteEnrichedBooks(30)).toEqual([]);
+    // Persisted localStorage cache is returned when offline or on transient query errors, and [] when cache is cleared
+    expect((await fetchQuoteEnrichedBooks(30))[0].id).toBe(1400);
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
     expect(await fetchQuoteEnrichedBooks(30)).toEqual([]);
 
     // 4. useQuoteEnrichedBooks hook resolves enriched books
@@ -630,6 +633,7 @@ describe('useBooks hook', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0]?.title).toBe('Great Expectations');
 
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
     clientSpy.mockRestore();
     configSpy.mockRestore();
   });

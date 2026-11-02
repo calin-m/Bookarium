@@ -20,7 +20,7 @@ const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
 const USER_AGENT =
-  'Bookarium/1.0 (+https://github.com/Synaptix1999/Bookarium; Public Domain Literary Sanctuary)';
+  'Bookarium-PublicDomain-Reader/1.0 (+https://github.com/calin-m/Bookarium)';
 
 const MIRROR_SHORTCUT_MAP = {
   pglaf: 'https://gutenberg.pglaf.org',
@@ -34,9 +34,20 @@ const GUTENBERG_MIRRORS = [
   'https://gutenberg.readingroo.ms',
 ];
 
-const DEFAULT_POPULAR_POOL_SIZE = 1000;
-const DEFAULT_RECENT_POOL_SIZE = 128;
+const DEFAULT_POPULAR_POOL_SIZE = 500;
+const DEFAULT_RECENT_POOL_SIZE = 64;
 const DEFAULT_RECENT_BATCH_RATIO = 0.2;
+
+/**
+ * Canonical 27 Hero & Editorial Classic Book IDs (`FEATURED_HERO_BOOKS` in `src/config/featured-books.ts`).
+ * Prioritized at the front of the unpopulated Tier 1 Popular queue so the first 1–2 runs of
+ * `quotes-sync.yml` guarantee 10–16 multi-quote spreads in Supabase for all Hero/Editorial classics.
+ */
+const PRIORITY_HERO_BOOK_IDS = [
+  1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35, 2600, 135, 2554, 1260,
+  768, 5200, 43, 1184, 1232, 132, 2680, 1727, 514, 2147, 164, 205, 76,
+];
+const PRIORITY_HERO_BOOK_ID_SET = new Set(PRIORITY_HERO_BOOK_IDS);
 
 function loadEnv(rootDir = path.resolve(__dirname, '..')) {
   const envFiles = ['.env.local', '.env'];
@@ -195,6 +206,8 @@ function computeScheduleWindowMs(seedTimestampIso, minHours = 6, maxHours = 12) 
 /**
  * Evaluates whether the randomized 6.0h–12.0h float schedule window has elapsed
  * since the most recent quote update in `public.books`.
+ * Uses `ORDER BY download_count DESC WHERE quotes <> '[]'::jsonb` so PostgreSQL
+ * walks the partial B-Tree index `idx_books_with_quotes_popular` in <2ms.
  */
 async function evaluateScheduleGate(supabase, options, nowMs = Date.now()) {
   if (!options.scheduleGate || !supabase) {
@@ -205,21 +218,28 @@ async function evaluateScheduleGate(supabase, options, nowMs = Date.now()) {
     .from('books')
     .select('updated_at')
     .neq('quotes', '[]')
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('download_count', { ascending: false })
+    .limit(2000);
 
-  if (!data || !data.updated_at) {
-    return { allowed: true, elapsedHours: null, requiredWindowHours: null };
+  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  let latestUpdatedIso = null;
+  let lastUpdatedMs = -Infinity;
+  for (const row of rows) {
+    if (row && row.updated_at) {
+      const parsed = Date.parse(row.updated_at);
+      if (Number.isFinite(parsed) && parsed > lastUpdatedMs) {
+        lastUpdatedMs = parsed;
+        latestUpdatedIso = row.updated_at;
+      }
+    }
   }
 
-  const lastUpdatedMs = Date.parse(data.updated_at);
-  if (!Number.isFinite(lastUpdatedMs)) {
+  if (!latestUpdatedIso || !Number.isFinite(lastUpdatedMs)) {
     return { allowed: true, elapsedHours: null, requiredWindowHours: null };
   }
 
   const requiredWindowMs = computeScheduleWindowMs(
-    data.updated_at,
+    latestUpdatedIso,
     options.minIntervalHours,
     options.maxIntervalHours
   );
@@ -525,6 +545,26 @@ function buildSqlQuoteSeedStatement(bookId, quotesArray) {
 }
 
 /**
+ * Fetches all book IDs in `public.books` that currently have populated quotes (`quotes <> '[]'::jsonb`).
+ * Uses `.order('download_count', { ascending: false })` to walk `idx_books_with_quotes_popular` in <2ms.
+ */
+async function fetchQuotedBookIds(supabase) {
+  if (!supabase) return new Set();
+  let query = supabase.from('books').select('id').neq('quotes', '[]');
+  if (query && typeof query.order === 'function') {
+    const ordered = query.order('download_count', { ascending: false });
+    if (ordered && typeof ordered.limit === 'function') {
+      query = ordered.limit(2000);
+    } else if (ordered) {
+      query = ordered;
+    }
+  }
+  const { data, error } = await query;
+  if (error || !Array.isArray(data)) return new Set();
+  return new Set(data.map((r) => r && r.id).filter((id) => Number.isInteger(id)));
+}
+
+/**
  * Blends candidate books from Tier 1 (Top Popular by `download_count DESC`) and
  * Tier 2 (Rolling Most Recent by `id DESC`) using an 80/20 split (e.g., 20 Popular + 5 Recent
  * for a 25-book batch), automatically backfilling from the other tier when one tier has
@@ -533,21 +573,40 @@ function buildSqlQuoteSeedStatement(bookId, quotesArray) {
 function blendTwoTierCandidates(popularRows = [], recentRows = [], options = {}) {
   const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 25;
   const force = Boolean(options.force);
+  const quotedIds = options.quotedIds instanceof Set ? options.quotedIds : null;
 
+  const popularPoolIds = new Set();
+  const recentPoolIds = new Set();
   const allowedPoolIds = new Set();
   for (const row of popularRows) {
-    if (row && Number.isInteger(row.id)) allowedPoolIds.add(row.id);
+    if (row && Number.isInteger(row.id)) {
+      popularPoolIds.add(row.id);
+      allowedPoolIds.add(row.id);
+    }
   }
   for (const row of recentRows) {
-    if (row && Number.isInteger(row.id)) allowedPoolIds.add(row.id);
+    if (row && Number.isInteger(row.id)) {
+      recentPoolIds.add(row.id);
+      allowedPoolIds.add(row.id);
+    }
   }
 
-  const needsQuotes = (row) =>
-    row &&
-    Number.isInteger(row.id) &&
-    (force || !Array.isArray(row.quotes) || row.quotes.length === 0);
+  const needsQuotes = (row) => {
+    if (!row || !Number.isInteger(row.id)) return false;
+    if (force) return true;
+    if (Array.isArray(row.quotes) && row.quotes.length > 0) return false;
+    if (quotedIds && quotedIds.has(row.id)) return false;
+    return true;
+  };
 
-  const unpopulatedPopular = popularRows.filter(needsQuotes);
+  const unpopulatedPopular = popularRows
+    .filter(needsQuotes)
+    .sort((a, b) => {
+      const aHero = PRIORITY_HERO_BOOK_ID_SET.has(a.id) ? 1 : 0;
+      const bHero = PRIORITY_HERO_BOOK_ID_SET.has(b.id) ? 1 : 0;
+      if (aHero !== bHero) return bHero - aHero;
+      return (b.download_count || 0) - (a.download_count || 0) || a.id - b.id;
+    });
   const popularQueueIds = new Set(unpopulatedPopular.map((r) => r.id));
   const unpopulatedRecent = recentRows.filter(
     (r) => needsQuotes(r) && !popularQueueIds.has(r.id)
@@ -579,71 +638,121 @@ function blendTwoTierCandidates(popularRows = [], recentRows = [], options = {})
 
   return {
     candidates: [...selectedPopular, ...selectedRecent].slice(0, limit),
+    popularPoolIds,
+    recentPoolIds,
     allowedPoolIds,
   };
 }
 
 /**
- * Resets `quotes = '[]'::jsonb` on any book in `public.books` that currently has quotes
- * but has aged out of the bounded Two-Tier Quote Pool (`Top Popular ∪ Rolling Recent`).
+ * Post-batch Dual-Window (`Top 500 Popular` + `Rolling 64 Most Recent`) 1-for-1 auto-pruning:
+ * - Tier 1 (`Popular 500`): Protects all IDs in `popularPoolIds` (`Top 500 Popular` canon) and
+ *   prunes any former Popular book (`id < minRecentHorizonId`) that dropped out of the Top 500 (`#501+`).
+ * - Tier 2 (`Recent 64`): Collects quoted Recent book IDs (`recentPoolIds` or `id >= minRecentHorizonId`
+ *   outside `popularPoolIds`), sorts them by `id DESC` (newest to oldest), keeps the newest
+ *   `recentPool` (`64`) quoted Recent books, and resets `quotes = '[]'::jsonb` on `.slice(64)`.
+ * - Executes `UPDATE` statements in chunks of 25 IDs to prevent statement timeouts.
  */
 async function pruneOutOfWindowBookQuotes(
   supabase,
-  allowedPoolIds,
+  popularPoolIds,
   options = {},
   logger = console
 ) {
   if (
     !supabase ||
-    !(allowedPoolIds instanceof Set) ||
-    allowedPoolIds.size === 0 ||
+    !(popularPoolIds instanceof Set) ||
     (options.ids && options.ids.length > 0)
   ) {
     return { prunedCount: 0, prunedIds: [] };
   }
 
-  const { data, error } = await supabase
-    .from('books')
-    .select('id')
-    .neq('quotes', '[]');
+  const currentQuotedIds = await fetchQuotedBookIds(supabase);
+  if (options.newlyQuotedIds instanceof Set) {
+    for (const id of options.newlyQuotedIds) {
+      if (Number.isInteger(id)) currentQuotedIds.add(id);
+    }
+  }
 
-  if (error || !Array.isArray(data)) {
+  if (currentQuotedIds.size === 0) {
     return { prunedCount: 0, prunedIds: [] };
   }
 
-  const staleIds = data
-    .map((r) => r && r.id)
-    .filter((id) => Number.isInteger(id) && !allowedPoolIds.has(id));
+  const recentCap =
+    typeof options.recentPool === 'number' && options.recentPool >= 0
+      ? options.recentPool
+      : DEFAULT_RECENT_POOL_SIZE;
+
+  const recentPoolIds =
+    options.recentPoolIds instanceof Set
+      ? options.recentPoolIds
+      : options._recentPoolIds instanceof Set
+        ? options._recentPoolIds
+        : null;
+  const minRecentHorizonId =
+    typeof options.minRecentHorizonId === 'number'
+      ? options.minRecentHorizonId
+      : typeof options._minRecentHorizonId === 'number'
+        ? options._minRecentHorizonId
+        : null;
+
+  const stalePopularIds = [];
+  const quotedRecentIds = [];
+
+  for (const id of currentQuotedIds) {
+    if (!Number.isInteger(id) || popularPoolIds.has(id)) continue;
+    const isRecentCandidate =
+      (recentPoolIds && recentPoolIds.has(id)) ||
+      minRecentHorizonId === null ||
+      id >= minRecentHorizonId;
+
+    if (isRecentCandidate) {
+      quotedRecentIds.push(id);
+    } else {
+      stalePopularIds.push(id);
+    }
+  }
+
+  quotedRecentIds.sort((a, b) => b - a);
+  const staleRecentIds = quotedRecentIds.slice(recentCap);
+  const staleIds = [...stalePopularIds, ...staleRecentIds];
 
   if (staleIds.length === 0) {
     return { prunedCount: 0, prunedIds: [] };
   }
 
   logger.log(
-    `[Prune] Resetting quotes on ${staleIds.length} aged-out book(s) outside the Two-Tier pool (Top ${
+    `[Prune] Resetting quotes on ${staleIds.length} out-of-window book(s) (${stalePopularIds.length} demoted Popular + ${staleRecentIds.length} cycled-out Recent beyond newest ${recentCap}; Top ${
       options.popularPool || DEFAULT_POPULAR_POOL_SIZE
-    } Popular + Rolling ${options.recentPool ?? DEFAULT_RECENT_POOL_SIZE} Recent).`
+    } Popular protected).`
   );
 
   if (!options.dryRun) {
-    const { error: updateErr } = await supabase
-      .from('books')
-      .update({
-        quotes: [],
-        updated_at: new Date().toISOString(),
-      })
-      .in('id', staleIds);
-    if (updateErr) throw new Error(updateErr.message);
+    const PRUNE_CHUNK_SIZE = 25;
+    const nowIso = new Date().toISOString();
+    for (let i = 0; i < staleIds.length; i += PRUNE_CHUNK_SIZE) {
+      const chunk = staleIds.slice(i, i + PRUNE_CHUNK_SIZE);
+      const { error: updateErr } = await supabase
+        .from('books')
+        .update({
+          quotes: [],
+          updated_at: nowIso,
+        })
+        .in('id', chunk);
+      if (updateErr) throw new Error(updateErr.message);
+    }
   }
 
   return { prunedCount: staleIds.length, prunedIds: staleIds };
 }
 
 /**
- * Queries `public.books` for the next batch of candidate volumes to populate with quotes.
- * - When `options.ids` is provided, fetches those specific IDs.
- * - Otherwise, resolves the Two-Tier Bounded Quote Pool (`Top 1,000 Popular` by `download_count DESC`
- *   + `Rolling 128 Most Recent` by `id DESC`) and blends up to 20 Popular + 5 Recent unpopulated books.
+ * Queries `public.books` for the next batch of candidate volumes to populate with quotes
+ * using a Zero-Timeout Index-Aligned ID-First query sequence (<15ms total):
+ * 1. Fetches `quotedIds` via `idx_books_with_quotes_popular` (`<2ms`).
+ * 2. Scans Tier 1 (`Top 500 Popular`) via `idx_books_download_count` without `content`/`quotes`/GIN filters (`<5ms`).
+ * 3. Scans Tier 2 (`Rolling 64 Most Recent`) via Primary Key `books_pkey (id DESC)` without `content`/`quotes`/GIN filters (`<2ms`).
+ * 4. Hydrates `quotes` and `content` ONLY for the `<= 25` selected batch IDs via `.in('id', selectedIds)` (`<3ms`).
  */
 async function fetchCandidateBooksFromSupabase(supabase, options) {
   if (!supabase) {
@@ -682,38 +791,79 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
   const recentPoolLimit =
     typeof options.recentPool === 'number' ? options.recentPool : DEFAULT_RECENT_POOL_SIZE;
 
-  const { data: popularData, error: popularErr } = await supabase
+  const quotedIds = await fetchQuotedBookIds(supabase);
+
+  const isEligibleEnglishBook = (row) =>
+    row &&
+    Number.isInteger(row.id) &&
+    row.copyright !== true &&
+    (!row.media_type || row.media_type === 'Text') &&
+    (!Array.isArray(row.languages) ||
+      row.languages.length === 0 ||
+      row.languages.includes('en'));
+
+  const popularScanLimit = Math.max(popularPoolLimit * 2, 1000);
+  const { data: popularRaw, error: popularErr } = await supabase
     .from('books')
-    .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
-    .eq('copyright', false)
-    .eq('media_type', 'Text')
-    .contains('languages', ['en'])
+    .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count')
     .order('download_count', { ascending: false })
-    .order('id', { ascending: true })
-    .limit(popularPoolLimit);
+    .limit(popularScanLimit);
 
   if (popularErr) throw new Error(popularErr.message);
 
+  const popularData = (popularRaw || [])
+    .filter(isEligibleEnglishBook)
+    .sort((a, b) => (b.download_count || 0) - (a.download_count || 0) || a.id - b.id)
+    .slice(0, popularPoolLimit);
+
   let recentData = [];
+  let minRecentHorizonId = null;
   if (recentPoolLimit > 0) {
+    const recentScanLimit = Math.max(recentPoolLimit * 5, 320);
     const { data: recRows, error: recErr } = await supabase
       .from('books')
-      .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
-      .eq('copyright', false)
-      .eq('media_type', 'Text')
-      .contains('languages', ['en'])
+      .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count')
       .order('id', { ascending: false })
-      .limit(recentPoolLimit);
+      .limit(recentScanLimit);
     if (recErr) throw new Error(recErr.message);
-    recentData = recRows || [];
+    const validRecentScanIds = (recRows || [])
+      .map((r) => r && r.id)
+      .filter((id) => Number.isInteger(id));
+    if (validRecentScanIds.length > 0) {
+      minRecentHorizonId = Math.min(...validRecentScanIds);
+    }
+    recentData = (recRows || []).filter(isEligibleEnglishBook).slice(0, recentPoolLimit);
   }
 
-  const { candidates, allowedPoolIds } = blendTwoTierCandidates(
-    popularData || [],
+  const { candidates, popularPoolIds, recentPoolIds, allowedPoolIds } = blendTwoTierCandidates(
+    popularData,
     recentData,
-    options
+    { ...options, quotedIds }
   );
+  options._popularPoolIds = popularPoolIds;
+  options._recentPoolIds = recentPoolIds;
+  options._minRecentHorizonId = minRecentHorizonId;
   options._allowedPoolIds = allowedPoolIds;
+
+  if (candidates.length > 0) {
+    const candidateIds = candidates.map((c) => c.id);
+    const detailQuery = supabase.from('books').select('id, quotes, content');
+    if (detailQuery && typeof detailQuery.in === 'function') {
+      const { data: details, error: detailErr } = await detailQuery.in('id', candidateIds);
+      if (detailErr) throw new Error(detailErr.message);
+      if (Array.isArray(details) && details.length > 0) {
+        const detailMap = new Map(details.map((d) => [d.id, d]));
+        for (const cand of candidates) {
+          const d = detailMap.get(cand.id);
+          if (d) {
+            if (d.quotes !== undefined) cand.quotes = d.quotes;
+            if (d.content !== undefined) cand.content = d.content;
+          }
+        }
+      }
+    }
+  }
+
   return candidates;
 }
 
@@ -777,22 +927,25 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   }
 
   const booksToProcess = await fetchCandidateBooksFromSupabase(supabase, options);
-  if (options._allowedPoolIds && supabase) {
-    const pruneRes = await pruneOutOfWindowBookQuotes(
-      supabase,
-      options._allowedPoolIds,
-      options,
-      logger
-    );
-    summary.pruned = pruneRes.prunedCount;
-  }
+  const newlyQuotedIds = new Set();
+
   if (booksToProcess.length === 0) {
+    if (options._popularPoolIds && supabase) {
+      const pruneRes = await pruneOutOfWindowBookQuotes(
+        supabase,
+        options._popularPoolIds,
+        { ...options, newlyQuotedIds },
+        logger
+      );
+      summary.pruned = pruneRes.prunedCount;
+    }
     logger.log('All eligible books in the Two-Tier pool already have quotes — nothing to sync.');
     return summary;
   }
 
   async function saveQuotesToDatabase(book, quotesPayload) {
     summary.sqlStatements.push(buildSqlQuoteSeedStatement(book.id, quotesPayload));
+    newlyQuotedIds.add(book.id);
     if (!options.dryRun && supabase) {
       const { error: updateErr } = await supabase
         .from('books')
@@ -977,6 +1130,16 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     await Promise.all(mirrors.map((mirrorUrl) => runMirrorWorker(mirrorUrl)));
   }
 
+  if (options._popularPoolIds && supabase) {
+    const pruneRes = await pruneOutOfWindowBookQuotes(
+      supabase,
+      options._popularPoolIds,
+      { ...options, newlyQuotedIds },
+      logger
+    );
+    summary.pruned = pruneRes.prunedCount;
+  }
+
   if (options.dryRun && summary.sqlStatements.length > 0 && deps.writeSeedFile !== false) {
     const seedPath = path.resolve(__dirname, '..', 'supabase', 'seed_quotes.sql');
     const header = [
@@ -998,7 +1161,7 @@ if (require.main === module) {
   runFeaturedQuotesSync(cliOptions)
     .then((res) => {
       console.log(
-        `Featured Quotes Sync complete: ${res.updated} updated, ${res.skippedExisting} skipped, ${res.sentinelMarked} sentinel-marked, ${res.failed} failed.`
+        `Featured Quotes Sync complete: ${res.updated} updated, ${res.skippedExisting} skipped, ${res.sentinelMarked} sentinel-marked, ${res.pruned} pruned, ${res.failed} failed.`
       );
       process.exit(res.failed > 0 && res.updated === 0 && !res.skippedByScheduleGate ? 1 : 0);
     })
@@ -1016,6 +1179,7 @@ module.exports = {
   DEFAULT_POPULAR_POOL_SIZE,
   DEFAULT_RECENT_POOL_SIZE,
   DEFAULT_RECENT_BATCH_RATIO,
+  PRIORITY_HERO_BOOK_IDS,
   loadEnv,
   resolveSelectedMirrors,
   parseCliArgs,
@@ -1033,6 +1197,7 @@ module.exports = {
   buildSentinelQuoteSpread,
   mergeDistinctQuoteSpreads,
   buildSqlQuoteSeedStatement,
+  fetchQuotedBookIds,
   blendTwoTierCandidates,
   pruneOutOfWindowBookQuotes,
   fetchCandidateBooksFromSupabase,

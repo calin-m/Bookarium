@@ -86,6 +86,20 @@ describe('SupabaseCatalogProvider', () => {
       expect(mapped.media_type).toBe('Text');
       expect(mapped.formats).toEqual({ 'text/html': 'https://gutenberg.org/1342.html' });
       expect(mapped.download_count).toBe(54321);
+
+      // Strips 1-item bibliographic sentinel spreads while preserving genuine quote spreads
+      const sentinelOnlyRow = {
+        ...dbRow,
+        quotes: [
+          {
+            chapterLabel: 'Archival Edition • Vol. #1342',
+            openingLine: '“Pride and Prejudice — preserved in the Project Gutenberg Literary Archive.”',
+            quoteExcerpt: '“Unabridged public domain edition by Austen, Jane (Vol. #1342).”',
+            commentary: 'Bibliographic sentinel record for Vol. #1342.',
+          },
+        ],
+      } as unknown as DatabaseBook;
+      expect(mapDatabaseBookToGutendexBook(sentinelOnlyRow).quotes).toBeUndefined();
     });
 
     it('handles non-array or nullish authors, formats, and download count', () => {
@@ -284,6 +298,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.clientCountry).toBe('US');
       expect(result.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
       expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
+      expect(CATALOG_METADATA_COLUMNS).toContain('quotes');
       expect(CATALOG_METADATA_COLUMNS).not.toContain('content');
       expect(builder.eq).toHaveBeenCalledWith('copyright', false);
       expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'Jane Austen Fiction', {

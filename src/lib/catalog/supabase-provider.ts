@@ -17,7 +17,7 @@ import {
  * Columns explicitly selected for catalog search to prevent transferring large unabridged text.
  */
 export const CATALOG_METADATA_COLUMNS =
-  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, quotes, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
 
 /**
  * Checks if Supabase credentials are genuinely configured (non-empty, non-placeholder).
@@ -53,7 +53,15 @@ export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
     download_count: row.download_count ?? 0,
   };
   if (Array.isArray(row.quotes) && row.quotes.length > 0) {
-    mapped.quotes = row.quotes as unknown as BookPassage[];
+    const validQuotes = (row.quotes as unknown as BookPassage[]).filter(
+      (q) =>
+        q &&
+        typeof q === 'object' &&
+        !String(q.commentary || '').startsWith('Bibliographic sentinel record')
+    );
+    if (validQuotes.length > 0) {
+      mapped.quotes = validQuotes;
+    }
   }
   return mapped;
 }
