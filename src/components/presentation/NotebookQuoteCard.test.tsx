@@ -382,6 +382,7 @@ describe('NotebookQuoteCard', () => {
     const jumpBtn = screen.getByTestId('jump-reader-btn-ann-1');
     expect(jumpBtn).toBeDisabled();
     expect(jumpBtn).toHaveTextContent('Unavailable Offline');
+    expect(jumpBtn).toHaveAttribute('title', 'Not downloaded for offline reading');
 
     fireEvent.click(jumpBtn);
     expect(defaultProps.onJumpToReader).not.toHaveBeenCalled();

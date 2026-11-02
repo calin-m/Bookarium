@@ -821,6 +821,105 @@ describe('resolveScrubbedTabId & createTabScrubberHandlers', () => {
       vi.useRealTimers();
     }
   });
+
+  it('calibrates phone (<640px) tactile scrubbing with a 14px activation deadzone, full-tab-width step distance, 0.70x threshold, and 8px directional hysteresis', () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 360 });
+    try {
+      const onSelectTab = vi.fn();
+      const handlers = createTabScrubberHandlers(onSelectTab);
+
+      // 240px container across 3 tabs -> phoneStepPx = 80px (0.70 * 80 = 56px 1st threshold, 1.70 * 80 = 136px 2nd threshold)
+      vi.spyOn(tablist, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        right: 240,
+        width: 240,
+        top: 0,
+        bottom: 40,
+        height: 40,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      // Start touch on btnA (index 0, X=30)
+      handlers.onTouchStart({
+        touches: [{ clientX: 30, clientY: 20 }],
+        currentTarget: tablist,
+      });
+
+      // 1. Sub-14px phone deadzone movement (+10px -> X=40) is ignored completely
+      handlers.onTouchMove({
+        touches: [{ clientX: 40, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).not.toHaveBeenCalled();
+
+      // 2. Small movement (+25px -> X=55) activates scrub preview on starting tab ('habits') without jumping ahead
+      handlers.onTouchMove({
+        touches: [{ clientX: 55, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('habits');
+      expect(onSelectTab).toHaveBeenCalledTimes(1);
+
+      // 3. Deliberate slide right past 0.70 * 80 = 56px (+65px -> X=95) advances to 'profile' (index 1)
+      handlers.onTouchMove({
+        touches: [{ clientX: 95, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+      expect(onSelectTab).toHaveBeenCalledTimes(2);
+
+      // 4. Minor backward thumb jitter within 8px hysteresis buffer (X=82 -> dx=+52px, between 48px and 56px) stays locked on 'profile'
+      handlers.onTouchMove({
+        touches: [{ clientX: 82, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenCalledTimes(2);
+
+      // 5. Slide further right past 1.70 * 80 = 136px (+145px -> X=175) advances to 'symposiums' (index 2)
+      handlers.onTouchMove({
+        touches: [{ clientX: 175, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('symposiums');
+      expect(onSelectTab).toHaveBeenCalledTimes(3);
+
+      // 6. Slide left from 'symposiums' (start touch at X=250 on btnC, index 2) and test negative hysteresis
+      handlers.onTouchEnd({ currentTarget: tablist });
+      handlers.onTouchStart({
+        touches: [{ clientX: 250, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      // Slide left by -65px (X=185) -> steps to 'profile' (index 1, currentOffset = -1, boundaryPx = -56px)
+      handlers.onTouchMove({
+        touches: [{ clientX: 185, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('profile');
+      expect(onSelectTab).toHaveBeenCalledTimes(4);
+
+      // Minor rightward thumb jitter within 8px negative hysteresis buffer (X=198 -> dx=-52px, between -56px and -48px) stays on 'profile'
+      handlers.onTouchMove({
+        touches: [{ clientX: 198, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenCalledTimes(4);
+
+      // Full slide back to X=250 returns to 'symposiums'
+      handlers.onTouchMove({
+        touches: [{ clientX: 250, clientY: 20 }],
+        currentTarget: tablist,
+      });
+      expect(onSelectTab).toHaveBeenLastCalledWith('symposiums');
+      expect(onSelectTab).toHaveBeenCalledTimes(5);
+
+      handlers.onTouchEnd({ currentTarget: tablist });
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+    }
+  });
 });
 
 describe('getAccordionTabLabelClass & getAccordionTabFlexClass', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { BookmarkCard } from './BookmarkCard';
 import type { ActiveReadingVolume } from '@/types/book.types';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -506,6 +506,154 @@ describe('BookmarkCard', () => {
     expect(useBookshelfStore.getState().isBookSaved(1342)).toBe(false);
     expect(shelfBtn).toHaveAttribute('aria-label', 'Save to bookshelf');
     expect(handleActivate).not.toHaveBeenCalled();
+  });
+
+  it('applies status-tinted border and focus ring to the status selector while keeping neutral text and 1080p compact footer sizing', () => {
+    const onStatusChange = vi.fn();
+    const onClear = vi.fn();
+    const { rerender } = render(
+      <BookmarkCard
+        volume={mockVolume}
+        onActivate={vi.fn()}
+        onStatusChange={onStatusChange}
+        onClear={onClear}
+      />
+    );
+
+    const statusSelect = screen.getByRole('combobox', {
+      name: /Change reading status for Pride and Prejudice/i,
+    });
+    const resumeBtn = screen.getByRole('button', {
+      name: /Resume reading Pride and Prejudice/i,
+    });
+    const removeBtn = screen.getByRole('button', {
+      name: /Remove Pride and Prejudice from reading ledger/i,
+    });
+
+    expect(statusSelect).toHaveClass(
+      'h-7',
+      'sm:h-8',
+      'bg-background',
+      'text-foreground',
+      'text-[11px]',
+      'sm:text-xs',
+      'flex-1',
+      'sm:flex-none',
+      'min-w-[68px]',
+      'max-w-[96px]',
+      'border-primary/40',
+      'focus:ring-primary'
+    );
+    expect(statusSelect).toHaveAttribute('title', 'Change reading status');
+    expect(resumeBtn).toHaveClass(
+      'h-7',
+      'sm:h-8',
+      'flex-[1.65]',
+      'sm:flex-1',
+      'min-w-0',
+      'px-2',
+      'sm:px-4',
+      'text-[11px]',
+      'sm:text-xs'
+    );
+    expect(resumeBtn).toHaveAttribute('title', 'Resume reading (Chapter 3 • Page 48)');
+    expect(removeBtn).toHaveClass('h-7', 'w-7', 'sm:h-8', 'sm:w-8', 'shrink-0');
+
+    rerender(
+      <BookmarkCard
+        volume={{
+          ...mockVolume,
+          status: 'completed',
+          progressPercent: 100,
+        }}
+        onActivate={vi.fn()}
+        onStatusChange={onStatusChange}
+        onClear={onClear}
+      />
+    );
+    expect(
+      screen.getByRole('combobox', { name: /Change reading status for Pride and Prejudice/i })
+    ).toHaveClass(
+      'bg-background',
+      'text-foreground',
+      'border-emerald-500/40',
+      'focus:ring-emerald-500'
+    );
+
+    rerender(
+      <BookmarkCard
+        volume={{
+          ...mockVolume,
+          status: 'on_hold',
+        }}
+        onActivate={vi.fn()}
+        onStatusChange={onStatusChange}
+        onClear={onClear}
+      />
+    );
+    expect(
+      screen.getByRole('combobox', { name: /Change reading status for Pride and Prejudice/i })
+    ).toHaveClass(
+      'bg-background',
+      'text-foreground',
+      'border-amber-500/40',
+      'focus:ring-amber-500'
+    );
+  });
+
+  it('keeps the status pill single-line and only displays the floating status indicator on tap/hover when the label is truncated', () => {
+    vi.useFakeTimers();
+    const handleActivate = vi.fn();
+
+    render(<BookmarkCard volume={mockVolume} onActivate={handleActivate} />);
+
+    const badge = screen.getByTestId('bookmark-card-status-badge');
+    expect(badge).toHaveClass('whitespace-nowrap', 'min-w-0', 'max-w-full');
+
+    const labelSpan = within(badge).getByText('In Progress');
+    expect(labelSpan).toHaveClass('truncate');
+
+    // When not truncated (scrollWidth <= clientWidth), clicking does not show the floating indicator
+    Object.defineProperty(labelSpan, 'scrollWidth', { configurable: true, value: 70 });
+    Object.defineProperty(labelSpan, 'clientWidth', { configurable: true, value: 70 });
+    fireEvent(window, new Event('resize'));
+
+    fireEvent.click(badge);
+    expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
+    handleActivate.mockClear();
+
+    // Simulate 1080p narrow viewport truncation (scrollWidth > clientWidth)
+    Object.defineProperty(labelSpan, 'scrollWidth', { configurable: true, value: 114 });
+    Object.defineProperty(labelSpan, 'clientWidth', { configurable: true, value: 64 });
+    fireEvent(window, new Event('resize'));
+
+    expect(badge).toHaveAttribute('role', 'button');
+
+    // Tap to reveal indicator without activating card
+    fireEvent.click(badge);
+    expect(handleActivate).not.toHaveBeenCalled();
+    const indicator = screen.getByTestId('bookmark-card-status-indicator');
+    expect(indicator).toBeInTheDocument();
+    expect(indicator).toHaveTextContent('In Progress');
+
+    // Auto-dismisses after 2000ms
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
+
+    // Pointer hover enter & leave when truncated
+    fireEvent.pointerEnter(badge);
+    expect(screen.getByTestId('bookmark-card-status-indicator')).toBeInTheDocument();
+    fireEvent.pointerLeave(badge);
+    expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
+
+    // Keyboard Enter/Space on truncated badge toggles indicator without activating card
+    fireEvent.keyDown(badge, { key: 'Enter' });
+    expect(screen.getByTestId('bookmark-card-status-indicator')).toBeInTheDocument();
+    expect(handleActivate).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 });
 

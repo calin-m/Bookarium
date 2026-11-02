@@ -670,6 +670,11 @@ describe('StickyCatalogToolbar component', () => {
       const clearBtn = screen.getByTestId('clear-all-filters-btn');
       expect(clearBtn).toBeInTheDocument();
       expect(clearBtn).toHaveAttribute('aria-label', 'Clear all 2 active filters');
+      expect(screen.getByTestId('open-filters-btn')).toHaveAttribute('title', 'Open advanced filters');
+      expect(screen.getByRole('button', { name: 'Remove filter Victorian' })).toHaveAttribute(
+        'title',
+        'Remove filter: Victorian'
+      );
 
       fireEvent.click(clearBtn);
       expect(handleClearAll).toHaveBeenCalledTimes(1);

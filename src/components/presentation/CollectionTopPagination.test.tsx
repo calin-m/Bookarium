@@ -21,8 +21,8 @@ describe('CollectionTopPagination', () => {
 
     expect(screen.getByTestId('collection-top-pagination')).toBeInTheDocument();
     expect(screen.getByTestId('top-pagination-indicator')).toHaveTextContent('2/4');
-    expect(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Previous page' })).toHaveAttribute('title', 'Previous page');
+    expect(screen.getByRole('button', { name: 'Next page' })).toHaveAttribute('title', 'Next page');
   });
 
   it('disables previous button on first page and enables next button', () => {

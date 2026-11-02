@@ -25,6 +25,10 @@ describe('NotebookVolumeGroup', () => {
     );
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('Pride and Prejudice')).toHaveAttribute(
+      'title',
+      'Open Pride and Prejudice in Focus Reader'
+    );
     expect(screen.getByText('by Jane Austen')).toBeInTheDocument();
     expect(screen.getByText('1 quote')).toBeInTheDocument();
     expect(screen.getByText('First quote')).toBeInTheDocument();

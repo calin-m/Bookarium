@@ -22,6 +22,7 @@ describe('CollectionSortDropdown', () => {
 
     const select = screen.getByRole('combobox', { name: 'Sort bookmarks' });
     expect(select).toBeInTheDocument();
+    expect(select).toHaveAttribute('title', 'Sort bookmarks');
     expect(select).toHaveValue('recent');
     expect(screen.getByRole('option', { name: 'Recently Read' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Title (A → Z)' })).toBeInTheDocument();

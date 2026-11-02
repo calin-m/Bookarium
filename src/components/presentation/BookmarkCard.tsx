@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
@@ -53,6 +53,9 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<CollectionRemovalType | null>(null);
+  const [isStatusTruncated, setIsStatusTruncated] = useState(false);
+  const [showStatusIndicator, setShowStatusIndicator] = useState(false);
+  const statusLabelRef = useRef<HTMLSpanElement | null>(null);
   const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
@@ -74,25 +77,62 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
     }
   };
 
-  const statusBadges: Record<LedgerItemStatus, { label: string; className: string; icon: React.ReactNode }> = {
+  const statusBadges: Record<
+    LedgerItemStatus,
+    { label: string; className: string; selectBorderClass: string; icon: React.ReactNode }
+  > = {
     in_progress: {
       label: 'In Progress',
       className: 'bg-primary/10 text-primary border-border',
+      selectBorderClass: 'border-primary/40 focus:ring-primary',
       icon: <Clock className="w-3 h-3 shrink-0" />,
     },
     completed: {
       label: 'Completed',
       className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border-emerald-500/30',
+      selectBorderClass: 'border-emerald-500/40 focus:ring-emerald-500',
       icon: <CheckCircle2 className="w-3 h-3 shrink-0" />,
     },
     on_hold: {
       label: 'On Hold',
       className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border-amber-500/30',
+      selectBorderClass: 'border-amber-500/40 focus:ring-amber-500',
       icon: <PauseCircle className="w-3 h-3 shrink-0" />,
     },
   };
 
   const currentBadge = statusBadges[status] || statusBadges.in_progress;
+
+  const checkStatusTruncation = useCallback(() => {
+    const el = statusLabelRef.current;
+    if (!el) return;
+    const truncated = el.scrollWidth > el.clientWidth;
+    setIsStatusTruncated(truncated);
+    if (!truncated) {
+      setShowStatusIndicator(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkStatusTruncation();
+    const el = statusLabelRef.current;
+    let observer: ResizeObserver | null = null;
+    if (el && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => checkStatusTruncation());
+      observer.observe(el);
+    }
+    window.addEventListener('resize', checkStatusTruncation, { passive: true });
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', checkStatusTruncation);
+    };
+  }, [checkStatusTruncation, currentBadge.label, isRestricted, isUnavailableOffline]);
+
+  useEffect(() => {
+    if (!showStatusIndicator) return;
+    const timer = setTimeout(() => setShowStatusIndicator(false), 2000);
+    return () => clearTimeout(timer);
+  }, [showStatusIndicator]);
 
   return (
     <article
@@ -109,7 +149,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
       }}
       data-bookmark-card-id={book.id}
       data-active={isActive ? 'true' : 'false'}
-      className={`group relative bg-card rounded-xl border transition-all duration-300 p-5 flex flex-col justify-between overflow-hidden ${
+      className={`group relative bg-card rounded-xl border transition-all duration-300 p-4 sm:p-5 flex flex-col justify-between overflow-hidden ${
         isActive
           ? 'border-primary/50 ring-2 ring-primary/50 shadow-booksaw-hover'
           : 'border-border shadow-booksaw hover:shadow-booksaw-hover'
@@ -136,7 +176,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
       <div className="space-y-4">
         {/* Top Meta: Cover + Title + Authors */}
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3 sm:gap-4">
           <div
             data-testid="bookmark-card-cover"
             className={`group/cover relative w-16 h-24 shrink-0 rounded overflow-hidden bg-muted border border-border shadow-2xs select-none ${
@@ -186,17 +226,66 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1.5 pr-10">
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 pr-8 sm:pr-10">
+              <div className="relative flex items-center gap-1.5 flex-wrap min-w-0">
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold border ${currentBadge.className}`}
+                  data-testid="bookmark-card-status-badge"
+                  role={isStatusTruncated ? 'button' : undefined}
+                  tabIndex={isStatusTruncated ? 0 : undefined}
+                  title={isStatusTruncated ? currentBadge.label : undefined}
+                  onClick={(e) => {
+                    const el = statusLabelRef.current;
+                    const truncated = Boolean(el && el.scrollWidth > el.clientWidth) || isStatusTruncated;
+                    if (truncated) {
+                      e.stopPropagation();
+                      setIsStatusTruncated(true);
+                      setShowStatusIndicator((prev) => !prev);
+                    }
+                  }}
+                  onPointerEnter={() => {
+                    const el = statusLabelRef.current;
+                    const truncated = Boolean(el && el.scrollWidth > el.clientWidth) || isStatusTruncated;
+                    if (truncated) {
+                      setIsStatusTruncated(true);
+                      setShowStatusIndicator(true);
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    if (isStatusTruncated) {
+                      setShowStatusIndicator(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    const el = statusLabelRef.current;
+                    const truncated = Boolean(el && el.scrollWidth > el.clientWidth) || isStatusTruncated;
+                    if (truncated && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsStatusTruncated(true);
+                      setShowStatusIndicator((prev) => !prev);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold border whitespace-nowrap min-w-0 max-w-full ${currentBadge.className} ${
+                    isStatusTruncated ? 'cursor-pointer' : ''
+                  }`}
                 >
                   {currentBadge.icon}
-                  <span>{currentBadge.label}</span>
+                  <span ref={statusLabelRef} className="truncate">
+                    {currentBadge.label}
+                  </span>
                 </span>
+                {isStatusTruncated && showStatusIndicator && (
+                  <span
+                    role="status"
+                    data-testid="bookmark-card-status-indicator"
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wider font-semibold border shadow-xs whitespace-nowrap ${currentBadge.className}`}
+                  >
+                    {currentBadge.label}
+                  </span>
+                )}
                 {isRestricted ? (
                   <span
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30 whitespace-nowrap"
                     title={evaluation.reason || `Protected by copyright in ${country}`}
                     aria-label={`Protected in ${country}`}
                   >
@@ -205,7 +294,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                   </span>
                 ) : isUnavailableOffline ? (
                   <span
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30 whitespace-nowrap"
                     title="Not downloaded for offline reading"
                     aria-label="Not downloaded for offline reading"
                     data-testid={`bookmark-card-unavailable-offline-badge-${book.id}`}
@@ -217,10 +306,10 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               </div>
 
               <div
-                className="flex items-center gap-2 shrink-0"
+                className="flex items-center gap-1.5 sm:gap-2 shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="w-8 flex items-center justify-center">
+                <div className="w-7 sm:w-8 flex items-center justify-center">
                   <button
                     type="button"
                     onClick={() => {
@@ -242,7 +331,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                     <Heart className={`w-3 h-3 ${isFavorite ? 'fill-current' : ''}`} />
                   </button>
                 </div>
-                <div className="w-8 flex items-center justify-center">
+                <div className="w-7 sm:w-8 flex items-center justify-center">
                   <button
                     type="button"
                     onClick={() => {
@@ -337,36 +426,44 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               {chapterIndex > 0 ? `Chapter ${chapterIndex}` : 'Start'} • Page {globalPage || 1}
               {bookmarkRow && bookmarkRow > 0 ? ` • Line ${bookmarkRow + 1}` : ''}
             </span>
-            <span>{formatRelativeTime(lastReadAt)}</span>
+            <span
+              title={
+                lastReadAt && !Number.isNaN(new Date(lastReadAt).getTime())
+                  ? `Last read: ${new Date(lastReadAt).toLocaleString()}`
+                  : undefined
+              }
+            >
+              {formatRelativeTime(lastReadAt)}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Action Footer */}
-      <div className="flex items-center gap-2 pt-5 mt-4 border-t border-border">
+      <div className="flex items-center gap-1.5 sm:gap-2 pt-4 sm:pt-5 mt-4 border-t border-border min-w-0">
         {isRestricted ? (
           <Button
             variant="outline"
             size="sm"
             disabled
-            className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold opacity-60 cursor-not-allowed border-amber-500/40 text-amber-700 dark:text-amber-400 sepia:text-amber-400"
+            className="h-7 sm:h-8 flex-[1.65] sm:flex-1 min-w-0 px-2 sm:px-4 gap-1 sm:gap-1.5 font-mono text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider font-bold opacity-60 cursor-not-allowed border-amber-500/40 text-amber-700 dark:text-amber-400 sepia:text-amber-400"
             aria-label={`Reading restricted for ${book.title} in ${country}`}
             title={evaluation.reason || `Protected by copyright in ${country}`}
           >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Restricted</span>
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Restricted</span>
           </Button>
         ) : isUnavailableOffline ? (
           <Button
             variant="outline"
             size="sm"
             disabled
-            className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold opacity-60 cursor-not-allowed"
+            className="h-7 sm:h-8 flex-[1.65] sm:flex-1 min-w-0 px-2 sm:px-4 gap-1 sm:gap-1.5 font-mono text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider font-bold opacity-60 cursor-not-allowed"
             aria-label={`Resume reading ${book.title} (Unavailable offline)`}
             title="Not downloaded for offline reading"
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Offline</span>
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Offline</span>
           </Button>
         ) : (
           <Button
@@ -378,17 +475,24 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 ? `Read ${book.title} again from beginning`
                 : `Resume reading ${book.title}`
             }
-            className="flex-1 gap-1.5 font-mono text-xs uppercase tracking-wider font-bold"
+            title={
+              status === 'completed'
+                ? 'Read again from the beginning'
+                : `Resume reading (${chapterIndex > 0 ? `Chapter ${chapterIndex}` : 'Start'} • Page ${
+                    globalPage || 1
+                  }${bookmarkRow && bookmarkRow > 0 ? ` • Line ${bookmarkRow + 1}` : ''})`
+            }
+            className="h-7 sm:h-8 flex-[1.65] sm:flex-1 min-w-0 px-2 sm:px-4 gap-1 sm:gap-1.5 font-mono text-[11px] sm:text-xs uppercase tracking-normal sm:tracking-wider font-bold"
           >
             {status === 'completed' ? (
               <>
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Read Again</span>
+                <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Read Again</span>
               </>
             ) : (
               <>
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Resume</span>
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Resume</span>
               </>
             )}
           </Button>
@@ -399,11 +503,12 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             value={status}
             onChange={(e) => onStatusChange(book.id, e.target.value as LedgerItemStatus)}
             aria-label={`Change reading status for ${book.title}`}
-            className="h-8 px-2 rounded border border-border bg-background text-foreground font-mono text-base sm:text-xs max-w-[110px] truncate focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+            title="Change reading status"
+            className={`h-7 sm:h-8 px-1.5 sm:px-2 rounded border ${currentBadge.selectBorderClass} bg-background text-foreground font-mono text-[11px] sm:text-xs flex-1 sm:flex-none min-w-[68px] max-w-[96px] sm:w-auto sm:max-w-[110px] truncate focus:outline-none focus:ring-1 cursor-pointer transition-colors`}
           >
-            <option value="in_progress">Reading</option>
-            <option value="completed">Finished</option>
-            <option value="on_hold">On Hold</option>
+            <option value="in_progress" className="bg-background text-foreground">Reading</option>
+            <option value="completed" className="bg-background text-foreground">Finished</option>
+            <option value="on_hold" className="bg-background text-foreground">On Hold</option>
           </select>
         )}
 
@@ -429,7 +534,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 ? 'Offline copy ready (Click to remove)'
                 : 'Save for offline reading'
             }
-            className={`h-8 w-8 flex items-center justify-center rounded border transition-colors shrink-0 ${
+            className={`h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded border transition-colors shrink-0 ${
               isDownloadingOffline
                 ? 'border-primary/40 bg-primary/10 text-primary cursor-wait'
                 : isUnavailableOffline
@@ -460,7 +565,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             data-testid="bookmark-card-invite-symposium-btn"
             aria-label={`Invite Fellow to Symposium on ${book.title}`}
             title={isNetworkOffline ? 'Connect to the internet to invite a Fellow' : 'Invite Fellow to Symposium'}
-            className={`h-8 w-8 flex items-center justify-center rounded border border-border bg-background text-muted-foreground transition-colors shrink-0 ${
+            className={`h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded border border-border bg-background text-muted-foreground transition-colors shrink-0 ${
               isNetworkOffline
                 ? 'opacity-50 cursor-not-allowed'
                 : 'hover:text-primary hover:border-primary/40 hover:bg-primary/5 cursor-pointer'
@@ -476,7 +581,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
             onClick={() => onClear(book.id)}
             aria-label={`Remove ${book.title} from reading ledger`}
             title="Remove from Ledger"
-            className="h-8 w-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
+            className="h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

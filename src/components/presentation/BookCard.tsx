@@ -382,6 +382,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                   key={`desktop-${tag}`}
                   variant="outline"
                   size="sm"
+                  title={onTopicClick ? `Filter catalog by ${tag}` : undefined}
                   onClick={
                     onTopicClick
                       ? (e) => {
@@ -547,6 +548,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                 size="chip"
                 className="w-full"
                 aria-label={`Read ${book.title}`}
+                title={`Read ${book.title} in Focus Reader`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>Read</span>
@@ -571,7 +573,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                   ? evaluation.reason || `Download unavailable in ${country}`
                   : isUnavailableOffline
                   ? 'Connect to the internet to download this volume'
-                  : undefined
+                  : 'Download options (EPUB, TXT, Offline)'
               }
             >
               <Download className="w-3.5 h-3.5" />

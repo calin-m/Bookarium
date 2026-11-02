@@ -670,7 +670,11 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             onJumpToReader(ann);
           }}
           data-testid={`jump-reader-btn-${ann.id}`}
-          title={isUnavailableOffline ? 'Not downloaded for offline reading' : undefined}
+          title={
+            isUnavailableOffline
+              ? 'Not downloaded for offline reading'
+              : 'Jump to passage in Focus Reader'
+          }
           className={`inline-flex items-center gap-1 font-medium text-[11px] ${
             isUnavailableOffline
               ? 'text-muted-foreground opacity-60 cursor-not-allowed'

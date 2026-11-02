@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 02 Nov 2026 14:14:57 GMT  
+**Last Generated**: Mon, 02 Nov 2026 16:29:30 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2164 passed  
+**Total Verified Tests**: 2167 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2164 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2167 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.8%** (11610/11993) — *Target: $\ge$ 95%*
-- **Statements**: **95.43%** (12585/13187) — *Target: $\ge$ 95%*
-- **Functions**: **94.37%** (2703/2864) — *Target: $\ge$ 92%*
-- **Branches**: **87.99%** (11515/13086) — *Target: $\ge$ 85%*
+- **Lines**: **96.82%** (11678/12061) — *Target: $\ge$ 95%*
+- **Statements**: **95.44%** (12659/13263) — *Target: $\ge$ 95%*
+- **Functions**: **94.36%** (2715/2877) — *Target: $\ge$ 92%*
+- **Branches**: **87.99%** (11599/13182) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2164 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2167 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -467,7 +467,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 453 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 455 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -549,7 +549,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (22 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -573,6 +573,8 @@
 - ✔ `displays exact bookmarked line coordinate when bookmarkRow is greater than 0`
 - ✔ `disables Resume, Save for offline reading, and Symposium Invite when network is offline and book is not cached, but enables Resume and Remove when cached`
 - ✔ `toggles Favorite and Bookshelf state via header action buttons with full metadata preservation and without triggering card activation`
+- ✔ `applies status-tinted border and focus ring to the status selector while keeping neutral text and 1080p compact footer sizing`
+- ✔ `keeps the status pill single-line and only displays the floating status indicator on tap/hover when the label is truncated`
 
 </details>
 
@@ -1688,7 +1690,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 513 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 514 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2241,7 +2243,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
@@ -2260,6 +2262,7 @@
 - ✔ `tracks 1:1 cursor overlap on mouse across variable-width tabs without jumping ahead of the pointer`
 - ✔ `survives mobile pointercancel during touch gestures and disambiguates hold-to-scrub vs flick-to-scroll on overflowing tab bars`
 - ✔ `scrubs immediately on touch with default holdDelayMs = 0 even on overflowing bars without mounting duplicate document.body scrub indicators`
+- ✔ `calibrates phone (<640px) tactile scrubbing with a 14px activation deadzone, full-tab-width step distance, 0.70x threshold, and 8px directional hysteresis`
 - ✔ `returns inline when totalTabs <= 2 or inactiveLabelClass is explicitly inline`
 - ✔ `returns distance-graded max-width and opacity classes across d = 0, 1, 2, and >= 3 with responsive full-screen overrides`
 

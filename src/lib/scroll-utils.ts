@@ -223,12 +223,14 @@ export interface TabScrubberOptions {
 interface InternalScrubState {
   isScrubbing: boolean;
   isTouch: boolean;
+  isPhoneViewport: boolean;
   isOverflowing: boolean;
   holdActivated: boolean;
   holdTimer: ReturnType<typeof setTimeout> | null;
   hasMoved: boolean;
   startX: number;
   startIndex: number;
+  currentIndex: number;
   lastTabId: string | null;
   suppressClick: boolean;
   initialRects: DOMRect[];
@@ -407,12 +409,14 @@ export function createTabScrubberHandlers<T extends string>(
   const fallbackState: InternalScrubState = {
     isScrubbing: false,
     isTouch: false,
+    isPhoneViewport: false,
     isOverflowing: false,
     holdActivated: true,
     holdTimer: null,
     hasMoved: false,
     startX: 0,
     startIndex: 0,
+    currentIndex: 0,
     lastTabId: null,
     suppressClick: false,
     initialRects: [],
@@ -428,12 +432,14 @@ export function createTabScrubberHandlers<T extends string>(
       st = {
         isScrubbing: false,
         isTouch: false,
+        isPhoneViewport: false,
         isOverflowing: false,
         holdActivated: true,
         holdTimer: null,
         hasMoved: false,
         startX: 0,
         startIndex: 0,
+        currentIndex: 0,
         lastTabId: null,
         suppressClick: false,
         initialRects: [],
@@ -478,11 +484,44 @@ export function createTabScrubberHandlers<T extends string>(
     const buttons = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-id]'));
     if (buttons.length === 0) return null;
 
-    // 1. One-finger relative thumb-arc stepping on tactile screens with measured container width
+    // 1. Tactile touch stepping on measured containers
     if (state.isTouch && state.containerWidth > 0 && buttons.length > 1) {
+      if (state.isPhoneViewport) {
+        // Phone (<640px) calibration: full-tab-width step distance (58px-88px), 0.70x outward threshold, and 8px directional hysteresis
+        const phoneStepPx = Math.max(58, Math.min(88, state.containerWidth / buttons.length));
+        const dx = clientX - state.startX;
+        const rawStep =
+          dx >= 0
+            ? Math.floor((dx + phoneStepPx * 0.3) / phoneStepPx)
+            : -Math.floor((Math.abs(dx) + phoneStepPx * 0.3) / phoneStepPx);
+        const currentOffset = state.currentIndex - state.startIndex;
+        let nextOffset = rawStep;
+
+        if (rawStep !== currentOffset && Math.abs(rawStep) < Math.abs(currentOffset)) {
+          if (currentOffset > 0 && rawStep === currentOffset - 1) {
+            const boundaryPx = (currentOffset - 0.3) * phoneStepPx;
+            if (dx > boundaryPx - 8) {
+              nextOffset = currentOffset;
+            }
+          } else if (currentOffset < 0 && rawStep === currentOffset + 1) {
+            const boundaryPx = (currentOffset + 0.3) * phoneStepPx;
+            if (dx < boundaryPx + 8) {
+              nextOffset = currentOffset;
+            }
+          }
+        }
+
+        const targetIndex = Math.max(0, Math.min(buttons.length - 1, state.startIndex + nextOffset));
+        state.currentIndex = targetIndex;
+        const id = buttons[targetIndex]?.getAttribute('data-tab-id');
+        if (id) return id as T;
+      }
+
+      // Tablet (>=640px) one-finger relative thumb-arc stepping
       const stepPx = Math.max(28, Math.min(42, state.containerWidth / (buttons.length + 0.5)));
       const stepDelta = Math.round((clientX - state.startX) / stepPx);
       const targetIndex = Math.max(0, Math.min(buttons.length - 1, state.startIndex + stepDelta));
+      state.currentIndex = targetIndex;
       const id = buttons[targetIndex]?.getAttribute('data-tab-id');
       if (id) return id as T;
     }
@@ -513,7 +552,10 @@ export function createTabScrubberHandlers<T extends string>(
       return;
     }
 
-    if (!state.hasMoved && Math.abs(clientX - state.startX) < scrubThreshold) {
+    const effectiveThreshold =
+      state.isTouch && state.isPhoneViewport ? Math.max(scrubThreshold, 14) : scrubThreshold;
+
+    if (!state.hasMoved && Math.abs(clientX - state.startX) < effectiveThreshold) {
       return;
     }
     if (state.holdTimer) {
@@ -582,6 +624,8 @@ export function createTabScrubberHandlers<T extends string>(
 
     state.isScrubbing = true;
     state.isTouch = isTouch;
+    state.isPhoneViewport =
+      isTouch && typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 640;
     state.isOverflowing = isOverflowing;
     state.holdActivated = !isOverflowing || holdDelayMs <= 0;
     state.hasMoved = false;
@@ -609,6 +653,7 @@ export function createTabScrubberHandlers<T extends string>(
         );
       }
       state.startIndex = detectedStartIdx >= 0 ? detectedStartIdx : 0;
+      state.currentIndex = state.startIndex;
 
       const effectiveHoldMs =
         isOverflowing && holdDelayMs > 0

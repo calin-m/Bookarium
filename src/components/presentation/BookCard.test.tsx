@@ -614,8 +614,10 @@ describe('BookCard component', () => {
     rerender(<BookCard book={book} isOffline={true} />);
     const activeReadLink = screen.getByRole('link', { name: `Read ${book.title}` });
     expect(activeReadLink).toHaveAttribute('href', `/read/${book.id}`);
+    expect(activeReadLink).toHaveAttribute('title', `Read ${book.title} in Focus Reader`);
     const activeGetBtn = screen.getByRole('button', { name: `Download options for ${book.title}` });
     expect(activeGetBtn).not.toBeDisabled();
+    expect(activeGetBtn).toHaveAttribute('title', 'Download options (EPUB, TXT, Offline)');
     expect(screen.queryByTestId(`book-card-unavailable-offline-${book.id}`)).not.toBeInTheDocument();
 
     networkSpy.mockRestore();

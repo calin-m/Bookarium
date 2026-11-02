@@ -45,6 +45,7 @@ export const CollectionTopPagination: React.FC<CollectionTopPaginationProps> = (
         onClick={handlePrev}
         disabled={currentPage <= 1}
         aria-label="Previous page"
+        title="Previous page"
         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
       >
         <ChevronLeft className="w-3.5 h-3.5" />
@@ -61,6 +62,7 @@ export const CollectionTopPagination: React.FC<CollectionTopPaginationProps> = (
         onClick={handleNext}
         disabled={currentPage >= totalPages}
         aria-label="Next page"
+        title="Next page"
         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
       >
         <ChevronRight className="w-3.5 h-3.5" />

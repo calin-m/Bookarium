@@ -175,6 +175,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 data-testid="open-filters-btn"
                 className="h-full px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center hover:bg-primary-700 transition-colors"
                 aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
+                title={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
                 aria-expanded={isFiltersOpen}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
@@ -206,6 +207,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               data-testid="open-filters-btn"
               className="h-9 px-2.5 sm:px-3 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 rounded-lg border border-border text-foreground hover:border-primary hover:bg-muted hover:text-foreground transition-colors shrink-0"
               aria-label={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
+              title={isFiltersOpen ? 'Close advanced filters' : 'Open advanced filters'}
               aria-expanded={isFiltersOpen}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
@@ -229,6 +231,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                   onClick={chip.onRemove}
                   className="hover:text-destructive rounded-full p-0.5 shrink-0"
                   aria-label={`Remove filter ${chip.label}`}
+                  title={`Remove filter: ${chip.label}`}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -240,6 +243,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 type="button"
                 onClick={onClearAllFilters}
                 className="text-xs font-mono text-primary hover:underline px-1 py-0.5 ml-1 shrink-0"
+                title="Clear all active filters"
               >
                 Clear all
               </button>
@@ -262,6 +266,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                     aria-label={`Show ${size} books per page`}
+                    title={`Show ${size} books per page`}
                     aria-pressed={pageSize === size}
                   >
                     {size}
@@ -351,6 +356,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 onClick={() => onPageChange(page - 1)}
                 className="h-8 px-2 sm:px-2.5 rounded-md text-xs font-mono"
                 aria-label="Previous page"
+                title="Previous page"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Prev</span>
@@ -397,6 +403,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 onFocus={onPrefetchNext}
                 className="h-8 px-2 sm:px-2.5 rounded-md text-xs font-mono"
                 aria-label="Next page"
+                title="Next page"
               >
                 <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-3.5 h-3.5" />

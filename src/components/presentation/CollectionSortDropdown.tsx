@@ -36,6 +36,7 @@ export const CollectionSortDropdown: React.FC<CollectionSortDropdownProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
+        title={ariaLabel}
         data-testid="collection-sort-select"
         className="w-full h-8 pl-8 sm:pl-9 pr-7 sm:pr-8 py-1 text-xs font-sans font-medium rounded-lg bg-card border border-border hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground cursor-pointer transition-all shadow-booksaw appearance-none select-none truncate"
       >

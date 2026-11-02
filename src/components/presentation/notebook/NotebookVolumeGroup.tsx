@@ -40,6 +40,7 @@ export function NotebookVolumeGroup<T>({
             className={`text-lg sm:text-xl font-serif font-bold text-foreground transition-colors ${
               isDisabled ? 'cursor-not-allowed opacity-85' : 'hover:text-primary cursor-pointer'
             }`}
+            title={isDisabled ? undefined : `Open ${group.title} in Focus Reader`}
             onClick={() => {
               if (isDisabled) return;
               onOpenVolume(group.bookId);
