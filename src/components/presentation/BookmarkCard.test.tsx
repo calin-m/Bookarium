@@ -343,7 +343,16 @@ describe('BookmarkCard', () => {
 
     const ribbon = screen.getByTestId('bookmark-card-ribbon');
     expect(ribbon).toBeInTheDocument();
-    expect(ribbon).toHaveClass('w-4', 'h-7', 'text-primary', 'origin-top', 'group-hover:scale-y-110', 'pointer-events-none');
+    expect(ribbon).toHaveClass(
+      'right-[22px]',
+      'sm:right-7',
+      'w-4',
+      'h-7',
+      'text-primary',
+      'origin-top',
+      'group-hover:scale-y-110',
+      'pointer-events-none'
+    );
     expect(ribbon.querySelector('path')).toHaveAttribute('d', 'M0 0 H16 V28 L8 22 L0 28 Z');
 
     // Completed status -> emerald ribbon

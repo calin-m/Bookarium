@@ -23,9 +23,16 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
   const rawPage = parseInt(searchParams.get('page') || '1', 10);
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
 
-  // Limit / batch size (default 32)
-  const rawLimit = parseInt(searchParams.get('limit') || '32', 10);
-  const limit = Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 100 ? rawLimit : 32;
+  const mimeType = (searchParams.get('mime_type') || '').trim() || undefined;
+  const ids = (searchParams.get('ids') || '').trim() || undefined;
+  const idCount = ids ? ids.split(',').filter((part) => part.trim().length > 0).length : 0;
+
+  // Limit / batch size (default 32, or up to 100 when an explicit batch of IDs is requested without limit)
+  const rawLimitParam = searchParams.get('limit');
+  const rawLimit = rawLimitParam !== null ? parseInt(rawLimitParam, 10) : NaN;
+  const defaultLimit = idCount > 32 ? Math.min(100, idCount) : 32;
+  const limit =
+    Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 100 ? rawLimit : defaultLimit;
 
   // Author year bounds
   const rawAuthorYearStart = searchParams.get('author_year_start');
@@ -47,8 +54,6 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
       ? rawSort
       : '';
 
-  const mimeType = (searchParams.get('mime_type') || '').trim() || undefined;
-  const ids = (searchParams.get('ids') || '').trim() || undefined;
   const hasQuotes = searchParams.get('has_quotes') === 'true';
   const includeRestrictedMetadata = searchParams.get('include_restricted_metadata') === 'true';
 

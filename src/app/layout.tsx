@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { Providers } from './providers';
 import { SITE_CONFIG } from '@/config/site-config';
 import { GEO_COOKIE_NAME } from '@/proxy';
@@ -159,9 +159,18 @@ export default async function RootLayout({
     const rawCountry = cookieStore.get(GEO_COOKIE_NAME)?.value;
     if (rawCountry) {
       initialCountry = normalizeCountryCode(rawCountry);
+    } else {
+      const headerStore = await headers();
+      const edgeHeaderCountry =
+        headerStore.get('x-vercel-ip-country') ||
+        headerStore.get('cf-ipcountry') ||
+        headerStore.get('x-bookarium-country');
+      if (edgeHeaderCountry) {
+        initialCountry = normalizeCountryCode(edgeHeaderCountry);
+      }
     }
   } catch {
-    // Gracefully fallback to US when cookies() is called outside request scope (e.g. build/test)
+    // Gracefully fallback to US when cookies()/headers() is called outside request scope (e.g. build/test)
   }
 
   return (

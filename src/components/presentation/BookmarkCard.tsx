@@ -160,7 +160,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
       <svg
         data-testid="bookmark-card-ribbon"
         viewBox="0 0 16 28"
-        className={`absolute top-0 right-7 w-4 h-7 drop-shadow-2xs origin-top transition-transform duration-300 group-hover:scale-y-110 pointer-events-none ${
+        className={`absolute top-0 right-[22px] sm:right-7 w-4 h-7 drop-shadow-2xs origin-top transition-transform duration-300 group-hover:scale-y-110 pointer-events-none ${
           status === 'completed'
             ? 'text-emerald-500'
             : status === 'on_hold'
@@ -226,7 +226,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 pr-8 sm:pr-10">
+            <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 pr-[34px] sm:pr-10">
               <div className="relative flex items-center gap-1.5 flex-wrap min-w-0">
                 <span
                   data-testid="bookmark-card-status-badge"

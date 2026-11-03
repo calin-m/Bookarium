@@ -69,6 +69,14 @@ describe('parseCatalogQuery', () => {
     expect(options.hasQuotes).toBe(true);
   });
 
+  it('automatically expands default limit up to 100 when ids batch exceeds 32 items and limit is omitted', () => {
+    const fortyIds = Array.from({ length: 40 }, (_, idx) => idx + 1).join(',');
+    const req = new NextRequest(`http://localhost:3000/api/books?ids=${fortyIds}`);
+    const options = parseCatalogQuery(req);
+
+    expect(options.limit).toBe(40);
+  });
+
   it('parses comma-separated languages into string array', () => {
     const req = new NextRequest('http://localhost:3000/api/books?languages=en,fr,de');
     const options = parseCatalogQuery(req);

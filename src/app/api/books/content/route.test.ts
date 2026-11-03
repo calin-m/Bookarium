@@ -354,6 +354,51 @@ describe('GET /api/books/content', () => {
     expect(text).toContain('Pride and Prejudice');
   });
 
+  it('follows up to 3 trusted redirect hops and skips mirrors that redirect to untrusted origins', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch')
+      // Mirror 1 redirects to an untrusted origin -> immediately skipped
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 301,
+          headers: new Headers({
+            Location: 'https://evil.example.com/cache/epub/1342/pg1342.txt',
+          }),
+        })
+      )
+      // Mirror 2 chains two trusted hops (302 -> 307 -> 200)
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: new Headers({
+            Location: 'https://gutenberg.pglaf.org/files/1342/1342-0.txt',
+          }),
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 307,
+          headers: new Headers({
+            Location: 'https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt',
+          }),
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(sampleBookText, {
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' }),
+        })
+      );
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+    expect(fetchSpy.mock.calls[3][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+    const text = await res.text();
+    expect(text).toContain('Pride and Prejudice');
+  });
+
   describe('6-Tier Project Gutenberg Mirror & Fallback Cascade', () => {
     it('Tier 1: serves directly from aleph.gutenberg.org when available', async () => {
       const fetchSpy = vi.spyOn(global, 'fetch')

@@ -492,18 +492,24 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
       { col: 'id', scanLimit: 64 },
     ] as const;
 
-    for (const spec of idScanSpecs) {
-      const idSelect = supabase.from('books').select('id');
-      if (idSelect && typeof idSelect.order === 'function') {
-        const ordered = idSelect.order(spec.col, { ascending: false });
-        if (ordered && typeof ordered.limit === 'function') {
-          const { data: idRows } = await ordered.limit(spec.scanLimit);
-          if (Array.isArray(idRows)) {
-            for (const row of idRows) {
-              if (row && typeof row.id === 'number') {
-                candidateIdSet.add(row.id);
-              }
-            }
+    const scanResults = await Promise.all(
+      idScanSpecs.map(async (spec) => {
+        const idSelect = supabase.from('books').select('id');
+        if (idSelect && typeof idSelect.order === 'function') {
+          const ordered = idSelect.order(spec.col, { ascending: false });
+          if (ordered && typeof ordered.limit === 'function') {
+            return ordered.limit(spec.scanLimit);
+          }
+        }
+        return { data: null };
+      })
+    );
+
+    for (const res of scanResults) {
+      if (Array.isArray(res?.data)) {
+        for (const row of res.data) {
+          if (row && typeof row.id === 'number') {
+            candidateIdSet.add(row.id);
           }
         }
       }

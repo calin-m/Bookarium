@@ -627,5 +627,15 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     expect(screen.getByText('3 / 20')).toBeInTheDocument();
     expect(screen.getByText('15%')).toBeInTheDocument();
   });
+
+  it('rejects wildcard handles (%) without querying Supabase and escapes underscores in .ilike()', async () => {
+    mockParams = { username: 'admin%25' };
+    render(<PublicScholarProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
+    });
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
 });
 

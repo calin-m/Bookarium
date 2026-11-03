@@ -1,6 +1,8 @@
 import { cache } from 'react';
 import { headers } from 'next/headers';
 import type { GutendexBook } from '@/types/book.types';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { SITE_CONFIG } from '@/config/site-config';
 import {
   isSupabaseConfigured,
   mapDatabaseBookToGutendexBook,
@@ -9,7 +11,20 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import type { DatabaseBook } from '@/types/database.types';
 
+export const MAX_SERVER_METADATA_CACHE_ENTRIES = 500;
 export const serverMetadataCache = new Map<number, GutendexBook>();
+
+export function setServerMetadataCache(bookId: number, book: GutendexBook): void {
+  if (serverMetadataCache.has(bookId)) {
+    serverMetadataCache.delete(bookId);
+  } else if (serverMetadataCache.size >= MAX_SERVER_METADATA_CACHE_ENTRIES) {
+    const oldestKey = serverMetadataCache.keys().next().value;
+    if (typeof oldestKey === 'number') {
+      serverMetadataCache.delete(oldestKey);
+    }
+  }
+  serverMetadataCache.set(bookId, book);
+}
 
 export function clearServerMetadataCache(): void {
   serverMetadataCache.clear();
@@ -37,8 +52,11 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
   if (!bookId || isNaN(bookId)) return null;
 
   // Tier 1: In-memory LRU server cache
-  if (serverMetadataCache.has(bookId)) {
-    return serverMetadataCache.get(bookId) || null;
+  const cached = serverMetadataCache.get(bookId);
+  if (cached) {
+    serverMetadataCache.delete(bookId);
+    serverMetadataCache.set(bookId, cached);
+    return cached;
   }
 
   // Tier 2: Self-hosted Supabase PostgreSQL catalog (sub-15ms)
@@ -54,7 +72,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
 
       if (!error && data) {
         const book = mapDatabaseBookToGutendexBook(data as unknown as DatabaseBook);
-        serverMetadataCache.set(bookId, book);
+        setServerMetadataCache(bookId, book);
         return book;
       }
     } catch {
@@ -64,7 +82,11 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
 
   // Tier 3: Upstream Gutendex REST fallback
   try {
-    const res = await fetch(`https://gutendex.com/books?ids=${bookId}`, {
+    const res = await fetch(`${API_ENDPOINTS.GUTENDEX_BASE_URL}/?ids=${bookId}&copyright=false`, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': SITE_CONFIG.USER_AGENT,
+      },
       signal: AbortSignal.timeout(1500),
       next: { revalidate: 86400 }, // 24-hour ISR edge cache
     });
@@ -73,7 +95,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
     const data = await res.json();
     const book = data.results?.[0] || null;
     if (book) {
-      serverMetadataCache.set(bookId, book);
+      setServerMetadataCache(bookId, book);
     }
     return book;
   } catch {

@@ -52,20 +52,25 @@ export default function PublicScholarProfilePage() {
     let isCancelled = false;
 
     async function loadScholarProfile() {
-      if (!normalizedUsername) {
+      if (!normalizedUsername || !/^[a-z0-9_]{1,40}$/.test(normalizedUsername)) {
+        setProfile(null);
         setIsLoading(false);
+        if (typeof document !== 'undefined') {
+          document.title = 'Scholar Sanctuary Not Found • Bookarium';
+        }
         return;
       }
 
       setIsLoading(true);
       try {
         const supabase = createClient();
+        const escapedUsername = normalizedUsername.replace(/_/g, '\\_');
 
         // 1. Fetch public scholar profile
         const { data: profileRow, error: _profileErr } = await supabase
           .from('profiles')
           .select('id, display_name, username, bio, is_public, show_streak, show_challenge, show_bookshelves, show_saved_books, show_custom_shelves, created_at')
-          .ilike('username', normalizedUsername)
+          .ilike('username', escapedUsername)
           .eq('is_public', true)
           .maybeSingle();
 
@@ -115,6 +120,21 @@ export default function PublicScholarProfilePage() {
         }
 
         const authUser = useAuthStore.getState().user;
+        const isOwnProfile = authUser?.id === resolvedProfile.id;
+        const showSavedBooks = resolvedProfile.show_saved_books ?? resolvedProfile.show_bookshelves ?? true;
+        const showCustomShelves = resolvedProfile.show_custom_shelves ?? resolvedProfile.show_bookshelves ?? true;
+        const shouldFetchHabits = Boolean(resolvedProfile.show_streak || resolvedProfile.show_challenge);
+        const shouldFetchShelves = Boolean(showSavedBooks || showCustomShelves);
+
+        if (isOwnProfile) {
+          if (shouldFetchHabits || shouldFetchShelves) {
+            useBookshelfStore.getState().syncWithCloud(authUser.id).catch(() => {});
+          }
+          if (shouldFetchHabits) {
+            useReaderStore.getState().syncWithCloud(authUser.id).catch(() => {});
+          }
+        }
+
         const toPinnedBookplateItem = (
           accId: string,
           unlockedAt?: string,
@@ -136,19 +156,36 @@ export default function PublicScholarProfilePage() {
           };
         };
 
-        // 2. Fetch pinned accolades if profile is found
-        const { data: accoladesData } = await supabase
-          .from('user_accolades')
-          .select('accolade_id, unlocked_at, is_pinned')
-          .eq('user_id', resolvedProfile.id)
-          .eq('is_pinned', true);
+        // 2–4. Concurrently fetch pinned accolades, reading habits, and public bookshelves
+        const [accoladesRes, habitsRes, shelvesRes] = await Promise.all([
+          supabase
+            .from('user_accolades')
+            .select('accolade_id, unlocked_at, is_pinned')
+            .eq('user_id', resolvedProfile.id)
+            .eq('is_pinned', true),
+          shouldFetchHabits
+            ? supabase
+                .from('user_reading_habits')
+                .select('*')
+                .eq('user_id', resolvedProfile.id)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+          shouldFetchShelves
+            ? supabase
+                .from('bookshelves')
+                .select('id, name, is_default, is_public')
+                .eq('user_id', resolvedProfile.id)
+                .order('created_at', { ascending: true })
+            : Promise.resolve({ data: null }),
+        ]);
 
+        const accoladesData = accoladesRes?.data;
         if (!isCancelled && accoladesData && accoladesData.length > 0) {
           const pinned = accoladesData
             .map((row) => toPinnedBookplateItem(row.accolade_id, row.unlocked_at))
             .filter((item): item is PinnedBookplateItem => item !== null);
           setPinnedAccolades(pinned.slice(0, 3));
-        } else if (!isCancelled && authUser?.id === resolvedProfile.id) {
+        } else if (!isCancelled && isOwnProfile) {
           // Local offline fallback for authenticated user's own pinned accolades
           const localAccolades = useAccoladesStore.getState();
           const pinned = localAccolades.pinnedAccoladeIds
@@ -160,49 +197,34 @@ export default function PublicScholarProfilePage() {
           setPinnedAccolades(pinned.slice(0, 3));
         }
 
-        // 3. Fetch reading habits if enabled by privacy settings
-        if (resolvedProfile.show_streak || resolvedProfile.show_challenge) {
-          if (authUser?.id === resolvedProfile.id) {
-            useBookshelfStore.getState().syncWithCloud(authUser.id).catch(() => {});
-            useReaderStore.getState().syncWithCloud(authUser.id).catch(() => {});
-          }
-
-          const { data: habitRow } = await supabase
-            .from('user_reading_habits')
-            .select('*')
-            .eq('user_id', resolvedProfile.id)
-            .maybeSingle();
-
-          if (!isCancelled) {
-            const isOwnProfile = authUser?.id === resolvedProfile.id;
-            const localCompleted = isOwnProfile
-              ? calculateCompletedBooksCount(
-                  useBookshelfStore.getState().bookStatuses,
-                  useReaderStore.getState().readingProgress
-                )
-              : undefined;
-            const localHabits = useHabitsStore.getState();
-            const typedHabitRow = (habitRow as HabitTelemetryRow | null) ?? null;
-
-            setHabitRowState(typedHabitRow);
-            setHabits(
-              resolvePublicReadingHabits(
-                typedHabitRow,
-                isOwnProfile
-                  ? {
-                      activeDates: localHabits.activeDates,
-                      annualGoal: localHabits.annualGoal,
-                      localCompletedBooksCount: localCompleted,
-                    }
-                  : undefined
+        // 3. Process reading habits if enabled by privacy settings
+        if (shouldFetchHabits && !isCancelled) {
+          const habitRow = habitsRes?.data;
+          const localCompleted = isOwnProfile
+            ? calculateCompletedBooksCount(
+                useBookshelfStore.getState().bookStatuses,
+                useReaderStore.getState().readingProgress
               )
-            );
-          }
+            : undefined;
+          const localHabits = useHabitsStore.getState();
+          const typedHabitRow = (habitRow as HabitTelemetryRow | null) ?? null;
+
+          setHabitRowState(typedHabitRow);
+          setHabits(
+            resolvePublicReadingHabits(
+              typedHabitRow,
+              isOwnProfile
+                ? {
+                    activeDates: localHabits.activeDates,
+                    annualGoal: localHabits.annualGoal,
+                    localCompletedBooksCount: localCompleted,
+                  }
+                : undefined
+            )
+          );
         }
 
-        // 4. Fetch public bookshelves if enabled
-        const showSavedBooks = resolvedProfile.show_saved_books ?? resolvedProfile.show_bookshelves ?? true;
-        const showCustomShelves = resolvedProfile.show_custom_shelves ?? resolvedProfile.show_bookshelves ?? true;
+        // 4. Process public bookshelves if enabled
         const isShelfEligible = (s: { is_default: boolean; is_public?: boolean | null }) =>
           (s.is_default ? showSavedBooks : showCustomShelves) && s.is_public !== false;
         const normalizeItemAuthors = (raw: unknown): string[] =>
@@ -214,17 +236,8 @@ export default function PublicScholarProfilePage() {
                 .filter(Boolean)
             : [];
 
-        if (showSavedBooks || showCustomShelves) {
-          if (authUser?.id === resolvedProfile.id) {
-            useBookshelfStore.getState().syncWithCloud(authUser.id).catch(() => {});
-          }
-
-          const { data: shelvesData } = await supabase
-            .from('bookshelves')
-            .select('id, name, is_default, is_public')
-            .eq('user_id', resolvedProfile.id)
-            .order('created_at', { ascending: true });
-
+        if (shouldFetchShelves) {
+          const shelvesData = shelvesRes?.data;
           let parsedShelves: PublicBookshelfWithItems[] = [];
 
           if (shelvesData && shelvesData.length > 0) {
@@ -256,7 +269,7 @@ export default function PublicScholarProfilePage() {
           }
 
           // Fallback if viewing own profile and remote shelves are empty or still syncing
-          if (parsedShelves.length === 0 && authUser?.id === resolvedProfile.id) {
+          if (parsedShelves.length === 0 && isOwnProfile) {
             const localStore = useBookshelfStore.getState();
             const filteredLocalShelves = localStore.cloudBookshelves.filter(isShelfEligible);
 
@@ -287,7 +300,9 @@ export default function PublicScholarProfilePage() {
             }
           }
 
-          setBookshelves(parsedShelves);
+          if (!isCancelled) {
+            setBookshelves(parsedShelves);
+          }
         }
       } catch {
         if (!isCancelled) {

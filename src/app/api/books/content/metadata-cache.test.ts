@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
+  MAX_METADATA_CACHE_ENTRIES,
   clearBookMetadataCache,
   clearBookContentCache,
   resolveBookMetadata,
@@ -262,5 +263,36 @@ describe('metadata-cache', () => {
 
     clearBookContentCache();
     expect(getCachedBookContent(1342)).toBeUndefined();
+  });
+
+  it('caps bookMetadataCache at MAX_METADATA_CACHE_ENTRIES and evicts expired entries on lookup', async () => {
+    const expiresAt = Date.now() + 60_000;
+    for (let id = 1; id <= MAX_METADATA_CACHE_ENTRIES + 2; id++) {
+      setBookMetadataCache(id, {
+        book: { id, title: `Volume ${id}`, authors: [] },
+        expiresAt,
+      });
+    }
+    expect(getBookMetadataCache(1)).toBeUndefined();
+    expect(getBookMetadataCache(2)).toBeUndefined();
+    expect(getBookMetadataCache(3)?.book.title).toBe('Volume 3');
+
+    // Refreshing existing key preserves entry
+    setBookMetadataCache(3, {
+      book: { id: 3, title: 'Volume 3 Refreshed', authors: [] },
+      expiresAt,
+    });
+    expect(getBookMetadataCache(3)?.book.title).toBe('Volume 3 Refreshed');
+
+    // Expired entry is evicted on resolveBookMetadata and re-fetched from upstream
+    setBookMetadataCache(7777, {
+      book: { id: 7777, title: 'Stale Volume', authors: [] },
+      expiresAt: Date.now() - 1000,
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 7777, title: 'Fresh Volume', authors: [] }), { status: 200 })
+    );
+    const resolved = await resolveBookMetadata(7777);
+    expect(resolved?.title).toBe('Fresh Volume');
   });
 });

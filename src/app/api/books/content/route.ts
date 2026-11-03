@@ -184,7 +184,8 @@ export async function GET(request: NextRequest) {
         const timeoutId = setTimeout(() => controller.abort(), 12000);
 
         try {
-          let response = await fetch(targetUrl, {
+          let currentUrl = targetUrl;
+          let response = await fetch(currentUrl, {
             signal: controller.signal,
             redirect: 'manual',
             headers: {
@@ -195,15 +196,22 @@ export async function GET(request: NextRequest) {
             },
           });
 
-          // Follow redirects only if the target location is verified safe (anti-SSRF)
-          if (
-            (response.status === 301 || response.status === 302) &&
-            response.headers?.get('location')
+          // Follow up to 3 redirect hops only if each target location is verified safe (anti-SSRF)
+          let blockedRedirect = false;
+          for (
+            let hop = 0;
+            hop < 3 &&
+            (response.status === 301 ||
+              response.status === 302 ||
+              response.status === 303 ||
+              response.status === 307 ||
+              response.status === 308);
+            hop++
           ) {
-            const redirectLocation = response.headers.get('location')!;
-            if (isSafeUpstreamUrl(redirectLocation, targetUrl)) {
-              const resolvedRedirectUrl = new URL(redirectLocation, targetUrl).toString();
-              response = await fetch(resolvedRedirectUrl, {
+            const redirectLocation = response.headers?.get('location');
+            if (redirectLocation && isSafeUpstreamUrl(redirectLocation, currentUrl)) {
+              currentUrl = new URL(redirectLocation, currentUrl).toString();
+              response = await fetch(currentUrl, {
                 signal: controller.signal,
                 redirect: 'manual',
                 headers: {
@@ -213,10 +221,17 @@ export async function GET(request: NextRequest) {
                   Connection: 'keep-alive',
                 },
               });
+            } else {
+              blockedRedirect = true;
+              break;
             }
           }
 
           clearTimeout(timeoutId);
+
+          if (blockedRedirect) {
+            continue;
+          }
 
           if (response.ok) {
             const contentLength = response.headers?.get('content-length');

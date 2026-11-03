@@ -112,8 +112,8 @@ const ROADMAP_MILESTONES = [
         check: () => fileExists('src/stores/useAnnotationStore.ts') || fileExists('src/components/reader/ReaderAnnotationsDrawer.tsx'),
       },
       {
-        title: 'Literary Commonplace Notebook & Reading Journal',
-        description: 'Dedicated commonplace journal (`/?view=notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, tablet-optimized icon mode toggles, academic citation generation, and deletion protection.',
+        title: 'Literary Commonplace Notebook & Reading Journal (`/notebook`)',
+        description: 'Dedicated commonplace journal (`/notebook`) aggregating all preserved quotes and marginalia, searchable across text, notes, and authors, with By-Book vs Chronological grouping, tablet-optimized icon mode toggles, academic citation generation, and deletion protection.',
         check: () => fileExists('src/components/presentation/NotebookView.tsx'),
       },
       {
@@ -131,7 +131,7 @@ const ROADMAP_MILESTONES = [
     description: 'Rich reader curation, Goodreads-style reading statuses, and daily habit tracking analytics.',
     features: [
       {
-        title: 'Bookmarks & Continue Reading Ledger (`/?view=bookmarks`)',
+        title: 'Bookmarks & Continue Reading Ledger (`/bookmarks`)',
         description: 'Dedicated reading ledger displaying all books in progress with tactile bookmark cards, top-anchored silk ribbon markers (`origin-top scale-y-110`), card-tap focus/activation across all viewports with desktop cursor-exit focus release (`onDeactivate`), last-read passage snippets, completion percentages, multi-attribute sorting and filtering (Recent, Progress, Title, Author, Downloaded), status tabs (In Progress, Completed, On Hold), and dedicated 1-click `Resume` / `Read Again` CTA navigation.',
         check: () => fileExists('src/components/presentation/BookmarksView.tsx') || fileContains('src/stores/useReaderStore.ts', 'lastPassageSnippet'),
       },

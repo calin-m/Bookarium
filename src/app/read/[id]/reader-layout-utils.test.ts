@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { headers } from 'next/headers';
 import {
+  MAX_SERVER_METADATA_CACHE_ENTRIES,
   serverMetadataCache,
+  setServerMetadataCache,
   clearServerMetadataCache,
   isClientSideNavigation,
   fetchBookData,
@@ -20,9 +22,19 @@ describe('reader-layout-utils', () => {
   });
 
   describe('clearServerMetadataCache', () => {
-    it('clears all cached items from serverMetadataCache', () => {
-      serverMetadataCache.set(123, { id: 123, title: 'Sample Book' } as GutendexBook);
-      expect(serverMetadataCache.size).toBe(1);
+    it('clears all cached items from serverMetadataCache and enforces LRU eviction at MAX_SERVER_METADATA_CACHE_ENTRIES', () => {
+      for (let i = 1; i <= MAX_SERVER_METADATA_CACHE_ENTRIES + 2; i++) {
+        setServerMetadataCache(i, { id: i, title: `Book ${i}` } as GutendexBook);
+      }
+      expect(serverMetadataCache.size).toBe(MAX_SERVER_METADATA_CACHE_ENTRIES);
+      expect(serverMetadataCache.has(1)).toBe(false);
+      expect(serverMetadataCache.has(2)).toBe(false);
+      expect(serverMetadataCache.has(3)).toBe(true);
+
+      // Updating an existing key refreshes its LRU position without growing size
+      setServerMetadataCache(3, { id: 3, title: 'Book 3 Updated' } as GutendexBook);
+      expect(serverMetadataCache.get(3)?.title).toBe('Book 3 Updated');
+
       clearServerMetadataCache();
       expect(serverMetadataCache.size).toBe(0);
     });

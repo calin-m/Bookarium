@@ -926,7 +926,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 
@@ -1077,7 +1077,7 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     SUPABASE_SERVICE_ROLE_KEY: {
       scope: 'CLI & CI Secret Only (`Client-Forbidden` via Pass 0.5 & AST Rule)',
       fallback: 'CLI ingestion scripts fall back to `NEXT_PUBLIC_SUPABASE_ANON_KEY` or emit offline SQL seed artifacts (`supabase/seed_*.sql`).',
-      purpose: 'Privileged service-role credential used exclusively by offline Node.js CLI pipelines (`catalog:sync`, `translations:sync`, `catalog:ingest`) for bulk upserts.',
+      purpose: 'Privileged service-role credential used exclusively by offline Node.js CLI pipelines (`catalog:sync`, `translations:sync`, `quotes:sync`, `catalog:ingest`) for bulk upserts.',
     },
     GUTENDEX_API_URL: {
       scope: 'Edge / Server Route & Config Override',

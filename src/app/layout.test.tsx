@@ -4,10 +4,14 @@ import React from 'react';
 import RootLayout, { metadata, viewport } from './layout';
 
 const mockGetCookie = vi.fn();
+const mockGetHeader = vi.fn();
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     get: (name: string) => mockGetCookie(name),
+  })),
+  headers: vi.fn(async () => ({
+    get: (name: string) => mockGetHeader(name),
   })),
 }));
 
@@ -119,6 +123,32 @@ describe('RootLayout', () => {
       render(layoutJsx);
       expect(screen.getByTestId('fallback-child')).toBeInTheDocument();
     } finally {
+      console.error = originalError;
+    }
+  });
+
+  it('should fall back to x-vercel-ip-country header on first visit when geo cookie is absent', async () => {
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
+        return;
+      }
+      originalError(...args);
+    };
+
+    try {
+      mockGetCookie.mockReturnValue(undefined);
+      mockGetHeader.mockImplementation((name: string) =>
+        name === 'x-vercel-ip-country' ? 'DE' : null
+      );
+      const layoutJsx = await RootLayout({
+        children: <div data-testid="header-geo-child">Header Geo</div>,
+      });
+      render(layoutJsx);
+      expect(screen.getByTestId('header-geo-child')).toBeInTheDocument();
+      expect(mockGetHeader).toHaveBeenCalledWith('x-vercel-ip-country');
+    } finally {
+      mockGetHeader.mockReset();
       console.error = originalError;
     }
   });

@@ -19,6 +19,7 @@ export interface CachedBookContentEntry {
 const bookMetadataCache = new Map<number, CachedMetadata>();
 const bookContentLruCache = new Map<number, CachedBookContentEntry>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const MAX_METADATA_CACHE_ENTRIES = 1000;
 const MAX_CACHED_BOOKS = 20;
 const MAX_CACHEABLE_BOOK_CHARS = 1_800_000;
 
@@ -102,6 +103,14 @@ export function clearBookMetadataCache(): void {
 }
 
 export function setBookMetadataCache(bookId: number, metadata: CachedMetadata): void {
+  if (bookMetadataCache.has(bookId)) {
+    bookMetadataCache.delete(bookId);
+  } else if (bookMetadataCache.size >= MAX_METADATA_CACHE_ENTRIES) {
+    const oldestKey = bookMetadataCache.keys().next().value;
+    if (typeof oldestKey === 'number') {
+      bookMetadataCache.delete(oldestKey);
+    }
+  }
   bookMetadataCache.set(bookId, metadata);
 }
 
@@ -118,8 +127,13 @@ export function getBookMetadataCache(bookId: number): CachedMetadata | undefined
 export async function resolveBookMetadata(bookId: number): Promise<GenericBookInput | null> {
   const now = Date.now();
   const cached = bookMetadataCache.get(bookId);
-  if (cached && cached.expiresAt > now) {
-    return cached.book;
+  if (cached) {
+    if (cached.expiresAt > now) {
+      bookMetadataCache.delete(bookId);
+      bookMetadataCache.set(bookId, cached);
+      return cached.book;
+    }
+    bookMetadataCache.delete(bookId);
   }
 
   // Tier 2: Check self-hosted Supabase PostgreSQL catalog
@@ -141,7 +155,7 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
           translators: Array.isArray(data.translators) ? (data.translators as unknown as GenericBookInput['translators']) : [],
           copyright: data.copyright,
         });
-        bookMetadataCache.set(bookId, {
+        setBookMetadataCache(bookId, {
           book,
           expiresAt: now + CACHE_TTL_MS,
         });
@@ -174,7 +188,7 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
     const data = await res.json();
     if (data && typeof data === 'object') {
       const enriched = enrichWithFeaturedLifespans(bookId, data as GenericBookInput);
-      bookMetadataCache.set(bookId, {
+      setBookMetadataCache(bookId, {
         book: enriched,
         expiresAt: now + CACHE_TTL_MS,
       });
