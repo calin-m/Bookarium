@@ -342,12 +342,35 @@ export async function fetchFeaturedQuotesMap(
     new Set(bookIds.filter((id) => Number.isInteger(id) && id > 0))
   ).sort((a, b) => a - b);
 
-  if (uniqueIds.length === 0 || !isSupabaseConfigured()) {
+  if (uniqueIds.length === 0) {
     return {};
   }
 
+  const quotesMap: Record<number, BookPassage[]> = {};
+  const cachedPool = readCachedQuoteEnrichedBooks(600)?.books;
+  if (Array.isArray(cachedPool) && cachedPool.length > 0) {
+    const cachedById = new Map<number, BookPassage[]>();
+    for (const book of cachedPool) {
+      const validPassages = filterValidBookPassages(book.quotes);
+      if (validPassages.length > 0) {
+        cachedById.set(book.id, validPassages);
+      }
+    }
+    for (const id of uniqueIds) {
+      const cachedPassages = cachedById.get(id);
+      if (cachedPassages) {
+        quotesMap[id] = cachedPassages;
+      }
+    }
+  }
+
+  const remainingIds = uniqueIds.filter((id) => !quotesMap[id]);
+  if (remainingIds.length === 0 || !isSupabaseConfigured()) {
+    return quotesMap;
+  }
+
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return {};
+    return quotesMap;
   }
 
   try {
@@ -355,13 +378,12 @@ export async function fetchFeaturedQuotesMap(
     const { data, error } = await supabase
       .from('books')
       .select('id, quotes')
-      .in('id', uniqueIds);
+      .in('id', remainingIds);
 
     if (error || !Array.isArray(data)) {
-      return {};
+      return quotesMap;
     }
 
-    const quotesMap: Record<number, BookPassage[]> = {};
     for (const row of data) {
       if (row && typeof row.id === 'number') {
         const validPassages = filterValidBookPassages(row.quotes);
@@ -372,7 +394,7 @@ export async function fetchFeaturedQuotesMap(
     }
     return quotesMap;
   } catch {
-    return {};
+    return quotesMap;
   }
 }
 

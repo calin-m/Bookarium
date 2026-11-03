@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
+import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 import { sampleBookText } from '@/mocks/handlers';
@@ -11,6 +12,8 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     bookContentRateLimiter.reset();
+    clearBookMetadataCache();
+    clearBookContentCache();
   });
 
   afterEach(() => {

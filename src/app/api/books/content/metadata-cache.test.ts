@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   clearBookMetadataCache,
+  clearBookContentCache,
   resolveBookMetadata,
   setBookMetadataCache,
   getBookMetadataCache,
+  getCachedBookContent,
+  setCachedBookContent,
 } from './metadata-cache';
 
 describe('metadata-cache', () => {
@@ -244,5 +247,20 @@ describe('metadata-cache', () => {
     expect(fallback?.authors).toEqual([
       { name: 'Jane Austen', birth_year: 1775, death_year: 1817 },
     ]);
+  });
+
+  it('stores, refreshes, expires, and caps bookContentLruCache entries', () => {
+    setCachedBookContent(1342, '', 'gutenberg-mirror');
+    expect(getCachedBookContent(1342)).toBeUndefined();
+
+    setCachedBookContent(1342, 'A'.repeat(1_850_000), 'gutenberg-mirror');
+    expect(getCachedBookContent(1342)).toBeUndefined();
+
+    setCachedBookContent(1342, 'Pride and Prejudice text', 'supabase');
+    setCachedBookContent(1342, 'Pride and Prejudice updated text', 'gutenberg-mirror');
+    expect(getCachedBookContent(1342)?.text).toBe('Pride and Prejudice updated text');
+
+    clearBookContentCache();
+    expect(getCachedBookContent(1342)).toBeUndefined();
   });
 });

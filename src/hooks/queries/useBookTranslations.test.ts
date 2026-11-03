@@ -402,6 +402,8 @@ describe('useBookTranslations and helpers', () => {
       expect(result.current.translations[0].isCurrent).toBe(true);
       expect(result.current.translations[1].languageCode).toBe('fr');
       expect(result.current.translations[2].languageCode).toBe('de');
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/books/translations?id=1342');
     });
 
     it('covers edge-case helper branches, DB missing current volume injection, and translator/duplicate language prioritization', async () => {

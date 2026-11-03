@@ -28,7 +28,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock useBooks and useBookContent
-const mockUseBooks = vi.fn(() => ({
+const mockUseBooks = vi.fn((..._args: unknown[]) => ({
   data: {
     count: 1,
     results: [mockBooks[0]],
@@ -38,7 +38,7 @@ const mockUseBooks = vi.fn(() => ({
 }));
 
 vi.mock('@/hooks/queries/useBooks', () => ({
-  useBooks: () => mockUseBooks(),
+  useBooks: (...args: unknown[]) => mockUseBooks(...args),
 }));
 
 const chapterSampleText = `*** START OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***
@@ -1163,6 +1163,33 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     act(() => {
       usePreferencesStore.getState().resetAllPreferencesStore();
     });
+  });
+
+  it('disables redundant /api/books?ids=<id> query when currentBook in useReaderStore already has complete metadata and verified author lifespans', () => {
+    useReaderStore.setState({
+      currentBook: mockBooks[0],
+    });
+    mockUseBooks.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+    } as unknown as ReturnType<typeof mockUseBooks>);
+
+    const { unmount } = render(<BookReaderPage />);
+
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      expect.objectContaining({ ids: '1342' }),
+      expect.objectContaining({ enabled: false })
+    );
+    expect(screen.getAllByText(/Pride and Prejudice/i).length).toBeGreaterThanOrEqual(1);
+    unmount();
+
+    mockUseBooks.mockClear();
+    useReaderStore.setState({ currentBook: null });
+    render(<BookReaderPage />);
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      expect.objectContaining({ ids: '1342' }),
+      expect.objectContaining({ enabled: true })
+    );
   });
 });
 

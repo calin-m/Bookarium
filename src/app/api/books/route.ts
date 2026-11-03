@@ -8,8 +8,7 @@ import { supabaseCatalogProvider } from '@/lib/catalog/supabase-provider';
 import { CatalogProviderError } from '@/types/catalog.types';
 import type { CatalogQueryResult } from '@/types/catalog.types';
 
-// Ensure Vercel runs this as a dynamic serverless function with extended timeout
-export const dynamic = 'force-dynamic';
+// Ensure Vercel runs this serverless function with extended timeout
 export const maxDuration = 30; // seconds
 
 export async function GET(request: NextRequest) {

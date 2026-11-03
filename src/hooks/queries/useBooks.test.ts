@@ -446,7 +446,32 @@ describe('useBooks hook', () => {
     const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
 
     // 1. Empty IDs or unconfigured Supabase returns {}
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
     expect(await fetchFeaturedQuotesMap([])).toEqual({});
+
+    // 1b. Resolves directly from local bookarium-quote-enriched-books-v1 cache when present
+    window.localStorage.setItem(
+      'bookarium-quote-enriched-books-v1',
+      JSON.stringify({
+        updatedAt: Date.now(),
+        books: [
+          {
+            id: 1342,
+            title: 'Pride and Prejudice',
+            quotes: [
+              {
+                chapterLabel: 'Cached Chapter I',
+                openingLine: 'Cached opening line',
+                quoteExcerpt: 'Cached quote excerpt',
+              },
+            ],
+          },
+        ],
+      })
+    );
+    const cachedMap = await fetchFeaturedQuotesMap([1342]);
+    expect(cachedMap[1342]?.[0].chapterLabel).toBe('Cached Chapter I');
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
 
     const configSpy = vi
       .spyOn(supabaseProviderModule, 'isSupabaseConfigured')

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 03 Nov 2026 10:34:17 GMT  
+**Last Generated**: Tue, 03 Nov 2026 11:53:34 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2180 passed  
+**Total Verified Tests**: 2184 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2180 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2184 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.78%** (11803/12195) — *Target: $\ge$ 95%*
-- **Statements**: **95.41%** (12791/13405) — *Target: $\ge$ 95%*
-- **Functions**: **94.47%** (2736/2896) — *Target: $\ge$ 92%*
-- **Branches**: **87.93%** (11762/13376) — *Target: $\ge$ 85%*
+- **Lines**: **96.73%** (11886/12287) — *Target: $\ge$ 95%*
+- **Statements**: **95.34%** (12874/13503) — *Target: $\ge$ 95%*
+- **Functions**: **94.56%** (2749/2907) — *Target: $\ge$ 92%*
+- **Branches**: **87.99%** (11864/13483) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2180 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2184 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 269 Tests)
+### 🚀 App Routes & Pages (27 Suites · 272 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -73,7 +73,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `stores and retrieves cached metadata correctly`
 - ✔ `returns cached metadata if not expired without network fetch`
@@ -84,6 +84,7 @@
 - ✔ `returns null when upstream returns error status`
 - ✔ `returns null when network throws an error`
 - ✔ `enriches missing lifespans and falls back to FEATURED_HERO_BOOKS for curated classics`
+- ✔ `stores, refreshes, expires, and caps bookContentLruCache entries`
 
 </details>
 
@@ -107,7 +108,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (24 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -133,6 +134,7 @@
 - ✔ `Tier 6: falls back to legacy www.gutenberg.org/files/{id}/{id}.txt when all 5 prior tiers fail`
 - ✔ `resolves relative Location redirect paths against the active mirror origin`
 - ✔ `coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch`
+- ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
 
 </details>
 
@@ -370,7 +372,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (41 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (42 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
@@ -413,6 +415,7 @@
 - ✔ `handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer`
 - ✔ `resets residual outer window scrollY to 0 on mount and anchors the viewport container`
 - ✔ `persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls`
+- ✔ `disables redundant /api/books?ids=<id> query when currentBook in useReaderStore already has complete metadata and verified author lifespans`
 
 </details>
 
@@ -2477,7 +2480,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 275 Tests)
+### 🔄 Hooks & React Query (28 Suites · 276 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2712,13 +2715,14 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useBookPassageShuffle.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/useBookPassageShuffle.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes with curated fallback passages for known books`
 - ✔ `cycles to the next passage on shuffleNextPassage`
 - ✔ `resets passages to index 0 on resetPassages`
 - ✔ `correctly sets isCuratedFeatured flag and prioritizes dynamic passages for non-featured books`
 - ✔ `automatically resets isTurningLeaf after 450ms safety timeout and normalizes string authors / id=0 fallback`
+- ✔ `persists dynamically extracted passages in 30-day localStorage LRU cache and serves them on subsequent opens without refetching`
 
 </details>
 

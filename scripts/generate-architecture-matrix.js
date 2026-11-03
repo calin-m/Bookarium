@@ -1231,7 +1231,7 @@ function generateMarkdown() {
     '            API-->>Hook: HTTP 451 Unavailable For Legal Reasons',
     '            Hook-->>Reader: Render ReaderErrorView with Declarative CopyrightNoticeBanner',
     '        else Public Domain Verified',
-    '            API->>Upstream: Fetch Text (Tier 1: Supabase plain_text -> Tier 2: aleph -> pglaf -> readingroo.ms -> www)',
+    '            API->>Upstream: Fetch Text (20-Book Server LRU -> Tier 1: Supabase plain_text -> Tier 2: Coalesced 4-Mirror Waterfall)',
     '            Upstream-->>API: Plain-Text Stream (UTF-8)',
     '            API-->>Hook: 200 OK (s-maxage=86400, Vary: x-vercel-ip-country)',
     '            Hook->>IDB: Auto-Cache Volume & Verified Author Lifespans in IndexedDB',
@@ -1287,7 +1287,7 @@ function generateMarkdown() {
       cacheDesc = '`s-maxage=3600, stale-while-revalidate=86400` • Sliding-Window Rate Limit (30 req/min)';
       upstream = 'Supabase `public.books` -> `https://gutendex.com/books/`';
     } else if (r.path === '/api/books/content') {
-      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • In-Flight Mirror Coalescing (`inFlightMirrorFetches`), Anti-SSRF Allowlist & Jurisdictional Gate';
+      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • 20-Book In-Memory LRU (`bookContentLruCache`), In-Flight Mirror Coalescing (`inFlightMirrorFetches`), Anti-SSRF Allowlist & Jurisdictional Gate';
       upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN';
     } else if (r.path === '/api/books/translations') {
       cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Sliding-Window Rate Limit & Jurisdictional Filter';
@@ -1309,7 +1309,7 @@ function generateMarkdown() {
     'src/app/global-error.tsx': 'Root document-level React Error Boundary catching fatal top-level layout exceptions.',
     'src/app/not-found.tsx': 'Editorial 404 Not Found boundary with direct navigation back to the public domain catalog.',
     'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`).',
-    'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
+    'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with warm `currentBook` metadata reuse (`hasCompleteCurrentBook`), continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
     'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
     'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and Preferences.',
     'src/app/u/[username]/page.tsx': 'Public Scholar Sanctuary displaying pinned Ex-Libris bookplates, public profile stats, and 1-on-1 Literary Fellowship invitation actions.',
@@ -1344,9 +1344,9 @@ function generateMarkdown() {
   );
 
   const hookRoles = {
-    useBooks: 'TanStack Query fetching catalog volumes (`useBooks` with client-side round-trip `performance.now()` latency telemetry), featured book quotes (`useFeaturedQuotes`), and the shared `600`-volume database-first quote pool (`useQuoteEnrichedBooks` with 1-hour `!isCacheFresh` gating and zero-swap `ssrMatch` hydration) powering Hero (Full Pool), Classic of the Day (Classics Filter), and Words That Shaped Humanity (3-Distinct-Book Fisher-Yates Rotation) with sub-pagination and client failover.',
+    useBooks: 'TanStack Query fetching catalog volumes (`useBooks` with client-side round-trip `performance.now()` latency telemetry), featured book quotes (`useFeaturedQuotes` with local `readCachedQuoteEnrichedBooks` cache-first lookup), and the shared `600`-volume database-first quote pool (`useQuoteEnrichedBooks` with 1-hour `!isCacheFresh` gating and zero-swap `ssrMatch` hydration) powering Hero (Full Pool), Classic of the Day (Classics Filter), and Words That Shaped Humanity (3-Distinct-Book Fisher-Yates Rotation) with sub-pagination and client failover.',
     useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with canonical `/api/books/content?id=<bookId>` cache keys, IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
-    useBookTranslations: 'TanStack Query aggregating international language translations and editions (gated when offline).',
+    useBookTranslations: 'Sequential Two-Tier TanStack Query resolving international language translations and editions (`Tier 1` `/api/books/translations?id=<id>` relational lookup -> `Tier 2` `/api/books?search=...` AST fallback gated on `!isDbLoading && !hasDbEditions` and `!isOffline`).',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
     useReaderSession: 'Reading coordinates restoration, cross-page `bookmarkText` reflow self-healing on font-size re-pagination, resume ribbons, and cloud session synchronization.',
     useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment, placeholder-author detection (`hasAuthenticAuthor`), non-regressive author merge guardrails (`setOrMergeBook`), `readingPositions` author healing, query hydration, multi-attribute sorting, and offline volume filtering (`useOfflineBooks`).',
@@ -1358,7 +1358,7 @@ function generateMarkdown() {
     usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
     useOfflineBooks: 'IndexedDB cache enumeration (`offlineIds` & `offlineBooks`), reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading state propagation (`OFFLINE_DOWNLOADING_EVENT`), author lifespan normalization (`normalizeOfflineAuthors`), and individual-only offline book download/deletion management.',
     useCursorTooltip: 'Adaptive cursor tooltip hook (`300ms` default delay, `0ms` action buttons, viewport boundary clamping) powering `CursorTooltip` and `GlobalTitleTooltip`.',
-    useBookPassageShuffle: 'Autonomous literary quote selection and multi-chapter shuffle engine.',
+    useBookPassageShuffle: 'Autonomous 3-tier literary quote selection (`book.quotes` -> 30-day / 100-entry `localStorage` LRU cache `bookarium-extracted-passages-v1` / dynamic passages -> curated fallback) and multi-chapter shuffle engine (`readCachedBookPassages`, `writeCachedBookPassages`, `clearCachedBookPassages`).',
     useHasMounted: 'SSR hydration barrier hook preventing client-server markup mismatches.',
     useReadingTimer: 'Reader session telemetry tracking visual reading with 2-minute idle guard and TTS narration audio bypass.',
     useCollectionAutoHeal: 'Unified multi-collection auto-healing pipeline scanning and rehydrating missing author lifespans across Favorites, Bookshelves, Reading Positions, Annotations (Personal & Fellow), and Active Symposiums.',
@@ -1465,7 +1465,7 @@ function generateMarkdown() {
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, and format badges.',
     'metadata-cache':
-      '3-tier in-memory LRU author lifespan cache (24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback.',
+      '3-tier in-memory LRU author lifespan cache (24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback, paired with a 20-book plain-text LRU cache (`bookContentLruCache`, `getCachedBookContent`, `setCachedBookContent`, `clearBookContentCache`, 24h TTL, <= 1.8M chars) shielding Project Gutenberg mirrors across `Vary: x-vercel-ip-country` edge misses.',
     'url-validator':
       'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS, relative Location redirect resolution, and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`).',
     'reader-layout-utils':
@@ -2024,7 +2024,7 @@ function generateMarkdown() {
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Edge SWR Caching & Geographic Vary Partitioning**: Catalog queries are cached with `s-maxage=3600, stale-while-revalidate=86400` (`/api/books`) and content/translation streams with `s-maxage=86400, stale-while-revalidate=604800`, partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
     '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
-    '6. **Multi-Tier Text Streaming & Multi-Mirror Failover**: Plain text is served on-demand from Tier 1 (self-hosted Supabase plain-text cache if present) or Tier 2 (mirror-first fallback across `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
+    '6. **Multi-Tier Text Streaming, In-Memory LRU & Multi-Mirror Failover**: Plain text is served on-demand from Tier 0 (`bookContentLruCache`: 24h TTL / 20-book in-memory LRU cache preventing cross-jurisdiction upstream re-fetches), Tier 1 (self-hosted Supabase plain-text cache if present), or Tier 2 (mirror-first fallback across `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org` with in-flight promise coalescing `inFlightMirrorFetches`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
     '8. **Autonomous Weekly Catalog Synchronization**: Project Gutenberg official catalog dump (`pg_catalog.csv.gz`, 78,000+ public domain titles) is streamed and decompressed on-the-fly via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, updating Supabase with zero manual SQL intervention and minimal storage footprint (~105 MB).',
     '',
@@ -2151,7 +2151,7 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]',
-    '        Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• In-Memory 24h Metadata LRU (1,000 entries) & Sliding-Window Rate Limiters"]',
+    '        Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• In-Memory 24h Metadata LRU (1,000 entries), 20-Book Text LRU & Rate Limiters"]',
     '        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\\n• 14 RLS Tables • 23 B-Tree/GIN Indexes • 6 Stored Functions")]',
     '        GutenbergUS["🏛️ Project Gutenberg & Gutendex Nodes (US-East Adjacent)"]',
     '    end',
@@ -2180,9 +2180,9 @@ function generateMarkdown() {
     '| Cache Layer | Storage / Execution Location | Cached Artifacts & Scope | TTL & Eviction Policy | Partitioning & Consistency Key |',
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **L1: Browser In-Memory** | TanStack React Query v5 (`QueryClient`) & `pagination.ts` | Windowed catalog sub-pages, predictive next-page prefetches, translations, and paginated chapter slices | Session memory (`staleTime` + `clearPaginationCache()`) | Query keys scoped by `[search, topic, language, era, sort, page, country]` |',
-    '| **L2: Browser Persistent** | `localStorage` (10 stores), `IndexedDB` (`bookarium-offline-db`), `CacheStorage` (`bookarium-app-shell-v4`) | User collections/outboxes, unabridged book texts (`offline-storage.ts`), and PWA App Shell + `/_next/static/` chunks | Persistent across restarts; SW `activate` prunes caches `!= bookarium-app-shell-v4` | Origin-locked; IndexedDB texts verified against active jurisdiction on read |',
+    '| **L2: Browser Persistent** | `localStorage` (10 stores + `bookarium-quote-enriched-books-v1` + `bookarium-extracted-passages-v1`), `IndexedDB` (`bookarium-offline-db`), `CacheStorage` (`bookarium-app-shell-v4`) | User collections/outboxes, 600-volume quote pool (`1h` fresh), 30-day LRU extracted book passages (`100` books max), unabridged book texts (`offline-storage.ts`), and PWA App Shell + `/_next/static/` chunks | Persistent across restarts; `30d` TTL / `100` LRU entries (`useBookPassageShuffle.ts`); SW `activate` prunes caches `!= bookarium-app-shell-v4` | Origin-locked; IndexedDB texts verified against active jurisdiction on read |',
     '| **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control`) | `GET /api/books` (`s-maxage=3600, swr=86400`); `GET /api/books/content` & `/translations` (`s-maxage=86400, swr=604800`) | 1h fresh / 24h SWR (Catalog); 24h fresh / 7d SWR (Content & Translations) | `Vary: x-vercel-ip-country, Accept-Encoding` prevents cross-border cache bleed |',
-    '| **L4: Serverless In-Memory LRU** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts)), Supabase healthcheck (`supabase-provider.ts`), `/read/[id]` SSR metadata | `24h` TTL / `1,000` max entries (Metadata LRU); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by Gutenberg `bookId` |',
+    '| **L4: Serverless In-Memory LRU** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts)), 20-book text LRU & in-flight mirror coalescing ([`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts)), Supabase healthcheck (`supabase-provider.ts`), `/read/[id]` SSR metadata | `24h` TTL / `1,000` max entries (Metadata LRU); `24h` TTL / `20` max books `<= 1.8M` chars (`bookContentLruCache`); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by Gutenberg `bookId` |',
     '| **L5: Database & Repo Seeds** | Supabase PostgreSQL & `supabase/seed_*.sql` | `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 564` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by 23 explicit B-Tree & GIN `search_vector` indexes |',
     '',
     '### 3. Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix',

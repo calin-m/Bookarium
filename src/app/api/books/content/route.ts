@@ -6,7 +6,11 @@ import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { resolveClientCountry } from '@/lib/country-resolver';
 
 import { isSafeUpstreamUrl } from './url-validator';
-import { resolveBookMetadata } from './metadata-cache';
+import {
+  resolveBookMetadata,
+  getCachedBookContent,
+  setCachedBookContent,
+} from './metadata-cache';
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 
@@ -108,6 +112,25 @@ export async function GET(request: NextRequest) {
   }
 
   // ==========================================================================
+  // Tier 0: Server-Side In-Memory LRU Cache (Cross-Jurisdiction Warm Hit)
+  // ==========================================================================
+  const cachedBook = getCachedBookContent(bookId);
+  if (cachedBook) {
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      'Vary': 'x-vercel-ip-country, Accept-Encoding',
+    };
+    if (cachedBook.source === 'supabase') {
+      responseHeaders['X-Bookarium-Source'] = 'supabase';
+    }
+    return new NextResponse(cachedBook.text, {
+      status: 200,
+      headers: responseHeaders,
+    });
+  }
+
+  // ==========================================================================
   // Tier 1: Instant Streaming from Self-Hosted Supabase PostgreSQL Catalog
   // ==========================================================================
   if (isSupabaseConfigured()) {
@@ -121,6 +144,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
 
       if (!error && data?.content && data.content.trim().length > 0) {
+        setCachedBookContent(bookId, data.content, 'supabase');
         return new NextResponse(data.content, {
           status: 200,
           headers: {
@@ -260,6 +284,8 @@ export async function GET(request: NextRequest) {
       { status: 502 }
     );
   }
+
+  setCachedBookContent(bookId, textContent, 'gutenberg-mirror');
 
   return new NextResponse(textContent, {
     status: 200,

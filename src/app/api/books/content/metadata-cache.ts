@@ -10,8 +10,56 @@ export interface CachedMetadata {
   expiresAt: number;
 }
 
+export interface CachedBookContentEntry {
+  text: string;
+  source: 'supabase' | 'gutenberg-mirror';
+  cachedAt: number;
+}
+
 const bookMetadataCache = new Map<number, CachedMetadata>();
+const bookContentLruCache = new Map<number, CachedBookContentEntry>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHED_BOOKS = 20;
+const MAX_CACHEABLE_BOOK_CHARS = 1_800_000;
+
+export function getCachedBookContent(bookId: number): CachedBookContentEntry | undefined {
+  const entry = bookContentLruCache.get(bookId);
+  if (!entry) return undefined;
+  if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+    bookContentLruCache.delete(bookId);
+    return undefined;
+  }
+  bookContentLruCache.delete(bookId);
+  bookContentLruCache.set(bookId, entry);
+  return entry;
+}
+
+export function setCachedBookContent(
+  bookId: number,
+  text: string,
+  source: 'supabase' | 'gutenberg-mirror'
+): void {
+  if (!text || text.length > MAX_CACHEABLE_BOOK_CHARS) {
+    return;
+  }
+  if (bookContentLruCache.has(bookId)) {
+    bookContentLruCache.delete(bookId);
+  } else if (bookContentLruCache.size >= MAX_CACHED_BOOKS) {
+    const oldestKey = bookContentLruCache.keys().next().value;
+    if (typeof oldestKey === 'number') {
+      bookContentLruCache.delete(oldestKey);
+    }
+  }
+  bookContentLruCache.set(bookId, {
+    text,
+    source,
+    cachedAt: Date.now(),
+  });
+}
+
+export function clearBookContentCache(): void {
+  bookContentLruCache.clear();
+}
 
 function getFeaturedHeroFallback(bookId: number): GenericBookInput | null {
   const hero = FEATURED_HERO_BOOKS.find((h) => h.id === bookId);
@@ -50,6 +98,7 @@ function enrichWithFeaturedLifespans(bookId: number, book: GenericBookInput): Ge
 
 export function clearBookMetadataCache(): void {
   bookMetadataCache.clear();
+  bookContentLruCache.clear();
 }
 
 export function setBookMetadataCache(bookId: number, metadata: CachedMetadata): void {

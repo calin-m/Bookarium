@@ -4,7 +4,6 @@ import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 import { supabaseCatalogProvider } from '@/lib/catalog/supabase-provider';
 import { resolveClientCountry } from '@/lib/country-resolver';
 
-export const dynamic = 'force-dynamic';
 export const maxDuration = 15; // seconds
 
 export async function GET(request: NextRequest) {

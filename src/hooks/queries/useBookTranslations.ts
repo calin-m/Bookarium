@@ -172,7 +172,9 @@ export function useBookTranslations(
       }
       return res.json();
     },
-    enabled: Boolean(enabled && !hasDbEditions && searchQuery && currentBookId && currentBookId > 0),
+    enabled: Boolean(
+      enabled && !isDbLoading && !hasDbEditions && searchQuery && currentBookId && currentBookId > 0
+    ),
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60,
   });

@@ -1,8 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { useBookPassageShuffle } from './useBookPassageShuffle';
+import {
+  useBookPassageShuffle,
+  readCachedBookPassages,
+  writeCachedBookPassages,
+  clearCachedBookPassages,
+  EXTRACTED_PASSAGES_CACHE_KEY,
+} from './useBookPassageShuffle';
 import * as useBookContentModule from '@/hooks/queries/useBookContent';
 
 vi.mock('@/lib/offline-storage', () => ({
@@ -37,6 +43,10 @@ const mockSupabasePassages = [
 ];
 
 describe('useBookPassageShuffle', () => {
+  beforeEach(() => {
+    clearCachedBookPassages();
+  });
+
   it('initializes with curated fallback passages for known books', () => {
     const { result } = renderHook(
       () =>
@@ -217,5 +227,51 @@ describe('useBookPassageShuffle', () => {
     contentSpy.mockRestore();
 
     vi.useRealTimers();
+  });
+
+  it('persists dynamically extracted passages in 30-day localStorage LRU cache and serves them on subsequent opens without refetching', () => {
+    expect(readCachedBookPassages(0)).toBeUndefined();
+    writeCachedBookPassages(0, mockSupabasePassages);
+    expect(readCachedBookPassages(0)).toBeUndefined();
+
+    writeCachedBookPassages(77777, mockSupabasePassages);
+    expect(readCachedBookPassages(77777)).toEqual(mockSupabasePassages);
+
+    const contentSpy = vi.spyOn(useBookContentModule, 'useBookContent');
+    const { result } = renderHook(
+      () =>
+        useBookPassageShuffle({
+          id: 77777,
+          title: 'Cached Catalog Book',
+          authors: [{ name: 'Author Name' }],
+          enabled: true,
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    expect(result.current.passages).toEqual(mockSupabasePassages);
+    // Because cachedPassages has >= 2 spreads, targetBookId is undefined so no network fetch is triggered
+    expect(contentSpy).toHaveBeenCalledWith(undefined, undefined);
+    contentSpy.mockRestore();
+
+    // Verify 30-day TTL expiration and LRU 100-entry eviction
+    window.localStorage.setItem(
+      EXTRACTED_PASSAGES_CACHE_KEY,
+      JSON.stringify({
+        '77777': {
+          updatedAt: Date.now() - 31 * 24 * 60 * 60 * 1000,
+          passages: mockSupabasePassages,
+        },
+      })
+    );
+    expect(readCachedBookPassages(77777)).toBeUndefined();
+
+    for (let id = 1; id <= 105; id++) {
+      writeCachedBookPassages(id, mockSupabasePassages);
+    }
+    const rawCache = JSON.parse(
+      window.localStorage.getItem(EXTRACTED_PASSAGES_CACHE_KEY) || '{}'
+    ) as Record<string, unknown>;
+    expect(Object.keys(rawCache).length).toBeLessThanOrEqual(100);
   });
 });

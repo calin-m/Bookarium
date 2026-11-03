@@ -12,7 +12,11 @@ import {
 } from '@/lib/gutenberg-parser';
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
-import { resolveBookMetadata } from '@/lib/book-metadata';
+import {
+  resolveBookMetadata,
+  hasAuthorLifespans,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
 import {
   areAnnotationsOverlapping,
   findCanonicalTextSpan,
@@ -288,6 +292,12 @@ function BookReaderContent() {
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, error: contentError, refetch } = useBookContent(undefined, numericId);
+  const hasCompleteCurrentBook = Boolean(
+    currentBook &&
+      currentBook.id === numericId &&
+      !isPlaceholderTitle(currentBook.title) &&
+      hasAuthorLifespans(currentBook.authors)
+  );
   const { data: booksData } = useBooks(
     {
       ids: numericId > 0 ? String(numericId) : '',
@@ -295,9 +305,9 @@ function BookReaderContent() {
       copyright: false,
       includeRestrictedMetadata: true,
     },
-    { enabled: !isOffline && numericId > 0 }
+    { enabled: !isOffline && numericId > 0 && !hasCompleteCurrentBook }
   );
-  
+
   // Multi-tier metadata resolution: Client Store -> Fixture -> API Result -> Raw Gutenberg Header Extraction
   const extractedMeta = useMemo(() => {
     return extractGutenbergHeaderMetadata(contentText);

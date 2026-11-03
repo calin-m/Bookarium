@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
-import { clearBookMetadataCache } from './metadata-cache';
+import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { sampleBookText } from '@/mocks/handlers';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
@@ -13,6 +13,7 @@ describe('GET /api/books/content', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     bookContentRateLimiter.reset();
     clearBookMetadataCache();
+    clearBookContentCache();
   });
 
   afterEach(() => {
@@ -480,6 +481,49 @@ describe('GET /api/books/content', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(await res1.text()).toContain('Pride and Prejudice');
       expect(await res2.text()).toContain('Pride and Prejudice');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity', async () => {
+      const austenMeta = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        copyright: false,
+      };
+
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(austenMeta), { status: 200 }));
+
+      // First request from US populates server-side LRU cache
+      const usReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+        headers: { 'x-vercel-ip-country': 'US' },
+      });
+      const usRes = await GET(usReq);
+      expect(usRes.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      // Second request from DE verifies copyright clearance and serves text from in-memory LRU without hitting Gutenberg mirror again
+      const deReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+        headers: { 'x-vercel-ip-country': 'DE' },
+      });
+      const deRes = await GET(deReq);
+      expect(deRes.status).toBe(200);
+      expect(await deRes.text()).toContain('Pride and Prejudice');
+      // Only 2 fetch calls total: 1 mirror fetch + 1 metadata lookup for DE
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+      // Fill cache past MAX_CACHED_BOOKS (20) to verify LRU eviction of oldest entry
+      fetchSpy.mockImplementation(async () => new Response(sampleBookText, { status: 200 }));
+      for (let id = 2001; id <= 2021; id++) {
+        const fillReq = new NextRequest(`http://localhost:3000/api/books/content?id=${id}`);
+        const fillRes = await GET(fillReq);
+        expect(fillRes.status).toBe(200);
+      }
 
       fetchSpy.mockRestore();
     });
