@@ -465,6 +465,7 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
   });
 
   it('falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly', async () => {
+    mockParams = { username: 'mary_shelley' };
     const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
     useAuthStore.setState({
       user: { id: 'u-self-2' } as any,
@@ -628,14 +629,46 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     expect(screen.getByText('15%')).toBeInTheDocument();
   });
 
-  it('rejects wildcard handles (%) without querying Supabase and escapes underscores in .ilike()', async () => {
+  it('rejects wildcard handles (%) without querying Supabase and enforces exact case-insensitive handle equality against SQL _ wildcard matches', async () => {
     mockParams = { username: 'admin%25' };
-    render(<PublicScholarProfilePage />);
+    const { unmount } = render(<PublicScholarProfilePage />);
 
     await waitFor(() => {
       expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
     });
     expect(mockFrom).not.toHaveBeenCalled();
+    unmount();
+
+    // Verify SQL _ wildcard mismatch (e.g. "janexausten" returned for "/u/jane_austen") is rejected
+    mockParams = { username: 'jane_austen' };
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'user-wildcard-mismatch',
+                    display_name: 'Jane X Austen',
+                    username: 'janexausten',
+                    is_public: true,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return { select: vi.fn() };
+    });
+
+    render(<PublicScholarProfilePage />);
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
+    });
   });
 });
 

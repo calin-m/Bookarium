@@ -52,7 +52,7 @@ export default function PublicScholarProfilePage() {
     let isCancelled = false;
 
     async function loadScholarProfile() {
-      if (!normalizedUsername || !/^[a-z0-9_]{1,40}$/.test(normalizedUsername)) {
+      if (!normalizedUsername || !/^[a-z0-9_-]{1,40}$/.test(normalizedUsername)) {
         setProfile(null);
         setIsLoading(false);
         if (typeof document !== 'undefined') {
@@ -64,17 +64,20 @@ export default function PublicScholarProfilePage() {
       setIsLoading(true);
       try {
         const supabase = createClient();
-        const escapedUsername = normalizedUsername.replace(/_/g, '\\_');
 
         // 1. Fetch public scholar profile
         const { data: profileRow, error: _profileErr } = await supabase
           .from('profiles')
           .select('id, display_name, username, bio, is_public, show_streak, show_challenge, show_bookshelves, show_saved_books, show_custom_shelves, created_at')
-          .ilike('username', escapedUsername)
+          .ilike('username', normalizedUsername)
           .eq('is_public', true)
           .maybeSingle();
 
-        let resolvedProfile: PublicScholarProfile | null = profileRow as PublicScholarProfile | null;
+        const matchedProfileRow =
+          profileRow && (profileRow as PublicScholarProfile).username?.toLowerCase() === normalizedUsername
+            ? (profileRow as PublicScholarProfile)
+            : null;
+        let resolvedProfile: PublicScholarProfile | null = matchedProfileRow;
 
         // Offline / Session fallback: Check if logged-in user matches this profile
         if (!resolvedProfile) {

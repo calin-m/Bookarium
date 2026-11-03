@@ -715,7 +715,7 @@ function pass075SecurityAndSastAudit() {
     const dbTables = [...new Set(tableMatches.map((m) => m[1]))];
 
     for (const tableName of dbTables) {
-      const escapedTable = tableName.replace('.', '\\.');
+      const escapedTable = tableName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const rlsRegex = new RegExp(`ALTER\\s+TABLE\\s+${escapedTable}\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`, 'i');
       if (!rlsRegex.test(schemaSql)) {
         rlsViolations.push(`Table "${tableName}" is missing ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`);

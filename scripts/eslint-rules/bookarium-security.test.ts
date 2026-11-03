@@ -329,18 +329,20 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
           await fetch('https://gutendex.com/books?copyright=true');
           await fetch('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
           const badEscaped = ver.replace(/\\./g, '\\\\.');
-          if (url.includes('aleph.gutenberg.org') || badEscaped) {
+          const badUnderscoreEscaped = ver.replace(/_/g, '\\\\_');
+          if (url.includes('aleph.gutenberg.org') || badEscaped || badUnderscoreEscaped) {
             return null;
           }
         }`,
         'src/lib/catalog/gutendex-provider.ts'
       );
-      expect(violations).toHaveLength(5);
+      expect(violations).toHaveLength(6);
       expect(violations[0].message).toContain('setting "copyright" parameter to "true" is forbidden');
       expect(violations[1].message).toContain('"copyright=true" is forbidden');
       expect(violations[2].message).toContain('direct fetch() to www.gutenberg.org is forbidden');
       expect(violations[3].message).toContain('Incomplete string escaping or encoding (CodeQL CWE-116 / js/incomplete-sanitization)');
-      expect(violations[4].message).toContain('Incomplete URL substring sanitization (CodeQL CWE-20)');
+      expect(violations[4].message).toContain('Incomplete string escaping or encoding (CodeQL CWE-116 / js/incomplete-sanitization)');
+      expect(violations[5].message).toContain('Incomplete URL substring sanitization (CodeQL CWE-20)');
     });
 
     it('permits copyright=false and mirror-prioritized fetches', () => {

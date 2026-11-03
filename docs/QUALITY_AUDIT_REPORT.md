@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 03 Nov 2026 17:31:56 GMT  
+**Last Generated**: Tue, 03 Nov 2026 18:35:42 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
 **Total Verified Tests**: 2192 passed  
@@ -29,7 +29,7 @@
 - **Lines**: **96.74%** (11971/12374) — *Target: $\ge$ 95%*
 - **Statements**: **95.38%** (12966/13593) — *Target: $\ge$ 95%*
 - **Functions**: **94.58%** (2759/2917) — *Target: $\ge$ 92%*
-- **Branches**: **87.94%** (11946/13584) — *Target: $\ge$ 85%*
+- **Branches**: **87.94%** (11950/13588) — *Target: $\ge$ 85%*
 
 ---
 
@@ -471,7 +471,7 @@
 - ✔ `resolves array username parameter, computes streak fallbacks from active_dates, and uses local store shelf fallbacks when viewing own profile`
 - ✔ `falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly`
 - ✔ `falls back to local auth, accolades, habits, and bookshelf stores when offline query throws or errors`
-- ✔ `rejects wildcard handles (%) without querying Supabase and escapes underscores in .ilike()`
+- ✔ `rejects wildcard handles (%) without querying Supabase and enforces exact case-insensitive handle equality against SQL _ wildcard matches`
 
 </details>
 
