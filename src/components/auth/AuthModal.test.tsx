@@ -653,4 +653,128 @@ describe('AuthModal Component', () => {
     );
     expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
   });
+
+  it('blocks automated form submissions when the honeypot field is populated', async () => {
+    const setError = vi.fn();
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_up',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError,
+      signUpWithPassword: mockSignUpWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    fireEvent.change(screen.getByPlaceholderText('Jane Austen'), {
+      target: { value: 'Bot Account' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+      target: { value: 'bot@example.com' },
+    });
+    const pwdInputs = screen.getAllByPlaceholderText('••••••••••••');
+    fireEvent.change(pwdInputs[0], { target: { value: 'secret123' } });
+    fireEvent.change(pwdInputs[1], { target: { value: 'secret123' } });
+
+    fireEvent.change(screen.getByTestId('auth-honeypot-input'), {
+      target: { value: 'https://spam.example' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    expect(setError).toHaveBeenCalledWith('Automated submission blocked.');
+    expect(mockSignUpWithPassword).not.toHaveBeenCalled();
+  });
+
+  it('mounts Cloudflare Turnstile when NEXT_PUBLIC_TURNSTILE_SITE_KEY is configured, enforces verification, forwards token, and resets widget', async () => {
+    const prevKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAAATestTurnstileKey';
+
+    let capturedOptions: {
+      callback?: (token: string) => void;
+      'expired-callback'?: () => void;
+      'error-callback'?: () => void;
+    } = {};
+    const mockTurnstileRender = vi.fn((_el: HTMLElement, opts: typeof capturedOptions) => {
+      capturedOptions = opts;
+      return 'turnstile-widget-1';
+    });
+    const mockTurnstileReset = vi.fn();
+    const mockTurnstileRemove = vi.fn();
+    window.turnstile = {
+      render: mockTurnstileRender,
+      reset: mockTurnstileReset,
+      remove: mockTurnstileRemove,
+    };
+
+    const setError = vi.fn();
+    mockSignUpWithPassword.mockResolvedValueOnce({
+      needsEmailConfirmation: true,
+      error: null,
+    });
+
+    try {
+      (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        isAuthModalOpen: true,
+        authModalView: 'sign_up',
+        error: null,
+        closeAuthModal: vi.fn(),
+        setAuthModalView: vi.fn(),
+        setError,
+        signUpWithPassword: mockSignUpWithPassword,
+      });
+
+      const { unmount } = render(<AuthModal />);
+
+      expect(screen.getByTestId('turnstile-widget-container')).toBeInTheDocument();
+      expect(mockTurnstileRender).toHaveBeenCalledTimes(1);
+
+      fireEvent.change(screen.getByPlaceholderText('Jane Austen'), {
+        target: { value: 'Jane Austen' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+        target: { value: 'jane@bookarium.org' },
+      });
+      const pwdInputs = screen.getAllByPlaceholderText('••••••••••••');
+      fireEvent.change(pwdInputs[0], { target: { value: 'StrongPass123!' } });
+      fireEvent.change(pwdInputs[1], { target: { value: 'StrongPass123!' } });
+
+      // Submitting before Turnstile callback resolves should block submission
+      fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+      expect(setError).toHaveBeenCalledWith(
+        'Please complete the security verification check.'
+      );
+      expect(mockSignUpWithPassword).not.toHaveBeenCalled();
+
+      // Trigger expired & error callbacks, then valid token callback
+      await waitFor(() => {
+        capturedOptions['expired-callback']?.();
+        capturedOptions['error-callback']?.();
+        capturedOptions.callback?.('turnstile-verified-token-123');
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+
+      await waitFor(() => {
+        expect(mockSignUpWithPassword).toHaveBeenCalledWith(
+          'jane@bookarium.org',
+          'StrongPass123!',
+          'Jane Austen',
+          'turnstile-verified-token-123'
+        );
+      });
+      expect(mockTurnstileReset).toHaveBeenCalledWith('turnstile-widget-1');
+
+      unmount();
+    } finally {
+      if (prevKey === undefined) {
+        delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = prevKey;
+      }
+      delete window.turnstile;
+    }
+  });
 });

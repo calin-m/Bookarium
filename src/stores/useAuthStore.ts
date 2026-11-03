@@ -49,15 +49,15 @@ export interface AuthState {
   clearPasswordRecovery: () => void;
   setError: (error: string | null) => void;
   setStatusMessage: (statusMessage: string | null) => void;
-  signInWithPassword: (email: string, password: string) => Promise<{ user?: User | null; error: AuthError | null }>;
-  signUpWithPassword: (email: string, password: string, fullName?: string) => Promise<{
+  signInWithPassword: (email: string, password: string, captchaToken?: string) => Promise<{ user?: User | null; error: AuthError | null }>;
+  signUpWithPassword: (email: string, password: string, fullName?: string, captchaToken?: string) => Promise<{
     user?: User | null;
     session?: Session | null;
     needsEmailConfirmation?: boolean;
     error: AuthError | null;
   }>;
-  resendVerificationEmail: (email: string) => Promise<{ error: AuthError | null }>;
-  signInWithOtp: (email: string) => Promise<{ error: AuthError | null }>;
+  resendVerificationEmail: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
+  signInWithOtp: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   fetchProfile: () => Promise<void>;
@@ -76,7 +76,7 @@ export interface AuthState {
     show_saved_books?: boolean;
     show_custom_shelves?: boolean;
   }) => Promise<{ error: Error | null }>;
-  resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
+  resetPasswordForEmail: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (newPassword: string, currentPassword?: string) => Promise<{ error: AuthError | null }>;
   requestAccountDeletion: () => Promise<{ error: AuthError | null }>;
   deleteAccount: () => Promise<{ error: Error | null }>;
@@ -286,10 +286,14 @@ export const useAuthStore = create<AuthState>()(
     set({ statusMessage });
   },
 
-  signInWithPassword: async (email, password) => {
+  signInWithPassword: async (email, password, captchaToken) => {
     set({ error: null, statusMessage: null });
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    });
     if (error) {
       set({ error: error.message });
       return { error };
@@ -299,7 +303,7 @@ export const useAuthStore = create<AuthState>()(
     return { error: null, user: data.user };
   },
 
-  signUpWithPassword: async (email, password, fullName) => {
+  signUpWithPassword: async (email, password, fullName, captchaToken) => {
     set({ error: null, statusMessage: null });
     const supabase = createClient();
     const redirectTo = buildAuthRedirectUrl('/auth/callback');
@@ -312,6 +316,7 @@ export const useAuthStore = create<AuthState>()(
           display_name: fullName || '',
         },
         emailRedirectTo: redirectTo,
+        ...(captchaToken ? { captchaToken } : {}),
       },
     });
     if (error) {
@@ -332,7 +337,7 @@ export const useAuthStore = create<AuthState>()(
     };
   },
 
-  resendVerificationEmail: async (email: string) => {
+  resendVerificationEmail: async (email: string, captchaToken?: string) => {
     set({ error: null });
     const supabase = createClient();
     const redirectTo = buildAuthRedirectUrl('/auth/callback');
@@ -341,6 +346,7 @@ export const useAuthStore = create<AuthState>()(
       email,
       options: {
         emailRedirectTo: redirectTo,
+        ...(captchaToken ? { captchaToken } : {}),
       },
     });
     if (error) {
@@ -350,7 +356,7 @@ export const useAuthStore = create<AuthState>()(
     return { error: null };
   },
 
-  signInWithOtp: async (email) => {
+  signInWithOtp: async (email, captchaToken) => {
     set({ error: null, statusMessage: null });
     const supabase = createClient();
     const redirectTo = buildAuthRedirectUrl('/auth/callback');
@@ -358,6 +364,7 @@ export const useAuthStore = create<AuthState>()(
       email,
       options: {
         emailRedirectTo: redirectTo,
+        ...(captchaToken ? { captchaToken } : {}),
       },
     });
     if (error) {
@@ -546,7 +553,7 @@ export const useAuthStore = create<AuthState>()(
     }
   },
 
-  resetPasswordForEmail: async (email) => {
+  resetPasswordForEmail: async (email, captchaToken) => {
     set({ error: null, statusMessage: null });
     const supabase = createClient();
     const redirectTo = buildAuthRedirectUrl(
@@ -554,6 +561,7 @@ export const useAuthStore = create<AuthState>()(
     );
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
+      ...(captchaToken ? { captchaToken } : {}),
     });
     if (error) {
       set({ error: error.message });

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useId } from 'react';
+import React, { useState, useEffect, useRef, useId, useCallback } from 'react';
 import Link from 'next/link';
+import Script from 'next/script';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { useShallow } from 'zustand/react/shallow';
@@ -12,6 +13,26 @@ import { Input } from '@/components/ui/Input';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
 import { EmailSentView } from './EmailSentView';
+
+export interface TurnstileRenderOptions {
+  sitekey: string;
+  theme?: 'light' | 'dark' | 'auto';
+  callback?: (token: string) => void;
+  'expired-callback'?: () => void;
+  'error-callback'?: () => void;
+}
+
+export interface TurnstileApi {
+  render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
+  reset: (widgetId?: string) => void;
+  remove: (widgetId?: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 export const AUTH_VIEW_CONFIG: Record<AuthModalView, { title: string; description: string; submitLabel: string }> = {
   sign_in: {
@@ -84,11 +105,85 @@ export const AuthModal: React.FC = () => {
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [honeypot, setHoneypot] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
+  const turnstileSiteKey = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '').trim();
   const titleId = useId();
   const cardRef = useRef<HTMLDivElement>(null);
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const closeAuthModalRef = useRef(closeAuthModal);
+
+  const resetTurnstileWidget = useCallback(() => {
+    setCaptchaToken(null);
+    if (typeof window !== 'undefined' && window.turnstile && turnstileWidgetIdRef.current) {
+      try {
+        window.turnstile.reset(turnstileWidgetIdRef.current);
+      } catch {
+        // Ignore reset errors on unmounted widgets
+      }
+    }
+  }, []);
+
+  const mountTurnstileWidget = useCallback(() => {
+    if (
+      !isAuthModalOpen ||
+      !turnstileSiteKey ||
+      typeof window === 'undefined' ||
+      !window.turnstile ||
+      !turnstileContainerRef.current
+    ) {
+      return;
+    }
+    if (turnstileWidgetIdRef.current) {
+      try {
+        window.turnstile.remove(turnstileWidgetIdRef.current);
+      } catch {
+        // Ignore cleanup errors
+      }
+      turnstileWidgetIdRef.current = null;
+    }
+    setCaptchaToken(null);
+    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+      sitekey: turnstileSiteKey,
+      theme: 'auto',
+      callback: (token: string) => setCaptchaToken(token),
+      'expired-callback': () => setCaptchaToken(null),
+      'error-callback': () => setCaptchaToken(null),
+    });
+  }, [isAuthModalOpen, turnstileSiteKey]);
+
+  useEffect(() => {
+    if (!isAuthModalOpen || !turnstileSiteKey) return;
+    const isSentView =
+      (verificationEmailSent && authModalView === 'sign_up') ||
+      (magicLinkSent && authModalView === 'magic_link') ||
+      (resetPasswordSent && authModalView === 'forgot_password');
+    if (isSentView) return;
+
+    mountTurnstileWidget();
+
+    return () => {
+      if (typeof window !== 'undefined' && window.turnstile && turnstileWidgetIdRef.current) {
+        try {
+          window.turnstile.remove(turnstileWidgetIdRef.current);
+        } catch {
+          // Ignore cleanup errors
+        }
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [
+    isAuthModalOpen,
+    turnstileSiteKey,
+    authModalView,
+    verificationEmailSent,
+    magicLinkSent,
+    resetPasswordSent,
+    mountTurnstileWidget,
+  ]);
 
   useEffect(() => {
     closeAuthModalRef.current = closeAuthModal;
@@ -182,7 +277,9 @@ export const AuthModal: React.FC = () => {
     setResendSuccess(false);
 
     try {
-      const { error: resendErr } = await resendVerificationEmail(email);
+      const { error: resendErr } = captchaToken
+        ? await resendVerificationEmail(email, captchaToken)
+        : await resendVerificationEmail(email);
       if (resendErr) {
         setError(resendErr.message);
       } else {
@@ -194,6 +291,7 @@ export const AuthModal: React.FC = () => {
       setError('Failed to resend verification email. Please try again.');
     } finally {
       setIsResending(false);
+      resetTurnstileWidget();
     }
   };
 
@@ -216,12 +314,26 @@ export const AuthModal: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError(null);
 
+    if (honeypot.trim().length > 0) {
+      setError('Automated submission blocked.');
+      return;
+    }
+
+    if (turnstileSiteKey && !captchaToken) {
+      setError('Please complete the security verification check.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
+      const tokenArg = captchaToken || undefined;
       if (authModalView === 'sign_in') {
-        const { error: err, user: signedInUser } = await signInWithPassword(email, password);
+        const { error: err, user: signedInUser } = tokenArg
+          ? await signInWithPassword(email, password, tokenArg)
+          : await signInWithPassword(email, password);
         if (!err && signedInUser?.id) {
           await syncWithCloud(signedInUser.id);
         }
@@ -230,7 +342,9 @@ export const AuthModal: React.FC = () => {
           setError('Passwords do not match.');
           return;
         }
-        const { error: err, needsEmailConfirmation, user: signedUpUser } = await signUpWithPassword(email, password, fullName);
+        const { error: err, needsEmailConfirmation, user: signedUpUser } = tokenArg
+          ? await signUpWithPassword(email, password, fullName, tokenArg)
+          : await signUpWithPassword(email, password, fullName);
         if (!err) {
           if (needsEmailConfirmation) {
             setVerificationEmailSent(true);
@@ -239,18 +353,23 @@ export const AuthModal: React.FC = () => {
           }
         }
       } else if (authModalView === 'magic_link') {
-        const { error: err } = await signInWithOtp(email);
+        const { error: err } = tokenArg
+          ? await signInWithOtp(email, tokenArg)
+          : await signInWithOtp(email);
         if (!err) {
           setMagicLinkSent(true);
         }
       } else if (authModalView === 'forgot_password') {
-        const { error: err } = await resetPasswordForEmail(email);
+        const { error: err } = tokenArg
+          ? await resetPasswordForEmail(email, tokenArg)
+          : await resetPasswordForEmail(email);
         if (!err) {
           setResetPasswordSent(true);
         }
       }
     } finally {
       setIsSubmitting(false);
+      resetTurnstileWidget();
     }
   };
 
@@ -384,6 +503,21 @@ export const AuthModal: React.FC = () => {
         ) : (
           /* Form */
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="sr-only" aria-hidden="true">
+              <label htmlFor={`${titleId}-website`}>Website</label>
+              <input
+                id={`${titleId}-website`}
+                type="text"
+                name="website_url"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                data-testid="auth-honeypot-input"
+              />
+            </div>
+
             {authModalView === 'sign_up' && (
               <div className="space-y-1">
                 <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
@@ -501,6 +635,21 @@ export const AuthModal: React.FC = () => {
                     <PasswordStrengthMeter strength={strength} />
                   </div>
                 )}
+              </div>
+            )}
+
+            {turnstileSiteKey && (
+              <div className="pt-1 flex justify-center">
+                <Script
+                  src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                  strategy="afterInteractive"
+                  onReady={mountTurnstileWidget}
+                />
+                <div
+                  ref={turnstileContainerRef}
+                  data-testid="turnstile-widget-container"
+                  className="min-h-[65px] flex items-center justify-center"
+                />
               </div>
             )}
 

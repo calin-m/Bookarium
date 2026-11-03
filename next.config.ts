@@ -38,11 +38,12 @@ const nextConfig: NextConfig = {
 
     const cspHeader = `
       default-src 'self';
-      script-src 'self' ${isDev ? "'unsafe-eval' " : ''}'unsafe-inline';
+      script-src 'self' ${isDev ? "'unsafe-eval' " : ''}'unsafe-inline' https://challenges.cloudflare.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com data:;
       img-src 'self' data: blob: https://www.gutenberg.org https://gutenberg.org;
       connect-src ${connectSrc};
+      frame-src 'self' https://challenges.cloudflare.com;
       frame-ancestors 'none';
       form-action 'self';
       base-uri 'self';

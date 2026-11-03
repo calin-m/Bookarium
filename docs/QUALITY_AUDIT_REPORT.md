@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 03 Nov 2026 12:19:09 GMT  
+**Last Generated**: Tue, 03 Nov 2026 13:26:53 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2184 passed  
+**Total Verified Tests**: 2187 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2184 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2187 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.76%** (11889/12287) — *Target: $\ge$ 95%*
-- **Statements**: **95.39%** (12881/13503) — *Target: $\ge$ 95%*
-- **Functions**: **94.53%** (2748/2907) — *Target: $\ge$ 92%*
-- **Branches**: **87.92%** (11855/13483) — *Target: $\ge$ 85%*
+- **Lines**: **96.73%** (11927/12329) — *Target: $\ge$ 95%*
+- **Statements**: **95.37%** (12921/13547) — *Target: $\ge$ 95%*
+- **Functions**: **94.54%** (2756/2915) — *Target: $\ge$ 92%*
+- **Branches**: **87.91%** (11909/13546) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2184 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2187 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 272 Tests)
 
@@ -1397,10 +1397,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (2 Suites · 25 Tests)
+### 🔐 Authentication & Security (2 Suites · 27 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (23 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1423,6 +1423,8 @@
 - ✔ `traps Tab and Shift+Tab focus within the auth dialog card`
 - ✔ `restores focus to previous active element when unmounted`
 - ✔ `executes useShallow selector, syncs cloud on sign-in/sign-up, switches views across all 4 modes, and handles resend verification errors`
+- ✔ `blocks automated form submissions when the honeypot field is populated`
+- ✔ `mounts Cloudflare Turnstile when NEXT_PUBLIC_TURNSTILE_SITE_KEY is configured, enforces verification, forwards token, and resets widget`
 
 </details>
 
@@ -1436,7 +1438,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 201 Tests)
+### ⚡ Zustand State Stores (10 Suites · 202 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1496,7 +1498,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (30 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (31 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1528,6 +1530,7 @@
 - ✔ `signs out from Supabase, clears user profile, flushes outboxes, and resets all 6 local user stores`
 - ✔ `preserves persisted user and profile when initializeAuth runs offline`
 - ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
+- ✔ `forwards optional Cloudflare Turnstile captchaToken across auth actions`
 
 </details>
 

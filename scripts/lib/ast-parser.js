@@ -1064,6 +1064,11 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       fallback: '100% Zero-API-Key Guest Mode: Cloud sync and auth modals gracefully disable live network calls when unconfigured.',
       purpose: 'Public anonymous JWT key scoped strictly by PostgreSQL Row-Level Security (`ENABLE ROW LEVEL SECURITY` across all 14 tables).',
     },
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: 'Optional: `AuthModal` omits the Turnstile widget and submits directly when unconfigured in local development or offline setups.',
+      purpose: 'Public Cloudflare Turnstile site key mounting a Managed bot-protection challenge in `AuthModal` and passing single-use `captchaToken` verification to Supabase Auth.',
+    },
     NEXT_PUBLIC_LEGAL_CONTACT_FORM: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
       fallback: 'Falls back to the repository GitHub Issue Tracker (`SITE_CONFIG.GITHUB_ISSUES_URL`) on `/copyright`.',

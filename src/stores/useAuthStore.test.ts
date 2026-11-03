@@ -838,5 +838,65 @@ describe('useAuthStore', () => {
       );
       expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
     });
+
+    it('forwards optional Cloudflare Turnstile captchaToken across auth actions', async () => {
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: 'u-cap', email: 'cap@bookarium.test' } },
+        error: null,
+      });
+      await useAuthStore
+        .getState()
+        .signInWithPassword('cap@bookarium.test', 'secret123', 'cf-token-signin');
+      expect(mockSignInWithPassword).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'cap@bookarium.test',
+          password: 'secret123',
+          options: { captchaToken: 'cf-token-signin' },
+        })
+      );
+
+      mockSignUp.mockResolvedValueOnce({
+        data: { user: { id: 'u-cap' }, session: null },
+        error: null,
+      });
+      await useAuthStore
+        .getState()
+        .signUpWithPassword('cap@bookarium.test', 'secret123', 'Jane', 'cf-token-signup');
+      expect(mockSignUp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'cap@bookarium.test',
+          options: expect.objectContaining({ captchaToken: 'cf-token-signup' }),
+        })
+      );
+
+      mockResend.mockResolvedValueOnce({ error: null });
+      await useAuthStore
+        .getState()
+        .resendVerificationEmail('cap@bookarium.test', 'cf-token-resend');
+      expect(mockResend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'cap@bookarium.test',
+          options: expect.objectContaining({ captchaToken: 'cf-token-resend' }),
+        })
+      );
+
+      mockSignInWithOtp.mockResolvedValueOnce({ error: null });
+      await useAuthStore.getState().signInWithOtp('cap@bookarium.test', 'cf-token-otp');
+      expect(mockSignInWithOtp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'cap@bookarium.test',
+          options: expect.objectContaining({ captchaToken: 'cf-token-otp' }),
+        })
+      );
+
+      mockResetPasswordForEmail.mockResolvedValueOnce({ error: null });
+      await useAuthStore
+        .getState()
+        .resetPasswordForEmail('cap@bookarium.test', 'cf-token-reset');
+      expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
+        'cap@bookarium.test',
+        expect.objectContaining({ captchaToken: 'cf-token-reset' })
+      );
+    });
   });
 });
