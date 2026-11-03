@@ -442,6 +442,29 @@ describe('useBookContent hook', () => {
 
     Object.defineProperty(navigator, 'onLine', { value: originalOnline, configurable: true });
   });
+
+  it('canonicalizes /api/books/content query string to ?id= when bookId is present and falls back to ?url= when bookId is omitted', async () => {
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }))
+      .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+    await fetchBookContent('https://www.gutenberg.org/ebooks/1342.txt.utf-8', 1342);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      '/api/books/content?id=1342',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    await fetchBookContent('https://www.gutenberg.org/ebooks/1342.txt.utf-8', undefined);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      '/api/books/content?url=https%3A%2F%2Fwww.gutenberg.org%2Febooks%2F1342.txt.utf-8',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    fetchSpy.mockRestore();
+  });
 });
 
 

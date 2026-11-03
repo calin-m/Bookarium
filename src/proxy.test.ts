@@ -104,5 +104,19 @@ describe('Root Proxy (Next.js 16)', () => {
 
     vi.unstubAllEnvs();
   });
+
+  it('skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching', async () => {
+    const updateSessionSpy = vi.spyOn(supabaseMiddleware, 'updateSession');
+
+    const req = new NextRequest('https://bookarium.vercel.app/api/books/1342/content', {
+      headers: { 'x-vercel-ip-country': 'DE' },
+    });
+    const res = await proxy(req);
+
+    expect(updateSessionSpy).not.toHaveBeenCalled();
+    expect(res.cookies.get(GEO_COOKIE_NAME)).toBeUndefined();
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(res.headers.get('x-bookarium-country')).toBe('DE');
+  });
 });
 

@@ -59,18 +59,15 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
     enabled: !hasEnrichedPool && !hasExistingQuotes,
   });
 
-  // Strictly prioritize database quotes (public.books.quotes) when available, falling back to static quoteExcerpt only when unconfigured/empty
+  // Strictly prioritize canonicalSpread / database quotes (public.books.quotes) without post-hydration text shifts
   const displayQuote = useMemo(() => {
     const dbQuotes = featuredQuotesMap?.[book.id] || book.quotes;
-    const hourIndex = Math.max(0, Math.floor(hourlyTimestamp / (1000 * 60 * 60)));
     const candidatePassage =
-      Array.isArray(dbQuotes) && dbQuotes.length > 0
-        ? dbQuotes[hourIndex % dbQuotes.length]
-        : undefined;
+      Array.isArray(dbQuotes) && dbQuotes.length > 0 ? dbQuotes[0] : undefined;
     const rawExcerpt =
       candidatePassage?.quoteExcerpt || candidatePassage?.openingLine || book.quoteExcerpt || '';
     return rawExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
-  }, [featuredQuotesMap, book.id, book.quotes, book.quoteExcerpt, hourlyTimestamp]);
+  }, [featuredQuotesMap, book.id, book.quotes, book.quoteExcerpt]);
 
   const handleStartReading = () => {
     const bookPayload: GutendexBook = {

@@ -348,4 +348,69 @@ describe('HeroSearch component', () => {
     expect(screen.getAllByText(/Suffering has been stronger than all other teaching/i)[0]).toBeInTheDocument();
     enrichedSpy.mockRestore();
   });
+
+  it('locks the active Featured Book within the same hour across background pool updates to prevent refresh swaps', async () => {
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+    const bookA = {
+      id: 1400,
+      title: 'Great Expectations',
+      authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+      translators: [],
+      subjects: ['Bildungsromans'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 35000,
+      quotes: [
+        {
+          chapterLabel: 'Passage I • Great Expectations',
+          openingLine: '“My father’s family name being Pirrip.”',
+          quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+        },
+      ],
+    };
+    const bookB = {
+      ...bookA,
+      id: 98,
+      title: 'A Tale of Two Cities',
+      download_count: 45000,
+      quotes: [
+        {
+          chapterLabel: 'Passage I • Two Cities',
+          openingLine: '“It was the best of times.”',
+          quoteExcerpt: '“It was the season of Light.”',
+        },
+      ],
+    };
+
+    const enrichedSpy = vi
+      .spyOn(useBooksModule, 'useQuoteEnrichedBooks')
+      .mockReturnValueOnce({
+        data: [bookA],
+      } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>)
+      .mockReturnValue({
+        data: [bookB, bookA],
+      } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <HeroSearch search="" />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getAllByText(/Great Expectations/i)[0]).toBeInTheDocument();
+
+    // Background re-render with expanded pool keeps Great Expectations locked for the active hour
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <HeroSearch search=" Dickens" />
+      </QueryClientProvider>
+    );
+    expect(screen.getAllByText(/Great Expectations/i)[0]).toBeInTheDocument();
+
+    enrichedSpy.mockRestore();
+  });
 });

@@ -34,6 +34,7 @@ export interface StickyCatalogToolbarProps {
   isFetching?: boolean;
   onPrefetchNext?: () => void;
   latencyMs?: number;
+  catalogSource?: 'supabase' | 'upstream' | 'cache';
   isError?: boolean;
   pageSize?: number;
   onPageSizeChange?: (size: number) => void;
@@ -45,7 +46,10 @@ export interface StickyCatalogToolbarProps {
 }
 
 export function formatApiLatency(ms?: number): string {
-  const safeMs = ms !== undefined && !isNaN(ms) ? ms : 140;
+  if (ms === undefined || isNaN(ms)) {
+    return '...';
+  }
+  const safeMs = Math.max(1, Math.round(ms));
   if (safeMs < 1000) {
     return `${safeMs}ms`;
   }
@@ -67,6 +71,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   isFetching = false,
   onPrefetchNext,
   latencyMs,
+  catalogSource,
   isError = false,
   pageSize = 16,
   onPageSizeChange,
@@ -146,7 +151,14 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
     commitPageJump(jumpPageInput);
   };
 
+  const isLatencyPending = !isError && (latencyMs === undefined || isNaN(latencyMs));
   const displayLatencyText = formatApiLatency(latencyMs);
+  const catalogProviderLabel =
+    catalogSource === 'supabase'
+      ? 'Bookarium Catalog'
+      : catalogSource === 'upstream'
+        ? 'Project Gutenberg Mirror'
+        : 'Bookarium Catalog';
   const pageSizes = [8, 16];
 
   return (
@@ -289,13 +301,17 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             }`}
             title={
               isError
-                ? 'Project Gutenberg API: Offline'
-                : `Project Gutenberg API: Online (${displayLatencyText} response time)`
+                ? 'Catalog API: Offline'
+                : isLatencyPending
+                  ? 'Measuring catalog response time...'
+                  : `${catalogProviderLabel}: Online (${displayLatencyText} response time)`
             }
             aria-label={
               isError
-                ? 'Gutenberg API status: Offline'
-                : `Gutenberg API status: Online, response time ${displayLatencyText}`
+                ? 'Catalog API status: Offline'
+                : isLatencyPending
+                  ? 'Catalog status: Measuring response time'
+                  : `${catalogProviderLabel} status: Online, response time ${displayLatencyText}`
             }
             data-testid="api-status-badge"
           >
@@ -306,7 +322,18 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
               data-testid="api-status-dot"
             />
             <span className="font-bold" data-testid="api-latency-badge">
-              {isError ? 'Offline' : displayLatencyText}
+              {isError ? (
+                'Offline'
+              ) : isLatencyPending ? (
+                <span
+                  className="inline-flex items-center tracking-widest animate-pulse"
+                  data-testid="api-latency-loading"
+                >
+                  •••
+                </span>
+              ) : (
+                displayLatencyText
+              )}
             </span>
           </div>
 

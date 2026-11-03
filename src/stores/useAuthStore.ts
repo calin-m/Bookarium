@@ -188,23 +188,42 @@ export const useAuthStore = create<AuthState>()(
       set({ isLoading: false });
     }
 
-    // Check active session on initialization
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if ((error || !user) && typeof navigator !== 'undefined' && navigator.onLine === false && get().user) {
-        set({ isLoading: false });
-        return;
+    // Check active session on initialization (short-circuiting network getUser when anonymous)
+    const checkInitialUser = async () => {
+      try {
+        if (typeof supabase.auth.getSession === 'function') {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData?.session?.user && !get().user) {
+            set({ user: null, profile: null, isLoading: false });
+            return;
+          }
+        }
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (
+          (error || !user) &&
+          typeof navigator !== 'undefined' &&
+          navigator.onLine === false &&
+          get().user
+        ) {
+          set({ isLoading: false });
+          return;
+        }
+        set({ user: user ?? null, isLoading: false });
+        if (user) {
+          get().fetchProfile();
+        }
+      } catch {
+        if (get().user) {
+          set({ isLoading: false });
+        } else {
+          set({ user: null, profile: null, isLoading: false });
+        }
       }
-      set({ user: user ?? null, isLoading: false });
-      if (user) {
-        get().fetchProfile();
-      }
-    }).catch(() => {
-      if (get().user) {
-        set({ isLoading: false });
-      } else {
-        set({ user: null, profile: null, isLoading: false });
-      }
-    });
+    };
+    void checkInitialUser();
 
     // Subscribe to auth state transitions
     const {

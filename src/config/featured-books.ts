@@ -610,31 +610,51 @@ export function gutendexBookToFeaturedHeroBook(
       ? `${firstAuthor.birth_year}–${firstAuthor.death_year}`
       : 'Public Domain');
 
+  const mergedQuotes =
+    featuredMeta && validQuotes.length > 0
+      ? [
+          {
+            chapterLabel: 'Chapter I • The Opening Incipit',
+            openingLine: featuredMeta.openingLine,
+            secondaryQuote:
+              firstPassage?.secondaryQuote ||
+              `“In the unfolding story of ${featuredMeta.title}, ${featuredMeta.author} explores timeless truths across ${featuredMeta.primarySubject.toLowerCase()}.”`,
+            quoteExcerpt: featuredMeta.quoteExcerpt,
+            rightPageQuote2: firstPassage?.rightPageQuote2,
+            commentary:
+              firstPassage?.commentary ||
+              `Preserved in complete unabridged form in the worldwide public domain (${featuredMeta.year}).`,
+          },
+          ...validQuotes,
+        ]
+      : validQuotes;
+
   return {
     id: book.id,
-    volumeNumber: `Vol. #${book.id}`,
-    title: book.title,
-    author: formatAuthorNames(book.authors) || featuredMeta?.author || 'Anonymous',
+    volumeNumber: featuredMeta?.volumeNumber || `Vol. #${book.id}`,
+    title: featuredMeta?.title || book.title,
+    author: featuredMeta?.author || formatAuthorNames(book.authors) || 'Anonymous',
     authorBirthYear: firstAuthor?.birth_year ?? featuredMeta?.authorBirthYear ?? null,
     authorDeathYear: firstAuthor?.death_year ?? featuredMeta?.authorDeathYear ?? null,
     translators: book.translators || featuredMeta?.translators || [],
     year: derivedYear,
     primarySubject:
+      featuredMeta?.primarySubject ||
       (book.subjects && book.subjects.length > 0
         ? formatPrimarySubject(book.subjects)
-        : featuredMeta?.primarySubject) || 'Classic Literature',
-    license: 'CC0 / Public Domain',
+        : 'Classic Literature'),
+    license: featuredMeta?.license || 'CC0 / Public Domain',
     quoteExcerpt:
+      featuredMeta?.quoteExcerpt ||
       firstPassage?.quoteExcerpt ||
       firstPassage?.openingLine ||
-      featuredMeta?.quoteExcerpt ||
       'Preserved in the public domain for all readers.',
     openingLine:
+      featuredMeta?.openingLine ||
       firstPassage?.openingLine ||
       firstPassage?.quoteExcerpt ||
-      featuredMeta?.openingLine ||
       'Preserved in the public domain for all readers.',
-    quotes: validQuotes,
+    quotes: mergedQuotes,
     rawBook: book,
   };
 }
@@ -660,9 +680,18 @@ export function selectHourlyHeroFromPool(
       isBookPublicDomainInJurisdiction(b, countryCode).isAllowed
   );
 
+  const fallback = getHourlyHeroBook(timestamp, countryCode);
+
   if (safeDbPool.length > 0) {
     const cleanTopic = options?.topic?.trim().toLowerCase() || '';
     const cleanLang = options?.language?.trim().toLowerCase() || '';
+
+    if (!cleanTopic && !cleanLang) {
+      const ssrMatch = safeDbPool.find((b) => b.id === fallback.id);
+      if (ssrMatch) {
+        return gutendexBookToFeaturedHeroBook(ssrMatch);
+      }
+    }
 
     let filteredPool = safeDbPool;
     if (cleanTopic || cleanLang) {
@@ -685,7 +714,6 @@ export function selectHourlyHeroFromPool(
     return gutendexBookToFeaturedHeroBook(selected);
   }
 
-  const fallback = getHourlyHeroBook(timestamp, countryCode);
   return {
     ...fallback,
     rawBook: {
@@ -734,8 +762,16 @@ export function selectDailyClassicFromPool(
 
   const classicDbPool = safeDbPool.filter((b) => isClassicCatalogBook(b));
   const activePool = classicDbPool.length > 0 ? classicDbPool : safeDbPool;
+  const fallback = getDailyEditorialBook(heroBookId, timestamp, countryCode);
 
   if (activePool.length > 0) {
+    const ssrMatch = activePool.find(
+      (b) => b.id === fallback.id && (heroBookId === undefined || b.id !== heroBookId)
+    );
+    if (ssrMatch) {
+      return gutendexBookToFeaturedHeroBook(ssrMatch);
+    }
+
     let candidateIndex = dayIndex % activePool.length;
     if (
       heroBookId !== undefined &&
@@ -747,5 +783,5 @@ export function selectDailyClassicFromPool(
     return gutendexBookToFeaturedHeroBook(activePool[candidateIndex]);
   }
 
-  return getDailyEditorialBook(heroBookId, timestamp, countryCode);
+  return fallback;
 }

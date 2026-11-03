@@ -150,8 +150,11 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
   }
 
   const params = new URLSearchParams();
-  if (bookId) params.set('id', String(bookId));
-  if (url) params.set('url', url);
+  if (bookId && bookId > 0) {
+    params.set('id', String(bookId));
+  } else if (url) {
+    params.set('url', url);
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -202,8 +205,9 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
 }
 
 export function useBookContent(contentUrl?: string, bookId?: number) {
+  const canonicalUrlKey = bookId && bookId > 0 ? undefined : contentUrl;
   return useQuery({
-    queryKey: ['book-content', contentUrl, bookId],
+    queryKey: ['book-content', canonicalUrlKey, bookId],
     queryFn: () => fetchBookContent(contentUrl, bookId),
     enabled: Boolean(contentUrl || bookId),
     networkMode: 'always',

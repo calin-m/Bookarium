@@ -463,5 +463,25 @@ describe('GET /api/books/content', () => {
       expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
       expect(fetchSpy.mock.calls[2][0]).toBe('https://gutenberg.pglaf.org/files/1342/1342-0.txt');
     });
+
+    it('coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+        return new Response(sampleBookText, { status: 200 });
+      });
+
+      const req1 = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const req2 = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+
+      const [res1, res2] = await Promise.all([GET(req1), GET(req2)]);
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(await res1.text()).toContain('Pride and Prejudice');
+      expect(await res2.text()).toContain('Pride and Prejudice');
+
+      fetchSpy.mockRestore();
+    });
   });
 });

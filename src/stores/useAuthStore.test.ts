@@ -228,6 +228,66 @@ describe('useAuthStore', () => {
     expect(mockOnAuthStateChange).toHaveBeenCalled();
   });
 
+  it('short-circuits network getUser in initializeAuth when getSession reports no local session for anonymous visitors', async () => {
+    const clientModule = await import('@/lib/supabase/client');
+    const mockGetSession = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { session: null }, error: null })
+      .mockResolvedValueOnce({
+        data: { session: { user: { id: 'session-user', email: 's@bookarium.test' } } },
+        error: null,
+      });
+
+    const createClientSpy = vi.spyOn(clientModule, 'createClient').mockImplementation(
+      () =>
+        ({
+          auth: {
+            getSession: mockGetSession,
+            getUser: mockGetUser,
+            onAuthStateChange: mockOnAuthStateChange,
+          },
+          from: mockFrom,
+          rpc: mockRpc,
+        }) as unknown as ReturnType<typeof clientModule.createClient>
+    );
+
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    });
+
+    // 1. Anonymous visitor: getSession returns null -> getUser is NOT called
+    useAuthStore.setState({ user: null, profile: null, isLoading: true });
+    useAuthStore.getState().initializeAuth();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(mockGetUser).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().isLoading).toBe(false);
+
+    // 2. Signed-in visitor: getSession returns session -> getUser IS called
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: 'session-user', email: 's@bookarium.test' } },
+      error: null,
+    });
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValueOnce({
+        eq: vi.fn().mockReturnValueOnce({
+          single: vi.fn().mockResolvedValueOnce({
+            data: { id: 'session-user', display_name: 'Session Scholar' },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    useAuthStore.getState().initializeAuth();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockGetSession).toHaveBeenCalledTimes(2);
+    expect(mockGetUser).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().user?.id).toBe('session-user');
+
+    createClientSpy.mockRestore();
+  });
+
   it('updates auth state when onAuthStateChange triggers SIGNED_OUT', async () => {
     let authChangeCallback: any;
     mockGetUser.mockResolvedValueOnce({

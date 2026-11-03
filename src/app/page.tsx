@@ -687,6 +687,7 @@ function HomeContent() {
             isFetching={isOffline ? false : isFetching}
             onPrefetchNext={prefetchNextPage}
             latencyMs={booksData?.latencyMs}
+            catalogSource={booksData?.source}
             isError={isDisplayError}
             pageSize={pageSize}
             onPageSizeChange={handlePageSizeChange}

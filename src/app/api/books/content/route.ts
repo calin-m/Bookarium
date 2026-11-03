@@ -11,6 +11,10 @@ import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 
 const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
+const inFlightMirrorFetches = new Map<
+  number,
+  Promise<{ textContent: string; fetchSuccess: boolean }>
+>();
 
 export async function GET(request: NextRequest) {
   const clientIp = getClientIp(request);
@@ -133,43 +137,30 @@ export async function GET(request: NextRequest) {
   }
 
   // ==========================================================================
-  // Tier 2: Resilient Multi-Mirror Upstream Fetching with Redirect Following
+  // Tier 2: Resilient Multi-Mirror Upstream Fetching with In-Flight Coalescing
   // ==========================================================================
-  const safeId = encodeURIComponent(String(Math.trunc(bookId)));
-  const targetUrls: string[] = [
-    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
-    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.pglaf.org').toString(),
-    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
-    new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
-    new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
-    new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
-  ];
+  let mirrorPromise = inFlightMirrorFetches.get(bookId);
+  if (!mirrorPromise) {
+    const safeId = encodeURIComponent(String(Math.trunc(bookId)));
+    const targetUrls: string[] = [
+      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
+      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.pglaf.org').toString(),
+      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
+      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
+      new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
+      new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
+    ];
 
-  let textContent = '';
-  let fetchSuccess = false;
+    mirrorPromise = (async () => {
+      let resolvedText = '';
+      let resolvedSuccess = false;
 
-  for (const targetUrl of targetUrls) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+      for (const targetUrl of targetUrls) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-    try {
-      let response = await fetch(targetUrl, {
-        signal: controller.signal,
-        redirect: 'manual',
-        headers: {
-          'User-Agent': SITE_CONFIG.USER_AGENT,
-          Accept: 'text/plain, text/html, */*',
-          'Accept-Encoding': 'gzip, deflate, br',
-          Connection: 'keep-alive',
-        },
-      });
-
-      // Follow redirects only if the target location is verified safe (anti-SSRF)
-      if ((response.status === 301 || response.status === 302) && response.headers?.get('location')) {
-        const redirectLocation = response.headers.get('location')!;
-        if (isSafeUpstreamUrl(redirectLocation, targetUrl)) {
-          const resolvedRedirectUrl = new URL(redirectLocation, targetUrl).toString();
-          response = await fetch(resolvedRedirectUrl, {
+        try {
+          let response = await fetch(targetUrl, {
             signal: controller.signal,
             redirect: 'manual',
             headers: {
@@ -179,59 +170,89 @@ export async function GET(request: NextRequest) {
               Connection: 'keep-alive',
             },
           });
-        }
-      }
 
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const contentLength = response.headers?.get('content-length');
-        if (contentLength && parseInt(contentLength, 10) > MAX_BOOK_BYTES) {
-          continue;
-        }
-
-        let text = '';
-        if (response.body && typeof response.body.getReader === 'function') {
-          const reader = response.body.getReader();
-          const chunks: Uint8Array[] = [];
-          let totalBytes = 0;
-          let oversized = false;
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value) {
-              totalBytes += value.length;
-              if (totalBytes > MAX_BOOK_BYTES) {
-                oversized = true;
-                controller.abort();
-                break;
-              }
-              chunks.push(value);
+          // Follow redirects only if the target location is verified safe (anti-SSRF)
+          if (
+            (response.status === 301 || response.status === 302) &&
+            response.headers?.get('location')
+          ) {
+            const redirectLocation = response.headers.get('location')!;
+            if (isSafeUpstreamUrl(redirectLocation, targetUrl)) {
+              const resolvedRedirectUrl = new URL(redirectLocation, targetUrl).toString();
+              response = await fetch(resolvedRedirectUrl, {
+                signal: controller.signal,
+                redirect: 'manual',
+                headers: {
+                  'User-Agent': SITE_CONFIG.USER_AGENT,
+                  Accept: 'text/plain, text/html, */*',
+                  'Accept-Encoding': 'gzip, deflate, br',
+                  Connection: 'keep-alive',
+                },
+              });
             }
           }
 
-          if (oversized) {
-            continue;
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const contentLength = response.headers?.get('content-length');
+            if (contentLength && parseInt(contentLength, 10) > MAX_BOOK_BYTES) {
+              continue;
+            }
+
+            let text = '';
+            if (response.body && typeof response.body.getReader === 'function') {
+              const reader = response.body.getReader();
+              const chunks: Uint8Array[] = [];
+              let totalBytes = 0;
+              let oversized = false;
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (value) {
+                  totalBytes += value.length;
+                  if (totalBytes > MAX_BOOK_BYTES) {
+                    oversized = true;
+                    controller.abort();
+                    break;
+                  }
+                  chunks.push(value);
+                }
+              }
+
+              if (oversized) {
+                continue;
+              }
+
+              const decoder = new TextDecoder('utf-8');
+              text =
+                chunks.map((c) => decoder.decode(c, { stream: true })).join('') + decoder.decode();
+            } else {
+              text = await response.text();
+            }
+
+            // Verify it's not a redirect HTML page
+            if (text && !text.trim().startsWith('<p>The document has moved')) {
+              resolvedText = text;
+              resolvedSuccess = true;
+              break;
+            }
           }
-
-          const decoder = new TextDecoder('utf-8');
-          text = chunks.map((c) => decoder.decode(c, { stream: true })).join('') + decoder.decode();
-        } else {
-          text = await response.text();
-        }
-
-        // Verify it's not a redirect HTML page
-        if (text && !text.trim().startsWith('<p>The document has moved')) {
-          textContent = text;
-          fetchSuccess = true;
-          break;
+        } catch {
+          clearTimeout(timeoutId);
         }
       }
-    } catch {
-      clearTimeout(timeoutId);
-    }
+
+      return { textContent: resolvedText, fetchSuccess: resolvedSuccess };
+    })().finally(() => {
+      inFlightMirrorFetches.delete(bookId);
+    });
+
+    inFlightMirrorFetches.set(bookId, mirrorPromise);
   }
+
+  const { textContent, fetchSuccess } = await mirrorPromise;
 
   if (!fetchSuccess || !textContent) {
     return NextResponse.json(

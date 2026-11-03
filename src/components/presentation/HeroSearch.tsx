@@ -105,6 +105,28 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   // Deterministic hourly rotation: the Featured Book changes every hour (3,600,000 ms)
   const hourlyIndex = useSyncExternalStore(subscribeHourly, getHourlySnapshot, getHourlyServerSnapshot);
 
+  const selectionKey = `${hourlyIndex}|${country}|${selectedTopic.trim().toLowerCase()}|${selectedLanguage.trim().toLowerCase()}`;
+  const [lockedPoolSelection, setLockedPoolSelection] = useState<{
+    key: string;
+    bookId: number;
+  } | null>(null);
+
+  const hasEnrichedPool = Boolean(quoteEnrichedBooks && quoteEnrichedBooks.length > 0);
+  if (
+    hasEnrichedPool &&
+    !featuredBook &&
+    (!books || books.length === 0) &&
+    lockedPoolSelection?.key !== selectionKey
+  ) {
+    const resolved = selectHourlyHeroFromPool(
+      quoteEnrichedBooks,
+      hourlyIndex * 1000 * 60 * 60,
+      country,
+      { topic: selectedTopic, language: selectedLanguage }
+    );
+    setLockedPoolSelection({ key: selectionKey, bookId: resolved.id });
+  }
+
   // Stable active Featured Book: selects from the full database pool of books with quotes when available
   const activeFeatured: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
     const dbBooksById = new Map<number, GutendexBook>(
@@ -149,13 +171,30 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
       return toHeroWithRawBook(targetCustom as FeaturedHeroBook);
     }
 
+    if (lockedPoolSelection?.key === selectionKey) {
+      const lockedMatch = dbBooksById.get(lockedPoolSelection.bookId);
+      if (lockedMatch && Array.isArray(lockedMatch.quotes) && lockedMatch.quotes.length > 0) {
+        return gutendexBookToFeaturedHeroBook(lockedMatch);
+      }
+    }
+
     return selectHourlyHeroFromPool(
       quoteEnrichedBooks,
       hourlyIndex * 1000 * 60 * 60,
       country,
       { topic: selectedTopic, language: selectedLanguage }
     );
-  }, [featuredBook, books, hourlyIndex, country, quoteEnrichedBooks, selectedTopic, selectedLanguage]);
+  }, [
+    featuredBook,
+    books,
+    hourlyIndex,
+    country,
+    quoteEnrichedBooks,
+    selectedTopic,
+    selectedLanguage,
+    lockedPoolSelection,
+    selectionKey,
+  ]);
 
   const emitSearch = (val: string) => {
     setSearchError(null);

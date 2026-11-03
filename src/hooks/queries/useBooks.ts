@@ -8,6 +8,8 @@ import {
 import React, { useEffect } from 'react';
 import type { GutendexBook, GutendexResponse, BookPassage } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import { LITERARY_QUOTES } from '@/config/literary-quotes';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 import {
   isBookPublicDomainInJurisdiction,
@@ -80,6 +82,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const requestStartMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
       const internalUrl = `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`;
       const res = await fetch(internalUrl, { signal: controller.signal });
@@ -88,7 +91,12 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
       if (res.ok) {
         const data = await res.json();
         if (data && (Array.isArray(data.results) || data.count !== undefined)) {
-          return data;
+          const elapsedMs =
+            (typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartMs;
+          return {
+            ...data,
+            latencyMs: Math.max(1, Math.round(elapsedMs)),
+          };
         }
       }
     } catch {
@@ -97,6 +105,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
 
     // Strategy 2: Direct Client Upstream Fetch (bypasses serverless datacenter IP blocks)
     const directUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${searchParams.toString()}`;
+    const directStartMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     let directRes: Response;
     try {
       directRes = await fetch(directUrl, {
@@ -117,6 +126,8 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     } catch {
       throw new Error('Failed to fetch books: Invalid JSON response from server');
     }
+    const directElapsedMs =
+      (typeof performance !== 'undefined' ? performance.now() : Date.now()) - directStartMs;
 
     const clientCountry = useJurisdictionStore.getState().getEffectiveCountry() || 'US';
     const jurisdictionRule = getJurisdictionRule(clientCountry);
@@ -159,6 +170,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
       results: filteredResults,
       count: adjustedCount,
       source: 'upstream',
+      latencyMs: Math.max(1, Math.round(directElapsedMs)),
       clientCountry,
       jurisdictionRule,
       totalFiltered,
@@ -366,9 +378,26 @@ export async function fetchFeaturedQuotesMap(
 
 export const QUOTE_ENRICHED_BOOKS_CACHE_KEY = 'bookarium-quote-enriched-books-v1' as const;
 
+const FEATURED_HERO_ORDER_MAP = new Map<number, number>(
+  FEATURED_HERO_BOOKS.map((b, idx) => [b.id, idx])
+);
+
+function sortQuoteEnrichedBooksDeterministically(books: GutendexBook[]): GutendexBook[] {
+  return [...books].sort((a, b) => {
+    const idxA = FEATURED_HERO_ORDER_MAP.get(a.id);
+    const idxB = FEATURED_HERO_ORDER_MAP.get(b.id);
+    if (idxA !== undefined && idxB !== undefined) {
+      return idxA - idxB;
+    }
+    if (idxA !== undefined) return -1;
+    if (idxB !== undefined) return 1;
+    return (b.download_count ?? 0) - (a.download_count ?? 0) || a.id - b.id;
+  });
+}
+
 export function readCachedQuoteEnrichedBooks(
-  limit: number = 60
-): { books: GutendexBook[]; updatedAt: number } | undefined {
+  limit: number = 600
+): { books: GutendexBook[]; updatedAt: number; isFresh?: boolean } | undefined {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
     return undefined;
   }
@@ -379,13 +408,18 @@ export function readCachedQuoteEnrichedBooks(
     if (!Array.isArray(parsed?.books) || parsed.books.length === 0) {
       return undefined;
     }
-    const validBooks = (parsed.books as GutendexBook[])
-      .filter((b) => b && typeof b.id === 'number' && typeof b.title === 'string')
-      .slice(0, Math.max(1, Math.min(100, limit)));
+    const validBooks = sortQuoteEnrichedBooksDeterministically(
+      (parsed.books as GutendexBook[]).filter(
+        (b) => b && typeof b.id === 'number' && typeof b.title === 'string'
+      )
+    ).slice(0, Math.max(1, Math.min(600, limit)));
     if (validBooks.length === 0) return undefined;
+    const now = Date.now();
+    const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : now;
     return {
       books: validBooks,
-      updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
+      updatedAt,
+      isFresh: typeof parsed.updatedAt === 'number' && now - parsed.updatedAt < 60 * 60 * 1000,
     };
   } catch {
     return undefined;
@@ -416,7 +450,7 @@ export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
  * Uses the partial index `idx_books_with_quotes_popular` for sub-10ms lookups and persists
  * non-empty results to `localStorage` for instant 0ms page-refresh hydration.
  */
-export async function fetchQuoteEnrichedBooks(limit: number = 100): Promise<GutendexBook[]> {
+export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<GutendexBook[]> {
   if (!isSupabaseConfigured()) {
     return [];
   }
@@ -428,8 +462,8 @@ export async function fetchQuoteEnrichedBooks(limit: number = 100): Promise<Gute
   try {
     const supabase = createClient();
     const candidateIdSet = new Set<number>([
-      1342, 84, 2701, 64317, 11, 1661, 174, 345, 98, 1260, 768, 43, 1952, 2542, 1080, 1400, 46,
-      2591, 135, 1184, 2600, 2554, 5200, 132, 1232, 205, 844,
+      ...FEATURED_HERO_BOOKS.map((b) => b.id),
+      ...LITERARY_QUOTES.map((q) => q.bookId),
     ]);
     const idScanSpecs = [
       { col: 'download_count', scanLimit: 500 },
@@ -466,7 +500,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 100): Promise<Gute
     const { data, error } = await scopedSelect
       .neq('quotes', '[]')
       .order('download_count', { ascending: false })
-      .limit(Math.max(1, Math.min(100, limit)));
+      .limit(Math.max(1, Math.min(600, limit)));
 
     if (error || !Array.isArray(data)) {
       return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
@@ -499,10 +533,11 @@ export async function fetchQuoteEnrichedBooks(limit: number = 100): Promise<Gute
         quotes: validPassages,
       });
     }
-    if (books.length > 0) {
-      writeCachedQuoteEnrichedBooks(books);
+    const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
+    if (sortedBooks.length > 0) {
+      writeCachedQuoteEnrichedBooks(sortedBooks);
     }
-    return books;
+    return sortedBooks;
   } catch {
     return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
   }
@@ -551,12 +586,13 @@ export function useQuoteEnrichedBooks(
   options: UseBooksOptions & { limit?: number } = {}
 ) {
   const contextClient = React.useContext(QueryClientContext);
-  const limit = options.limit ?? 100;
+  const limit = options.limit ?? 600;
   const hasMounted = useHasMounted();
   const cached = React.useMemo(
     () => (hasMounted ? readCachedQuoteEnrichedBooks(limit) : undefined),
     [hasMounted, limit]
   );
+  const isCacheFresh = Boolean(cached?.isFresh);
 
   const query = useQuery(
     {
@@ -564,7 +600,7 @@ export function useQuoteEnrichedBooks(
       queryFn: () => fetchQuoteEnrichedBooks(limit),
       staleTime: 60 * 60 * 1000, // 1 hour
       gcTime: 2 * 60 * 60 * 1000, // 2 hours
-      enabled: (options.enabled ?? true) && hasMounted && isSupabaseConfigured(),
+      enabled: (options.enabled ?? true) && hasMounted && isSupabaseConfigured() && !isCacheFresh,
     },
     contextClient ?? fallbackFeaturedQuotesClient
   );

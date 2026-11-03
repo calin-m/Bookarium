@@ -184,11 +184,47 @@ export const LiteraryQuotes: React.FC = () => {
 
   const handleShuffle = useCallback(() => {
     setIsShuffling(true);
+    const shuffleArray = <T,>(items: T[]): T[] => {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+
     const currentIds = new Set(displayedQuotes.map((q) => q.id));
-    const available = safeQuotes.filter((q) => !currentIds.has(q.id));
-    const pool = available.length >= 3 ? available : safeQuotes;
-    const shuffled = [...pool].sort(() => 0.5 - Math.random());
-    setShuffledQuotes(pickDistinctBookQuotes(shuffled, 3));
+    const currentBookIds = new Set(displayedQuotes.map((q) => q.bookId));
+    const quotesByBook = new Map<number, LiteraryQuote[]>();
+
+    for (const q of safeQuotes) {
+      if (currentIds.has(q.id)) continue;
+      const list = quotesByBook.get(q.bookId);
+      if (list) {
+        list.push(q);
+      } else {
+        quotesByBook.set(q.bookId, [q]);
+      }
+    }
+
+    const unseenBookQuotes: LiteraryQuote[] = [];
+    const fallbackBookQuotes: LiteraryQuote[] = [];
+
+    for (const [bookId, bookQuotes] of quotesByBook.entries()) {
+      const randomPassage = bookQuotes[Math.floor(Math.random() * bookQuotes.length)];
+      if (!currentBookIds.has(bookId)) {
+        unseenBookQuotes.push(randomPassage);
+      } else {
+        fallbackBookQuotes.push(randomPassage);
+      }
+    }
+
+    const prioritizedPool = [
+      ...shuffleArray(unseenBookQuotes),
+      ...shuffleArray(fallbackBookQuotes),
+      ...shuffleArray(safeQuotes),
+    ];
+    setShuffledQuotes(pickDistinctBookQuotes(prioritizedPool, 3));
 
     if (shuffleTimerRef.current) {
       clearTimeout(shuffleTimerRef.current);

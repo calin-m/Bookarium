@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 03 Nov 2026 08:24:08 GMT  
+**Last Generated**: Tue, 03 Nov 2026 10:34:17 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2172 passed  
+**Total Verified Tests**: 2180 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2172 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2180 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.82%** (11721/12105) — *Target: $\ge$ 95%*
-- **Statements**: **95.44%** (12708/13314) — *Target: $\ge$ 95%*
-- **Functions**: **94.38%** (2725/2887) — *Target: $\ge$ 92%*
-- **Branches**: **88%** (11681/13273) — *Target: $\ge$ 85%*
+- **Lines**: **96.78%** (11803/12195) — *Target: $\ge$ 95%*
+- **Statements**: **95.41%** (12791/13405) — *Target: $\ge$ 95%*
+- **Functions**: **94.47%** (2736/2896) — *Target: $\ge$ 92%*
+- **Branches**: **87.93%** (11762/13376) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2172 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2180 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 268 Tests)
+### 🚀 App Routes & Pages (27 Suites · 269 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -107,7 +107,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (23 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -132,6 +132,7 @@
 - ✔ `Tier 5: falls back to www.gutenberg.org/files/{id}/{id}-0.txt when all /cache/epub endpoints return 404`
 - ✔ `Tier 6: falls back to legacy www.gutenberg.org/files/{id}/{id}.txt when all 5 prior tiers fail`
 - ✔ `resolves relative Location redirect paths against the active mirror origin`
+- ✔ `coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch`
 
 </details>
 
@@ -467,7 +468,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 456 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 459 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -886,7 +887,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
 - ✔ `handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit`
@@ -899,6 +900,7 @@
 - ✔ `should render the hourly hero book immediately on initial render without falling back to index 0`
 - ✔ `synchronizes controlled search prop on rerender and supports featuredBook prop with or without rawBook`
 - ✔ `selects Featured Book from the full useQuoteEnrichedBooks pool using exclusively database quotes`
+- ✔ `locks the active Featured Book within the same hour across background pool updates to prevent refresh swaps`
 
 </details>
 
@@ -914,7 +916,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
@@ -925,6 +927,7 @@
 - ✔ `applies responsive section and balanced header divider spacing classes`
 - ✔ `handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes`
 - ✔ `populates anthology cards exclusively from useQuoteEnrichedBooks across 3 distinct books and disables redundant useFeaturedQuotes calls`
+- ✔ `rotates strictly to 3 unseen books on Discover More when 6+ quote-enriched books exist regardless of per-book passage count`
 - ✔ `tops up with baseSafeQuotes when quoteEnrichedBooks has fewer than 3 valid books and deduplicates identical quote IDs`
 
 </details>
@@ -1076,7 +1079,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and unified API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -1084,7 +1087,8 @@
 - ✔ `should handle view mode switching between grid and shelf`
 - ✔ `should handle pagination next button and direct page jump form`
 - ✔ `should display error indicator in status badge when isError is true`
-- ✔ `formats millisecond latencies under 1000ms`
+- ✔ `formats millisecond latencies under 1000ms and returns ellipsis when undefined`
+- ✔ `renders loading indicator when latencyMs is undefined and switches to value once resolved`
 - ✔ `formats second latencies at or above 1000ms with up to 3 decimals without trailing zeros`
 - ✔ `renders formatted second latency in StickyCatalogToolbar when latencyMs >= 1000`
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
@@ -1429,7 +1433,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 200 Tests)
+### ⚡ Zustand State Stores (10 Suites · 201 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1489,7 +1493,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (29 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1500,6 +1504,7 @@
 - ✔ `handles signInWithOtp (magic link) success and error with /auth/callback redirect`
 - ✔ `handles signInWithOAuth success and error with /auth/callback redirect`
 - ✔ `hydrates user on initializeAuth when active session exists`
+- ✔ `short-circuits network getUser in initializeAuth when getSession reports no local session for anonymous visitors`
 - ✔ `updates auth state when onAuthStateChange triggers SIGNED_OUT`
 - ✔ `unsubscribes cleanly when initializeAuth cleanup function is called`
 - ✔ `returns error when updateProfile is called while logged out`
@@ -1691,7 +1696,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 514 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 515 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2315,10 +2320,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/supabase/middleware.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/supabase/middleware.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `bypasses Supabase client creation when environment variables are missing`
 - ✔ `propagates request and response cookies and refreshes auth user session`
+- ✔ `bypasses Supabase client creation and auth.getUser for anonymous requests without sb-* cookies`
 - ✔ `suppresses auth.getUser rejections without failing route navigation`
 
 </details>
@@ -2471,10 +2477,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 274 Tests)
+### 🔄 Hooks & React Query (28 Suites · 275 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -2493,6 +2499,7 @@
 - ✔ `enforces LegalRestrictionError in network catch block when offline book is restricted in jurisdiction`
 - ✔ `returns offline text when network fails and offline record has no local author metadata`
 - ✔ `executes queryFn via networkMode always and resolves IndexedDB content even when navigator.onLine is false`
+- ✔ `canonicalizes /api/books/content query string to ?id= when bookId is present and falls back to ?url= when bookId is omitted`
 
 </details>
 
@@ -2501,7 +2508,7 @@
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
-- ✔ `should execute fetchBooks directly`
+- ✔ `should execute fetchBooks directly and attach measured client latencyMs`
 - ✔ `should support predictive prefetching for next page`
 - ✔ `should fallback to direct upstream when internal proxy fails`
 - ✔ `should throw error when both internal proxy and direct API fail`
@@ -2915,7 +2922,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 260 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 261 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -3467,7 +3474,7 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
@@ -3477,6 +3484,7 @@
 - ✔ `falls back to existing cookie when no IP headers are present in production`
 - ✔ `infers country from system timezone in development when no override or edge header exists`
 - ✔ `defaults to US when no geo signals exist in production`
+- ✔ `skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching`
 
 </details>
 

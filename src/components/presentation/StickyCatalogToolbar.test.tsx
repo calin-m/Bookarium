@@ -170,11 +170,73 @@ describe('StickyCatalogToolbar component', () => {
   });
 
   describe('formatApiLatency utility and precision second formatting', () => {
-    it('formats millisecond latencies under 1000ms', () => {
+    it('formats millisecond latencies under 1000ms and returns ellipsis when undefined', () => {
       expect(formatApiLatency(85)).toBe('85ms');
       expect(formatApiLatency(140)).toBe('140ms');
       expect(formatApiLatency(999)).toBe('999ms');
-      expect(formatApiLatency(undefined)).toBe('140ms');
+      expect(formatApiLatency(undefined)).toBe('...');
+    });
+
+    it('renders loading indicator when latencyMs is undefined and switches to value once resolved', () => {
+      const { rerender } = render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('api-latency-loading')).toBeInTheDocument();
+      expect(screen.getByTestId('api-status-badge')).not.toHaveTextContent('140ms');
+      expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
+        'title',
+        'Measuring catalog response time...'
+      );
+
+      rerender(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          latencyMs={42}
+          catalogSource="supabase"
+        />
+      );
+
+      expect(screen.queryByTestId('api-latency-loading')).not.toBeInTheDocument();
+      expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('42ms');
+      expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
+        'title',
+        'Bookarium Catalog: Online (42ms response time)'
+      );
+
+      rerender(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          latencyMs={310}
+          catalogSource="upstream"
+        />
+      );
+
+      expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('310ms');
+      expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
+        'title',
+        'Project Gutenberg Mirror: Online (310ms response time)'
+      );
     });
 
     it('formats second latencies at or above 1000ms with up to 3 decimals without trailing zeros', () => {

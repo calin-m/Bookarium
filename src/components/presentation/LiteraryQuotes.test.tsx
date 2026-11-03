@@ -110,10 +110,7 @@ describe('LiteraryQuotes component', () => {
     render(<LiteraryQuotes />);
     const shuffleBtn = screen.getByLabelText(/Discover more literary quotes/i);
 
-    // Rapid consecutive clicks to cover clearTimeout(shuffleTimerRef.current) and timer callback, ending on 3rd click ([id:4, id:5, id:6])
-    act(() => {
-      fireEvent.click(shuffleBtn);
-    });
+    // Rapid consecutive clicks to cover clearTimeout(shuffleTimerRef.current) and timer callback, ending on [id:4, id:5, id:6]
     act(() => {
       fireEvent.click(shuffleBtn);
       fireEvent.click(shuffleBtn);
@@ -234,8 +231,184 @@ describe('LiteraryQuotes component', () => {
     expect(requestedIds).toEqual([]);
     expect(optionsArg?.enabled).toBe(false);
 
+    // Clicking Discover More when only 3 books exist (with multiple passages on #1400 & #84) rotates to unseen passages via fallbackBookQuotes
+    fireEvent.click(screen.getByLabelText(/Discover more literary quotes/i));
+    expect(
+      screen.getByText(/Heaven knows we need never be ashamed of our tears/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Life, although it may only be an accumulation of anguish, is dear to me/i)
+    ).toBeInTheDocument();
+
     enrichedSpy.mockRestore();
     quotesSpy.mockRestore();
+  });
+
+  it('rotates strictly to 3 unseen books on Discover More when 6+ quote-enriched books exist regardless of per-book passage count', async () => {
+    const { vi } = await import('vitest');
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      data: [
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['Bildungsromans'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 90000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“My father’s family name being Pirrip.”',
+              quoteExcerpt: '“Suffering has been stronger than all other teaching in my life.”',
+            },
+            {
+              chapterLabel: 'Passage II',
+              openingLine: '“Take nothing on its looks; take everything on evidence.”',
+              quoteExcerpt: '“Heaven knows we need never be ashamed of our tears.”',
+            },
+          ],
+        },
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: ['Gothic fiction'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 85000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“You will rejoice to hear that no disaster has accompanied.”',
+              quoteExcerpt: '“Beware; for I am fearless, and therefore powerful.”',
+            },
+            {
+              chapterLabel: 'Passage II',
+              openingLine: '“Nothing is so painful to the human mind as a great change.”',
+              quoteExcerpt: '“Life, although it may only be an accumulation of anguish, is dear to me.”',
+            },
+          ],
+        },
+        {
+          id: 2701,
+          title: 'Moby Dick',
+          authors: [{ name: 'Melville, Herman', birth_year: 1819, death_year: 1891 }],
+          translators: [],
+          subjects: ['Whaling'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 80000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“Call me Ishmael.”',
+              quoteExcerpt: '“Whenever it is a damp, drizzly November in my soul, I account it high time to get to sea.”',
+            },
+            {
+              chapterLabel: 'Passage II',
+              openingLine: '“There is a wisdom that is woe.”',
+              quoteExcerpt: '“It is not down on any map; true places never are in this world.”',
+            },
+          ],
+        },
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: ['Courtship'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 75000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“It is a truth universally acknowledged.”',
+              quoteExcerpt: '“I declare after all there is no enjoyment like reading!”',
+            },
+            {
+              chapterLabel: 'Passage II',
+              openingLine: '“Vanity and pride are different things, though the words are often used synonymously.”',
+              quoteExcerpt: '“There is a stubbornness about me that never can bear to be frightened at the will of others.”',
+            },
+          ],
+        },
+        {
+          id: 98,
+          title: 'A Tale of Two Cities',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['French Revolution'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 70000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“It was the best of times, it was the worst of times.”',
+              quoteExcerpt: '“It is a far, far better thing that I do, than I have ever done.”',
+            },
+          ],
+        },
+        {
+          id: 174,
+          title: 'The Picture of Dorian Gray',
+          authors: [{ name: 'Wilde, Oscar', birth_year: 1854, death_year: 1900 }],
+          translators: [],
+          subjects: ['Philosophical fiction'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 65000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“The studio was filled with the rich odour of roses.”',
+              quoteExcerpt: '“The only way to get rid of a temptation is to yield to it.”',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    render(<LiteraryQuotes />);
+    // Initial render shows books #1400, #84, #2701
+    expect(screen.getByText('Great Expectations')).toBeInTheDocument();
+    expect(screen.getByText('Frankenstein')).toBeInTheDocument();
+    expect(screen.getByText('Moby Dick')).toBeInTheDocument();
+
+    // Clicking Discover More must exclude #1400, #84, #2701 and display the 3 unseen books (#1342, #98, #174)
+    fireEvent.click(screen.getByLabelText(/Discover more literary quotes/i));
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.getByText('A Tale of Two Cities')).toBeInTheDocument();
+    expect(screen.getByText('The Picture of Dorian Gray')).toBeInTheDocument();
+    expect(screen.queryByText('Great Expectations')).toBeNull();
+    expect(screen.queryByText('Frankenstein')).toBeNull();
+    expect(screen.queryByText('Moby Dick')).toBeNull();
+
+    enrichedSpy.mockRestore();
   });
 
   it('tops up with baseSafeQuotes when quoteEnrichedBooks has fewer than 3 valid books and deduplicates identical quote IDs', async () => {

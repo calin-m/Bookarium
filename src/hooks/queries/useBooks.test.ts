@@ -67,7 +67,7 @@ describe('useBooks hook', () => {
     expect(books.some((b) => b.title.includes('Frankenstein'))).toBe(true);
   });
 
-  it('should execute fetchBooks directly', async () => {
+  it('should execute fetchBooks directly and attach measured client latencyMs', async () => {
     const data = await fetchBooks({
       search: 'Republic',
       topic: 'philosophy',
@@ -80,6 +80,8 @@ describe('useBooks hook', () => {
     });
     expect(data.results.length).toBeGreaterThan(0);
     expect(data.results[0].title).toBe('The Republic');
+    expect(typeof data.latencyMs).toBe('number');
+    expect(data.latencyMs).toBeGreaterThanOrEqual(1);
   });
 
   it('should support predictive prefetching for next page', async () => {
@@ -122,6 +124,8 @@ describe('useBooks hook', () => {
     expect(data).toBeDefined();
     expect(data.results[0].title).toBe('Direct Gutenberg Pride');
     expect(data.source).toBe('upstream');
+    expect(typeof data.latencyMs).toBe('number');
+    expect(data.latencyMs).toBeGreaterThanOrEqual(1);
     expect(callCount).toBeGreaterThanOrEqual(2);
     fetchSpy.mockRestore();
   });
@@ -618,6 +622,10 @@ describe('useBooks hook', () => {
     expect(books).toHaveLength(1);
     expect(books[0].id).toBe(1400);
     expect(books[0].quotes).toHaveLength(1);
+    const inCallIds = (inEnrichedMock.mock.calls[0] as unknown as [string, number[]])?.[1] ?? [];
+    expect(inCallIds).toContain(1342);
+    expect(inCallIds).toContain(35);
+    expect(inCallIds).toContain(120);
 
     // Persisted localStorage cache is returned when offline or on transient query errors, and [] when cache is cleared
     expect((await fetchQuoteEnrichedBooks(30))[0].id).toBe(1400);

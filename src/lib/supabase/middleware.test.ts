@@ -52,7 +52,9 @@ describe('src/lib/supabase/middleware', () => {
         } as never;
       });
 
-      const req = new NextRequest('https://bookarium.app/account');
+      const req = new NextRequest('https://bookarium.app/account', {
+        headers: { cookie: 'sb-project-auth-token=jwt-initial' },
+      });
       const res = await updateSession(req);
 
       expect(res.status).toBe(200);
@@ -63,6 +65,26 @@ describe('src/lib/supabase/middleware', () => {
         { name: 'sb-access-token', value: 'jwt-123', options: { path: '/' } },
       ]);
       expect(req.cookies.get('sb-access-token')?.value).toBe('jwt-123');
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = origUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = origKey;
+    }
+  });
+
+  it('bypasses Supabase client creation and auth.getUser for anonymous requests without sb-* cookies', async () => {
+    const origUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const origKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://project.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+
+    try {
+      const req = new NextRequest('https://bookarium.app/catalog', {
+        headers: { cookie: 'bookarium-geo-country=US' },
+      });
+      const res = await updateSession(req);
+
+      expect(res.status).toBe(200);
+      expect(createServerClient).not.toHaveBeenCalled();
     } finally {
       process.env.NEXT_PUBLIC_SUPABASE_URL = origUrl;
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = origKey;
@@ -84,7 +106,9 @@ describe('src/lib/supabase/middleware', () => {
         } as never;
       });
 
-      const req = new NextRequest('https://bookarium.app/');
+      const req = new NextRequest('https://bookarium.app/', {
+        headers: { cookie: 'sb-project-auth-token=jwt-initial' },
+      });
       const res = await updateSession(req);
       expect(res.status).toBe(200);
     } finally {

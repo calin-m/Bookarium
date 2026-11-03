@@ -1043,7 +1043,7 @@ function generateMarkdown() {
     useAnnotationStore:
       'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), and scholarly reflections.',
     useAuthStore:
-      'Supabase session authentication, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), OWASP current-password re-authentication (`updatePassword`), complete 6-store session teardown & IndexedDB/speech/sessionStorage erasure on account deletion, and cloud profile synchronization with live companion identity propagation.',
+      'Supabase session authentication, anonymous local `getSession()` guard before `getUser()`, offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), OWASP current-password re-authentication (`updatePassword`), complete 6-store session teardown & IndexedDB/speech/sessionStorage erasure on account deletion, and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
       'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), placeholder-to-authentic author & subject/format self-healing (`enrichSavedBooks`), atomic selector hooks (`useIsBookSaved`, `useIsBookFavorite`, `useHydratedBookshelfCounts`, `useBookRating`, `useReadingStatus`), deletion tombstones, ratings, and cloud outbox reconciliation (`DELETE_BOOK`, `INSERT_BOOK`, `DELETE_FAVORITE`, `UPSERT_FAVORITE`, `UPSERT_CURATION`, `DELETE_CURATION`, `MOVE_BOOK`, `UPDATE_SHELF`) via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
@@ -1187,7 +1187,7 @@ function generateMarkdown() {
     '',
     '    Reader->>Proxy: GET / (or /bookshelf, /read/[id])',
     '    Proxy->>Proxy: Resolve country (x-vercel-ip-country -> ?country -> cookie)',
-    '    Proxy->>Supabase: Refresh SSR Auth Session Cookie (updateSession)',
+    '    Proxy->>Supabase: Refresh SSR Auth Session Cookie (updateSession • skipped when no sb-* cookie or on /api/books*)',
     '    Proxy-->>Reader: HTML Shell + Set-Cookie (bookarium-geo-country) + 7 OWASP Headers',
     '    Reader->>Providers: Mount RootLayout & Providers',
     '    Providers->>Local: Hydrate 10 Zustand Stores & IndexedDB Offline IDs (0ms)',
@@ -1222,7 +1222,7 @@ function generateMarkdown() {
     '    alt Cached in IndexedDB & Verified Public Domain in Jurisdiction',
     '        IDB-->>Hook: Return Unabridged Text Instantaneously (0ms, 100% Offline)',
     '    else Not Cached Locally (Online Fetch)',
-    '        Hook->>API: GET /api/books/content?id=[id]&url=[mirrorUrl]',
+    '        Hook->>API: GET /api/books/content?id=[id]',
     '        API->>API: bookContentRateLimiter.check() & url-validator.ts (HTTPS + Host Allowlist)',
     '        API->>Gate: resolveBookMetadata(id) (1. 24h LRU -> 2. Supabase -> 3. Gutendex -> 4. Featured)',
     '        Gate->>Gate: isBookPublicDomainInJurisdiction(authors, translators, country)',
@@ -1287,7 +1287,7 @@ function generateMarkdown() {
       cacheDesc = '`s-maxage=3600, stale-while-revalidate=86400` • Sliding-Window Rate Limit (30 req/min)';
       upstream = 'Supabase `public.books` -> `https://gutendex.com/books/`';
     } else if (r.path === '/api/books/content') {
-      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Anti-SSRF Allowlist & Jurisdictional Gate';
+      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • In-Flight Mirror Coalescing (`inFlightMirrorFetches`), Anti-SSRF Allowlist & Jurisdictional Gate';
       upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN';
     } else if (r.path === '/api/books/translations') {
       cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Sliding-Window Rate Limit & Jurisdictional Filter';
@@ -1344,8 +1344,8 @@ function generateMarkdown() {
   );
 
   const hookRoles = {
-    useBooks: 'TanStack Query fetching catalog volumes (`useBooks`), featured book quotes (`useFeaturedQuotes`), and the shared database-first quote pool (`useQuoteEnrichedBooks`) powering Hero (Full Pool), Classic of the Day (Classics Filter), and Words That Shaped Humanity (3-Distinct-Book Full Pool) with sub-pagination and client failover.',
-    useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
+    useBooks: 'TanStack Query fetching catalog volumes (`useBooks` with client-side round-trip `performance.now()` latency telemetry), featured book quotes (`useFeaturedQuotes`), and the shared `600`-volume database-first quote pool (`useQuoteEnrichedBooks` with 1-hour `!isCacheFresh` gating and zero-swap `ssrMatch` hydration) powering Hero (Full Pool), Classic of the Day (Classics Filter), and Words That Shaped Humanity (3-Distinct-Book Fisher-Yates Rotation) with sub-pagination and client failover.',
+    useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with canonical `/api/books/content?id=<bookId>` cache keys, IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
     useBookTranslations: 'TanStack Query aggregating international language translations and editions (gated when offline).',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
     useReaderSession: 'Reading coordinates restoration, cross-page `bookmarkText` reflow self-healing on font-size re-pagination, resume ribbons, and cloud session synchronization.',
@@ -1451,7 +1451,7 @@ function generateMarkdown() {
     client:
       'Browser-side Supabase client initialization with credential sanitization and local session persistence.',
     middleware:
-      'Next.js edge middleware helper managing Supabase auth tokens and cookie refresh cycles.',
+      'Next.js edge middleware helper managing Supabase auth tokens and cookie refresh cycles while short-circuiting anonymous requests without `sb-*` cookies.',
     server:
       'Server-side Supabase client initialization using Next.js cookies for authenticated route handlers.',
     'sync-utils':
@@ -1681,7 +1681,7 @@ function generateMarkdown() {
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **Catalog Search & Browse** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts)) | `SELECT <CATALOG_METADATA_COLUMNS> ... ORDER BY download_count DESC` (or `id ASC/DESC`) + optional `textSearch(search_vector)`, `overlaps(languages)`, `lte(max_author_death_year)` | `idx_books_download_count`, `idx_books_search_vector` (GIN), `idx_books_languages` (GIN), `idx_books_author_death_year`, `books_pkey` | `range(from, to)` (`<= 100` rows) + `count: "estimated"` | **Never** select `content` in catalog list queries (avoids TOAST decompression); **never** chain `.order(\'id\', { ascending: true })` onto single-column `idx_books_download_count` (prevents sorting `77,500` `download_count = 0` rows). |',
     '| **Single-Book & Batch ID Lookup** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts), [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts)) | `SELECT ... FROM public.books WHERE id = $1` or `.in(\'id\', normalizedIds)` (`useFeaturedQuotes`) | `books_pkey` (`INTEGER PRIMARY KEY`) | `1` to `100` IDs per query | Direct B-Tree Primary Key lookup (`< 2ms`); never falls back to sequential scan. |',
-    '| **Quote-Enriched Books Discovery** ([`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) `fetchQuoteEnrichedBooks`) | Step 1: `select(\'id\').order(\'download_count\', DESC).limit(500)` + `order(\'id\', DESC).limit(64)`; Step 2: `.in(\'id\', candidateIds).neq(\'quotes\', \'[]\').order(\'download_count\', DESC).limit(100)` | `idx_books_download_count` + `books_pkey` (`.in(\'id\', candidateIds)`) | `~564` candidate IDs -> `limit <= 100` | **Never** execute an unbounded `.neq(\'quotes\', \'[]\').order(\'download_count\', DESC)` without `.in(\'id\', ...)` (prevents 78,000-row index walk when fewer than `LIMIT` rows have quotes). |',
+    '| **Quote-Enriched Books Discovery** ([`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) `fetchQuoteEnrichedBooks`) | Step 1: `FEATURED_HERO_BOOKS` + `LITERARY_QUOTES` IDs + `select(\'id\').order(\'download_count\', DESC).limit(500)` + `order(\'id\', DESC).limit(64)`; Step 2: `.in(\'id\', candidateIds).neq(\'quotes\', \'[]\').order(\'download_count\', DESC).limit(600)` | `idx_books_download_count` + `books_pkey` (`.in(\'id\', candidateIds)`) | `~580` candidate IDs -> `limit <= 600` | **Never** execute an unbounded `.neq(\'quotes\', \'[]\').order(\'download_count\', DESC)` without `.in(\'id\', ...)` (prevents 78,000-row index walk when fewer than `LIMIT` rows have quotes). |',
     '| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) & `quotes-sync.yml`) | Step 1: `ORDER BY download_count DESC LIMIT 1000` + `.in(\'id\', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320`; Step 2: `fetchQuotedBookIds` & `evaluateScheduleGate` via `.in(\'id\', chunk).neq(\'quotes\', \'[]\')`; Step 3: `.in(\'id\', selectedIds)` for `content, quotes` | `idx_books_download_count` + `books_pkey` | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 25ms` total)**: `id ASC` tie-breaking is computed in memory in JS; `content` is hydrated only for the `<= 25` selected batch IDs; `fetchQuotedBookIds` and `evaluateScheduleGate` are strictly Primary-Key-Scoped. |',
     '| **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml`) | Step 1: `.select(CATALOG_DIFF_SELECT_COLUMNS).in(\'id\', batchIds)` (`filterChangedOrNewBooks`); Step 2: `upsert(toUpsert, { onConflict: \'id\', ignoreDuplicates: false })` on new/changed rows only; Step 3: keyset `select(\'id\').gt(\'id\', lastId).order(\'id\', ASC).limit(1000)` (`reconcileWithdrawnCatalogBooks`) + `syncPopularDownloadCounts` | `books_pkey` (`ON CONFLICT (id)` & keyset scan) & `idx_books_download_count` | `200` rows/batch diff (`< 2ms`), recursive halving on `57014`; `1,000` IDs/page keyset prune (`50,000` min-catalog & `500` max-prune circuit breakers) | **99.7% reduction in Postgres writes & zero `quotes` overwrite**: `CATALOG_DIFF_SELECT_COLUMNS` omits `formats`, `quotes`, `content`, and `search_vector`; unchanged rows are skipped so `trigger_books_search_vector` only fires on new or modified records. |',
     '| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `idx_book_translations_work_id`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |',
@@ -1761,7 +1761,7 @@ function generateMarkdown() {
     '',
     '| Module | Source File | Responsibilities & Security Directives |',
     '| :--- | :--- | :--- |',
-    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie, handling development query override (`?country=XX`), and enforcing strict security headers. |',
+    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie on page routes (skipping `updateSession` and `Set-Cookie` on `/api/books*` to preserve Vercel Edge CDN `s-maxage` caching), handling development query override (`?country=XX`), and enforcing strict security headers. |',
     '',
     '---',
     '',
@@ -2020,7 +2020,7 @@ function generateMarkdown() {
     '## ⚡ Data Pulling & Caching Strategy',
     '',
     '1. **Dual-Provider Catalog Architecture**: Primary search queries execute against self-hosted Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back seamlessly to upstream Gutendex REST API if Supabase is unconfigured, unseeded, or unreachable, unconditionally enforcing `copyright=false`.',
-    '2. **Unified Visible Telemetry**: `StickyCatalogToolbar.tsx` renders a unified API connectivity and roundtrip latency pill with pulsing dot (green online / red offline) and precision time formatting (ms under 1000ms, s/1.212s for 1000ms+).',
+    '2. **Unified Visible Telemetry**: `StickyCatalogToolbar.tsx` renders a unified API connectivity and client round-trip latency pill with pulsing dot (green online / red offline), an initial loading state (`api-latency-loading` `•••`) before the first catalog ping resolves, source-aware provider tooltips (`Bookarium Catalog` vs. `Project Gutenberg Mirror`), and precision time formatting (ms under 1000ms, s/1.212s for 1000ms+).',
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Edge SWR Caching & Geographic Vary Partitioning**: Catalog queries are cached with `s-maxage=3600, stale-while-revalidate=86400` (`/api/books`) and content/translation streams with `s-maxage=86400, stale-while-revalidate=604800`, partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.',
     '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
