@@ -1,0 +1,8 @@
+# Normalize line endings across Windows & Linux CI
+* text=auto eol=lf
+
+# Exclude GitHub.com-only web UI metadata from "Download ZIP" & Release tarballs
+.github/FUNDING.yml export-ignore
+.github/pull_request_template.md export-ignore
+.gitattributes export-ignore
+

@@ -7,6 +7,10 @@ import {
   getJurisdictionSafeFeaturedBooks,
   getHourlyHeroBook,
   getDailyEditorialBook,
+  isClassicCatalogBook,
+  gutendexBookToFeaturedHeroBook,
+  selectHourlyHeroFromPool,
+  selectDailyClassicFromPool,
 } from './featured-books';
 
 describe('featured-books configuration & passage selectors', () => {
@@ -129,6 +133,114 @@ describe('featured-books configuration & passage selectors', () => {
 
       const colliding = getDailyEditorialBook(FEATURED_HERO_BOOKS[0].id, timestamp, 'US');
       expect(colliding.id).toBe(FEATURED_HERO_BOOKS[1].id);
+    });
+  });
+
+  describe('isClassicCatalogBook, gutendexBookToFeaturedHeroBook & DB-First Pool Selectors', () => {
+    const mockClassicDbBook = {
+      id: 1400,
+      title: 'Great Expectations',
+      authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+      translators: [],
+      subjects: ['Bildungsromans'],
+      bookshelves: ['Best Books Ever'],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 35000,
+      quotes: [
+        {
+          chapterLabel: 'Passage I • Great Expectations',
+          openingLine: '“My father’s family name being Pirrip.”',
+          quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+        },
+      ],
+    };
+
+    const mockModernDbBook = {
+      id: 75001,
+      title: 'Twentieth Century Aviation Chronicle',
+      authors: [{ name: 'Wright, Modern', birth_year: 1890, death_year: 1945 }],
+      translators: [],
+      subjects: ['Aeronautics'],
+      bookshelves: ['Technology'],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 15000,
+      quotes: [
+        {
+          chapterLabel: 'Chapter I • Flight',
+          openingLine: '“The sky opened before the silver wings.”',
+          quoteExcerpt: '“Above the clouds, distance ceased to exist.”',
+        },
+      ],
+    };
+
+    it('identifies Classics by canonical ID, pre-1900 author death_year, or classical taxonomy', () => {
+      expect(isClassicCatalogBook(mockClassicDbBook)).toBe(true);
+      expect(isClassicCatalogBook(mockModernDbBook)).toBe(false);
+      expect(
+        isClassicCatalogBook({
+          ...mockModernDbBook,
+          id: 75002,
+          subjects: ['Philosophy -- Ancient'],
+        })
+      ).toBe(true);
+      expect(isClassicCatalogBook({ id: 1342 })).toBe(true);
+      expect(isClassicCatalogBook(null as unknown as { id: number })).toBe(false);
+    });
+
+    it('maps GutendexBook to FeaturedHeroBook using exclusively database quotes', () => {
+      const mapped = gutendexBookToFeaturedHeroBook(mockClassicDbBook);
+      expect(mapped.id).toBe(1400);
+      expect(mapped.author).toBe('Charles Dickens');
+      expect(mapped.year).toBe('1812–1870');
+      expect(mapped.quoteExcerpt).toBe('“Suffering has been stronger than all other teaching.”');
+      expect(mapped.quotes).toEqual(mockClassicDbBook.quotes);
+      expect(mapped.rawBook).toBe(mockClassicDbBook);
+    });
+
+    it('selects Featured Book from the entire quoteEnrichedBooks pool and supports topic/language filters', () => {
+      const pool = [mockModernDbBook, mockClassicDbBook];
+      const h0 = selectHourlyHeroFromPool(pool, 0, 'US');
+      const h1 = selectHourlyHeroFromPool(pool, 3600 * 1000, 'US');
+      expect(h0.id).toBe(75001);
+      expect(h1.id).toBe(1400);
+
+      // Topic filter narrows to matching book in DB pool
+      const filteredByTopic = selectHourlyHeroFromPool(pool, 0, 'US', {
+        topic: 'bildungsromans',
+        language: 'en',
+      });
+      expect(filteredByTopic.id).toBe(1400);
+
+      // Falls back to static FEATURED_HERO_BOOKS when pool is empty
+      const fallback = selectHourlyHeroFromPool([], 0, 'US');
+      expect(fallback.id).toBe(FEATURED_HERO_BOOKS[0].id);
+    });
+
+    it('selects Classic of the Day strictly from Classics in quoteEnrichedBooks and avoids heroBookId collision', () => {
+      const pool = [mockModernDbBook, mockClassicDbBook];
+      // Even though mockModernDbBook is index 0, Classic of the Day filters strictly to Classics (mockClassicDbBook #1400)
+      const dailyClassic = selectDailyClassicFromPool(pool, 75001, 0, 'US');
+      expect(dailyClassic.id).toBe(1400);
+
+      // Collision avoidance when two classics exist
+      const secondClassic = {
+        ...mockClassicDbBook,
+        id: 98,
+        title: 'A Tale of Two Cities',
+      };
+      const twoClassicsPool = [mockClassicDbBook, secondClassic];
+      const avoided = selectDailyClassicFromPool(twoClassicsPool, 1400, 0, 'US');
+      expect(avoided.id).toBe(98);
+
+      // Fallback when DB pool is empty
+      const fallback = selectDailyClassicFromPool([], 1342, 0, 'US');
+      expect(fallback.id).toBe(FEATURED_HERO_BOOKS[1].id);
     });
   });
 });

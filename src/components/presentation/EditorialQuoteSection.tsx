@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Quote, BookOpen, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import {
-  getDailyEditorialBook,
-  getHourlyHeroBook,
+  selectDailyClassicFromPool,
+  selectHourlyHeroFromPool,
   type FeaturedHeroBook,
 } from '@/config/featured-books';
 import { ROUTES } from '@/config/routes';
@@ -47,35 +47,28 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
 
   const { data: quoteEnrichedBooks } = useQuoteEnrichedBooks();
 
-  const book: FeaturedHeroBook = useMemo(() => {
-    const activeHeroId = heroBookId ?? getHourlyHeroBook(hourlyTimestamp, country).id;
-    const baseEditorial = getDailyEditorialBook(activeHeroId, hourlyTimestamp, country);
-
-    if (!quoteEnrichedBooks || quoteEnrichedBooks.length === 0) {
-      return baseEditorial;
-    }
-
-    const enrichedMatch = quoteEnrichedBooks.find((b) => b.id === baseEditorial.id);
-    return enrichedMatch?.quotes?.length
-      ? { ...baseEditorial, quotes: enrichedMatch.quotes }
-      : baseEditorial;
+  const book: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
+    const activeHeroId =
+      heroBookId ?? selectHourlyHeroFromPool(quoteEnrichedBooks, hourlyTimestamp, country).id;
+    return selectDailyClassicFromPool(quoteEnrichedBooks, activeHeroId, hourlyTimestamp, country);
   }, [heroBookId, country, hourlyTimestamp, quoteEnrichedBooks]);
 
-  const hasExistingQuotes = Array.isArray(book.quotes) && book.quotes.length >= 2;
+  const hasEnrichedPool = Boolean(quoteEnrichedBooks && quoteEnrichedBooks.length > 0);
+  const hasExistingQuotes = Array.isArray(book.quotes) && book.quotes.length >= 1;
   const { data: featuredQuotesMap } = useFeaturedQuotes([book.id], {
-    enabled: !hasExistingQuotes,
+    enabled: !hasEnrichedPool && !hasExistingQuotes,
   });
 
-  // Prioritize primary Editorial quoteExcerpt for SSR/client stability, falling back to Supabase quotes
+  // Strictly prioritize database quotes (public.books.quotes) when available, falling back to static quoteExcerpt only when unconfigured/empty
   const displayQuote = useMemo(() => {
     const dbQuotes = featuredQuotesMap?.[book.id] || book.quotes;
     const hourIndex = Math.max(0, Math.floor(hourlyTimestamp / (1000 * 60 * 60)));
     const candidatePassage =
-      !book.quoteExcerpt && Array.isArray(dbQuotes) && dbQuotes.length > 0
+      Array.isArray(dbQuotes) && dbQuotes.length > 0
         ? dbQuotes[hourIndex % dbQuotes.length]
         : undefined;
     const rawExcerpt =
-      book.quoteExcerpt || candidatePassage?.quoteExcerpt || candidatePassage?.openingLine || '';
+      candidatePassage?.quoteExcerpt || candidatePassage?.openingLine || book.quoteExcerpt || '';
     return rawExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
   }, [featuredQuotesMap, book.id, book.quotes, book.quoteExcerpt, hourlyTimestamp]);
 

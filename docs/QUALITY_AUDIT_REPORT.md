@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 02 Nov 2026 16:29:30 GMT  
+**Last Generated**: Tue, 03 Nov 2026 08:24:08 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2167 passed  
+**Total Verified Tests**: 2172 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2167 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2172 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.82%** (11678/12061) — *Target: $\ge$ 95%*
-- **Statements**: **95.44%** (12659/13263) — *Target: $\ge$ 95%*
-- **Functions**: **94.36%** (2715/2877) — *Target: $\ge$ 92%*
-- **Branches**: **87.99%** (11599/13182) — *Target: $\ge$ 85%*
+- **Lines**: **96.82%** (11721/12105) — *Target: $\ge$ 95%*
+- **Statements**: **95.44%** (12708/13314) — *Target: $\ge$ 95%*
+- **Functions**: **94.38%** (2725/2887) — *Target: $\ge$ 92%*
+- **Branches**: **88%** (11681/13273) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2167 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2172 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 268 Tests)
 
@@ -467,7 +467,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 455 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 456 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -828,7 +828,7 @@
 - ✔ `filters out books protected in Life+100 jurisdiction (Mexico)`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
-- ✔ `keeps the deterministic daily classic book and quote stable on refresh while enriching quotes in-place from useQuoteEnrichedBooks`
+- ✔ `selects Classic of the Day strictly from Classics in useQuoteEnrichedBooks and prioritizes database quotes over static quoteExcerpt`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
@@ -898,7 +898,7 @@
 - ✔ `should not toggle pinned open state on mobile viewports (< 1024px)`
 - ✔ `should render the hourly hero book immediately on initial render without falling back to index 0`
 - ✔ `synchronizes controlled search prop on rerender and supports featuredBook prop with or without rawBook`
-- ✔ `enriches the hourly hero book in-place from useQuoteEnrichedBooks without swapping to a different book`
+- ✔ `selects Featured Book from the full useQuoteEnrichedBooks pool using exclusively database quotes`
 
 </details>
 
@@ -914,7 +914,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
@@ -924,7 +924,8 @@
 - ✔ `maintains strictly unique quote IDs and Project Gutenberg bookIds across all anthology entries`
 - ✔ `applies responsive section and balanced header divider spacing classes`
 - ✔ `handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes`
-- ✔ `expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads`
+- ✔ `populates anthology cards exclusively from useQuoteEnrichedBooks across 3 distinct books and disables redundant useFeaturedQuotes calls`
+- ✔ `tops up with baseSafeQuotes when quoteEnrichedBooks has fewer than 3 valid books and deduplicates identical quote IDs`
 
 </details>
 
@@ -2914,7 +2915,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 256 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 260 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -3371,7 +3372,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/featured-books.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/config/featured-books.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `exports a curated list of featured hero books with Pride and Prejudice as primary default`
 - ✔ `identifies curated featured classic volumes by id or case-insensitive title`
@@ -3382,6 +3383,10 @@
 - ✔ `filters out Life+100 restricted authors or translators in Mexico (MX)`
 - ✔ `deterministically rotates the hourly hero book every 3,600,000 ms`
 - ✔ `advances getDailyEditorialBook to the next candidate when it collides with heroBookId`
+- ✔ `identifies Classics by canonical ID, pre-1900 author death_year, or classical taxonomy`
+- ✔ `maps GutendexBook to FeaturedHeroBook using exclusively database quotes`
+- ✔ `selects Featured Book from the entire quoteEnrichedBooks pool and supports topic/language filters`
+- ✔ `selects Classic of the Day strictly from Classics in quoteEnrichedBooks and avoids heroBookId collision`
 
 </details>
 

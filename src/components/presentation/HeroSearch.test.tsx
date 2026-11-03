@@ -310,36 +310,10 @@ describe('HeroSearch component', () => {
     expect(screen.getAllByText(/The War of the Worlds/i)[0]).toBeInTheDocument();
   });
 
-  it('enriches the hourly hero book in-place from useQuoteEnrichedBooks without swapping to a different book', async () => {
+  it('selects Featured Book from the full useQuoteEnrichedBooks pool using exclusively database quotes', async () => {
     const useBooksModule = await import('@/hooks/queries/useBooks');
-    const hourlyBook = getHourlyHeroBook();
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
       data: [
-        {
-          id: hourlyBook.id,
-          title: hourlyBook.title,
-          authors: [{ name: hourlyBook.author, birth_year: hourlyBook.authorBirthYear ?? null, death_year: hourlyBook.authorDeathYear ?? null }],
-          translators: [],
-          subjects: [hourlyBook.primarySubject],
-          bookshelves: [],
-          languages: ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: {},
-          download_count: 65000,
-          quotes: [
-            {
-              chapterLabel: `Passage I • ${hourlyBook.title}`,
-              openingLine: '“First opening line from Supabase quotes.”',
-              quoteExcerpt: '“First quote excerpt from Supabase quotes.”',
-            },
-            {
-              chapterLabel: `Passage II • ${hourlyBook.title}`,
-              openingLine: '“Second opening line from Supabase quotes.”',
-              quoteExcerpt: '“Second quote excerpt from Supabase quotes.”',
-            },
-          ],
-        },
         {
           id: 1400,
           title: 'Great Expectations',
@@ -370,8 +344,8 @@ describe('HeroSearch component', () => {
 
     renderWithClient(<HeroSearch search="" />);
     expect(screen.getByText(/Featured Book/i)).toBeInTheDocument();
-    expect(screen.getAllByText(new RegExp(hourlyBook.title, 'i'))[0]).toBeInTheDocument();
-    expect(screen.queryByText(/Great Expectations/i)).toBeNull();
+    expect(screen.getAllByText(/Great Expectations/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Suffering has been stronger than all other teaching/i)[0]).toBeInTheDocument();
     enrichedSpy.mockRestore();
   });
 });

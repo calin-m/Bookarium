@@ -416,7 +416,7 @@ export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
  * Uses the partial index `idx_books_with_quotes_popular` for sub-10ms lookups and persists
  * non-empty results to `localStorage` for instant 0ms page-refresh hydration.
  */
-export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<GutendexBook[]> {
+export async function fetchQuoteEnrichedBooks(limit: number = 100): Promise<GutendexBook[]> {
   if (!isSupabaseConfigured()) {
     return [];
   }
@@ -432,7 +432,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
       2591, 135, 1184, 2600, 2554, 5200, 132, 1232, 205, 844,
     ]);
     const idScanSpecs = [
-      { col: 'download_count', scanLimit: 200 },
+      { col: 'download_count', scanLimit: 500 },
       { col: 'id', scanLimit: 64 },
     ] as const;
 
@@ -456,7 +456,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
     const baseSelect = supabase
       .from('books')
       .select(
-        'id, title, authors, translators, subjects, languages, copyright, download_count, quotes'
+        'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quotes'
       );
     const scopedSelect =
       baseSelect && typeof baseSelect.in === 'function'
@@ -488,7 +488,9 @@ export async function fetchQuoteEnrichedBooks(limit: number = 60): Promise<Guten
           ? (row.translators as unknown as GutendexBook['translators'])
           : [],
         subjects: Array.isArray(row.subjects) ? row.subjects : [],
-        bookshelves: [],
+        bookshelves: Array.isArray((row as { bookshelves?: string[] }).bookshelves)
+          ? ((row as { bookshelves: string[] }).bookshelves)
+          : [],
         languages: Array.isArray(row.languages) ? row.languages : ['en'],
         copyright: typeof row.copyright === 'boolean' ? row.copyright : false,
         media_type: 'Text',
@@ -549,7 +551,7 @@ export function useQuoteEnrichedBooks(
   options: UseBooksOptions & { limit?: number } = {}
 ) {
   const contextClient = React.useContext(QueryClientContext);
-  const limit = options.limit ?? 60;
+  const limit = options.limit ?? 100;
   const hasMounted = useHasMounted();
   const cached = React.useMemo(
     () => (hasMounted ? readCachedQuoteEnrichedBooks(limit) : undefined),

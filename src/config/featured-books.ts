@@ -5,7 +5,7 @@
 
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { isBookPublicDomainInJurisdiction, type Author } from '@/lib/copyright-engine';
-import type { BookPassage } from '@/types/book.types';
+import type { BookPassage, GutendexBook } from '@/types/book.types';
 export type { BookPassage };
 
 export interface FeaturedHeroBook {
@@ -562,4 +562,190 @@ export function getDailyEditorialBook(
   }
 
   return list[candidateIndex] || list[0];
+}
+
+const CLASSIC_TAXONOMY_PATTERN =
+  /\b(classic|classics|antiquity|ancient|epic|tragedy|philosophy|renaissance|enlightenment|gothic|victorian|historical fiction|poetry|drama|mythology)\b/i;
+
+/**
+ * Evaluates whether a database catalog volume qualifies as a Classic for "Classic of the Day":
+ * 1. Canonical ID in FEATURED_HERO_BOOKS, OR
+ * 2. Any contributor with a verified death_year <= 1900 (Antiquity through 19th-Century Classics), OR
+ * 3. Subject or bookshelf matching canonical Classical / Historical / Philosophical taxonomy.
+ */
+export function isClassicCatalogBook(book: {
+  id: number;
+  authors?: { birth_year?: number | null; death_year?: number | null }[];
+  subjects?: string[];
+  bookshelves?: string[];
+}): boolean {
+  if (!book || typeof book.id !== 'number') return false;
+  if (FEATURED_HERO_BOOKS.some((f) => f.id === book.id)) {
+    return true;
+  }
+  const hasClassicEraAuthor = (book.authors || []).some(
+    (a) => typeof a?.death_year === 'number' && a.death_year <= 1900
+  );
+  if (hasClassicEraAuthor) {
+    return true;
+  }
+  const combinedTaxonomy = [...(book.subjects || []), ...(book.bookshelves || [])].join(' ');
+  return CLASSIC_TAXONOMY_PATTERN.test(combinedTaxonomy);
+}
+
+/**
+ * Maps a quote-enriched GutendexBook from Supabase into a FeaturedHeroBook
+ * using exclusively its database `quotes` array (never prepending static spreads).
+ */
+export function gutendexBookToFeaturedHeroBook(
+  book: GutendexBook
+): FeaturedHeroBook & { rawBook: GutendexBook } {
+  const validQuotes = Array.isArray(book.quotes) ? book.quotes : [];
+  const firstPassage = validQuotes[0];
+  const featuredMeta = FEATURED_HERO_BOOKS.find((f) => f.id === book.id);
+  const firstAuthor = book.authors?.[0];
+  const derivedYear =
+    featuredMeta?.year ||
+    (firstAuthor?.birth_year && firstAuthor?.death_year
+      ? `${firstAuthor.birth_year}–${firstAuthor.death_year}`
+      : 'Public Domain');
+
+  return {
+    id: book.id,
+    volumeNumber: `Vol. #${book.id}`,
+    title: book.title,
+    author: formatAuthorNames(book.authors) || featuredMeta?.author || 'Anonymous',
+    authorBirthYear: firstAuthor?.birth_year ?? featuredMeta?.authorBirthYear ?? null,
+    authorDeathYear: firstAuthor?.death_year ?? featuredMeta?.authorDeathYear ?? null,
+    translators: book.translators || featuredMeta?.translators || [],
+    year: derivedYear,
+    primarySubject:
+      (book.subjects && book.subjects.length > 0
+        ? formatPrimarySubject(book.subjects)
+        : featuredMeta?.primarySubject) || 'Classic Literature',
+    license: 'CC0 / Public Domain',
+    quoteExcerpt:
+      firstPassage?.quoteExcerpt ||
+      firstPassage?.openingLine ||
+      featuredMeta?.quoteExcerpt ||
+      'Preserved in the public domain for all readers.',
+    openingLine:
+      firstPassage?.openingLine ||
+      firstPassage?.quoteExcerpt ||
+      featuredMeta?.openingLine ||
+      'Preserved in the public domain for all readers.',
+    quotes: validQuotes,
+    rawBook: book,
+  };
+}
+
+/**
+ * Selects the hourly Featured Book primarily from the database pool of books with quotes
+ * (`quoteEnrichedBooks`), respecting jurisdiction and optional Hero topic/language filters.
+ * Falls back to static `FEATURED_HERO_BOOKS` only when `quoteEnrichedBooks` has no valid matches.
+ */
+export function selectHourlyHeroFromPool(
+  quoteEnrichedBooks: GutendexBook[] | undefined,
+  timestamp: number = Date.now(),
+  countryCode: string = 'US',
+  options?: { topic?: string; language?: string }
+): FeaturedHeroBook & { rawBook?: GutendexBook } {
+  const hourlyIndex = Math.max(0, Math.floor(timestamp / (1000 * 60 * 60)));
+
+  const safeDbPool = (quoteEnrichedBooks || []).filter(
+    (b) =>
+      b &&
+      Array.isArray(b.quotes) &&
+      b.quotes.length > 0 &&
+      isBookPublicDomainInJurisdiction(b, countryCode).isAllowed
+  );
+
+  if (safeDbPool.length > 0) {
+    const cleanTopic = options?.topic?.trim().toLowerCase() || '';
+    const cleanLang = options?.language?.trim().toLowerCase() || '';
+
+    let filteredPool = safeDbPool;
+    if (cleanTopic || cleanLang) {
+      const candidateFiltered = safeDbPool.filter((b) => {
+        const matchesTopic =
+          !cleanTopic ||
+          [...(b.subjects || []), ...(b.bookshelves || [])].some((s) =>
+            s.toLowerCase().includes(cleanTopic)
+          );
+        const matchesLang =
+          !cleanLang || (b.languages || []).some((l) => l.toLowerCase() === cleanLang);
+        return matchesTopic && matchesLang;
+      });
+      if (candidateFiltered.length > 0) {
+        filteredPool = candidateFiltered;
+      }
+    }
+
+    const selected = filteredPool[hourlyIndex % filteredPool.length];
+    return gutendexBookToFeaturedHeroBook(selected);
+  }
+
+  const fallback = getHourlyHeroBook(timestamp, countryCode);
+  return {
+    ...fallback,
+    rawBook: {
+      id: fallback.id,
+      title: fallback.title,
+      authors: [
+        {
+          name: fallback.author,
+          birth_year: fallback.authorBirthYear ?? null,
+          death_year: fallback.authorDeathYear ?? null,
+        },
+      ],
+      translators: fallback.translators || [],
+      subjects: [fallback.primarySubject],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 50000,
+      quotes: fallback.quotes,
+    },
+  };
+}
+
+/**
+ * Selects the daily Classic of the Day strictly from Classics in the database pool of books with quotes
+ * (`quoteEnrichedBooks` filtered by `isClassicCatalogBook`), avoiding collision with `heroBookId`.
+ * Falls back to static `getDailyEditorialBook` only when the database pool is empty.
+ */
+export function selectDailyClassicFromPool(
+  quoteEnrichedBooks: GutendexBook[] | undefined,
+  heroBookId?: number,
+  timestamp: number = Date.now(),
+  countryCode: string = 'US'
+): FeaturedHeroBook & { rawBook?: GutendexBook } {
+  const dayIndex = Math.max(0, Math.floor(timestamp / (1000 * 60 * 60 * 24)));
+
+  const safeDbPool = (quoteEnrichedBooks || []).filter(
+    (b) =>
+      b &&
+      Array.isArray(b.quotes) &&
+      b.quotes.length > 0 &&
+      isBookPublicDomainInJurisdiction(b, countryCode).isAllowed
+  );
+
+  const classicDbPool = safeDbPool.filter((b) => isClassicCatalogBook(b));
+  const activePool = classicDbPool.length > 0 ? classicDbPool : safeDbPool;
+
+  if (activePool.length > 0) {
+    let candidateIndex = dayIndex % activePool.length;
+    if (
+      heroBookId !== undefined &&
+      activePool[candidateIndex]?.id === heroBookId &&
+      activePool.length > 1
+    ) {
+      candidateIndex = (candidateIndex + 1) % activePool.length;
+    }
+    return gutendexBookToFeaturedHeroBook(activePool[candidateIndex]);
+  }
+
+  return getDailyEditorialBook(heroBookId, timestamp, countryCode);
 }

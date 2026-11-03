@@ -12,9 +12,12 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
-import { FEATURED_HERO_BOOKS, getJurisdictionSafeFeaturedBooks, type FeaturedHeroBook } from '@/config/featured-books';
+import {
+  gutendexBookToFeaturedHeroBook,
+  selectHourlyHeroFromPool,
+  type FeaturedHeroBook,
+} from '@/config/featured-books';
 import type { GutendexBook } from '@/types/book.types';
-import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
 import { LanguageSelector } from './LanguageSelector';
@@ -102,7 +105,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   // Deterministic hourly rotation: the Featured Book changes every hour (3,600,000 ms)
   const hourlyIndex = useSyncExternalStore(subscribeHourly, getHourlySnapshot, getHourlyServerSnapshot);
 
-  // Stable active Featured Book: anchored deterministically by hour to prevent flash-on-refresh
+  // Stable active Featured Book: selects from the full database pool of books with quotes when available
   const activeFeatured: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
     const dbBooksById = new Map<number, GutendexBook>(
       (quoteEnrichedBooks || []).map((b) => [b.id, b])
@@ -110,26 +113,12 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
     const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: GutendexBook } => {
       const dbMatch = dbBooksById.get(b.id);
-      const dbQuotes = dbMatch?.quotes && dbMatch.quotes.length > 0 ? dbMatch.quotes : undefined;
-      let mergedQuotes = b.quotes;
-      if (dbQuotes) {
-        if (Array.isArray(b.quotes) && b.quotes.length > 0) {
-          mergedQuotes = [...b.quotes, ...dbQuotes];
-        } else {
-          const firstStaticSpread = {
-            chapterLabel: 'Chapter I • The Opening Incipit',
-            openingLine: b.openingLine,
-            secondaryQuote: `“In the unfolding story of ${b.title}, ${b.author} explores timeless truths across ${b.primarySubject.toLowerCase()}.”`,
-            quoteExcerpt: b.quoteExcerpt,
-            commentary: `Preserved in complete unabridged form in the worldwide public domain (${b.year}).`,
-          };
-          mergedQuotes = [firstStaticSpread, ...dbQuotes];
-        }
+      if (dbMatch && Array.isArray(dbMatch.quotes) && dbMatch.quotes.length > 0) {
+        return gutendexBookToFeaturedHeroBook(dbMatch);
       }
       return {
         ...b,
-        quotes: mergedQuotes,
-        rawBook: dbMatch || ({
+        rawBook: ({
           id: b.id,
           title: b.title,
           authors: [
@@ -144,28 +133,8 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           languages: ['en'],
           formats: {},
           download_count: 50000,
-          quotes: mergedQuotes,
+          quotes: b.quotes,
         } as GutendexBook),
-      };
-    };
-
-    const fromGutendexBook = (b: GutendexBook): FeaturedHeroBook & { rawBook: GutendexBook } => {
-      const firstPassage = Array.isArray(b.quotes) && b.quotes.length > 0 ? b.quotes[0] : undefined;
-      return {
-        id: b.id,
-        title: b.title,
-        author: formatAuthorNames(b.authors) || 'Anonymous',
-        authorBirthYear: b.authors?.[0]?.birth_year ?? null,
-        authorDeathYear: b.authors?.[0]?.death_year ?? null,
-        translators: b.translators || [],
-        year: 'Public Domain',
-        primarySubject: formatPrimarySubject(b.subjects),
-        license: 'CC0 / Free',
-        volumeNumber: `Vol. #${b.id}`,
-        quoteExcerpt: firstPassage?.quoteExcerpt || 'Preserved in the public domain for all readers.',
-        openingLine: firstPassage?.openingLine || 'Preserved in the public domain for all readers.',
-        quotes: b.quotes,
-        rawBook: b,
       };
     };
 
@@ -175,16 +144,18 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
         return targetCustom as FeaturedHeroBook & { rawBook?: GutendexBook };
       }
       if ('authors' in targetCustom) {
-        return fromGutendexBook(targetCustom as GutendexBook);
+        return gutendexBookToFeaturedHeroBook(targetCustom as GutendexBook);
       }
       return toHeroWithRawBook(targetCustom as FeaturedHeroBook);
     }
 
-    const safeHeroBooks = getJurisdictionSafeFeaturedBooks(country);
-    const baseList = safeHeroBooks.length > 0 ? safeHeroBooks : FEATURED_HERO_BOOKS;
-    const selectedHero = baseList[hourlyIndex % baseList.length];
-    return toHeroWithRawBook(selectedHero);
-  }, [featuredBook, books, hourlyIndex, country, quoteEnrichedBooks]);
+    return selectHourlyHeroFromPool(
+      quoteEnrichedBooks,
+      hourlyIndex * 1000 * 60 * 60,
+      country,
+      { topic: selectedTopic, language: selectedLanguage }
+    );
+  }, [featuredBook, books, hourlyIndex, country, quoteEnrichedBooks, selectedTopic, selectedLanguage]);
 
   const emitSearch = (val: string) => {
     setSearchError(null);

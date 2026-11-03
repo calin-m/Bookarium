@@ -133,25 +133,12 @@ describe('LiteraryQuotes component', () => {
     vi.useRealTimers();
   });
 
-  it('expands anthology cards from Supabase public.books.quotes when useFeaturedQuotes or useQuoteEnrichedBooks returns spreads', async () => {
+  it('populates anthology cards exclusively from useQuoteEnrichedBooks across 3 distinct books and disables redundant useFeaturedQuotes calls', async () => {
     const { vi } = await import('vitest');
     const useBooksModule = await import('@/hooks/queries/useBooks');
 
     const quotesSpy = vi.spyOn(useBooksModule, 'useFeaturedQuotes').mockReturnValue({
-      data: {
-        1342: [
-          {
-            chapterLabel: 'Passage I • Pride and Prejudice',
-            openingLine: '“Primary Supabase Pride opening line with over twenty five letters.”',
-            quoteExcerpt: '“Primary Supabase Pride quote excerpt with over twenty five letters.”',
-          },
-          {
-            chapterLabel: 'Passage II • Pride and Prejudice',
-            openingLine: '“Secondary Supabase Pride opening line with over twenty five letters.”',
-            quoteExcerpt: '“Secondary Supabase Pride quote excerpt with over twenty five letters.”',
-          },
-        ],
-      },
+      data: {},
     } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
@@ -206,17 +193,97 @@ describe('LiteraryQuotes component', () => {
             },
           ],
         },
+        {
+          id: 2701,
+          title: 'Moby Dick',
+          authors: [{ name: 'Melville, Herman', birth_year: 1819, death_year: 1891 }],
+          translators: [],
+          subjects: ['Whaling'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 60000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Moby Dick',
+              openingLine: '“Call me Ishmael. Some years ago—never mind how long precisely.”',
+              quoteExcerpt: '“Whenever it is a damp, drizzly November in my soul, I account it high time to get to sea.”',
+            },
+          ],
+        },
       ],
     } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
 
     render(<LiteraryQuotes />);
+    // Initial 3 cards must come from the 3 distinct DB books (#1400, #84, #2701)
     expect(
-      screen.getByText(/Primary Supabase Pride quote excerpt with over twenty five letters/i)
+      screen.getByText(/Suffering has been stronger than all other teaching in my life/i)
     ).toBeInTheDocument();
-    // Book #84 is already present with >=2 quotes in quoteEnrichedBooks, so it is excluded from useFeaturedQuotes IDs
+    expect(
+      screen.getByText(/Beware; for I am fearless, and therefore powerful/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Whenever it is a damp, drizzly November in my soul/i)
+    ).toBeInTheDocument();
+
+    // Because useQuoteEnrichedBooks is populated, useFeaturedQuotes is called with [] and enabled: false
     const requestedIds = quotesSpy.mock.calls[0]?.[0] || [];
-    expect(requestedIds).not.toContain(84);
-    expect(requestedIds).toContain(1342);
+    const optionsArg = quotesSpy.mock.calls[0]?.[1];
+    expect(requestedIds).toEqual([]);
+    expect(optionsArg?.enabled).toBe(false);
+
+    enrichedSpy.mockRestore();
+    quotesSpy.mockRestore();
+  });
+
+  it('tops up with baseSafeQuotes when quoteEnrichedBooks has fewer than 3 valid books and deduplicates identical quote IDs', async () => {
+    const { vi } = await import('vitest');
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+
+    const quotesSpy = vi.spyOn(useBooksModule, 'useFeaturedQuotes').mockReturnValue({
+      data: {
+        1342: [
+          {
+            chapterLabel: 'Passage I • Pride and Prejudice',
+            openingLine: '“It is a truth universally acknowledged that a single man.”',
+            quoteExcerpt: '“I declare after all there is no enjoyment like reading!”',
+          },
+        ],
+      },
+    } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
+
+    // Only 1 book in quoteEnrichedBooks so seenBookIds.size < 3 triggers baseSafeQuotes top-up
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      data: [
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['Bildungsromans'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 35000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I • Great Expectations',
+              openingLine: '“My father’s family name being Pirrip.”',
+              quoteExcerpt: '“Suffering has been stronger than all other teaching in my life.”',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    render(<LiteraryQuotes />);
+    // Should render Great Expectations + topped up baseSafeQuotes
+    expect(screen.getByText(/Suffering has been stronger than all other teaching in my life/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Read/i })).toHaveLength(3);
 
     enrichedSpy.mockRestore();
     quotesSpy.mockRestore();

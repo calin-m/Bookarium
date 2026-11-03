@@ -31,26 +31,29 @@ export const LiteraryQuotes: React.FC = () => {
     enabled: hasMounted,
   });
 
+  const hasEnrichedPool = useMemo(
+    () =>
+      Boolean(
+        quoteEnrichedBooks &&
+          quoteEnrichedBooks.some((b) => Array.isArray(b.quotes) && b.quotes.length > 0)
+      ),
+    [quoteEnrichedBooks]
+  );
+
   const quoteBookIds = useMemo(() => {
-    const enrichedIds = new Set(
-      (quoteEnrichedBooks || [])
-        .filter((b) => Array.isArray(b.quotes) && b.quotes.length >= 2)
-        .map((b) => b.id)
-    );
-    return Array.from(
-      new Set(baseSafeQuotes.map((q) => q.bookId).filter((id) => !enrichedIds.has(id)))
-    );
-  }, [baseSafeQuotes, quoteEnrichedBooks]);
+    if (hasEnrichedPool) return [];
+    return Array.from(new Set(baseSafeQuotes.map((q) => q.bookId)));
+  }, [baseSafeQuotes, hasEnrichedPool]);
 
   const { data: featuredQuotesMap } = useFeaturedQuotes(quoteBookIds, {
-    enabled: hasMounted && quoteBookIds.length > 0,
+    enabled: hasMounted && !hasEnrichedPool && quoteBookIds.length > 0,
   });
 
-  // Expand safeQuotes with primary Supabase public.books.quotes (10–16 passages per volume) when available
+  // Build safeQuotes strictly from database public.books.quotes (useQuoteEnrichedBooks) when available,
+  // falling back to baseSafeQuotes only when unconfigured/empty or to top up to 3 distinct books.
   const safeQuotes = useMemo(() => {
     const hasMap = Boolean(featuredQuotesMap && Object.keys(featuredQuotesMap).length > 0);
-    const hasEnriched = Boolean(quoteEnrichedBooks && quoteEnrichedBooks.length > 0);
-    if (!hasMap && !hasEnriched) {
+    if (!hasMap && !hasEnrichedPool) {
       return baseSafeQuotes;
     }
 
@@ -59,49 +62,15 @@ export const LiteraryQuotes: React.FC = () => {
     let syntheticId = 1000;
     const seenBookIds = new Set<number>();
 
-    for (const item of baseSafeQuotes) {
-      seenBookIds.add(item.bookId);
-      const dbPassages =
-        featuredQuotesMap?.[item.bookId] ||
-        quoteEnrichedBooks?.find((b) => b.id === item.bookId)?.quotes;
-      if (Array.isArray(dbPassages) && dbPassages.length > 0) {
-        const firstPassage = dbPassages[0];
-        const primaryText = cleanQuoteText(
-          firstPassage.quoteExcerpt || firstPassage.openingLine || item.quote
-        );
-        expanded.push({
-          ...item,
-          quote: primaryText || item.quote,
-          citation: firstPassage.chapterLabel || item.citation,
-        });
-
-        for (let idx = 1; idx < dbPassages.length; idx++) {
-          const passage = dbPassages[idx];
-          const excerptText = cleanQuoteText(passage.quoteExcerpt || passage.openingLine || '');
-          if (excerptText.length >= 25) {
-            expanded.push({
-              ...item,
-              id: syntheticId++,
-              quote: excerptText,
-              citation: passage.chapterLabel || item.citation,
-            });
-          }
-        }
-      } else {
-        expanded.push(item);
-      }
-    }
-
     for (const dbBook of quoteEnrichedBooks || []) {
       if (
         seenBookIds.has(dbBook.id) ||
         !Array.isArray(dbBook.quotes) ||
-        dbBook.quotes.length < 2 ||
+        dbBook.quotes.length === 0 ||
         !isBookPublicDomainInJurisdiction(dbBook, country).isAllowed
       ) {
         continue;
       }
-      seenBookIds.add(dbBook.id);
       const authorName = formatAuthorNames(dbBook.authors) || 'Classic Author';
       const category = (formatPrimarySubject(dbBook.subjects) || 'Classic Literature').toUpperCase();
       const firstAuthor = dbBook.authors?.[0];
@@ -110,9 +79,11 @@ export const LiteraryQuotes: React.FC = () => {
           ? `${firstAuthor.birth_year}–${firstAuthor.death_year}`
           : 'Classic';
 
+      let addedForBook = false;
       for (const passage of dbBook.quotes) {
         const excerptText = cleanQuoteText(passage.quoteExcerpt || passage.openingLine || '');
         if (excerptText.length >= 25) {
+          addedForBook = true;
           expanded.push({
             id: syntheticId++,
             bookId: dbBook.id,
@@ -128,27 +99,80 @@ export const LiteraryQuotes: React.FC = () => {
           });
         }
       }
+      if (addedForBook) {
+        seenBookIds.add(dbBook.id);
+      }
     }
 
-    return expanded;
-  }, [baseSafeQuotes, featuredQuotesMap, quoteEnrichedBooks, country]);
+    // Only include fallback/featuredQuotesMap entries if database pool has fewer than 3 distinct books
+    if (seenBookIds.size < 3) {
+      for (const item of baseSafeQuotes) {
+        if (seenBookIds.has(item.bookId)) continue;
+        seenBookIds.add(item.bookId);
+        const dbPassages = featuredQuotesMap?.[item.bookId];
+        if (Array.isArray(dbPassages) && dbPassages.length > 0) {
+          for (const passage of dbPassages) {
+            const excerptText = cleanQuoteText(passage.quoteExcerpt || passage.openingLine || '');
+            if (excerptText.length >= 25) {
+              expanded.push({
+                ...item,
+                id: syntheticId++,
+                quote: excerptText,
+                citation: passage.chapterLabel || item.citation,
+              });
+            }
+          }
+        } else {
+          expanded.push(item);
+        }
+      }
+    }
+
+    return expanded.length >= 3 ? expanded : baseSafeQuotes;
+  }, [baseSafeQuotes, featuredQuotesMap, quoteEnrichedBooks, hasEnrichedPool, country]);
+
+  // Helper to select up to `count` quotes from distinct `bookId`s
+  const pickDistinctBookQuotes = useCallback(
+    (candidates: LiteraryQuote[], count: number = 3, initialSelected: LiteraryQuote[] = []) => {
+      const selected: LiteraryQuote[] = [...initialSelected];
+      const usedIds = new Set(selected.map((q) => q.id));
+      const usedBookIds = new Set(selected.map((q) => q.bookId));
+
+      for (const item of candidates) {
+        if (selected.length >= count) break;
+        if (!usedIds.has(item.id) && !usedBookIds.has(item.bookId)) {
+          selected.push(item);
+          usedIds.add(item.id);
+          usedBookIds.add(item.bookId);
+        }
+      }
+
+      for (const item of candidates) {
+        if (selected.length >= count) break;
+        if (!usedIds.has(item.id)) {
+          selected.push(item);
+          usedIds.add(item.id);
+        }
+      }
+
+      return selected;
+    },
+    []
+  );
 
   // User-selected shuffled quotes (null when using default anthology selection)
   const [shuffledQuotes, setShuffledQuotes] = useState<LiteraryQuote[] | null>(null);
   const [isShuffling, setIsShuffling] = useState(false);
   const shuffleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Synchronously compute displayed quotes, strictly enforcing active jurisdiction safety
+  // Synchronously compute displayed quotes across 3 distinct books, strictly enforcing active jurisdiction safety
   const displayedQuotes = useMemo(() => {
-    const base = shuffledQuotes || safeQuotes.slice(0, 3);
+    const base = shuffledQuotes || pickDistinctBookQuotes(safeQuotes, 3);
     const safeIds = new Set(safeQuotes.map((q) => q.id));
     const allowed = base.filter((q) => safeIds.has(q.id));
     if (allowed.length === 3) return allowed;
-    const pool = safeQuotes.filter((q) => !allowed.some((a) => a.id === q.id));
-    const needed = 3 - allowed.length;
-    const fillers = pool.slice(0, needed);
-    return [...allowed, ...fillers];
-  }, [safeQuotes, shuffledQuotes]);
+    return pickDistinctBookQuotes(safeQuotes, 3, allowed);
+  }, [safeQuotes, shuffledQuotes, pickDistinctBookQuotes]);
 
   useEffect(() => {
     return () => {
@@ -160,17 +184,17 @@ export const LiteraryQuotes: React.FC = () => {
 
   const handleShuffle = useCallback(() => {
     setIsShuffling(true);
-    const currentIds = displayedQuotes.map((q) => q.id);
-    const available = safeQuotes.filter((q) => !currentIds.includes(q.id));
+    const currentIds = new Set(displayedQuotes.map((q) => q.id));
+    const available = safeQuotes.filter((q) => !currentIds.has(q.id));
     const pool = available.length >= 3 ? available : safeQuotes;
     const shuffled = [...pool].sort(() => 0.5 - Math.random());
-    setShuffledQuotes(shuffled.slice(0, 3));
+    setShuffledQuotes(pickDistinctBookQuotes(shuffled, 3));
 
     if (shuffleTimerRef.current) {
       clearTimeout(shuffleTimerRef.current);
     }
     shuffleTimerRef.current = setTimeout(() => setIsShuffling(false), 300);
-  }, [displayedQuotes, safeQuotes]);
+  }, [displayedQuotes, safeQuotes, pickDistinctBookQuotes]);
 
   return (
     <section className="bg-muted py-10 sm:py-16 border-t border-border transition-colors duration-theme">

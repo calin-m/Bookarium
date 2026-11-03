@@ -650,6 +650,21 @@ describe('useBooks hook', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[0]?.title).toBe('Great Expectations');
 
+    // 5. Exercises candidate id ordering with download_count and id fallbacks
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
+    const singleScanMock = vi.fn().mockResolvedValue({ data: null, error: new Error('Scan fail') });
+    clientSpy.mockReturnValueOnce({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            limit: singleScanMock,
+          })),
+        })),
+      })),
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+    const emptyScanBooks = await fetchQuoteEnrichedBooks(10);
+    expect(emptyScanBooks).toEqual([]);
+
     window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
     clientSpy.mockRestore();
     configSpy.mockRestore();

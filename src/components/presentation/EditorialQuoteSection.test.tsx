@@ -110,19 +110,37 @@ describe('EditorialQuoteSection component', () => {
     expect(section).toHaveClass('custom-test-class');
   });
 
-  it('keeps the deterministic daily classic book and quote stable on refresh while enriching quotes in-place from useQuoteEnrichedBooks', async () => {
+  it('selects Classic of the Day strictly from Classics in useQuoteEnrichedBooks and prioritizes database quotes over static quoteExcerpt', async () => {
     const useBooksModule = await import('@/hooks/queries/useBooks');
-    const currentHero = getHourlyHeroBook();
-    const expectedBook = getDailyEditorialBook(currentHero.id);
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
       data: [
         {
-          id: expectedBook.id,
-          title: expectedBook.title,
-          authors: [{ name: expectedBook.author, birth_year: expectedBook.authorBirthYear ?? null, death_year: expectedBook.authorDeathYear ?? null }],
+          id: 75001,
+          title: 'Modern Aviation Manual',
+          authors: [{ name: 'Modern, Author', birth_year: 1895, death_year: 1945 }],
           translators: [],
-          subjects: [expectedBook.primarySubject],
+          subjects: ['Aeronautics'],
+          bookshelves: ['Technology'],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 85000,
+          quotes: [
+            {
+              chapterLabel: 'Chapter I',
+              openingLine: '“Modern non-classic quote that should be filtered out of Classic of the Day.”',
+              quoteExcerpt: '“Modern non-classic quote that should be filtered out of Classic of the Day.”',
+            },
+          ],
+        },
+        {
+          id: 1400,
+          title: 'Great Expectations',
+          authors: [{ name: 'Dickens, Charles', birth_year: 1812, death_year: 1870 }],
+          translators: [],
+          subjects: ['Bildungsromans'],
           bookshelves: [],
           languages: ['en'],
           copyright: false,
@@ -135,20 +153,19 @@ describe('EditorialQuoteSection component', () => {
               openingLine: '“Primary Supabase opening line for classic of the day.”',
               quoteExcerpt: '“Primary Supabase quote excerpt for classic of the day.”',
             },
-            {
-              chapterLabel: 'Passage II',
-              openingLine: '“Secondary Supabase opening line for classic of the day.”',
-              quoteExcerpt: '“Secondary Supabase quote excerpt for classic of the day.”',
-            },
           ],
         },
       ],
     } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
 
-    render(<EditorialQuoteSection />);
-    expect(screen.getByText(expectedBook.title)).toBeInTheDocument();
-    const cleanExcerpt = expectedBook.quoteExcerpt.replace(/^[“"'\s]+|[”"'\s]+$/g, '');
-    expect(screen.getByText((content) => content.includes(cleanExcerpt))).toBeInTheDocument();
+    render(<EditorialQuoteSection heroBookId={75001} />);
+    expect(screen.getByText('Great Expectations')).toBeInTheDocument();
+    expect(screen.queryByText('Modern Aviation Manual')).toBeNull();
+    expect(
+      screen.getByText((content) =>
+        content.includes('Primary Supabase quote excerpt for classic of the day.')
+      )
+    ).toBeInTheDocument();
 
     enrichedSpy.mockRestore();
   });
