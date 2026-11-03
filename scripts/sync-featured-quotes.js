@@ -126,8 +126,8 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     dryRun: false,
     force: false,
     scheduleGate: false,
-    minIntervalHours: 6,
-    maxIntervalHours: 12,
+    minIntervalHours: 1,
+    maxIntervalHours: 2,
     limit: 25,
     popularPool: DEFAULT_POPULAR_POOL_SIZE,
     recentPool: DEFAULT_RECENT_POOL_SIZE,
@@ -204,11 +204,11 @@ function computeRandomDelayMs(minSec = 8, maxSec = 16, rng = Math.random) {
 
 /**
  * Deterministically computes a randomized float schedule window in milliseconds
- * between [minHours, maxHours] (default 6.0h to 12.0h, with minutes & seconds)
+ * between [minHours, maxHours] (default 1.0h to 2.0h, with minutes & seconds)
  * seeded by the last batch's `updated_at` timestamp so stateless cron checks
  * agree on the exact target wakeup time without wasting GitHub runner minutes.
  */
-function computeScheduleWindowMs(seedTimestampIso, minHours = 6, maxHours = 12) {
+function computeScheduleWindowMs(seedTimestampIso, minHours = 1, maxHours = 2) {
   const seedStr = String(seedTimestampIso || 'default-seed');
   let hash = 2166136261;
   for (let i = 0; i < seedStr.length; i++) {
@@ -223,7 +223,7 @@ function computeScheduleWindowMs(seedTimestampIso, minHours = 6, maxHours = 12) 
 }
 
 /**
- * Evaluates whether the randomized 6.0h–12.0h float schedule window has elapsed
+ * Evaluates whether the randomized 1.0h–2.0h float schedule window has elapsed
  * since the most recent quote update in `public.books`.
  * Queries `books_pkey` via `.in('id', chunk).neq('quotes', '[]')` across the
  * candidate pool IDs (`idx_books_download_count` + `books_pkey`) so PostgreSQL

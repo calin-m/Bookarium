@@ -260,14 +260,14 @@ describe('sync-featured-quotes pipeline', () => {
     expect(connectedIds[0].id).toBe(1342);
   });
 
-  it('computes randomized float delays and 6.0h–12.0h float schedule windows', async () => {
+  it('computes randomized float delays and 1.0h–2.0h float schedule windows', async () => {
     expect(quotesSync.computeRandomDelayMs(8, 16, () => 0)).toBe(8000);
     expect(quotesSync.computeRandomDelayMs(8, 16, () => 0.5)).toBe(12000);
     expect(quotesSync.computeRandomDelayMs(8, 16, () => 1)).toBe(16000);
 
-    const windowMs = quotesSync.computeScheduleWindowMs('2026-11-01T12:00:00.000Z', 6, 12);
-    expect(windowMs).toBeGreaterThanOrEqual(6 * 3600 * 1000);
-    expect(windowMs).toBeLessThanOrEqual(12 * 3600 * 1000);
+    const windowMs = quotesSync.computeScheduleWindowMs('2026-11-01T12:00:00.000Z');
+    expect(windowMs).toBeGreaterThanOrEqual(1 * 3600 * 1000);
+    expect(windowMs).toBeLessThanOrEqual(2 * 3600 * 1000);
 
     const mockScheduleSupabase = {
       from: vi.fn(() => ({
@@ -285,16 +285,16 @@ describe('sync-featured-quotes pipeline', () => {
 
     const gateEarly = await quotesSync.evaluateScheduleGate(
       mockScheduleSupabase,
-      { scheduleGate: true, minIntervalHours: 6, maxIntervalHours: 12 },
-      Date.parse('2026-11-01T14:00:00.000Z') // Only 2h elapsed (< 6h min)
+      { scheduleGate: true, minIntervalHours: 1, maxIntervalHours: 2 },
+      Date.parse('2026-11-01T12:30:00.000Z') // Only 0.5h elapsed (< 1h min)
     );
     expect(gateEarly.allowed).toBe(false);
-    expect(gateEarly.elapsedHours).toBe(2);
+    expect(gateEarly.elapsedHours).toBe(0.5);
 
     const gateReady = await quotesSync.evaluateScheduleGate(
       mockScheduleSupabase,
-      { scheduleGate: true, minIntervalHours: 6, maxIntervalHours: 12 },
-      Date.parse('2026-11-02T02:00:00.000Z') // 14h elapsed (> 12h max)
+      { scheduleGate: true, minIntervalHours: 1, maxIntervalHours: 2 },
+      Date.parse('2026-11-01T14:30:00.000Z') // 2.5h elapsed (> 2h max)
     );
     expect(gateReady.allowed).toBe(true);
   });
