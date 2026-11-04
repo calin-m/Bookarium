@@ -157,6 +157,7 @@ describe('ReaderSurface', () => {
     );
 
     const mainSurface = screen.getByRole('main');
+    expect(mainSurface).toHaveClass('touch-pan-y');
 
     // Simulate Swipe Left (Next Page: deltaX = 100 - 200 = -100px)
     fireEvent.touchStart(mainSurface, {
@@ -227,6 +228,7 @@ describe('ReaderSurface', () => {
     );
 
     const mainSurface = screen.getByRole('main');
+    expect(mainSurface).toHaveClass('touch-pan-y');
 
     // In scroll mode, touch events do not trigger page turning
     fireEvent.touchStart(mainSurface, {
@@ -294,6 +296,7 @@ describe('ReaderSurface', () => {
     );
 
     const mainSurface = screen.getByRole('main');
+    expect(mainSurface).toHaveClass('touch-pan-y');
 
     // Start two-finger pinch with initial distance of 100px
     fireEvent.touchStart(mainSurface, {
@@ -335,6 +338,7 @@ describe('ReaderSurface', () => {
     );
 
     const mainSurface = screen.getByRole('main');
+    expect(mainSurface).toHaveClass('touch-pan-y');
 
     // Start pinch with 100px distance
     fireEvent.touchStart(mainSurface, {
@@ -367,6 +371,7 @@ describe('ReaderSurface', () => {
     );
 
     const mainSurface = screen.getByRole('main');
+    expect(mainSurface).toHaveClass('touch-pan-y');
 
     // Start pinch with 100px distance
     fireEvent.touchStart(mainSurface, {

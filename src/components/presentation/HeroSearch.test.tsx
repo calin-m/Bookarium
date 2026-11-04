@@ -25,7 +25,17 @@ const renderWithClient = (ui: React.ReactElement) => {
 
 describe('HeroSearch component', () => {
   it('should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes', () => {
-    renderWithClient(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
+    const { container } = renderWithClient(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
+
+    const section = container.querySelector('section');
+    expect(section).toHaveClass(
+      'min-h-[460px]',
+      'sm:min-h-[calc(100dvh-7.6875rem)]',
+      'pt-6',
+      'sm:pt-8',
+      'pb-6',
+      'sm:pb-8'
+    );
 
     expect(screen.getByText(/Timeless Literature/i)).toBeInTheDocument();
     expect(screen.getByText(/Free Forever/i)).toBeInTheDocument();
@@ -40,8 +50,9 @@ describe('HeroSearch component', () => {
     expect(screen.getAllByText(/Vol\./i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole('button', { name: /Shuffle Passage/i })).not.toBeInTheDocument();
 
-    // Input focus ring and action button styling
+    // Input focus ring, placeholder copy, and action button styling
     const input = screen.getByTestId('search-input');
+    expect(input).toHaveAttribute('placeholder', 'Search 70,000+ books by title or author...');
     expect(input).toHaveClass(
       'rounded-xl',
       'hover:border-primary/40',
@@ -50,9 +61,15 @@ describe('HeroSearch component', () => {
       'focus:ring-1',
       'focus:ring-primary',
       'shadow-booksaw',
+      'placeholder:truncate',
       'transition-all'
     );
     expect(screen.getByRole('button', { name: /^Search$/i })).toHaveClass('rounded-lg');
+
+    // Horizontal swipeable topic carousel container with data-no-swipe isolation
+    const topicsContainer = screen.getByTestId('hero-topics-container');
+    expect(topicsContainer).toHaveAttribute('data-no-swipe');
+    expect(topicsContainer).toHaveClass('overflow-x-auto', 'no-scrollbar', 'sm:flex-wrap');
   });
 
   it('handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit', () => {
@@ -412,5 +429,29 @@ describe('HeroSearch component', () => {
     expect(screen.getAllByText(/Great Expectations/i)[0]).toBeInTheDocument();
 
     enrichedSpy.mockRestore();
+  });
+
+  it('enforces multi-screen responsive grid hierarchy across mobile, tablet, and desktop viewports', () => {
+    const { container } = renderWithClient(<HeroSearch search="" />);
+
+    // 1. Root Section Viewport Fold Alignment
+    const section = container.querySelector('section');
+    expect(section).toHaveClass('min-h-[460px]', 'sm:min-h-[calc(100dvh-7.6875rem)]');
+
+    // 2. Booksaw Split Grid (Single-column mobile -> 12-column desktop split)
+    const heroGrid = container.querySelector('.grid.grid-cols-1.lg\\:grid-cols-12');
+    expect(heroGrid).toBeInTheDocument();
+    expect(heroGrid).toHaveClass('grid-cols-1', 'lg:grid-cols-12');
+
+    // 3. Left editorial column & Right 3D book spotlight column ratios
+    const leftCol = heroGrid?.querySelector('.lg\\:col-span-7');
+    const rightCol = heroGrid?.querySelector('.lg\\:col-span-5');
+    expect(leftCol).toBeInTheDocument();
+    expect(rightCol).toBeInTheDocument();
+
+    // 4. 4-Pillar Benefit Strip (1 col on mobile -> 2 cols on tablet -> 4 cols on desktop)
+    const pillarsGrid = container.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
+    expect(pillarsGrid).toBeInTheDocument();
+    expect(pillarsGrid).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-4', 'mt-auto');
   });
 });

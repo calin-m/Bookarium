@@ -70,6 +70,26 @@ describe('EditorialQuoteSection component', () => {
     expect(currentBook?.translators).toEqual(expectedBook.translators || []);
   });
 
+  it('navigates to reader when tapping or pressing enter on the classic book cover card', () => {
+    render(<EditorialQuoteSection />);
+
+    const currentHero = getHourlyHeroBook();
+    const expectedBook = getDailyEditorialBook(currentHero.id);
+
+    const card = screen.getByTestId('editorial-classic-card');
+    expect(card).toHaveAttribute('role', 'button');
+    expect(card).toHaveClass('cursor-pointer');
+
+    // Click card
+    fireEvent.click(card);
+    expect(mockPush).toHaveBeenCalledWith(`/read/${expectedBook.id}`);
+
+    // Keyboard Enter trigger
+    mockPush.mockClear();
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(mockPush).toHaveBeenCalledWith(`/read/${expectedBook.id}`);
+  });
+
   it('filters out books protected in Life+100 jurisdiction (Mexico)', async () => {
     const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
     act(() => {

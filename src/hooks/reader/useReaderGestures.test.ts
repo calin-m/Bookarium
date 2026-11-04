@@ -350,5 +350,92 @@ describe('useReaderGestures Hook', () => {
     });
     expect(onTapSurface).not.toHaveBeenCalled();
   });
+
+  it('attaches non-passive listeners to containerRef and prevents native browser canvas zoom on 2-finger gestures and gesturestart', () => {
+    const container = document.createElement('div');
+    const containerRef = { current: container };
+    const handleFontChange = vi.fn();
+
+    const addEventListenerSpy = vi.spyOn(container, 'addEventListener');
+    const removeEventListenerSpy = vi.spyOn(container, 'removeEventListener');
+
+    const { unmount } = renderHook(() =>
+      useReaderGestures({
+        fontSize: 18,
+        readingMode: 'scroll',
+        onFontSizeChange: handleFontChange,
+        containerRef,
+      })
+    );
+
+    // Verify non-passive listeners were registered for touchmove and gesturestart
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      'touchmove',
+      expect.any(Function),
+      { passive: false }
+    );
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      'gesturestart',
+      expect.any(Function),
+      { passive: false }
+    );
+
+    // 1. Dispatch 1-finger touchmove: should NOT call preventDefault
+    const oneFingerEvent = new Event('touchmove', { cancelable: true });
+    Object.defineProperty(oneFingerEvent, 'touches', {
+      value: [{ clientX: 100, clientY: 100 }],
+    });
+    const oneFingerPreventSpy = vi.spyOn(oneFingerEvent, 'preventDefault');
+    container.dispatchEvent(oneFingerEvent);
+    expect(oneFingerPreventSpy).not.toHaveBeenCalled();
+
+    // 2. Dispatch 2-finger touchmove: MUST call preventDefault to cancel browser viewport zoom
+    const twoFingerEvent = new Event('touchmove', { cancelable: true });
+    Object.defineProperty(twoFingerEvent, 'touches', {
+      value: [
+        { clientX: 100, clientY: 100 },
+        { clientX: 200, clientY: 100 },
+      ],
+    });
+    const twoFingerPreventSpy = vi.spyOn(twoFingerEvent, 'preventDefault');
+    container.dispatchEvent(twoFingerEvent);
+    expect(twoFingerPreventSpy).toHaveBeenCalledTimes(1);
+
+    // 3. Dispatch gesturestart (iOS/iPadOS Safari): MUST call preventDefault
+    const gestureEvent = new Event('gesturestart', { cancelable: true });
+    const gesturePreventSpy = vi.spyOn(gestureEvent, 'preventDefault');
+    container.dispatchEvent(gestureEvent);
+    expect(gesturePreventSpy).toHaveBeenCalledTimes(1);
+
+    // 4. On unmount, listeners must be removed cleanly
+    unmount();
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('touchmove', expect.any(Function));
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('gesturestart', expect.any(Function));
+  });
+
+  it('calls e.preventDefault on synthetic handleTouchMove if 2 fingers are present and event is cancelable', () => {
+    const handleFontChange = vi.fn();
+    const { result } = renderHook(() =>
+      useReaderGestures({
+        fontSize: 18,
+        readingMode: 'paginated',
+        onFontSizeChange: handleFontChange,
+      })
+    );
+
+    const preventDefaultSpy = vi.fn();
+    act(() => {
+      result.current.handleTouchMove({
+        touches: [
+          { clientX: 100, clientY: 100 } as React.Touch,
+          { clientX: 200, clientY: 100 } as React.Touch,
+        ],
+        cancelable: true,
+        preventDefault: preventDefaultSpy,
+      } as unknown as React.TouchEvent);
+    });
+
+    expect(preventDefaultSpy).toHaveBeenCalledTimes(1);
+  });
 });
 

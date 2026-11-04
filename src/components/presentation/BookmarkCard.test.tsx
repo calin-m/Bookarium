@@ -274,6 +274,11 @@ describe('BookmarkCard', () => {
     fireEvent.click(cover);
     expect(handleResume).not.toHaveBeenCalled();
 
+    // Cover image has full grayscale desaturation applied
+    const img = screen.getByAltText('Cover of The Mysterious Affair at Styles');
+    expect(img).toHaveClass('grayscale', 'opacity-80', 'contrast-[1.05]');
+    expect(img).not.toHaveClass('grayscale-[35%]');
+
     // Title is rendered as non-navigable text, not active link
     expect(screen.queryByRole('link', { name: 'The Mysterious Affair at Styles' })).not.toBeInTheDocument();
   });

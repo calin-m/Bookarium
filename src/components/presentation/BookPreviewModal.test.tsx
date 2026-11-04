@@ -439,6 +439,13 @@ describe('BookPreviewModal component', () => {
     expect(screen.getByTestId('notable-passages-restricted-badge')).toHaveTextContent('Protected (GB)');
     expect(screen.getByTestId(`preview-restricted-badge-left-${restrictedBook.id}`)).toHaveTextContent('Protected (GB)');
 
+    // Right page should render Jurisdictional Protection Notice and disable shuffle
+    expect(screen.getByTestId('notable-passage-restricted-card')).toBeInTheDocument();
+    expect(screen.getByText('Jurisdictional Protection Notice')).toBeInTheDocument();
+    expect(screen.getByText(/Deceased in 1995/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Shuffle passage')).toBeDisabled();
+    expect(screen.queryByTestId('notable-passage-loading')).not.toBeInTheDocument();
+
     // Read buttons (on front cover card and inside spread) should be disabled and show Restricted
     const restrictedBtns = screen.getAllByRole('button', { name: /Restricted Title in Preview is restricted in GB/i });
     expect(restrictedBtns.length).toBeGreaterThanOrEqual(1);

@@ -6,7 +6,7 @@ import { ROUTES } from '@/config/routes';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full border-t border-border bg-muted text-foreground pt-10 sm:pt-14 pb-24 md:pb-8 transition-colors duration-theme">
+    <footer className="w-full border-t border-border bg-muted text-foreground pt-10 sm:pt-14 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-5 transition-colors duration-theme">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
           
@@ -40,13 +40,13 @@ export const Footer: React.FC = () => {
             <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground mb-4 pb-1 border-b border-border">
               Sources & Credits
             </h4>
-            <ul className="space-y-2.5 text-xs text-muted-foreground font-mono">
+            <ul className="space-y-1 sm:space-y-2 text-xs text-muted-foreground font-mono">
               <li>
                 <a
                   href={SITE_CONFIG.PROJECT_GUTENBERG}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1 py-1"
                 >
                   Project Gutenberg Archive <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
@@ -56,7 +56,7 @@ export const Footer: React.FC = () => {
                   href={SITE_CONFIG.GUTENDEX}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1 py-1"
                 >
                   Gutendex REST API <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
@@ -66,7 +66,7 @@ export const Footer: React.FC = () => {
                   href={SITE_CONFIG.WIKIDATA}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1 py-1"
                 >
                   Wikidata Knowledge Graph <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
@@ -76,7 +76,7 @@ export const Footer: React.FC = () => {
                   href={SITE_CONFIG.FIGMA_BOOKSAW}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1 py-1"
                 >
                   Booksaw UI Template (CC BY 4.0) <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
@@ -86,7 +86,7 @@ export const Footer: React.FC = () => {
                   href={SITE_CONFIG.GOOGLE_ANTIGRAVITY}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1"
+                  className="hover:text-primary transition-colors inline-flex items-center gap-1 py-1"
                 >
                   Google Antigravity (AI Co-Engineer) <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>
@@ -116,16 +116,16 @@ export const Footer: React.FC = () => {
             <p className="text-xs text-muted-foreground leading-relaxed font-sans">
               All books listed in Bookarium are in the public domain worldwide. Zero DRM, no subscriptions, zero user tracking.
             </p>
-            <div className="pt-1 flex flex-col gap-1.5">
+            <div className="pt-1 flex flex-col gap-1">
               <Link
                 href={ROUTES.PRIVACY}
-                className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline"
+                className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline py-1"
               >
                 Privacy & Data Architecture →
               </Link>
               <Link
                 href={ROUTES.COPYRIGHT}
-                className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline"
+                className="text-xs font-mono text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 underline-offset-4 hover:underline py-1"
               >
                 Copyright & Licensing →
               </Link>
@@ -141,7 +141,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Copyright Strip */}
         <div className="mt-8 pt-4 sm:pt-5 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs font-mono text-muted-foreground">
-          <div>
+          <div className="text-center sm:text-left">
             © {new Date().getFullYear()}{' '}
             <a
               href={SITE_CONFIG.GITHUB_REPO}
@@ -153,7 +153,7 @@ export const Footer: React.FC = () => {
             </a>
             . Designed for Literature.
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-center sm:justify-end gap-1 text-center sm:text-right">
             <span>{SITE_CONFIG.TAGLINE}</span>
             <Heart className="w-3 h-3 text-destructive fill-current ml-1" />
           </div>

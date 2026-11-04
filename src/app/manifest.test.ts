@@ -12,7 +12,7 @@ describe('Web App Manifest (PWA)', () => {
     expect(data.start_url).toBe('/');
     expect(data.display).toBe('standalone');
     expect(data.background_color).toBe('#fcfbf9');
-    expect(data.theme_color).toBe('#c05621');
+    expect(data.theme_color).toBe('#0e1117');
     expect(data.categories).toContain('books');
   });
 

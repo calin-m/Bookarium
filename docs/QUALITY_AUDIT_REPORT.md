@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 03 Nov 2026 18:35:42 GMT  
+**Last Generated**: Wed, 04 Nov 2026 09:19:01 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2192 passed  
+**Total Verified Tests**: 2199 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2192 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2199 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.74%** (11971/12374) — *Target: $\ge$ 95%*
-- **Statements**: **95.38%** (12966/13593) — *Target: $\ge$ 95%*
-- **Functions**: **94.58%** (2759/2917) — *Target: $\ge$ 92%*
-- **Branches**: **87.94%** (11950/13588) — *Target: $\ge$ 85%*
+- **Lines**: **96.74%** (11991/12394) — *Target: $\ge$ 95%*
+- **Statements**: **95.4%** (12988/13614) — *Target: $\ge$ 95%*
+- **Functions**: **94.62%** (2766/2923) — *Target: $\ge$ 92%*
+- **Branches**: **87.93%** (11971/13613) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2192 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2199 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 276 Tests)
 
@@ -475,7 +475,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 459 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 464 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -507,7 +507,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -528,6 +528,7 @@
 - ✔ `cancels favorite removal when Cancel is clicked in confirmation modal`
 - ✔ `opens confirmation modal when removing from bookshelf and supports cancel or confirm`
 - ✔ `renders Protected (GB) badge and disabled Restricted button when book is protected in UK`
+- ✔ `isolates tooltips and disables rating click when a book is restricted on favorites/bookshelf views`
 - ✔ `applies opacity and grayscale to cover image when book is restricted`
 - ✔ `opens unconstrained popover when clicking +N tag and invokes onTopicClick`
 - ✔ `enforces min-w-0 on card root and inner metadata flex column to prevent mobile grid blowout`
@@ -829,10 +830,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (33 tests)</summary>
+<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (34 tests)</summary>
 
 - ✔ `renders section landmark, Classic of the Day badge, and book details`
 - ✔ `navigates to reader and dispatches openReader on button click`
+- ✔ `navigates to reader when tapping or pressing enter on the classic book cover card`
 - ✔ `filters out books protected in Life+100 jurisdiction (Mexico)`
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
@@ -871,7 +873,7 @@
 <summary><b><code>src/components/presentation/Footer.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `should render legal manifesto, links, and attribution`
-- ✔ `should apply responsive footer padding classes`
+- ✔ `should apply responsive footer padding and centered copyright text alignment`
 
 </details>
 
@@ -894,7 +896,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
 - ✔ `handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit`
@@ -908,6 +910,7 @@
 - ✔ `synchronizes controlled search prop on rerender and supports featuredBook prop with or without rawBook`
 - ✔ `selects Featured Book from the full useQuoteEnrichedBooks pool using exclusively database quotes`
 - ✔ `locks the active Featured Book within the same hour across background pool updates to prevent refresh swaps`
+- ✔ `enforces multi-screen responsive grid hierarchy across mobile, tablet, and desktop viewports`
 
 </details>
 
@@ -980,12 +983,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders primary quote with CC0 header badge`
 - ✔ `renders secondary and tertiary quotes when provided`
 - ✔ `adjusts padding and line clamp when there are 2 quotes`
-- ✔ `renders Protected (RO) header badge when isRestricted is true`
+- ✔ `renders Protected (RO) header badge and Jurisdictional Protection card when isRestricted is true`
+- ✔ `renders fallback reason in Jurisdictional Protection card when evaluation.reason is omitted`
 - ✔ `renders Not Downloaded header badge when isUnavailableOffline is true and not restricted`
 - ✔ `renders Extracting Passages… badge, active loading card, and scan indicator when isLoading is true`
 
@@ -1086,7 +1090,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (25 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and unified API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -1113,6 +1117,7 @@
 - ✔ `renders segmented quick clear button on mobile dock when filters are active and clears filters on tap`
 - ✔ `renders segmented quick clear button on desktop toolbar when filters are active and clears filters on click`
 - ✔ `does not render quick clear buttons on desktop or mobile when activeFilterCount is 0`
+- ✔ `enforces mutually exclusive responsive breakpoint isolation and border-y between desktop and mobile bars`
 
 </details>
 
@@ -2488,7 +2493,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 276 Tests)
+### 🔄 Hooks & React Query (28 Suites · 278 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2636,7 +2641,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `initializes with null zoom feedback`
 - ✔ `triggers onNextPage on leftward swipe with sufficient distance`
@@ -2647,6 +2652,8 @@
 - ✔ `suppresses swipe navigation when text selection is active`
 - ✔ `suppresses swipe navigation when touch target is inside a dialog or popover`
 - ✔ `triggers onTapSurface on clean single-finger tap and ignores taps on marks or swipes`
+- ✔ `attaches non-passive listeners to containerRef and prevents native browser canvas zoom on 2-finger gestures and gesturestart`
+- ✔ `calls e.preventDefault on synthetic handleTouchMove if 2 fingers are present and event is cancelable`
 
 </details>
 

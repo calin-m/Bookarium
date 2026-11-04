@@ -1,5 +1,6 @@
 import React from 'react';
-import { Quote, Loader2, Sparkles } from 'lucide-react';
+import { Quote, Loader2, Sparkles, ShieldAlert } from 'lucide-react';
+import type { CopyrightEvaluationResult } from '@/lib/copyright-engine';
 
 export interface NotablePassagesSpreadProps {
   passage: {
@@ -11,6 +12,7 @@ export interface NotablePassagesSpreadProps {
   isUnavailableOffline?: boolean;
   country?: string;
   isLoading?: boolean;
+  evaluation?: CopyrightEvaluationResult;
 }
 
 export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
@@ -19,6 +21,7 @@ export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
   isUnavailableOffline = false,
   country,
   isLoading = false,
+  evaluation,
 }) => {
   const rightQuotesCount = 1 + (passage.rightPageQuote2 ? 1 : 0) + (passage.tertiaryQuote ? 1 : 0);
 
@@ -45,7 +48,37 @@ export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col justify-around gap-2.5 py-1">
-        {isLoading ? (
+        {isRestricted ? (
+          /* Jurisdictional Copyright Protection Presentation */
+          <div
+            data-testid="notable-passage-restricted-card"
+            className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4 sm:p-5 flex flex-col justify-between flex-1 min-h-[160px] text-foreground"
+          >
+            <div>
+              <div className="flex items-center gap-2 mb-2 text-amber-700 dark:text-amber-400">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span className="text-[11px] font-mono font-bold tracking-wider uppercase">
+                  Jurisdictional Protection Notice
+                </span>
+              </div>
+              <p className="font-sans text-xs sm:text-[13px] leading-relaxed text-pretty text-foreground mb-3 font-medium">
+                {evaluation?.reason || `This volume is protected by copyright in ${country || 'your jurisdiction'}.`}
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed font-sans">
+                In compliance with international copyright treaties (Berne Convention) and Project Gutenberg licensing, unabridged text streaming and chapter passage extraction are withheld in your jurisdiction.
+              </p>
+            </div>
+
+            {evaluation?.publicDomainYear && (
+              <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                <span className="uppercase tracking-wider">Public Domain Entry:</span>
+                <span className="font-bold text-amber-600 dark:text-amber-400">
+                  {evaluation.publicDomainYear}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : isLoading ? (
           /* Active Chapter Extraction & Loading Presentation */
           <div
             data-testid="notable-passage-loading"

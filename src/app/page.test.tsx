@@ -835,7 +835,7 @@ describe('Home page integration', () => {
       expect(main).toBeInTheDocument();
 
       // Initially on Catalog
-      expect(screen.getByPlaceholderText(/search 70,000\+ classics/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/search 70,000\+ books/i)).toBeInTheDocument();
 
       // Swipe left on main (move from 500px to 400px)
       act(() => {

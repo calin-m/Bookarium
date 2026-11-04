@@ -10,6 +10,7 @@ export interface UseReaderGesturesOptions {
   onNextPage?: () => void;
   onPreviousPage?: () => void;
   onTapSurface?: () => void;
+  containerRef?: React.RefObject<HTMLElement | null>;
 }
 
 export interface ZoomFeedbackState {
@@ -35,6 +36,7 @@ export function useReaderGestures({
   onNextPage,
   onPreviousPage,
   onTapSurface,
+  containerRef,
 }: UseReaderGesturesOptions): UseReaderGesturesReturn {
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);
@@ -49,6 +51,30 @@ export function useReaderGestures({
       }
     };
   }, []);
+
+  // Suppress native browser canvas zoom on tactile devices during 2-finger pinch
+  useEffect(() => {
+    const el = containerRef?.current;
+    if (!el) return;
+
+    const handleNativeTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length >= 2) {
+        e.preventDefault();
+      }
+    };
+
+    const handleGestureStart = (e: Event) => {
+      e.preventDefault();
+    };
+
+    el.addEventListener('touchmove', handleNativeTouchMove, { passive: false });
+    el.addEventListener('gesturestart', handleGestureStart, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchmove', handleNativeTouchMove);
+      el.removeEventListener('gesturestart', handleGestureStart);
+    };
+  }, [containerRef]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && onFontSizeChange) {
@@ -77,6 +103,9 @@ export function useReaderGestures({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length >= 2) {
       touchStartRef.current = null;
+      if (typeof e.cancelable === 'boolean' && e.cancelable) {
+        e.preventDefault();
+      }
     }
     if (e.touches.length === 2 && pinchStartRef.current && onFontSizeChange) {
       const currentDist = Math.hypot(

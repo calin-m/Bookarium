@@ -760,6 +760,32 @@ describe('StickyCatalogToolbar component', () => {
       expect(screen.queryByTestId('clear-all-filters-btn')).not.toBeInTheDocument();
       expect(screen.queryByTestId('mobile-dock-clear-all-btn')).not.toBeInTheDocument();
     });
+
+    it('enforces mutually exclusive responsive breakpoint isolation and border-y between desktop and mobile bars', () => {
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isMobileDockVisible={true}
+        />
+      );
+
+      const desktopToolbar = screen.getByTestId('sticky-catalog-toolbar');
+      const mobileDock = screen.getByTestId('mobile-catalog-dock');
+
+      // Desktop toolbar: hidden on mobile (< 640px), block on tablet & desktop (>= 640px)
+      expect(desktopToolbar).toHaveClass('hidden', 'sm:block');
+      // Desktop toolbar must have border-y to ensure the bottom flush border is rendered
+      expect(desktopToolbar).toHaveClass('border-y', 'border-border');
+
+      // Mobile dock: active on mobile (< 640px), strictly hidden on tablet & desktop (>= 640px)
+      expect(mobileDock).toHaveClass('sm:hidden');
+    });
   });
 });
 

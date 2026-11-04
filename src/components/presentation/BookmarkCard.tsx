@@ -190,7 +190,9 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 loading="lazy"
                 onError={() => setImageError(true)}
                 className={`w-full h-full object-cover transition-transform duration-300 ${
-                  isRestricted || isUnavailableOffline
+                  isRestricted
+                    ? 'grayscale opacity-80 contrast-[1.05]'
+                    : isUnavailableOffline
                     ? 'opacity-65 grayscale-[35%]'
                     : 'group-hover/cover:scale-105'
                 }`}

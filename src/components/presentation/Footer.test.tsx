@@ -39,14 +39,27 @@ describe('Footer component', () => {
 
     const privacyLink = screen.getByRole('link', { name: /Privacy & Data Architecture/i });
     expect(privacyLink).toHaveAttribute('href', '/privacy');
+    expect(privacyLink).toHaveClass('py-1');
 
     const copyrightLink = screen.getByRole('link', { name: /Copyright & Licensing/i });
     expect(copyrightLink).toHaveAttribute('href', '/copyright');
+    expect(copyrightLink).toHaveClass('py-1');
   });
 
-  it('should apply responsive footer padding classes', () => {
+  it('should apply responsive footer padding and centered copyright text alignment', () => {
     const { container } = render(<Footer />);
     const footer = container.querySelector('footer');
-    expect(footer).toHaveClass('pt-10', 'sm:pt-14', 'pb-24', 'md:pb-8');
+    expect(footer).toHaveClass(
+      'pt-10',
+      'sm:pt-14',
+      'pb-[calc(1rem+env(safe-area-inset-bottom,0px))]',
+      'sm:pb-5'
+    );
+
+    const copyrightText = screen.getByText(/Designed for Literature/i);
+    expect(copyrightText).toHaveClass('text-center', 'sm:text-left');
+
+    const wikidataLink = screen.getByRole('link', { name: /Wikidata Knowledge Graph/i });
+    expect(wikidataLink).toHaveClass('py-1');
   });
 });

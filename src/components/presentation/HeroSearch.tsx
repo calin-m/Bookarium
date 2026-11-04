@@ -233,7 +233,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   };
 
   return (
-    <section className="relative overflow-hidden bg-muted min-h-[460px] lg:min-h-[min(calc(100dvh-7.25rem),780px)] flex flex-col justify-between pt-6 sm:pt-8 pb-6 sm:pb-8 border-b border-border transition-colors duration-theme">
+    <section className="relative overflow-hidden bg-muted min-h-[460px] sm:min-h-[calc(100dvh-7.6875rem)] flex flex-col justify-between pt-6 sm:pt-8 pb-6 sm:pb-8 border-b border-border transition-colors duration-theme">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full flex-1 flex flex-col justify-between gap-6 sm:gap-8">
         
         {/* Booksaw Asymmetric Hero Split Layout */}
@@ -273,10 +273,10 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                   type="text"
                   value={query}
                   onChange={(e) => handleInputChange(e.target.value)}
-                  placeholder="Search 70,000+ classics by title or author..."
+                  placeholder="Search 70,000+ books by title or author..."
                   className={`w-full h-12 pl-11 ${
                     query ? 'pr-32' : 'pr-24 sm:pr-28'
-                  } text-xs sm:text-sm font-sans rounded-xl bg-card border shadow-booksaw hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-all duration-150 ${
+                  } text-xs sm:text-sm font-sans rounded-xl bg-card border shadow-booksaw hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground placeholder:truncate transition-all duration-150 ${
                     searchError
                       ? 'border-destructive focus:border-destructive focus:ring-destructive'
                       : 'border-border'
@@ -319,8 +319,12 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
 
             {/* Genre Quick Links & Language Selector */}
             <div className="space-y-3 pt-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-mono uppercase text-muted-foreground mr-1 select-none flex items-center gap-1">
+              <div
+                data-no-swipe
+                className="flex overflow-x-auto no-scrollbar scroll-smooth sm:flex-wrap items-center gap-1.5 -mx-4 px-4 sm:mx-0 sm:px-0 py-1"
+                data-testid="hero-topics-container"
+              >
+                <span className="text-[11px] font-mono uppercase text-muted-foreground mr-1 select-none flex items-center gap-1 shrink-0">
                   <Compass className="w-3 h-3 text-primary" /> Explore Topics:
                 </span>
                 {HERO_POPULAR_TOPICS.map((topic) => {
@@ -331,7 +335,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
                       type="button"
                       onClick={() => handleTopicClick(topic.id)}
                       data-testid={`topic-chip-${topic.id || 'all'}`}
-                      className={`px-3 py-1 text-xs font-mono font-medium rounded border transition-colors ${
+                      className={`px-3 py-1 text-xs font-mono font-medium rounded border transition-colors shrink-0 ${
                         isSelected
                           ? 'bg-foreground text-background border-foreground shadow-xs'
                           : 'bg-card border-border text-foreground hover:border-primary'

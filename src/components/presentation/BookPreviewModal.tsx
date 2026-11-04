@@ -244,7 +244,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
     authors: book?.authors ?? [],
     subjects: book?.subjects ?? [],
     supabaseQuotes,
-    enabled: isOpen && !isUnavailableOffline,
+    enabled: isOpen && !isUnavailableOffline && !isRestricted,
   });
 
   // FLIP Origin Rect calculation with 1:1 Pixel-Perfect Dimensions & Continuous 450ms Fluid Landing Curve
@@ -441,7 +441,14 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               isCoverOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
-                <NotablePassagesSpread passage={currentPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} isLoading={isLoadingPassages} />
+                <NotablePassagesSpread
+                  passage={currentPassage}
+                  isRestricted={isRestricted}
+                  isUnavailableOffline={isUnavailableOffline}
+                  country={country}
+                  isLoading={isLoadingPassages && !isRestricted}
+                  evaluation={evaluation}
+                />
 
                 {/* Right Page Footer Actions */}
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2 mt-2 shrink-0">
@@ -449,7 +456,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     variant="outline"
                     size="chip"
                     onClick={handleShuffle}
-                    disabled={isTurningLeaf || passages.length <= 1}
+                    disabled={isTurningLeaf || passages.length <= 1 || isRestricted}
                     title="Shuffle through passages from this volume"
                     aria-label="Shuffle passage"
                     className="group/shuf"
@@ -515,7 +522,14 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               >
                 {/* Front Face of Turning Leaf: Outgoing Right Page quotes lifting away */}
                 <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  <NotablePassagesSpread passage={prevPassage} isRestricted={isRestricted} isUnavailableOffline={isUnavailableOffline} country={country} isLoading={isLoadingPassages} />
+                  <NotablePassagesSpread
+                    passage={prevPassage}
+                    isRestricted={isRestricted}
+                    isUnavailableOffline={isUnavailableOffline}
+                    country={country}
+                    isLoading={isLoadingPassages && !isRestricted}
+                    evaluation={evaluation}
+                  />
 
                   <div className="pt-2 flex items-center justify-end text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
                     <span className="opacity-60">p. 2</span>

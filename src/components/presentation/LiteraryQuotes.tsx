@@ -253,7 +253,7 @@ export const LiteraryQuotes: React.FC = () => {
           <button
             type="button"
             onClick={handleShuffle}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-foreground hover:text-primary hover:border-primary text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-xs active:scale-95 ${
+            className={`inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[38px] sm:min-h-[36px] rounded-lg border border-border bg-card text-foreground hover:text-primary hover:border-primary text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-xs active:scale-95 cursor-pointer ${
               isShuffling ? 'opacity-60 scale-95' : ''
             }`}
             aria-label="Discover more literary quotes"
@@ -269,7 +269,7 @@ export const LiteraryQuotes: React.FC = () => {
             <Link
               key={item.id}
               href={ROUTES.READ(item.bookId)}
-              className="group relative flex flex-col justify-between p-7 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer h-full"
+              className="group relative flex flex-col justify-between p-5 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer h-full"
               data-testid={`quote-card-${item.id}`}
               aria-label={`Read ${item.bookTitle} by ${item.author}`}
             >

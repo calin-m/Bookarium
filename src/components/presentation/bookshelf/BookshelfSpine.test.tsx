@@ -1,8 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BookshelfSpine } from './BookshelfSpine';
 import type { GutendexBook } from '@/mocks/handlers';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 const mockBook: GutendexBook = {
   id: 1342,
@@ -23,6 +24,11 @@ const mockBook: GutendexBook = {
 };
 
 describe('BookshelfSpine Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
+  });
+
   it('renders spine title, author, and handles keyboard interaction', () => {
     const handleSpineClick = vi.fn();
     render(
@@ -222,7 +228,7 @@ describe('BookshelfSpine Component', () => {
     expect(restrictedOfflineBtn).toBeDisabled();
 
     act(() => {
-      useJurisdictionStore.setState({ country: 'US' });
+      useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
     });
   });
 

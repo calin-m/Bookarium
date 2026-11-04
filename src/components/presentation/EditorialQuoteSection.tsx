@@ -104,7 +104,17 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
           <div className="md:col-span-4 flex justify-center">
             <div
               data-testid="editorial-classic-card"
-              className="w-48 aspect-[2/3] rounded-lg bg-gradient-to-br from-stone-900 to-stone-800 text-white p-5 flex flex-col justify-between shadow-booksaw-hover border-r-2 border-stone-700"
+              role="button"
+              tabIndex={0}
+              onClick={handleStartReading}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleStartReading();
+                }
+              }}
+              aria-label={`Featured classic volume: ${book.title} by ${book.author}`}
+              className="w-48 aspect-[2/3] rounded-lg bg-gradient-to-br from-stone-900 to-stone-800 text-white p-5 flex flex-col justify-between shadow-booksaw-hover border-r-2 border-stone-700 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-transform focus:outline-hidden focus:ring-2 focus:ring-primary"
             >
               <div className="text-[10px] font-mono uppercase tracking-widest text-primary-400 font-semibold">
                 Classic of the Day

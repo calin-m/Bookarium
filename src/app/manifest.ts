@@ -16,7 +16,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     display: 'standalone',
     background_color: '#fcfbf9',
-    theme_color: '#c05621',
+    theme_color: '#0e1117',
     orientation: 'any',
     categories: ['books', 'education', 'literature', 'reference'],
     icons: [

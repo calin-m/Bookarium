@@ -84,6 +84,9 @@ describe('LiteraryQuotes component', () => {
 
     const headerDivider = container.querySelector('.border-b');
     expect(headerDivider).toHaveClass('pb-6', 'sm:pb-8');
+
+    const quoteCard = container.querySelector('[data-testid^="quote-card-"]');
+    expect(quoteCard).toHaveClass('p-5', 'sm:p-8');
   });
 
   it('handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes', async () => {

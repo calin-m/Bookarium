@@ -52,7 +52,7 @@ describe('NotablePassagesSpread component', () => {
     expect(screen.queryByTestId('notable-passage-tertiary')).not.toBeInTheDocument();
   });
 
-  it('renders Protected (RO) header badge when isRestricted is true', () => {
+  it('renders Protected (RO) header badge and Jurisdictional Protection card when isRestricted is true', () => {
     render(
       <NotablePassagesSpread
         passage={{
@@ -60,12 +60,45 @@ describe('NotablePassagesSpread component', () => {
         }}
         isRestricted={true}
         country="RO"
+        evaluation={{
+          isAllowed: false,
+          country: 'RO',
+          rule: 'LIFE_70',
+          publicDomainYear: 2047,
+          reason: 'Protected in Romania: Author died in 1976 (Life+70 rule applies; public domain in 2047)',
+        }}
       />
     );
 
     expect(screen.getByText('Notable Passages')).toBeInTheDocument();
     expect(screen.queryByText('CC0 / Free')).not.toBeInTheDocument();
     expect(screen.getByTestId('notable-passages-restricted-badge')).toHaveTextContent('Protected (RO)');
+    expect(screen.getByTestId('notable-passage-restricted-card')).toBeInTheDocument();
+    expect(screen.getByText('Jurisdictional Protection Notice')).toBeInTheDocument();
+    expect(
+      screen.getByText('Protected in Romania: Author died in 1976 (Life+70 rule applies; public domain in 2047)')
+    ).toBeInTheDocument();
+    expect(screen.getByText(/In compliance with international copyright treaties/i)).toBeInTheDocument();
+    expect(screen.getByText('2047')).toBeInTheDocument();
+    expect(screen.queryByTestId('notable-passage-loading')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('notable-passage-primary')).not.toBeInTheDocument();
+  });
+
+  it('renders fallback reason in Jurisdictional Protection card when evaluation.reason is omitted', () => {
+    render(
+      <NotablePassagesSpread
+        passage={{
+          quoteExcerpt: 'Protected quote excerpt',
+        }}
+        isRestricted={true}
+        country="MX"
+        isLoading={true}
+      />
+    );
+
+    expect(screen.getByTestId('notable-passage-restricted-card')).toBeInTheDocument();
+    expect(screen.getByText('This volume is protected by copyright in MX.')).toBeInTheDocument();
+    expect(screen.queryByTestId('notable-passage-loading')).not.toBeInTheDocument();
   });
 
   it('renders Not Downloaded header badge when isUnavailableOffline is true and not restricted', () => {

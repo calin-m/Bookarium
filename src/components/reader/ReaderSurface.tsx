@@ -367,6 +367,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     onNextPage,
     onPreviousPage,
     onTapSurface,
+    containerRef: mainRef,
   });
 
   useEffect(() => {
@@ -558,7 +559,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     <main
       ref={mainRef}
       data-brightness={brightness}
-      className={`relative flex-1 h-full w-full overflow-y-scroll overscroll-y-contain transition-colors duration-theme select-text ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
+      className={`relative flex-1 h-full w-full overflow-y-scroll overscroll-y-contain transition-colors duration-theme select-text touch-pan-y ${activeTheme.surface} ${activeTheme.scrollbarClass}`}
       role="main"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

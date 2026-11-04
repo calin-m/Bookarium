@@ -326,6 +326,67 @@ describe('BookCard component', () => {
     expect(getBtn).toBeDisabled();
   });
 
+  it('isolates tooltips and disables rating click when a book is restricted on favorites/bookshelf views', () => {
+    act(() => {
+      useJurisdictionStore.getState().setCountry('MX');
+    });
+
+    const fitzgeraldBook: any = {
+      id: 64317,
+      title: 'The Great Gatsby',
+      authors: [{ name: 'Fitzgerald, F. Scott', birth_year: 1896, death_year: 1940 }],
+      translators: [],
+      subjects: ['Rich people -- Fiction'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 12000,
+    };
+
+    const handlePreview = vi.fn();
+
+    const { rerender } = render(
+      <BookCard
+        book={fitzgeraldBook}
+        activeView="favorites"
+        onPreviewClick={handlePreview}
+      />
+    );
+
+    // On favorites view with restricted book, "Click to rate or change reading status" should NOT be present
+    expect(screen.queryByTitle('Click to rate or change reading status')).not.toBeInTheDocument();
+
+    // The Protected (MX) badge must display the legal evaluation tooltip
+    const protectedBadge = screen.getByText('Protected (MX)');
+    expect(protectedBadge).toBeInTheDocument();
+    expect(protectedBadge).toHaveAttribute(
+      'title',
+      expect.stringMatching(/Deceased in 1940\. Protected under Life \+ 100/i)
+    );
+
+    // Clicking the reads element should NOT trigger handleCoverClick/onPreviewClick
+    const readsElement = screen.getByText(/12k reads/i);
+    fireEvent.click(readsElement);
+    expect(handlePreview).not.toHaveBeenCalled();
+
+    // In contrast, an available book on favorites view DOES have "Click to rate or change reading status"
+    act(() => {
+      useJurisdictionStore.getState().setCountry('US');
+    });
+
+    rerender(
+      <BookCard
+        book={fitzgeraldBook}
+        activeView="favorites"
+        onPreviewClick={handlePreview}
+      />
+    );
+
+    expect(screen.getByTitle('Click to rate or change reading status')).toBeInTheDocument();
+  });
+
   it('applies opacity and grayscale to cover image when book is restricted', () => {
     act(() => {
       useJurisdictionStore.getState().setCountry('GB');
@@ -350,8 +411,10 @@ describe('BookCard component', () => {
     render(<BookCard book={restrictedBookWithCover} />);
 
     const coverImg = screen.getByAltText('Cover of Restricted Title With Cover');
-    expect(coverImg.className).toContain('opacity-65');
-    expect(coverImg.className).toContain('grayscale-[35%]');
+    expect(coverImg.className).toContain('opacity-80');
+    expect(coverImg.className).toContain('grayscale');
+    expect(coverImg.className).toContain('contrast-[1.05]');
+    expect(coverImg.className).not.toContain('grayscale-[35%]');
   });
 
   it('opens unconstrained popover when clicking +N tag and invokes onTopicClick', () => {
