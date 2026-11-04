@@ -373,8 +373,9 @@ const ROADMAP_MILESTONES = [
   {
     id: 'm10',
     title: 'Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards',
-    version: 'v2.9.0 - v2.9.1 (Active: v2.9.0)',
-    badge: 'https://img.shields.io/badge/Milestone-v2.9.0--v2.9.1-violet?style=flat-square',
+    versionSeries: 'v2.9.x',
+    version: 'v2.9.x',
+    badge: 'https://img.shields.io/badge/Milestone-v2.9.x-violet?style=flat-square',
     description: 'Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `20 Popular + 5 Recent` blended batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
     features: [
       {
@@ -388,7 +389,7 @@ const ROADMAP_MILESTONES = [
           fileContains('src/hooks/queries/useBooks.ts', 'useQuoteEnrichedBooks'),
       },
       {
-        title: '[Target: v2.9.0] Anonymized Scholar-Highlight Promotion into `public.books.quotes`',
+        title: '[Target: v2.9.x] Anonymized Scholar-Highlight Promotion into `public.books.quotes`',
         targetMinVersion: '2.9.0',
         description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—reserving live Gutenberg mirror pulls strictly for uncached volumes opened by readers.',
         check: () =>
@@ -396,7 +397,7 @@ const ROADMAP_MILESTONES = [
           fileContains('scripts/sync-featured-quotes.js', 'promoteScholarHighlights'),
       },
       {
-        title: '[Target: v2.9.0] Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)',
+        title: '[Target: v2.9.x] Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)',
         targetMinVersion: '2.9.0',
         description: 'Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.',
         check: () =>
@@ -405,8 +406,8 @@ const ROADMAP_MILESTONES = [
           fileContains('src/stores/useReaderStore.ts', 'spreadMode'),
       },
       {
-        title: '[Target: v2.9.1] Shareable Reading Cards & Social Milestone Canvas Export',
-        targetMinVersion: '2.9.1',
+        title: '[Target: v2.9.x] Shareable Reading Cards & Social Milestone Canvas Export',
+        targetMinVersion: '2.9.0',
         description: 'Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.',
         check: () =>
           fileExists('src/components/account/ShareableReadingCard.tsx') ||
@@ -505,7 +506,14 @@ ${renderProgressBar(totalCompleted, totalFeatures)}
 `;
 
   evaluatedMilestones.forEach((m, idx) => {
-    md += `### ${m.title} (\`${m.version}\`)\n`;
+    const seriesPrefix = m.versionSeries
+      ? `${m.versionSeries.replace(/^v|\.?x$/g, '')}.`
+      : '';
+    const displayVersion =
+      seriesPrefix && currentVersion.startsWith(seriesPrefix) && m.mDone < m.mTotal
+        ? `${m.versionSeries} (Active: v${currentVersion})`
+        : m.version;
+    md += `### ${m.title} (\`${displayVersion}\`)\n`;
     md += `${renderProgressBar(m.mDone, m.mTotal)}\n\n`;
     md += `> ${m.description}\n\n`;
 

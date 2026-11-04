@@ -23,7 +23,9 @@ All architecture diagrams (`docs/ARCHITECTURE.md`), decision records (`docs/DECI
   - **Environment Variables (`process.env.*`)**: `src/` or `scripts/` $\rightarrow$ `.env.example` $\rightarrow$ `.github/workflows/*.yml` $\rightarrow$ `DEVELOPMENT.md` & `README.md`.
   - **Dependencies, CLI Scripts or Hooks**: `package.json` $\rightarrow$ `knip.json` / `.agents/hooks.json` / `.husky/pre-commit` / `scripts/approval-gate.js` $\rightarrow$ `scripts/generate-architecture-matrix.js` (`purposeMap`, `extractNodeScriptsCatalog`) $\rightarrow$ `docs/PIPELINE_GUIDE.md` & `DEVELOPMENT.md`.
   - **Security Rules or Quality Gates**: `scripts/eslint-rules/bookarium-security.js` (`+.test.ts`) $\rightarrow$ `eslint.config.mjs` $\rightarrow$ `scripts/verify-build.js` $\rightarrow$ `SECURITY.md`, `CONTRIBUTING.md`, `docs/PIPELINE_GUIDE.md`, `.github/pull_request_template.md`, `AGENTS.md`, & `.agents/AGENTS.md`.
-  - **SemVer (`x.xx.xx`) Milestone, Anti-Bloat Patch Cap (`<= 3 ADRs`) & 7-File Version Sync**: `RELEASES[0].version` in `scripts/generate-changelog.js` is the single source of version truth (`npm run docs:sync` automatically propagates it across `package.json`, `package-lock.json`, `CHANGELOG.md`, `README.md` `Latest Improvements`, `ROADMAP.md`, `SECURITY.md`, and `.github/workflows/release.yml`). Major roadmap milestones bump `MINOR` (`.0`: `2.9.0`, `2.10.0`), while incremental sub-features, polish, and bug fixes bump `PATCH` (`.1`–`.99`: `2.9.1`...`2.9.10+`) with a strict **Max 3 ADRs per release** anti-bloat cap and `targetMinVersion` roadmap floor enforced in `Pass 5`.
+  - **SemVer (`x.xx.xx`) Two-Tier Release Cadence, Box-Capacity Auto-Bump & 7-File Version Sync**: `RELEASES[0].version` in `scripts/generate-changelog.js` is the single source of version truth (`npm run docs:sync` automatically propagates it across `package.json`, `package-lock.json`, `CHANGELOG.md`, `README.md` `Latest Improvements`, `ROADMAP.md`, `SECURITY.md`, and `.github/workflows/release.yml`).
+    - **Macro Horizon (`ROADMAP.md`)**: Tracks strategic `MINOR` series (`v2.9.x`, `v2.10.0`), advancing only when strategic milestone deliverables complete or when the user explicitly requests roadmap updates (`scripts/generate-roadmap.js` dynamically renders `v2.9.x (Active: v${currentVersion})`).
+    - **Micro Ledger (`CHANGELOG.md`) & Box-Capacity Auto-Bump**: Tracks tactical `PATCH` releases (`2.9.1`, `2.9.2`, `2.9.3`... `2.9.12+`) within the active minor series. `Pass 5` enforces three deterministic box-capacity bounds on every `>= 2.9.0` release: **1–6 bullets per release** (matching `README.md` `Latest Improvements`), **$\le 1,200$ characters per bullet** (preventing multi-topic run-on paragraphs), and **1–3 unique `ADR-XXX` citations per release** (with the highest ADR in `docs/DECISIONS.md` cited within the active `major.minor.x` series). Whenever a new change would add a 7th bullet, exceed 1,200 chars in an existing bullet, or cite a 4th ADR, open the next patch version (`2.9.N+1`) at `RELEASES[0]`.
 - **Mandatory 6-Stage Logical Execution Order (Zero-Drift Sequence):**
   Every `implementation_plan.md` and approved execution turn must follow this strict bottom-up sequence:
   1. **Stage 0 — Pre-Plan Discovery & Inter-Reference Audit**: Run `git status --short` to inspect pending diffs and map all interconnected files via the Inter-Reference Impact Matrix above.
@@ -56,12 +58,12 @@ Never manually craft static component matrices, route catalogs, or architectural
 ### Rule 5: Conventional Commit Formatting & User-Driven Commit Execution Protocol
 - **Agent Prohibition:** The AI agent is strictly prohibited from executing `git commit`, `git push`, `git merge`, or branch-modifying Git commands directly.
 - **On-Demand Command Formulation Only:** The AI agent must only generate and provide Git commit commands when explicitly requested by the user (e.g. when the user asks "how do I commit this?", "generate commit command", or asks to commit a completed step). The agent must NOT automatically append git commands to general Q&A or intermediate discussion turns.
-- **Diff Inspection & Structure:** When requested, the agent inspects staged changes via `git status --short` and `git diff` to formulate Conventional Commit commands with distinct multi-part `-m` flags for the user to review and execute (using Windows PowerShell backtick (`) line continuation):
+- **Diff Inspection, Structure & `[PHASE]` Truthfulness:** When requested, the agent inspects staged changes via `git status --short` and `git diff` to formulate Conventional Commit commands with distinct multi-part `-m` flags for the user to review and execute (using Windows PowerShell backtick (`) line continuation). Only cite a Roadmap Milestone name in `[PHASE]` when the commit implements a planned deliverable listed under that milestone in `ROADMAP.md`; for tactical features, UI polish, refactors, or fixes outside roadmap checkboxes, use `[PHASE]: <Descriptive Tactical Scope> (v<version>)`:
   ```powershell
   git add .
   git commit `
     -m "feat(scope): concise imperative summary" `
-    -m "[PHASE]: Implementation phase or milestone" `
+    -m "[PHASE]: Descriptive Tactical Scope (v2.9.1) — or Milestone N when completing a roadmap item" `
     -m "[WHY]: Motivation and business/architectural justification" `
     -m "[WHAT]: Comprehensive bulleted list of modifications" `
     -m "[VERIFICATION]: 7-Gateway verification command and test results"
@@ -79,12 +81,13 @@ Never manually craft static component matrices, route catalogs, or architectural
   ```
 - **Blocking Guard:** Any failure in passes 0.5, 0.75 through 7 immediately blocks workflow progression and halts the pre-commit hook.
 
-### Rule 7: Approval-First Architectural Governance (ADRs)
-Major architectural modifications, dependency introductions, schema shifts, or design alterations must be proposed via an Architecture Decision Record (ADR) before execution:
-```bash
-npm run adr:new -- "Your Decision Title"
-```
-All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context, Decision, Consequences).
+### Rule 7: Approval-First Architectural Governance & Living ADR Evolution (`docs/DECISIONS.md`)
+- **Continuous ADR Audit & Non-Fragmentation (Evolve Existing Thematic ADRs First):** On every code, UI, pipeline, or architectural modification, inspect `docs/DECISIONS.md` to determine whether an existing thematic ADR covers the subsystem. When refining, extending, or adjusting an existing subsystem, update the governing `ADR-XXX` in place (refining parameters or appending a numbered Decision Item) and cite that `ADR-XXX` in the current `RELEASES[0]` patch entry in `scripts/generate-changelog.js`.
+- **When to Mint a New ADR (`npm run adr:new`):** Reserve creating a brand-new `ADR-XXX` strictly for net-new architectural subsystems, database tables, external dependencies, or security boundaries that do not belong to any existing ADR:
+  ```bash
+  npm run adr:new -- "Your Decision Title"
+  ```
+  All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context, Decision, Consequences).
 
 ### Rule 8: Repository Hygiene, Secret Prevention & 7-Pillar SAST/OWASP/AST-Taint Governance
 - **Zero Secrets & Boundary Policy (Pass 0.5):** Never commit API keys, RSA/EC/OpenSSH private keys, GitHub/Supabase PATs, `service_role` JWT payloads, webhook tokens, passwords, database URLs with embedded credentials, or Git-tracked `.env*` files; enforce `.env.example` parity, `5 MB` binary limits, and transitive AST graph isolation so `SUPABASE_SERVICE_ROLE_KEY` or server-only modules never enter client bundles.

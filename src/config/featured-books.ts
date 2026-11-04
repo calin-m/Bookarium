@@ -661,7 +661,8 @@ export function gutendexBookToFeaturedHeroBook(
 
 /**
  * Selects the hourly Featured Book primarily from the database pool of books with quotes
- * (`quoteEnrichedBooks`), respecting jurisdiction and optional Hero topic/language filters.
+ * (`quoteEnrichedBooks`), respecting jurisdiction. Optional topic/language `options` are supported
+ * but intentionally not passed by `HeroSearch`: the editorial spotlight is decoupled from catalog filters.
  * Falls back to static `FEATURED_HERO_BOOKS` only when `quoteEnrichedBooks` has no valid matches.
  */
 export function selectHourlyHeroFromPool(

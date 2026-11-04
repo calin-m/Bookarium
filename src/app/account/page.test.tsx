@@ -1010,6 +1010,52 @@ describe('AccountPage', () => {
         Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
       }
     });
+
+    it('automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)', () => {
+      mockSearchParams = new URLSearchParams('recovery=true');
+      render(<AccountPage />);
+      const securityTab = screen.getByRole('tab', { name: /Security/i });
+      expect(securityTab).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])', () => {
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+      document.body.setAttribute('data-scrubbing', 'true');
+      try {
+        render(<AccountPage />);
+        const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
+        fireEvent.click(preferencesTab);
+        expect(replaceStateSpy).not.toHaveBeenCalled();
+      } finally {
+        document.body.removeAttribute('data-scrubbing');
+        replaceStateSpy.mockRestore();
+      }
+    });
+
+    it('handles generic collection view swipe navigation fallback from Account view', async () => {
+      const swipeModule = await import('@/hooks/useMobileViewSwipe');
+      let capturedOnViewChange: ((view: any) => void) | undefined;
+      const swipeSpy = vi.spyOn(swipeModule, 'useMobileViewSwipe').mockImplementation((options) => {
+        capturedOnViewChange = options.onViewChange;
+        return {
+          handleTouchStart: vi.fn(),
+          handleTouchEnd: vi.fn(),
+          handleTouchCancel: vi.fn(),
+          lastSwipeDirection: null,
+        };
+      });
+
+      render(<AccountPage />);
+      expect(capturedOnViewChange).toBeDefined();
+
+      capturedOnViewChange?.('bookshelf');
+      expect(mockPush).toHaveBeenCalledWith(ROUTES.VIEW('bookshelf'));
+
+      capturedOnViewChange?.('favorites');
+      expect(mockPush).toHaveBeenCalledWith(ROUTES.VIEW('favorites'));
+
+      swipeSpy.mockRestore();
+    });
   });
 });
 

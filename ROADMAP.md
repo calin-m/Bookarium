@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.0-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.2-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-87%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-41_of_47-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -177,18 +177,18 @@
 
 ---
 
-### Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.0 - v2.9.1 (Active: v2.9.0)`)
+### Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.2)`)
 `[█████░░░░░░░░░░░░░░░]` **1/4 (25%)**
 
 > Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `20 Popular + 5 Recent` blended batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.
 
 - [x] **[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `20 + 5` Ingestion (`1.0h–2.0h` Float Gate), Out-of-Window Auto-Pruning & Instant Preview Integration** `✅ VERIFIED`
   Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT '[]'::jsonb` column and partial popularity index `idx_books_with_quotes_popular` (`WHERE quotes <> '[]'::jsonb`); build `scripts/sync-featured-quotes.js` and `.github/workflows/quotes-sync.yml` (compact `workflow_dispatch` with per-mirror worker checkboxes defaulting to `gutenberg.pglaf.org` + `schedule` with a deterministic `1.0h–2.0h` float schedule gate `evaluateScheduleGate`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by single-column `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`), blending `20 Popular + 5 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), Priority Hero Book ID pinning, Primary-Key-Scoped quote discovery (`fetchQuotedBookIds` querying `books_pkey` `.in('id', chunk).neq('quotes', '[]')`), and burst-safe post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), checking `public.books.content` first before polite PGLAF mirror fetching (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.
-- [ ] **[Target: v2.9.0] Anonymized Scholar-Highlight Promotion into `public.books.quotes`** `⏳ PLANNED`
+- [ ] **[Target: v2.9.x] Anonymized Scholar-Highlight Promotion into `public.books.quotes`** `⏳ PLANNED`
   Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—reserving live Gutenberg mirror pulls strictly for uncached volumes opened by readers.
-- [ ] **[Target: v2.9.0] Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)** `⏳ PLANNED`
+- [ ] **[Target: v2.9.x] Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)** `⏳ PLANNED`
   Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.
-- [ ] **[Target: v2.9.1] Shareable Reading Cards & Social Milestone Canvas Export** `⏳ PLANNED`
+- [ ] **[Target: v2.9.x] Shareable Reading Cards & Social Milestone Canvas Export** `⏳ PLANNED`
   Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
 
 ---

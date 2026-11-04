@@ -80,7 +80,7 @@ describe('LiteraryQuotes component', () => {
   it('applies responsive section and balanced header divider spacing classes', () => {
     const { container } = render(<LiteraryQuotes />);
     const section = container.querySelector('section');
-    expect(section).toHaveClass('py-10', 'sm:py-16');
+    expect(section).toHaveClass('pt-6', 'sm:pt-8', 'pb-10', 'sm:pb-16');
 
     const headerDivider = container.querySelector('.border-b');
     expect(headerDivider).toHaveClass('pb-6', 'sm:pb-8');
@@ -463,6 +463,52 @@ describe('LiteraryQuotes component', () => {
 
     enrichedSpy.mockRestore();
     quotesSpy.mockRestore();
+  });
+
+  it('excludes quote-enriched volumes that are restricted in the current user jurisdiction', async () => {
+    const { vi } = await import('vitest');
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+    const copyrightModule = await import('@/lib/copyright-engine');
+
+    const copyrightSpy = vi.spyOn(copyrightModule, 'isBookPublicDomainInJurisdiction').mockImplementation((book) => {
+      if (book && 'id' in book && book.id === 9999) {
+        return { isAllowed: false, country: 'US', rule: 'US_PUBLIC_DOMAIN', reason: 'Restricted in territory' };
+      }
+      return { isAllowed: true, country: 'US', rule: 'US_PUBLIC_DOMAIN', reason: 'Public Domain' };
+    });
+
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      data: [
+        {
+          id: 9999,
+          title: 'Restricted Modern Volume',
+          authors: [{ name: 'Restricted Author', birth_year: 1950, death_year: 2020 }],
+          translators: [],
+          subjects: ['Literature'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 50000,
+          quotes: [
+            {
+              chapterLabel: 'Passage I',
+              openingLine: '“Restricted opening text.”',
+              quoteExcerpt: '“Restricted excerpt that should never show.”',
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    render(<LiteraryQuotes />);
+
+    expect(screen.queryByText(/Restricted excerpt that should never show/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Read/i })).toHaveLength(3);
+
+    enrichedSpy.mockRestore();
+    copyrightSpy.mockRestore();
   });
 });
 

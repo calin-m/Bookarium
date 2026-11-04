@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 04 Nov 2026 09:19:01 GMT  
+**Last Generated**: Wed, 04 Nov 2026 12:25:16 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2199 passed  
+**Total Verified Tests**: 2216 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2199 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2216 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.74%** (11991/12394) — *Target: $\ge$ 95%*
-- **Statements**: **95.4%** (12988/13614) — *Target: $\ge$ 95%*
-- **Functions**: **94.62%** (2766/2923) — *Target: $\ge$ 92%*
-- **Branches**: **87.93%** (11971/13613) — *Target: $\ge$ 85%*
+- **Lines**: **96.79%** (12063/12462) — *Target: $\ge$ 95%*
+- **Statements**: **95.42%** (13068/13695) — *Target: $\ge$ 95%*
+- **Functions**: **94.57%** (2788/2948) — *Target: $\ge$ 92%*
+- **Branches**: **88%** (12023/13662) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2199 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2216 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 276 Tests)
+### 🚀 App Routes & Pages (27 Suites · 279 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,7 +46,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (21 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -69,6 +69,9 @@
 - ✔ `covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)`
 - ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
 - ✔ `renders offline banner and guest local workspace when offline as a guest, and authenticated offline banner when signed in`
+- ✔ `automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)`
+- ✔ `suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])`
+- ✔ `handles generic collection view swipe navigation fallback from Account view`
 
 </details>
 
@@ -475,7 +478,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 464 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 476 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -896,11 +899,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
+- ✔ `supports mouse drag-to-scroll, wheel translation, and accidental click suppression on topics carousel`
 - ✔ `handles search input lifecycle: typing validation, clear button, whitespace normalization, and explicit submit`
 - ✔ `should handle topic chip and language selection`
+- ✔ `keeps Featured Book stable and decoupled when topic or language filter changes`
 - ✔ `should accept dynamic books prop from API, render open-book spread, and handle read featured book`
 - ✔ `should accept dynamic books prop from API and render the active volume`
 - ✔ `should shuffle to next passage within the featured book when rotate button is clicked`
@@ -911,6 +916,15 @@
 - ✔ `selects Featured Book from the full useQuoteEnrichedBooks pool using exclusively database quotes`
 - ✔ `locks the active Featured Book within the same hour across background pool updates to prevent refresh swaps`
 - ✔ `enforces multi-screen responsive grid hierarchy across mobile, tablet, and desktop viewports`
+- ✔ `supports custom feature subsets for paired 2-column layout`
+- ✔ `renders initial Feature 1 statically for instant 0-CLS SSR hydration parity`
+- ✔ `cycles through states via fake timers: pause -> backspace -> pause_empty -> typing -> next feature`
+- ✔ `bypasses typewriter character slicing when prefers-reduced-motion is active`
+- ✔ `auto-advances features every 5000ms when prefers-reduced-motion is active without character slicing`
+- ✔ `steps through title typing, description typing, and backspace transitions seamlessly`
+- ✔ `handles matchMedia throwing gracefully in reduced-motion listeners`
+- ✔ `enriches a custom featuredBook prop with database quotes when available in quote pool`
+- ✔ `cleanly tears down timers on unmount without errors or state leaks`
 
 </details>
 
@@ -926,7 +940,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
@@ -939,6 +953,7 @@
 - ✔ `populates anthology cards exclusively from useQuoteEnrichedBooks across 3 distinct books and disables redundant useFeaturedQuotes calls`
 - ✔ `rotates strictly to 3 unseen books on Discover More when 6+ quote-enriched books exist regardless of per-book passage count`
 - ✔ `tops up with baseSafeQuotes when quoteEnrichedBooks has fewer than 3 valid books and deduplicates identical quote IDs`
+- ✔ `excludes quote-enriched volumes that are restricted in the current user jurisdiction`
 
 </details>
 
@@ -2941,7 +2956,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 261 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 263 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
@@ -3005,13 +3020,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor`
 - ✔ `always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS`
 - ✔ `renders unverified badge and handles resend verification click`
 - ✔ `renders sending spinner and cooldown timer during resend verification states`
 - ✔ `displays save error and save success alert banners`
+- ✔ `renders muted streak badge when readingStreak is 0`
+- ✔ `falls back gracefully to user_metadata display name or Scholar monogram S when name is missing`
 
 </details>
 

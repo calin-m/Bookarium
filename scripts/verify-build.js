@@ -1589,28 +1589,60 @@ function pass5AdrValidation() {
         }
       }
 
-      // Latest ADR citation & Anti-Bloat Cap (<= 3 ADRs per release for >= 2.9.0)
+      // Box-Capacity Auto-Bump (<= 6 bullets/release, <= 1200 chars/bullet, 1..3 ADRs/release for >= 2.9.0) & Active Minor-Series ADR Sync
+      try {
+        const { RELEASES } = require('./generate-changelog');
+        if (Array.isArray(RELEASES)) {
+          for (const rel of RELEASES) {
+            if (!rel || !rel.version || compareSemVer(rel.version, '2.9.0') < 0) continue;
+            const bullets = Object.values(rel.sections || {}).flat();
+            if (bullets.length < 1 || bullets.length > 6) {
+              docViolations.push(
+                `Box-Capacity Bullet Cap violation: Release [${rel.version}] in scripts/generate-changelog.js has ${bullets.length} bullets (must be between 1 and 6 bullets per release to match README.md Latest Improvements). Open a new patch release or consolidate.`
+              );
+            }
+            bullets.forEach((b, bIdx) => {
+              if (typeof b === 'string' && b.length > 1200) {
+                docViolations.push(
+                  `Per-Bullet Character Cap violation: Release [${rel.version}] bullet #${bIdx + 1} in scripts/generate-changelog.js is ${b.length} chars (exceeds 1,200 char maximum). Split into focused thematic bullets or open a new patch release.`
+                );
+              }
+            });
+            const relAdrs = new Set(
+              bullets.flatMap((b) =>
+                typeof b === 'string' ? [...b.matchAll(/\bADR-\d{3}\b/g)].map((m) => m[0]) : []
+              )
+            );
+            if (relAdrs.size < 1 || relAdrs.size > 3) {
+              docViolations.push(
+                `SemVer ADR Cap violation: Release [${rel.version}] in scripts/generate-changelog.js cites ${relAdrs.size} ADRs (${Array.from(relAdrs).join(', ') || 'none'}), outside the required 1..3 ADR range per release.`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        docViolations.push(`Failed to validate RELEASES in scripts/generate-changelog.js: ${err.message}`);
+      }
+
       if (matches.length > 0 && topChangelogBlock) {
         const latestAdrId = `ADR-${String(matches.length).padStart(3, '0')}`;
-        if (!topChangelogBlock.includes(latestAdrId)) {
+        const changelogFull = fs.existsSync(changelogPath)
+          ? fs.readFileSync(changelogPath, 'utf-8')
+          : '';
+        const seriesBlocks = changelogFull
+          .split('\n## [')
+          .slice(1)
+          .filter((block) => block.startsWith(`${majorMinor}.`));
+        const activeSeriesText = seriesBlocks.length > 0 ? seriesBlocks.join('\n') : topChangelogBlock;
+        if (!activeSeriesText.includes(latestAdrId)) {
           docViolations.push(
-            `Latest decision record ${latestAdrId} from docs/DECISIONS.md is not cited in top release [${pkgVersion}] of CHANGELOG.md (update scripts/generate-changelog.js and run "npm run docs:sync").`
+            `Latest decision record ${latestAdrId} from docs/DECISIONS.md is not cited in active series [${majorMinor}.x] of CHANGELOG.md (update scripts/generate-changelog.js and run "npm run docs:sync").`
           );
         }
-        if (latestReadmeBlock && !latestReadmeBlock.includes(latestAdrId)) {
+        if (latestReadmeBlock && !/\bADR-\d{3}\b/.test(latestReadmeBlock)) {
           docViolations.push(
-            `Latest decision record ${latestAdrId} from docs/DECISIONS.md is missing from README.md Latest Improvements (v${pkgVersion}) (run "npm run docs:sync").`
+            `README.md Latest Improvements (v${pkgVersion}) does not cite any ADR-XXX decision record (run "npm run docs:sync").`
           );
-        }
-        if (compareSemVer(pkgVersion, '2.9.0') >= 0) {
-          const citedAdrs = new Set(
-            [...topChangelogBlock.matchAll(/\bADR-\d{3}\b/g)].map((m) => m[0])
-          );
-          if (citedAdrs.size > 3) {
-            docViolations.push(
-              `SemVer Anti-Bloat Cap violation: Release [${pkgVersion}] in CHANGELOG.md cites ${citedAdrs.size} ADRs (${Array.from(citedAdrs).join(', ')}), exceeding the maximum of 3 ADRs per x.xx.xx release. Increment the version in scripts/generate-changelog.js and run "npm run docs:sync".`
-            );
-          }
         }
       }
 

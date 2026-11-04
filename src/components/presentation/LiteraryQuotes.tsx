@@ -233,7 +233,7 @@ export const LiteraryQuotes: React.FC = () => {
   }, [displayedQuotes, safeQuotes, pickDistinctBookQuotes]);
 
   return (
-    <section className="bg-muted py-10 sm:py-16 border-t border-border transition-colors duration-theme">
+    <section className="bg-muted pt-6 sm:pt-8 pb-10 sm:pb-16 border-t border-border transition-colors duration-theme">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
         {/* Section Heading & Interactive Shuffle Trigger */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 sm:pb-8 border-b border-border">

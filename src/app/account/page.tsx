@@ -667,7 +667,7 @@ function AccountDashboardContent() {
 
         {/* Authenticated View: Slim Scholar Identity Ribbon + Two-Tier Sub-Tab Workspace */}
         {user && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-5">
             {/* Slim Scholar Identity Ribbon (Compact Top Fold) */}
             <AccountIdentityCard
               user={user}

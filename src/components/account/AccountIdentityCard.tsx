@@ -81,7 +81,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
   return (
     <div
-      className="bg-card border border-border rounded-2xl p-4 sm:p-5 shadow-booksaw space-y-3.5"
+      className="bg-card border border-border rounded-2xl pt-4 sm:pt-5 px-4 sm:px-5 pb-2 sm:pb-2.5 shadow-booksaw space-y-3.5"
       data-testid="scholar-identity-ribbon"
     >
       {/* Top Row: Monogram Seal, Scholar Identity & Verification Badge */}
@@ -170,70 +170,70 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
       {/* Scholar Sanctuary Ledger (5 Clean Stacked Collection Counters) */}
       {stats && (
         <div
-          className="grid grid-cols-5 divide-x divide-border/60 pt-3 border-t border-border -mx-1 sm:mx-0"
+          className="grid grid-cols-5 divide-x divide-border/60 pt-2 sm:pt-2.5 border-t border-border -mx-1 sm:mx-0"
           data-testid="identity-ribbon-stat-strip"
         >
           <Link
             href={ROUTES.BOOKSHELF}
-            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
+            className="flex flex-col items-center justify-center py-0.5 sm:py-1 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
-              <Library className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0" />
-              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.savedCount}</span>
+            <div className="inline-flex items-center justify-center gap-1 sm:gap-1.5 leading-none text-foreground group-hover:text-primary transition-colors">
+              <Library className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
+              <span className="font-serif font-bold text-sm sm:text-base tabular-nums leading-none tracking-tight">{stats.savedCount}</span>
             </div>
-            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider leading-none text-muted-foreground group-hover:text-foreground transition-colors mt-0.5 sm:mt-1 truncate max-w-full">
               Shelved
             </span>
           </Link>
 
           <Link
             href={ROUTES.FAVORITES}
-            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
+            className="flex flex-col items-center justify-center py-0.5 sm:py-1 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <div className="flex items-center gap-1 text-foreground group-hover:text-rose-500 transition-colors">
-              <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 shrink-0" />
-              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.favoriteCount}</span>
+            <div className="inline-flex items-center justify-center gap-1 sm:gap-1.5 leading-none text-foreground group-hover:text-rose-500 transition-colors">
+              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500 shrink-0" />
+              <span className="font-serif font-bold text-sm sm:text-base tabular-nums leading-none tracking-tight">{stats.favoriteCount}</span>
             </div>
-            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider leading-none text-muted-foreground group-hover:text-foreground transition-colors mt-0.5 sm:mt-1 truncate max-w-full">
               Favorites
             </span>
           </Link>
 
           <Link
             href={ROUTES.VIEW('notebook')}
-            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
+            className="flex flex-col items-center justify-center py-0.5 sm:py-1 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <div className="flex items-center gap-1 text-foreground group-hover:text-amber-500 transition-colors">
-              <Highlighter className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500 shrink-0" />
-              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.annotationCount}</span>
+            <div className="inline-flex items-center justify-center gap-1 sm:gap-1.5 leading-none text-foreground group-hover:text-amber-500 transition-colors">
+              <Highlighter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
+              <span className="font-serif font-bold text-sm sm:text-base tabular-nums leading-none tracking-tight">{stats.annotationCount}</span>
             </div>
-            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider leading-none text-muted-foreground group-hover:text-foreground transition-colors mt-0.5 sm:mt-1 truncate max-w-full">
               Notes
             </span>
           </Link>
 
           <Link
             href={ROUTES.BOOKSHELF}
-            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
+            className="flex flex-col items-center justify-center py-0.5 sm:py-1 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <div className="flex items-center gap-1 text-foreground group-hover:text-purple-500 transition-colors">
-              <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-500 shrink-0" />
-              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.customShelvesCount}</span>
+            <div className="inline-flex items-center justify-center gap-1 sm:gap-1.5 leading-none text-foreground group-hover:text-purple-500 transition-colors">
+              <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 shrink-0" />
+              <span className="font-serif font-bold text-sm sm:text-base tabular-nums leading-none tracking-tight">{stats.customShelvesCount}</span>
             </div>
-            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider leading-none text-muted-foreground group-hover:text-foreground transition-colors mt-0.5 sm:mt-1 truncate max-w-full">
               Shelves
             </span>
           </Link>
 
           <Link
             href={ROUTES.VIEW('bookmarks')}
-            className="flex flex-col items-center justify-center py-1.5 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
+            className="flex flex-col items-center justify-center py-0.5 sm:py-1 px-0.5 sm:px-2 rounded-xl hover:bg-muted/40 transition-colors group text-center min-w-0"
           >
-            <div className="flex items-center gap-1 text-foreground group-hover:text-emerald-500 transition-colors">
-              <Bookmark className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500 shrink-0" />
-              <span className="font-serif font-bold text-base sm:text-lg leading-none">{stats.bookmarksCount}</span>
+            <div className="inline-flex items-center justify-center gap-1 sm:gap-1.5 leading-none text-foreground group-hover:text-emerald-500 transition-colors">
+              <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+              <span className="font-serif font-bold text-sm sm:text-base tabular-nums leading-none tracking-tight">{stats.bookmarksCount}</span>
             </div>
-            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors mt-1.5 truncate max-w-full">
+            <span className="text-[9px] sm:text-[11px] font-mono uppercase tracking-wider leading-none text-muted-foreground group-hover:text-foreground transition-colors mt-0.5 sm:mt-1 truncate max-w-full">
               Bookmarks
             </span>
           </Link>

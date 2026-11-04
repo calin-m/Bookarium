@@ -51,7 +51,9 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
       />
     );
 
-    expect(screen.getByTestId('scholar-identity-ribbon')).toBeInTheDocument();
+    const ribbon = screen.getByTestId('scholar-identity-ribbon');
+    expect(ribbon).toBeInTheDocument();
+    expect(ribbon).toHaveClass('pt-4', 'sm:pt-5', 'px-4', 'sm:px-5', 'pb-2', 'sm:pb-2.5');
     expect(screen.getByText('Test Reader')).toBeInTheDocument();
     expect(screen.getByText('test_scholar')).toBeInTheDocument();
     expect(screen.getByText('reader@bookarium.test')).toBeInTheDocument();
@@ -59,8 +61,10 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
     const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
     expect(statStrip).toBeInTheDocument();
-    expect(statStrip).toHaveClass('grid', 'grid-cols-5', 'divide-x', 'border-t', 'border-border');
+    expect(statStrip).toHaveClass('grid', 'grid-cols-5', 'divide-x', 'border-t', 'border-border', 'pt-2', 'sm:pt-2.5');
     expect(statStrip).not.toHaveClass('overflow-x-auto', 'border-border/70');
+    const shelvedLink = screen.getByRole('link', { name: /Shelved/i });
+    expect(shelvedLink).toHaveClass('py-0.5', 'sm:py-1');
     expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
     expect(screen.getByTestId('identity-streak-badge')).toBeInTheDocument();
 
@@ -202,5 +206,78 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('Changes saved to cloud')).toBeInTheDocument();
     expect(screen.getByText('Verification link sent! Check your inbox.')).toBeInTheDocument();
     expect(screen.getByText('Rate limit exceeded')).toBeInTheDocument();
+  });
+
+  it('renders muted streak badge when readingStreak is 0', () => {
+    render(
+      <AccountIdentityCard
+        user={mockVerifiedUser}
+        profile={mockProfile}
+        formattedDate="January 2026"
+        displayName="Test Reader"
+        onDisplayNameChange={vi.fn()}
+        onSaveProfile={vi.fn()}
+        isSaving={false}
+        saveSuccess={false}
+        saveError={null}
+        stats={{
+          savedCount: 1,
+          favoriteCount: 0,
+          annotationCount: 0,
+          customShelvesCount: 0,
+          bookmarksCount: 0,
+          readingStreak: 0,
+        }}
+      />
+    );
+
+    const streakBadge = screen.getByTestId('identity-streak-badge');
+    expect(streakBadge).toBeInTheDocument();
+    expect(streakBadge).toHaveClass('border-border', 'bg-muted/30', 'text-muted-foreground');
+    expect(screen.getByText('🔥 0d Streak')).toBeInTheDocument();
+  });
+
+  it('falls back gracefully to user_metadata display name or Scholar monogram S when name is missing', () => {
+    const userWithMeta = {
+      ...mockVerifiedUser,
+      user_metadata: { display_name: 'Scholar User' },
+    };
+    const { rerender } = render(
+      <AccountIdentityCard
+        user={userWithMeta}
+        profile={null}
+        formattedDate="January 2026"
+        displayName="Scholar User"
+        onDisplayNameChange={vi.fn()}
+        onSaveProfile={vi.fn()}
+        isSaving={false}
+        saveSuccess={false}
+        saveError={null}
+      />
+    );
+
+    expect(screen.getByText('Scholar User')).toBeInTheDocument();
+    expect(screen.getByText('S')).toBeInTheDocument();
+
+    // When both profile and metadata are empty, defaults to 'Reader' with monogram 'R'
+    const minimalUser = {
+      ...mockVerifiedUser,
+      user_metadata: {},
+    };
+    rerender(
+      <AccountIdentityCard
+        user={minimalUser}
+        profile={null}
+        formattedDate="January 2026"
+        displayName="Reader"
+        onDisplayNameChange={vi.fn()}
+        onSaveProfile={vi.fn()}
+        isSaving={false}
+        saveSuccess={false}
+        saveError={null}
+      />
+    );
+    expect(screen.getByText('Reader')).toBeInTheDocument();
+    expect(screen.getByText('R')).toBeInTheDocument();
   });
 });
