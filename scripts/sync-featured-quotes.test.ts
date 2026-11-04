@@ -586,3 +586,399 @@ describe('sync-featured-quotes pipeline', () => {
     expect(updateEqMock).toHaveBeenCalledTimes(5); // 4 updated + 1 sentinel
   });
 });
+
+type CatalogRow = {
+  id: number;
+  title: string;
+  copyright?: boolean;
+  media_type?: string;
+  languages?: string[];
+  download_count?: number;
+  quotes: Array<Record<string, string>>;
+  content: string | null;
+};
+
+type LedgerEntry = {
+  order: number;
+  id: number;
+  title: string;
+  tier: string;
+  source: string;
+  outcome: string;
+  quoteCount: number;
+  existingQuoteCount: number;
+  note?: string;
+};
+
+const makeQuotes = (count: number, prefix: string) =>
+  Array.from({ length: count }, (_, idx) => ({
+    chapterLabel: `${prefix} ${idx + 1}`,
+    openingLine: `${prefix} opening line number ${idx + 1}`,
+    quoteExcerpt: `${prefix} excerpt number ${idx + 1}`,
+  }));
+
+const catalogRow = (overrides: Partial<CatalogRow> & { id: number; title: string }): CatalogRow => ({
+  copyright: false,
+  media_type: 'Text',
+  languages: ['en'],
+  download_count: 1000,
+  quotes: [],
+  content: null,
+  ...overrides,
+});
+
+/**
+ * In-memory `public.books` mock supporting the exact PostgREST chains used by the sync script:
+ * `.select().in()` (awaitable, with chained `.neq('quotes', '[]')`), `.select().order().limit()`,
+ * and `.update().eq()` / `.update().in()`.
+ */
+function createCatalogSupabase(allRows: CatalogRow[], popularRows: CatalogRow[], recentRows: CatalogRow[]) {
+  const updateEqMock = vi.fn().mockResolvedValue({ error: null });
+  const pruneInMock = vi.fn().mockResolvedValue({ error: null });
+  const rowsFor = (ids: number[]) => allRows.filter((r) => ids.includes(r.id));
+
+  const client = {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        in: vi.fn((_col: string, ids: number[]) => ({
+          then: (
+            resolve: (v: { data: CatalogRow[]; error: null }) => unknown,
+            reject?: (e: unknown) => unknown
+          ) => Promise.resolve({ data: rowsFor(ids), error: null }).then(resolve, reject),
+          neq: vi.fn(() =>
+            Promise.resolve({
+              data: rowsFor(ids).filter((r) => r.quotes.length > 0).map((r) => ({ id: r.id })),
+              error: null,
+            })
+          ),
+        })),
+        order: vi.fn((col: string) => ({
+          limit: vi.fn().mockResolvedValue({
+            data: col === 'download_count' ? popularRows : recentRows,
+            error: null,
+          }),
+        })),
+      })),
+      update: vi.fn(() => ({ eq: updateEqMock, in: pruneInMock })),
+    })),
+  };
+  return { client, updateEqMock, pruneInMock };
+}
+
+describe('sync-featured-quotes run report: tier progress & per-book ledger', () => {
+  it('tags every blended candidate with its tier, including both backfill directions', () => {
+    const popularRows = Array.from({ length: 30 }, (_, idx) => ({
+      id: idx + 1,
+      title: `Popular ${idx + 1}`,
+      quotes: idx < 5 ? [{ openingLine: 'Already quoted' }] : [],
+    }));
+    const recentRows = [
+      { id: 6, title: 'Popular 6 (Overlap)', quotes: [] },
+      ...Array.from({ length: 10 }, (_, idx) => ({ id: 1000 + idx, title: `Recent ${idx}`, quotes: [] })),
+    ];
+
+    const blended = quotesSync.blendTwoTierCandidates(popularRows, recentRows, { limit: 25 });
+    expect(blended.candidateTiers.size).toBe(25);
+    for (const cand of blended.candidates as Array<{ id: number }>) {
+      expect(blended.candidateTiers.get(cand.id)).toBe(cand.id >= 1000 ? 'recent' : 'top');
+    }
+    // Overlapping book #6 is queued from the Top pool, so it is labelled Top
+    expect(blended.candidateTiers.get(6)).toBe('top');
+
+    // Popular backfills scarce Recent: backfilled Popular books stay Top
+    const scarceRecent = [
+      { id: 2001, title: 'New 1', quotes: [] },
+      { id: 2002, title: 'New 2', quotes: [] },
+    ];
+    const popularBackfill = quotesSync.blendTwoTierCandidates(popularRows, scarceRecent, { limit: 25 });
+    const backfillTiers = Array.from(popularBackfill.candidateTiers.values());
+    expect(backfillTiers.filter((t) => t === 'top')).toHaveLength(23);
+    expect(backfillTiers.filter((t) => t === 'recent')).toHaveLength(2);
+
+    // Recent backfills scarce Popular: backfilled Recent books stay Recent
+    const scarcePopular = [
+      { id: 1, title: 'Top 1', quotes: [] },
+      { id: 2, title: 'Top 2', quotes: [] },
+    ];
+    const recentBackfill = quotesSync.blendTwoTierCandidates(scarcePopular, recentRows.slice(1), {
+      limit: 10,
+    });
+    expect(recentBackfill.candidates).toHaveLength(10);
+    expect(recentBackfill.candidateTiers.get(1)).toBe('top');
+    expect(recentBackfill.candidateTiers.get(2)).toBe('top');
+    expect(Array.from(recentBackfill.candidateTiers.values()).filter((t) => t === 'recent')).toHaveLength(8);
+  });
+
+  it('computes zero-query tier progress, counting overlapping books once under Top, with ETA', () => {
+    const progress = quotesSync.computeTierProgress({
+      popularPoolIds: new Set([1, 2, 3, 4]),
+      recentPoolIds: new Set([4, 5, 6]),
+      quotedIds: new Set([1, 5]),
+      newlyQuotedIds: new Set([2, 6]),
+      limit: 25,
+    });
+    expect(progress.top).toEqual({
+      pool: 4,
+      doneBefore: 1,
+      doneNow: 2,
+      addedThisRun: 1,
+      remaining: 2,
+      percent: 50,
+    });
+    expect(progress.recent).toEqual({
+      pool: 2,
+      doneBefore: 1,
+      doneNow: 2,
+      addedThisRun: 1,
+      remaining: 0,
+      percent: 100,
+    });
+    expect(progress.total.pool).toBe(6);
+    expect(progress.total.remaining).toBe(2);
+    expect(progress.total.percent).toBe(66.7);
+    expect(progress.etaRuns).toBe(1);
+    expect(progress.etaHours).toBe(1.5);
+
+    const slowBatch = quotesSync.computeTierProgress({
+      popularPoolIds: new Set([1, 2, 3]),
+      recentPoolIds: new Set(),
+      quotedIds: new Set([1]),
+      newlyQuotedIds: new Set(),
+      limit: 1,
+    });
+    expect(slowBatch.etaRuns).toBe(2);
+    expect(slowBatch.etaHours).toBe(3);
+    expect(slowBatch.recent.pool).toBe(0);
+    expect(slowBatch.recent.percent).toBe(100);
+
+    const full = quotesSync.computeTierProgress({
+      popularPoolIds: new Set([1, 2]),
+      recentPoolIds: new Set([3]),
+      quotedIds: new Set([1, 2, 3]),
+      newlyQuotedIds: new Set(),
+    });
+    expect(full.total.remaining).toBe(0);
+    expect(full.total.percent).toBe(100);
+    expect(full.etaRuns).toBe(0);
+  });
+
+  it('formats the Markdown run report with progress, totals, escaped titles and tier labels', () => {
+    const progress = quotesSync.computeTierProgress({
+      popularPoolIds: new Set([1342, 84, 2701, 11]),
+      recentPoolIds: new Set([75012]),
+      quotedIds: new Set([1342]),
+      newlyQuotedIds: new Set([84]),
+      limit: 25,
+    });
+    const report = quotesSync.formatRunReport(
+      {
+        pruned: 2,
+        mirrorBreakdown: { 'https://gutenberg.pglaf.org': 1 },
+        progress,
+        books: [
+          { order: 3, id: 99999, title: 'Gutenberg Volume #99999', tier: 'outside', source: 'none', outcome: 'not-found', quoteCount: 0, existingQuoteCount: 0 },
+          { order: 1, id: 84, title: 'Frankenstein | Or\nThe Modern Prometheus', tier: 'top', source: 'https://gutenberg.pglaf.org', outcome: 'updated', quoteCount: 14, existingQuoteCount: 6 },
+          { order: 2, id: 1342, title: 'Pride and Prejudice', tier: 'top', source: 'stored', outcome: 'already-quoted', quoteCount: 14, existingQuoteCount: 14 },
+        ],
+      },
+      { dryRun: true }
+    );
+
+    expect(report).toContain('_Dry run: no database writes were made._');
+    expect(report).toContain('| Top Popular | 4 | 2 (+1) | 2 | 50% |');
+    expect(report).toContain('| Rolling Recent | 1 | 0 | 1 | 0% |');
+    expect(report).toContain('Estimated completion: ~1 more run(s)');
+    expect(report).toContain('Saved: 1 · Refreshed: 0 · No quotes (placeholder): 0 · Already quoted: 1 · Not found: 1 · Failed: 0 · Pruned: 2');
+    expect(report).toContain('Mirrors: gutenberg.pglaf.org 1');
+    expect(report).toContain(
+      '| 1 | Top | 84 | Frankenstein \\| Or The Modern Prometheus | gutenberg.pglaf.org | ✅ Saved | 6 → 14 |'
+    );
+    expect(report).toContain('| 2 | Top | 1342 | Pride and Prejudice | Database | ⏭️ Already has quotes | 14 |');
+    expect(report).toContain('| 3 | Outside pools | 99999 | Gutenberg Volume #99999 | — | ❓ Not in catalog | — |');
+    // Ledger rows are ordered by batch position, not by completion order
+    expect(report.indexOf('| 1 | Top | 84 |')).toBeLessThan(report.indexOf('| 3 | Outside pools |'));
+
+    const noProgress = quotesSync.formatRunReport(
+      { pruned: 0, mirrorBreakdown: {}, progress: null, books: [] },
+      { tierResolutionError: 'pool scan timeout' }
+    );
+    expect(noProgress).toContain('_Tier progress unavailable (pool scan failed: pool scan timeout)._');
+    expect(noProgress).toContain('_No books processed in this run._');
+
+    // Backslashes are escaped before pipes so a trailing "\" can never un-escape a cell delimiter
+    const backslashTitle = quotesSync.formatRunReport({
+      books: [
+        { order: 1, id: 7, title: 'Path C:\\ | Notes', tier: 'top', source: 'none', outcome: 'failed', quoteCount: 0, existingQuoteCount: 0 },
+      ],
+    });
+    expect(backslashTitle).toContain('| 1 | Top | 7 | Path C:\\\\ \\| Notes | — | ❌ Failed | — |');
+
+    const fullPools = quotesSync.formatRunReport({
+      books: [],
+      progress: quotesSync.computeTierProgress({
+        popularPoolIds: new Set([1]),
+        recentPoolIds: new Set([2]),
+        quotedIds: new Set([1, 2]),
+      }),
+    });
+    expect(fullPools).toContain('✅ Both pools are fully ingested.');
+  });
+
+  it('appends the report to the GitHub step summary best-effort without ever throwing', () => {
+    const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quotes-summary-'));
+    try {
+      const summaryFile = path.join(tmpDir, 'step-summary.md');
+      expect(quotesSync.writeStepSummary(summaryFile, '## Report A', { error: vi.fn() })).toBe(true);
+      expect(quotesSync.writeStepSummary(summaryFile, '## Report B', { error: vi.fn() })).toBe(true);
+      expect(fs.readFileSync(summaryFile, 'utf8')).toBe('## Report A\n## Report B\n');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+
+    expect(quotesSync.writeStepSummary(undefined, '## Report', { error: vi.fn() })).toBe(false);
+
+    const failingLogger = { error: vi.fn() };
+    const failingFs = {
+      appendFileSync: vi.fn(() => {
+        throw new Error('EACCES: permission denied');
+      }),
+    };
+    expect(quotesSync.writeStepSummary('/locked/summary.md', '## Report', failingLogger, failingFs)).toBe(false);
+    expect(failingLogger.error).toHaveBeenCalledWith(
+      '[Run Report] Could not write GitHub step summary: EACCES: permission denied'
+    );
+  });
+
+  it('reports manual --ids books with real tiers: already-quoted, topped-up, not-found and force-refreshed, without pruning', async () => {
+    const pride = catalogRow({ id: 1342, title: 'Pride and Prejudice', download_count: 90000, quotes: makeQuotes(14, 'Pride') });
+    const frankenstein = catalogRow({ id: 84, title: 'Frankenstein', download_count: 80000, quotes: makeQuotes(6, 'Frank'), content: SAMPLE_GUTENBERG_BOOK });
+    const moby = catalogRow({ id: 2701, title: 'Moby Dick', download_count: 70000 });
+    const newRelease = catalogRow({ id: 75012, title: 'A New Release', download_count: 5, quotes: makeQuotes(12, 'New'), content: SAMPLE_GUTENBERG_BOOK });
+    const newerRelease = catalogRow({ id: 76000, title: 'A Newer Release', download_count: 1 });
+    const allRows = [pride, frankenstein, moby, newRelease, newerRelease];
+    const { client, updateEqMock, pruneInMock } = createCatalogSupabase(
+      allRows,
+      [pride, frankenstein, moby],
+      [newerRelease, newRelease]
+    );
+
+    const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quotes-manual-'));
+    const summaryFile = path.join(tmpDir, 'step-summary.md');
+    const logger = { log: vi.fn(), error: vi.fn() };
+    try {
+      const summary = await quotesSync.runFeaturedQuotesSync(
+        { ids: [1342, 84, 999999], limit: 10 },
+        {
+          env: {},
+          supabaseClient: client,
+          logger,
+          writeSeedFile: false,
+          stepSummaryPath: summaryFile,
+        }
+      );
+
+      const byId = new Map((summary.books as LedgerEntry[]).map((b) => [b.id, b]));
+      expect(byId.get(1342)).toMatchObject({
+        tier: 'top',
+        outcome: 'already-quoted',
+        source: 'stored',
+        existingQuoteCount: 14,
+      });
+      expect(byId.get(84)).toMatchObject({
+        tier: 'top',
+        outcome: 'updated',
+        source: 'supabase-content',
+        existingQuoteCount: 6,
+      });
+      expect(byId.get(84)!.quoteCount).toBeGreaterThan(6);
+      expect(byId.get(999999)).toMatchObject({ tier: 'outside', outcome: 'not-found' });
+
+      const logLines = logger.log.mock.calls.map((call) => String(call[0]));
+      expect(logLines).toContain(
+        '[Top 1/2] #1342 "Pride and Prejudice": already has 14 quotes (stored), skipped.'
+      );
+      expect(logLines.some((l) => l.startsWith('[Top 2/2] #84 "Frankenstein": topped up 6 → '))).toBe(true);
+      expect(logLines).toContain('[Not Found] #999999 is not in public.books — skipped.');
+
+      // Progress is derived from the read-only pool scan; manual runs never prune
+      expect(summary.progress.top).toMatchObject({ pool: 3, doneNow: 2, remaining: 1 });
+      expect(summary.progress.recent).toMatchObject({ pool: 2, doneNow: 1, remaining: 1 });
+      expect(pruneInMock).not.toHaveBeenCalled();
+      expect(updateEqMock).toHaveBeenCalledTimes(1); // only #84 written
+
+      const stepSummary = fs.readFileSync(summaryFile, 'utf8');
+      expect(stepSummary).toContain('## 📚 Featured Quotes Sync — Run Report');
+      expect(stepSummary).toContain('| 1 | Top | 1342 | Pride and Prejudice | Database | ⏭️ Already has quotes | 14 |');
+      expect(stepSummary).toContain('| 3 | Outside pools | 999999 |');
+
+      // Force refresh of a Recent-tier book is reported as Refreshed with before → after counts
+      logger.log.mockClear();
+      const forced = await quotesSync.runFeaturedQuotesSync(
+        { ids: [75012], limit: 10, force: true },
+        { env: {}, supabaseClient: client, logger, writeSeedFile: false }
+      );
+      expect(forced.books[0]).toMatchObject({
+        id: 75012,
+        tier: 'recent',
+        outcome: 'refreshed',
+        existingQuoteCount: 12,
+      });
+      expect(forced.books[0].quoteCount).toBeGreaterThan(12);
+      const forcedLines = logger.log.mock.calls.map((call) => String(call[0]));
+      expect(forcedLines.some((l) => l.startsWith('[Recent 1/1] #75012 "A New Release": refreshed 12 → '))).toBe(true);
+      expect(forced.report).toContain('🔄 Refreshed');
+      expect(pruneInMock).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt', async () => {
+    // Pool scan failure is recorded but never blocks a manual run
+    const scanFailOptions: Record<string, unknown> = { ids: [1342], limit: 10 };
+    const noOrderSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({ data: [{ id: 1342, title: 'Pride and Prejudice', quotes: [] }], error: null }),
+        })),
+      })),
+    };
+    const rows = await quotesSync.fetchCandidateBooksFromSupabase(noOrderSupabase, scanFailOptions);
+    expect(rows).toHaveLength(1);
+    expect(scanFailOptions._manualRun).toBe(true);
+    expect(typeof scanFailOptions._tierResolutionError).toBe('string');
+    expect(scanFailOptions._candidateTiers).toBeUndefined();
+
+    // Single mirror rate-limits every request: first two books fail, worker halts, third is left queued
+    const books = [
+      catalogRow({ id: 2701, title: 'Moby Dick' }),
+      catalogRow({ id: 11, title: 'Alice in Wonderland' }),
+      catalogRow({ id: 98, title: 'A Tale of Two Cities' }),
+    ];
+    const { client } = createCatalogSupabase(books, books, []);
+    const logger = { log: vi.fn(), error: vi.fn() };
+    const summary = await quotesSync.runFeaturedQuotesSync(
+      { ids: [2701, 11, 98], limit: 10, mirrors: ['pglaf'], mirrorCooldownMs: 0 },
+      {
+        env: {},
+        supabaseClient: client,
+        fetchFn: vi.fn().mockResolvedValue({ ok: false, status: 429 }),
+        sleepFn: vi.fn().mockResolvedValue(undefined),
+        logger,
+        writeSeedFile: false,
+      }
+    );
+
+    expect(summary.failed).toBe(3);
+    const notes = (summary.books as LedgerEntry[]).map((b) => `${b.id}:${b.outcome}:${b.note}`);
+    expect(notes).toEqual(
+      expect.arrayContaining([
+        '2701:failed:enabled mirrors unavailable',
+        '11:failed:enabled mirrors unavailable',
+        '98:failed:all enabled mirrors halted',
+      ])
+    );
+    expect(summary.books.every((b: LedgerEntry) => b.tier === 'top')).toBe(true);
+    expect(summary.report).toContain('Failed: 3');
+  });
+});

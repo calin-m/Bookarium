@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import RootLayout, { metadata, viewport } from './layout';
@@ -24,6 +24,22 @@ vi.mock('@vercel/speed-insights/next', () => ({
 }));
 
 describe('RootLayout', () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      const message = args.map(String).join(' ');
+      if (message.includes('cannot be a child of') || message.includes('hydration error')) {
+        return;
+      }
+      console.warn(...args);
+    });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it('should expose valid metadata with OpenGraph, Twitter, and canonical alternates', () => {
     const titleObj = metadata.title as { default: string; template: string };
     expect(titleObj.default).toContain('Bookarium');
@@ -47,110 +63,62 @@ describe('RootLayout', () => {
   });
 
   it('should render children within html structure alongside analytics and performance telemetry', async () => {
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
-        return;
-      }
-      originalError(...args);
-    };
-
-    try {
-      mockGetCookie.mockReturnValue({ value: 'FR' });
-      const layoutJsx = await RootLayout({
-        children: <div data-testid="layout-children">Layout App</div>,
-      });
-      render(layoutJsx);
-      expect(screen.getByTestId('layout-children')).toBeInTheDocument();
-      expect(screen.getByTestId('vercel-analytics')).toBeInTheDocument();
-      expect(screen.getByTestId('vercel-speed-insights')).toBeInTheDocument();
-    } finally {
-      console.error = originalError;
-    }
+    mockGetCookie.mockReturnValue({ value: 'FR' });
+    const layoutJsx = await RootLayout({
+      children: <div data-testid="layout-children">Layout App</div>,
+    });
+    render(layoutJsx);
+    expect(screen.getByTestId('layout-children')).toBeInTheDocument();
+    expect(screen.getByTestId('vercel-analytics')).toBeInTheDocument();
+    expect(screen.getByTestId('vercel-speed-insights')).toBeInTheDocument();
   });
 
   it('should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities', async () => {
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
-        return;
-      }
-      originalError(...args);
-    };
-
-    try {
-      mockGetCookie.mockReturnValue(undefined);
-      const layoutJsx = await RootLayout({
-        children: <div>Test Content</div>,
-      });
-      render(layoutJsx);
-      const script = document.querySelector('script[type="application/ld+json"]');
-      expect(script).toBeInTheDocument();
-      if (script) {
-        const parsed = JSON.parse(script.textContent || '{}');
-        expect(parsed['@context']).toBe('https://schema.org');
-        expect(Array.isArray(parsed['@graph'])).toBe(true);
-        const website = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebSite');
-        const webApp = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebApplication');
-        expect(website).toBeDefined();
-        expect(website.potentialAction).toBeDefined();
-        expect(webApp).toBeDefined();
-        expect(webApp.isAccessibleForFree).toBe(true);
-        expect(webApp.applicationCategory).toBe('BooksApplication');
-        expect(webApp.license).toBe('https://opensource.org/licenses/MIT');
-      }
-    } finally {
-      console.error = originalError;
+    mockGetCookie.mockReturnValue(undefined);
+    const layoutJsx = await RootLayout({
+      children: <div>Test Content</div>,
+    });
+    render(layoutJsx);
+    const script = document.querySelector('script[type="application/ld+json"]');
+    expect(script).toBeInTheDocument();
+    if (script) {
+      const parsed = JSON.parse(script.textContent || '{}');
+      expect(parsed['@context']).toBe('https://schema.org');
+      expect(Array.isArray(parsed['@graph'])).toBe(true);
+      const website = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebSite');
+      const webApp = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebApplication');
+      expect(website).toBeDefined();
+      expect(website.potentialAction).toBeDefined();
+      expect(webApp).toBeDefined();
+      expect(webApp.isAccessibleForFree).toBe(true);
+      expect(webApp.applicationCategory).toBe('BooksApplication');
+      expect(webApp.license).toBe('https://opensource.org/licenses/MIT');
     }
   });
 
   it('should gracefully handle cookie exception and fallback to US', async () => {
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
-        return;
-      }
-      originalError(...args);
-    };
-
-    try {
-      mockGetCookie.mockImplementationOnce(() => {
-        throw new Error('Header context unavailable');
-      });
-      const layoutJsx = await RootLayout({
-        children: <div data-testid="fallback-child">Fallback</div>,
-      });
-      render(layoutJsx);
-      expect(screen.getByTestId('fallback-child')).toBeInTheDocument();
-    } finally {
-      console.error = originalError;
-    }
+    mockGetCookie.mockImplementationOnce(() => {
+      throw new Error('Header context unavailable');
+    });
+    const layoutJsx = await RootLayout({
+      children: <div data-testid="fallback-child">Fallback</div>,
+    });
+    render(layoutJsx);
+    expect(screen.getByTestId('fallback-child')).toBeInTheDocument();
   });
 
   it('should fall back to x-vercel-ip-country header on first visit when geo cookie is absent', async () => {
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].includes('cannot be a child of <div>')) {
-        return;
-      }
-      originalError(...args);
-    };
-
-    try {
-      mockGetCookie.mockReturnValue(undefined);
-      mockGetHeader.mockImplementation((name: string) =>
-        name === 'x-vercel-ip-country' ? 'DE' : null
-      );
-      const layoutJsx = await RootLayout({
-        children: <div data-testid="header-geo-child">Header Geo</div>,
-      });
-      render(layoutJsx);
-      expect(screen.getByTestId('header-geo-child')).toBeInTheDocument();
-      expect(mockGetHeader).toHaveBeenCalledWith('x-vercel-ip-country');
-    } finally {
-      mockGetHeader.mockReset();
-      console.error = originalError;
-    }
+    mockGetCookie.mockReturnValue(undefined);
+    mockGetHeader.mockImplementation((name: string) =>
+      name === 'x-vercel-ip-country' ? 'DE' : null
+    );
+    const layoutJsx = await RootLayout({
+      children: <div data-testid="header-geo-child">Header Geo</div>,
+    });
+    render(layoutJsx);
+    expect(screen.getByTestId('header-geo-child')).toBeInTheDocument();
+    expect(mockGetHeader).toHaveBeenCalledWith('x-vercel-ip-country');
+    mockGetHeader.mockReset();
   });
 });
 

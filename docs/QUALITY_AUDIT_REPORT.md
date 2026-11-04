@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 04 Nov 2026 12:25:16 GMT  
+**Last Generated**: Wed, 04 Nov 2026 17:24:03 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2216 passed  
+**Total Verified Tests**: 2222 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2216 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2222 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -33,7 +33,7 @@
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2216 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2222 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 279 Tests)
 
@@ -1726,7 +1726,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 516 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 522 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2464,7 +2464,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -2473,6 +2473,12 @@
 - ✔ `extracts multi-quote spreads, builds sentinel spreads, and merges upsert-only without duplicates`
 - ✔ `fetches book text from single mirror or across PGLAF mirrors with failover and classifies mirror-level errors`
 - ✔ `queries public.books by download_count DESC and executes runFeaturedQuotesSync across per-mirror workers, cooldowns, and sentinel fallbacks`
+- ✔ `tags every blended candidate with its tier, including both backfill directions`
+- ✔ `computes zero-query tier progress, counting overlapping books once under Top, with ETA`
+- ✔ `formats the Markdown run report with progress, totals, escaped titles and tier labels`
+- ✔ `appends the report to the GitHub step summary best-effort without ever throwing`
+- ✔ `reports manual --ids books with real tiers: already-quoted, topped-up, not-found and force-refreshed, without pruning`
+- ✔ `falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt`
 
 </details>
 

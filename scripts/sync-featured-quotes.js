@@ -801,11 +801,19 @@ function blendTwoTierCandidates(popularRows = [], recentRows = [], options = {})
     );
   }
 
+  const candidates = [...selectedPopular, ...selectedRecent].slice(0, limit);
+  // Tier provenance per selected book (backfilled books keep the tier of the pool they came from)
+  const candidateTiers = new Map();
+  for (const cand of candidates) {
+    candidateTiers.set(cand.id, popularQueueIds.has(cand.id) ? 'top' : 'recent');
+  }
+
   return {
-    candidates: [...selectedPopular, ...selectedRecent].slice(0, limit),
+    candidates,
     popularPoolIds,
     recentPoolIds,
     allowedPoolIds,
+    candidateTiers,
   };
 }
 
@@ -920,40 +928,11 @@ async function pruneOutOfWindowBookQuotes(
 }
 
 /**
- * Queries `public.books` for the next batch of candidate volumes to populate with quotes
- * using a Zero-Timeout Index-Aligned ID-First query sequence (<15ms total):
- * 1. Fetches `quotedIds` via `idx_books_with_quotes_popular` (`<2ms`).
- * 2. Scans Tier 1 (`Top 500 Popular`) via `idx_books_download_count` without `content`/`quotes`/GIN filters (`<5ms`).
- * 3. Scans Tier 2 (`Rolling 64 Most Recent`) via Primary Key `books_pkey (id DESC)` without `content`/`quotes`/GIN filters (`<2ms`).
- * 4. Hydrates `quotes` and `content` ONLY for the `<= 25` selected batch IDs via `.in('id', selectedIds)` (`<3ms`).
+ * Read-only Two-Tier pool scan shared by automatic batches and manual `--ids` tier labelling:
+ * Tier 1 (`Top 500 Popular` via `idx_books_download_count` + Priority Hero IDs) and
+ * Tier 2 (`Rolling 64 Most Recent` via `books_pkey (id DESC)`). Never writes to the database.
  */
-async function fetchCandidateBooksFromSupabase(supabase, options) {
-  if (!supabase) {
-    if (options.ids && options.ids.length > 0) {
-      return options.ids.slice(0, options.limit).map((id) => ({
-        id,
-        title: `Gutenberg Volume #${id}`,
-        authors: [],
-        quotes: [],
-        content: null,
-      }));
-    }
-    return [];
-  }
-
-  if (options.ids && options.ids.length > 0) {
-    const { data, error } = await supabase
-      .from('books')
-      .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
-      .in('id', options.ids.slice(0, options.limit));
-    if (error) throw new Error(error.message);
-    const byId = new Map((data || []).map((row) => [row.id, row]));
-    return options.ids
-      .slice(0, options.limit)
-      .filter((id) => byId.has(id))
-      .map((id) => byId.get(id));
-  }
-
+async function scanTwoTierPools(supabase, options) {
   const popularPoolLimit = options.popularPool || DEFAULT_POPULAR_POOL_SIZE;
   const recentPoolLimit =
     typeof options.recentPool === 'number' ? options.recentPool : DEFAULT_RECENT_POOL_SIZE;
@@ -1043,18 +1022,289 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     recentData = (recRows || []).filter(isEligibleCatalogBook).slice(0, recentPoolLimit);
   }
 
+  return { popularData, recentData, allScannedIds, minRecentHorizonId };
+}
+
+/**
+ * Best-effort tier labelling for manual `--ids` runs: reuses the read-only Two-Tier pool scan so each
+ * requested book can be reported as `top`, `recent`, or `outside`, and so the Tier Progress table can be
+ * printed. Only sets reporting metadata (`_manualRun` blocks pruning); never changes which IDs are processed.
+ */
+async function resolveManualRunTiers(supabase, options, requestedIds) {
+  options._manualRun = true;
+  try {
+    const { popularData, recentData, allScannedIds } = await scanTwoTierPools(supabase, options);
+    const popularPoolIds = new Set(popularData.map((r) => r.id));
+    const recentPoolIds = new Set(recentData.map((r) => r.id));
+    const quotedIds = await fetchQuotedBookIds(supabase, allScannedIds);
+
+    const candidateTiers = new Map();
+    for (const id of requestedIds) {
+      if (popularPoolIds.has(id)) candidateTiers.set(id, 'top');
+      else if (recentPoolIds.has(id)) candidateTiers.set(id, 'recent');
+      else candidateTiers.set(id, 'outside');
+    }
+
+    options._popularPoolIds = popularPoolIds;
+    options._recentPoolIds = recentPoolIds;
+    options._quotedIds = quotedIds;
+    options._candidateTiers = candidateTiers;
+  } catch (err) {
+    options._tierResolutionError = err && err.message ? err.message : String(err);
+  }
+}
+
+const TIER_LABELS = {
+  top: 'Top',
+  recent: 'Recent',
+  outside: 'Outside pools',
+  manual: 'Manual',
+};
+
+const OUTCOME_LABELS = {
+  updated: '✅ Saved',
+  refreshed: '🔄 Refreshed',
+  'already-quoted': '⏭️ Already has quotes',
+  'no-quotes': '⚪ No quotes found (placeholder)',
+  'not-found': '❓ Not in catalog',
+  failed: '❌ Failed',
+};
+
+/**
+ * Zero-query tier progress: derives Done / Remaining per tier purely from in-memory sets already loaded
+ * for candidate selection. Recent books that also sit in the Top pool are counted once, under Top.
+ */
+function computeTierProgress({
+  popularPoolIds,
+  recentPoolIds,
+  quotedIds,
+  newlyQuotedIds,
+  limit = 25,
+  avgWindowHours = 1.5,
+} = {}) {
+  const topIds = popularPoolIds instanceof Set ? popularPoolIds : new Set();
+  const recentIds = recentPoolIds instanceof Set ? recentPoolIds : new Set();
+  const before = quotedIds instanceof Set ? quotedIds : new Set();
+  const added = newlyQuotedIds instanceof Set ? newlyQuotedIds : new Set();
+
+  const tally = (ids) => {
+    let pool = 0;
+    let doneBefore = 0;
+    let doneNow = 0;
+    for (const id of ids) {
+      pool++;
+      const wasDone = before.has(id);
+      if (wasDone) doneBefore++;
+      if (wasDone || added.has(id)) doneNow++;
+    }
+    return {
+      pool,
+      doneBefore,
+      doneNow,
+      addedThisRun: doneNow - doneBefore,
+      remaining: pool - doneNow,
+      percent: pool > 0 ? Math.round((doneNow / pool) * 1000) / 10 : 100,
+    };
+  };
+
+  const top = tally(topIds);
+  const recent = tally(Array.from(recentIds).filter((id) => !topIds.has(id)));
+  const pool = top.pool + recent.pool;
+  const doneNow = top.doneNow + recent.doneNow;
+  const total = {
+    pool,
+    doneBefore: top.doneBefore + recent.doneBefore,
+    doneNow,
+    addedThisRun: top.addedThisRun + recent.addedThisRun,
+    remaining: top.remaining + recent.remaining,
+    percent: pool > 0 ? Math.round((doneNow / pool) * 1000) / 10 : 100,
+  };
+
+  const batchSize = Number.isInteger(limit) && limit > 0 ? limit : 25;
+  const etaRuns = total.remaining > 0 ? Math.ceil(total.remaining / batchSize) : 0;
+  return {
+    top,
+    recent,
+    total,
+    etaRuns,
+    etaHours: Math.round(etaRuns * avgWindowHours * 10) / 10,
+  };
+}
+
+function escapeMarkdownCell(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/[\\|]/g, '\\$&')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+}
+
+function describeQuoteSource(source) {
+  if (source === 'supabase-content') return 'Stored text';
+  if (source === 'stored') return 'Database';
+  if (!source || source === 'none') return '—';
+  try {
+    return new URL(source).hostname;
+  } catch {
+    return source;
+  }
+}
+
+function describeQuoteCounts(entry) {
+  const hasPrior = entry.existingQuoteCount > 0;
+  if ((entry.outcome === 'updated' || entry.outcome === 'refreshed') && hasPrior) {
+    return `${entry.existingQuoteCount} → ${entry.quoteCount}`;
+  }
+  if (entry.outcome === 'already-quoted') return String(entry.existingQuoteCount);
+  return entry.quoteCount > 0 ? String(entry.quoteCount) : '—';
+}
+
+/**
+ * Builds the Markdown run report (Tier Progress, This Run totals, Books Processed ledger)
+ * printed to the console and appended to the GitHub Actions job summary.
+ */
+function formatRunReport(summary, context = {}) {
+  const books = Array.isArray(summary.books) ? [...summary.books] : [];
+  books.sort((a, b) => a.order - b.order);
+  const countOutcome = (outcome) => books.filter((b) => b.outcome === outcome).length;
+  const lines = ['## 📚 Featured Quotes Sync — Run Report', ''];
+
+  if (context.dryRun) {
+    lines.push('_Dry run: no database writes were made._', '');
+  }
+
+  lines.push('### Tier Progress', '');
+  const progress = summary.progress;
+  if (progress) {
+    const row = (label, t) =>
+      `| ${label} | ${t.pool} | ${t.doneNow}${t.addedThisRun > 0 ? ` (+${t.addedThisRun})` : ''} | ${t.remaining} | ${t.percent}% |`;
+    lines.push(
+      '| Tier | Pool | Done | Remaining | Progress |',
+      '|---|---:|---:|---:|---:|',
+      row('Top Popular', progress.top),
+      row('Rolling Recent', progress.recent),
+      row('**Total**', progress.total),
+      ''
+    );
+    lines.push(
+      progress.total.remaining === 0
+        ? '✅ Both pools are fully ingested.'
+        : `Estimated completion: ~${progress.etaRuns} more run(s) (≈${progress.etaHours}h at a 1.5h average window).`,
+      ''
+    );
+  } else {
+    const reason = context.tierResolutionError
+      ? `pool scan failed: ${escapeMarkdownCell(context.tierResolutionError)}`
+      : 'pools were not scanned in this run';
+    lines.push(`_Tier progress unavailable (${reason})._`, '');
+  }
+
+  lines.push('### This Run', '');
+  lines.push(
+    [
+      `Saved: ${countOutcome('updated')}`,
+      `Refreshed: ${countOutcome('refreshed')}`,
+      `No quotes (placeholder): ${countOutcome('no-quotes')}`,
+      `Already quoted: ${countOutcome('already-quoted')}`,
+      `Not found: ${countOutcome('not-found')}`,
+      `Failed: ${countOutcome('failed')}`,
+      `Pruned: ${summary.pruned || 0}`,
+    ].join(' · '),
+    ''
+  );
+  const mirrorEntries = Object.entries(summary.mirrorBreakdown || {});
+  if (mirrorEntries.length > 0) {
+    lines.push(
+      `Mirrors: ${mirrorEntries.map(([url, n]) => `${describeQuoteSource(url)} ${n}`).join(', ')}`,
+      ''
+    );
+  }
+
+  lines.push('### Books Processed', '');
+  if (books.length === 0) {
+    lines.push('_No books processed in this run._', '');
+  } else {
+    lines.push(
+      '| # | Tier | ID | Title | Source | Outcome | Quotes |',
+      '|---:|---|---:|---|---|---|---:|'
+    );
+    for (const b of books) {
+      const outcome = OUTCOME_LABELS[b.outcome] || b.outcome;
+      const note = b.note ? ` — ${b.note}` : '';
+      lines.push(
+        `| ${b.order} | ${TIER_LABELS[b.tier] || b.tier} | ${b.id} | ${escapeMarkdownCell(b.title)} | ${describeQuoteSource(b.source)} | ${escapeMarkdownCell(outcome + note)} | ${describeQuoteCounts(b)} |`
+      );
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Best-effort append of the run report to the GitHub Actions job summary file.
+ * Never throws: a write failure is logged and the sync result is unaffected.
+ */
+function writeStepSummary(filePath, markdown, logger = console, fsImpl = fs) {
+  if (!filePath) return false;
+  try {
+    fsImpl.appendFileSync(filePath, `${markdown}\n`, 'utf8');
+    return true;
+  } catch (err) {
+    logger.error(`[Run Report] Could not write GitHub step summary: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Queries `public.books` for the next batch of candidate volumes to populate with quotes
+ * using a Zero-Timeout Index-Aligned ID-First query sequence (<15ms total):
+ * 1. Fetches `quotedIds` via `idx_books_with_quotes_popular` (`<2ms`).
+ * 2. Scans Tier 1 (`Top 500 Popular`) via `idx_books_download_count` without `content`/`quotes`/GIN filters (`<5ms`).
+ * 3. Scans Tier 2 (`Rolling 64 Most Recent`) via Primary Key `books_pkey (id DESC)` without `content`/`quotes`/GIN filters (`<2ms`).
+ * 4. Hydrates `quotes` and `content` ONLY for the `<= 25` selected batch IDs via `.in('id', selectedIds)` (`<3ms`).
+ */
+async function fetchCandidateBooksFromSupabase(supabase, options) {
+  if (!supabase) {
+    if (options.ids && options.ids.length > 0) {
+      return options.ids.slice(0, options.limit).map((id) => ({
+        id,
+        title: `Gutenberg Volume #${id}`,
+        authors: [],
+        quotes: [],
+        content: null,
+      }));
+    }
+    return [];
+  }
+
+  if (options.ids && options.ids.length > 0) {
+    const requestedIds = options.ids.slice(0, options.limit);
+    const { data, error } = await supabase
+      .from('books')
+      .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
+      .in('id', requestedIds);
+    if (error) throw new Error(error.message);
+    const byId = new Map((data || []).map((row) => [row.id, row]));
+    options._missingIds = requestedIds.filter((id) => !byId.has(id));
+    await resolveManualRunTiers(supabase, options, requestedIds);
+    return requestedIds.filter((id) => byId.has(id)).map((id) => byId.get(id));
+  }
+
+  const { popularData, recentData, allScannedIds, minRecentHorizonId } = await scanTwoTierPools(
+    supabase,
+    options
+  );
+
   const quotedIds = await fetchQuotedBookIds(supabase, allScannedIds);
 
-  const { candidates, popularPoolIds, recentPoolIds, allowedPoolIds } = blendTwoTierCandidates(
-    popularData,
-    recentData,
-    { ...options, quotedIds }
-  );
+  const { candidates, popularPoolIds, recentPoolIds, allowedPoolIds, candidateTiers } =
+    blendTwoTierCandidates(popularData, recentData, { ...options, quotedIds });
   options._popularPoolIds = popularPoolIds;
   options._recentPoolIds = recentPoolIds;
   options._minRecentHorizonId = minRecentHorizonId;
   options._allowedPoolIds = allowedPoolIds;
   options._quotedIds = quotedIds;
+  options._candidateTiers = candidateTiers;
   options._scannedPoolIds = Array.from(allScannedIds);
 
   if (candidates.length > 0) {
@@ -1118,6 +1368,9 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     failed: 0,
     mirrorBreakdown: {},
     sqlStatements: [],
+    books: [],
+    progress: null,
+    report: '',
   };
 
   let scheduleGateElapsedHours = null;
@@ -1136,8 +1389,61 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   const booksToProcess = await fetchCandidateBooksFromSupabase(supabase, options);
   const newlyQuotedIds = new Set();
 
+  // Per-book ledger: tier provenance + position within its tier for this batch
+  const candidateTiers = options._candidateTiers instanceof Map ? options._candidateTiers : new Map();
+  const tierTotals = {};
+  const bookPositions = new Map();
+  booksToProcess.forEach((book, idx) => {
+    const tier = candidateTiers.get(book.id) || 'manual';
+    tierTotals[tier] = (tierTotals[tier] || 0) + 1;
+    bookPositions.set(book.id, { order: idx + 1, tier, pos: tierTotals[tier] });
+  });
+  const bookPrefix = (bookId) => {
+    const p = bookPositions.get(bookId);
+    return p ? `[${TIER_LABELS[p.tier] || p.tier} ${p.pos}/${tierTotals[p.tier]}]` : '[Manual]';
+  };
+  const recordBook = (book, fields) => {
+    const p = bookPositions.get(book.id);
+    summary.books.push({
+      order: p ? p.order : booksToProcess.length + summary.books.length + 1,
+      id: book.id,
+      title: book.title || `Gutenberg Volume #${book.id}`,
+      tier: p ? p.tier : candidateTiers.get(book.id) || 'manual',
+      source: 'none',
+      quoteCount: 0,
+      existingQuoteCount: 0,
+      ...fields,
+    });
+  };
+
+  for (const missingId of options._missingIds || []) {
+    logger.log(`[Not Found] #${missingId} is not in public.books — skipped.`);
+    recordBook({ id: missingId, title: `Gutenberg Volume #${missingId}` }, { outcome: 'not-found' });
+  }
+
+  const shouldPrune = () => Boolean(options._popularPoolIds && supabase && !options._manualRun);
+
+  const finalizeRun = () => {
+    if (options._popularPoolIds instanceof Set) {
+      summary.progress = computeTierProgress({
+        popularPoolIds: options._popularPoolIds,
+        recentPoolIds: options._recentPoolIds,
+        quotedIds: options._quotedIds,
+        newlyQuotedIds,
+        limit: options.limit,
+      });
+    }
+    summary.report = formatRunReport(summary, {
+      dryRun: options.dryRun,
+      tierResolutionError: options._tierResolutionError,
+    });
+    logger.log(summary.report);
+    writeStepSummary(deps.stepSummaryPath, summary.report, logger);
+    return summary;
+  };
+
   if (booksToProcess.length === 0) {
-    if (options._popularPoolIds && supabase) {
+    if (shouldPrune()) {
       const pruneRes = await pruneOutOfWindowBookQuotes(
         supabase,
         options._popularPoolIds,
@@ -1146,8 +1452,12 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       );
       summary.pruned = pruneRes.prunedCount;
     }
-    logger.log('All eligible books in the Two-Tier pool already have quotes — nothing to sync.');
-    return summary;
+    logger.log(
+      options._manualRun
+        ? 'None of the requested IDs exist in public.books — nothing to sync.'
+        : 'All eligible books in the Two-Tier pool already have quotes — nothing to sync.'
+    );
+    return finalizeRun();
   }
 
   if (options.scheduleGate && supabase) {
@@ -1175,19 +1485,41 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     }
   }
 
-  async function persistExtractedBookQuotes(book, existingQuotes, rawText) {
+  async function persistExtractedBookQuotes(book, existingQuotes, rawText, source) {
     const extracted = extractBookQuoteSpreads(rawText, book, options.targetCount);
     const mergedQuotes = mergeDistinctQuoteSpreads(existingQuotes, extracted, 16);
+    const sourceLabel = describeQuoteSource(source);
 
     if (mergedQuotes.length === 0) {
       const sentinel = [buildSentinelQuoteSpread(book)];
       await saveQuotesToDatabase(book, sentinel);
       summary.sentinelMarked++;
+      recordBook(book, {
+        outcome: 'no-quotes',
+        source,
+        existingQuoteCount: existingQuotes.length,
+      });
+      logger.log(
+        `${bookPrefix(book.id)} #${book.id} "${book.title}": no quotes extractable, placeholder saved (source: ${sourceLabel}).`
+      );
       return false;
     }
 
     await saveQuotesToDatabase(book, mergedQuotes);
     summary.updated++;
+    const isRefresh = Boolean(options.force) && existingQuotes.length > 0;
+    recordBook(book, {
+      outcome: isRefresh ? 'refreshed' : 'updated',
+      source,
+      quoteCount: mergedQuotes.length,
+      existingQuoteCount: existingQuotes.length,
+    });
+    const detail = isRefresh
+      ? `refreshed ${existingQuotes.length} → ${mergedQuotes.length} quotes (force)`
+      : existingQuotes.length > 0
+        ? `topped up ${existingQuotes.length} → ${mergedQuotes.length} quotes`
+        : `${mergedQuotes.length} quotes saved`;
+    logger.log(`${bookPrefix(book.id)} #${book.id} "${book.title}": ${detail} (source: ${sourceLabel}).`);
     return true;
   }
 
@@ -1199,8 +1531,14 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       const existingQuotes = Array.isArray(book.quotes) ? book.quotes : [];
       if (existingQuotes.length >= 10 && !options.force) {
         summary.skippedExisting++;
+        recordBook(book, {
+          outcome: 'already-quoted',
+          source: 'stored',
+          quoteCount: existingQuotes.length,
+          existingQuoteCount: existingQuotes.length,
+        });
         logger.log(
-          `[Skip] #${book.id} "${book.title}" already has ${existingQuotes.length} quotes.`
+          `${bookPrefix(book.id)} #${book.id} "${book.title}": already has ${existingQuotes.length} quotes (stored), skipped.`
         );
         continue;
       }
@@ -1208,7 +1546,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       if (book.content && book.content.trim().length >= 500) {
         summary.fromSupabaseContent++;
         logger.log(`[Supabase Content] Using stored text for #${book.id} "${book.title}".`);
-        await persistExtractedBookQuotes(book, existingQuotes, book.content);
+        await persistExtractedBookQuotes(book, existingQuotes, book.content, 'supabase-content');
       } else {
         mirrorWorkQueue.push({
           book,
@@ -1218,6 +1556,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       }
     } catch (err) {
       summary.failed++;
+      recordBook(book, { outcome: 'failed', note: err.message });
       logger.error(`[Error] #${book.id} "${book.title}": ${err.message}`);
     }
   }
@@ -1287,10 +1626,12 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
             await persistExtractedBookQuotes(
               workItem.book,
               workItem.existingQuotes,
-              fetchRes.text
+              fetchRes.text,
+              mirrorBaseUrl
             );
           } catch (err) {
             summary.failed++;
+            recordBook(workItem.book, { outcome: 'failed', source: mirrorBaseUrl, note: err.message });
             logger.error(
               `[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`
             );
@@ -1323,11 +1664,21 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
                   buildSentinelQuoteSpread(workItem.book),
                 ]);
                 summary.sentinelMarked++;
-              } catch {
+                recordBook(workItem.book, {
+                  outcome: 'no-quotes',
+                  existingQuoteCount: workItem.existingQuotes.length,
+                  note: 'text not available on enabled mirrors',
+                });
+              } catch (err) {
                 summary.failed++;
+                recordBook(workItem.book, { outcome: 'failed', note: err.message });
               }
             } else {
               summary.failed++;
+              recordBook(workItem.book, {
+                outcome: 'failed',
+                note: 'enabled mirrors unavailable',
+              });
             }
             logger.error(
               `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`
@@ -1345,9 +1696,18 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     };
 
     await Promise.all(mirrors.map((mirrorUrl) => runMirrorWorker(mirrorUrl)));
+
+    // Books left in the queue only when every enabled mirror worker halted
+    for (const leftover of mirrorWorkQueue.splice(0)) {
+      summary.failed++;
+      recordBook(leftover.book, { outcome: 'failed', note: 'all enabled mirrors halted' });
+      logger.error(
+        `[Error] #${leftover.book.id} "${leftover.book.title}": All enabled mirror workers halted before this book was fetched.`
+      );
+    }
   }
 
-  if (options._popularPoolIds && supabase) {
+  if (shouldPrune()) {
     const pruneRes = await pruneOutOfWindowBookQuotes(
       supabase,
       options._popularPoolIds,
@@ -1369,13 +1729,13 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     fs.writeFileSync(seedPath, header, 'utf8');
   }
 
-  return summary;
+  return finalizeRun();
 }
 
 /* v8 ignore start */
 if (require.main === module) {
   const cliOptions = parseCliArgs(process.argv.slice(2));
-  runFeaturedQuotesSync(cliOptions)
+  runFeaturedQuotesSync(cliOptions, { stepSummaryPath: process.env.GITHUB_STEP_SUMMARY })
     .then((res) => {
       console.log(
         `Featured Quotes Sync complete: ${res.updated} updated, ${res.skippedExisting} skipped, ${res.sentinelMarked} sentinel-marked, ${res.pruned} pruned, ${res.failed} failed.`
@@ -1419,6 +1779,11 @@ module.exports = {
   fetchQuotedBookIds,
   blendTwoTierCandidates,
   pruneOutOfWindowBookQuotes,
+  scanTwoTierPools,
+  resolveManualRunTiers,
+  computeTierProgress,
+  formatRunReport,
+  writeStepSummary,
   fetchCandidateBooksFromSupabase,
   runFeaturedQuotesSync,
 };
