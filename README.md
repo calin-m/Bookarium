@@ -14,7 +14,7 @@
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202224%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.79%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.81%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -111,7 +111,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 ## 🛠️ Latest Improvements (v2.9.2)
 
 - **Decoupled Editorial Hero Spotlight & Autonomous Multilingual Catalog Filtering (`ADR-080`)**: Decoupled the 3D Featured Book selection key strictly to `${hourlyIndex}|${country}` by removing topic and language parameters from `selectHourlyHeroFromPool`, establishing a clear separation of concerns where the 3D Featured Book functions as a stable editorial showcase rotating predictably by jurisdiction with authentic literary quotes, while `LanguageSelector` and `Explore Topics` exclusively filter the 78,000+ Gutenberg volumes in the Catalog Grid below, eliminating quote-scarcity fallback swaps on non-English catalog browsing with full 1:1 co-located test coverage.
-- **Zero-Query Quote Ingestion Run Report, Dual-Progress Live Telemetry & Initial Pool Status Banner (`ADR-080`)**: Upgraded `Featured Quotes Sync` with a pre-batch Two-Tier Pool Status banner logging initial Top Popular (500) and Rolling Recent (64) progress before downloads start (including explicit deficit backfill notices when the Recent pool reaches 100% and Top Popular backfills batch slots), real-time dual-progress tags showing batch and overall pool progress (`[Top 1/25 · Pool: 126/500 (25.2%)]` / `[Recent 1/5 · Pool: 60/64 (93.8%)]`), and a comprehensive Markdown Run Report appended to the console and GitHub Actions job summary with tier progress, ETA, and a per-book ledger at zero extra Supabase queries.
+- **50-Book Two-Tier Quotes Sync Expansion, Zero-Query Run Report & Live Dual-Progress Telemetry (`ADR-080`)**: Scaled default `Featured Quotes Sync` batch capacity from 25 to 50 books per run (`40 Popular + 10 Recent`, backfilling all 50 slots to Top Popular when Recent is 100% ingested) with default `limit: 50` across CLI and GitHub Actions workflow, paired with an initial Two-Tier Pool Status banner before mirror downloads, real-time dual-progress tags (`[Top 1/50 · Pool: 126/500 (25.2%)]` / `[Recent 1/10 · Pool: 60/64 (93.8%)]`), and a comprehensive Markdown Run Report appended to the console and GitHub Actions job summary with tier progress, ETA, and a per-book ledger at zero extra Supabase queries.
 - **Hermetic Test Suite Stderr Hygiene & Diagnostic Contract Assertion (`ADR-080`)**: Hardened root layout and error boundary test suites against artificial React 19 JSDOM HTML nesting warnings (`In HTML, <html> cannot be a child of <div>. This will cause a hydration error.`) and unhandled boundary stderr noise by replacing fragile substring checks with format-aware `vi.spyOn(console, 'error')` filters that catch format specifiers (`%s`), while asserting authentic diagnostic telemetry logging contracts (`[AppRouter:FatalBoundary]` and `[AppRouter:RootLayoutFault]`) across all error boundary test suites with 100% silent stderr test runs.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -590,8 +590,8 @@ npm run catalog:sync
 >    - **Manual Dispatch**: Can be triggered on-demand with custom inputs (`limit`, `update_existing`, `dry_run`) directly from the GitHub Actions tab.
 > 3. **Featured Quotes Sync ([`.github/workflows/quotes-sync.yml`](.github/workflows/quotes-sync.yml))**:
 >    - **Schedule**: Hourly cron check (`37 * * * *`) gated by a deterministic `1.0h–2.0h` float schedule window (`--schedule-gate` seeded by the latest `public.books.updated_at` timestamp, plus `5s–35s` startup jitter), alongside on-demand `workflow_dispatch` manual triggers and a workflow `concurrency` lock.
->    - **Action**: Maintains a **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` (blending **20 Popular + 5 Recent** unpopulated English volumes per 25-book batch with Priority Hero Book ID pinning, automatic cross-tier backfill, and burst-safe post-batch `1-for-1` sliding window auto-pruning), checking `public.books.content` first before dispatching dedicated per-mirror workers across PGLAF bulk mirrors (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, and `gutenberg.readingroo.ms`, each with its own independent `8.0s–16.0s` randomized float delay, redirect/15MB SSRF guard, and error cooldown circuit breaker) to extract `10–16` multi-quote spreads per book.
->    - **Manual Dispatch**: Compact modal with per-mirror checkboxes (`mirror_pglaf`, `mirror_aleph`, `mirror_readingroo`), `limit` (`default: 25`), `delay_range` (`default: 8-16`), `target_count` (`10–16`, `default: 14`), `ids` (comma-separated Gutenberg IDs), `force_refresh`, and `dry_run`.
+>    - **Action**: Maintains a **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` (blending **40 Popular + 10 Recent** unpopulated English volumes per 50-book batch with Priority Hero Book ID pinning, automatic cross-tier backfill, and burst-safe post-batch `1-for-1` sliding window auto-pruning), checking `public.books.content` first before dispatching dedicated per-mirror workers across PGLAF bulk mirrors (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, and `gutenberg.readingroo.ms`, each with its own independent `8.0s–16.0s` randomized float delay, redirect/15MB SSRF guard, and error cooldown circuit breaker) to extract `10–16` multi-quote spreads per book.
+>    - **Manual Dispatch**: Compact modal with per-mirror checkboxes (`mirror_pglaf`, `mirror_aleph`, `mirror_readingroo`), `limit` (`default: 50`), `delay_range` (`default: 8-16`), `target_count` (`10–16`, `default: 14`), `ids` (comma-separated Gutenberg IDs), `force_refresh`, and `dry_run`.
 
 #### Option B: Curated Masterworks Starter Seed (10 Books)
 If you prefer a quick starter seed for local development:
@@ -628,32 +628,32 @@ npm run quotes:sync -- --dry-run
 #    books that already have quotes are reported, not re-fetched; unknown IDs are reported as "Not in catalog"):
 npm run quotes:sync -- --ids=1342,84,2701
 
-# 3. Live Two-Tier batch ingestion (20 Popular + 5 Recent with 8.0s–16.0s random float delay):
-npm run quotes:sync -- --limit=25 --popular-pool=500 --recent-pool=64 --delay-range=8-16 --target-count=14
+# 3. Live Two-Tier batch ingestion (40 Popular + 10 Recent with 8.0s–16.0s random float delay):
+npm run quotes:sync -- --limit=50 --popular-pool=500 --recent-pool=64 --delay-range=8-16 --target-count=14
 
 # 4. Re-extract and overwrite quotes for specific books (reported as "Refreshed"):
 npm run quotes:sync -- --ids=1342 --force
 ```
 
-**Automated ingestion & deficit backfill:** the scheduled **Featured Quotes Sync** GitHub Action (`.github/workflows/quotes-sync.yml`) wakes every hour and ingests a blended `20 Popular + 5 Recent` batch at most once per randomized `1.0h–2.0h` window (`--schedule-gate`); hourly runs that fall inside the window exit immediately. When all 64 books in the Rolling Recent pool have been ingested, the blender automatically backfills those 5 slots from Top Popular candidates so each run processes a full 25 books. You can also launch it manually from the **Actions** tab (**Run workflow**) with a custom limit, specific IDs, mirror checkboxes, `force_refresh`, or `dry_run`.
+**Automated ingestion & deficit backfill:** the scheduled **Featured Quotes Sync** GitHub Action (`.github/workflows/quotes-sync.yml`) wakes every hour and ingests a blended `40 Popular + 10 Recent` batch at most once per randomized `1.0h–2.0h` window (`--schedule-gate`); hourly runs that fall inside the window exit immediately. When all 64 books in the Rolling Recent pool have been ingested, the blender automatically backfills those 10 slots from Top Popular candidates so each run processes a full 50 books. You can also launch it manually from the **Actions** tab (**Run workflow**) with a custom limit, specific IDs, mirror checkboxes, `force_refresh`, or `dry_run`.
 
 **Live console telemetry & Initial Pool Status banner:** right before mirror downloads begin, the action prints a pre-batch pool status banner to the console:
 ```text
 📊 Two-Tier Pool Status (Pre-Batch):
   • Top Popular:    125/500 ingested (375 remaining · 25.0%)
   • Rolling Recent:  64/64 ingested (0 remaining · 100.0%)
-  • This Batch:     25 candidate(s) (25 Top · 0 Recent)
+  • This Batch:     50 candidate(s) (50 Top · 0 Recent)
   • Note: Rolling Recent pool is fully ingested (100%); batch slots backfilled by Top Popular.
 ```
-During processing, each book log tag displays both batch position and overall pool progress: `[Top 1/25 · Pool: 126/500 (25.2%)]` (or `[Recent 1/5 · Pool: 60/64 (93.8%)]`).
+During processing, each book log tag displays both batch position and overall pool progress: `[Top 1/50 · Pool: 126/500 (25.2%)]` (or `[Recent 1/10 · Pool: 60/64 (93.8%)]`).
 
 **Reading the run report:** every run that ingests books (and every manual `--ids` run) prints a Markdown **Run Report** to the console and, on GitHub Actions, to the job's **Summary** tab. It adds no extra Supabase queries on automatic runs.
 
 | Tier | Pool | Done | Remaining | Progress |
 |---|---:|---:|---:|---:|
-| Top Popular | 500 | 312 (+25) | 188 | 62.4% |
+| Top Popular | 500 | 337 (+50) | 163 | 67.4% |
 | Rolling Recent | 64 | 64 (+0) | 0 | 100.0% |
-| **Total** | 564 | 376 (+25) | 188 | 66.7% |
+| **Total** | 564 | 401 (+50) | 163 | 71.1% |
 
 Below the progress table, a **Books Processed** ledger lists every book in the batch with its tier (`Top`, `Recent`, or `Outside pools`), text source (stored text or mirror host), outcome (`Saved`, `Refreshed`, `Already has quotes`, `No quotes found (placeholder)`, `Not in catalog`, or `Failed`), and before → after quote counts (e.g. `6 → 14`). Manual `--ids` runs resolve each book's real tier with a few extra read-only queries and never prune the pool.
 
@@ -709,7 +709,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (78,000+ titles), batch-upserts into Supabase, and hydrates `download_count` for Top 500+ popular titles from Gutendex |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
-| `npm run quotes:sync` | Maintains the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` (blending `20 Popular + 5 Recent` per batch with post-batch `1-for-1` sliding window auto-pruning) via `public.books.content` and 3 dedicated per-mirror PGLAF workers (`8.0s–16.0s` per-worker float pacing + cooldown circuit breaker) (`--limit=N`, `--popular-pool=500`, `--recent-pool=64`, `--delay-range=8-16`, `--mirrors=pglaf,aleph,readingroo`, `--schedule-gate`, `--target-count=N`, `--ids=...`, `--force`, `--dry-run`); ingesting runs publish a Run Report (tier progress + per-book Top/Recent ledger) to the GitHub Actions job summary |
+| `npm run quotes:sync` | Maintains the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` (blending `40 Popular + 10 Recent` per 50-book batch with post-batch `1-for-1` sliding window auto-pruning) via `public.books.content` and 3 dedicated per-mirror PGLAF workers (`8.0s–16.0s` per-worker float pacing + cooldown circuit breaker) (`--limit=N`, `--popular-pool=500`, `--recent-pool=64`, `--delay-range=8-16`, `--mirrors=pglaf,aleph,readingroo`, `--schedule-gate`, `--target-count=N`, `--ids=...`, `--force`, `--dry-run`); ingesting runs publish a Run Report (tier progress + per-book Top/Recent ledger) to the GitHub Actions job summary |
 | `npm run adr:new -- "Title"` | Creates a new Architecture Decision Record in `docs/DECISIONS.md` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 

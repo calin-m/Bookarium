@@ -10,7 +10,7 @@
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
- *   node scripts/sync-featured-quotes.js --limit=25 --delay-range=8-16 --mirrors=pglaf
+ *   node scripts/sync-featured-quotes.js --limit=50 --delay-range=8-16 --mirrors=pglaf
  *   node scripts/sync-featured-quotes.js --schedule-gate --mirrors=pglaf
  *   node scripts/sync-featured-quotes.js --ids=1342,84,2701 --force
  */
@@ -128,7 +128,7 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     scheduleGate: false,
     minIntervalHours: 1,
     maxIntervalHours: 2,
-    limit: 25,
+    limit: 50,
     popularPool: DEFAULT_POPULAR_POOL_SIZE,
     recentPool: DEFAULT_RECENT_POOL_SIZE,
     minDelaySec: 8,
@@ -731,12 +731,12 @@ async function fetchQuotedBookIds(supabase, scopedIds = null) {
 
 /**
  * Blends candidate books from Tier 1 (Top Popular by `download_count DESC`) and
- * Tier 2 (Rolling Most Recent by `id DESC`) using an 80/20 split (e.g., 20 Popular + 5 Recent
- * for a 25-book batch), automatically backfilling from the other tier when one tier has
+ * Tier 2 (Rolling Most Recent by `id DESC`) using an 80/20 split (e.g., 40 Popular + 10 Recent
+ * for a 50-book batch), automatically backfilling from the other tier when one tier has
  * fewer unpopulated books remaining.
  */
 function blendTwoTierCandidates(popularRows = [], recentRows = [], options = {}) {
-  const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 25;
+  const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 50;
   const force = Boolean(options.force);
   const quotedIds = options.quotedIds instanceof Set ? options.quotedIds : null;
 
@@ -895,7 +895,7 @@ async function pruneOutOfWindowBookQuotes(
   const maxPrunePerRun =
     typeof options.maxPrunePerRun === 'number' && options.maxPrunePerRun > 0
       ? options.maxPrunePerRun
-      : Math.max((options.limit || 25) * 2, 64);
+      : Math.max((options.limit || 50) * 2, 64);
   const staleIds = [...stalePopularIds, ...staleRecentIds].slice(0, maxPrunePerRun);
 
   if (staleIds.length === 0) {
@@ -1079,7 +1079,7 @@ function computeTierProgress({
   recentPoolIds,
   quotedIds,
   newlyQuotedIds,
-  limit = 25,
+  limit = 50,
   avgWindowHours = 1.5,
 } = {}) {
   const topIds = popularPoolIds instanceof Set ? popularPoolIds : new Set();
@@ -1120,7 +1120,7 @@ function computeTierProgress({
     percent: pool > 0 ? Math.round((doneNow / pool) * 1000) / 10 : 100,
   };
 
-  const batchSize = Number.isInteger(limit) && limit > 0 ? limit : 25;
+  const batchSize = Number.isInteger(limit) && limit > 0 ? limit : 50;
   const etaRuns = total.remaining > 0 ? Math.ceil(total.remaining / batchSize) : 0;
   return {
     top,
@@ -1291,7 +1291,7 @@ function writeStepSummary(filePath, markdown, logger = console, fsImpl = fs) {
  * 1. Fetches `quotedIds` via `idx_books_with_quotes_popular` (`<2ms`).
  * 2. Scans Tier 1 (`Top 500 Popular`) via `idx_books_download_count` without `content`/`quotes`/GIN filters (`<5ms`).
  * 3. Scans Tier 2 (`Rolling 64 Most Recent`) via Primary Key `books_pkey (id DESC)` without `content`/`quotes`/GIN filters (`<2ms`).
- * 4. Hydrates `quotes` and `content` ONLY for the `<= 25` selected batch IDs via `.in('id', selectedIds)` (`<3ms`).
+ * 4. Hydrates `quotes` and `content` ONLY for the `<= 50` selected batch IDs via `.in('id', selectedIds)` (`<3ms`).
  */
 async function fetchCandidateBooksFromSupabase(supabase, options) {
   if (!supabase) {

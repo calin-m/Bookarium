@@ -376,7 +376,7 @@ const ROADMAP_MILESTONES = [
     versionSeries: 'v2.9.x',
     version: 'v2.9.x',
     badge: 'https://img.shields.io/badge/Milestone-v2.9.x-violet?style=flat-square',
-    description: 'Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `20 Popular + 5 Recent` blended batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
+    description: 'Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
     features: [
       {
         title: '[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `20 + 5` Ingestion (`1.0h–2.0h` Float Gate), Out-of-Window Auto-Pruning & Instant Preview Integration',

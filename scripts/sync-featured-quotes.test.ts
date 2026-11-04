@@ -94,9 +94,28 @@ describe('sync-featured-quotes pipeline', () => {
       'https://gutenberg.readingroo.ms',
     ]);
     expect(parsed.ids).toEqual([1342, 84]);
+
+    const defaultParsed = quotesSync.parseCliArgs([]);
+    expect(defaultParsed.limit).toBe(50);
   });
 
-  it('blends Two-Tier candidates (20 Popular + 5 Recent) with overlap deduplication and automatic backfill, and prunes out-of-window quotes', async () => {
+  it('blends Two-Tier candidates (40 Popular + 10 Recent default, or custom 20 + 5) with overlap deduplication and automatic backfill, and prunes out-of-window quotes', async () => {
+    // Default limit (50 books: 40 Popular + 10 Recent) test:
+    const fiftyPopular = Array.from({ length: 60 }, (_, idx) => ({
+      id: idx + 1,
+      title: `Popular Book ${idx + 1}`,
+      quotes: [],
+    }));
+    const twentyRecent = Array.from({ length: 20 }, (_, idx) => ({
+      id: 5000 + idx,
+      title: `Recent Book ${5000 + idx}`,
+      quotes: [],
+    }));
+    const defaultBatch = quotesSync.blendTwoTierCandidates(fiftyPopular, twentyRecent);
+    expect(defaultBatch.candidates).toHaveLength(50);
+    expect(defaultBatch.candidates.filter((b: { id: number }) => b.id < 1000)).toHaveLength(40);
+    expect(defaultBatch.candidates.filter((b: { id: number }) => b.id >= 5000)).toHaveLength(10);
+
     const popularRows = Array.from({ length: 30 }, (_, idx) => ({
       id: idx + 1,
       title: `Popular Book ${idx + 1}`,

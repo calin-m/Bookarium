@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 04 Nov 2026 18:27:36 GMT  
+**Last Generated**: Wed, 04 Nov 2026 19:21:12 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
 **Total Verified Tests**: 2224 passed  
@@ -26,10 +26,10 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.79%** (12063/12462) — *Target: $\ge$ 95%*
-- **Statements**: **95.42%** (13069/13695) — *Target: $\ge$ 95%*
-- **Functions**: **94.6%** (2789/2948) — *Target: $\ge$ 92%*
-- **Branches**: **88%** (12023/13662) — *Target: $\ge$ 85%*
+- **Lines**: **96.81%** (12065/12462) — *Target: $\ge$ 95%*
+- **Statements**: **95.43%** (13070/13695) — *Target: $\ge$ 95%*
+- **Functions**: **94.64%** (2790/2948) — *Target: $\ge$ 92%*
+- **Branches**: **88.01%** (12025/13662) — *Target: $\ge$ 85%*
 
 ---
 
@@ -2468,7 +2468,7 @@
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
-- ✔ `blends Two-Tier candidates (20 Popular + 5 Recent) with overlap deduplication and automatic backfill, and prunes out-of-window quotes`
+- ✔ `blends Two-Tier candidates (40 Popular + 10 Recent default, or custom 20 + 5) with overlap deduplication and automatic backfill, and prunes out-of-window quotes`
 - ✔ `computes randomized float delays and 1.0h–2.0h float schedule windows`
 - ✔ `extracts multi-quote spreads, builds sentinel spreads, and merges upsert-only without duplicates`
 - ✔ `fetches book text from single mirror or across PGLAF mirrors with failover and classifies mirror-level errors`
