@@ -824,6 +824,70 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(fullPools).toContain('✅ Both pools are fully ingested.');
   });
 
+  it('formats initial pool status banner with progress percentages and deficit backfill notes', () => {
+    const banner = quotesSync.formatInitialPoolBanner({
+      topPoolSize: 500,
+      topDone: 125,
+      recentPoolSize: 64,
+      recentDone: 64,
+      batchTopCount: 25,
+      batchRecentCount: 0,
+      totalBatchCount: 25,
+    });
+    expect(banner).toContain('📊 Two-Tier Pool Status (Pre-Batch):');
+    expect(banner).toContain('• Top Popular:    125/500 ingested (375 remaining · 25.0%)');
+    expect(banner).toContain('• Rolling Recent: 64/64 ingested (0 remaining · 100.0%)');
+    expect(banner).toContain('• This Batch:     25 candidate(s) (25 Top · 0 Recent)');
+    expect(banner).toContain(
+      'Note: Rolling Recent pool is fully ingested (100%); batch slots backfilled by Top Popular.'
+    );
+
+    const partialBanner = quotesSync.formatInitialPoolBanner({
+      topPoolSize: 500,
+      topDone: 200,
+      recentPoolSize: 64,
+      recentDone: 50,
+      batchTopCount: 20,
+      batchRecentCount: 5,
+      totalBatchCount: 25,
+    });
+    expect(partialBanner).toContain('• Top Popular:    200/500 ingested (300 remaining · 40.0%)');
+    expect(partialBanner).toContain('• Rolling Recent: 50/64 ingested (14 remaining · 78.1%)');
+    expect(partialBanner).not.toContain('Note: Rolling Recent pool is fully ingested');
+  });
+
+  it('logs the initial pool banner and formats dual-progress per-book log prefixes on automated runs', async () => {
+    const popularRows = [
+      catalogRow({ id: 1, title: 'Book 1', quotes: makeQuotes(10, 'One') }),
+      catalogRow({ id: 2, title: 'Book 2', quotes: [], content: SAMPLE_GUTENBERG_BOOK }),
+      catalogRow({ id: 3, title: 'Book 3', quotes: [], content: SAMPLE_GUTENBERG_BOOK }),
+    ];
+    const recentRows = [
+      catalogRow({ id: 100, title: 'Recent 100', quotes: makeQuotes(5, 'Recent') }),
+    ];
+    const { client } = createCatalogSupabase(
+      [...popularRows, ...recentRows],
+      popularRows,
+      recentRows
+    );
+    const logger = { log: vi.fn(), error: vi.fn() };
+    await quotesSync.runFeaturedQuotesSync(
+      { limit: 2 },
+      { env: {}, supabaseClient: client, logger, writeSeedFile: false }
+    );
+
+    const logLines = logger.log.mock.calls.map((c) => String(c[0]));
+    expect(logLines.some((l) => l.includes('📊 Two-Tier Pool Status (Pre-Batch):'))).toBe(true);
+    expect(
+      logLines.some((l) =>
+        l.includes(
+          'Note: Rolling Recent pool is fully ingested (100%); batch slots backfilled by Top Popular.'
+        )
+      )
+    ).toBe(true);
+    expect(logLines.some((l) => l.includes('[Top 1/2 · Pool: 2/3 (66.7%)]'))).toBe(true);
+  });
+
   it('appends the report to the GitHub step summary best-effort without ever throwing', () => {
     const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quotes-summary-'));
     try {

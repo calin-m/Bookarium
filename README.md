@@ -13,7 +13,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202222%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202224%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-96.79%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2222 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2224 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -111,7 +111,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 ## 🛠️ Latest Improvements (v2.9.2)
 
 - **Decoupled Editorial Hero Spotlight & Autonomous Multilingual Catalog Filtering (`ADR-080`)**: Decoupled the 3D Featured Book selection key strictly to `${hourlyIndex}|${country}` by removing topic and language parameters from `selectHourlyHeroFromPool`, establishing a clear separation of concerns where the 3D Featured Book functions as a stable editorial showcase rotating predictably by jurisdiction with authentic literary quotes, while `LanguageSelector` and `Explore Topics` exclusively filter the 78,000+ Gutenberg volumes in the Catalog Grid below, eliminating quote-scarcity fallback swaps on non-English catalog browsing with full 1:1 co-located test coverage.
-- **Zero-Query Quote Ingestion Run Report with Tier Progress & Per-Book Ledger (`ADR-080`)**: Every ingesting `Featured Quotes Sync` run now writes a Markdown Run Report to the console and the GitHub Actions job summary with Top Popular and Rolling Recent progress (done, remaining, percent, ETA) derived from in-memory pool sets at zero extra Supabase queries, plus a Books Processed ledger tagging each book by tier (`Top`, `Recent`, `Outside pools`), source, and outcome (saved, refreshed, already quoted, no quotes, not found, failed) with before → after quote counts. Manual `--ids` runs resolve real tiers via a read-only pool scan without pruning, report missing IDs, and books stranded after all mirrors halt are now counted as failed.
+- **Zero-Query Quote Ingestion Run Report, Dual-Progress Live Telemetry & Initial Pool Status Banner (`ADR-080`)**: Upgraded `Featured Quotes Sync` with a pre-batch Two-Tier Pool Status banner logging initial Top Popular (500) and Rolling Recent (64) progress before downloads start (including explicit deficit backfill notices when the Recent pool reaches 100% and Top Popular backfills batch slots), real-time dual-progress tags showing batch and overall pool progress (`[Top 1/25 · Pool: 126/500 (25.2%)]` / `[Recent 1/5 · Pool: 60/64 (93.8%)]`), and a comprehensive Markdown Run Report appended to the console and GitHub Actions job summary with tier progress, ETA, and a per-book ledger at zero extra Supabase queries.
 - **Hermetic Test Suite Stderr Hygiene & Diagnostic Contract Assertion (`ADR-080`)**: Hardened root layout and error boundary test suites against artificial React 19 JSDOM HTML nesting warnings (`In HTML, <html> cannot be a child of <div>. This will cause a hydration error.`) and unhandled boundary stderr noise by replacing fragile substring checks with format-aware `vi.spyOn(console, 'error')` filters that catch format specifiers (`%s`), while asserting authentic diagnostic telemetry logging contracts (`[AppRouter:FatalBoundary]` and `[AppRouter:RootLayoutFault]`) across all error boundary test suites with 100% silent stderr test runs.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
@@ -635,17 +635,27 @@ npm run quotes:sync -- --limit=25 --popular-pool=500 --recent-pool=64 --delay-ra
 npm run quotes:sync -- --ids=1342 --force
 ```
 
-**Automated ingestion:** the scheduled **Featured Quotes Sync** GitHub Action (`.github/workflows/quotes-sync.yml`) wakes every hour and ingests a blended `20 Popular + 5 Recent` batch at most once per randomized `1.0h–2.0h` window (`--schedule-gate`); hourly runs that fall inside the window exit immediately. You can also launch it manually from the **Actions** tab (**Run workflow**) with a custom limit, specific IDs, mirror checkboxes, `force_refresh`, or `dry_run`.
+**Automated ingestion & deficit backfill:** the scheduled **Featured Quotes Sync** GitHub Action (`.github/workflows/quotes-sync.yml`) wakes every hour and ingests a blended `20 Popular + 5 Recent` batch at most once per randomized `1.0h–2.0h` window (`--schedule-gate`); hourly runs that fall inside the window exit immediately. When all 64 books in the Rolling Recent pool have been ingested, the blender automatically backfills those 5 slots from Top Popular candidates so each run processes a full 25 books. You can also launch it manually from the **Actions** tab (**Run workflow**) with a custom limit, specific IDs, mirror checkboxes, `force_refresh`, or `dry_run`.
+
+**Live console telemetry & Initial Pool Status banner:** right before mirror downloads begin, the action prints a pre-batch pool status banner to the console:
+```text
+📊 Two-Tier Pool Status (Pre-Batch):
+  • Top Popular:    125/500 ingested (375 remaining · 25.0%)
+  • Rolling Recent:  64/64 ingested (0 remaining · 100.0%)
+  • This Batch:     25 candidate(s) (25 Top · 0 Recent)
+  • Note: Rolling Recent pool is fully ingested (100%); batch slots backfilled by Top Popular.
+```
+During processing, each book log tag displays both batch position and overall pool progress: `[Top 1/25 · Pool: 126/500 (25.2%)]` (or `[Recent 1/5 · Pool: 60/64 (93.8%)]`).
 
 **Reading the run report:** every run that ingests books (and every manual `--ids` run) prints a Markdown **Run Report** to the console and, on GitHub Actions, to the job's **Summary** tab. It adds no extra Supabase queries on automatic runs.
 
 | Tier | Pool | Done | Remaining | Progress |
 |---|---:|---:|---:|---:|
-| Top Popular | 500 | 312 (+20) | 188 | 62.4% |
-| Rolling Recent | 64 | 41 (+5) | 23 | 64.1% |
-| **Total** | 564 | 353 (+25) | 211 | 62.6% |
+| Top Popular | 500 | 312 (+25) | 188 | 62.4% |
+| Rolling Recent | 64 | 64 (+0) | 0 | 100.0% |
+| **Total** | 564 | 376 (+25) | 188 | 66.7% |
 
-Below the progress table, a **Books Processed** ledger lists every book in the batch with its tier (`Top`, `Recent`, or `Outside pools`), text source (stored text or mirror host), outcome (`Saved`, `Refreshed`, `Already has quotes`, `No quotes found (placeholder)`, `Not in catalog`, or `Failed`), and before → after quote counts (e.g. `6 → 14`). Console lines carry the same tier and position, e.g. `[Top 7/20] #1342 "Pride and Prejudice": 14 quotes saved`. Manual `--ids` runs resolve each book's real tier with a few extra read-only queries and never prune the pool.
+Below the progress table, a **Books Processed** ledger lists every book in the batch with its tier (`Top`, `Recent`, or `Outside pools`), text source (stored text or mirror host), outcome (`Saved`, `Refreshed`, `Already has quotes`, `No quotes found (placeholder)`, `Not in catalog`, or `Failed`), and before → after quote counts (e.g. `6 → 14`). Manual `--ids` runs resolve each book's real tier with a few extra read-only queries and never prune the pool.
 
 Once seeded, `/api/books` automatically routes queries to your self-hosted Supabase PostgreSQL catalog with predictable ~1–2s catalog page responses and sub-50ms single-book lookups, eliminating the 20–60s wait times and timeouts common on public APIs.
 

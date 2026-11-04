@@ -1131,6 +1131,36 @@ function computeTierProgress({
   };
 }
 
+/**
+ * Formats the pre-batch pool status banner printed to console before processing begins.
+ */
+function formatInitialPoolBanner({
+  topPoolSize = 0,
+  topDone = 0,
+  recentPoolSize = 0,
+  recentDone = 0,
+  batchTopCount = 0,
+  batchRecentCount = 0,
+  totalBatchCount = 0,
+} = {}) {
+  const topRemaining = Math.max(0, topPoolSize - topDone);
+  const topPct = topPoolSize > 0 ? (Math.round((topDone / topPoolSize) * 1000) / 10).toFixed(1) : '100.0';
+  const recentRemaining = Math.max(0, recentPoolSize - recentDone);
+  const recentPct =
+    recentPoolSize > 0 ? (Math.round((recentDone / recentPoolSize) * 1000) / 10).toFixed(1) : '100.0';
+
+  const lines = [
+    '📊 Two-Tier Pool Status (Pre-Batch):',
+    `  • Top Popular:    ${topDone}/${topPoolSize} ingested (${topRemaining} remaining · ${topPct}%)`,
+    `  • Rolling Recent: ${recentDone}/${recentPoolSize} ingested (${recentRemaining} remaining · ${recentPct}%)`,
+    `  • This Batch:     ${totalBatchCount} candidate(s) (${batchTopCount} Top · ${batchRecentCount} Recent)`,
+  ];
+  if (recentRemaining === 0 && recentPoolSize > 0) {
+    lines.push('  • Note: Rolling Recent pool is fully ingested (100%); batch slots backfilled by Top Popular.');
+  }
+  return lines.join('\n');
+}
+
 function escapeMarkdownCell(value) {
   return String(value === undefined || value === null ? '' : value)
     .replace(/[\\|]/g, '\\$&')
@@ -1389,19 +1419,80 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   const booksToProcess = await fetchCandidateBooksFromSupabase(supabase, options);
   const newlyQuotedIds = new Set();
 
-  // Per-book ledger: tier provenance + position within its tier for this batch
+  // Compute pre-batch pool totals and initial progress for live telemetry
+  const topPoolIds = options._popularPoolIds instanceof Set ? options._popularPoolIds : new Set();
+  const recentPoolIds = options._recentPoolIds instanceof Set ? options._recentPoolIds : new Set();
+  const quotedIds = options._quotedIds instanceof Set ? options._quotedIds : new Set();
+
+  const nonOverlappingRecentPoolIds = Array.from(recentPoolIds).filter((id) => !topPoolIds.has(id));
+
+  let initialTopDone = 0;
+  for (const id of topPoolIds) {
+    if (quotedIds.has(id)) initialTopDone++;
+  }
+  let initialRecentDone = 0;
+  for (const id of nonOverlappingRecentPoolIds) {
+    if (quotedIds.has(id)) initialRecentDone++;
+  }
+
+  const topPoolSize = topPoolIds.size;
+  const recentPoolSize = nonOverlappingRecentPoolIds.length;
+
+  // Per-book ledger: tier provenance + position within its tier for this batch & total pool
   const candidateTiers = options._candidateTiers instanceof Map ? options._candidateTiers : new Map();
   const tierTotals = {};
   const bookPositions = new Map();
   booksToProcess.forEach((book, idx) => {
     const tier = candidateTiers.get(book.id) || 'manual';
     tierTotals[tier] = (tierTotals[tier] || 0) + 1;
-    bookPositions.set(book.id, { order: idx + 1, tier, pos: tierTotals[tier] });
+    const batchPos = tierTotals[tier];
+
+    let poolDone = 0;
+    let poolTotal = 0;
+    if (tier === 'top' && topPoolSize > 0) {
+      poolTotal = topPoolSize;
+      poolDone = Math.min(topPoolSize, initialTopDone + batchPos);
+    } else if (tier === 'recent' && recentPoolSize > 0) {
+      poolTotal = recentPoolSize;
+      poolDone = Math.min(recentPoolSize, initialRecentDone + batchPos);
+    }
+
+    const poolPercent =
+      poolTotal > 0 ? (Math.round((poolDone / poolTotal) * 1000) / 10).toFixed(1) : '0.0';
+
+    bookPositions.set(book.id, {
+      order: idx + 1,
+      tier,
+      pos: batchPos,
+      poolDone,
+      poolTotal,
+      poolPercent,
+    });
   });
+
   const bookPrefix = (bookId) => {
     const p = bookPositions.get(bookId);
-    return p ? `[${TIER_LABELS[p.tier] || p.tier} ${p.pos}/${tierTotals[p.tier]}]` : '[Manual]';
+    if (!p) return '[Manual]';
+    const label = TIER_LABELS[p.tier] || p.tier;
+    const batchTag = `${label} ${p.pos}/${tierTotals[p.tier]}`;
+    if (!options._manualRun && p.poolTotal > 0) {
+      return `[${batchTag} · Pool: ${p.poolDone}/${p.poolTotal} (${p.poolPercent}%)]`;
+    }
+    return `[${batchTag}]`;
   };
+
+  if (!options._manualRun && topPoolSize > 0) {
+    const banner = formatInitialPoolBanner({
+      topPoolSize,
+      topDone: initialTopDone,
+      recentPoolSize,
+      recentDone: initialRecentDone,
+      batchTopCount: tierTotals['top'] || 0,
+      batchRecentCount: tierTotals['recent'] || 0,
+      totalBatchCount: booksToProcess.length,
+    });
+    logger.log(banner);
+  }
   const recordBook = (book, fields) => {
     const p = bookPositions.get(book.id);
     summary.books.push({
@@ -1782,6 +1873,7 @@ module.exports = {
   scanTwoTierPools,
   resolveManualRunTiers,
   computeTierProgress,
+  formatInitialPoolBanner,
   formatRunReport,
   writeStepSummary,
   fetchCandidateBooksFromSupabase,
