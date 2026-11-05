@@ -463,6 +463,7 @@ describe('sync-gutenberg-catalog parser', () => {
 
       const result = await filterChangedOrNewBooks(mockSupabase, duplicateBatch, false);
       expect(selectMock).toHaveBeenCalledWith(CATALOG_DIFF_SELECT_COLUMNS);
+      expect(inMock).toHaveBeenCalledWith('id', [1342, 84, 78001]);
       expect(result.insertedCount).toBe(1);
       expect(result.updatedCount).toBe(1);
       expect(result.unchangedCount).toBe(1);
@@ -506,23 +507,27 @@ describe('sync-gutenberg-catalog parser', () => {
       ];
       let pageCall = 0;
 
+      const gtSpy = vi.fn((_col: string, _val: number) => ({
+        order: orderSpy,
+      }));
+      const orderSpy = vi.fn((_col: string, _opts: { ascending: boolean }) => ({
+        limit: vi.fn().mockImplementation(async () => ({
+          data: dbPages[pageCall++] || [],
+          error: null,
+        })),
+      }));
+      const deleteInSpy = vi.fn().mockImplementation(async (_col: string, ids: number[]) => {
+        deletedChunks.push(ids);
+        return { error: null };
+      });
+
       const mockSupabase = {
         from: vi.fn(() => ({
           select: vi.fn(() => ({
-            gt: vi.fn(() => ({
-              order: vi.fn(() => ({
-                limit: vi.fn().mockImplementation(async () => ({
-                  data: dbPages[pageCall++] || [],
-                  error: null,
-                })),
-              })),
-            })),
+            gt: gtSpy,
           })),
           delete: vi.fn(() => ({
-            in: vi.fn().mockImplementation(async (_col: string, ids: number[]) => {
-              deletedChunks.push(ids);
-              return { error: null };
-            }),
+            in: deleteInSpy,
           })),
         })),
       };
@@ -534,6 +539,11 @@ describe('sync-gutenberg-catalog parser', () => {
         logger: silentLogger,
       });
 
+      expect(gtSpy).toHaveBeenCalledWith('id', 0);
+      expect(gtSpy).toHaveBeenCalledWith('id', 1342);
+      expect(orderSpy).toHaveBeenCalledWith('id', { ascending: true });
+      expect(deleteInSpy).toHaveBeenCalledWith('id', [78050]);
+      expect(deleteInSpy).toHaveBeenCalledWith('id', [78051]);
       expect(res.prunedCount).toBe(2);
       expect(res.prunedIds).toEqual([78050, 78051]);
       expect(deletedChunks).toEqual([[78050], [78051]]);

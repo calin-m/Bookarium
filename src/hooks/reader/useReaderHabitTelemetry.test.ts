@@ -99,4 +99,101 @@ describe('useReaderHabitTelemetry', () => {
     });
     expect(result.current.isCompletionModalOpen).toBe(false);
   });
+
+  it('enriches stores from booksData, auto-retries refetch once on content error when lifespans arrive, updates document.title, and derives fellow-side symposium progress', () => {
+    const addRecentSpy = vi.spyOn(useBookshelfStore.getState(), 'addRecentBook');
+    const enrichSavedSpy = vi.spyOn(useBookshelfStore.getState(), 'enrichSavedBooks');
+    const openReaderSpy = vi.spyOn(useReaderStore.getState(), 'openReader');
+    const enrichPositionsSpy = vi.spyOn(useReaderStore.getState(), 'enrichReadingPositions');
+    const refetch = vi.fn();
+
+    const apiBook = {
+      id: 84,
+      title: 'Frankenstein; Or, The Modern Prometheus',
+      authors: [{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }],
+      translators: [],
+      subjects: ['Science fiction'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 18000,
+    };
+
+    const { result, rerender } = renderHook(() =>
+      useReaderHabitTelemetry({
+        numericId: 84,
+        userId: 'user-fellow',
+        isContentLoading: false,
+        isContentError: true,
+        contentText: undefined,
+        isPlayingTTS: false,
+        isAtEnd: false,
+        readingStatus: 'currently_reading',
+        setReadingStatus: vi.fn(),
+        symposiums: [
+          {
+            id: 'symp-84',
+            host_id: 'user-host',
+            host_username: 'byron',
+            host_display_name: 'Lord Byron',
+            fellow_id: 'user-fellow',
+            fellow_username: 'mary_s',
+            fellow_display_name: 'Mary Shelley',
+            book_id: 84,
+            book_title: 'Frankenstein',
+            status: 'active',
+            host_chapter: 4,
+            host_progress: 65,
+            fellow_chapter: 2,
+            fellow_progress: 30,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        activeChapterIndex: 2,
+        volumeProgress: 30,
+        syncSymposiumProgress: vi.fn(),
+        booksData: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [apiBook],
+        },
+        resolvedIdentity: {
+          id: 84,
+          title: 'Frankenstein',
+          author: 'Mary Shelley',
+          displayAuthor: 'Mary Shelley',
+          authors: apiBook.authors,
+          translators: [],
+          primarySubject: 'Science fiction',
+          languages: ['en'],
+          isPublicDomain: true,
+        },
+        refetch,
+        updateBookMetadata: vi.fn(),
+      })
+    );
+
+    expect(document.title).toBe('Frankenstein by Mary Shelley | Bookarium');
+    expect(addRecentSpy).toHaveBeenCalledWith(apiBook);
+    expect(openReaderSpy).toHaveBeenCalledWith(apiBook);
+    expect(enrichSavedSpy).toHaveBeenCalledWith([apiBook]);
+    expect(enrichPositionsSpy).toHaveBeenCalledWith([apiBook]);
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    // Re-rendering with same numericId should not trigger an infinite auto-retry loop
+    rerender();
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    // Fellow-side companion telemetry reflects the host's progress and chapter
+    expect(result.current.symposiumCompanion).toEqual({
+      username: 'byron',
+      displayName: 'Lord Byron',
+      progress: 65,
+      currentChapterIndex: 4,
+    });
+  });
 });

@@ -143,10 +143,14 @@ describe('SupabaseCatalogProvider', () => {
       expect(healthy).toBe(false);
     });
 
-    it('returns true when client returns count > 0 without error', async () => {
+    it('returns true when client returns count > 0 without error and passes estimated head count with abortSignal', async () => {
+      const abortSignalMock = vi.fn().mockResolvedValue({ count: 120, error: null });
+      const selectMock = vi.fn().mockReturnValue({
+        abortSignal: abortSignalMock,
+      });
       const mockClient = {
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ count: 120, error: null }),
+          select: selectMock,
         }),
       };
 
@@ -155,12 +159,16 @@ describe('SupabaseCatalogProvider', () => {
 
       expect(healthy).toBe(true);
       expect(mockClient.from).toHaveBeenCalledWith('books');
+      expect(selectMock).toHaveBeenCalledWith('id', { count: 'estimated', head: true });
+      expect(abortSignalMock).toHaveBeenCalledTimes(1);
+      expect(abortSignalMock).toHaveBeenCalledWith(expect.any(AbortSignal));
     });
 
     it('returns false when table has count === 0 (unseeded)', async () => {
+      const selectMock = vi.fn().mockResolvedValue({ count: 0, error: null });
       const mockClient = {
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ count: 0, error: null }),
+          select: selectMock,
         }),
       };
 
@@ -168,19 +176,28 @@ describe('SupabaseCatalogProvider', () => {
       const healthy = await provider.isHealthy();
 
       expect(healthy).toBe(false);
+      expect(selectMock).toHaveBeenCalledWith('id', { count: 'estimated', head: true });
     });
 
     it('returns false when select returns an error or rejects', async () => {
+      const selectMock = vi
+        .fn()
+        .mockResolvedValueOnce({ count: null, error: { message: 'relation does not exist' } })
+        .mockRejectedValueOnce(new Error('Network socket hang up'));
       const mockClient = {
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ count: null, error: { message: 'relation does not exist' } }),
+          select: selectMock,
         }),
       };
 
       const provider = new SupabaseCatalogProvider(mockClient as any);
-      const healthy = await provider.isHealthy();
+      const healthyError = await provider.isHealthy();
+      expect(healthyError).toBe(false);
 
-      expect(healthy).toBe(false);
+      provider.resetHealthCache();
+      const healthyRejected = await provider.isHealthy();
+      expect(healthyRejected).toBe(false);
+      expect(selectMock).toHaveBeenCalledTimes(2);
     });
 
     it('caches health check result for 60 seconds without re-querying Supabase', async () => {
@@ -310,6 +327,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(builder.lte).toHaveBeenCalledWith('min_author_birth_year', 1850);
       expect(builder.order).toHaveBeenCalledWith('download_count', { ascending: false });
       expect(builder.order).not.toHaveBeenCalledWith('id', { ascending: true });
+      expect(builder.range).toHaveBeenCalledWith(0, 31);
     });
 
     it('queries books using GIN search_vector when only topic is provided', async () => {
@@ -352,9 +370,10 @@ describe('SupabaseCatalogProvider', () => {
       });
     });
 
-    it('filters out authors protected under Life + 70 when client is in GB', async () => {
-      const { client } = createMockQueryBuilder(sampleDbRows, 2);
+    it('filters out authors protected under Life + 70 when client is in GB and applies SQL B-Tree cutoff', async () => {
+      const { client, builder } = createMockQueryBuilder(sampleDbRows, 2);
       const provider = new SupabaseCatalogProvider(client as any);
+      const currentYear = new Date().getFullYear();
 
       const options: CatalogQueryOptions = {
         page: 1,
@@ -364,16 +383,35 @@ describe('SupabaseCatalogProvider', () => {
 
       const result = await provider.searchBooks(options);
 
-      // Christie (1976) should be filtered out under Life + 70 in 2026
+      // Christie (1976) should be filtered out under Life + 70
       expect(result.jurisdictionRule).toBe('LIFE_70');
+      expect(builder.lte).toHaveBeenCalledWith('max_author_death_year', currentYear - 70 - 1);
       expect(result.totalFiltered).toBe(1);
       expect(result.results).toHaveLength(1);
       expect(result.results[0].title).toBe('Pride and Prejudice');
       expect(result.count).toBe(1);
     });
 
-    it('generates next and previous pagination links when page bounds allow', async () => {
-      const { client } = createMockQueryBuilder(sampleDbRows, 100);
+    it('applies SQL B-Tree cutoff bounds for Life + 80 (CO) and Life + 100 (MX) jurisdictions', async () => {
+      const currentYear = new Date().getFullYear();
+
+      const { client: clientCo, builder: builderCo } = createMockQueryBuilder(sampleDbRows, 2);
+      const providerCo = new SupabaseCatalogProvider(clientCo as any);
+      const resultCo = await providerCo.searchBooks({ page: 1, limit: 32, country: 'CO' });
+      expect(resultCo.jurisdictionRule).toBe('LIFE_80');
+      expect(builderCo.lte).toHaveBeenCalledWith('max_author_death_year', currentYear - 80 - 1);
+      expect(resultCo.results).toHaveLength(1);
+
+      const { client: clientMx, builder: builderMx } = createMockQueryBuilder(sampleDbRows, 2);
+      const providerMx = new SupabaseCatalogProvider(clientMx as any);
+      const resultMx = await providerMx.searchBooks({ page: 1, limit: 32, country: 'MX' });
+      expect(resultMx.jurisdictionRule).toBe('LIFE_100');
+      expect(builderMx.lte).toHaveBeenCalledWith('max_author_death_year', currentYear - 100 - 1);
+      expect(resultMx.results).toHaveLength(1);
+    });
+
+    it('generates next and previous pagination links and passes exact range bounds', async () => {
+      const { client, builder } = createMockQueryBuilder(sampleDbRows, 100);
       const provider = new SupabaseCatalogProvider(client as any);
 
       const options: CatalogQueryOptions = {
@@ -384,8 +422,15 @@ describe('SupabaseCatalogProvider', () => {
 
       const result = await provider.searchBooks(options);
 
+      expect(builder.range).toHaveBeenCalledWith(32, 63);
       expect(result.previous).toBe('/api/books?page=1');
       expect(result.next).toBe('/api/books?page=3');
+
+      // Clamps excessive limit > 100 to 100 (range 0..99)
+      const { client: clientClamp, builder: builderClamp } = createMockQueryBuilder(sampleDbRows, 250);
+      const providerClamp = new SupabaseCatalogProvider(clientClamp as any);
+      await providerClamp.searchBooks({ page: 1, limit: 250, country: 'US' });
+      expect(builderClamp.range).toHaveBeenCalledWith(0, 99);
     });
 
     it('filters results by mimeType if specified', async () => {
@@ -502,8 +547,40 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results[0].id).toBe(863);
     });
 
-    it('filters by non-empty quotes JSONB column when hasQuotes is true', async () => {
-      const { client, builder } = createMockQueryBuilder([sampleDbRows[0]], 1);
+    it('filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true', async () => {
+      const quotedRow: DatabaseBook = {
+        ...sampleDbRows[0],
+        quotes: [
+          {
+            chapterLabel: 'Chapter I',
+            openingLine: 'It is a truth universally acknowledged...',
+            quoteExcerpt: 'I declare after all there is no enjoyment like reading!',
+          },
+        ],
+      };
+      const sentinelOnlyRow: DatabaseBook = {
+        ...sampleDbRows[0],
+        id: 1400,
+        title: 'Great Expectations',
+        quotes: [
+          {
+            chapterLabel: 'Archival Edition • Vol. #1400',
+            openingLine: 'Great Expectations — preserved in the Project Gutenberg Literary Archive.',
+            quoteExcerpt: 'Unabridged public domain edition (Vol. #1400).',
+            commentary: 'Bibliographic sentinel record for Vol. #1400.',
+          },
+        ],
+      };
+      const quotelessRow: DatabaseBook = {
+        ...sampleDbRows[0],
+        id: 98,
+        title: 'A Tale of Two Cities',
+      };
+
+      const { client, builder } = createMockQueryBuilder(
+        [quotedRow, sentinelOnlyRow, quotelessRow],
+        3
+      );
       const provider = new SupabaseCatalogProvider(client as any);
 
       const result = await provider.searchBooks({
@@ -515,6 +592,10 @@ describe('SupabaseCatalogProvider', () => {
 
       expect(builder.neq).toHaveBeenCalledWith('quotes', '[]');
       expect(result.results).toHaveLength(1);
+      expect(result.results[0].id).toBe(1342);
+      expect(result.results[0].quotes).toHaveLength(1);
+      expect(result.results[0].quotes?.[0].chapterLabel).toBe('Chapter I');
+      expect(result.count).toBe(1);
     });
   });
 
@@ -525,37 +606,48 @@ describe('SupabaseCatalogProvider', () => {
       expect(await provider.getBookTranslations(-5)).toEqual([]);
     });
 
-    it('returns translations when cluster exists', async () => {
+    it('returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC', async () => {
+      const translationsEqMock = vi.fn().mockResolvedValue({
+        data: [{ work_id: 'Q170583' }],
+        error: null,
+      });
+      const translationsInMock = vi.fn().mockResolvedValue({
+        data: [
+          { book_id: 50001, language: 'de', is_original: false },
+          { book_id: 43647, language: 'fr', is_original: false },
+          { book_id: 60002, language: 'es', is_original: false },
+          { book_id: 1342, language: 'en', is_original: true },
+        ],
+        error: null,
+      });
+      const translationsSelectMock = vi.fn().mockReturnValue({
+        eq: translationsEqMock,
+        in: translationsInMock,
+      });
+
+      const booksInMock = vi.fn().mockResolvedValue({
+        data: [
+          { id: 50001, title: 'Stolz und Vorurteil', download_count: 800 },
+          { id: 43647, title: 'Orgueil et Préjugé', download_count: 1200 },
+          { id: 60002, title: 'Orgullo y Prejuicio', download_count: 3500 },
+          { id: 1342, title: 'Pride and Prejudice', download_count: 50000 },
+        ],
+        error: null,
+      });
+      const booksSelectMock = vi.fn().mockReturnValue({
+        in: booksInMock,
+      });
+
       const mockSupabase = {
         from: vi.fn().mockImplementation((table: string) => {
           if (table === 'book_translations') {
             return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockResolvedValue({
-                  data: [{ work_id: 'Q170583' }],
-                  error: null,
-                }),
-                in: vi.fn().mockResolvedValue({
-                  data: [
-                    { book_id: 1342, language: 'en', is_original: true },
-                    { book_id: 43647, language: 'fr', is_original: false },
-                  ],
-                  error: null,
-                }),
-              }),
+              select: translationsSelectMock,
             };
           }
           if (table === 'books') {
             return {
-              select: vi.fn().mockReturnValue({
-                in: vi.fn().mockResolvedValue({
-                  data: [
-                    { id: 1342, title: 'Pride and Prejudice', download_count: 50000 },
-                    { id: 43647, title: 'Orgueil et Préjugé', download_count: 1200 },
-                  ],
-                  error: null,
-                }),
-              }),
+              select: booksSelectMock,
             };
           }
           return {};
@@ -563,15 +655,27 @@ describe('SupabaseCatalogProvider', () => {
       };
 
       const provider = new SupabaseCatalogProvider(mockSupabase as any);
-      const results = await provider.getBookTranslations(1342);
+      // Query for French edition 43647 (isCurrent: true, isOriginal: false)
+      const results = await provider.getBookTranslations(43647);
 
-      expect(results).toHaveLength(2);
-      expect(results[0].bookId).toBe(1342);
+      expect(translationsSelectMock).toHaveBeenNthCalledWith(1, 'work_id');
+      expect(translationsEqMock).toHaveBeenCalledWith('book_id', 43647);
+      expect(translationsSelectMock).toHaveBeenNthCalledWith(2, 'book_id, language, is_original');
+      expect(translationsInMock).toHaveBeenCalledWith('work_id', ['Q170583']);
+      expect(booksSelectMock).toHaveBeenCalledWith(
+        'id, title, download_count, copyright, authors, translators'
+      );
+      expect(booksInMock).toHaveBeenCalledWith('id', [50001, 43647, 60002, 1342]);
+
+      // Sorted order: 1) Current (43647), 2) Original (1342), 3) Higher download_count (60002: 3500), 4) Lower download_count (50001: 800)
+      expect(results).toHaveLength(4);
+      expect(results.map((r) => r.bookId)).toEqual([43647, 1342, 60002, 50001]);
       expect(results[0].isCurrent).toBe(true);
-      expect(results[0].languageCode).toBe('en');
-      expect(results[1].bookId).toBe(43647);
+      expect(results[0].isOriginal).toBe(false);
+      expect(results[0].languageCode).toBe('fr');
       expect(results[1].isCurrent).toBe(false);
-      expect(results[1].languageCode).toBe('fr');
+      expect(results[1].isOriginal).toBe(true);
+      expect(results[1].languageCode).toBe('en');
     });
 
     it('gracefully returns empty array on database error', async () => {

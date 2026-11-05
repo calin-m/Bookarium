@@ -5,8 +5,11 @@ import {
   buildFellowScholarsMap,
   toAnnotationDbRow,
   syncAnnotationMutation,
+  ANNOTATION_OUTBOX_DISPATCHERS,
+  resolveFellowIdentityMap,
 } from './annotation-cloud-sync';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import type { createClient } from '@/lib/supabase/client';
 
 describe('annotation-cloud-sync', () => {
   beforeEach(() => {
@@ -78,6 +81,85 @@ describe('annotation-cloud-sync', () => {
     expect(queueOutboxAction).toHaveBeenCalledWith({
       type: 'UPSERT_ANNOTATION',
       payload: dbRow,
+    });
+  });
+
+  it('dispatches DELETE_ANNOTATION and UPSERT_ANNOTATION with exact Supabase table, column, and conflict arguments', async () => {
+    const innerDeleteEq = vi.fn().mockResolvedValue({ error: null });
+    const outerDeleteEq = vi.fn(() => ({ eq: innerDeleteEq }));
+    const deleteMock = vi.fn(() => ({ eq: outerDeleteEq }));
+    const upsertMock = vi.fn().mockResolvedValue({ error: null });
+    const fromMock = vi.fn(() => ({
+      delete: deleteMock,
+      upsert: upsertMock,
+    }));
+    const mockSupabase = { from: fromMock } as unknown as ReturnType<typeof createClient>;
+
+    await ANNOTATION_OUTBOX_DISPATCHERS.DELETE_ANNOTATION(mockSupabase, 'u-scholar-1', {
+      id: 'ann-del-99',
+    });
+    expect(fromMock).toHaveBeenCalledWith('user_annotations');
+    expect(deleteMock).toHaveBeenCalled();
+    expect(outerDeleteEq).toHaveBeenCalledWith('id', 'ann-del-99');
+    expect(innerDeleteEq).toHaveBeenCalledWith('user_id', 'u-scholar-1');
+
+    await ANNOTATION_OUTBOX_DISPATCHERS.UPSERT_ANNOTATION(mockSupabase, 'u-scholar-1', {
+      id: 'ann-up-42',
+      book_id: 84,
+      selected_text: 'Beware; for I am fearless, and therefore powerful.',
+    });
+    expect(upsertMock).toHaveBeenCalledWith(
+      {
+        id: 'ann-up-42',
+        book_id: 84,
+        selected_text: 'Beware; for I am fearless, and therefore powerful.',
+        user_id: 'u-scholar-1',
+      },
+      { onConflict: 'id' }
+    );
+  });
+
+  it('resolves missing and placeholder fellow scholar profiles via Supabase while skipping currentUserId and known handles', async () => {
+    const inMock = vi.fn().mockResolvedValue({
+      data: [
+        { id: 'u-missing', username: 'mary_shelley', display_name: 'Mary Shelley' },
+        { id: 'u-placeholder', username: 'lord_byron', display_name: 'Lord Byron' },
+      ],
+      error: null,
+    });
+    const selectMock = vi.fn(() => ({ in: inMock }));
+    const fromMock = vi.fn(() => ({ select: selectMock }));
+    const mockSupabase = { from: fromMock } as unknown as ReturnType<typeof createClient>;
+
+    const resolved = await resolveFellowIdentityMap(
+      [
+        { user_id: 'u-current' },
+        { user_id: 'u-known' },
+        { user_id: 'u-missing' },
+        { user_id: 'u-placeholder' },
+      ],
+      'u-current',
+      {
+        'u-known': { username: 'jane_austen', display_name: 'Jane Austen' },
+        'u-placeholder': { username: 'fellow_scholar', display_name: null },
+      },
+      mockSupabase
+    );
+
+    expect(fromMock).toHaveBeenCalledWith('profiles');
+    expect(selectMock).toHaveBeenCalledWith('id, username, display_name');
+    expect(inMock).toHaveBeenCalledWith('id', ['u-missing', 'u-placeholder']);
+    expect(resolved['u-known']).toEqual({
+      username: 'jane_austen',
+      display_name: 'Jane Austen',
+    });
+    expect(resolved['u-missing']).toEqual({
+      username: 'mary_shelley',
+      display_name: 'Mary Shelley',
+    });
+    expect(resolved['u-placeholder']).toEqual({
+      username: 'lord_byron',
+      display_name: 'Lord Byron',
     });
   });
 });

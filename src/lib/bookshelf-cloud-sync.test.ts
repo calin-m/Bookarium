@@ -89,30 +89,36 @@ describe('bookshelf-cloud-sync', () => {
       state.outbox = [...state.outbox, { ...action, id: queuedDuringFlush.id, timestamp: queuedDuringFlush.timestamp }];
     };
 
+    const deleteBookEqBook = vi.fn().mockImplementation(() =>
+      Promise.resolve().then(() => {
+        state.queueOutboxAction?.(queuedDuringFlush);
+        return { error: null };
+      })
+    );
+    const deleteBookEqShelf = vi.fn().mockReturnValue({ eq: deleteBookEqBook });
+    const deleteCurationEqBook = vi.fn().mockResolvedValue({ error: new Error('DB fail') });
+    const deleteCurationEqUser = vi.fn().mockReturnValue({ eq: deleteCurationEqBook });
+
     mockFrom.mockImplementation((table: string) => {
       if (table === 'bookshelf_items') {
         return {
           delete: () => ({
-            eq: () => ({
-              eq: () =>
-                Promise.resolve().then(() => {
-                  state.queueOutboxAction?.(queuedDuringFlush);
-                  return { error: null };
-                }),
-            }),
+            eq: deleteBookEqShelf,
           }),
         };
       }
       return {
         delete: () => ({
-          eq: () => ({
-            eq: () => Promise.resolve({ error: new Error('DB fail') }),
-          }),
+          eq: deleteCurationEqUser,
         }),
       };
     });
 
     await executeFlushOutbox('u1', get, set);
+    expect(deleteBookEqShelf).toHaveBeenCalledWith('bookshelf_id', 's1');
+    expect(deleteBookEqBook).toHaveBeenCalledWith('book_id', 1342);
+    expect(deleteCurationEqUser).toHaveBeenCalledWith('user_id', 'u1');
+    expect(deleteCurationEqBook).toHaveBeenCalledWith('book_id', 84);
     expect(state.outbox.map((action) => action.id)).toEqual(['2', '3']);
   });
 
@@ -132,59 +138,77 @@ describe('bookshelf-cloud-sync', () => {
     expect(await executeCreateCloudBookshelf('General', 'u1', true, get, set)).toBeNull();
 
     // Create shelf
+    const insertSpy = vi.fn().mockReturnValue({
+      select: () => ({
+        single: () =>
+          Promise.resolve({
+            data: { id: 'shelf-2', user_id: 'u1', name: 'Poetry', is_default: false, is_public: true },
+            error: null,
+          }),
+      }),
+    });
+    const updateEq2Spy = vi.fn().mockResolvedValue({ error: null });
+    const updateEq1Spy = vi.fn().mockReturnValue({ eq: updateEq2Spy });
+    const updateSpy = vi.fn().mockReturnValue({ eq: updateEq1Spy });
+    const deleteEq2Spy = vi.fn().mockResolvedValue({ error: null });
+    const deleteEq1Spy = vi.fn().mockReturnValue({ eq: deleteEq2Spy });
+    const deleteSpy = vi.fn().mockReturnValue({ eq: deleteEq1Spy });
+    const upsertSpy = vi.fn().mockResolvedValue({ error: null });
+
     mockFrom.mockReturnValue({
-      insert: () => ({
-        select: () => ({
-          single: () =>
-            Promise.resolve({
-              data: { id: 'shelf-2', user_id: 'u1', name: 'Poetry', is_default: false, is_public: true },
-              error: null,
-            }),
-        }),
-      }),
-      update: () => ({
-        eq: () => ({
-          eq: () => Promise.resolve({ error: null }),
-        }),
-      }),
-      delete: () => ({
-        eq: () => ({
-          eq: () => Promise.resolve({ error: null }),
-        }),
-      }),
-      upsert: () => Promise.resolve({ error: null }),
+      insert: insertSpy,
+      update: updateSpy,
+      delete: deleteSpy,
+      upsert: upsertSpy,
     });
 
     const created = await executeCreateCloudBookshelf('Poetry', 'u1', true, get, set);
     expect(created?.name).toBe('Poetry');
     expect(state.activeBookshelfId).toBe('shelf-2');
+    expect(insertSpy).toHaveBeenCalledWith({
+      user_id: 'u1',
+      name: 'Poetry',
+      is_default: false,
+      is_public: true,
+    });
 
     // Rename shelf
     const renamed = await executeUpdateCloudBookshelf('shelf-2', 'Epic Poetry', 'u1', false, get, set);
     expect(renamed).toBe(true);
     expect(state.cloudBookshelves[0].name).toBe('Epic Poetry');
     expect(state.cloudBookshelves[0].is_public).toBe(false);
+    expect(updateSpy).toHaveBeenCalledWith({ name: 'Epic Poetry', is_public: false });
+    expect(updateEq1Spy).toHaveBeenCalledWith('id', 'shelf-2');
+    expect(updateEq2Spy).toHaveBeenCalledWith('user_id', 'u1');
 
     // Privacy toggle
     const privUpdated = await executeUpdateBookshelfPrivacy('shelf-2', true, 'u1', get, set);
     expect(privUpdated).toBe(true);
     expect(state.cloudBookshelves[0].is_public).toBe(true);
+    expect(updateSpy).toHaveBeenCalledWith({ is_public: true });
 
     // Move book to shelf
     const moved = await executeMoveBookToShelf(1342, 'shelf-2', 'u1', get, set);
     expect(moved).toBe(true);
     expect(state.cloudBookshelfItems).toHaveLength(1);
+    expect(updateSpy).toHaveBeenCalledWith({ bookshelf_id: 'shelf-2' });
+    expect(updateEq1Spy).toHaveBeenCalledWith('book_id', 1342);
+    expect(updateEq2Spy).toHaveBeenCalledWith('user_id', 'u1');
 
     // Migrate local books
     state.savedBooks = [{ id: 1342, title: 'Pride and Prejudice', authors: [], translators: [], subjects: [], bookshelves: [], languages: ['en'], copyright: false, media_type: 'Text', formats: {}, download_count: 1 }];
     state.favoriteBooks = state.savedBooks;
     await executeMigrateLocalBooksToCloud('u1', get, set);
     expect(state.lastFavoritesSyncAt).not.toBeNull();
+    expect(upsertSpy).toHaveBeenCalledWith(expect.any(Array), { onConflict: 'bookshelf_id,book_id' });
+    expect(upsertSpy).toHaveBeenCalledWith(expect.any(Array), { onConflict: 'user_id,book_id' });
 
     // Delete shelf
     const deleted = await executeDeleteCloudBookshelf('shelf-2', 'u1', get, set);
     expect(deleted).toBe(true);
     expect(state.cloudBookshelves).toHaveLength(0);
+    expect(deleteEq1Spy).toHaveBeenCalledWith('id', 'shelf-2');
+    expect(deleteEq2Spy).toHaveBeenCalledWith('user_id', 'u1');
   });
 
   it('dispatches all 6 outbox action types and handles empty outbox', async () => {
@@ -231,17 +255,33 @@ describe('bookshelf-cloud-sync', () => {
       },
     ];
 
+    const delFavEqBook = vi.fn().mockResolvedValue({ error: null });
+    const delFavEqUser = vi.fn().mockReturnValue({ eq: delFavEqBook });
+    const outboxUpsertSpy = vi.fn().mockResolvedValue({ error: null });
+
     mockFrom.mockReturnValue({
       delete: () => ({
-        eq: () => ({
-          eq: () => Promise.resolve({ error: null }),
-        }),
+        eq: delFavEqUser,
       }),
-      upsert: () => Promise.resolve({ error: null }),
+      upsert: outboxUpsertSpy,
     });
 
     await executeFlushOutbox('u1', get, set);
     expect(state.outbox).toHaveLength(0);
+    expect(delFavEqUser).toHaveBeenCalledWith('user_id', 'u1');
+    expect(delFavEqBook).toHaveBeenCalledWith('book_id', 1342);
+    expect(outboxUpsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ bookshelf_id: 's1', book_id: 1342 }),
+      { onConflict: 'bookshelf_id,book_id' }
+    );
+    expect(outboxUpsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'u1', book_id: 1342, book_title: 'Pride' }),
+      { onConflict: 'user_id,book_id' }
+    );
+    expect(outboxUpsertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'u1', book_id: 1342, rating: 5, reading_status: 'finished' }),
+      { onConflict: 'user_id,book_id' }
+    );
   });
 
   it('synchronizes shelves, tombstones, favorites, and LWW curation in executeBookshelfCloudSync', async () => {
@@ -469,12 +509,11 @@ describe('bookshelf-cloud-sync', () => {
     ];
 
     const insertSpy = vi.fn().mockResolvedValue({ error: null });
+    const reassignUpdateEq2 = vi.fn().mockResolvedValue({ error: new Error('Row missing') });
+    const reassignUpdateEq1 = vi.fn().mockReturnValue({ eq: reassignUpdateEq2 });
+    const reassignUpdateSpy = vi.fn().mockReturnValue({ eq: reassignUpdateEq1 });
     mockFrom.mockReturnValue({
-      update: () => ({
-        eq: () => ({
-          eq: () => Promise.resolve({ error: new Error('Row missing') }),
-        }),
-      }),
+      update: reassignUpdateSpy,
       insert: insertSpy,
       delete: () => ({
         eq: () => ({
@@ -493,6 +532,9 @@ describe('bookshelf-cloud-sync', () => {
 
     // Delete s-custom -> reassigns items on s-custom to s-def
     await executeDeleteCloudBookshelf('s-custom', 'u1', get, set);
+    expect(reassignUpdateSpy).toHaveBeenCalledWith({ bookshelf_id: 's-def' });
+    expect(reassignUpdateEq1).toHaveBeenCalledWith('bookshelf_id', 's-custom');
+    expect(reassignUpdateEq2).toHaveBeenCalledWith('user_id', 'u1');
     expect(state.cloudBookshelfItems.every((i) => i.bookshelf_id === 's-def')).toBe(true);
   });
 
@@ -521,16 +563,21 @@ describe('bookshelf-cloud-sync', () => {
       },
     ];
 
+    const moveAndUpdateEq2 = vi.fn().mockResolvedValue({ error: null });
+    const moveAndUpdateEq1 = vi.fn().mockReturnValue({ eq: moveAndUpdateEq2 });
+    const moveAndUpdateSpy = vi.fn().mockReturnValue({ eq: moveAndUpdateEq1 });
+
     mockFrom.mockReturnValue({
-      update: () => ({
-        eq: () => ({
-          eq: () => Promise.resolve({ error: null }),
-        }),
-      }),
+      update: moveAndUpdateSpy,
     });
 
     await executeFlushOutbox('u1', get, set);
     expect(state.outbox).toHaveLength(0);
+    expect(moveAndUpdateSpy).toHaveBeenCalledWith({ bookshelf_id: 's-1' });
+    expect(moveAndUpdateEq1).toHaveBeenCalledWith('book_id', 1342);
+    expect(moveAndUpdateEq2).toHaveBeenCalledWith('user_id', 'u1');
+    expect(moveAndUpdateSpy).toHaveBeenCalledWith({ name: 'Modern Poetry', is_public: false });
+    expect(moveAndUpdateEq1).toHaveBeenCalledWith('id', 's-1');
 
     // Offline queuing for executeBookshelfCloudSync, executeUpdateCloudBookshelf, executeUpdateBookshelfPrivacy, executeMoveBookToShelf
     const onLineSpy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);

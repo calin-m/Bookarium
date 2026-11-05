@@ -160,9 +160,11 @@ describe('GutendexCatalogProvider', () => {
       ],
     };
 
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(mockData), { status: 200 })
-    );
+    let capturedUrl = '';
+    vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(mockData), { status: 200 });
+    });
 
     const result = await provider.searchBooks({
       ids: '1342,863',
@@ -172,6 +174,7 @@ describe('GutendexCatalogProvider', () => {
       includeRestrictedMetadata: true,
     });
 
+    expect(capturedUrl).toContain('ids=1342%2C863');
     expect(result.results).toHaveLength(2);
     expect(result.results.some((b) => b.id === 863)).toBe(true);
   });
@@ -195,8 +198,14 @@ describe('GutendexCatalogProvider', () => {
   });
 
   it('checks isHealthy via HEAD request', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
     expect(await provider.isHealthy()).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/?ids=1'),
+      expect.objectContaining({ method: 'HEAD' })
+    );
 
     vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Down'));
     expect(await provider.isHealthy()).toBe(false);
@@ -253,6 +262,10 @@ describe('GutendexCatalogProvider', () => {
     expect(capturedUrl).not.toContain('science');
     expect(capturedUrl).toContain('mime_type=application%2Fepub%2Bzip');
     expect(capturedUrl).toContain('languages=en%2Cfr');
+    expect(capturedUrl).toContain('author_year_start=1800');
+    expect(capturedUrl).toContain('author_year_end=1900');
+    expect(capturedUrl).toContain('sort=popular');
+    expect(capturedUrl).toContain('page=2');
   });
 });
 

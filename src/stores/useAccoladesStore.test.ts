@@ -180,13 +180,26 @@ describe('useAccoladesStore', () => {
     expect(useAccoladesStore.getState().activeCelebration).toBeNull();
 
     // 3. togglePin with userId (both pin and unpin)
-    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    const pinEqAccolade = vi.fn().mockResolvedValue({ error: null });
+    mockEq.mockReturnValueOnce({ eq: pinEqAccolade });
     await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
     expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      is_pinned: true,
+      updated_at: expect.any(String),
+    });
+    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-123');
+    expect(pinEqAccolade).toHaveBeenCalledWith('accolade_id', 'seven-day-sage');
 
-    mockEq.mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    const unpinEqAccolade = vi.fn().mockResolvedValue({ error: null });
+    mockEq.mockReturnValueOnce({ eq: unpinEqAccolade });
     await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
     expect(useAccoladesStore.getState().isPinned('seven-day-sage')).toBe(false);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      is_pinned: false,
+      updated_at: expect.any(String),
+    });
+    expect(unpinEqAccolade).toHaveBeenCalledWith('accolade_id', 'seven-day-sage');
 
     // 4. syncWithCloud empty userId, fetch error, and thrown exception
     await useAccoladesStore.getState().syncWithCloud('');

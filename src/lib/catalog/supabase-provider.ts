@@ -247,7 +247,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const mimeTypes = options.mimeType
         ? options.mimeType.split(',').map((m) => m.trim()).filter(Boolean)
         : [];
-      const finalResults = mimeTypes.length > 0
+      const mimeFilteredResults = mimeTypes.length > 0
         ? filteredResults.filter((b) =>
             mimeTypes.some((fmt) => {
               const baseMime = fmt.split(';')[0].trim();
@@ -258,10 +258,16 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           )
         : filteredResults;
 
+      // Filter out sentinel-only or quoteless rows when hasQuotes is requested
+      const finalResults = options.hasQuotes
+        ? mimeFilteredResults.filter((b) => Array.isArray(b.quotes) && b.quotes.length > 0)
+        : mimeFilteredResults;
+
       const totalFiltered = gutendexBooks.length - filteredResults.length;
+      const sentinelFiltered = mimeFilteredResults.length - finalResults.length;
       const totalCount =
         count !== null && count !== undefined
-          ? Math.max(0, count - totalFiltered)
+          ? Math.max(0, count - totalFiltered - sentinelFiltered)
           : finalResults.length;
       const latencyMs = Date.now() - startTime;
 

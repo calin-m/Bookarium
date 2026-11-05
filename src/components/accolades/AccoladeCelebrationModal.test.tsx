@@ -2,12 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AccoladeCelebrationModal } from './AccoladeCelebrationModal';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
+import { useAccoladesStore } from '@/stores/useAccoladesStore';
 
 describe('AccoladeCelebrationModal', () => {
   const sampleAccolade = ACCOLADES_CATALOG[0]; // Seven-Day Sage
 
   beforeEach(() => {
     vi.clearAllMocks();
+    useAccoladesStore.setState({
+      activeCelebration: null,
+    });
   });
 
   it('renders nothing when activeAccolade is null', () => {
@@ -50,6 +54,30 @@ describe('AccoladeCelebrationModal', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads activeCelebration from useAccoladesStore, triggers vibration, stops inner card propagation, and dismisses via acceptance CTA', () => {
+    const vibrateMock = vi.fn();
+    Object.defineProperty(window.navigator, 'vibrate', {
+      configurable: true,
+      value: vibrateMock,
+    });
+    const dismissSpy = vi.spyOn(useAccoladesStore.getState(), 'dismissCelebration');
+    useAccoladesStore.setState({ activeCelebration: sampleAccolade });
+
+    render(<AccoladeCelebrationModal />);
+
+    expect(vibrateMock).toHaveBeenCalledWith([35, 60, 35]);
+    expect(screen.getByText('Seven-Day Sage')).toBeInTheDocument();
+
+    // Clicking inside the dialog card should stop propagation and not dismiss
+    fireEvent.click(screen.getByText('Seven-Day Sage'));
+    expect(dismissSpy).not.toHaveBeenCalled();
+
+    // Clicking the primary acceptance button dismisses the active celebration
+    fireEvent.click(screen.getByRole('button', { name: /place in ex-libris collection/i }));
+    expect(dismissSpy).toHaveBeenCalledTimes(1);
+    expect(useAccoladesStore.getState().activeCelebration).toBeNull();
   });
 });
 

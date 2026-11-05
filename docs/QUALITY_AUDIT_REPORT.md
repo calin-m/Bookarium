@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 05 Nov 2026 11:04:26 GMT  
+**Last Generated**: Thu, 05 Nov 2026 17:17:03 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2238 passed  
+**Total Verified Tests**: 2247 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2238 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2247 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.77%** (12218/12625) — *Target: $\ge$ 95%*
-- **Statements**: **95.39%** (13228/13867) — *Target: $\ge$ 95%*
-- **Functions**: **94.46%** (2814/2979) — *Target: $\ge$ 92%*
-- **Branches**: **87.99%** (12191/13854) — *Target: $\ge$ 85%*
+- **Lines**: **96.93%** (12241/12628) — *Target: $\ge$ 95%*
+- **Statements**: **95.54%** (13252/13870) — *Target: $\ge$ 95%*
+- **Functions**: **94.49%** (2816/2980) — *Target: $\ge$ 92%*
+- **Branches**: **88.12%** (12212/13858) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2238 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2247 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 284 Tests)
 
@@ -1736,7 +1736,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 525 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 528 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1789,10 +1789,12 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `retains real scholar handles over placeholder handles in setOrUpdateFellowMapEntry and buildFellowScholarsMap`
 - ✔ `maps database rows to FellowAnnotation and converts Annotation to db row payload`
+- ✔ `dispatches DELETE_ANNOTATION and UPSERT_ANNOTATION with exact Supabase table, column, and conflict arguments`
+- ✔ `resolves missing and placeholder fellow scholar profiles via Supabase while skipping currentUserId and known handles`
 
 </details>
 
@@ -1911,7 +1913,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (29 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -1920,15 +1922,16 @@
 - ✔ `correctly maps all fields and defaults nullish values`
 - ✔ `handles non-array or nullish authors, formats, and download count`
 - ✔ `returns false when Supabase is not configured and no client was injected`
-- ✔ `returns true when client returns count > 0 without error`
+- ✔ `returns true when client returns count > 0 without error and passes estimated head count with abortSignal`
 - ✔ `returns false when table has count === 0 (unseeded)`
 - ✔ `returns false when select returns an error or rejects`
 - ✔ `caches health check result for 60 seconds without re-querying Supabase`
 - ✔ `successfully queries books and applies US public domain rules`
 - ✔ `queries books using GIN search_vector when only topic is provided`
 - ✔ `queries books using GIN search_vector with OR union when multiple topics are provided`
-- ✔ `filters out authors protected under Life + 70 when client is in GB`
-- ✔ `generates next and previous pagination links when page bounds allow`
+- ✔ `filters out authors protected under Life + 70 when client is in GB and applies SQL B-Tree cutoff`
+- ✔ `applies SQL B-Tree cutoff bounds for Life + 80 (CO) and Life + 100 (MX) jurisdictions`
+- ✔ `generates next and previous pagination links and passes exact range bounds`
 - ✔ `filters results by mimeType if specified`
 - ✔ `filters results by multiple mimeTypes if specified`
 - ✔ `matches plain text formats across charset variations (e.g. text/plain; charset=us-ascii vs utf-8)`
@@ -1936,9 +1939,9 @@
 - ✔ `applies ascending and descending sort directions`
 - ✔ `throws CatalogProviderError when Supabase returns an error`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
-- ✔ `filters by non-empty quotes JSONB column when hasQuotes is true`
+- ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
 - ✔ `returns empty array for invalid bookId`
-- ✔ `returns translations when cluster exists`
+- ✔ `returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC`
 - ✔ `gracefully returns empty array on database error`
 - ✔ `filters out translation editions that are copyrighted or restricted in the caller jurisdiction`
 - ✔ `maps optional quotes JSONB array in mapDatabaseBookToGutendexBook when present`
@@ -2527,7 +2530,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 279 Tests)
+### 🔄 Hooks & React Query (28 Suites · 283 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2692,9 +2695,10 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (1 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `transitions reading status to currently_reading on start and finished at end, and derives symposium companion milestones`
+- ✔ `enriches stores from booksData, auto-retries refetch once on content error when lifespans arrive, updates document.title, and derives fellow-side symposium progress`
 
 </details>
 
@@ -2748,9 +2752,10 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (1 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
+- ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
 
 </details>
 
@@ -2888,9 +2893,11 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useNotebookMetadataResolver.test.ts</code></b> (1 tests)</summary>
+<summary><b><code>src/hooks/useNotebookMetadataResolver.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `resolves book title, author, and jurisdiction restriction from annotation and featured fixtures, and primes reader store`
+- ✔ `resolves metadata from savedBooks/offlineBooks pools and enforces LIFE_70 copyright restriction in GB`
+- ✔ `queries remote useBooks for unindexed volume IDs, auto-heals local stores, and hydrates Fellow Scholar profiles when online`
 
 </details>
 
@@ -2925,8 +2932,8 @@
 <details>
 <summary><b><code>src/hooks/usePerformanceTier.test.ts</code></b> (2 tests)</summary>
 
-- ✔ `should detect performance tier and device capabilities`
-- ✔ `should respect reduced motion preference`
+- ✔ `classifies high, medium, and low hardware tiers and caches frozen snapshots`
+- ✔ `should respect reduced motion preference and clean up matchMedia listeners on unmount`
 
 </details>
 
@@ -2976,16 +2983,17 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 265 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 267 Tests)
 
 <details>
-<summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders nothing when activeAccolade is null`
 - ✔ `renders celebration details when an accolade is provided`
 - ✔ `dismisses when close button is clicked`
 - ✔ `dismisses when backdrop is clicked`
 - ✔ `dismisses when Escape key is pressed`
+- ✔ `reads activeCelebration from useAccoladesStore, triggers vibration, stops inner card propagation, and dismisses via acceptance CTA`
 
 </details>
 
@@ -3206,10 +3214,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/symposium/SymposiumInviteModal.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/symposium/SymposiumInviteModal.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders quick Reader Circle handle invite when no accepted fellows exist`
 - ✔ `dispatches a Literary Symposium pact for an accepted fellow scholar`
+- ✔ `renders preselectedFellow, falls back to #1342 when savedBooks is empty, and surfaces error alerts`
 
 </details>
 

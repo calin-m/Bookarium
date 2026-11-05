@@ -210,20 +210,33 @@ describe('scripts/ingest-translations Engine', () => {
     });
 
     it('filters out book IDs that do not exist in public.books table', async () => {
+      let capturedTable = '';
+      let capturedSelect = '';
+      let capturedInCol = '';
       const mockSupabase = {
-        from: () => ({
-          select: () => ({
-            in: async (_col: string, ids: number[]) => {
-              // Simulate only IDs 1342 and 43647 existing in catalog, while 999999 is missing
-              const valid = ids.filter((id) => id !== 999999).map((id) => ({ id }));
-              return { data: valid, error: null };
+        from: (table: string) => {
+          capturedTable = table;
+          return {
+            select: (cols: string) => {
+              capturedSelect = cols;
+              return {
+                in: async (col: string, ids: number[]) => {
+                  capturedInCol = col;
+                  // Simulate only IDs 1342 and 43647 existing in catalog, while 999999 is missing
+                  const valid = ids.filter((id) => id !== 999999).map((id) => ({ id }));
+                  return { data: valid, error: null };
+                },
+              };
             },
-          }),
-        }),
+          };
+        },
       };
 
       const candidates = [1342, 43647, 999999];
       const result = await filterValidCatalogBookIds(mockSupabase, candidates);
+      expect(capturedTable).toBe('books');
+      expect(capturedSelect).toBe('id');
+      expect(capturedInCol).toBe('id');
       expect(result.has(1342)).toBe(true);
       expect(result.has(43647)).toBe(true);
       expect(result.has(999999)).toBe(false);

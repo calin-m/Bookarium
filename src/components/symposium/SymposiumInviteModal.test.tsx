@@ -80,6 +80,9 @@ describe('SymposiumInviteModal', () => {
         },
       ],
     });
+    const createSymposiumSpy = vi
+      .spyOn(useFellowshipStore.getState(), 'createSymposiumInvite')
+      .mockResolvedValue({ error: null });
 
     render(<SymposiumInviteModal isOpen={true} onClose={vi.fn()} />);
 
@@ -89,6 +92,13 @@ describe('SymposiumInviteModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send Symposium Pact/i }));
 
     await waitFor(() => {
+      expect(createSymposiumSpy).toHaveBeenCalledWith({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        fellowId: 'u-fellow',
+        fellowUsername: 'shelley',
+        fellowDisplayName: 'Mary Shelley',
+      });
       expect(
         screen.getByText(/Literary Symposium invitation sent to @shelley for "Frankenstein"/i)
       ).toBeInTheDocument();
@@ -98,6 +108,46 @@ describe('SymposiumInviteModal', () => {
     expect(modalContent.innerHTML).not.toContain('border-border/80');
     expect(modalContent.innerHTML).not.toContain('border-primary/20');
     expect(modalContent.innerHTML).not.toContain('border-success/20');
+  });
+
+  it('renders preselectedFellow, falls back to #1342 when savedBooks is empty, and surfaces error alerts', async () => {
+    useBookshelfStore.setState({ savedBooks: [] });
+    const createSymposiumSpy = vi
+      .spyOn(useFellowshipStore.getState(), 'createSymposiumInvite')
+      .mockResolvedValue({
+        error: new Error('Symposium pact already active for this volume.'),
+      });
+
+    render(
+      <SymposiumInviteModal
+        isOpen={true}
+        onClose={vi.fn()}
+        preselectedFellow={{
+          fellowId: 'u-byron',
+          username: 'lord_byron',
+          displayName: 'Lord Byron',
+        }}
+      />
+    );
+
+    expect(screen.getByText('Pride and Prejudice (#1342)')).toBeInTheDocument();
+    expect(screen.getByText('Lord Byron')).toBeInTheDocument();
+    expect(screen.getByText('@lord_byron')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Send Symposium Pact/i }));
+
+    await waitFor(() => {
+      expect(createSymposiumSpy).toHaveBeenCalledWith({
+        bookId: 1342,
+        bookTitle: 'Volume #1342',
+        fellowId: 'u-byron',
+        fellowUsername: 'lord_byron',
+        fellowDisplayName: 'Lord Byron',
+      });
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Symposium pact already active for this volume.'
+      );
+    });
   });
 });
 

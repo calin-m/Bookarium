@@ -224,13 +224,12 @@ describe('useReaderStore', () => {
         error: null,
       });
 
+      const restoreEqBook = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const restoreEqUser = vi.fn().mockReturnValue({ eq: restoreEqBook });
+
       mockFrom.mockReturnValue({
         select: () => ({
-          eq: () => ({
-            eq: () => ({
-              maybeSingle: mockMaybeSingle,
-            }),
-          }),
+          eq: restoreEqUser,
         }),
       });
 
@@ -238,6 +237,8 @@ describe('useReaderStore', () => {
         .getState()
         .restoreReadingPositionFromCloud(84, 'test-user-123');
 
+      expect(restoreEqUser).toHaveBeenCalledWith('user_id', 'test-user-123');
+      expect(restoreEqBook).toHaveBeenCalledWith('book_id', 84);
       expect(restored).toEqual({
         chapterIndex: 3,
         chapterPage: 4,
@@ -311,35 +312,34 @@ describe('useReaderStore', () => {
     });
 
     it('bulk synchronizes all user reading progress via syncWithCloud', async () => {
+      const mockOrder = vi.fn().mockResolvedValue({
+        data: [
+          {
+            book_id: 1342,
+            book_title: 'Pride and Prejudice',
+            book_authors: ['Jane Austen'],
+            cover_url: 'https://example.com/pride.jpg',
+            current_chapter_index: 5,
+            progress_percent: 50,
+            scroll_offset: 2,
+            last_read_at: '2026-09-04T10:00:00.000Z',
+          },
+          {
+            book_id: 84,
+            book_title: 'Frankenstein',
+            book_authors: ['Mary Shelley'],
+            cover_url: null,
+            current_chapter_index: 2,
+            progress_percent: 20,
+            scroll_offset: 1,
+            last_read_at: '2026-09-03T10:00:00.000Z',
+          },
+        ],
+        error: null,
+      });
+      const mockSelectEq = vi.fn().mockReturnValue({ order: mockOrder });
       const mockSelect = vi.fn().mockReturnValue({
-        eq: () => ({
-          order: () =>
-            Promise.resolve({
-              data: [
-                {
-                  book_id: 1342,
-                  book_title: 'Pride and Prejudice',
-                  book_authors: ['Jane Austen'],
-                  cover_url: 'https://example.com/pride.jpg',
-                  current_chapter_index: 5,
-                  progress_percent: 50,
-                  scroll_offset: 2,
-                  last_read_at: '2026-09-04T10:00:00.000Z',
-                },
-                {
-                  book_id: 84,
-                  book_title: 'Frankenstein',
-                  book_authors: ['Mary Shelley'],
-                  cover_url: null,
-                  current_chapter_index: 2,
-                  progress_percent: 20,
-                  scroll_offset: 1,
-                  last_read_at: '2026-09-03T10:00:00.000Z',
-                },
-              ],
-              error: null,
-            }),
-        }),
+        eq: mockSelectEq,
       });
 
       const mockLte = vi.fn().mockResolvedValue({ error: null });
@@ -354,6 +354,12 @@ describe('useReaderStore', () => {
 
       expect(mockFrom).toHaveBeenCalledWith('reading_progress');
       expect(mockDelete).toHaveBeenCalled();
+      expect(mockEq1).toHaveBeenCalledWith('user_id', 'test-user-123');
+      expect(mockEq2).toHaveBeenCalledWith('progress_percent', 0);
+      expect(mockEq3).toHaveBeenCalledWith('current_chapter_index', 0);
+      expect(mockLte).toHaveBeenCalledWith('scroll_offset', 1);
+      expect(mockSelectEq).toHaveBeenCalledWith('user_id', 'test-user-123');
+      expect(mockOrder).toHaveBeenCalledWith('last_read_at', { ascending: false });
       const pos1342 = useReaderStore.getState().getReadingPosition(1342);
       expect(pos1342?.bookTitle).toBe('Pride and Prejudice');
       expect(pos1342?.chapterIndex).toBe(5);
@@ -1036,6 +1042,8 @@ describe('useReaderStore', () => {
       await useReaderStore.getState().syncWithCloud('user-offline-sync');
 
       expect(useReaderStore.getState().deletedPositionBookIds).toEqual([]);
+      expect(mockDeleteEq1).toHaveBeenCalledWith('user_id', 'user-offline-sync');
+      expect(mockDeleteEq2).toHaveBeenCalledWith('book_id', 84);
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'user-offline-sync',

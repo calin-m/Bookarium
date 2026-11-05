@@ -149,10 +149,20 @@ describe('useAnnotationStore', () => {
       'user-123'
     );
 
+    const updateEqUser = vi.fn().mockResolvedValue({ error: null });
+    const updateEqId = vi.fn().mockReturnValue({ eq: updateEqUser });
+    mockUpdate.mockReturnValueOnce({ eq: updateEqId });
+
     await useAnnotationStore.getState().updateAnnotationColor(created.id, 'rose', 'user-123');
 
     const updated = useAnnotationStore.getState().annotations.find((a) => a.id === created.id);
     expect(updated?.color).toBe('rose');
+    expect(mockUpdate).toHaveBeenCalledWith({
+      color: 'rose',
+      updated_at: expect.any(String),
+    });
+    expect(updateEqId).toHaveBeenCalledWith('id', created.id);
+    expect(updateEqUser).toHaveBeenCalledWith('user_id', 'user-123');
 
     // Test offline outbox fallback when Supabase fails
     mockUpdate.mockReturnValueOnce({
