@@ -10,7 +10,7 @@ import {
   BookOpen,
   RotateCcw,
 } from 'lucide-react';
-import { isNaturalVoice, cleanVoiceName } from '@/lib/speech-utils';
+import { isNaturalVoice, cleanVoiceName, normalizeSpeechLang } from '@/lib/speech-utils';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 
 export interface AccountNarrationSubPanelProps {
@@ -180,7 +180,7 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
             <optgroup label="🌟 Natural & Neural Voices">
               {naturalVoices.map((voice) => (
                 <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {cleanVoiceName(voice.name)} ({voice.lang}) ✨
+                  {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)}) ✨
                 </option>
               ))}
             </optgroup>
@@ -189,12 +189,15 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
             <optgroup label="🔈 Standard System Voices">
               {standardVoices.map((voice) => (
                 <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {cleanVoiceName(voice.name)} ({voice.lang})
+                  {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)})
                 </option>
               ))}
             </optgroup>
           )}
         </select>
+        <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+          In the Reader, voices automatically filter to match the book&apos;s language. On phones and tablets, additional free neural voices can be enabled in your device OS settings (iOS Spoken Content or Android Text-to-speech output).
+        </p>
       </div>
 
       {/* Reading Assistance Toggles */}

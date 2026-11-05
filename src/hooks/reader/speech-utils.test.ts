@@ -1,21 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { segmentTextIntoSentences, isNaturalVoice } from './useReaderSpeech';
+import {
+  segmentTextIntoSentences,
+  isNaturalVoice,
+  normalizeSpeechLang,
+  isVoiceLanguageCompatible,
+} from './useReaderSpeech';
 
-describe('speech utilities: isNaturalVoice', () => {
-  it('returns true for high-definition neural and natural voice names', () => {
+describe('speech utilities: isNaturalVoice & language helpers', () => {
+  it('returns true for high-definition neural, natural, and voiceURI network voices', () => {
     expect(isNaturalVoice({ name: 'Microsoft Jenny Natural (Online)' } as any)).toBe(true);
     expect(isNaturalVoice({ name: 'Google US English' } as any)).toBe(true);
     expect(isNaturalVoice({ name: 'Apple Siri Voice 2' } as any)).toBe(true);
     expect(isNaturalVoice({ name: 'Samantha Enhanced' } as any)).toBe(true);
     expect(isNaturalVoice({ name: 'Neural Voice Engine' } as any)).toBe(true);
     expect(isNaturalVoice({ name: 'Aria Premium' } as any)).toBe(true);
+    expect(
+      isNaturalVoice({ name: 'English (United States)', voiceURI: 'en-us-x-sfg-network' } as any)
+    ).toBe(true);
   });
 
-  it('returns false for standard mechanical or missing voice names', () => {
+  it('returns false for standard mechanical or missing voice names and normalizes locales', () => {
     expect(isNaturalVoice({ name: 'Microsoft David Desktop' } as any)).toBe(false);
     expect(isNaturalVoice({ name: 'espeak-ng' } as any)).toBe(false);
     expect(isNaturalVoice(null as any)).toBe(false);
     expect(isNaturalVoice({} as any)).toBe(false);
+    expect(normalizeSpeechLang('en_GB')).toBe('en-GB');
+    expect(isVoiceLanguageCompatible({ lang: 'en_GB' } as any, 'en')).toBe(true);
+    expect(isVoiceLanguageCompatible({ lang: 'fr-FR' } as any, 'en')).toBe(false);
   });
 });
 

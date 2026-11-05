@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { isNaturalVoice } from '@/lib/speech-utils';
+import {
+  isNaturalVoice,
+  normalizeSpeechLang,
+  isVoiceLanguageCompatible,
+} from '@/lib/speech-utils';
 
 export interface UseReaderSpeechOptions {
   text: string;
@@ -60,7 +64,7 @@ export function segmentTextIntoSentences(rawText: string): string[] {
     .filter((s) => s.length > 0 && !/^[\s\-_=*#~]+$/.test(s));
 }
 
-export { isNaturalVoice };
+export { isNaturalVoice, normalizeSpeechLang, isVoiceLanguageCompatible };
 
 /**
  * Scores a voice based on quality indicators (Neural/Natural/Enhanced)
@@ -68,24 +72,24 @@ export { isNaturalVoice };
  */
 function getVoiceQualityScore(voice: SpeechSynthesisVoice, targetLang: string): number {
   let score = 0;
-  const name = voice.name.toLowerCase();
-  const lang = voice.lang.toLowerCase();
-  const cleanTarget = (targetLang || 'en').toLowerCase().slice(0, 2);
+  const combined = `${voice.name || ''} ${voice.voiceURI || ''}`.toLowerCase();
 
   // Language match priority
-  if (lang.startsWith(cleanTarget)) {
+  if (isVoiceLanguageCompatible(voice, targetLang)) {
     score += 100;
   }
 
   // Modern Neural / Natural engine prioritization
-  if (name.includes('natural') || name.includes('online')) score += 50;
-  if (name.includes('neural')) score += 40;
-  if (name.includes('enhanced') || name.includes('premium')) score += 30;
-  if (name.includes('siri')) score += 25;
-  if (name.includes('google')) score += 20;
+  if (combined.includes('natural') || combined.includes('online')) score += 50;
+  if (combined.includes('neural') || combined.includes('wavenet')) score += 40;
+  if (combined.includes('enhanced') || combined.includes('premium') || combined.includes('network')) {
+    score += 30;
+  }
+  if (combined.includes('siri')) score += 25;
+  if (combined.includes('google') || voice.localService === false) score += 20;
 
   // Demote legacy mechanical voices
-  if (name.includes('espeak') || name.includes('desktop')) score -= 15;
+  if (combined.includes('espeak') || combined.includes('desktop')) score -= 15;
 
   return score;
 }
@@ -101,13 +105,18 @@ function computeVoicePartitions(language: string, preferredVoiceURI?: string | n
   const sorted = [...raw].sort(
     (a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language)
   );
-  const natural = sorted.filter(isNaturalVoice);
-  const standard = sorted.filter((v) => !isNaturalVoice(v));
+  const compatible = sorted.filter((v) => isVoiceLanguageCompatible(v, language));
+  const activePool = compatible.length > 0 ? compatible : sorted;
+  const natural = activePool.filter(isNaturalVoice);
+  const standard = activePool.filter((v) => !isNaturalVoice(v));
   const preferred = preferredVoiceURI
-    ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
+    ? activePool.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI) ||
+      (compatible.length === 0
+        ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
+        : null)
     : null;
-  const best = preferred || natural[0] || sorted[0] || null;
-  return { sorted, natural, standard, best };
+  const best = preferred || activePool[0] || null;
+  return { sorted: activePool, natural, standard, best };
 }
 
 /**
@@ -264,9 +273,9 @@ export function useReaderSpeech({
     const voiceToUse = selectedVoiceRef.current;
     if (voiceToUse) {
       utterance.voice = voiceToUse;
-      utterance.lang = voiceToUse.lang;
+      utterance.lang = normalizeSpeechLang(voiceToUse.lang) || normalizeSpeechLang(language) || 'en-US';
     } else {
-      utterance.lang = language || 'en-US';
+      utterance.lang = normalizeSpeechLang(language) || 'en-US';
     }
 
     utterance.onstart = () => {

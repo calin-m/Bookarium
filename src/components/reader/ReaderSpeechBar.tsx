@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { cleanVoiceName } from '@/lib/speech-utils';
+import { cleanVoiceName, normalizeSpeechLang } from '@/lib/speech-utils';
 import type { UseReaderSpeechReturn } from '@/hooks/reader/useReaderSpeech';
 import { cn } from '@/lib/utils';
 
@@ -570,7 +570,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                           <optgroup label="🌟 Natural & Neural">
                             {naturalVoices.map((voice) => (
                               <option key={voice.voiceURI} value={voice.voiceURI}>
-                                {cleanVoiceName(voice.name)} ({voice.lang}) ✨
+                                {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)}) ✨
                               </option>
                             ))}
                           </optgroup>
@@ -580,7 +580,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                           <optgroup label="🔈 Standard Voices">
                             {standardVoices.map((voice) => (
                               <option key={voice.voiceURI} value={voice.voiceURI}>
-                                {cleanVoiceName(voice.name)} ({voice.lang})
+                                {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)})
                               </option>
                             ))}
                           </optgroup>
@@ -590,7 +590,7 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                           standardVoices.length === 0 &&
                           availableVoices.map((voice) => (
                             <option key={voice.voiceURI} value={voice.voiceURI}>
-                              {cleanVoiceName(voice.name)} ({voice.lang})
+                              {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)})
                             </option>
                           ))}
                       </select>

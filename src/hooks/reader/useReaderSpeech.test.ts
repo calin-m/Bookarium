@@ -100,7 +100,7 @@ describe('useReaderSpeech', () => {
     vi.restoreAllMocks();
   });
 
-  it('detects Web Speech API support and prioritizes Natural voices', () => {
+  it('detects Web Speech API support, filters voices to match the book language, and prioritizes Natural voices', () => {
     const { result } = renderHook(() =>
       useReaderSpeech({
         text: 'First sentence. Second sentence.',
@@ -111,14 +111,41 @@ describe('useReaderSpeech', () => {
     expect(result.current.isSupported).toBe(true);
     expect(result.current.totalSentences).toBe(2);
     expect(result.current.rate).toBe(1.0);
-    // Jenny Natural should be prioritized over David Desktop and non-matching voices
+    // Jenny Natural (en-US) should be prioritized over David Desktop (en-US), and French (fr-FR) is filtered out for an English book
     expect(result.current.selectedVoice?.name).toBe('Microsoft Jenny Natural (Online)');
-    expect(result.current.naturalVoices.length).toBe(2);
+    expect(result.current.naturalVoices.length).toBe(1);
     expect(result.current.naturalVoices[0].name).toBe('Microsoft Jenny Natural (Online)');
-    expect(result.current.naturalVoices[1].name).toBe('Google Français');
     expect(result.current.standardVoices.length).toBe(1);
     expect(result.current.standardVoices[0].name).toBe('Microsoft David Desktop');
-    expect(result.current.availableVoices.length).toBe(3);
+    expect(result.current.availableVoices.length).toBe(2);
+  });
+
+  it('falls back to all device voices when no voice matches the book language and normalizes Android underscore locales', () => {
+    mockVoices = [
+      {
+        name: 'English (United Kingdom)',
+        lang: 'en_GB',
+        default: true,
+        localService: true,
+        voiceURI: 'en-gb-x-rjs-network',
+      } as SpeechSynthesisVoice,
+    ];
+
+    const { result } = renderHook(() =>
+      useReaderSpeech({
+        text: 'Gallia est omnis divisa in partes tres.',
+        language: 'la',
+      })
+    );
+
+    expect(result.current.availableVoices).toHaveLength(1);
+    expect(result.current.naturalVoices).toHaveLength(1);
+    expect(result.current.selectedVoice?.voiceURI).toBe('en-gb-x-rjs-network');
+
+    act(() => {
+      result.current.play();
+    });
+    expect(lastUtterance.lang).toBe('en-GB');
   });
 
   it('plays sentences and updates playback state', () => {

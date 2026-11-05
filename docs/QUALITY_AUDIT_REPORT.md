@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 05 Nov 2026 17:17:03 GMT  
+**Last Generated**: Thu, 05 Nov 2026 18:24:32 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2247 passed  
+**Total Verified Tests**: 2250 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2247 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2250 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.93%** (12241/12628) — *Target: $\ge$ 95%*
-- **Statements**: **95.54%** (13252/13870) — *Target: $\ge$ 95%*
-- **Functions**: **94.49%** (2816/2980) — *Target: $\ge$ 92%*
-- **Branches**: **88.12%** (12212/13858) — *Target: $\ge$ 85%*
+- **Lines**: **96.93%** (12253/12641) — *Target: $\ge$ 95%*
+- **Statements**: **95.53%** (13266/13886) — *Target: $\ge$ 95%*
+- **Functions**: **94.47%** (2819/2984) — *Target: $\ge$ 92%*
+- **Branches**: **88.09%** (12241/13896) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2247 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2250 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 284 Tests)
 
@@ -1736,7 +1736,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 528 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 530 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2347,9 +2347,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/speech-utils.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/speech-utils.test.ts</code></b> (5 tests)</summary>
 
-- ✔ `returns true for high-definition neural and natural voice names`
+- ✔ `normalizes Android underscore locales to BCP-47 hyphenated tags`
+- ✔ `matches regional dialects of the target book language while rejecting unrelated languages`
+- ✔ `returns true for high-definition neural, natural, voiceURI network/wavenet, and cloud voices`
 - ✔ `returns false for standard mechanical or missing voice names`
 - ✔ `removes vendor brand prefixes and trims whitespace`
 
@@ -2530,7 +2532,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 283 Tests)
+### 🔄 Hooks & React Query (28 Suites · 284 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2609,8 +2611,8 @@
 <details>
 <summary><b><code>src/hooks/reader/speech-utils.test.ts</code></b> (5 tests)</summary>
 
-- ✔ `returns true for high-definition neural and natural voice names`
-- ✔ `returns false for standard mechanical or missing voice names`
+- ✔ `returns true for high-definition neural, natural, and voiceURI network voices`
+- ✔ `returns false for standard mechanical or missing voice names and normalizes locales`
 - ✔ `splits paragraphs into punctuation-delimited sentences`
 - ✔ `handles quotes and dialogue gracefully`
 - ✔ `returns empty array for empty or whitespace text`
@@ -2725,9 +2727,10 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (22 tests)</summary>
 
-- ✔ `detects Web Speech API support and prioritizes Natural voices`
+- ✔ `detects Web Speech API support, filters voices to match the book language, and prioritizes Natural voices`
+- ✔ `falls back to all device voices when no voice matches the book language and normalizes Android underscore locales`
 - ✔ `plays sentences and updates playback state`
 - ✔ `pauses and resumes playback correctly`
 - ✔ `progresses to next sentence on utterance onend`

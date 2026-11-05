@@ -1445,7 +1445,7 @@ function generateMarkdown() {
     'smart-search':
       'Fuzzy multi-token search engine querying titles, authors, and subjects with punctuation normalization.',
     'speech-utils':
-      'Web Speech API voice selection heuristics identifying natural/neural synthesis voices.',
+      'Web Speech API voice selection heuristics identifying natural/neural/cloud synthesis voices, BCP-47 locale normalization, and book-language voice compatibility filtering.',
     'supabase-provider':
       'Dedicated Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries across title/subjects/bookshelves, MIME charset prefix matching, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries.',
     client:

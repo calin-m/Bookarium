@@ -37,6 +37,9 @@ describe('AccountNarrationSubPanel', () => {
 
     expect(document.getElementById('preferences-subpanel-narration')).not.toHaveClass('hidden');
     expect(screen.getByText('Read-Aloud & Audio Narration')).toBeInTheDocument();
+    expect(
+      screen.getByText(/voices automatically filter to match the book's language/i)
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '1.5x' }));
     expect(onSpeechRateChange).toHaveBeenCalledWith(1.5);
