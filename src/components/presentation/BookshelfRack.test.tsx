@@ -690,9 +690,18 @@ describe('BookshelfRack Component', () => {
 
   it('renders individual offline download button on book spine and triggers toggle', async () => {
     const { saveOfflineBook } = await import('@/lib/offline-storage');
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
-      Promise.resolve(new Response('Single book offline text', { status: 200 }))
-    );
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: unknown) => {
+      const url = typeof input === 'string' ? input : (input as { url?: string })?.url || '';
+      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+        return Promise.resolve(
+          new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+            status: 200,
+            headers: { 'Content-Type': 'image/jpeg' },
+          })
+        );
+      }
+      return Promise.resolve(new Response('Single book offline text', { status: 200 }));
+    });
 
     render(<BookshelfRack books={mockBooks.slice(0, 1)} />);
 

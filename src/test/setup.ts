@@ -1,7 +1,35 @@
 import '@testing-library/jest-dom/vitest';
+import { Blob as NodeBlob, File as NodeFile } from 'node:buffer';
 import React from 'react';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { server } from '../mocks/server';
+
+// Unify JSDOM's synthetic window.Blob / window.File with Node's native undici/buffer
+// implementations so `new Blob()`, `new Response(blob)`, `response.blob()`, and
+// `expect.any(Blob)` share a single canonical constructor across Node 22 CI & Node 24.
+const JsdomBlob = globalThis.Blob;
+Object.defineProperty(NodeBlob, Symbol.hasInstance, {
+  configurable: true,
+  value: (instance: unknown): boolean => {
+    if (!instance || typeof instance !== 'object') return false;
+    return (
+      Function.prototype[Symbol.hasInstance].call(NodeBlob, instance) ||
+      (typeof JsdomBlob === 'function' &&
+        Function.prototype[Symbol.hasInstance].call(JsdomBlob, instance)) ||
+      Object.prototype.toString.call(instance) === '[object Blob]'
+    );
+  },
+});
+globalThis.Blob = NodeBlob as unknown as typeof Blob;
+if (typeof NodeFile !== 'undefined') {
+  globalThis.File = NodeFile as unknown as typeof File;
+}
+if (typeof window !== 'undefined') {
+  window.Blob = NodeBlob as unknown as typeof Blob;
+  if (typeof NodeFile !== 'undefined') {
+    window.File = NodeFile as unknown as typeof File;
+  }
+}
 
 // Track top-level next/dynamic loader promises so they resolve before tests execute
 const pendingDynamicImports: Promise<unknown>[] = [];
