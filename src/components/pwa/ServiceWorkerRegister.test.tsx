@@ -32,8 +32,10 @@ describe('ServiceWorkerRegister', () => {
   it('attempts registration immediately in production when document.readyState is complete and posts CACHE_URLS', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const postMessageMock = vi.fn();
+    const updateMock = vi.fn().mockResolvedValue(undefined);
     const registerMock = vi.fn().mockResolvedValue({
       active: { postMessage: postMessageMock },
+      update: updateMock,
     } as unknown as ServiceWorkerRegistration);
 
     Object.defineProperty(global, 'navigator', {
@@ -60,6 +62,7 @@ describe('ServiceWorkerRegister', () => {
     expect(registerMock).toHaveBeenCalledWith('/sw.js', { scope: '/' });
 
     await waitFor(() => {
+      expect(updateMock).toHaveBeenCalled();
       expect(postMessageMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'CACHE_URLS',

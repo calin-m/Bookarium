@@ -738,11 +738,12 @@ describe('offline-storage (IndexedDB engine)', () => {
       // 6. patchOfflineBookCover handles non-existent record gracefully
       await patchOfflineBookCover(88888, patchedBlob);
 
-      // 7. fetchAndPatchOfflineCover fetches and patches existing book
+      // 7. fetchAndPatchOfflineCover fetches and patches existing book via internal proxy
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(new Blob(['network-patched-cover']), { status: 200 })
       );
       await fetchAndPatchOfflineCover(402);
+      expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=402&type=cover');
       expect(store.get(402)?.coverBlob).toBeDefined();
       fetchSpy.mockRestore();
     });

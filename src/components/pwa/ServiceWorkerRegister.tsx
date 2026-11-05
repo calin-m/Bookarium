@@ -48,6 +48,11 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .then((registration) => {
+          // Immediately check for updated Service Worker on registration
+          if (registration && typeof registration.update === 'function') {
+            void registration.update().catch(() => {});
+          }
+
           // Warm dynamic chunks so Reader, Account, and Modals are available offline
           void Promise.allSettled([
             import('@/app/read/[id]/page'),

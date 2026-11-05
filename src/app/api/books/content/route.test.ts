@@ -573,4 +573,110 @@ describe('GET /api/books/content', () => {
       fetchSpy.mockRestore();
     });
   });
+
+  describe('Binary Cover Image Streaming (type=cover)', () => {
+    const fakeJpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+
+    it('streams cover image successfully from mirror with Content-Type: image/jpeg and CDN cache headers', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(fakeJpegBytes, {
+          status: 200,
+          headers: { 'Content-Type': 'image/jpeg', 'Content-Length': String(fakeJpegBytes.byteLength) },
+        })
+      );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('image/jpeg');
+      expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
+      const buffer = await res.arrayBuffer();
+      expect(new Uint8Array(buffer)).toEqual(fakeJpegBytes);
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+        expect.objectContaining({ redirect: 'manual' })
+      );
+
+      fetchSpy.mockRestore();
+    });
+
+    it('falls back through mirrors when primary aleph mirror returns 404', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(
+          new Response(fakeJpegBytes, {
+            status: 200,
+            headers: { 'Content-Type': 'image/jpeg' },
+          })
+        );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
+      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('safely follows trusted redirect hops when fetching cover image', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(null, {
+            status: 302,
+            headers: new Headers({
+              Location: 'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg',
+            }),
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(fakeJpegBytes, {
+            status: 200,
+            headers: { 'Content-Type': 'image/jpeg' },
+          })
+        );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('returns 502 when all mirrors fail or return error', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network failure'));
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=99999&type=cover');
+      const res = await GET(req);
+
+      expect(res.status).toBe(502);
+      const json = await res.json();
+      expect(json.error).toMatch(/Failed to fetch cover image/i);
+
+      fetchSpy.mockRestore();
+    });
+
+    it('skips oversized cover responses exceeding 2MB threshold', async () => {
+      const oversizedBytes = new Uint8Array(2 * 1024 * 1024 + 10);
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
+        new Response(oversizedBytes, {
+          status: 200,
+          headers: { 'Content-Length': String(oversizedBytes.byteLength) },
+        })
+      );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
+      const res = await GET(req);
+
+      expect(res.status).toBe(502);
+      fetchSpy.mockRestore();
+    });
+  });
 });

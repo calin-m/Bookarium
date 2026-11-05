@@ -55,7 +55,7 @@ describe('useOfflineBooks hook', () => {
 
     const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: any) => {
       const url = typeof input === 'string' ? input : input?.url || '';
-      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+      if (url.includes('type=cover') || url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
         return Promise.resolve(
           new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
             status: 200,
@@ -96,7 +96,7 @@ describe('useOfflineBooks hook', () => {
 
     const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: any) => {
       const url = typeof input === 'string' ? input : input?.url || '';
-      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+      if (url.includes('type=cover') || url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
         return Promise.resolve(new Response('Not found', { status: 404 }));
       }
       return Promise.resolve(new Response('Full text content of the book...', { status: 200 }));
@@ -169,7 +169,7 @@ describe('useOfflineBooks hook', () => {
 
     const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: any) => {
       const url = typeof input === 'string' ? input : input?.url || '';
-      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+      if (url.includes('type=cover') || url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
         return Promise.resolve(
           new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
             status: 200,

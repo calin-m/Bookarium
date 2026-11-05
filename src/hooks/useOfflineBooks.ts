@@ -239,51 +239,28 @@ export function useOfflineBooks() {
     };
   }, [updateOfflineIdsState, updateOfflineBooksState, updateStorageQuotaState]);
 
-  // Proactive background idle pre-warming for shelved/favorited/bookmarked covers & self-healing cover backfill
+  // Proactive background idle self-healing cover backfill for downloaded offline volumes
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator.onLine) return;
 
     const isIdleSupported = typeof window.requestIdleCallback === 'function';
     const idleId: number = isIdleSupported
       ? window.requestIdleCallback(async () => {
-          await warmLibraryCovers();
+          await backfillMissingOfflineCovers();
         })
       : (window.setTimeout(async () => {
-          await warmLibraryCovers();
+          await backfillMissingOfflineCovers();
         }, 1500) as unknown as number);
 
-    async function warmLibraryCovers(): Promise<void> {
+    async function backfillMissingOfflineCovers(): Promise<void> {
       try {
-        // 1. Warm covers for saved, favorite, and recent books in Service Worker
-        const shelfState = useBookshelfStore.getState();
-        const booksToWarm = [
-          ...(shelfState.savedBooks || []),
-          ...(shelfState.favoriteBooks || []),
-          ...(shelfState.recentBooks || []),
-        ];
-        const coverUrls = Array.from(
-          new Set(
-            booksToWarm
-              .map((b) => b.formats?.['image/jpeg'] || `https://www.gutenberg.org/cache/epub/${b.id}/pg${b.id}.cover.medium.jpg`)
-              .filter(Boolean)
-          )
-        ).slice(0, 50);
-
-        if (navigator.serviceWorker?.controller && coverUrls.length > 0) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'CACHE_COVERS',
-            urls: coverUrls,
-          });
-        }
-
-        // 2. Self-healing backfill for already-downloaded books missing coverBlob
         const offlineBooks = await getAllOfflineBooks();
         const missingCoverBooks = offlineBooks.filter((b) => !b.coverBlob);
         for (const book of missingCoverBooks) {
           await fetchAndPatchOfflineCover(book.bookId);
         }
       } catch {
-        // Non-blocking idle background warm
+        // Non-blocking idle background backfill
       }
     }
 
@@ -308,13 +285,8 @@ export function useOfflineBooks() {
         const normalizedAuthors = normalizeOfflineAuthors(book);
 
         let coverBlob: Blob | undefined;
-        const coverUrl =
-          ('formats' in book && book.formats?.['image/jpeg']) ||
-          ('coverUrl' in book && book.coverUrl) ||
-          `https://www.gutenberg.org/cache/epub/${book.id}/pg${book.id}.cover.medium.jpg`;
-
         try {
-          const imgRes = await fetch(coverUrl);
+          const imgRes = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${book.id}&type=cover`);
           if (imgRes.ok) {
             coverBlob = await imgRes.blob();
           }

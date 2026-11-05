@@ -15,6 +15,7 @@ import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 
 const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
+const MAX_COVER_BYTES = 2 * 1024 * 1024; // 2 MB threshold for Gutenberg cover images
 const inFlightMirrorFetches = new Map<
   number,
   Promise<{ textContent: string; fetchSuccess: boolean }>
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const urlParam = searchParams.get('url') || '';
   const idParam = searchParams.get('id') || '';
+  const typeParam = searchParams.get('type') || '';
 
   if (!urlParam && !idParam) {
     return NextResponse.json(
@@ -109,6 +111,99 @@ export async function GET(request: NextRequest) {
         }
       );
     }
+  }
+
+  // ==========================================================================
+  // Binary Cover Image Streaming (Project Gutenberg Mirrors)
+  // ==========================================================================
+  if (typeParam === 'cover') {
+    const safeId = encodeURIComponent(String(Math.trunc(bookId)));
+    const targetCoverUrls: string[] = [
+      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://aleph.gutenberg.org').toString(),
+      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://gutenberg.pglaf.org').toString(),
+      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://gutenberg.readingroo.ms').toString(),
+      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://www.gutenberg.org').toString(),
+    ];
+
+    for (const targetUrl of targetCoverUrls) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      try {
+        let currentUrl = targetUrl;
+        let response = await fetch(currentUrl, {
+          signal: controller.signal,
+          redirect: 'manual',
+          headers: {
+            'User-Agent': SITE_CONFIG.USER_AGENT,
+            Accept: 'image/jpeg, image/*, */*',
+            Connection: 'keep-alive',
+          },
+        });
+
+        // Follow up to 3 redirect hops only if each target location is verified safe (anti-SSRF)
+        let blockedRedirect = false;
+        for (
+          let hop = 0;
+          hop < 3 &&
+          (response.status === 301 ||
+            response.status === 302 ||
+            response.status === 303 ||
+            response.status === 307 ||
+            response.status === 308);
+          hop++
+        ) {
+          const redirectLocation = response.headers?.get('location');
+          if (redirectLocation && isSafeUpstreamUrl(redirectLocation, currentUrl)) {
+            currentUrl = new URL(redirectLocation, currentUrl).toString();
+            response = await fetch(currentUrl, {
+              signal: controller.signal,
+              redirect: 'manual',
+              headers: {
+                'User-Agent': SITE_CONFIG.USER_AGENT,
+                Accept: 'image/jpeg, image/*, */*',
+                Connection: 'keep-alive',
+              },
+            });
+          } else {
+            blockedRedirect = true;
+            break;
+          }
+        }
+
+        clearTimeout(timeoutId);
+
+        if (blockedRedirect || !response.ok) {
+          continue;
+        }
+
+        const contentLength = response.headers?.get('content-length');
+        if (contentLength && parseInt(contentLength, 10) > MAX_COVER_BYTES) {
+          continue;
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer.byteLength > MAX_COVER_BYTES || arrayBuffer.byteLength === 0) {
+          continue;
+        }
+
+        return new NextResponse(arrayBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'image/jpeg',
+            'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=2592000',
+            'Vary': 'x-vercel-ip-country, Accept-Encoding',
+          },
+        });
+      } catch {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to fetch cover image from Project Gutenberg mirrors.' },
+      { status: 502 }
+    );
   }
 
   // ==========================================================================

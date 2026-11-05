@@ -5,25 +5,6 @@
  */
 
 const CACHE_NAME = 'bookarium-app-shell-v4';
-const COVERS_CACHE_NAME = 'bookarium-covers-v1';
-const MAX_CACHED_COVERS = 300;
-
-/**
- * Bounds the Service Worker cover cache to an LRU quota of maxItems.
- */
-async function pruneCoverCache(cache, maxItems) {
-  try {
-    const keys = await cache.keys();
-    if (keys.length > maxItems) {
-      const overflow = keys.length - maxItems;
-      for (let i = 0; i < overflow; i++) {
-        await cache.delete(keys[i]);
-      }
-    }
-  } catch {
-    // Non-blocking pruning fallback
-  }
-}
 
 const STATIC_PRECACHE = [
   '/',
@@ -122,7 +103,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== CACHE_NAME && key !== COVERS_CACHE_NAME)
+            .filter((key) => key !== CACHE_NAME)
             .map((key) => caches.delete(key))
         )
       )
@@ -134,35 +115,12 @@ self.addEventListener('message', (event) => {
   const data = event.data;
   if (!data) return;
 
-  // Background cover pre-warming for saved/favorited/bookmarked volumes
-  if (data.type === 'CACHE_COVERS' && Array.isArray(data.urls)) {
-    event.waitUntil(
-      caches
-        .open(COVERS_CACHE_NAME)
-        .then(async (cache) => {
-          for (const rawUrl of data.urls) {
-            try {
-              const existing = await cache.match(rawUrl);
-              if (!existing) {
-                const response = await fetch(rawUrl);
-                if (response && (response.status === 200 || response.type === 'opaque')) {
-                  await cache.put(rawUrl, response);
-                }
-              }
-            } catch {
-              // Ignore single cover warm failure
-            }
-          }
-          await pruneCoverCache(cache, MAX_CACHED_COVERS);
-        })
-        .catch(() => {})
-    );
-    return;
-  }
-
   if (data.type !== 'CACHE_URLS' || !Array.isArray(data.urls)) {
     return;
   }
+
+  // Purge any legacy cover cache if present
+  void caches.delete('bookarium-covers-v1').catch(() => {});
 
   event.waitUntil(
     caches
@@ -199,34 +157,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // 0. Project Gutenberg Cover Images: Cache-first with background warm & LRU pruning
-  const isGutenbergCover =
-    (url.hostname === 'www.gutenberg.org' || url.hostname === 'gutenberg.org') &&
-    url.pathname.includes('/cache/epub/') &&
-    url.pathname.includes('.cover.');
-
-  if (isGutenbergCover) {
-    event.respondWith(
-      caches.open(COVERS_CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(request);
-        if (cached) return cached;
-
-        try {
-          const networkResponse = await fetch(request);
-          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-            await cache.put(request, networkResponse.clone());
-            void pruneCoverCache(cache, MAX_CACHED_COVERS);
-          }
-          return networkResponse;
-        } catch {
-          return cached || Response.error();
-        }
-      })
-    );
-    return;
-  }
-
-  // Ignore all other cross-origin requests (e.g., Supabase REST/Auth APIs, external CDNs)
+  // Ignore all cross-origin requests (e.g., Project Gutenberg covers, Supabase REST/Auth APIs, external CDNs)
+  // Cross-origin <img> tags load directly via native browser pipeline and HTTP disk cache under CSP img-src
   if (url.origin !== self.location.origin) {
     return;
   }

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 05 Nov 2026 10:34:03 GMT  
+**Last Generated**: Thu, 05 Nov 2026 11:04:26 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2233 passed  
+**Total Verified Tests**: 2238 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2233 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2238 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.76%** (12190/12598) — *Target: $\ge$ 95%*
-- **Statements**: **95.35%** (13196/13839) — *Target: $\ge$ 95%*
-- **Functions**: **94.56%** (2816/2978) — *Target: $\ge$ 92%*
-- **Branches**: **88.02%** (12184/13841) — *Target: $\ge$ 85%*
+- **Lines**: **96.77%** (12218/12625) — *Target: $\ge$ 95%*
+- **Statements**: **95.39%** (13228/13867) — *Target: $\ge$ 95%*
+- **Functions**: **94.46%** (2814/2979) — *Target: $\ge$ 92%*
+- **Branches**: **87.99%** (12191/13854) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2233 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2238 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 279 Tests)
+### 🚀 App Routes & Pages (27 Suites · 284 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -112,7 +112,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (31 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -140,6 +140,11 @@
 - ✔ `resolves relative Location redirect paths against the active mirror origin`
 - ✔ `coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch`
 - ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
+- ✔ `streams cover image successfully from mirror with Content-Type: image/jpeg and CDN cache headers`
+- ✔ `falls back through mirrors when primary aleph mirror returns 404`
+- ✔ `safely follows trusted redirect hops when fetching cover image`
+- ✔ `returns 502 when all mirrors fail or return error`
+- ✔ `skips oversized cover responses exceeding 2MB threshold`
 
 </details>
 

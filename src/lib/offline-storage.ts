@@ -7,6 +7,7 @@ import type { Author, GutendexBook } from '@/types/book.types';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 const DB_NAME = 'BookariumOfflineDB';
 const DB_VERSION = 1;
@@ -255,7 +256,7 @@ export async function patchOfflineBookCover(bookId: number, coverBlob: Blob): Pr
 export async function fetchAndPatchOfflineCover(bookId: number): Promise<void> {
   if (typeof window === 'undefined' || !navigator.onLine) return;
   try {
-    const coverUrl = `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
+    const coverUrl = `${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${bookId}&type=cover`;
     const res = await fetch(coverUrl);
     if (res.ok) {
       const blob = await res.blob();
