@@ -669,7 +669,7 @@ CREATE POLICY "Users can delete their own accolades"
   USING (auth.uid() = user_id);
 
 -- ============================================================================
--- 9. Books Table (Self-Hosted Public Domain Catalog)
+-- 9. Books Table (Dedicated Public Domain Catalog)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.books (
   id INTEGER PRIMARY KEY,

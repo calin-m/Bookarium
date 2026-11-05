@@ -53,9 +53,49 @@ describe('useOfflineBooks hook', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([mockBooks[0].id]);
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response('Full text content of the book...', { status: 200 })
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: any) => {
+      const url = typeof input === 'string' ? input : input?.url || '';
+      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+        return Promise.resolve(new Response(new Blob(['fake-cover']), { status: 200 }));
+      }
+      return Promise.resolve(new Response('Full text content of the book...', { status: 200 }));
+    });
+
+    const { result } = renderHook(() => useOfflineBooks());
+
+    let success = false;
+    await act(async () => {
+      success = await result.current.downloadBook(mockBooks[0]);
+    });
+
+    expect(success).toBe(true);
+    expect(saveOfflineBook).toHaveBeenCalledWith(
+      mockBooks[0].id,
+      mockBooks[0].title,
+      'Full text content of the book...',
+      mockBooks[0].authors,
+      expect.any(Blob)
     );
+
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(true);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('downloads a single book successfully even when cover fetch fails', async () => {
+    const { saveOfflineBook, getOfflineBookIds } = await import('@/lib/offline-storage');
+    vi.mocked(getOfflineBookIds)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([mockBooks[0].id]);
+
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: any) => {
+      const url = typeof input === 'string' ? input : input?.url || '';
+      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+        return Promise.resolve(new Response('Not found', { status: 404 }));
+      }
+      return Promise.resolve(new Response('Full text content of the book...', { status: 200 }));
+    });
 
     const { result } = renderHook(() => useOfflineBooks());
 
@@ -71,9 +111,6 @@ describe('useOfflineBooks hook', () => {
       'Full text content of the book...',
       mockBooks[0].authors
     );
-
-    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
-    expect(useBookshelfStore.getState().isBookSaved(mockBooks[0].id)).toBe(true);
 
     fetchSpy.mockRestore();
   });
@@ -125,9 +162,13 @@ describe('useOfflineBooks hook', () => {
     const { saveOfflineBook, getOfflineBookIds } = await import('@/lib/offline-storage');
     vi.mocked(getOfflineBookIds).mockResolvedValue([]);
 
-    const fetchSpy = vi
-      .spyOn(global, 'fetch')
-      .mockResolvedValue(new Response('Alice offline text...', { status: 200 }));
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((input: any) => {
+      const url = typeof input === 'string' ? input : input?.url || '';
+      if (url.includes('.cover.') || url.includes('.jpg') || url.includes('.jpeg')) {
+        return Promise.resolve(new Response(new Blob(['fake-cover']), { status: 200 }));
+      }
+      return Promise.resolve(new Response('Alice offline text...', { status: 200 }));
+    });
 
     const { result } = renderHook(() => useOfflineBooks());
 
@@ -144,7 +185,8 @@ describe('useOfflineBooks hook', () => {
       11,
       "Alice's Adventures in Wonderland",
       'Alice offline text...',
-      [{ name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 }]
+      [{ name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 }],
+      expect.any(Blob)
     );
 
     fetchSpy.mockRestore();
@@ -207,7 +249,8 @@ describe('useOfflineBooks hook', () => {
       555,
       'Favorite Title',
       'Book text...',
-      [{ name: 'Favorite Author', birth_year: 1850, death_year: 1920 }]
+      [{ name: 'Favorite Author', birth_year: 1850, death_year: 1920 }],
+      expect.any(Blob)
     );
 
     // 2. Recover from recentBooks
@@ -223,7 +266,8 @@ describe('useOfflineBooks hook', () => {
       777,
       'Recent Title',
       'Book text...',
-      [{ name: 'Recent Author', birth_year: 1860, death_year: 1930 }]
+      [{ name: 'Recent Author', birth_year: 1860, death_year: 1930 }],
+      expect.any(Blob)
     );
 
     // 3. Fallback to FEATURED_HERO_BOOKS when no shelf match
@@ -239,7 +283,8 @@ describe('useOfflineBooks hook', () => {
       11,
       "Alice's Adventures in Wonderland",
       'Book text...',
-      [{ name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 }]
+      [{ name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 }],
+      expect.any(Blob)
     );
 
     // 4. Fallback to Anonymous when not in FEATURED_HERO_BOOKS
@@ -255,7 +300,8 @@ describe('useOfflineBooks hook', () => {
       999999,
       'Non Hero Book',
       'Book text...',
-      [{ name: 'Anonymous', birth_year: null, death_year: null }]
+      [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      expect.any(Blob)
     );
 
     fetchSpy.mockRestore();
@@ -491,7 +537,8 @@ describe('useOfflineBooks hook', () => {
       601,
       'Placeholder Shelf Book',
       'Book text...',
-      [{ name: 'Anonymous', birth_year: null, death_year: null }]
+      [{ name: 'Anonymous', birth_year: null, death_year: null }],
+      expect.any(Blob)
     );
 
     // 2. CustomEvent without detail.bookId

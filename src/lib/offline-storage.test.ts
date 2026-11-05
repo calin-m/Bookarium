@@ -8,6 +8,9 @@ import {
   getAllOfflineBooks,
   getAllOfflineBookMetas,
   clearAllOfflineBooks,
+  getOfflineBookCover,
+  patchOfflineBookCover,
+  fetchAndPatchOfflineCover,
   type OfflineBookRecord,
 } from './offline-storage';
 
@@ -697,6 +700,51 @@ describe('offline-storage (IndexedDB engine)', () => {
       const freed = await evictOldestBooksToFreeSpace(500);
       expect(freed).toBe(0);
       (globalThis as any).indexedDB = originalDB;
+    });
+
+    it('persists and retrieves coverBlobs with patch and self-healing support', async () => {
+      const mockBlob = new Blob(['fake-image-bytes'], { type: 'image/jpeg' });
+
+      // 1. Save with coverBlob
+      await saveOfflineBook(401, 'Cover Book', 'Some text', undefined, mockBlob);
+      const saved = store.get(401);
+      expect(saved?.coverBlob).toBe(mockBlob);
+
+      // 2. Retrieve cover blob via getOfflineBookCover
+      const retrieved = await getOfflineBookCover(401);
+      expect(retrieved).toBe(mockBlob);
+
+      // 3. getOfflineBookCover returns null for non-existent book or missing cover
+      expect(await getOfflineBookCover(99999)).toBeNull();
+      store.set(402, {
+        bookId: 402,
+        title: 'No Cover Book',
+        text: 'Text',
+        downloadedAt: new Date().toISOString(),
+        byteSize: 10,
+      });
+      expect(await getOfflineBookCover(402)).toBeNull();
+
+      // 4. Patch cover on existing book
+      const patchedBlob = new Blob(['patched-bytes'], { type: 'image/jpeg' });
+      await patchOfflineBookCover(402, patchedBlob);
+      expect(store.get(402)?.coverBlob).toBe(patchedBlob);
+
+      // 5. getAllOfflineBooks includes coverBlob in metadata list
+      const allBooks = await getAllOfflineBooks();
+      const b401 = allBooks.find((b) => b.bookId === 401);
+      expect(b401?.coverBlob).toBe(mockBlob);
+
+      // 6. patchOfflineBookCover handles non-existent record gracefully
+      await patchOfflineBookCover(88888, patchedBlob);
+
+      // 7. fetchAndPatchOfflineCover fetches and patches existing book
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(new Blob(['network-patched-cover']), { status: 200 })
+      );
+      await fetchAndPatchOfflineCover(402);
+      expect(store.get(402)?.coverBlob).toBeDefined();
+      fetchSpy.mockRestore();
     });
   });
 });

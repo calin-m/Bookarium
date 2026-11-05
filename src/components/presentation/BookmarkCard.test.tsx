@@ -191,6 +191,26 @@ describe('BookmarkCard', () => {
     expect(within(cover).getByText('Pride and Prejudice')).toBeInTheDocument();
   });
 
+  it('falls back to offline IndexedDB cover blob when image errors while offline', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const getCoverSpy = vi.spyOn(offlineStorage, 'getOfflineBookCover').mockResolvedValue(new Blob(['fake-img'], { type: 'image/jpeg' }));
+    const createUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-cover-url');
+
+    render(<BookmarkCard volume={mockVolume} isOffline={true} />);
+    const img = screen.getByAltText('Cover of Pride and Prejudice');
+
+    await act(async () => {
+      fireEvent.error(img);
+    });
+
+    expect(getCoverSpy).toHaveBeenCalledWith(1342);
+    expect(createUrlSpy).toHaveBeenCalled();
+    expect(img).toHaveAttribute('src', 'blob:test-cover-url');
+
+    getCoverSpy.mockRestore();
+    createUrlSpy.mockRestore();
+  });
+
   it('applies solid border and canonical booksaw shadow styling', () => {
     render(<BookmarkCard volume={mockVolume} />);
     const article = screen.getByRole('article', { name: /Reading ledger entry for Pride and Prejudice/i });

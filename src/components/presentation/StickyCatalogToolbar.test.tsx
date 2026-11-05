@@ -193,9 +193,10 @@ describe('StickyCatalogToolbar component', () => {
       expect(screen.getByTestId('api-latency-loading')).toBeInTheDocument();
       expect(screen.getByTestId('api-status-badge')).not.toHaveTextContent('140ms');
       expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
-        'title',
-        'Measuring catalog response time...'
+        'aria-label',
+        'Catalog status: Measuring response time'
       );
+      expect(screen.getByTestId('api-status-badge')).not.toHaveAttribute('title');
 
       rerender(
         <StickyCatalogToolbar
@@ -214,9 +215,10 @@ describe('StickyCatalogToolbar component', () => {
       expect(screen.queryByTestId('api-latency-loading')).not.toBeInTheDocument();
       expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('42ms');
       expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
-        'title',
-        'Bookarium Catalog: Online (42ms response time)'
+        'aria-label',
+        'Bookarium Catalog status: Online, response time 42ms'
       );
+      expect(screen.getByTestId('api-status-badge')).not.toHaveAttribute('title');
 
       rerender(
         <StickyCatalogToolbar
@@ -234,9 +236,10 @@ describe('StickyCatalogToolbar component', () => {
 
       expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('310ms');
       expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
-        'title',
-        'Project Gutenberg Mirror: Online (310ms response time)'
+        'aria-label',
+        'Project Gutenberg Mirror status: Online, response time 310ms'
       );
+      expect(screen.getByTestId('api-status-badge')).not.toHaveAttribute('title');
     });
 
     it('formats second latencies at or above 1000ms with up to 3 decimals without trailing zeros', () => {
@@ -320,7 +323,7 @@ describe('StickyCatalogToolbar component', () => {
     expect(toolbar).toHaveClass('pointer-events-none');
   });
 
-  it('renders archive fetching badge when isFetching is true', () => {
+  it('renders archive fetching badge when isFetching is true and unifies telemetry into zero-CLS radar pill', () => {
     const { rerender } = render(
       <StickyCatalogToolbar
         page={8}
@@ -332,16 +335,21 @@ describe('StickyCatalogToolbar component', () => {
         activeFilterChips={[]}
         onClearAllFilters={vi.fn()}
         isFetching={true}
+        latencyMs={85}
+        catalogSource="supabase"
       />
     );
 
     const badge = screen.getByTestId('archive-fetching-badge');
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveTextContent('Fetching Pg 8...');
+    expect(screen.getByTestId('api-latency-loading')).toHaveTextContent('•••');
     expect(screen.getByRole('status')).toHaveAttribute(
       'aria-label',
       'Fetching page 8 from archive. Hover or click for details.'
     );
+    expect(screen.getByTestId('catalog-telemetry-popover')).toBeInTheDocument();
+    expect(screen.getByText('Deep Archive Query')).toBeInTheDocument();
+    expect(screen.getByText('Page 8')).toBeInTheDocument();
 
     rerender(
       <StickyCatalogToolbar
@@ -354,10 +362,174 @@ describe('StickyCatalogToolbar component', () => {
         activeFilterChips={[]}
         onClearAllFilters={vi.fn()}
         isFetching={false}
+        latencyMs={85}
+        catalogSource="supabase"
       />
     );
 
     expect(screen.queryByTestId('archive-fetching-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('api-status-dot')).toBeInTheDocument();
+    expect(screen.getByTestId('api-status-badge')).toHaveTextContent('85ms');
+  });
+
+  it('renders dual-service diagnostics in popover card across Supabase, Gutendex fallback, and offline states', () => {
+    // 1. Supabase primary online
+    const { rerender } = render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        latencyMs={42}
+        catalogSource="supabase"
+      />
+    );
+
+    expect(screen.getByText(/Bookarium DB \(Supabase\)/i)).toBeInTheDocument();
+    expect(screen.getByText('Online · 42ms')).toBeInTheDocument();
+    expect(screen.getByText('Standby')).toBeInTheDocument();
+    expect(screen.getByText(/Connected to dedicated Supabase PostgreSQL database/i)).toBeInTheDocument();
+
+    // 2. Gutendex upstream fallback active
+    rerender(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        latencyMs={240}
+        catalogSource="upstream"
+      />
+    );
+
+    expect(screen.getByText('Active · 240ms')).toBeInTheDocument();
+    expect(screen.getByText('Standby / Unseeded')).toBeInTheDocument();
+    expect(screen.getByText(/Serving public domain volumes via the upstream Gutendex REST mirror/i)).toBeInTheDocument();
+
+    // 3. Offline / Error state
+    rerender(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        isError={true}
+      />
+    );
+
+    expect(screen.getByText('Catalog Disconnected')).toBeInTheDocument();
+    expect(screen.getAllByText('Offline').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Network or service unavailable/i)).toBeInTheDocument();
+  });
+
+  it('dynamically flips popover orientation between downwards and upwards based on viewport clearance', () => {
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 800 });
+
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        latencyMs={42}
+        catalogSource="supabase"
+      />
+    );
+
+    const badge = screen.getByTestId('api-status-badge');
+    const popover = screen.getByTestId('catalog-telemetry-popover');
+
+    // 1. Scrolled to top: badge docked near bottom fold (top: 720, bottom: 760 -> spaceBelow = 40 < 232, spaceAbove = 720)
+    vi.spyOn(badge, 'getBoundingClientRect').mockReturnValue({
+      top: 720,
+      bottom: 760,
+      left: 600,
+      right: 680,
+      width: 80,
+      height: 40,
+      x: 600,
+      y: 720,
+      toJSON: () => {},
+    });
+
+    fireEvent.pointerEnter(badge);
+    expect(popover).toHaveClass('bottom-full', 'mb-2', 'origin-bottom-right');
+    expect(popover).not.toHaveClass('top-full', 'mt-2', 'origin-top-right');
+
+    // 2. Scrolled down: toolbar stuck at top of viewport (top: 10, bottom: 50 -> spaceBelow = 750 >= 232, spaceAbove = 10)
+    vi.spyOn(badge, 'getBoundingClientRect').mockReturnValue({
+      top: 10,
+      bottom: 50,
+      left: 600,
+      right: 680,
+      width: 80,
+      height: 40,
+      x: 600,
+      y: 10,
+      toJSON: () => {},
+    });
+
+    fireEvent.pointerEnter(badge);
+    expect(popover).toHaveClass('top-full', 'mt-2', 'origin-top-right');
+    expect(popover).not.toHaveClass('bottom-full', 'mb-2', 'origin-bottom-right');
+
+    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: originalInnerHeight });
+  });
+
+  it('supports touch tap toggling, outside-tap dismissal, and Escape key dismissal for telemetry popover', () => {
+    render(
+      <StickyCatalogToolbar
+        page={1}
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        onOpenFilters={vi.fn()}
+        activeFilterCount={0}
+        activeFilterChips={[]}
+        onClearAllFilters={vi.fn()}
+        latencyMs={42}
+        catalogSource="supabase"
+      />
+    );
+
+    const badge = screen.getByTestId('api-status-badge');
+    const popover = screen.getByTestId('catalog-telemetry-popover');
+
+    // Initial state: not tapped open
+    expect(popover).toHaveClass('pointer-events-none');
+    expect(badge).toHaveAttribute('data-expanded', 'false');
+
+    // Tap to open
+    fireEvent.click(badge);
+    expect(popover).toHaveClass('opacity-100', 'pointer-events-auto');
+    expect(badge).toHaveAttribute('data-expanded', 'true');
+
+    // Tap outside to close
+    fireEvent.pointerDown(document.body);
+    expect(popover).toHaveClass('pointer-events-none');
+    expect(badge).toHaveAttribute('data-expanded', 'false');
+
+    // Keyboard Enter to open
+    fireEvent.keyDown(badge, { key: 'Enter' });
+    expect(popover).toHaveClass('opacity-100', 'pointer-events-auto');
+    expect(badge).toHaveAttribute('data-expanded', 'true');
+
+    // Escape to close
+    fireEvent.keyDown(badge, { key: 'Escape' });
+    expect(popover).toHaveClass('pointer-events-none');
+    expect(badge).toHaveAttribute('data-expanded', 'false');
   });
 
   it('renders direct page jump input without redundant Pg label', () => {

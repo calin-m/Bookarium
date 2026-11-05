@@ -59,7 +59,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
     return cached;
   }
 
-  // Tier 2: Self-hosted Supabase PostgreSQL catalog (sub-15ms)
+  // Tier 2: Dedicated Supabase PostgreSQL catalog (sub-15ms)
   if (isSupabaseConfigured()) {
     try {
       const supabase = createClient();

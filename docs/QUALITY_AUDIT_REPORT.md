@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 05 Nov 2026 08:37:54 GMT  
+**Last Generated**: Thu, 05 Nov 2026 10:04:56 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2226 passed  
+**Total Verified Tests**: 2233 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2226 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2233 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.8%** (12078/12477) — *Target: $\ge$ 95%*
-- **Statements**: **95.42%** (13083/13710) — *Target: $\ge$ 95%*
-- **Functions**: **94.57%** (2790/2950) — *Target: $\ge$ 92%*
-- **Branches**: **88.02%** (12044/13683) — *Target: $\ge$ 85%*
+- **Lines**: **96.76%** (12190/12598) — *Target: $\ge$ 95%*
+- **Statements**: **95.35%** (13196/13839) — *Target: $\ge$ 95%*
+- **Functions**: **94.56%** (2816/2978) — *Target: $\ge$ 92%*
+- **Branches**: **88.02%** (12184/13841) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2226 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2233 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 279 Tests)
 
@@ -478,7 +478,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 476 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 481 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -510,7 +510,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (28 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (29 tests)</summary>
 
 - ✔ `should render book title, author, and formats`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -525,6 +525,7 @@
 - ✔ `applies responsive active styling (desktop hide, mobile highlight) when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
 - ✔ `renders fallback cover when image error occurs`
+- ✔ `falls back to offline IndexedDB cover blob when image error occurs while offline`
 - ✔ `triggers preview on Enter or Space key press on cover`
 - ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
 - ✔ `opens confirmation modal when removing from favorites and removes only when confirmed`
@@ -561,7 +562,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -572,6 +573,7 @@
 - ✔ `handles status changes from harmonized select dropdown`
 - ✔ `triggers onClear when delete action is clicked`
 - ✔ `renders fallback state when cover image triggers onError`
+- ✔ `falls back to offline IndexedDB cover blob when image errors while offline`
 - ✔ `applies solid border and canonical booksaw shadow styling`
 - ✔ `rounds floating-point progress to the nearest integer and applies rounded-full pill styling`
 - ✔ `displays relative time formatted via canonical formatRelativeTime`
@@ -1105,7 +1107,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (29 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and unified API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -1119,7 +1121,10 @@
 - ✔ `renders formatted second latency in StickyCatalogToolbar when latencyMs >= 1000`
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
 - ✔ `applies -translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))] and pointer-events-none when isVisible is false`
-- ✔ `renders archive fetching badge when isFetching is true`
+- ✔ `renders archive fetching badge when isFetching is true and unifies telemetry into zero-CLS radar pill`
+- ✔ `renders dual-service diagnostics in popover card across Supabase, Gutendex fallback, and offline states`
+- ✔ `dynamically flips popover orientation between downwards and upwards based on viewport clearance`
+- ✔ `supports touch tap toggling, outside-tap dismissal, and Escape key dismissal for telemetry popover`
 - ✔ `renders direct page jump input without redundant Pg label`
 - ✔ `renders mobile dock with filter trigger, view mode switch, and scroll-to-top buttons`
 - ✔ `handles mobile filter opening and view mode switching`
@@ -1726,7 +1731,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 524 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 525 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2113,7 +2118,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -2133,6 +2138,7 @@
 - ✔ `returns empty array from getOfflineBookIds when store error occurs`
 - ✔ `covers database upgrade, transaction/request error handlers, and missing IndexedDB fallbacks`
 - ✔ `updates offline book authors when stored record has missing or placeholder authors`
+- ✔ `persists and retrieves coverBlobs with patch and self-healing support`
 
 </details>
 
@@ -2516,7 +2522,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 278 Tests)
+### 🔄 Hooks & React Query (28 Suites · 279 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2884,10 +2890,11 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs and metadata on mount`
 - ✔ `downloads a single book and updates offline status`
+- ✔ `downloads a single book successfully even when cover fetch fails`
 - ✔ `handles download failure gracefully`
 - ✔ `removes an offline book and refreshes ids`
 - ✔ `removes all books in batch`

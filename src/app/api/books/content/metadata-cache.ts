@@ -121,7 +121,7 @@ export function getBookMetadataCache(bookId: number): CachedMetadata | undefined
 /**
  * Resolves book metadata for copyright verification.
  * Priority Tier 1: In-memory LRU cache.
- * Priority Tier 2: Self-hosted Supabase PostgreSQL catalog (`public.books`).
+ * Priority Tier 2: Dedicated Supabase PostgreSQL catalog (`public.books`).
  * Priority Tier 3: Upstream Gutendex REST API with canonical trailing slash.
  */
 export async function resolveBookMetadata(bookId: number): Promise<GenericBookInput | null> {
@@ -136,7 +136,7 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
     bookMetadataCache.delete(bookId);
   }
 
-  // Tier 2: Check self-hosted Supabase PostgreSQL catalog
+  // Tier 2: Check dedicated Supabase PostgreSQL catalog
   if (isSupabaseConfigured()) {
     try {
       const supabase = createClient();

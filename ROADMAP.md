@@ -96,9 +96,9 @@
 ### Milestone 5: Autonomous Gutenberg Catalog, Multilingual FRBR & Copyright Engine (`v2.5.0 - v2.5.4 (Completed)`)
 `[████████████████████]` **6/6 (100%)**
 
-> Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, relational Wikidata FRBR translation clustering, multi-jurisdictional copyright gatekeeping, automated weekly synchronization, and multi-tier content streaming.
+> Dedicated PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, relational Wikidata FRBR translation clustering, multi-jurisdictional copyright gatekeeping, automated weekly synchronization, and multi-tier content streaming.
 
-- [x] **Self-Hosted PostgreSQL Catalog (`public.books`) with GIN Search** `✅ VERIFIED`
+- [x] **Dedicated PostgreSQL Catalog (`public.books`) with GIN Search** `✅ VERIFIED`
   Dedicated database table storing 78,000+ public domain volumes with automated `search_vector` GIN indexing, author lifespan bounds for sub-50ms single-book international copyright filtering, and zero-egress catalog searches.
 - [x] **Streaming Catalog Ingestion Engine (`scripts/sync-gutenberg-catalog.js`)** `✅ VERIFIED`
   Zero-dependency RFC 4180 streaming CSV gunzip pipeline streaming Project Gutenberg's official `pg_catalog.csv.gz` directly into Supabase with adaptive timeout division and idempotent batch upserts.
@@ -177,10 +177,10 @@
 
 ---
 
-### Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.2)`)
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.2)`)
 `[█████░░░░░░░░░░░░░░░]` **1/4 (25%)**
 
-> Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.
+> Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.
 
 - [x] **[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `20 + 5` Ingestion (`1.0h–2.0h` Float Gate), Out-of-Window Auto-Pruning & Instant Preview Integration** `✅ VERIFIED`
   Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT '[]'::jsonb` column and partial popularity index `idx_books_with_quotes_popular` (`WHERE quotes <> '[]'::jsonb`); build `scripts/sync-featured-quotes.js` and `.github/workflows/quotes-sync.yml` (compact `workflow_dispatch` with per-mirror worker checkboxes defaulting to `gutenberg.pglaf.org` + `schedule` with a deterministic `1.0h–2.0h` float schedule gate `evaluateScheduleGate`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by single-column `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`), blending `20 Popular + 5 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), Priority Hero Book ID pinning, Primary-Key-Scoped quote discovery (`fetchQuotedBookIds` querying `books_pkey` `.in('id', chunk).neq('quotes', '[]')`), and burst-safe post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), checking `public.books.content` first before polite PGLAF mirror fetching (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.

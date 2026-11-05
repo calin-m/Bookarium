@@ -58,6 +58,32 @@ export const BookCard: React.FC<BookCardProps> = ({
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = React.useState(false);
+  const [offlineCoverUrl, setOfflineCoverUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (offlineCoverUrl && offlineCoverUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(offlineCoverUrl);
+      }
+    };
+  }, [offlineCoverUrl]);
+
+  const handleImageError = React.useCallback(async () => {
+    if (!offlineCoverUrl && isOffline) {
+      try {
+        const { getOfflineBookCover } = await import('@/lib/offline-storage');
+        const blob = await getOfflineBookCover(book.id);
+        if (blob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+          const blobUrl = URL.createObjectURL(blob);
+          setOfflineCoverUrl(blobUrl);
+          return;
+        }
+      } catch {
+        // Non-blocking fallback to placeholder
+      }
+    }
+    setImageError(true);
+  }, [book.id, isOffline, offlineCoverUrl]);
   const [pendingRemoval, setPendingRemoval] = React.useState<CollectionRemovalType | null>(null);
   const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
   const { removeBook } = useOfflineBooks();
@@ -190,7 +216,7 @@ export const BookCard: React.FC<BookCardProps> = ({
         {formats.coverImage && !imageError ? (
           <div className="relative w-full h-full flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-300">
             <img
-              src={formats.coverImage}
+              src={offlineCoverUrl || formats.coverImage}
               alt={`Cover of ${book.title}`}
               className={`max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md transition-opacity duration-300 ${
                 isRestricted
@@ -200,7 +226,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                   : ''
               }`}
               loading="lazy"
-              onError={() => setImageError(true)}
+              onError={handleImageError}
             />
           </div>
         ) : (

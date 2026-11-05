@@ -82,13 +82,57 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   mobileDockIdleTimeoutMs = 1400,
 }) => {
   const hasMounted = useHasMounted();
+  const activeFetching = hasMounted && isFetching;
   const [isFocused, setIsFocused] = useState(false);
   const [prevPage, setPrevPage] = useState(page);
   const [jumpPageInput, setJumpPageInput] = useState(String(page));
   const [internalMobileDockVisible, setInternalMobileDockVisible] = useState(false);
   const [isIdle, setIsIdle] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [popoverPlacement, setPopoverPlacement] = useState<'down' | 'up'>('down');
+  const [isTappedOpen, setIsTappedOpen] = useState(false);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const badgeRef = useRef<HTMLDivElement>(null);
+
+  const updatePlacement = React.useCallback(() => {
+    if (!badgeRef.current) return;
+    const rect = badgeRef.current.getBoundingClientRect();
+    const estimatedPopoverHeight = 220; // safe bounding height for popover card + margin
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    if (spaceBelow < estimatedPopoverHeight + 12 && spaceAbove > spaceBelow) {
+      setPopoverPlacement('up');
+    } else {
+      setPopoverPlacement('down');
+    }
+  }, []);
+
+  useEffect(() => {
+    updatePlacement();
+    const onScrollOrResize = () => {
+      updatePlacement();
+    };
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [updatePlacement]);
+
+  useEffect(() => {
+    if (!isTappedOpen) return;
+    const handleOutsidePointer = (e: PointerEvent) => {
+      if (badgeRef.current && !badgeRef.current.contains(e.target as Node)) {
+        setIsTappedOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointer);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointer);
+    };
+  }, [isTappedOpen]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -292,39 +336,68 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
         {/* Right Side: Unified API Status/Latency, View Mode & Sticky Pagination */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
-          {/* Unified API Status & Latency Indicator (Tablet & Desktop) */}
+          {/* Zero-CLS Unified API Status, Latency & Diagnostic Radar Pill (Tablet & Desktop) */}
           <div
-            className={`hidden sm:flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border ${
+            ref={badgeRef}
+            className={`group relative hidden sm:inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-mono tracking-wider transition-all border border-border min-w-[72px] sm:min-w-[78px] text-center select-none cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-primary shadow-xs ${
               isError
-                ? 'bg-destructive/10 text-destructive'
-                : 'bg-success/10 text-success'
+                ? 'bg-destructive/10 text-destructive border-destructive/30'
+                : activeFetching
+                  ? 'bg-primary/10 text-primary border-primary/30'
+                  : 'bg-success/10 text-success border-success/30'
             }`}
-            title={
-              isError
-                ? 'Catalog API: Offline'
-                : isLatencyPending
-                  ? 'Measuring catalog response time...'
-                  : `${catalogProviderLabel}: Online (${displayLatencyText} response time)`
-            }
+            tabIndex={0}
+            role="status"
+            data-expanded={isTappedOpen}
             aria-label={
               isError
                 ? 'Catalog API status: Offline'
-                : isLatencyPending
-                  ? 'Catalog status: Measuring response time'
-                  : `${catalogProviderLabel} status: Online, response time ${displayLatencyText}`
+                : activeFetching
+                  ? `Fetching page ${page} from archive. Hover or click for details.`
+                  : isLatencyPending
+                    ? 'Catalog status: Measuring response time'
+                    : `${catalogProviderLabel} status: Online, response time ${displayLatencyText}`
             }
             data-testid="api-status-badge"
+            onClick={() => {
+              updatePlacement();
+              setIsTappedOpen((prev) => !prev);
+            }}
+            onPointerEnter={updatePlacement}
+            onFocus={updatePlacement}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                updatePlacement();
+                setIsTappedOpen((prev) => !prev);
+              } else if (e.key === 'Escape') {
+                setIsTappedOpen(false);
+                badgeRef.current?.blur();
+              }
+            }}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${
-                isError ? 'bg-destructive' : 'bg-success'
-              }`}
-              data-testid="api-status-dot"
-            />
+            {activeFetching ? (
+              <span
+                className="relative flex items-center justify-center w-3.5 h-3.5 shrink-0"
+                data-testid="archive-fetching-badge"
+              >
+                <span className="absolute inset-0 rounded-full border-[1.5px] border-primary/30 border-t-primary animate-spin" />
+                <span className="text-[8px] font-serif font-bold italic text-primary leading-none select-none">
+                  i
+                </span>
+              </span>
+            ) : (
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${
+                  isError ? 'bg-destructive' : 'bg-success'
+                }`}
+                data-testid="api-status-dot"
+              />
+            )}
             <span className="font-bold" data-testid="api-latency-badge">
               {isError ? (
                 'Offline'
-              ) : isLatencyPending ? (
+              ) : activeFetching || isLatencyPending ? (
                 <span
                   className="inline-flex items-center tracking-widest animate-pulse"
                   data-testid="api-latency-loading"
@@ -335,6 +408,106 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 displayLatencyText
               )}
             </span>
+
+            {/* Rich Animated Dual-Service Diagnostics Popover Card */}
+            <div
+              className={`transition-all duration-200 ease-out absolute right-0 w-72 sm:w-80 p-3.5 bg-card text-foreground border border-border rounded-xl shadow-booksaw-hover z-50 text-xs space-y-2.5 text-left ${
+                isTappedOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto pointer-events-none'
+              } ${
+                popoverPlacement === 'up'
+                  ? 'bottom-full mb-2 origin-bottom-right'
+                  : 'top-full mt-2 origin-top-right'
+              }`}
+              data-testid="catalog-telemetry-popover"
+            >
+              <div className="font-serif font-bold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-primary">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {activeFetching ? 'Deep Archive Query' : isError ? 'Catalog Disconnected' : 'Catalog Diagnostics'}
+                </span>
+                <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                  {activeFetching ? `Page ${page}` : isError ? 'Offline' : displayLatencyText}
+                </span>
+              </div>
+
+              {/* Dual-Service Diagnostics Checklist */}
+              <div className="space-y-1.5 pt-1 border-t border-border/60">
+                <div className="flex items-center justify-between text-[11px] font-mono">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        !isError && catalogSource === 'supabase'
+                          ? 'bg-success'
+                          : 'bg-muted-foreground/40'
+                      }`}
+                    />
+                    Bookarium DB (Supabase)
+                  </span>
+                  <span
+                    className={
+                      !isError && catalogSource === 'supabase'
+                        ? 'text-success font-semibold'
+                        : 'text-muted-foreground'
+                    }
+                  >
+                    {isError
+                      ? 'Offline'
+                      : catalogSource === 'supabase'
+                        ? `Online · ${displayLatencyText}`
+                        : 'Standby / Unseeded'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] font-mono">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        !isError && catalogSource === 'upstream'
+                          ? 'bg-success'
+                          : isError
+                            ? 'bg-destructive'
+                            : 'bg-muted-foreground/40'
+                      }`}
+                    />
+                    Gutendex Upstream Fallback
+                  </span>
+                  <span
+                    className={
+                      !isError && catalogSource === 'upstream'
+                        ? 'text-success font-semibold'
+                        : 'text-muted-foreground'
+                    }
+                  >
+                    {isError
+                      ? 'Offline'
+                      : catalogSource === 'upstream'
+                        ? `Active · ${displayLatencyText}`
+                        : 'Standby'}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground font-sans leading-relaxed pt-1 border-t border-border/60">
+                {activeFetching ? (
+                  <>
+                    Scanning through <strong>70,000+ public domain titles</strong>. Large page offsets compute deep relational queries on live Gutenberg servers and may take a moment to deliver.
+                  </>
+                ) : isError ? (
+                  <>
+                    Network or service unavailable. Your cached bookshelf, saved quotes, and downloaded books remain fully accessible offline.
+                  </>
+                ) : catalogSource === 'upstream' ? (
+                  <>
+                    Serving public domain volumes via the upstream Gutendex REST mirror. Automatic failover active.
+                  </>
+                ) : (
+                  <>
+                    Connected to dedicated Supabase PostgreSQL database. Queries are accelerated with zero external rate limits.
+                  </>
+                )}
+              </p>
+            </div>
           </div>
 
           <div className="h-4 w-[1px] bg-border hidden sm:block" />
@@ -435,44 +608,6 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                 <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>
-
-              {hasMounted && isFetching && (
-                <div
-                  className="group relative inline-flex items-center ml-1"
-                  data-testid="archive-fetching-badge"
-                >
-                  <div
-                    tabIndex={0}
-                    role="status"
-                    className="inline-flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-[11px] font-mono tracking-wider transition-all cursor-help focus:outline-hidden focus:ring-1 focus:ring-primary shadow-xs"
-                    aria-label={`Fetching page ${page} from archive. Hover or click for details.`}
-                  >
-                    <span className="relative flex items-center justify-center w-4 h-4 shrink-0 animate-bounce">
-                      <span className="absolute inset-0 rounded-full border-[1.5px] border-primary/30 border-t-primary animate-spin" />
-                      <span className="text-[10px] font-serif font-bold italic text-primary leading-none select-none">
-                        i
-                      </span>
-                    </span>
-                    <span className="hidden sm:inline ml-1.5">Fetching Pg {page}...</span>
-                  </div>
-
-                  {/* Rich Animated Tooltip Popover Card */}
-                  <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto pointer-events-none transition-all duration-200 ease-out absolute top-full right-0 mt-2 w-72 p-3.5 bg-card text-foreground border border-border rounded-xl shadow-booksaw-hover z-50 text-xs space-y-2 text-left">
-                    <div className="font-serif font-bold text-foreground flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-primary">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Deep Archive Query
-                      </span>
-                      <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                        Page {page}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
-                      Scanning through <strong>70,000+ public domain titles</strong>. Large page offsets compute deep relational queries on live Gutenberg servers and may take a moment to deliver.
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

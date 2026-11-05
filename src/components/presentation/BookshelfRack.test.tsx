@@ -705,7 +705,13 @@ describe('BookshelfRack Component', () => {
     });
 
     await waitFor(() => {
-      expect(saveOfflineBook).toHaveBeenCalledWith(book.id, book.title, 'Single book offline text', book.authors);
+      expect(saveOfflineBook).toHaveBeenCalledWith(
+        book.id,
+        book.title,
+        'Single book offline text',
+        book.authors,
+        expect.any(Blob)
+      );
     });
 
     fetchSpy.mockRestore();

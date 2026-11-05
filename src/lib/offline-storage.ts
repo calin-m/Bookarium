@@ -29,6 +29,7 @@ export interface OfflineBookMetadata {
   downloadedAt: string;
   byteSize: number;
   authors?: Author[];
+  coverBlob?: Blob;
 }
 
 export interface StorageQuotaInfo {
@@ -110,9 +111,15 @@ function openDB(): Promise<IDBDatabase> {
  * Saves a book's full text to IndexedDB for offline reading.
  * Includes pre-emptive quota checks, LRU auto-eviction, and QuotaExceededError recovery.
  */
-export async function saveOfflineBook(bookId: number, title: string, text: string, authors?: Author[]): Promise<void> {
+export async function saveOfflineBook(
+  bookId: number,
+  title: string,
+  text: string,
+  authors?: Author[],
+  coverBlob?: Blob
+): Promise<void> {
   const db = await openDB();
-  const byteSize = new Blob([text]).size;
+  const byteSize = new Blob([text]).size + (coverBlob ? coverBlob.size : 0);
 
   // Pre-emptive check: if storage estimate reports less than 10MB free buffer, evict oldest
   const quota = await getStorageQuota();
@@ -132,6 +139,7 @@ export async function saveOfflineBook(bookId: number, title: string, text: strin
         downloadedAt: new Date().toISOString(),
         byteSize,
         authors,
+        ...(coverBlob ? { coverBlob } : {}),
       };
 
       const request = store.put(record);
@@ -199,6 +207,65 @@ export async function getOfflineBookRecord(bookId: number): Promise<OfflineBookR
 export async function getOfflineBook(bookId: number): Promise<string | null> {
   const record = await getOfflineBookRecord(bookId);
   return record ? record.text : null;
+}
+
+/**
+ * Retrieves the stored cover image Blob for an offline book if available.
+ */
+export async function getOfflineBookCover(bookId: number): Promise<Blob | null> {
+  const record = await getOfflineBookRecord(bookId);
+  return record?.coverBlob || null;
+}
+
+/**
+ * Patches an existing offline book record with a downloaded cover Blob.
+ */
+export async function patchOfflineBookCover(bookId: number, coverBlob: Blob): Promise<void> {
+  try {
+    const db = await openDB();
+    const existing = await getOfflineBookRecord(bookId);
+    if (!existing) return;
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const updated: OfflineBookRecord = {
+        ...existing,
+        coverBlob,
+        byteSize: existing.byteSize + (coverBlob?.size || 0),
+      };
+      const request = store.put(updated);
+      request.onsuccess = () => {
+        notifyOfflineStorageChanged();
+        resolve();
+      };
+      request.onerror = (e) => {
+        const targetError = e?.target && 'error' in e.target ? (e.target as { error?: DOMException }).error : null;
+        reject(request.error || targetError || new Error(`Failed to patch cover for book ${bookId}.`));
+      };
+    });
+  } catch {
+    // Non-blocking fallback
+  }
+}
+
+/**
+ * Non-blocking background fetch & patch for an offline book's cover image when online.
+ */
+export async function fetchAndPatchOfflineCover(bookId: number): Promise<void> {
+  if (typeof window === 'undefined' || !navigator.onLine) return;
+  try {
+    const coverUrl = `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
+    const res = await fetch(coverUrl);
+    if (res.ok) {
+      const blob = await res.blob();
+      if (blob && blob.size > 0) {
+        await patchOfflineBookCover(bookId, blob);
+      }
+    }
+  } catch {
+    // Non-blocking background fetch
+  }
 }
 
 /**
@@ -277,12 +344,13 @@ export async function getAllOfflineBooks(): Promise<OfflineBookMetadata[]> {
 
       request.onsuccess = () => {
         const records = (request.result || []) as OfflineBookRecord[];
-        const metadataList: OfflineBookMetadata[] = records.map(({ bookId, title, downloadedAt, byteSize, authors }) => ({
+        const metadataList: OfflineBookMetadata[] = records.map(({ bookId, title, downloadedAt, byteSize, authors, coverBlob }) => ({
           bookId,
           title,
           downloadedAt,
           byteSize,
           authors,
+          coverBlob,
         }));
         resolve(metadataList);
       };
@@ -392,6 +460,11 @@ export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
       }
     }
 
+    const coverUrl =
+      rec.coverBlob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
+        ? URL.createObjectURL(rec.coverBlob)
+        : `https://www.gutenberg.org/cache/epub/${rec.bookId}/pg${rec.bookId}.cover.medium.jpg`;
+
     metas.push({
       id: rec.bookId,
       title: rec.title,
@@ -406,7 +479,7 @@ export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
       copyright: false,
       media_type: 'Text',
       formats: {
-        'image/jpeg': `https://www.gutenberg.org/cache/epub/${rec.bookId}/pg${rec.bookId}.cover.medium.jpg`,
+        'image/jpeg': coverUrl,
         'application/epub+zip': `https://www.gutenberg.org/ebooks/${rec.bookId}.epub3.images`,
       },
       download_count: 0,

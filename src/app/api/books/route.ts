@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   try {
     let result: CatalogQueryResult | null = null;
 
-    // Strangler Fig Gateway: Query self-hosted Supabase PostgreSQL catalog first
+    // Strangler Fig Gateway: Query dedicated Supabase PostgreSQL catalog first
     try {
       const isSupabaseHealthy = await supabaseCatalogProvider.isHealthy();
       if (isSupabaseHealthy) {

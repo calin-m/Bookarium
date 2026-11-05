@@ -176,10 +176,10 @@ const ROADMAP_MILESTONES = [
     title: 'Milestone 5: Autonomous Gutenberg Catalog, Multilingual FRBR & Copyright Engine',
     version: 'v2.5.0 - v2.5.4 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v2.5.4-teal?style=flat-square',
-    description: 'Self-hosted PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, relational Wikidata FRBR translation clustering, multi-jurisdictional copyright gatekeeping, automated weekly synchronization, and multi-tier content streaming.',
+    description: 'Dedicated PostgreSQL book catalog hosting 78,000+ titles in Supabase with GIN full-text search, relational Wikidata FRBR translation clustering, multi-jurisdictional copyright gatekeeping, automated weekly synchronization, and multi-tier content streaming.',
     features: [
       {
-        title: 'Self-Hosted PostgreSQL Catalog (`public.books`) with GIN Search',
+        title: 'Dedicated PostgreSQL Catalog (`public.books`) with GIN Search',
         description: 'Dedicated database table storing 78,000+ public domain volumes with automated `search_vector` GIN indexing, author lifespan bounds for sub-50ms single-book international copyright filtering, and zero-egress catalog searches.',
         check: () => fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.books') && fileExists('src/lib/catalog/supabase-provider.ts'),
       },
@@ -372,11 +372,11 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm10',
-    title: 'Milestone 10: Self-Hosted Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards',
+    title: 'Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards',
     versionSeries: 'v2.9.x',
     version: 'v2.9.x',
     badge: 'https://img.shields.io/badge/Milestone-v2.9.x-violet?style=flat-square',
-    description: 'Self-hosted Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
+    description: 'Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
     features: [
       {
         title: '[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `20 + 5` Ingestion (`1.0h–2.0h` Float Gate), Out-of-Window Auto-Pruning & Instant Preview Integration',

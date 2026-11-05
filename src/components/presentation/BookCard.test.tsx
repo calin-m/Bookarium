@@ -202,6 +202,27 @@ describe('BookCard component', () => {
     expect(screen.getAllByText(book.title).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('falls back to offline IndexedDB cover blob when image error occurs while offline', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const getCoverSpy = vi.spyOn(offlineStorage, 'getOfflineBookCover').mockResolvedValue(new Blob(['fake-img'], { type: 'image/jpeg' }));
+    const createUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-bookcard-cover-url');
+
+    const book = mockBooks[0];
+    render(<BookCard book={book} isOffline={true} onPreviewClick={vi.fn()} />);
+
+    const coverImg = screen.getByAltText(`Cover of ${book.title}`);
+    await act(async () => {
+      fireEvent.error(coverImg);
+    });
+
+    expect(getCoverSpy).toHaveBeenCalledWith(book.id);
+    expect(createUrlSpy).toHaveBeenCalled();
+    expect(coverImg).toHaveAttribute('src', 'blob:test-bookcard-cover-url');
+
+    getCoverSpy.mockRestore();
+    createUrlSpy.mockRestore();
+  });
+
   it('triggers preview on Enter or Space key press on cover', () => {
     const handlePreview = vi.fn();
     const book = mockBooks[0];

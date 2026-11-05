@@ -68,7 +68,7 @@ export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
 
 /**
  * Supabase PostgreSQL Catalog Provider
- * Queries local/self-hosted PostgreSQL catalog with GIN indexed full-text search,
+ * Queries dedicated Supabase PostgreSQL catalog with GIN indexed full-text search,
  * indexed language/subject matching, pre-computed lifespan filtering, and Berne Convention verification.
  */
 export class SupabaseCatalogProvider implements ICatalogProvider {

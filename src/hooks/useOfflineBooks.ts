@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { GutendexBook, Book, Author } from '@/types/book.types';
 import {
   getOfflineBookIds,
+  getAllOfflineBooks,
   getAllOfflineBookMetas,
   saveOfflineBook,
+  fetchAndPatchOfflineCover,
   removeOfflineBook,
   getStorageQuota,
   type StorageQuotaInfo,
@@ -237,6 +239,63 @@ export function useOfflineBooks() {
     };
   }, [updateOfflineIdsState, updateOfflineBooksState, updateStorageQuotaState]);
 
+  // Proactive background idle pre-warming for shelved/favorited/bookmarked covers & self-healing cover backfill
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+
+    const isIdleSupported = typeof window.requestIdleCallback === 'function';
+    const idleId: number = isIdleSupported
+      ? window.requestIdleCallback(async () => {
+          await warmLibraryCovers();
+        })
+      : (window.setTimeout(async () => {
+          await warmLibraryCovers();
+        }, 1500) as unknown as number);
+
+    async function warmLibraryCovers(): Promise<void> {
+      try {
+        // 1. Warm covers for saved, favorite, and recent books in Service Worker
+        const shelfState = useBookshelfStore.getState();
+        const booksToWarm = [
+          ...(shelfState.savedBooks || []),
+          ...(shelfState.favoriteBooks || []),
+          ...(shelfState.recentBooks || []),
+        ];
+        const coverUrls = Array.from(
+          new Set(
+            booksToWarm
+              .map((b) => b.formats?.['image/jpeg'] || `https://www.gutenberg.org/cache/epub/${b.id}/pg${b.id}.cover.medium.jpg`)
+              .filter(Boolean)
+          )
+        ).slice(0, 50);
+
+        if (navigator.serviceWorker?.controller && coverUrls.length > 0) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'CACHE_COVERS',
+            urls: coverUrls,
+          });
+        }
+
+        // 2. Self-healing backfill for already-downloaded books missing coverBlob
+        const offlineBooks = await getAllOfflineBooks();
+        const missingCoverBooks = offlineBooks.filter((b) => !b.coverBlob);
+        for (const book of missingCoverBooks) {
+          await fetchAndPatchOfflineCover(book.bookId);
+        }
+      } catch {
+        // Non-blocking idle background warm
+      }
+    }
+
+    return () => {
+      if (isIdleSupported && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, []);
+
   const downloadBook = useCallback(
     async (book: GutendexBook | Book): Promise<boolean> => {
       setDownloadingBookId(book.id);
@@ -247,7 +306,27 @@ export function useOfflineBooks() {
         const text = await res.text();
         if (!text || text.trim().length === 0) throw new Error('Empty text received');
         const normalizedAuthors = normalizeOfflineAuthors(book);
-        await saveOfflineBook(book.id, book.title, text, normalizedAuthors);
+
+        let coverBlob: Blob | undefined;
+        const coverUrl =
+          ('formats' in book && book.formats?.['image/jpeg']) ||
+          ('coverUrl' in book && book.coverUrl) ||
+          `https://www.gutenberg.org/cache/epub/${book.id}/pg${book.id}.cover.medium.jpg`;
+
+        try {
+          const imgRes = await fetch(coverUrl);
+          if (imgRes.ok) {
+            coverBlob = await imgRes.blob();
+          }
+        } catch {
+          // Non-blocking cover image pre-fetch failure
+        }
+
+        if (coverBlob) {
+          await saveOfflineBook(book.id, book.title, text, normalizedAuthors, coverBlob);
+        } else {
+          await saveOfflineBook(book.id, book.title, text, normalizedAuthors);
+        }
         await refreshOfflineIds();
         broadcastOfflineUpdated();
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Bookarium — Self-Hosted Gutenberg Catalog Ingestion & Seeding Engine
+ * Bookarium — Dedicated Gutenberg Catalog Ingestion & Seeding Engine
  * 
  * Usage:
  *   node scripts/ingest-catalog.js --dry-run              # Generate supabase/seed_books.sql

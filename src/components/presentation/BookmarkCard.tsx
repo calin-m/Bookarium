@@ -50,13 +50,39 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   onClear,
 }) => {
   const router = useRouter();
+  const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
   const [imageError, setImageError] = useState(false);
+  const [offlineCoverUrl, setOfflineCoverUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (offlineCoverUrl && offlineCoverUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(offlineCoverUrl);
+      }
+    };
+  }, [offlineCoverUrl]);
+
+  const handleImageError = React.useCallback(async () => {
+    if (!offlineCoverUrl && isOffline) {
+      try {
+        const { getOfflineBookCover } = await import('@/lib/offline-storage');
+        const blob = await getOfflineBookCover(book.id);
+        if (blob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+          const blobUrl = URL.createObjectURL(blob);
+          setOfflineCoverUrl(blobUrl);
+          return;
+        }
+      } catch {
+        // Fall back to placeholder
+      }
+    }
+    setImageError(true);
+  }, [book.id, isOffline, offlineCoverUrl]);
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<CollectionRemovalType | null>(null);
   const [isStatusTruncated, setIsStatusTruncated] = useState(false);
   const [showStatusIndicator, setShowStatusIndicator] = useState(false);
   const statusLabelRef = useRef<HTMLSpanElement | null>(null);
-  const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
@@ -185,10 +211,10 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
           >
             {book.coverUrl && !imageError ? (
               <img
-                src={book.coverUrl}
+                src={offlineCoverUrl || book.coverUrl}
                 alt={`Cover of ${book.title}`}
                 loading="lazy"
-                onError={() => setImageError(true)}
+                onError={handleImageError}
                 className={`w-full h-full object-cover transition-transform duration-300 ${
                   isRestricted
                     ? 'grayscale opacity-80 contrast-[1.05]'

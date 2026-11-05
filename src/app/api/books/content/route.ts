@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
   }
 
   // ==========================================================================
-  // Tier 1: Instant Streaming from Self-Hosted Supabase PostgreSQL Catalog
+  // Tier 1: Instant Streaming from Dedicated Supabase PostgreSQL Catalog
   // ==========================================================================
   if (isSupabaseConfigured()) {
     try {
