@@ -51,6 +51,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_UPDATE_EXISTING: ${{ github.event.inputs.update_existing }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
@@ -75,6 +76,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_UPDATE_EXISTING: ${{ github.event.inputs.update_existing }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}

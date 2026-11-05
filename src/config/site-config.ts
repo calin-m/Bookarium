@@ -2,6 +2,45 @@
  * Centralized Site Branding, External Links & Storage Constants for Bookarium
  */
 
+/**
+ * Dynamically resolves the canonical repository URL or site origin across environments
+ * (explicit NEXT_PUBLIC_GITHUB_REPO, BOOKARIUM_REPO_URL, CI GITHUB_REPOSITORY, Vercel VERCEL_GIT_REPO_*, or site URL)
+ * without hardcoding personal usernames.
+ */
+export function resolveRepositoryUrl(fallbackToGithub = false): string {
+  if (process.env.NEXT_PUBLIC_GITHUB_REPO) {
+    return process.env.NEXT_PUBLIC_GITHUB_REPO.trim();
+  }
+  if (process.env.BOOKARIUM_REPO_URL) {
+    return process.env.BOOKARIUM_REPO_URL.trim();
+  }
+  if (process.env.GITHUB_REPOSITORY) {
+    return `https://github.com/${process.env.GITHUB_REPOSITORY.trim().replace(/^\/+|\/+$/g, '')}`;
+  }
+  if (process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG) {
+    return `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER.trim()}/${process.env.VERCEL_GIT_REPO_SLUG.trim()}`;
+  }
+  if (fallbackToGithub) {
+    return 'https://github.com/calin-m/Bookarium';
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app';
+}
+
+/**
+ * Builds an authentic, Project Gutenberg-compliant User-Agent header string.
+ * Defaults to `(+<resolvedRepoUrl>)` when contact email is blank, and cleanly
+ * appends `; <email>` when GUTENBERG_CONTACT_EMAIL is configured.
+ */
+export function buildDescriptiveUserAgent(
+  appName = 'Bookarium-PublicDomain-Reader',
+  version = '1.0'
+): string {
+  const repoOrSiteUrl = resolveRepositoryUrl();
+  const email = (process.env.GUTENBERG_CONTACT_EMAIL || '').trim();
+  const contactPart = email ? `+${repoOrSiteUrl}; ${email}` : `+${repoOrSiteUrl}`;
+  return `${appName}/${version} (${contactPart})`;
+}
+
 export const SITE_CONFIG = {
   NAME: 'Bookarium',
   LOGO_TEXT: 'BOOKARIUM',
@@ -15,8 +54,8 @@ export const SITE_CONFIG = {
 
   // Author & Repository Links
   GITHUB_PROFILE: 'https://github.com/calin-m',
-  GITHUB_REPO: 'https://github.com/calin-m/Bookarium',
-  USER_AGENT: 'Bookarium-PublicDomain-Reader/1.0 (+https://github.com/calin-m/Bookarium)',
+  GITHUB_REPO: resolveRepositoryUrl(true),
+  USER_AGENT: buildDescriptiveUserAgent('Bookarium-PublicDomain-Reader', '1.0'),
 
   // Support, Inquiries & Legal Intake (Configurable via NEXT_PUBLIC_LEGAL_CONTACT_FORM)
   LEGAL_CONTACT_FORM: process.env.NEXT_PUBLIC_LEGAL_CONTACT_FORM || '',

@@ -19,8 +19,39 @@ const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
-const USER_AGENT =
-  'Bookarium-PublicDomain-Reader/1.0 (+https://github.com/calin-m/Bookarium)';
+function resolveRepositoryUrl() {
+  if (process.env.NEXT_PUBLIC_GITHUB_REPO) {
+    return process.env.NEXT_PUBLIC_GITHUB_REPO.trim();
+  }
+  if (process.env.BOOKARIUM_REPO_URL) {
+    return process.env.BOOKARIUM_REPO_URL.trim();
+  }
+  if (process.env.GITHUB_REPOSITORY) {
+    return `https://github.com/${process.env.GITHUB_REPOSITORY.trim().replace(/^\/+|\/+$/g, '')}`;
+  }
+  if (process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG) {
+    return `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER.trim()}/${process.env.VERCEL_GIT_REPO_SLUG.trim()}`;
+  }
+  try {
+    const raw = require('child_process').execSync('git config --get remote.origin.url', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (raw) {
+      return raw.replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
+    }
+  } catch {}
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app';
+}
+
+function buildDescriptiveUserAgent(appName = 'Bookarium-PublicDomain-Reader', version = '1.0') {
+  const repoOrSiteUrl = resolveRepositoryUrl();
+  const email = (process.env.GUTENBERG_CONTACT_EMAIL || '').trim();
+  const contactPart = email ? `+${repoOrSiteUrl}; ${email}` : `+${repoOrSiteUrl}`;
+  return `${appName}/${version} (${contactPart})`;
+}
+
+const USER_AGENT = buildDescriptiveUserAgent();
 
 const MIRROR_SHORTCUT_MAP = {
   pglaf: 'https://gutenberg.pglaf.org',
@@ -1842,6 +1873,8 @@ if (require.main === module) {
 
 module.exports = {
   USER_AGENT,
+  resolveRepositoryUrl,
+  buildDescriptiveUserAgent,
   MIRROR_SHORTCUT_MAP,
   GUTENBERG_MIRRORS,
   DEFAULT_POPULAR_POOL_SIZE,

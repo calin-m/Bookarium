@@ -1,7 +1,38 @@
 import type { NextConfig } from 'next';
+import fs from 'fs';
+import path from 'path';
+
+function resolveBuildGitRepoUrl(): string {
+  if (process.env.NEXT_PUBLIC_GITHUB_REPO) {
+    return process.env.NEXT_PUBLIC_GITHUB_REPO.trim();
+  }
+  if (process.env.BOOKARIUM_REPO_URL) {
+    return process.env.BOOKARIUM_REPO_URL.trim();
+  }
+  if (process.env.GITHUB_REPOSITORY) {
+    return `https://github.com/${process.env.GITHUB_REPOSITORY.trim().replace(/^\/+|\/+$/g, '')}`;
+  }
+  if (process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG) {
+    return `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER.trim()}/${process.env.VERCEL_GIT_REPO_SLUG.trim()}`;
+  }
+  try {
+    const gitConfigPath = path.join(process.cwd(), '.git', 'config');
+    if (fs.existsSync(gitConfigPath)) {
+      const content = fs.readFileSync(gitConfigPath, 'utf8');
+      const match = content.match(/url\s*=\s*(.+)/);
+      if (match && match[1]) {
+        return match[1].trim().replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
+      }
+    }
+  } catch {}
+  return 'https://github.com/calin-m/Bookarium';
+}
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_GITHUB_REPO: resolveBuildGitRepoUrl(),
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'www.gutenberg.org' },
@@ -76,4 +107,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

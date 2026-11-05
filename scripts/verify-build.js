@@ -212,6 +212,9 @@ function pass05SecretScanner() {
     'VERCEL_PROJECT_PRODUCTION_URL',
     'NEXT_PUBLIC_VERCEL_URL',
     'NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL',
+    'GITHUB_REPOSITORY',
+    'VERCEL_GIT_REPO_OWNER',
+    'VERCEL_GIT_REPO_SLUG',
   ]);
   if (fs.existsSync(envExamplePath)) {
     const envExampleContent = fs.readFileSync(envExamplePath, 'utf-8');

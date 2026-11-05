@@ -47,6 +47,38 @@ function loadEnv() {
   return env;
 }
 
+function resolveRepositoryOrSiteUrl(env = process.env) {
+  if (env.NEXT_PUBLIC_GITHUB_REPO) {
+    return env.NEXT_PUBLIC_GITHUB_REPO.trim();
+  }
+  if (env.BOOKARIUM_REPO_URL) {
+    return env.BOOKARIUM_REPO_URL.trim();
+  }
+  if (env.GITHUB_REPOSITORY) {
+    return `https://github.com/${env.GITHUB_REPOSITORY.trim().replace(/^\/+|\/+$/g, '')}`;
+  }
+  if (env.VERCEL_GIT_REPO_OWNER && env.VERCEL_GIT_REPO_SLUG) {
+    return `https://github.com/${env.VERCEL_GIT_REPO_OWNER.trim()}/${env.VERCEL_GIT_REPO_SLUG.trim()}`;
+  }
+  try {
+    const raw = require('child_process').execSync('git config --get remote.origin.url', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (raw) {
+      return raw.replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
+    }
+  } catch {}
+  return env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app';
+}
+
+function resolveCatalogUserAgent(env = process.env) {
+  const originUrl = resolveRepositoryOrSiteUrl(env);
+  const email = (env.GUTENBERG_CONTACT_EMAIL || '').trim();
+  const contactPart = email ? `+${originUrl}; ${email}` : `+${originUrl}`;
+  return `Bookarium-Catalog-Sync/1.0 (${contactPart})`;
+}
+
 // 2. Author and Translator Lifespan Normalization
 function parseYear(val) {
   if (!val) return null;
@@ -210,7 +242,7 @@ function streamGutenbergCatalog(onRecord, catalogUrl = 'https://www.gutenberg.or
         catalogUrl,
         {
           headers: {
-            'User-Agent': 'Bookarium-Catalog-Sync/1.0 (https://bookarium.vercel.app)',
+            'User-Agent': resolveCatalogUserAgent(),
             Accept: 'application/gzip, */*',
           },
         },
@@ -525,7 +557,7 @@ async function fetchPopularCountsFromGutendex(pages = 16, fetchFn = globalThis.f
     try {
       const res = await fetchFn(url, {
         headers: {
-          'User-Agent': 'Bookarium-Catalog-Sync/1.0 (https://bookarium.vercel.app)',
+          'User-Agent': resolveCatalogUserAgent(),
           Accept: 'application/json',
         },
         signal: AbortSignal.timeout(15000),

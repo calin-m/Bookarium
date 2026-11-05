@@ -1074,6 +1074,11 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       fallback: 'Falls back to the repository GitHub Issue Tracker (`SITE_CONFIG.GITHUB_ISSUES_URL`) on `/copyright`.',
       purpose: 'Optional external intake URL for confidential territorial copyright or DMCA inquiries.',
     },
+    NEXT_PUBLIC_GITHUB_REPO: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: 'Auto-detected from local Git config, `GITHUB_REPOSITORY` (CI), or `VERCEL_GIT_REPO_*` (Vercel).',
+      purpose: 'Public repository URL displayed in the Navbar GitHub button, Footer links, and DMCA issue intake.',
+    },
     SUPABASE_SERVICE_ROLE_KEY: {
       scope: 'CLI & CI Secret Only (`Client-Forbidden` via Pass 0.5 & AST Rule)',
       fallback: 'CLI ingestion scripts fall back to `NEXT_PUBLIC_SUPABASE_ANON_KEY` or emit offline SQL seed artifacts (`supabase/seed_*.sql`).',
@@ -1088,6 +1093,16 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       scope: 'Edge Proxy & Server Route Development Override',
       fallback: 'Production uses Vercel Edge `x-vercel-ip-country` header -> `bookarium-geo-country` cookie -> IANA timezone inference -> `US` default.',
       purpose: 'ISO 3166-1 alpha-2 country override (`US`, `GB`, `DE`, `MX`, `ES`) for local testing of multi-jurisdictional copyright rules (`Life+70`, `Life+80`, `Life+100`).',
+    },
+    GUTENBERG_CONTACT_EMAIL: {
+      scope: 'Server-Side Fetcher & CLI Pipelines (Optional)',
+      fallback: 'Omitted: Automated `User-Agent` headers cleanly identify via the public repository URL without exposing private emails.',
+      purpose: 'Optional contact email address appended to `User-Agent` headers across Project Gutenberg mirrors and Wikidata SPARQL queries.',
+    },
+    BOOKARIUM_REPO_URL: {
+      scope: 'Server-Side Fetcher, CLI Pipelines & Config (Optional)',
+      fallback: 'Auto-detected from `GITHUB_REPOSITORY` (CI/cron), `VERCEL_GIT_REPO_*` (Vercel), or `NEXT_PUBLIC_SITE_URL`.',
+      purpose: 'Explicit repository URL override used for open-source attribution and `User-Agent` contact headers.',
     },
     NODE_ENV: {
       scope: 'Framework & Build-Time Runtime Constant',

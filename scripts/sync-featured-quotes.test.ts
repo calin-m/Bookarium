@@ -32,8 +32,11 @@ const SAMPLE_GUTENBERG_BOOK = [
 
 describe('sync-featured-quotes pipeline', () => {
   it('resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org', () => {
-    expect(quotesSync.USER_AGENT).toBe(
-      'Bookarium-PublicDomain-Reader/1.0 (+https://github.com/calin-m/Bookarium)'
+    expect(quotesSync.USER_AGENT).toMatch(
+      /^Bookarium-PublicDomain-Reader\/1\.0 \(\+https?:\/\/.+\)$/
+    );
+    expect(quotesSync.buildDescriptiveUserAgent('Bookarium-Sync', '2.0')).toMatch(
+      /^Bookarium-Sync\/2\.0 \(\+https?:\/\/.+\)$/
     );
     expect(quotesSync.DEFAULT_POPULAR_POOL_SIZE).toBe(500);
     expect(quotesSync.DEFAULT_RECENT_POOL_SIZE).toBe(64);

@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202224%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.81%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202226%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.8%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2224 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2226 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -113,6 +113,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 - **Decoupled Editorial Hero Spotlight & Autonomous Multilingual Catalog Filtering (`ADR-080`)**: Decoupled the 3D Featured Book selection key strictly to `${hourlyIndex}|${country}` by removing topic and language parameters from `selectHourlyHeroFromPool`, establishing a clear separation of concerns where the 3D Featured Book functions as a stable editorial showcase rotating predictably by jurisdiction with authentic literary quotes, while `LanguageSelector` and `Explore Topics` exclusively filter the 78,000+ Gutenberg volumes in the Catalog Grid below, eliminating quote-scarcity fallback swaps on non-English catalog browsing with full 1:1 co-located test coverage.
 - **50-Book Two-Tier Quotes Sync Expansion, Zero-Query Run Report & Live Dual-Progress Telemetry (`ADR-080`)**: Scaled default `Featured Quotes Sync` batch capacity from 25 to 50 books per run (`40 Popular + 10 Recent`, backfilling all 50 slots to Top Popular when Recent is 100% ingested) with default `limit: 50` across CLI and GitHub Actions workflow, paired with an initial Two-Tier Pool Status banner before mirror downloads, real-time dual-progress tags (`[Top 1/50 · Pool: 126/500 (25.2%)]` / `[Recent 1/10 · Pool: 60/64 (93.8%)]`), and a comprehensive Markdown Run Report appended to the console and GitHub Actions job summary with tier progress, ETA, and a per-book ledger at zero extra Supabase queries.
 - **Hermetic Test Suite Stderr Hygiene & Diagnostic Contract Assertion (`ADR-080`)**: Hardened root layout and error boundary test suites against artificial React 19 JSDOM HTML nesting warnings (`In HTML, <html> cannot be a child of <div>. This will cause a hydration error.`) and unhandled boundary stderr noise by replacing fragile substring checks with format-aware `vi.spyOn(console, 'error')` filters that catch format specifiers (`%s`), while asserting authentic diagnostic telemetry logging contracts (`[AppRouter:FatalBoundary]` and `[AppRouter:RootLayoutFault]`) across all error boundary test suites with 100% silent stderr test runs.
+- **Adaptive Repository Auto-Discovery, NEXT_PUBLIC_GITHUB_REPO & Platform Secrets Matrix (`ADR-080`)**: Purged the synthetic `contact@bookarium.app` email from Wikidata SPARQL requests, added zero-hardcoding repository auto-discovery (`resolveRepositoryUrl` discovering `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, CI `GITHUB_REPOSITORY`, Vercel `VERCEL_GIT_REPO_*`, local Git remote discovery via `git config --get remote.origin.url`, or `NEXT_PUBLIC_SITE_URL`), dynamic `SITE_CONFIG.GITHUB_REPO` wiring, build-time injection in `next.config.ts`, and integrated optional `GUTENBERG_CONTACT_EMAIL` environment variable support across all CLI engines while establishing a comprehensive Platform-by-Platform Placement Matrix (Vercel vs. GitHub Actions vs. Local `.env.local` vs. Supabase Dashboard) in documentation.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -578,7 +579,7 @@ npm run catalog:sync -- --limit=100
 npm run catalog:sync
 ```
 > [!TIP]
-> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). Three GitHub Actions workflows automate background catalog, translation, and literary quote updates while keeping your Supabase free tier active:
+> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (and optionally `GUTENBERG_CONTACT_EMAIL` for outbound User-Agent contact attribution) to your repository's **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`). Three GitHub Actions workflows automate background catalog, translation, and literary quote updates while keeping your Supabase free tier active:
 >
 > 1. **Gutenberg Catalog Sync ([`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml))**:
 >    - **Schedule**: Every Sunday at `02:00 UTC`.
@@ -679,6 +680,7 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
 3. Under **Environment Variables**, optionally set:
    * `NEXT_PUBLIC_SUPABASE_URL` = your Supabase project URL
    * `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase public anon key
+   * `NEXT_PUBLIC_GITHUB_REPO` = your hosted GitHub repository URL (auto-detected if omitted)
    * `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = your optional Cloudflare Turnstile public site key
 4. Click **Deploy** — Vercel will automatically build the Next.js 16 production bundle, configure edge caching, and provision serverless API proxies.
 ---

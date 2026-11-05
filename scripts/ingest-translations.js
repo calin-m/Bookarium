@@ -47,6 +47,33 @@ function loadEnv() {
   return env;
 }
 
+function resolveUserAgent(env = loadEnv()) {
+  let repo = env.NEXT_PUBLIC_GITHUB_REPO || env.BOOKARIUM_REPO_URL;
+  if (!repo && env.GITHUB_REPOSITORY) {
+    repo = `https://github.com/${env.GITHUB_REPOSITORY.trim().replace(/^\/+|\/+$/g, '')}`;
+  }
+  if (!repo && env.VERCEL_GIT_REPO_OWNER && env.VERCEL_GIT_REPO_SLUG) {
+    repo = `https://github.com/${env.VERCEL_GIT_REPO_OWNER.trim()}/${env.VERCEL_GIT_REPO_SLUG.trim()}`;
+  }
+  if (!repo) {
+    try {
+      const raw = require('child_process').execSync('git config --get remote.origin.url', {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      if (raw) {
+        repo = raw.replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
+      }
+    } catch {}
+  }
+  if (!repo) {
+    repo = env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app';
+  }
+  const email = (env.GUTENBERG_CONTACT_EMAIL || '').trim();
+  const contactPart = email ? `+${repo}; ${email}` : `+${repo}`;
+  return `Bookarium-Gatekeeper/1.0 (${contactPart})`;
+}
+
 // 2. Language Code Normalization (Defense 7)
 const ISO_LANG_MAP = {
   english: 'en',
@@ -222,7 +249,7 @@ function fetchWikidataTranslations(limit = null) {
         url,
         {
           headers: {
-            'User-Agent': 'Bookarium-Gatekeeper/1.0 (https://github.com/calin-m/Bookarium; contact@bookarium.app)',
+            'User-Agent': resolveUserAgent(),
             Accept: 'application/sparql-results+json',
           },
         },
