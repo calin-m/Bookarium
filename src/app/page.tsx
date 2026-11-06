@@ -615,7 +615,9 @@ function HomeContent() {
             }
             return;
           }
-          setActiveView(view);
+          React.startTransition(() => {
+            setActiveView(view);
+          });
         }}
         isVisible={isHeaderVisible}
       />
@@ -736,7 +738,9 @@ function HomeContent() {
             <CatalogOfflineView
               onNavigateView={(view) => {
                 setSwipeDirection(null);
-                setActiveView(view);
+                React.startTransition(() => {
+            setActiveView(view);
+          });
               }}
             />
           ) : (

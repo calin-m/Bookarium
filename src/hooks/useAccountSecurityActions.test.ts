@@ -201,5 +201,109 @@ describe('useAccountSecurityActions', () => {
     expect(result.current.resetEmailError).toBe('Rate limit exceeded');
     expect(result.current.deleteError).toBe('Deletion service unavailable');
   });
+
+  it('handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions', async () => {
+    vi.useFakeTimers();
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      configurable: true,
+    });
+
+    const updateProfile = vi.fn().mockResolvedValueOnce({ error: null }).mockRejectedValueOnce(new Error('Crash'));
+    const updatePassword = vi.fn().mockRejectedValueOnce(new Error('Crash'));
+    const resetPasswordForEmail = vi.fn().mockResolvedValueOnce({ error: null }).mockRejectedValueOnce(new Error('Crash'));
+    const requestAccountDeletion = vi.fn().mockRejectedValueOnce(new Error('Crash'));
+    const resendVerificationEmail = vi.fn().mockResolvedValueOnce({ error: null }).mockRejectedValueOnce(new Error('Crash'));
+
+    // 1. Unauthenticated guards (user: null)
+    const { result: unauthResult } = renderHook(() =>
+      useAccountSecurityActions({
+        user: null,
+        profile: null,
+        isRecoveryMode: false,
+        onClearRecoveryParam: vi.fn(),
+        updateProfile,
+        updatePassword,
+        resetPasswordForEmail,
+        requestAccountDeletion,
+        resendVerificationEmail,
+      })
+    );
+
+    await act(async () => {
+      await unauthResult.current.handleResendVerification();
+      await unauthResult.current.handleRequestPasswordReset();
+      await unauthResult.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      await unauthResult.current.handleUpdatePassword({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      await unauthResult.current.handleRequestDeletion();
+    });
+    expect(updateProfile).not.toHaveBeenCalled();
+
+    // 2. Cooldown timers and clipboard copy with authenticated user
+    const { result } = renderHook(() =>
+      useAccountSecurityActions({
+        user: mockUser,
+        profile: mockProfile,
+        isRecoveryMode: true,
+        onClearRecoveryParam: vi.fn(),
+        updateProfile,
+        updatePassword,
+        resetPasswordForEmail,
+        requestAccountDeletion,
+        resendVerificationEmail,
+      })
+    );
+
+    act(() => {
+      result.current.generateStrongPassword();
+    });
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    expect(result.current.copiedPassword).toBe(true);
+
+    await act(async () => {
+      await result.current.handleResendVerification();
+      await result.current.handleRequestPasswordReset();
+      await result.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+    });
+
+    expect(result.current.resendSuccess).toBe(true);
+    expect(result.current.resendCooldown).toBe(60);
+    expect(result.current.resetCooldown).toBe(60);
+
+    // Advance timers by 5 seconds to trigger interval ticks and timeout resets
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(result.current.copiedPassword).toBe(false);
+    expect(result.current.resendSuccess).toBe(false);
+    expect(result.current.saveSuccess).toBe(false);
+    expect(result.current.resendCooldown).toBe(55);
+    expect(result.current.resetCooldown).toBe(55);
+
+    // Drain remaining cooldown and test catch blocks
+    act(() => {
+      vi.advanceTimersByTime(55000);
+    });
+    expect(result.current.resendCooldown).toBe(0);
+    expect(result.current.resetCooldown).toBe(0);
+
+    await act(async () => {
+      await result.current.handleResendVerification();
+      await result.current.handleRequestPasswordReset();
+      await result.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      await result.current.handleUpdatePassword({ preventDefault: vi.fn() } as unknown as React.FormEvent);
+      await result.current.handleRequestDeletion();
+    });
+
+    expect(result.current.resendError).toContain('Failed to resend');
+    expect(result.current.resetEmailError).toContain('Failed to send');
+    expect(result.current.saveError).toContain('unexpected error');
+    expect(result.current.passwordError).toContain('unexpected error');
+    expect(result.current.deleteError).toContain('unexpected error');
+
+    vi.useRealTimers();
+  });
 });
 

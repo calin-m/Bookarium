@@ -60,3 +60,73 @@ export function cleanVoiceName(name: string): string {
   return name.replace(/(Microsoft|Google|Apple)\s*/gi, '').trim();
 }
 
+/**
+ * Scores a voice based on quality indicators (Neural/Natural/Enhanced)
+ * and language compatibility.
+ */
+export function getVoiceQualityScore(
+  voice: SpeechSynthesisVoice | null | undefined,
+  targetLang: string = 'en'
+): number {
+  if (!voice) return 0;
+  let score = 0;
+  const combined = `${voice.name || ''} ${voice.voiceURI || ''}`.toLowerCase();
+
+  // Language match priority
+  if (isVoiceLanguageCompatible(voice, targetLang)) {
+    score += 100;
+  }
+
+  // Modern Neural / Natural engine prioritization
+  if (combined.includes('natural') || combined.includes('online')) score += 50;
+  if (combined.includes('neural') || combined.includes('wavenet')) score += 40;
+  if (combined.includes('enhanced') || combined.includes('premium') || combined.includes('network')) {
+    score += 30;
+  }
+  if (combined.includes('siri')) score += 25;
+  if (combined.includes('google') || voice.localService === false) score += 20;
+
+  // Demote legacy mechanical voices
+  if (combined.includes('espeak') || combined.includes('desktop')) score -= 15;
+
+  return score;
+}
+
+/**
+ * Sorts voices descending by quality score and language compatibility.
+ */
+export function sortVoicesByQuality(
+  voices: SpeechSynthesisVoice[],
+  targetLang: string = 'en'
+): SpeechSynthesisVoice[] {
+  if (!voices || !Array.isArray(voices)) return [];
+  return [...voices].sort(
+    (a, b) => getVoiceQualityScore(b, targetLang) - getVoiceQualityScore(a, targetLang)
+  );
+}
+
+/**
+ * Resolves the optimal voice given a pool of available voices, an optional
+ * preferred voice URI, and target language.
+ */
+export function resolveBestVoice(
+  voices: SpeechSynthesisVoice[],
+  preferredVoiceURI?: string | null,
+  targetLang: string = 'en'
+): SpeechSynthesisVoice | null {
+  if (!voices || voices.length === 0) return null;
+
+  const sorted = sortVoicesByQuality(voices, targetLang);
+  const compatible = sorted.filter((v) => isVoiceLanguageCompatible(v, targetLang));
+  const pool = compatible.length > 0 ? compatible : sorted;
+
+  if (preferredVoiceURI) {
+    const matched =
+      pool.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI) ||
+      sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI);
+    if (matched) return matched;
+  }
+
+  return pool[0] || null;
+}
+

@@ -13,10 +13,16 @@ import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
+import { formatCleanQuote, resolveSpreadQuoteLayout } from '@/lib/gutenberg/passages';
 
 export interface HeroFeaturedBook3DProps {
   featuredBook: FeaturedHeroBook & { rawBook?: GutendexBook };
   onReadFeaturedBook?: (book: GutendexBook | FeaturedHeroBook) => void;
+  /**
+   * `false` while the shared quote pool is still resolving: quote areas stay invisible (space reserved)
+   * so static fallback text is never swapped for database text in place, then reveal once.
+   */
+  isQuoteDataReady?: boolean;
 }
 
 /**
@@ -26,6 +32,7 @@ export interface HeroFeaturedBook3DProps {
 export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
   featuredBook,
   onReadFeaturedBook,
+  isQuoteDataReady = true,
 }) => {
   const [pinState, setPinState] = useState<'auto' | 'open' | 'closed'>('auto');
   const [isHovered, setIsHovered] = useState(false);
@@ -93,7 +100,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     prevPassageIndex,
     isTurningLeaf,
     setIsTurningLeaf,
-    shuffleNextPassage,
+    shuffleNextPassage: hookShuffleNextPassage,
   } = useBookPassageShuffle({
     id: featuredBook.id,
     title: featuredBook.title,
@@ -103,7 +110,28 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     enabled: false,
   });
 
-  const formatCleanQuote = (text?: string) => (text || '').replace(/^[“"'\s]+|[”"'\s]+$/g, '');
+  // The ink-appear transition is reserved for user-initiated page turns; initial paint stays static.
+  const [hasShuffled, setHasShuffled] = useState(false);
+  const shuffleNextPassage = (e?: React.MouseEvent) => {
+    setHasShuffled(true);
+    hookShuffleNextPassage(e);
+  };
+  const inkWrapperClass = hasShuffled ? 'animate-ink-appear' : '';
+  // Quote areas: on initial paint with isQuoteDataReady=true, render statically without delay.
+  // If isQuoteDataReady is explicitly false (e.g. while a custom book is loading), hold invisible at opacity-0.
+  const [initialReady] = useState(isQuoteDataReady);
+  const quoteRevealClass = !isQuoteDataReady
+    ? 'opacity-0'
+    : hasShuffled
+    ? ''
+    : initialReady
+    ? ''
+    : 'animate-ink-appear';
+
+  const currentLayout = resolveSpreadQuoteLayout(currentPassage, {
+    title: featuredBook.title,
+    hasCommentary: Boolean(currentPassage.commentary),
+  });
 
   const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
 
@@ -201,13 +229,13 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
           </p>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-muted/50 border border-border space-y-1.5">
+        <div className={`p-3.5 rounded-xl bg-muted/50 border border-border space-y-1.5 ${quoteRevealClass}`}>
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground uppercase">
             <Quote className="w-3 h-3 text-primary/70 shrink-0" />
             <span>Opening Line</span>
           </div>
-          <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-4">
-            &ldquo;{formatCleanQuote(currentPassage.quoteExcerpt || featuredBook.openingLine)}&rdquo;
+          <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed ${currentLayout.coverLineClampClass}`}>
+            &ldquo;{currentLayout.coverQuote || formatCleanQuote(featuredBook.openingLine)}&rdquo;
           </p>
         </div>
 
@@ -239,7 +267,15 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
   const isLongTitle = featuredBook.title.length > 36;
 
   const renderLeftPageContent = (passage: typeof currentPassage, maxWidthClass: string) => {
-    const hasSecondary = Boolean(passage.secondaryQuote);
+    const { leftQuotes, leftLineClampClass } = resolveSpreadQuoteLayout(passage, {
+      title: featuredBook.title,
+      hasCommentary: Boolean(passage.commentary),
+    });
+    const cleanOpening = leftQuotes[0] || '';
+    const cleanSecondary = leftQuotes[1];
+    const cleanTertiary = leftQuotes[2];
+    const hasSecondary = Boolean(cleanSecondary);
+
     return (
       <>
         <div
@@ -285,22 +321,25 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden">
+          <div
+            data-testid="hero-book-left-quotes"
+            className={`flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden ${quoteRevealClass}`}
+          >
             <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/40">
               <p
                 className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
                   !hasSecondary && !isLongTitle
-                    ? 'text-xs sm:text-[13px] line-clamp-5'
+                    ? 'text-xs sm:text-sm'
                     : isVeryLongTitle
-                    ? 'text-xs line-clamp-3'
-                    : 'text-xs sm:text-[13px] line-clamp-3'
-                }`}
+                    ? 'text-xs'
+                    : 'text-xs sm:text-[13px]'
+                } ${leftLineClampClass}`}
               >
-                &ldquo;{formatCleanQuote(passage.openingLine)}&rdquo;
+                &ldquo;{cleanOpening}&rdquo;
               </p>
             </div>
 
-            {passage.secondaryQuote && (
+            {cleanSecondary && (
               <div
                 data-testid="hero-book-secondary-quote"
                 className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
@@ -308,10 +347,24 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
                 <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
                 <p
                   className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                    isLongTitle ? 'text-xs line-clamp-2' : 'text-xs sm:text-[13px] line-clamp-3'
-                  }`}
+                    isLongTitle ? 'text-xs' : 'text-xs sm:text-[13px]'
+                  } ${leftLineClampClass}`}
                 >
-                  &ldquo;{formatCleanQuote(passage.secondaryQuote)}&rdquo;
+                  &ldquo;{cleanSecondary}&rdquo;
+                </p>
+              </div>
+            )}
+
+            {cleanTertiary && (
+              <div
+                data-testid="hero-book-tertiary-quote"
+                className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
+              >
+                <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+                <p
+                  className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${leftLineClampClass}`}
+                >
+                  &ldquo;{cleanTertiary}&rdquo;
                 </p>
               </div>
             )}
@@ -329,31 +382,48 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
   };
 
   const renderRightPageBody = (passage: typeof currentPassage) => {
-    const hasSecondRightQuote = Boolean(passage.rightPageQuote2);
+    const { rightQuotes, rightLineClampClass } = resolveSpreadQuoteLayout(passage, {
+      title: featuredBook.title,
+      hasCommentary: Boolean(passage.commentary),
+    });
+    const cleanPrimary = rightQuotes[0] || '';
+    const cleanSecond = rightQuotes[1];
+    const cleanThird = rightQuotes[2];
+
     return (
       <div
         data-testid="hero-book-right-page-body"
-        className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden"
+        className={`flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden ${quoteRevealClass}`}
       >
         <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
           <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
           <p
-            className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${
-              hasSecondRightQuote ? 'line-clamp-3' : 'line-clamp-5'
-            }`}
+            className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${rightLineClampClass}`}
           >
-            &ldquo;{formatCleanQuote(passage.quoteExcerpt)}&rdquo;
+            &ldquo;{cleanPrimary}&rdquo;
           </p>
         </div>
 
-        {passage.rightPageQuote2 && (
+        {cleanSecond && (
           <div
             data-testid="hero-book-right-quote-2"
             className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
           >
             <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
-            <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-3 text-pretty">
-              &ldquo;{formatCleanQuote(passage.rightPageQuote2)}&rdquo;
+            <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${rightLineClampClass}`}>
+              &ldquo;{cleanSecond}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {cleanThird && (
+          <div
+            data-testid="hero-book-right-quote-3"
+            className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
+          >
+            <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
+            <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${rightLineClampClass}`}>
+              &ldquo;{cleanThird}&rdquo;
             </p>
           </div>
         )}
@@ -401,7 +471,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
         <div className="hidden lg:flex absolute inset-0 rounded-r-lg rounded-l-none open-book-page-right border border-border p-6 flex-col justify-between text-foreground z-0 overflow-hidden">
           <div
             key={`right-page-base-${featuredBook.id}-${activePassageIndex}`}
-            className="animate-ink-appear flex flex-col justify-between h-full relative"
+            className={`${inkWrapperClass} flex flex-col justify-between h-full relative`}
           >
             <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-muted-foreground mb-2 pb-1 border-b border-border shrink-0">
               <span className="truncate pr-2">{currentPassage.chapterLabel || 'Notable Passage'}</span>
@@ -501,7 +571,7 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
 
             <div
               key={`front-face-content-${featuredBook.id}-${activePassageIndex}`}
-              className="animate-ink-appear flex flex-col justify-between h-full relative z-10"
+              className={`${inkWrapperClass} flex flex-col justify-between h-full relative z-10`}
             >
               {/* Header */}
               <div>
@@ -523,9 +593,12 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
               </div>
 
               {/* Center Quote Excerpt */}
-              <div className="my-3 p-3 rounded bg-stone-900 border border-stone-800">
-                <p className="text-xs font-serif italic text-stone-200 leading-relaxed line-clamp-4 text-pretty">
-                  &ldquo;{formatCleanQuote(currentPassage.quoteExcerpt)}&rdquo;
+              <div className={`my-3 p-3 rounded bg-stone-900 border border-stone-800 ${quoteRevealClass}`}>
+                <p
+                  data-testid="hero-book-cover-quote"
+                  className={`text-xs font-serif italic text-stone-200 leading-relaxed text-pretty ${currentLayout.coverLineClampClass}`}
+                >
+                  &ldquo;{currentLayout.coverQuote}&rdquo;
                 </p>
               </div>
 

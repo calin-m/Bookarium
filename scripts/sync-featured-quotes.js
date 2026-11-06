@@ -552,14 +552,46 @@ function stripBoilerplateAndSplitParagraphs(rawText) {
     });
 }
 
-function wrapCleanQuote(text, maxLen = 260) {
+function wrapCleanQuote(text, maxLen = 220) {
   const cleaned = String(text || '')
     .replace(/^[“"'\s*\-_~=\.#\/\\|:;+]+|[”"'\s*\-_~=\.#\/\\|:;+]+$/g, '')
     .trim();
   if (!cleaned) return '';
-  const body =
-    cleaned.length > maxLen - 2 ? `${cleaned.slice(0, maxLen - 3).trim()}…` : cleaned;
-  return `“${body}”`;
+
+  const budget = Math.max(20, maxLen - 2);
+  if (cleaned.length <= budget) {
+    return `“${cleaned}”`;
+  }
+
+  const windowStr = cleaned.slice(0, budget);
+  const minSentenceEnd = Math.max(45, Math.floor(budget * 0.4));
+
+  // 1. Prefer ending at a natural sentence boundary (. ! ?) within the upper 60% of the budget
+  let bestSentenceEnd = -1;
+  const sentenceRegex = /[.!?]+(?=["'”’)\]]*(?:\s|$))/g;
+  let match;
+  while ((match = sentenceRegex.exec(windowStr)) !== null) {
+    const endPos = match.index + match[0].length;
+    if (endPos >= minSentenceEnd) {
+      bestSentenceEnd = endPos;
+    }
+  }
+
+  if (bestSentenceEnd > 0) {
+    const sentenceBody = windowStr
+      .slice(0, bestSentenceEnd)
+      .replace(/[“"']+$/g, '')
+      .trim();
+    return `“${sentenceBody}”`;
+  }
+
+  // 2. Fallback to nearest whole-word space boundary so a word is never sliced in half
+  const wordSlice = cleaned.slice(0, budget - 1);
+  const lastSpace = wordSlice.lastIndexOf(' ');
+  const baseCut =
+    lastSpace >= Math.floor(budget * 0.5) ? wordSlice.slice(0, lastSpace) : wordSlice;
+  const tidyWord = baseCut.replace(/[,;:\-—–\s“"']+$/g, '').trim();
+  return `“${tidyWord}…”`;
 }
 
 /**
@@ -606,12 +638,12 @@ function extractBookQuoteSpreads(rawText, book, targetCount = 14) {
 
     spreads.push({
       chapterLabel: `Passage ${numeral} • ${book.title}`,
-      openingLine: wrapCleanQuote(pool[0], 280),
-      secondaryQuote: pool[1] ? wrapCleanQuote(pool[1], 210) : undefined,
-      leftPageQuote2: pool[2] ? wrapCleanQuote(pool[2], 190) : undefined,
-      quoteExcerpt: wrapCleanQuote(pool[3] || pool[1] || pool[0], 260),
-      rightPageQuote2: pool[4] ? wrapCleanQuote(pool[4], 200) : undefined,
-      tertiaryQuote: pool[5] ? wrapCleanQuote(pool[5], 160) : undefined,
+      openingLine: wrapCleanQuote(pool[0], 220),
+      secondaryQuote: pool[1] ? wrapCleanQuote(pool[1], 175) : undefined,
+      leftPageQuote2: pool[2] ? wrapCleanQuote(pool[2], 140) : undefined,
+      quoteExcerpt: wrapCleanQuote(pool[3] || pool[1] || pool[0], 220),
+      rightPageQuote2: pool[4] ? wrapCleanQuote(pool[4], 175) : undefined,
+      tertiaryQuote: pool[5] ? wrapCleanQuote(pool[5], 140) : undefined,
       commentary: `Extracted from the unabridged Project Gutenberg edition (Vol. #${book.id}).`,
     });
   }

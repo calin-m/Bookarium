@@ -606,21 +606,39 @@ export function useFeaturedQuotes(bookIds: number[], options: UseBooksOptions = 
 }
 
 /**
+ * Upper bound (ms) a consumer waits for the quote pool before revealing its static fallback content,
+ * so a hung network request can never keep quote areas hidden indefinitely.
+ */
+export const QUOTE_POOL_SETTLE_TIMEOUT_MS = 1500;
+
+/**
  * React Query hook fetching all quote-enriched books (`quotes <> '[]'::jsonb`) from Supabase
  * ordered by popularity (`download_count DESC`) to dynamically expand the Hero, Editorial,
  * and Literary Quotes pools.
+ *
+ * Also exposes `isPoolSettled`: `true` once the pool the consumer should render is final
+ * (warm cache, completed fetch, caller opt-out, unconfigured Supabase, or settle timeout). Consumers hold
+ * quote content invisible until then so static fallback text is never swapped for database text in place.
  */
 export function useQuoteEnrichedBooks(
   options: UseBooksOptions & { limit?: number } = {}
 ) {
   const contextClient = React.useContext(QueryClientContext);
   const limit = options.limit ?? 600;
+  const isEnabled = options.enabled ?? true;
   const hasMounted = useHasMounted();
   const cached = React.useMemo(
     () => (hasMounted ? readCachedQuoteEnrichedBooks(limit) : undefined),
     [hasMounted, limit]
   );
   const isCacheFresh = Boolean(cached?.isFresh);
+  const [hasTimedOut, setHasTimedOut] = React.useState(false);
+
+  useEffect(() => {
+    if (!hasMounted || !isEnabled) return;
+    const timer = setTimeout(() => setHasTimedOut(true), QUOTE_POOL_SETTLE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [hasMounted, isEnabled]);
 
   const query = useQuery(
     {
@@ -628,16 +646,23 @@ export function useQuoteEnrichedBooks(
       queryFn: () => fetchQuoteEnrichedBooks(limit),
       staleTime: 60 * 60 * 1000, // 1 hour
       gcTime: 2 * 60 * 60 * 1000, // 2 hours
-      enabled: (options.enabled ?? true) && hasMounted && isSupabaseConfigured() && !isCacheFresh,
+      enabled: isEnabled && hasMounted && isSupabaseConfigured() && !isCacheFresh,
     },
     contextClient ?? fallbackFeaturedQuotesClient
   );
+
+  const hasCachedBooks = Boolean(cached?.books && cached.books.length > 0);
+  const isPoolSettled =
+    !isEnabled ||
+    !isSupabaseConfigured() ||
+    (hasMounted && (hasCachedBooks || query.isFetched || hasTimedOut));
 
   return React.useMemo(
     () => ({
       ...query,
       data: query.data && query.data.length > 0 ? query.data : cached?.books,
+      isPoolSettled,
     }),
-    [query, cached]
+    [query, cached, isPoolSettled]
   );
 }

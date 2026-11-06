@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { initializeJurisdiction } from '@/stores/useJurisdictionStore';
+import { initializeTheme, type AppTheme } from '@/stores/useThemeStore';
 import { syncAllStoresWithCloud } from '@/lib/sync-utils';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 import { GlobalTitleTooltip } from '@/components/ui/CursorTooltip';
@@ -14,14 +15,30 @@ const AuthModal = dynamic(
   { ssr: false }
 );
 
+export const AuthHintContext = React.createContext<boolean>(false);
+
+export function useAuthHint(): boolean {
+  return React.useContext(AuthHintContext);
+}
+
 export interface ProvidersProps {
   children: React.ReactNode;
   initialCountry?: string;
+  initialTheme?: AppTheme;
+  initialIsAuthenticated?: boolean;
 }
 
-export function Providers({ children, initialCountry }: ProvidersProps) {
+export function Providers({
+  children,
+  initialCountry,
+  initialTheme,
+  initialIsAuthenticated = false,
+}: ProvidersProps) {
   if (initialCountry) {
     initializeJurisdiction(initialCountry);
+  }
+  if (initialTheme) {
+    initializeTheme(initialTheme);
   }
   const [queryClient] = useState(
     () =>
@@ -115,12 +132,14 @@ export function Providers({ children, initialCountry }: ProvidersProps) {
   }, [user?.id]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ServiceWorkerRegister />
-      <GlobalTitleTooltip />
-      {children}
-      {isAuthModalOpen && <AuthModal />}
-    </QueryClientProvider>
+    <AuthHintContext.Provider value={initialIsAuthenticated}>
+      <QueryClientProvider client={queryClient}>
+        <ServiceWorkerRegister />
+        <GlobalTitleTooltip />
+        {children}
+        {isAuthModalOpen && <AuthModal />}
+      </QueryClientProvider>
+    </AuthHintContext.Provider>
   );
 }
 

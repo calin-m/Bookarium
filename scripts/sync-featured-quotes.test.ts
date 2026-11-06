@@ -325,6 +325,21 @@ describe('sync-featured-quotes pipeline', () => {
     expect(quotesSync.stripBoilerplateAndSplitParagraphs(null)).toEqual([]);
     expect(quotesSync.wrapCleanQuote('')).toBe('');
     expect(quotesSync.wrapCleanQuote('A'.repeat(300), 50).endsWith('…”')).toBe(true);
+    // Ends cleanly at a sentence boundary in the upper 45% of the budget
+    const sentenceTruncated = quotesSync.wrapCleanQuote(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood.',
+      160
+    );
+    expect(sentenceTruncated).toBe(
+      '“It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.”'
+    );
+    // Falls back to whole-word space boundary without slicing words in half
+    const wordTruncated = quotesSync.wrapCleanQuote(
+      'Extraordinary circumstances surrounding the mysterious philosophical investigation continued unabated through the winter months without pause or punctuation',
+      90
+    );
+    expect(wordTruncated.endsWith('…”')).toBe(true);
+    expect(wordTruncated).not.toContain('unab…');
 
     const spreads = quotesSync.extractBookQuoteSpreads(
       SAMPLE_GUTENBERG_BOOK,

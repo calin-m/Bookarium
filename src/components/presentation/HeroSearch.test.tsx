@@ -203,6 +203,7 @@ describe('HeroSearch component', () => {
     };
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [mockBookEnglish],
     } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
 
@@ -423,6 +424,7 @@ describe('HeroSearch component', () => {
   it('selects Featured Book from the full useQuoteEnrichedBooks pool using exclusively database quotes', async () => {
     const useBooksModule = await import('@/hooks/queries/useBooks');
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [
         {
           id: 1400,
@@ -498,9 +500,11 @@ describe('HeroSearch component', () => {
     const enrichedSpy = vi
       .spyOn(useBooksModule, 'useQuoteEnrichedBooks')
       .mockReturnValueOnce({
+      isPoolSettled: true,
         data: [bookA],
       } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>)
       .mockReturnValue({
+        isPoolSettled: true,
         data: [bookB, bookA],
       } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
 
@@ -747,6 +751,7 @@ describe('HeroSearch component', () => {
       const enrichedSpy = vi
         .spyOn(useBooksModule, 'useQuoteEnrichedBooks')
         .mockReturnValue({
+      isPoolSettled: true,
           data: [dbMatch],
         } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
 
@@ -754,6 +759,63 @@ describe('HeroSearch component', () => {
 
       expect(screen.getAllByText(/Custom Great Expectations/i)[0]).toBeInTheDocument();
       expect(screen.getAllByText(/Database Excerpt/i)[0]).toBeInTheDocument();
+
+      enrichedSpy.mockRestore();
+    });
+
+    it('passes quote-pool readiness to the 3D Featured Book so quotes are revealed once, and treats a custom featured book as ready', async () => {
+      const useBooksModule = await import('@/hooks/queries/useBooks');
+      const perfTier = await import('@/hooks/usePerformanceTier');
+      vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+        tier: 'high',
+        allowHeavyMotion: true,
+        enablePrefetching: true,
+        cores: 8,
+      });
+
+      const enrichedSpy = vi
+        .spyOn(useBooksModule, 'useQuoteEnrichedBooks')
+        .mockReturnValue({
+          isPoolSettled: false,
+          data: undefined,
+        } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+      const view = renderWithClient(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
+      const coverQuoteBox = () => screen.getByTestId('hero-book-cover-quote').parentElement!;
+
+      // Instant Frame-0 paint: cover quote renders immediately without artificial opacity-0 delay
+      expect(coverQuoteBox().className).not.toContain('opacity-0');
+
+      enrichedSpy.mockReturnValue({
+        isPoolSettled: true,
+        data: undefined,
+      } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+      view.rerender(<HeroSearch search="" selectedTopic="" selectedLanguage="" />);
+      expect(coverQuoteBox().className).not.toContain('opacity-0');
+      view.unmount();
+
+      // A caller-supplied featured book renders ready on Frame 0 as well
+      enrichedSpy.mockReturnValue({
+        isPoolSettled: false,
+        data: undefined,
+      } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+      renderWithClient(
+        <HeroSearch
+          search=""
+          featuredBook={{
+            id: 1400,
+            title: 'Custom Great Expectations',
+            author: 'Charles Dickens',
+            year: '1861',
+            primarySubject: 'Fiction',
+            openingLine: '“Custom opening line.”',
+            quoteExcerpt: '“Custom quote excerpt.”',
+            volumeNumber: 'Vol. I',
+            license: 'Public Domain',
+          }}
+        />
+      );
+      expect(coverQuoteBox().className).not.toContain('opacity-0');
 
       enrichedSpy.mockRestore();
     });

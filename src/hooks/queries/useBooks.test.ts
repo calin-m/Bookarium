@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import {
@@ -10,6 +11,10 @@ import {
   useFeaturedQuotes,
   fetchQuoteEnrichedBooks,
   useQuoteEnrichedBooks,
+  readCachedQuoteEnrichedBooks,
+  writeCachedQuoteEnrichedBooks,
+  QUOTE_ENRICHED_BOOKS_CACHE_KEY,
+  QUOTE_POOL_SETTLE_TIMEOUT_MS,
 } from './useBooks';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
@@ -701,6 +706,216 @@ describe('useBooks hook', () => {
     window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
     clientSpy.mockRestore();
     configSpy.mockRestore();
+  });
+});
+
+describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
+  const CACHE_KEY = 'bookarium-quote-enriched-books-v1';
+
+  const writeWarmCache = () => {
+    window.localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        updatedAt: Date.now(),
+        books: [
+          {
+            id: 1400,
+            title: 'Great Expectations',
+            authors: [],
+            quotes: [
+              {
+                chapterLabel: 'Passage I • Great Expectations',
+                openingLine: '“My father’s family name being Pirrip.”',
+                quoteExcerpt: '“Suffering has been stronger than all other teaching.”',
+              },
+            ],
+          },
+        ],
+      })
+    );
+  };
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    window.localStorage.removeItem(CACHE_KEY);
+  });
+
+  it('is false during server rendering when Supabase is configured, so static fallback text is never painted as final', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+    writeWarmCache();
+
+    const { TestWrapper } = createWrapper();
+    const Probe = () => {
+      const { isPoolSettled } = useQuoteEnrichedBooks();
+      return React.createElement('span', { 'data-settled': String(isPoolSettled) });
+    };
+    const html = renderToString(React.createElement(TestWrapper, null, React.createElement(Probe)));
+    expect(html).toContain('data-settled="false"');
+  });
+
+  it('is true immediately when Supabase is unconfigured or the caller opts out with enabled: false', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    const configSpy = vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(false);
+    const { TestWrapper } = createWrapper();
+
+    const unconfigured = renderHook(() => useQuoteEnrichedBooks(), { wrapper: TestWrapper });
+    expect(unconfigured.result.current.isPoolSettled).toBe(true);
+    unconfigured.unmount();
+
+    configSpy.mockReturnValue(true);
+    const optedOut = renderHook(() => useQuoteEnrichedBooks({ enabled: false }), {
+      wrapper: TestWrapper,
+    });
+    expect(optedOut.result.current.isPoolSettled).toBe(true);
+  });
+
+  it('is true on mount with a warm localStorage cache and exposes the cached books', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+    writeWarmCache();
+
+    const { TestWrapper } = createWrapper();
+    const { result } = renderHook(() => useQuoteEnrichedBooks(), { wrapper: TestWrapper });
+
+    expect(result.current.isPoolSettled).toBe(true);
+    expect(result.current.data?.[0]?.id).toBe(1400);
+  });
+
+  it('stays false with a cold cache while the fetch is pending, then settles via the timeout safety net', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          order: vi.fn(() => ({
+            limit: vi.fn(() => new Promise(() => {})),
+          })),
+        })),
+      })),
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+    window.localStorage.removeItem(CACHE_KEY);
+
+    vi.useFakeTimers();
+    const { TestWrapper } = createWrapper();
+    const { result } = renderHook(() => useQuoteEnrichedBooks(), { wrapper: TestWrapper });
+    expect(result.current.isPoolSettled).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(QUOTE_POOL_SETTLE_TIMEOUT_MS - 1);
+    });
+    expect(result.current.isPoolSettled).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current.isPoolSettled).toBe(true);
+  });
+
+  it('settles with a cold cache once the fetch completes, including when the fetch fails', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+    vi.spyOn(supabaseClientModule, 'createClient').mockImplementation(() => {
+      throw new Error('Supabase unavailable');
+    });
+    window.localStorage.removeItem(CACHE_KEY);
+
+    const { TestWrapper } = createWrapper();
+    const { result } = renderHook(() => useQuoteEnrichedBooks(), { wrapper: TestWrapper });
+
+    await waitFor(() => expect(result.current.isPoolSettled).toBe(true));
+    expect(result.current.data ?? []).toEqual([]);
+  });
+
+  it('forwards all optional query parameters in usePrefetchNextPage and sorts cached quote-enriched books deterministically', () => {
+    const { queryClient, TestWrapper } = createWrapper();
+    const prefetchSpy = vi.spyOn(queryClient, 'prefetchQuery');
+
+    const { result } = renderHook(
+      () =>
+        usePrefetchNextPage(
+          {
+            ids: '1342,84',
+            search: 'Austen',
+            topic: 'fiction',
+            languages: 'en',
+            copyright: false,
+            authorYearStart: 1800,
+            authorYearEnd: 1900,
+            sort: 'popular',
+            mimeType: 'text/plain',
+            includeRestrictedMetadata: true,
+          },
+          true
+        ),
+      { wrapper: TestWrapper }
+    );
+
+    act(() => {
+      result.current();
+    });
+
+    expect(prefetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: [
+          'books',
+          {
+            ids: '1342,84',
+            search: 'Austen',
+            topic: 'fiction',
+            languages: 'en',
+            copyright: false,
+            authorYearStart: 1800,
+            authorYearEnd: 1900,
+            sort: 'popular',
+            mimeType: 'text/plain',
+            includeRestrictedMetadata: true,
+            page: 2,
+          },
+        ],
+      })
+    );
+
+    // Test writeCachedQuoteEnrichedBooks & readCachedQuoteEnrichedBooks deterministic sorting and edge cases
+    writeCachedQuoteEnrichedBooks([]);
+    window.localStorage.setItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY, '{invalid-json');
+    expect(readCachedQuoteEnrichedBooks()).toBeUndefined();
+
+    window.localStorage.setItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY, JSON.stringify({ books: [] }));
+    expect(readCachedQuoteEnrichedBooks()).toBeUndefined();
+
+    window.localStorage.setItem(
+      QUOTE_ENRICHED_BOOKS_CACHE_KEY,
+      JSON.stringify({ books: [{ invalid: true }] })
+    );
+    expect(readCachedQuoteEnrichedBooks()).toBeUndefined();
+
+    const baseBook = {
+      authors: [],
+      translators: [],
+      subjects: [],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 100,
+    };
+
+    writeCachedQuoteEnrichedBooks([
+      { ...baseBook, id: 99992, title: 'Low Popularity Book', download_count: 50 },
+      { ...baseBook, id: 84, title: 'Frankenstein', download_count: 50000 },
+      { ...baseBook, id: 99991, title: 'High Popularity Book', download_count: 500 },
+      { ...baseBook, id: 1342, title: 'Pride and Prejudice', download_count: 60000 },
+    ]);
+
+    const cached = readCachedQuoteEnrichedBooks(10);
+    expect(cached).toBeDefined();
+    expect(cached?.books.map((b) => b.id)).toEqual([1342, 84, 99991, 99992]);
+    expect(cached?.isFresh).toBe(true);
   });
 });
 

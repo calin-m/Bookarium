@@ -81,5 +81,77 @@ describe('AccountNarrationSubPanel', () => {
     expect(document.getElementById('preferences-subpanel-narration')).toHaveClass('hidden');
     expect(screen.queryByRole('button', { name: /Reset/i })).not.toBeInTheDocument();
   });
+
+  it('previews the highest-quality natural voice when speechVoiceURI is null (Auto-Select)', () => {
+    const speakMock = vi.fn();
+    const cancelMock = vi.fn();
+    const mockVoices = [
+      {
+        name: 'Microsoft David Desktop',
+        voiceURI: 'david-desktop',
+        lang: 'en-US',
+      },
+      {
+        name: 'Microsoft Jenny Natural (Online)',
+        voiceURI: 'jenny-natural',
+        lang: 'en-US',
+      },
+      {
+        name: 'Standard Voice',
+        voiceURI: 'standard-voice',
+        lang: 'en-US',
+      },
+    ] as SpeechSynthesisVoice[];
+
+    const originalSpeechSynthesis = window.speechSynthesis;
+    const originalUtterance = (window as any).SpeechSynthesisUtterance;
+
+    class MockUtterance {
+      text: string;
+      rate: number = 1;
+      voice: SpeechSynthesisVoice | null = null;
+      lang: string = '';
+      onstart: (() => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+
+    (window as any).SpeechSynthesisUtterance = MockUtterance;
+    (window as any).speechSynthesis = {
+      getVoices: vi.fn(() => mockVoices),
+      speak: speakMock,
+      cancel: cancelMock,
+      onvoiceschanged: null,
+    };
+
+    const { unmount } = render(<AccountNarrationSubPanel {...defaultProps} speechVoiceURI={null} />);
+
+    const testBtn = screen.getByRole('button', { name: /Test Voice/i });
+    fireEvent.click(testBtn);
+
+    expect(cancelMock).toHaveBeenCalled();
+    expect(speakMock).toHaveBeenCalled();
+
+    const utterance = speakMock.mock.calls[0][0] as MockUtterance;
+    expect(utterance.voice?.voiceURI).toBe('jenny-natural');
+    expect(utterance.lang).toBe('en-US');
+
+    unmount();
+
+    // Restore
+    if (originalSpeechSynthesis) {
+      (window as any).speechSynthesis = originalSpeechSynthesis;
+    } else {
+      delete (window as any).speechSynthesis;
+    }
+    if (originalUtterance) {
+      (window as any).SpeechSynthesisUtterance = originalUtterance;
+    } else {
+      delete (window as any).SpeechSynthesisUtterance;
+    }
+  });
 });
 

@@ -443,7 +443,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                           : 'bg-muted-foreground/40'
                       }`}
                     />
-                    Bookarium DB (Supabase)
+                    Bookarium DB
                   </span>
                   <span
                     className={
@@ -470,7 +470,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
                             : 'bg-muted-foreground/40'
                       }`}
                     />
-                    Gutendex Upstream Fallback
+                    Gutendex API
                   </span>
                   <span
                     className={

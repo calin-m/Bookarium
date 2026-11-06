@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 05 Nov 2026 18:24:32 GMT  
+**Last Generated**: Fri, 06 Nov 2026 14:37:08 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2250 passed  
+**Total Verified Tests**: 2280 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2250 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2280 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.93%** (12253/12641) — *Target: $\ge$ 95%*
-- **Statements**: **95.53%** (13266/13886) — *Target: $\ge$ 95%*
-- **Functions**: **94.47%** (2819/2984) — *Target: $\ge$ 92%*
-- **Branches**: **88.09%** (12241/13896) — *Target: $\ge$ 85%*
+- **Lines**: **97.29%** (12533/12882) — *Target: $\ge$ 95%*
+- **Statements**: **95.97%** (13584/14154) — *Target: $\ge$ 95%*
+- **Functions**: **94.79%** (2861/3018) — *Target: $\ge$ 92%*
+- **Branches**: **88.42%** (12449/14078) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2250 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2280 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 284 Tests)
+### 🚀 App Routes & Pages (27 Suites · 286 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -358,7 +358,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud when user is logged in`
@@ -366,6 +366,8 @@
 - ✔ `should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed`
 - ✔ `opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount`
 - ✔ `opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount`
+- ✔ `provides initialIsAuthenticated through useAuthHint context`
+- ✔ `initializes theme in store when initialTheme is provided`
 
 </details>
 
@@ -483,7 +485,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 481 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 492 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -630,7 +632,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (19 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (20 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -651,6 +653,7 @@
 - ✔ `renders clean literary spread without cluttering tag clouds on the inside pages`
 - ✔ `does not render offline toggle button or downloaded tag inside the open book spread`
 - ✔ `disables Read button in spread footer when network is offline and book is not cached`
+- ✔ `normalizes pre-quoted passages without double quotation marks and gates leftPageQuote2 on concise quote lengths`
 
 </details>
 
@@ -840,7 +843,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (34 tests)</summary>
+<summary><b><code>src/components/presentation/EditorialQuoteSection.test.tsx</code></b> (35 tests)</summary>
 
 - ✔ `renders section landmark, Classic of the Day badge, and book details`
 - ✔ `navigates to reader and dispatches openReader on button click`
@@ -849,6 +852,7 @@
 - ✔ `dynamically avoids collision when heroBookId matches candidate book`
 - ✔ `accepts custom className and applies it to root section`
 - ✔ `selects Classic of the Day strictly from Classics in useQuoteEnrichedBooks and prioritizes database quotes over static quoteExcerpt`
+- ✔ `holds the Classic of the Day card invisible until the quote pool settles, then reveals it once`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
 - ✔ `renders title, author, and quote without punctuation or regex issues`
@@ -888,7 +892,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
 - ✔ `triggers shuffle when shuffle button is clicked`
@@ -902,11 +906,14 @@
 - ✔ `prevents synthesized touch hover from overriding closed state on touch devices`
 - ✔ `renders multi-quote Catalog-aligned spreads, supports ArrowRight shuffle when open, and handles 3D copy-link actions`
 - ✔ `adaptively scales Left Page title typography for long (>36 chars) and very long (>55 chars) titles`
+- ✔ `dynamically renders 3 concise quotes on Left and Right pages and selects a fitting cover quote`
+- ✔ `holds quote areas invisible until the quote pool settles, then reveals them once`
+- ✔ `does not fade the cover or right page on first paint, and only animates the content wrapper after a user shuffle`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/presentation/HeroSearch.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `should render headline, featured book, 4-pillar benefit strip, static volume badge, and focus classes`
 - ✔ `supports mouse drag-to-scroll, wheel translation, and accidental click suppression on topics carousel`
@@ -931,6 +938,7 @@
 - ✔ `steps through title typing, description typing, and backspace transitions seamlessly`
 - ✔ `handles matchMedia throwing gracefully in reduced-motion listeners`
 - ✔ `enriches a custom featuredBook prop with database quotes when available in quote pool`
+- ✔ `passes quote-pool readiness to the 3D Featured Book so quotes are revealed once, and treats a custom featured book as ready`
 - ✔ `cleanly tears down timers on unmount without errors or state leaks`
 
 </details>
@@ -947,7 +955,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
@@ -961,11 +969,13 @@
 - ✔ `rotates strictly to 3 unseen books on Discover More when 6+ quote-enriched books exist regardless of per-book passage count`
 - ✔ `tops up with baseSafeQuotes when quoteEnrichedBooks has fewer than 3 valid books and deduplicates identical quote IDs`
 - ✔ `excludes quote-enriched volumes that are restricted in the current user jurisdiction`
+- ✔ `deterministically rotates literary quote trios based on hourlySeed without throwing or duplicating books`
+- ✔ `holds the quote grid invisible and disables Discover More until the quote pool settles, then reveals once`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (34 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (37 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -979,8 +989,11 @@
 - ✔ `should trigger onViewChange callback when clicking tabs`
 - ✔ `applies active styling when activeView is favorites`
 - ✔ `should cycle through themes when clicking theme button`
-- ✔ `renders Sign In button for guests and triggers openAuthModal`
+- ✔ `renders Sign In button for guests immediately without a pulsing skeleton placeholder`
 - ✔ `renders direct Account Link when user is authenticated`
+- ✔ `renders Account Link on initial render when initialIsAuthenticated is true`
+- ✔ `renders Account Link on initial render when auth hint cookie is set`
+- ✔ `renders theme icon synchronously according to store theme without defaulting to light`
 - ✔ `handles keyboard Enter and Space on brand logo to navigate back to catalog`
 - ✔ `applies -translate-y-full when isVisible is false`
 - ✔ `applies translate-y-0 when isVisible is true`
@@ -1007,8 +1020,8 @@
 <details>
 <summary><b><code>src/components/presentation/NotablePassagesSpread.test.tsx</code></b> (7 tests)</summary>
 
-- ✔ `renders primary quote with CC0 header badge`
-- ✔ `renders secondary and tertiary quotes when provided`
+- ✔ `renders primary quote with CC0 header badge and single outer curly quotes`
+- ✔ `renders secondary and tertiary quotes when provided without double quotation marks`
 - ✔ `adjusts padding and line clamp when there are 2 quotes`
 - ✔ `renders Protected (RO) header badge and Jurisdictional Protection card when isRestricted is true`
 - ✔ `renders fallback reason in Jurisdictional Protection card when evaluation.reason is omitted`
@@ -1736,7 +1749,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 530 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 535 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2051,7 +2064,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `returns empty array on empty or invalid text`
 - ✔ `extracts opening lines and authentic quote passages from full book text`
@@ -2063,6 +2076,8 @@
 - ✔ `filters out ASCII divider rules, framed copyright colophons, and underscore blank lines (reproducing book #79835)`
 - ✔ `rejects quoted blanks and horizontal dividers in unsegmented single-text books`
 - ✔ `extracts up to maxPassages (10–16) spreads when maxPassages > 5 across multi-chapter and compact books`
+- ✔ `truncates long passages cleanly at sentence boundaries or whole-word boundaries without splitting words in half`
+- ✔ `dynamically packs left, right, and cover quotes within line budgets, promotes shorter tertiary candidates, and deduplicates across pages`
 
 </details>
 
@@ -2347,13 +2362,16 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/speech-utils.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/lib/speech-utils.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `normalizes Android underscore locales to BCP-47 hyphenated tags`
 - ✔ `matches regional dialects of the target book language while rejecting unrelated languages`
 - ✔ `returns true for high-definition neural, natural, voiceURI network/wavenet, and cloud voices`
 - ✔ `returns false for standard mechanical or missing voice names`
 - ✔ `removes vendor brand prefixes and trims whitespace`
+- ✔ `awards highest points to natural/neural voices compatible with language and demotes mechanical`
+- ✔ `sorts voices prioritizing natural and language-matched voices first`
+- ✔ `resolves best voice prioritizing preferredVoiceURI if compatible or defaulting to top ranked`
 
 </details>
 
@@ -2532,7 +2550,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 284 Tests)
+### 🔄 Hooks & React Query (28 Suites · 294 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2559,7 +2577,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (26 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -2581,6 +2599,12 @@
 - ✔ `should handle server runtime non-ok status, invalid JSON, and copyright filtering`
 - ✔ `fetches featured quotes map from Supabase with fail-safe fallback when unconfigured, offline, or errored`
 - ✔ `fetches quote-enriched books from Supabase, filters sentinel records, and falls back when unconfigured or offline`
+- ✔ `is false during server rendering when Supabase is configured, so static fallback text is never painted as final`
+- ✔ `is true immediately when Supabase is unconfigured or the caller opts out with enabled: false`
+- ✔ `is true on mount with a warm localStorage cache and exposes the cached books`
+- ✔ `stays false with a cold cache while the fetch is pending, then settles via the timeout safety net`
+- ✔ `settles with a cold cache once the fetch completes, including when the fetch fails`
+- ✔ `forwards all optional query parameters in usePrefetchNextPage and sorts cached quote-enriched books deterministically`
 
 </details>
 
@@ -2656,7 +2680,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/reader/useGutenbergParserWorker.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `returns empty result when contentText is empty or undefined`
 - ✔ `parses text synchronously via fallback when workerFactory returns null`
@@ -2664,6 +2688,7 @@
 - ✔ `falls back gracefully when worker encounters an error`
 - ✔ `cancels in-flight worker and prevents stale data when switching books`
 - ✔ `preserves persistent worker across font size changes without terminating it`
+- ✔ `handles createGutenbergWorker instantiation, constructor exceptions, and synchronous postMessage throws`
 
 </details>
 
@@ -2755,10 +2780,11 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
+- ✔ `handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions`
 
 </details>
 
@@ -2784,7 +2810,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (31 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -2817,6 +2843,8 @@
 - ✔ `calculates bounding year range for multi-era selection and formats chips accurately`
 - ✔ `extractReaderBookIdFromPath identifies reader routes and extracts numeric ID`
 - ✔ `preserves /read/[id] in window.history and does not overwrite it to /`
+- ✔ `synchronizes filters on browser popstate events and ignores reader paths`
+- ✔ `handles format change, removing language/era/format chips, and no-op pageSize change`
 
 </details>
 
@@ -2986,7 +3014,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 267 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 269 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3064,10 +3092,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountNarrationSubPanel.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/account/AccountNarrationSubPanel.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders speed presets, voice select, and assistance toggles when active`
 - ✔ `applies hidden class when isActive is false and omits Reset button if callback is undefined`
+- ✔ `previews the highest-quality natural voice when speechVoiceURI is null (Auto-Select)`
 
 </details>
 
@@ -3419,7 +3448,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/config/config.test.ts</code></b> (23 tests)</summary>
 
 - ✔ `defines valid non-empty endpoint URLs`
 - ✔ `provides literary eras with valid date boundaries`
@@ -3437,6 +3466,7 @@
 - ✔ `filters out quotes protected under Life + 100 jurisdiction (Mexico)`
 - ✔ `filters out quotes with protected modern translators in Life + 70 countries (Romania / EU)`
 - ✔ `includes all literary quotes for US jurisdiction`
+- ✔ `handles empty candidate pools and small distinct-book pools in selectHourlyLiteraryQuotes`
 - ✔ `provides complete theme configs for light, sepia, and dark`
 - ✔ `getReaderTheme returns exact theme or falls back to light`
 - ✔ `provides valid site branding and repository URLs`

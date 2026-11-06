@@ -1,7 +1,7 @@
 # Project Gutenberg Text Processing & Segmentation Engine — Bookarium
 
 > **Auto-Generated Living Reference**: Programmatically compiled from Source AST via `scripts/generate-parser-docs.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-11-05`  
+> **Last Synchronized**: `2026-11-06`  
 > **Target Subsystem**: `src/lib/gutenberg/` (100% Client/Worker Compatible, Zero Node.js Dependencies)
 
 ---
@@ -117,15 +117,22 @@ Unwraps hard 70-character single newlines into fluid paragraphs for responsive r
 into fluid prose blocks while preserving double-spaced paragraph breaks, dialogue,
 scene breaks, and indented or short-line verse/epigraphs. |
 
-### `passages.ts` — Dynamic Literary Passage & Quote Extraction
+### `passages.ts` — Dynamic Literary Passage Extraction & Line-Budget Layout
 
-Scans up to 120,000 characters of narrative chapters to dynamically harvest memorable dialogue quotes, opening paragraphs, and literary excerpts for the 3D Book Preview Modal.
+Scans up to 120,000 characters of narrative chapters to dynamically harvest memorable dialogue quotes, opening paragraphs, and literary excerpts for the 3D Book Preview Modal, with sentence/word-boundary truncation (`safeCleanQuote`), typographic normalization (`formatCleanQuote`), and deterministic line-budget packing (`resolveSpreadQuoteLayout`).
 
 **Exported Functions & Symbols:**
 
 | Symbol | Signature | Contract / Rationale |
 |---|---|---|
 | `extractDynamicBookPassages` | `(rawText, book, maxPassages (optional))` | Dynamically extracts authentic passages and literary quotes directly from raw Gutenberg book text. |
+| `formatCleanQuote` | `(text)` | Strips outer straight or curly quotation marks and surrounding whitespace so callers can
+wrap quotes in a single canonical pair of typographic quotes without double-quoting. |
+| `resolveSpreadQuoteLayout` | `(passage, options (optional))` | Deterministically selects and sizes quotes for the Left Page, Right Page, and Closed Front Cover
+of an open 3D book spread based on character lengths and available vertical line budget.
+Guarantees that every rendered quote fits within its page container without premature clipping,
+promotes shorter tertiary candidates when a secondary candidate exceeds remaining space, and
+prevents cross-page duplicate quotes. |
 
 ### `types.ts` — Type Contracts & Centralized Parser Configuration
 

@@ -505,6 +505,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
             <HeroFeaturedBook3D
               featuredBook={activeFeatured}
               onReadFeaturedBook={onReadFeaturedBook}
+              isQuoteDataReady={true}
             />
           </div>
 

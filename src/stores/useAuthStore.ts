@@ -4,7 +4,18 @@ import type { User, Session, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile, Json } from '@/types/database.types';
 import { ROUTES } from '@/config/routes';
+import { STORAGE_KEYS } from '@/config/site-config';
 import { buildAuthRedirectUrl } from '@/lib/redirect-sanitizer';
+
+export function syncAuthCookieHint(isAuthenticated: boolean): void {
+  if (typeof document === 'undefined') return;
+  try {
+    const value = isAuthenticated ? 'authenticated' : 'guest';
+    document.cookie = `${STORAGE_KEYS.AUTH_HINT}=${value}; path=/; max-age=2592000; SameSite=Lax`;
+  } catch {
+    // Non-blocking
+  }
+}
 
 export type AuthModalView = 'sign_in' | 'sign_up' | 'magic_link' | 'forgot_password';
 
@@ -212,6 +223,7 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
         set({ user: user ?? null, isLoading: false });
+        syncAuthCookieHint(Boolean(user));
         if (user) {
           get().fetchProfile();
         }
@@ -240,6 +252,7 @@ export const useAuthStore = create<AuthState>()(
         return;
       }
       const user = session?.user ?? null;
+      syncAuthCookieHint(Boolean(user));
       set((state) => ({
         user,
         isLoading: false,
@@ -411,6 +424,7 @@ export const useAuthStore = create<AuthState>()(
     const supabase = createClient();
     await supabase.auth.signOut();
     set(SIGNED_OUT_AUTH_STATE);
+    syncAuthCookieHint(false);
     await clearLocalUserStores({ wipeDeviceStorage: false });
   },
 
@@ -670,6 +684,7 @@ export const useAuthStore = create<AuthState>()(
       // 4. Terminate auth session and clear all local persisted user stores
       await supabase.auth.signOut();
       set(SIGNED_OUT_AUTH_STATE);
+      syncAuthCookieHint(false);
       await clearLocalUserStores({ wipeDeviceStorage: true });
       return { error: null };
     } catch (err: unknown) {
@@ -680,6 +695,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'bookarium-auth-profile',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state?.user) {
+          syncAuthCookieHint(true);
+        }
+      },
       partialize: (state) => ({
         user: state.user,
         profile: state.profile,

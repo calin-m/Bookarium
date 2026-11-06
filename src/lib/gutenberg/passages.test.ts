@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { extractDynamicBookPassages } from './passages';
+import {
+  extractDynamicBookPassages,
+  formatCleanQuote,
+  resolveSpreadQuoteLayout,
+} from './passages';
 
 describe('passages subsystem', () => {
   it('returns empty array on empty or invalid text', () => {
@@ -353,6 +357,100 @@ ________________________________________________________________________
     );
     expect(tenPassages.length).toBeGreaterThanOrEqual(6);
     expect(tenPassages.length).toBeLessThanOrEqual(10);
+  });
+
+  it('truncates long passages cleanly at sentence boundaries or whole-word boundaries without splitting words in half', () => {
+    const longSentenceText = `
+*** START OF THE PROJECT GUTENBERG EBOOK BOUNDARIES ***
+CHAPTER I
+
+It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful property of some one or other of their daughters.
+
+"When a single long clause continues without any terminal period across more than two hundred characters because the speaker elaborates continuously upon philosophical matters and metaphysical abstractions and extraordinary contemplations of universal harmony, the extractor must cut cleanly on a whole word boundary."
+
+Another narrative paragraph follows in the chapter to provide sufficient structural depth for multi-paragraph slice extraction across the volume.
+
+A fourth narrative paragraph continues the chapter discussion with clear observations about the surrounding countryside and its inhabitants.
+
+A fifth narrative paragraph describes the arrival of the autumn season and the preparations made across the old estate.
+
+A sixth narrative paragraph concludes the opening chapter with reflections upon human nature and social custom.
+*** END OF THE PROJECT GUTENBERG EBOOK BOUNDARIES ***
+`;
+
+    const passages = extractDynamicBookPassages(longSentenceText, {
+      id: 1342,
+      title: 'Boundary Test',
+    });
+
+    expect(passages.length).toBeGreaterThanOrEqual(1);
+    // First paragraph has a natural sentence end at index ~117 ("...in want of a wife.") within the 220-char budget
+    expect(passages[0].openingLine).toBe(
+      '“It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.”'
+    );
+    // Second paragraph has no sentence boundary before 220 chars, so it must cut at a whole word + ellipsis
+    expect(passages[0].quoteExcerpt).toMatch(/…”$/);
+    expect(passages[0].quoteExcerpt).not.toMatch(/philoso…”|extraor…”/);
+  });
+
+  it('dynamically packs left, right, and cover quotes within line budgets, promotes shorter tertiary candidates, and deduplicates across pages', () => {
+    expect(formatCleanQuote('“Hello world”')).toBe('Hello world');
+    expect(formatCleanQuote(undefined)).toBe('');
+
+    // 1. Concise 3-quote spread on both pages
+    const conciseLayout = resolveSpreadQuoteLayout(
+      {
+        openingLine: '“First short left quote.”',
+        secondaryQuote: '“Second short left quote.”',
+        leftPageQuote2: '“Third short left quote.”',
+        quoteExcerpt: '“First short right quote.”',
+        rightPageQuote2: '“Second short right quote.”',
+        tertiaryQuote: '“Third short right quote.”',
+      },
+      { title: 'Poems', cardHeight: 480 }
+    );
+    expect(conciseLayout.leftQuotes).toHaveLength(3);
+    expect(conciseLayout.rightQuotes).toHaveLength(3);
+    expect(conciseLayout.leftLineClampClass).toBe('line-clamp-3 sm:line-clamp-4');
+    expect(conciseLayout.rightLineClampClass).toBe('line-clamp-3 sm:line-clamp-4');
+    expect(conciseLayout.coverQuote).toBe('First short right quote.');
+    expect(conciseLayout.coverLineClampClass).toBe('line-clamp-5');
+
+    // 2. Smart promotion: when slot 2 is too long to fit alongside a long slot 1, a concise slot 3 is promoted into slot 2
+    const promotedLayout = resolveSpreadQuoteLayout(
+      {
+        openingLine: 'A'.repeat(210), // 6 lines
+        secondaryQuote: 'B'.repeat(240), // 6 lines (+ 1.5 box = 13.5 > 9.5 left budget under very long title)
+        leftPageQuote2: 'Concise promoted left quote.', // 1 line (+ 1.5 box = 8.5 <= 9.5)
+        quoteExcerpt: 'C'.repeat(220), // 6 lines
+        rightPageQuote2: 'D'.repeat(250), // 7 lines (+ 1.5 box = 14.5 > 12.0 right budget)
+        tertiaryQuote: 'Concise promoted right quote.', // 1 line (+ 1.5 box = 8.5 <= 12.0)
+      },
+      {
+        title: 'An Extraordinarily Long Nineteenth-Century Philosophical Treatise Title',
+        hasCommentary: true,
+        cardHeight: 480,
+      }
+    );
+    expect(promotedLayout.leftQuotes).toEqual(['A'.repeat(210), 'Concise promoted left quote.']);
+    expect(promotedLayout.rightQuotes).toEqual(['C'.repeat(220), 'Concise promoted right quote.']);
+    expect(promotedLayout.leftLineClampClass).toBe('line-clamp-6 sm:line-clamp-7');
+    expect(promotedLayout.rightLineClampClass).toBe('line-clamp-6 sm:line-clamp-7');
+    // Cover quote selects the first candidate <= 130 chars under a long (>40 chars) title
+    expect(promotedLayout.coverQuote).toBe('Concise promoted right quote.');
+    expect(promotedLayout.coverLineClampClass).toBe('line-clamp-4');
+
+    // 3. Cross-page deduplication & fallback when all right-page quotes duplicate left-page quotes
+    const duplicateSpread = resolveSpreadQuoteLayout(
+      {
+        openingLine: 'Identical passage across both pages.',
+        quoteExcerpt: 'Identical passage across both pages.',
+      },
+      { title: 'Short Title', hasContentAdvisory: true }
+    );
+    expect(duplicateSpread.leftQuotes).toEqual(['Identical passage across both pages.']);
+    expect(duplicateSpread.rightQuotes).toEqual(['Identical passage across both pages.']);
+    expect(duplicateSpread.leftLineClampClass).toBe('line-clamp-8 sm:line-clamp-9');
   });
 });
 

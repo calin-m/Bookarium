@@ -349,4 +349,91 @@ describe('HeroFeaturedBook3D', () => {
     const veryLongCopyBlock = screen.getAllByTestId('hero-3d-copy-meta-1342')[0];
     expect(veryLongCopyBlock.querySelector('h3')?.className).toContain('text-sm sm:text-base');
   });
+
+  it('dynamically renders 3 concise quotes on Left and Right pages and selects a fitting cover quote', () => {
+    const conciseHeroBook = {
+      ...mockFeaturedBook,
+      title: 'Lyrical Ballads',
+      quotes: [
+        {
+          chapterLabel: 'Canto I',
+          openingLine: '“Come forth into the light of things, let Nature be your teacher.”',
+          secondaryQuote: '“Poetry is the spontaneous overflow of powerful feelings.”',
+          leftPageQuote2: '“The child is father of the man.”',
+          quoteExcerpt: '“Water, water, every where, nor any drop to drink.”',
+          rightPageQuote2: '“He prayeth best, who loveth best all things both great and small.”',
+          tertiaryQuote: '“Beauty is truth, truth beauty.”',
+          commentary: 'Romantic Era Verse.',
+        },
+      ],
+    };
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={conciseHeroBook} />);
+    expect(screen.getByTestId('hero-book-cover-quote')).toHaveTextContent(
+      '“Water, water, every where, nor any drop to drink.”'
+    );
+    expect(screen.getByTestId('hero-book-tertiary-quote')).toHaveTextContent(
+      '“The child is father of the man.”'
+    );
+    expect(screen.getByTestId('hero-book-right-quote-3')).toHaveTextContent(
+      '“Beauty is truth, truth beauty.”'
+    );
+  });
+
+  it('holds quote areas invisible until the quote pool settles, then reveals them once', () => {
+    vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+      tier: 'high',
+      allowHeavyMotion: true,
+      enablePrefetching: true,
+      cores: 8,
+    });
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+
+    const { rerender } = renderWithClient(
+      <HeroFeaturedBook3D featuredBook={mockFeaturedBook} isQuoteDataReady={false} />
+    );
+
+    const coverQuoteBox = () => screen.getByTestId('hero-book-cover-quote').parentElement!;
+    const leftQuotes = () => screen.getAllByTestId('hero-book-left-quotes')[0];
+    const rightQuotes = () => screen.getAllByTestId('hero-book-right-page-body')[0];
+
+    for (const el of [coverQuoteBox(), leftQuotes(), rightQuotes()]) {
+      expect(el.className).toContain('opacity-0');
+      expect(el.className).not.toContain('animate-ink-appear');
+    }
+
+    rerender(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <HeroFeaturedBook3D featuredBook={mockFeaturedBook} isQuoteDataReady={true} />
+      </QueryClientProvider>
+    );
+
+    for (const el of [coverQuoteBox(), leftQuotes(), rightQuotes()]) {
+      expect(el.className).toContain('animate-ink-appear');
+      expect(el.className).not.toContain('opacity-0');
+    }
+  });
+
+  it('does not fade the cover or right page on first paint, and only animates the content wrapper after a user shuffle', () => {
+    vi.spyOn(perfTier, 'usePerformanceTier').mockReturnValue({
+      tier: 'high',
+      allowHeavyMotion: true,
+      enablePrefetching: true,
+      cores: 8,
+    });
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+
+    const coverWrapper = () => screen.getByTestId('hero-book-cover-quote').parentElement!.parentElement!;
+    expect(coverWrapper().className).not.toContain('animate-ink-appear');
+
+    fireEvent.click(screen.getByTestId('hero-book-shuffle-btn'));
+
+    // After a shuffle the remounted wrapper animates, while the quote boxes no longer double-animate inside it
+    expect(coverWrapper().className).toContain('animate-ink-appear');
+    expect(screen.getByTestId('hero-book-cover-quote').parentElement!.className).not.toContain(
+      'animate-ink-appear'
+    );
+  });
 });

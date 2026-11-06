@@ -1,11 +1,19 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from 'react';
 import Link from 'next/link';
 import { ArrowRight, Quote, Shuffle, Sparkles, BookOpen } from 'lucide-react';
 import {
   LITERARY_QUOTES,
   getJurisdictionSafeLiteraryQuotes,
+  selectHourlyLiteraryQuotes,
   type LiteraryQuote,
 } from '@/config/literary-quotes';
 import { ROUTES } from '@/config/routes';
@@ -15,9 +23,31 @@ import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useFeaturedQuotes, useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
 
+const subscribeHourly = (callback: () => void) => {
+  const interval = setInterval(callback, 60 * 1000);
+  return () => clearInterval(interval);
+};
+
+const getCurrentHourlyIndex = () => {
+  return Math.floor(Date.now() / (1000 * 60 * 60));
+};
+
+const getHourlySnapshot = () => {
+  return getCurrentHourlyIndex();
+};
+
+const getHourlyServerSnapshot = () => {
+  return getCurrentHourlyIndex();
+};
+
 export const LiteraryQuotes: React.FC = () => {
   const { country } = useJurisdiction();
   const hasMounted = useHasMounted();
+  const hourlyIndex = useSyncExternalStore(
+    subscribeHourly,
+    getHourlySnapshot,
+    getHourlyServerSnapshot
+  );
 
   const baseSafeQuotes = useMemo(() => {
     if (!hasMounted) {
@@ -27,9 +57,9 @@ export const LiteraryQuotes: React.FC = () => {
     return filtered.length >= 3 ? filtered : LITERARY_QUOTES.slice(0, 3);
   }, [country, hasMounted]);
 
-  const { data: quoteEnrichedBooks } = useQuoteEnrichedBooks({
-    enabled: hasMounted,
-  });
+  // The hook gates its own fetch on client mount, so no `enabled` override is needed here; leaving it
+  // unset keeps `isPoolSettled` false until the quote pool is final (hydration-safe single reveal).
+  const { data: quoteEnrichedBooks, isPoolSettled } = useQuoteEnrichedBooks();
 
   const hasEnrichedPool = useMemo(
     () =>
@@ -165,14 +195,22 @@ export const LiteraryQuotes: React.FC = () => {
   const [isShuffling, setIsShuffling] = useState(false);
   const shuffleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Compute deterministic hourly default quotes across 3 distinct books
+  const defaultHourlyQuotes = useMemo(() => {
+    return selectHourlyLiteraryQuotes(safeQuotes, hourlyIndex, 3);
+  }, [safeQuotes, hourlyIndex]);
+
   // Synchronously compute displayed quotes across 3 distinct books, strictly enforcing active jurisdiction safety
   const displayedQuotes = useMemo(() => {
-    const base = shuffledQuotes || pickDistinctBookQuotes(safeQuotes, 3);
-    const safeIds = new Set(safeQuotes.map((q) => q.id));
-    const allowed = base.filter((q) => safeIds.has(q.id));
-    if (allowed.length === 3) return allowed;
-    return pickDistinctBookQuotes(safeQuotes, 3, allowed);
-  }, [safeQuotes, shuffledQuotes, pickDistinctBookQuotes]);
+    if (shuffledQuotes && shuffledQuotes.length === 3) {
+      const safeIds = new Set(safeQuotes.map((q) => q.id));
+      const allowed = shuffledQuotes.filter((q) => safeIds.has(q.id));
+      if (allowed.length === 3) return allowed;
+    }
+    return defaultHourlyQuotes.length >= 3
+      ? defaultHourlyQuotes
+      : pickDistinctBookQuotes(safeQuotes, 3);
+  }, [safeQuotes, shuffledQuotes, defaultHourlyQuotes, pickDistinctBookQuotes]);
 
   useEffect(() => {
     return () => {
@@ -253,7 +291,8 @@ export const LiteraryQuotes: React.FC = () => {
           <button
             type="button"
             onClick={handleShuffle}
-            className={`inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[38px] sm:min-h-[36px] rounded-lg border border-border bg-card text-foreground hover:text-primary hover:border-primary text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-xs active:scale-95 cursor-pointer ${
+            disabled={!isPoolSettled}
+            className={`inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[38px] sm:min-h-[36px] rounded-lg border border-border bg-card text-foreground hover:text-primary hover:border-primary text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 ${
               isShuffling ? 'opacity-60 scale-95' : ''
             }`}
             aria-label="Discover more literary quotes"
@@ -264,7 +303,13 @@ export const LiteraryQuotes: React.FC = () => {
         </div>
 
         {/* Passages Grid: 1-Column Stack on Mobile & Tablet Portrait (<1024px), 3-Column on Desktop (>=1024px) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div
+          data-testid="literary-quotes-grid"
+          aria-busy={!isPoolSettled}
+          className={`grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 ${
+            isPoolSettled ? 'animate-ink-appear' : 'opacity-0'
+          }`}
+        >
           {displayedQuotes.map((item) => (
             <Link
               key={item.id}

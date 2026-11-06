@@ -4,6 +4,9 @@ import {
   cleanVoiceName,
   normalizeSpeechLang,
   isVoiceLanguageCompatible,
+  getVoiceQualityScore,
+  sortVoicesByQuality,
+  resolveBestVoice,
 } from './speech-utils';
 
 describe('speech-utils', () => {
@@ -81,6 +84,70 @@ describe('speech-utils', () => {
       expect(cleanVoiceName('Apple Samantha')).toBe('Samantha');
       expect(cleanVoiceName('Natural Reader')).toBe('Natural Reader');
       expect(cleanVoiceName('')).toBe('');
+    });
+  });
+
+  describe('getVoiceQualityScore', () => {
+    it('awards highest points to natural/neural voices compatible with language and demotes mechanical', () => {
+      const jenny = {
+        name: 'Microsoft Jenny Natural (Online)',
+        voiceURI: 'Microsoft Jenny Natural (Online)',
+        lang: 'en-US',
+      } as SpeechSynthesisVoice;
+      const david = {
+        name: 'Microsoft David Desktop',
+        voiceURI: 'Microsoft David Desktop',
+        lang: 'en-US',
+      } as SpeechSynthesisVoice;
+      const frenchVoice = {
+        name: 'French Natural',
+        voiceURI: 'fr-natural',
+        lang: 'fr-FR',
+      } as SpeechSynthesisVoice;
+
+      expect(getVoiceQualityScore(jenny, 'en')).toBeGreaterThan(getVoiceQualityScore(david, 'en'));
+      expect(getVoiceQualityScore(jenny, 'en')).toBeGreaterThan(getVoiceQualityScore(frenchVoice, 'en'));
+      expect(getVoiceQualityScore(null, 'en')).toBe(0);
+    });
+  });
+
+  describe('sortVoicesByQuality and resolveBestVoice', () => {
+    const david = {
+      name: 'Microsoft David Desktop',
+      voiceURI: 'david-desktop',
+      lang: 'en-US',
+    } as SpeechSynthesisVoice;
+    const jenny = {
+      name: 'Microsoft Jenny Natural (Online)',
+      voiceURI: 'jenny-natural',
+      lang: 'en-US',
+    } as SpeechSynthesisVoice;
+    const standardGuy = {
+      name: 'Standard Guy',
+      voiceURI: 'standard-guy',
+      lang: 'en-US',
+    } as SpeechSynthesisVoice;
+    const french = {
+      name: 'Hortense Natural',
+      voiceURI: 'fr-hortense',
+      lang: 'fr-FR',
+    } as SpeechSynthesisVoice;
+
+    it('sorts voices prioritizing natural and language-matched voices first', () => {
+      const sorted = sortVoicesByQuality([david, french, jenny, standardGuy], 'en');
+      expect(sorted[0].voiceURI).toBe('jenny-natural');
+      expect(sorted[1].voiceURI).toBe('standard-guy');
+      expect(sortVoicesByQuality([] as any)).toEqual([]);
+    });
+
+    it('resolves best voice prioritizing preferredVoiceURI if compatible or defaulting to top ranked', () => {
+      const bestAuto = resolveBestVoice([david, jenny, standardGuy], null, 'en');
+      expect(bestAuto?.voiceURI).toBe('jenny-natural');
+
+      const bestExplicit = resolveBestVoice([david, jenny, standardGuy], 'standard-guy', 'en');
+      expect(bestExplicit?.voiceURI).toBe('standard-guy');
+
+      expect(resolveBestVoice([])).toBeNull();
     });
   });
 });

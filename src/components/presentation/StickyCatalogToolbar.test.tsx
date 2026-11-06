@@ -388,12 +388,13 @@ describe('StickyCatalogToolbar component', () => {
       />
     );
 
-    expect(screen.getByText(/Bookarium DB \(Supabase\)/i)).toBeInTheDocument();
+    expect(screen.getByText('Bookarium DB')).toBeInTheDocument();
+    expect(screen.getByText('Gutendex API')).toBeInTheDocument();
     expect(screen.getByText('Online · 42ms')).toBeInTheDocument();
     expect(screen.getByText('Standby')).toBeInTheDocument();
     expect(screen.getByText(/Connected to dedicated Supabase PostgreSQL database/i)).toBeInTheDocument();
 
-    // 2. Gutendex upstream fallback active
+    // 2. Gutendex API active
     rerender(
       <StickyCatalogToolbar
         page={1}

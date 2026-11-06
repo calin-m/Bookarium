@@ -134,6 +134,7 @@ describe('EditorialQuoteSection component', () => {
     const useBooksModule = await import('@/hooks/queries/useBooks');
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [
         {
           id: 75001,
@@ -186,6 +187,35 @@ describe('EditorialQuoteSection component', () => {
         content.includes('Primary Supabase quote excerpt for classic of the day.')
       )
     ).toBeInTheDocument();
+
+    enrichedSpy.mockRestore();
+  });
+
+  it('holds the Classic of the Day card invisible until the quote pool settles, then reveals it once', async () => {
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: false,
+      data: undefined,
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    const { rerender } = render(<EditorialQuoteSection />);
+
+    const body = screen.getByTestId('editorial-classic-body');
+    expect(body).toHaveAttribute('aria-busy', 'true');
+    expect(body.className).toContain('opacity-0');
+    expect(body.className).not.toContain('animate-ink-appear');
+
+    enrichedSpy.mockReturnValue({
+      isPoolSettled: true,
+      data: undefined,
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+    rerender(<EditorialQuoteSection />);
+
+    const settledBody = screen.getByTestId('editorial-classic-body');
+    expect(settledBody).toHaveAttribute('aria-busy', 'false');
+    expect(settledBody.className).toContain('animate-ink-appear');
+    expect(settledBody.className).not.toContain('opacity-0');
 
     enrichedSpy.mockRestore();
   });

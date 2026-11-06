@@ -10,6 +10,43 @@ export interface ThemeState {
   cycleTheme: () => void;
 }
 
+export function getCookieValue(cookieName: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${cookieName}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+export function resolveInitialTheme(): AppTheme {
+  const cookieVal = getCookieValue(STORAGE_KEYS.THEME);
+  if (cookieVal === 'dark' || cookieVal === 'sepia' || cookieVal === 'light') {
+    return cookieVal;
+  }
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      const localVal = window.localStorage.getItem(STORAGE_KEYS.THEME);
+      if (localVal) {
+        const parsed = JSON.parse(localVal);
+        const t = parsed?.state?.theme;
+        if (t === 'dark' || t === 'sepia' || t === 'light') return t;
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return 'light';
+}
+
+export function initializeTheme(initialTheme?: AppTheme): void {
+  if (!initialTheme || (initialTheme !== 'dark' && initialTheme !== 'sepia' && initialTheme !== 'light')) {
+    return;
+  }
+  const current = useThemeStore.getState().theme;
+  if (current !== initialTheme) {
+    useThemeStore.setState({ theme: initialTheme });
+    applyThemeToDocument(initialTheme);
+  }
+}
+
 export function applyThemeToDocument(theme: AppTheme) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
@@ -19,12 +56,17 @@ export function applyThemeToDocument(theme: AppTheme) {
   } else if (theme === 'sepia') {
     root.classList.add('sepia');
   }
+  try {
+    document.cookie = `${STORAGE_KEYS.THEME}=${theme}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch {
+    // Non-blocking in environments without document.cookie
+  }
 }
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'light',
+      theme: resolveInitialTheme(),
       setTheme: (theme: AppTheme) => {
         set({ theme });
         applyThemeToDocument(theme);

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import React from 'react';
-import { Providers } from './providers';
+import { Providers, useAuthHint } from './providers';
 import { syncAllStoresWithCloud } from '@/lib/sync-utils';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 
 vi.mock('@/lib/sync-utils', () => ({
   syncAllStoresWithCloud: vi.fn(),
@@ -133,6 +134,39 @@ describe('Providers component', () => {
     expect(authState.authModalView).toBe('sign_in');
     expect(authState.error).toContain('expired or was already used');
     expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+  });
+
+  it('provides initialIsAuthenticated through useAuthHint context', () => {
+    function TestConsumer() {
+      const isAuthHint = useAuthHint();
+      return <div data-testid="auth-hint">{isAuthHint ? 'authenticated' : 'guest'}</div>;
+    }
+
+    const { rerender } = render(
+      <Providers initialIsAuthenticated={true}>
+        <TestConsumer />
+      </Providers>
+    );
+
+    expect(screen.getByTestId('auth-hint')).toHaveTextContent('authenticated');
+
+    rerender(
+      <Providers initialIsAuthenticated={false}>
+        <TestConsumer />
+      </Providers>
+    );
+
+    expect(screen.getByTestId('auth-hint')).toHaveTextContent('guest');
+  });
+
+  it('initializes theme in store when initialTheme is provided', () => {
+    render(
+      <Providers initialTheme="dark">
+        <div>Content</div>
+      </Providers>
+    );
+
+    expect(useThemeStore.getState().theme).toBe('dark');
   });
 });
 

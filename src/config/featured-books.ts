@@ -616,14 +616,9 @@ export function gutendexBookToFeaturedHeroBook(
           {
             chapterLabel: 'Chapter I • The Opening Incipit',
             openingLine: featuredMeta.openingLine,
-            secondaryQuote:
-              firstPassage?.secondaryQuote ||
-              `“In the unfolding story of ${featuredMeta.title}, ${featuredMeta.author} explores timeless truths across ${featuredMeta.primarySubject.toLowerCase()}.”`,
+            secondaryQuote: `“In the unfolding story of ${featuredMeta.title}, ${featuredMeta.author} explores timeless truths across ${featuredMeta.primarySubject.toLowerCase()}.”`,
             quoteExcerpt: featuredMeta.quoteExcerpt,
-            rightPageQuote2: firstPassage?.rightPageQuote2,
-            commentary:
-              firstPassage?.commentary ||
-              `Preserved in complete unabridged form in the worldwide public domain (${featuredMeta.year}).`,
+            commentary: `Preserved in complete unabridged form in the worldwide public domain (${featuredMeta.year}).`,
           },
           ...validQuotes,
         ]

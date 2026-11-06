@@ -58,6 +58,7 @@ vi.mock('@/hooks/queries/useBooks', () => ({
   }),
   useQuoteEnrichedBooks: () => ({
     data: [],
+    isPoolSettled: true,
     isLoading: false,
     isError: false,
   }),

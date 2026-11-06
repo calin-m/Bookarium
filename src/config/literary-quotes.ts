@@ -526,3 +526,72 @@ export function getJurisdictionSafeLiteraryQuotes(countryCode: string = 'US'): L
     return evaluation.isAllowed;
   });
 }
+
+/**
+ * Deterministically selects a distinct set of literary quotes (from distinct books)
+ * based on an hourly seed index, cycling smoothly through the candidate pool.
+ */
+export function selectHourlyLiteraryQuotes(
+  candidates: LiteraryQuote[],
+  hourlySeed: number,
+  count: number = 3
+): LiteraryQuote[] {
+  if (!candidates || candidates.length === 0) return [];
+
+  // Group candidates into unique books
+  const distinctBooks: number[] = [];
+  const bookQuotesMap = new Map<number, LiteraryQuote[]>();
+
+  for (const item of candidates) {
+    const list = bookQuotesMap.get(item.bookId);
+    if (!list) {
+      distinctBooks.push(item.bookId);
+      bookQuotesMap.set(item.bookId, [item]);
+    } else {
+      list.push(item);
+    }
+  }
+
+  if (distinctBooks.length <= count) {
+    const selected: LiteraryQuote[] = [];
+    const usedIds = new Set<number>();
+    const usedBookIds = new Set<number>();
+
+    // Pass 1: select 1 passage per distinct book
+    for (const bId of distinctBooks) {
+      const quotes = bookQuotesMap.get(bId)!;
+      const quote = quotes[0];
+      selected.push(quote);
+      usedIds.add(quote.id);
+      usedBookIds.add(quote.bookId);
+    }
+    // Pass 2: fill if still under count from additional passages
+    for (const item of candidates) {
+      if (selected.length >= count) break;
+      if (!usedIds.has(item.id)) {
+        selected.push(item);
+        usedIds.add(item.id);
+      }
+    }
+    return selected;
+  }
+
+  // Rotate distinct books starting from cyclic offset
+  const numBooks = distinctBooks.length;
+  // If candidates were topped up from baseSafeQuotes (database pool had < 3 books),
+  // preserve the initial injected book at index 0 rather than rotating past it.
+  const hasBaseFallback = candidates.some((c) => c.id < 1000) && candidates.some((c) => c.id >= 1000);
+  const startBookIndex = hasBaseFallback ? 0 : Math.abs(hourlySeed) % numBooks;
+  const selected: LiteraryQuote[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const bookId = distinctBooks[(startBookIndex + i) % numBooks];
+    const quotes = bookQuotesMap.get(bookId)!;
+    // Vary the quote within that book if multiple passages exist
+    const passageIndex = Math.abs(Math.floor(hourlySeed / numBooks)) % quotes.length;
+    selected.push(quotes[passageIndex]);
+  }
+
+  return selected;
+}
+

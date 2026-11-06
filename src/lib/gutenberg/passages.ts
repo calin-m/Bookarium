@@ -102,10 +102,45 @@ export function extractDynamicBookPassages(
   };
 
   const safeCleanQuote = (text: string, maxLen: number): string => {
-    const trimmed = text.replace(/^[\s*\-_~=\.#\/\\|:;+]+|[\s*\-_~=\.#\/\\|:;+]+$/g, '').trim();
-    if (!trimmed) return '';
-    const withQuotes = trimmed.startsWith('“') || trimmed.startsWith('"') ? trimmed : `“${trimmed}”`;
-    return withQuotes.length > maxLen ? `${withQuotes.slice(0, maxLen - 1).trim()}…”` : withQuotes;
+    const cleaned = text
+      .replace(/^[“"'\s*\-_~=\.#\/\\|:;+]+|[”"'\s*\-_~=\.#\/\\|:;+]+$/g, '')
+      .trim();
+    if (!cleaned) return '';
+
+    const budget = Math.max(40, maxLen - 2);
+    if (cleaned.length <= budget) {
+      return `“${cleaned}”`;
+    }
+
+    const windowStr = cleaned.slice(0, budget);
+    const minSentenceEnd = Math.max(45, Math.floor(budget * 0.4));
+
+    // 1. Prefer ending at a natural sentence boundary (. ! ?) within the upper 60% of the budget
+    let bestSentenceEnd = -1;
+    const sentenceRegex = /[.!?]+(?=["'”’)\]]*(?:\s|$))/g;
+    let match: RegExpExecArray | null;
+    while ((match = sentenceRegex.exec(windowStr)) !== null) {
+      const endPos = match.index + match[0].length;
+      if (endPos >= minSentenceEnd) {
+        bestSentenceEnd = endPos;
+      }
+    }
+
+    if (bestSentenceEnd > 0) {
+      const sentenceBody = windowStr
+        .slice(0, bestSentenceEnd)
+        .replace(/[“"']+$/g, '')
+        .trim();
+      return `“${sentenceBody}”`;
+    }
+
+    // 2. Fallback to nearest whole-word space boundary so a word is never sliced in half
+    const wordSlice = cleaned.slice(0, budget - 1);
+    const lastSpace = wordSlice.lastIndexOf(' ');
+    const baseCut =
+      lastSpace >= Math.floor(budget * 0.5) ? wordSlice.slice(0, lastSpace) : wordSlice;
+    const tidyWord = baseCut.replace(/[,;:\-—–\s“"']+$/g, '').trim();
+    return `“${tidyWord}…”`;
   };
 
   const buildPassageFromParagraphs = (
@@ -151,12 +186,12 @@ export function extractDynamicBookPassages(
 
     return {
       chapterLabel,
-      openingLine: safeCleanQuote(firstPara, 280),
-      secondaryQuote: secQuoteCandidate ? safeCleanQuote(secQuoteCandidate, 200) : undefined,
-      leftPageQuote2: leftQuote2Candidate ? safeCleanQuote(leftQuote2Candidate, 190) : undefined,
-      quoteExcerpt: safeCleanQuote(excerptCandidate, 260),
-      rightPageQuote2: rightQuote2Candidate ? safeCleanQuote(rightQuote2Candidate, 200) : undefined,
-      tertiaryQuote: tertQuoteCandidate ? safeCleanQuote(tertQuoteCandidate, 160) : undefined,
+      openingLine: safeCleanQuote(firstPara, 220),
+      secondaryQuote: secQuoteCandidate ? safeCleanQuote(secQuoteCandidate, 175) : undefined,
+      leftPageQuote2: leftQuote2Candidate ? safeCleanQuote(leftQuote2Candidate, 140) : undefined,
+      quoteExcerpt: safeCleanQuote(excerptCandidate, 220),
+      rightPageQuote2: rightQuote2Candidate ? safeCleanQuote(rightQuote2Candidate, 175) : undefined,
+      tertiaryQuote: tertQuoteCandidate ? safeCleanQuote(tertQuoteCandidate, 140) : undefined,
       commentary,
     };
   };
@@ -266,5 +301,200 @@ export function extractDynamicBookPassages(
   }
 
   return passages;
+}
+
+/**
+ * Strips outer straight or curly quotation marks and surrounding whitespace so callers can
+ * wrap quotes in a single canonical pair of typographic quotes without double-quoting.
+ */
+export function formatCleanQuote(text?: string): string {
+  return (text || '').replace(/^[“"'\s]+|[”"'\s]+$/g, '').trim();
+}
+
+export interface SpreadQuoteLayoutOptions {
+  title?: string;
+  hasContentAdvisory?: boolean;
+  hasCommentary?: boolean;
+  cardHeight?: number;
+}
+
+export interface ResolvedSpreadQuoteLayout {
+  leftQuotes: string[];
+  rightQuotes: string[];
+  coverQuote: string;
+  leftLineClampClass: string;
+  rightLineClampClass: string;
+  coverLineClampClass: string;
+}
+
+/**
+ * Deterministically selects and sizes quotes for the Left Page, Right Page, and Closed Front Cover
+ * of an open 3D book spread based on character lengths and available vertical line budget.
+ * Guarantees that every rendered quote fits within its page container without premature clipping,
+ * promotes shorter tertiary candidates when a secondary candidate exceeds remaining space, and
+ * prevents cross-page duplicate quotes.
+ */
+export function resolveSpreadQuoteLayout(
+  passage: {
+    openingLine?: string;
+    secondaryQuote?: string;
+    leftPageQuote2?: string;
+    quoteExcerpt?: string;
+    rightPageQuote2?: string;
+    tertiaryQuote?: string;
+  },
+  options: SpreadQuoteLayoutOptions = {}
+): ResolvedSpreadQuoteLayout {
+  const CHARS_PER_LINE = 40;
+  const BOX_OVERHEAD_LINES = 1.5;
+
+  const estimateQuoteLines = (text: string): number =>
+    Math.max(1, Math.ceil(text.length / CHARS_PER_LINE));
+
+  const baseCapacity =
+    typeof options.cardHeight === 'number' && options.cardHeight > 0 && options.cardHeight < 430
+      ? 11.5
+      : 13.5;
+
+  const titleLen = (options.title || '').trim().length;
+  const isLongTitle = titleLen > 36;
+  const isVeryLongTitle = titleLen > 55;
+  const titleOverhead = isVeryLongTitle ? 4.0 : isLongTitle ? 3.0 : 2.0;
+  const advisoryOverhead = options.hasContentAdvisory ? 2.5 : 0;
+  const leftBudget = baseCapacity - titleOverhead - advisoryOverhead;
+
+  const seenOnLeft = new Set<string>();
+  const leftCandidates: string[] = [];
+  for (const raw of [passage.openingLine, passage.secondaryQuote, passage.leftPageQuote2]) {
+    const cleaned = formatCleanQuote(raw);
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (!seenOnLeft.has(key)) {
+      seenOnLeft.add(key);
+      leftCandidates.push(cleaned);
+    }
+  }
+
+  const leftQuotes: string[] = [];
+  let usedLeftLines = 0;
+
+  if (leftCandidates.length > 0) {
+    leftQuotes.push(leftCandidates[0]);
+    usedLeftLines = estimateQuoteLines(leftCandidates[0]);
+
+    for (let i = 1; i < leftCandidates.length; i++) {
+      const cand = leftCandidates[i];
+      const candLines = estimateQuoteLines(cand);
+
+      if (leftQuotes.length === 1) {
+        if (usedLeftLines + BOX_OVERHEAD_LINES + candLines <= leftBudget) {
+          leftQuotes.push(cand);
+          usedLeftLines += BOX_OVERHEAD_LINES + candLines;
+        }
+      } else if (leftQuotes.length === 2) {
+        if (
+          !isLongTitle &&
+          !options.hasContentAdvisory &&
+          leftQuotes.every((q) => q.length <= 120) &&
+          cand.length <= 120 &&
+          usedLeftLines + BOX_OVERHEAD_LINES + candLines <= leftBudget
+        ) {
+          leftQuotes.push(cand);
+          usedLeftLines += BOX_OVERHEAD_LINES + candLines;
+        }
+      }
+    }
+  }
+
+  const renderedLeftKeys = new Set(leftQuotes.map((q) => q.toLowerCase()));
+  const commentaryOverhead = options.hasCommentary ? 1.5 : 0;
+  const rightBudget = baseCapacity - commentaryOverhead;
+
+  const seenOnRight = new Set<string>();
+  const rightCandidates: string[] = [];
+  const rawRightPool = [passage.quoteExcerpt, passage.rightPageQuote2, passage.tertiaryQuote];
+
+  for (const raw of rawRightPool) {
+    const cleaned = formatCleanQuote(raw);
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (!seenOnRight.has(key) && !renderedLeftKeys.has(key)) {
+      seenOnRight.add(key);
+      rightCandidates.push(cleaned);
+    }
+  }
+
+  // Fallback if all right-page quotes were identical to left-page quotes
+  if (rightCandidates.length === 0) {
+    const fallbackPrimary = formatCleanQuote(passage.quoteExcerpt || passage.openingLine);
+    if (fallbackPrimary) {
+      rightCandidates.push(fallbackPrimary);
+    }
+  }
+
+  const rightQuotes: string[] = [];
+  let usedRightLines = 0;
+
+  if (rightCandidates.length > 0) {
+    rightQuotes.push(rightCandidates[0]);
+    usedRightLines = estimateQuoteLines(rightCandidates[0]);
+
+    for (let i = 1; i < rightCandidates.length; i++) {
+      const cand = rightCandidates[i];
+      const candLines = estimateQuoteLines(cand);
+
+      if (rightQuotes.length === 1) {
+        if (usedRightLines + BOX_OVERHEAD_LINES + candLines <= rightBudget) {
+          rightQuotes.push(cand);
+          usedRightLines += BOX_OVERHEAD_LINES + candLines;
+        }
+      } else if (rightQuotes.length === 2) {
+        if (
+          rightQuotes.every((q) => q.length <= 120) &&
+          cand.length <= 120 &&
+          usedRightLines + BOX_OVERHEAD_LINES + candLines <= rightBudget
+        ) {
+          rightQuotes.push(cand);
+          usedRightLines += BOX_OVERHEAD_LINES + candLines;
+        }
+      }
+    }
+  }
+
+  // Closed Cover Quote Selection (Featured Book)
+  const isLongCoverTitle = titleLen > 40;
+  const coverCharBudget = isLongCoverTitle ? 130 : 180;
+  const allCoverCandidates = [
+    passage.quoteExcerpt,
+    passage.openingLine,
+    passage.secondaryQuote,
+    passage.rightPageQuote2,
+    passage.tertiaryQuote,
+    passage.leftPageQuote2,
+  ]
+    .map((q) => formatCleanQuote(q))
+    .filter(Boolean);
+
+  const fittingCoverQuote = allCoverCandidates.find((q) => q.length <= coverCharBudget);
+  const shortestCoverQuote =
+    allCoverCandidates.length > 0
+      ? [...allCoverCandidates].sort((a, b) => a.length - b.length)[0]
+      : '';
+  const coverQuote = fittingCoverQuote || shortestCoverQuote;
+
+  const resolveClampClass = (count: number): string => {
+    if (count <= 1) return 'line-clamp-8 sm:line-clamp-9';
+    if (count === 2) return 'line-clamp-6 sm:line-clamp-7';
+    return 'line-clamp-3 sm:line-clamp-4';
+  };
+
+  return {
+    leftQuotes,
+    rightQuotes,
+    coverQuote,
+    leftLineClampClass: resolveClampClass(leftQuotes.length),
+    rightLineClampClass: resolveClampClass(rightQuotes.length),
+    coverLineClampClass: isLongCoverTitle ? 'line-clamp-4' : 'line-clamp-5',
+  };
 }
 

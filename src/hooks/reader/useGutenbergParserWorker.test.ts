@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useGutenbergParserWorker } from './useGutenbergParserWorker';
+import { useGutenbergParserWorker, createGutenbergWorker } from './useGutenbergParserWorker';
 
 const sampleText = `
 *** START OF THE PROJECT GUTENBERG EBOOK TEST ***
@@ -187,5 +187,49 @@ Something completely different.
         fontSize: 22,
       })
     );
+
+    // Rerendering with empty contentText terminates the active worker
+    rerender({ text: '', size: 22 });
+    expect(workerInstance.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles createGutenbergWorker instantiation, constructor exceptions, and synchronous postMessage throws', async () => {
+    const originalWorker = window.Worker;
+
+    // 1. window.Worker undefined -> returns null
+    Object.defineProperty(window, 'Worker', { value: undefined, configurable: true, writable: true });
+    expect(createGutenbergWorker()).toBeNull();
+
+    // 2. window.Worker defined -> executes worker instantiation and catches bundler/CSP error in jsdom
+    const workerConstructorSpy = vi.fn(() => {
+      throw new Error('CSP Worker blocked');
+    });
+    Object.defineProperty(window, 'Worker', {
+      value: workerConstructorSpy,
+      configurable: true,
+      writable: true,
+    });
+    expect(createGutenbergWorker()).toBeNull();
+
+    // 4. Synchronous postMessage throw falls back to synchronous parsing
+    const throwingWorker = {
+      postMessage: vi.fn(() => {
+        throw new Error('DataCloneError');
+      }),
+      terminate: vi.fn(),
+      onmessage: null,
+      onerror: null,
+    } as unknown as Worker;
+
+    const { result } = renderHook(() =>
+      useGutenbergParserWorker(sampleText, 18, () => throwingWorker)
+    );
+
+    await waitFor(() => {
+      expect(result.current.rawChapters.length).toBeGreaterThanOrEqual(2);
+      expect(result.current.isProcessing).toBe(false);
+    });
+
+    Object.defineProperty(window, 'Worker', { value: originalWorker, configurable: true, writable: true });
   });
 });

@@ -14,6 +14,7 @@ import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
+import { resolveSpreadQuoteLayout } from '@/lib/gutenberg/passages';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
 
@@ -44,6 +45,7 @@ type LeftPageSpreadParams = {
     secondaryQuote?: string;
     leftPageQuote2?: string;
   };
+  cardHeight?: number;
   authorNames: string;
   primarySubject: string;
   fullPrimarySubject: string;
@@ -62,6 +64,7 @@ type LeftPageSpreadParams = {
 const LeftPageSpread: React.FC<LeftPageSpreadParams> = ({
   book,
   passage,
+  cardHeight,
   authorNames,
   primarySubject,
   fullPrimarySubject,
@@ -75,8 +78,16 @@ const LeftPageSpread: React.FC<LeftPageSpreadParams> = ({
 }) => {
   const isVeryLongTitle = book.title.length > 55;
   const isLongTitle = book.title.length > 36;
-  const hasSecondary = Boolean(passage.secondaryQuote);
-  const hasTertiary = Boolean(passage.leftPageQuote2) && !isLongTitle;
+  const { leftQuotes, leftLineClampClass } = resolveSpreadQuoteLayout(passage, {
+    title: book.title,
+    hasContentAdvisory: contentAdvisory.isMature,
+    cardHeight,
+  });
+  const cleanOpening = leftQuotes[0] || '';
+  const cleanSecondary = leftQuotes[1];
+  const cleanLeft2 = leftQuotes[2];
+  const hasSecondary = Boolean(cleanSecondary);
+  const hasTertiary = Boolean(cleanLeft2);
 
   return (
     <>
@@ -138,42 +149,36 @@ const LeftPageSpread: React.FC<LeftPageSpreadParams> = ({
             <p
               className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
                 !hasSecondary && !isLongTitle
-                  ? 'text-xs sm:text-sm line-clamp-6 sm:line-clamp-7'
+                  ? 'text-xs sm:text-sm'
                   : isVeryLongTitle
-                  ? 'text-xs line-clamp-3'
-                  : isLongTitle
-                  ? 'text-xs sm:text-[13px] line-clamp-4'
-                  : 'text-xs sm:text-[13px] line-clamp-4'
-              }`}
+                  ? 'text-xs'
+                  : 'text-xs sm:text-[13px]'
+              } ${leftLineClampClass}`}
             >
-              &ldquo;{passage.openingLine}&rdquo;
+              &ldquo;{cleanOpening}&rdquo;
             </p>
           </div>
 
           {/* Secondary Quote Box */}
-          {passage.secondaryQuote && (
+          {cleanSecondary && (
             <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
               <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
               <p
-                className={`font-serif italic text-foreground leading-relaxed ${
-                  !hasTertiary && !isLongTitle
-                    ? 'text-xs sm:text-[13px] line-clamp-4'
-                    : isLongTitle
-                    ? 'text-xs line-clamp-2'
-                    : 'text-xs sm:text-[13px] line-clamp-3'
-                }`}
+                className={`font-serif italic text-foreground leading-relaxed text-pretty ${
+                  isLongTitle ? 'text-xs' : 'text-xs sm:text-[13px]'
+                } ${leftLineClampClass}`}
               >
-                {passage.secondaryQuote}
+                &ldquo;{cleanSecondary}&rdquo;
               </p>
             </div>
           )}
 
           {/* Tertiary Quote Box */}
-          {passage.leftPageQuote2 && !isLongTitle && (
+          {hasTertiary && (
             <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
               <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-              <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2">
-                {passage.leftPageQuote2}
+              <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${leftLineClampClass}`}>
+                &ldquo;{cleanLeft2}&rdquo;
               </p>
             </div>
           )}
@@ -443,6 +448,9 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               <div key={`right-page-base-${book.id}-${activePassageIndex}`} className="animate-ink-appear flex flex-col justify-between h-full relative">
                 <NotablePassagesSpread
                   passage={currentPassage}
+                  title={book.title}
+                  hasContentAdvisory={contentAdvisory.isMature}
+                  cardHeight={flipData.targetHeight}
                   isRestricted={isRestricted}
                   isUnavailableOffline={isUnavailableOffline}
                   country={country}
@@ -524,6 +532,9 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                 <div className="turning-leaf-face-front rounded-r-lg rounded-l-none open-book-page-right border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
                   <NotablePassagesSpread
                     passage={prevPassage}
+                    title={book.title}
+                    hasContentAdvisory={contentAdvisory.isMature}
+                    cardHeight={flipData.targetHeight}
                     isRestricted={isRestricted}
                     isUnavailableOffline={isUnavailableOffline}
                     country={country}
@@ -541,6 +552,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   <LeftPageSpread
                     book={book}
                     passage={currentPassage}
+                    cardHeight={flipData.targetHeight}
                     authorNames={authorNames}
                     primarySubject={primarySubject}
                     fullPrimarySubject={fullPrimarySubject}
@@ -594,6 +606,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                   <LeftPageSpread
                     book={book}
                     passage={isTurningLeaf ? prevPassage : currentPassage}
+                    cardHeight={flipData.targetHeight}
                     authorNames={authorNames}
                     primarySubject={primarySubject}
                     fullPrimarySubject={fullPrimarySubject}

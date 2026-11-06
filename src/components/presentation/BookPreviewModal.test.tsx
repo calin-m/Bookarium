@@ -556,6 +556,59 @@ describe('BookPreviewModal component', () => {
 
     networkSpy.mockRestore();
   });
+
+  it('normalizes pre-quoted passages without double quotation marks and gates leftPageQuote2 on concise quote lengths', () => {
+    const conciseSpreadBook = {
+      ...defaultBook,
+      id: 77771,
+      title: 'Brief Poems',
+      quotes: [
+        {
+          chapterLabel: 'Canto I',
+          openingLine: '“Hope is the thing with feathers that perches in the soul.”',
+          secondaryQuote: '“And sings the tune without the words, and never stops at all.”',
+          leftPageQuote2: '“And sweetest in the gale is heard.”',
+          quoteExcerpt: '“Forever is composed of nows.”',
+        },
+      ],
+    };
+
+    const { rerender } = renderWithQueryClient(
+      <BookPreviewModal book={conciseSpreadBook} isOpen={true} onClose={vi.fn()} />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(screen.getByText('“And sweetest in the gale is heard.”')).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('““');
+
+    const longPrimarySpreadBook = {
+      ...conciseSpreadBook,
+      id: 77772,
+      quotes: [
+        {
+          chapterLabel: 'Chapter I',
+          openingLine:
+            '“It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife, and this truth is fixed in the minds of the surrounding families.”',
+          secondaryQuote: '“My dear Mr. Bennet, have you heard that Netherfield Park is let at last?”',
+          leftPageQuote2: '“Hidden third quote when opening line is over 120 characters.”',
+          quoteExcerpt: '“Forever is composed of nows.”',
+        },
+      ],
+    };
+
+    rerender(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <BookPreviewModal book={longPrimarySpreadBook} isOpen={true} onClose={vi.fn()} />
+      </QueryClientProvider>
+    );
+
+    expect(
+      screen.queryByText('“Hidden third quote when opening line is over 120 characters.”')
+    ).not.toBeInTheDocument();
+  });
 });
 
 

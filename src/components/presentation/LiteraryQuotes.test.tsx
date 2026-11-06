@@ -142,6 +142,7 @@ describe('LiteraryQuotes component', () => {
     } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [
         {
           id: 1400,
@@ -252,6 +253,7 @@ describe('LiteraryQuotes component', () => {
     const useBooksModule = await import('@/hooks/queries/useBooks');
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [
         {
           id: 1400,
@@ -397,19 +399,25 @@ describe('LiteraryQuotes component', () => {
     } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
 
     render(<LiteraryQuotes />);
-    // Initial render shows books #1400, #84, #2701
-    expect(screen.getByText('Great Expectations')).toBeInTheDocument();
-    expect(screen.getByText('Frankenstein')).toBeInTheDocument();
-    expect(screen.getByText('Moby Dick')).toBeInTheDocument();
+    // Initial render shows 3 distinct books from quoteEnrichedBooks (#1400, #84, #2701, #1342, #98, #174)
+    const initialLinks = screen.getAllByRole('link', { name: /Read/i });
+    expect(initialLinks).toHaveLength(3);
 
-    // Clicking Discover More must exclude #1400, #84, #2701 and display the 3 unseen books (#1342, #98, #174)
+    // Initial books displayed must be 3 distinct books from the pool
+    const renderedTitles = ['Great Expectations', 'Frankenstein', 'Moby Dick', 'Pride and Prejudice', 'A Tale of Two Cities', 'The Picture of Dorian Gray'];
+    const initialVisibleTitles = renderedTitles.filter((t) => screen.queryByText(t) !== null);
+    expect(initialVisibleTitles).toHaveLength(3);
+
+    // Clicking Discover More must exclude the 3 currently visible books and display the remaining 3 unseen books
     fireEvent.click(screen.getByLabelText(/Discover more literary quotes/i));
-    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
-    expect(screen.getByText('A Tale of Two Cities')).toBeInTheDocument();
-    expect(screen.getByText('The Picture of Dorian Gray')).toBeInTheDocument();
-    expect(screen.queryByText('Great Expectations')).toBeNull();
-    expect(screen.queryByText('Frankenstein')).toBeNull();
-    expect(screen.queryByText('Moby Dick')).toBeNull();
+    const unseenTitles = renderedTitles.filter((t) => !initialVisibleTitles.includes(t));
+    expect(unseenTitles).toHaveLength(3);
+    for (const title of unseenTitles) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+    for (const title of initialVisibleTitles) {
+      expect(screen.queryByText(title)).toBeNull();
+    }
 
     enrichedSpy.mockRestore();
   });
@@ -432,6 +440,7 @@ describe('LiteraryQuotes component', () => {
 
     // Only 1 book in quoteEnrichedBooks so seenBookIds.size < 3 triggers baseSafeQuotes top-up
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [
         {
           id: 1400,
@@ -478,6 +487,7 @@ describe('LiteraryQuotes component', () => {
     });
 
     const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: true,
       data: [
         {
           id: 9999,
@@ -509,6 +519,61 @@ describe('LiteraryQuotes component', () => {
 
     enrichedSpy.mockRestore();
     copyrightSpy.mockRestore();
+  });
+
+  it('deterministically rotates literary quote trios based on hourlySeed without throwing or duplicating books', async () => {
+    const { selectHourlyLiteraryQuotes, LITERARY_QUOTES } = await import(
+      '@/config/literary-quotes'
+    );
+
+    const hour1 = selectHourlyLiteraryQuotes(LITERARY_QUOTES, 100, 3);
+    const hour2 = selectHourlyLiteraryQuotes(LITERARY_QUOTES, 101, 3);
+
+    expect(hour1).toHaveLength(3);
+    expect(hour2).toHaveLength(3);
+
+    // Assert that each hour selects distinct books
+    const hour1Books = new Set(hour1.map((q) => q.bookId));
+    const hour2Books = new Set(hour2.map((q) => q.bookId));
+    expect(hour1Books.size).toBe(3);
+    expect(hour2Books.size).toBe(3);
+
+    // Assert that advancing by 1 hour produces a shifted selection
+    const hour1Ids = hour1.map((q) => q.id);
+    const hour2Ids = hour2.map((q) => q.id);
+    expect(hour1Ids).not.toEqual(hour2Ids);
+  });
+
+  it('holds the quote grid invisible and disables Discover More until the quote pool settles, then reveals once', async () => {
+    const { vi } = await import('vitest');
+    const useBooksModule = await import('@/hooks/queries/useBooks');
+
+    const enrichedSpy = vi.spyOn(useBooksModule, 'useQuoteEnrichedBooks').mockReturnValue({
+      isPoolSettled: false,
+      data: undefined,
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+
+    const { rerender } = render(<LiteraryQuotes />);
+
+    const grid = screen.getByTestId('literary-quotes-grid');
+    const shuffleBtn = screen.getByLabelText(/Discover more literary quotes/i);
+    expect(grid).toHaveAttribute('aria-busy', 'true');
+    expect(grid.className).toContain('opacity-0');
+    expect(grid.className).not.toContain('animate-ink-appear');
+    expect(shuffleBtn).toBeDisabled();
+
+    enrichedSpy.mockReturnValue({
+      isPoolSettled: true,
+      data: undefined,
+    } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+    rerender(<LiteraryQuotes />);
+
+    expect(screen.getByTestId('literary-quotes-grid')).toHaveAttribute('aria-busy', 'false');
+    expect(screen.getByTestId('literary-quotes-grid').className).toContain('animate-ink-appear');
+    expect(screen.getByTestId('literary-quotes-grid').className).not.toContain('opacity-0');
+    expect(screen.getByLabelText(/Discover more literary quotes/i)).toBeEnabled();
+
+    enrichedSpy.mockRestore();
   });
 });
 

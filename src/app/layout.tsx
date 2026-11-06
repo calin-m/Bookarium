@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
 import { Providers } from './providers';
-import { SITE_CONFIG } from '@/config/site-config';
+import { SITE_CONFIG, STORAGE_KEYS } from '@/config/site-config';
 import { GEO_COOKIE_NAME } from '@/proxy';
 import { normalizeCountryCode } from '@/lib/copyright-engine';
+import type { AppTheme } from '@/stores/useThemeStore';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
@@ -154,6 +155,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   let initialCountry = 'US';
+  let initialTheme: AppTheme = 'light';
+  let initialIsAuthenticated = false;
+
   try {
     const cookieStore = await cookies();
     const rawCountry = cookieStore.get(GEO_COOKIE_NAME)?.value;
@@ -169,15 +173,28 @@ export default async function RootLayout({
         initialCountry = normalizeCountryCode(edgeHeaderCountry);
       }
     }
+
+    const rawTheme = cookieStore.get(STORAGE_KEYS.THEME)?.value;
+    if (rawTheme === 'dark' || rawTheme === 'sepia' || rawTheme === 'light') {
+      initialTheme = rawTheme;
+    }
+
+    const rawAuthHint = cookieStore.get(STORAGE_KEYS.AUTH_HINT)?.value;
+    const hasSbCookie = cookieStore
+      .getAll()
+      .some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
+    initialIsAuthenticated = rawAuthHint === 'authenticated' || hasSbCookie;
   } catch {
-    // Gracefully fallback to US when cookies()/headers() is called outside request scope (e.g. build/test)
+    // Gracefully fallback to defaults when cookies()/headers() is called outside request scope (e.g. build/test)
   }
+
+  const themeClass = initialTheme === 'dark' ? 'dark' : initialTheme === 'sepia' ? 'sepia' : '';
 
   return (
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${playfair.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${themeClass} ${playfair.variable} ${inter.variable} ${jetbrainsMono.variable}`.trim()}
     >
       <head>
         {process.env.NEXT_PUBLIC_SUPABASE_URL && (
@@ -200,7 +217,11 @@ export default async function RootLayout({
         suppressHydrationWarning
         className="min-h-dvh flex flex-col bg-background text-foreground antialiased font-sans"
       >
-        <Providers initialCountry={initialCountry}>
+        <Providers
+          initialCountry={initialCountry}
+          initialTheme={initialTheme}
+          initialIsAuthenticated={initialIsAuthenticated}
+        >
           {children}
           <Analytics />
           <SpeedInsights />

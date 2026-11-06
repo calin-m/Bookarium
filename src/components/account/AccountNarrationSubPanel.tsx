@@ -10,7 +10,13 @@ import {
   BookOpen,
   RotateCcw,
 } from 'lucide-react';
-import { isNaturalVoice, cleanVoiceName, normalizeSpeechLang } from '@/lib/speech-utils';
+import {
+  isNaturalVoice,
+  cleanVoiceName,
+  normalizeSpeechLang,
+  sortVoicesByQuality,
+  resolveBestVoice,
+} from '@/lib/speech-utils';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 
 export interface AccountNarrationSubPanelProps {
@@ -63,8 +69,9 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
     };
   }, []);
 
-  const naturalVoices = useMemo(() => voices.filter(isNaturalVoice), [voices]);
-  const standardVoices = useMemo(() => voices.filter((v) => !isNaturalVoice(v)), [voices]);
+  const sortedVoices = useMemo(() => sortVoicesByQuality(voices, 'en'), [voices]);
+  const naturalVoices = useMemo(() => sortedVoices.filter(isNaturalVoice), [sortedVoices]);
+  const standardVoices = useMemo(() => sortedVoices.filter((v) => !isNaturalVoice(v)), [sortedVoices]);
 
   const handleTogglePreview = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -80,14 +87,10 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
     const utterance = new SpeechSynthesisUtterance(sampleText);
     utterance.rate = speechRate;
 
-    if (speechVoiceURI) {
-      const matched = voices.find(
-        (v) => v.voiceURI === speechVoiceURI || v.name === speechVoiceURI
-      );
-      if (matched) {
-        utterance.voice = matched;
-        utterance.lang = matched.lang;
-      }
+    const activeVoice = resolveBestVoice(voices, speechVoiceURI, 'en');
+    if (activeVoice) {
+      utterance.voice = activeVoice;
+      utterance.lang = activeVoice.lang;
     }
 
     utterance.onstart = () => setIsPreviewPlaying(true);

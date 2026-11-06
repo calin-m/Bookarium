@@ -15,7 +15,11 @@ import {
   getDailyEditorialBook,
   getJurisdictionSafeFeaturedBooks,
 } from './featured-books';
-import { LITERARY_QUOTES, getJurisdictionSafeLiteraryQuotes } from './literary-quotes';
+import {
+  LITERARY_QUOTES,
+  getJurisdictionSafeLiteraryQuotes,
+  selectHourlyLiteraryQuotes,
+} from './literary-quotes';
 import { READER_THEMES, getReaderTheme } from './reader-themes';
 import { SITE_CONFIG, STORAGE_KEYS } from './site-config';
 
@@ -209,6 +213,19 @@ describe('src/config configuration modules', () => {
       const usQuotes = getJurisdictionSafeLiteraryQuotes('US');
       expect(usQuotes.length).toBe(LITERARY_QUOTES.length);
     });
+
+    it('handles empty candidate pools and small distinct-book pools in selectHourlyLiteraryQuotes', () => {
+      expect(selectHourlyLiteraryQuotes([], 0)).toEqual([]);
+
+      const twoBookQuotes = [
+        { ...LITERARY_QUOTES[0], id: 101, bookId: 1342 },
+        { ...LITERARY_QUOTES[1], id: 102, bookId: 1342 },
+        { ...LITERARY_QUOTES[2], id: 201, bookId: 84 },
+      ];
+      const selected = selectHourlyLiteraryQuotes(twoBookQuotes, 5, 3);
+      expect(selected).toHaveLength(3);
+      expect(selected.map((q) => q.id)).toEqual([101, 201, 102]);
+    });
   });
 
   describe('reader-themes', () => {
@@ -255,6 +272,7 @@ describe('src/config configuration modules', () => {
       expect(STORAGE_KEYS.READER_SETTINGS).toBe('bookarium-reader-preferences');
       expect(STORAGE_KEYS.PREFERENCES).toBe('bookarium-navigation-preferences');
       expect(STORAGE_KEYS.THEME).toBe('bookarium-theme-preference');
+      expect(STORAGE_KEYS.AUTH_HINT).toBe('bookarium-auth-hint');
     });
   });
 });

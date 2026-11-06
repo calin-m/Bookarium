@@ -704,6 +704,101 @@ describe('view-scoped URL pagination and query parameter synchronization', () =>
       writable: true,
     });
   });
+
+  it('synchronizes filters on browser popstate events and ignores reader paths', () => {
+    const originalLocation = window.location;
+    const { result } = renderHook(() => useCatalogFilters());
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...originalLocation,
+        pathname: '/favorites',
+        search: '?search=Austen&topic=fiction&languages=en&era=victorian&sort=ascending&format=text/html&page=2&size=8',
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(result.current.search).toBe('Austen');
+    expect(result.current.topic).toBe('fiction');
+    expect(result.current.language).toBe('en');
+    expect(result.current.era).toBe('victorian');
+    expect(result.current.sort).toBe('ascending');
+    expect(result.current.format).toBe('text/html');
+    expect(result.current.page).toBe(3);
+    expect(result.current.pageSize).toBe(8);
+    expect(result.current.activeView).toBe('favorites');
+
+    // Navigating to a reader route on popstate should be ignored
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...originalLocation,
+        pathname: '/read/1342',
+        search: '',
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(result.current.activeView).toBe('favorites');
+
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  it('handles format change, removing language/era/format chips, and no-op pageSize change', () => {
+    const { result } = renderHook(() => useCatalogFilters());
+
+    act(() => {
+      result.current.handleLanguageChange('fr');
+      result.current.handleEraChange('victorian');
+      result.current.setPage(4);
+    });
+    expect(result.current.page).toBe(4);
+
+    act(() => {
+      result.current.handleFormatChange('text/html');
+    });
+
+    expect(result.current.format).toBe('text/html');
+    expect(result.current.page).toBe(1);
+
+    act(() => {
+      result.current.removeFilterChip('language');
+    });
+    expect(result.current.language).toBe('');
+
+    act(() => {
+      result.current.removeFilterChip('era');
+    });
+    expect(result.current.era).toBe('');
+
+    act(() => {
+      result.current.removeFilterChip('format');
+    });
+    expect(result.current.format).toBe('');
+
+    // Calling setPageSize with current pageSize is a no-op
+    const currentSize = result.current.pageSize;
+    act(() => {
+      result.current.setPage(3);
+    });
+    act(() => {
+      result.current.setPageSize(currentSize);
+    });
+    expect(result.current.page).toBe(3);
+  });
 });
 
 

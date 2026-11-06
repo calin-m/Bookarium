@@ -5,6 +5,8 @@ import {
   isNaturalVoice,
   normalizeSpeechLang,
   isVoiceLanguageCompatible,
+  sortVoicesByQuality,
+  resolveBestVoice,
 } from '@/lib/speech-utils';
 
 export interface UseReaderSpeechOptions {
@@ -64,35 +66,13 @@ export function segmentTextIntoSentences(rawText: string): string[] {
     .filter((s) => s.length > 0 && !/^[\s\-_=*#~]+$/.test(s));
 }
 
-export { isNaturalVoice, normalizeSpeechLang, isVoiceLanguageCompatible };
-
-/**
- * Scores a voice based on quality indicators (Neural/Natural/Enhanced)
- * and language compatibility.
- */
-function getVoiceQualityScore(voice: SpeechSynthesisVoice, targetLang: string): number {
-  let score = 0;
-  const combined = `${voice.name || ''} ${voice.voiceURI || ''}`.toLowerCase();
-
-  // Language match priority
-  if (isVoiceLanguageCompatible(voice, targetLang)) {
-    score += 100;
-  }
-
-  // Modern Neural / Natural engine prioritization
-  if (combined.includes('natural') || combined.includes('online')) score += 50;
-  if (combined.includes('neural') || combined.includes('wavenet')) score += 40;
-  if (combined.includes('enhanced') || combined.includes('premium') || combined.includes('network')) {
-    score += 30;
-  }
-  if (combined.includes('siri')) score += 25;
-  if (combined.includes('google') || voice.localService === false) score += 20;
-
-  // Demote legacy mechanical voices
-  if (combined.includes('espeak') || combined.includes('desktop')) score -= 15;
-
-  return score;
-}
+export {
+  isNaturalVoice,
+  normalizeSpeechLang,
+  isVoiceLanguageCompatible,
+  sortVoicesByQuality,
+  resolveBestVoice,
+};
 
 function computeVoicePartitions(language: string, preferredVoiceURI?: string | null) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -102,20 +82,12 @@ function computeVoicePartitions(language: string, preferredVoiceURI?: string | n
   if (raw.length === 0) {
     return { sorted: [], natural: [], standard: [], best: null };
   }
-  const sorted = [...raw].sort(
-    (a, b) => getVoiceQualityScore(b, language) - getVoiceQualityScore(a, language)
-  );
+  const sorted = sortVoicesByQuality(raw, language);
   const compatible = sorted.filter((v) => isVoiceLanguageCompatible(v, language));
   const activePool = compatible.length > 0 ? compatible : sorted;
   const natural = activePool.filter(isNaturalVoice);
   const standard = activePool.filter((v) => !isNaturalVoice(v));
-  const preferred = preferredVoiceURI
-    ? activePool.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI) ||
-      (compatible.length === 0
-        ? sorted.find((v) => v.voiceURI === preferredVoiceURI || v.name === preferredVoiceURI)
-        : null)
-    : null;
-  const best = preferred || activePool[0] || null;
+  const best = resolveBestVoice(raw, preferredVoiceURI, language);
   return { sorted: activePool, natural, standard, best };
 }
 

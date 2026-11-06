@@ -141,9 +141,9 @@ function generateMarkdown() {
     },
     {
       file: 'passages.ts',
-      title: 'Dynamic Literary Passage & Quote Extraction',
+      title: 'Dynamic Literary Passage Extraction & Line-Budget Layout',
       description:
-        'Scans up to 120,000 characters of narrative chapters to dynamically harvest memorable dialogue quotes, opening paragraphs, and literary excerpts for the 3D Book Preview Modal.',
+        'Scans up to 120,000 characters of narrative chapters to dynamically harvest memorable dialogue quotes, opening paragraphs, and literary excerpts for the 3D Book Preview Modal, with sentence/word-boundary truncation (`safeCleanQuote`), typographic normalization (`formatCleanQuote`), and deterministic line-budget packing (`resolveSpreadQuoteLayout`).',
       exports: extractModuleExports('passages.ts'),
     },
     {

@@ -1,35 +1,41 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
 import { useHydratedBookshelfCounts } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotationCount } from '@/stores/useAnnotationStore';
 import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
-import { useThemeStore } from '@/stores/useThemeStore';
+import { useThemeStore, getCookieValue } from '@/stores/useThemeStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Button } from '@/components/ui/Button';
 import { ROUTES } from '@/config/routes';
-import { SITE_CONFIG } from '@/config/site-config';
+import { SITE_CONFIG, STORAGE_KEYS } from '@/config/site-config';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
 import { NAV_ITEMS, NAVBAR_VIEW_CONFIG, type NavViewId, type ViewId } from '@/config/views.config';
+import { useAuthHint } from '@/app/providers';
 
 export interface NavbarProps {
   activeView?: ViewId;
   onViewChange?: (view: NavViewId) => void;
   onBrandReset?: () => void;
   isVisible?: boolean;
+  initialIsAuthenticated?: boolean;
 }
+
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeView = 'catalog',
   onViewChange,
   onBrandReset,
   isVisible = true,
+  initialIsAuthenticated,
 }) => {
   const router = useRouter();
   const activeConfig = NAVBAR_VIEW_CONFIG[activeView] || NAVBAR_VIEW_CONFIG.catalog;
@@ -45,8 +51,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     activeReadingCount,
   };
   const user = useAuthStore((s) => s.user);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const { isOffline } = useNetworkStatus();
+
+  const authHint = useAuthHint();
+  const isAuthHint = initialIsAuthenticated ?? authHint;
+  const hasCookieHint =
+    typeof document !== 'undefined' && getCookieValue(STORAGE_KEYS.AUTH_HINT) === 'authenticated';
+  const isAuth = Boolean(
+    user || (initialIsAuthenticated ?? ((isAuthHint || hasCookieHint) && (isAuthLoading || !hasMounted)))
+  );
 
   const { allowHeavyMotion } = usePerformanceTier();
   const navRef = useRef<HTMLElement | null>(null);
@@ -56,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const activeNavItem = NAV_ITEMS.find((item) => item.id === activeView);
   const activeTheme = activeNavItem ? LIBRARY_THEMES[activeNavItem.themeKey] : LIBRARY_THEMES.catalog;
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!allowHeavyMotion) return;
     if (activeView === 'account') return;
 
@@ -179,7 +194,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }
                   }}
                   title={item.title}
-                  className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono font-medium tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-colors ${
+                  className={`h-8 px-1.5 sm:px-2 lg:px-3 rounded text-xs font-mono font-medium tracking-wider uppercase flex items-center justify-center gap-1 lg:gap-1.5 border-b-2 transition-colors duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                     isActive
                       ? `${theme.navActiveText} ${isGlidingActive ? 'border-transparent' : theme.navActiveBorder}`
                       : 'text-muted-foreground hover:text-foreground border-transparent'
@@ -187,7 +202,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   aria-label={item.label}
                 >
                   <Icon
-                    className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                    className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                       isFilled ? theme.navFill : 'fill-transparent'
                     }`}
                   />
@@ -215,12 +230,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />
 
           {/* Right Actions: Auth, Theme */}
-          {!hasMounted ? (
-            <div
-              className="h-8 w-8 lg:w-[96px] rounded border border-border bg-muted/40 animate-pulse"
-              aria-hidden="true"
-            />
-          ) : user ? (
+          {isAuth ? (
             <Link
               href={ROUTES.ACCOUNT}
               title={isOffline ? 'User Account (Offline Mode)' : 'User Account'}
@@ -246,7 +256,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   aria-label="Offline Mode"
                 />
               ) : (
-                useFellowshipStore.getState().getPendingInviteCount(user.id) > 0 && (
+                Boolean(user && useFellowshipStore.getState().getPendingInviteCount(user.id) > 0) && (
                   <span
                     data-testid="navbar-fellowship-dot"
                     className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary"
@@ -261,7 +271,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => (isOffline ? router.push(ROUTES.ACCOUNT) : openAuthModal('sign_in'))}
               title={isOffline ? 'Offline Account & Local Settings' : 'Sign In'}
               aria-label={isOffline ? 'Sign In (Offline Mode)' : 'Sign In'}
-              className={`h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold animate-in fade-in duration-150 ${
+              className={`h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 font-mono text-xs font-bold ${
                 isOffline
                   ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15'
                   : ''
@@ -288,26 +298,21 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* 3-Way Universal Theme Switcher (Light -> Sepia -> Dark) */}
-          {(() => {
-            const currentTheme = hasMounted ? theme : 'light';
-            return (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={cycleTheme}
-                aria-label={`Current theme: ${currentTheme}. Click to switch theme.`}
-                className="h-8 w-8 rounded text-muted-foreground hover:text-foreground shrink-0"
-              >
-                {currentTheme === 'light' ? (
-                  <Sun className="w-4 h-4 text-amber-500" />
-                ) : currentTheme === 'sepia' ? (
-                  <Coffee className="w-4 h-4 text-amber-500" />
-                ) : (
-                  <Moon className="w-4 h-4 text-indigo-400" />
-                )}
-              </Button>
-            );
-          })()}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={cycleTheme}
+            aria-label={`Current theme: ${theme}. Click to switch theme.`}
+            className="h-8 w-8 rounded text-muted-foreground hover:text-foreground shrink-0"
+          >
+            {theme === 'light' ? (
+              <Sun className="w-4 h-4 text-amber-500" />
+            ) : theme === 'sepia' ? (
+              <Coffee className="w-4 h-4 text-amber-500" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-400" />
+            )}
+          </Button>
 
           {/* GitHub Repository Link (Visible on all screens >= 320px without colliding with logo) */}
           <a

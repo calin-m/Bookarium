@@ -155,10 +155,11 @@ describe('Navbar component', () => {
     expect(useThemeStore.getState().theme).toBe('light');
   });
 
-  it('renders Sign In button for guests and triggers openAuthModal', () => {
-    render(<Navbar activeView="catalog" />);
+  it('renders Sign In button for guests immediately without a pulsing skeleton placeholder', () => {
+    const { container } = render(<Navbar activeView="catalog" />);
     const signInBtn = screen.getByRole('button', { name: /Sign In/i });
     expect(signInBtn).toBeInTheDocument();
+    expect(container.querySelector('.animate-pulse.bg-muted\\/40')).toBeNull();
   });
 
   it('renders direct Account Link when user is authenticated', async () => {
@@ -173,6 +174,51 @@ describe('Navbar component', () => {
     expect(userLink).toBeInTheDocument();
     expect(userLink).toHaveAttribute('href', '/account');
     expect(screen.getByText('Account')).toBeInTheDocument();
+  });
+
+  it('renders Account Link on initial render when initialIsAuthenticated is true', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: null,
+      profile: null,
+    });
+
+    render(<Navbar activeView="catalog" initialIsAuthenticated={true} />);
+    const userLink = screen.getByLabelText('User Account');
+    expect(userLink).toBeInTheDocument();
+    expect(userLink).toHaveAttribute('href', '/account');
+    expect(screen.getByText('Account')).toBeInTheDocument();
+  });
+
+  it('renders Account Link on initial render when auth hint cookie is set', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    useAuthStore.setState({
+      user: null,
+      profile: null,
+    });
+    document.cookie = 'bookarium-auth-hint=authenticated; path=/';
+
+    render(<Navbar activeView="catalog" />);
+    const userLink = screen.getByLabelText('User Account');
+    expect(userLink).toBeInTheDocument();
+    expect(userLink).toHaveAttribute('href', '/account');
+
+    document.cookie = 'bookarium-auth-hint=guest; path=/; max-age=0';
+  });
+
+  it('renders theme icon synchronously according to store theme without defaulting to light', () => {
+    useThemeStore.setState({ theme: 'dark' });
+    const { container: darkContainer, unmount } = render(<Navbar activeView="catalog" />);
+    const moonIcon = darkContainer.querySelector('svg.lucide-moon');
+    expect(moonIcon).toBeInTheDocument();
+    expect(darkContainer.querySelector('svg.lucide-sun')).toBeNull();
+    unmount();
+
+    useThemeStore.setState({ theme: 'sepia' });
+    const { container: sepiaContainer } = render(<Navbar activeView="catalog" />);
+    const coffeeIcon = sepiaContainer.querySelector('svg.lucide-coffee');
+    expect(coffeeIcon).toBeInTheDocument();
+    expect(sepiaContainer.querySelector('svg.lucide-sun')).toBeNull();
   });
 
   it('handles keyboard Enter and Space on brand logo to navigate back to catalog', () => {

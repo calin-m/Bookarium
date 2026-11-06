@@ -4,36 +4,39 @@ import React from 'react';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
 
 describe('NotablePassagesSpread component', () => {
-  it('renders primary quote with CC0 header badge', () => {
+  it('renders primary quote with CC0 header badge and single outer curly quotes', () => {
     render(
       <NotablePassagesSpread
         passage={{
-          quoteExcerpt: 'It is a truth universally acknowledged...',
+          quoteExcerpt: '“It is a truth universally acknowledged...”',
         }}
       />
     );
 
     expect(screen.getByText('Notable Passages')).toBeInTheDocument();
     expect(screen.getByText('CC0 / Free')).toBeInTheDocument();
-    expect(screen.getByText('It is a truth universally acknowledged...')).toBeInTheDocument();
+    const primaryBox = screen.getByTestId('notable-passage-primary');
+    expect(primaryBox).toHaveTextContent('“It is a truth universally acknowledged...”');
+    expect(primaryBox.textContent).not.toContain('““');
     expect(screen.queryByTestId('notable-passage-secondary')).not.toBeInTheDocument();
     expect(screen.queryByTestId('notable-passage-tertiary')).not.toBeInTheDocument();
   });
 
-  it('renders secondary and tertiary quotes when provided', () => {
+  it('renders secondary and tertiary quotes when provided without double quotation marks', () => {
     render(
       <NotablePassagesSpread
         passage={{
           quoteExcerpt: 'Primary quote excerpt',
-          rightPageQuote2: 'Secondary quote excerpt',
-          tertiaryQuote: 'Tertiary quote excerpt',
+          rightPageQuote2: '“Secondary quote excerpt”',
+          tertiaryQuote: '"Tertiary quote excerpt"',
         }}
       />
     );
 
-    expect(screen.getByText('Primary quote excerpt')).toBeInTheDocument();
-    expect(screen.getByTestId('notable-passage-secondary')).toHaveTextContent('Secondary quote excerpt');
-    expect(screen.getByTestId('notable-passage-tertiary')).toHaveTextContent('Tertiary quote excerpt');
+    expect(screen.getByTestId('notable-passage-primary')).toHaveTextContent('“Primary quote excerpt”');
+    expect(screen.getByTestId('notable-passage-secondary')).toHaveTextContent('“Secondary quote excerpt”');
+    expect(screen.getByTestId('notable-passage-secondary').textContent).not.toContain('““');
+    expect(screen.getByTestId('notable-passage-tertiary')).toHaveTextContent('“Tertiary quote excerpt”');
   });
 
   it('adjusts padding and line clamp when there are 2 quotes', () => {

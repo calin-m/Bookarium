@@ -82,6 +82,7 @@ export const STORAGE_KEYS = {
   READER_SETTINGS: 'bookarium-reader-preferences',
   PREFERENCES: 'bookarium-navigation-preferences',
   THEME: 'bookarium-theme-preference',
+  AUTH_HINT: 'bookarium-auth-hint',
   ANNOTATIONS: 'bookarium-annotations-storage',
   HABITS: 'bookarium-habits-storage',
   ACCOLADES: 'bookarium-accolades-storage',

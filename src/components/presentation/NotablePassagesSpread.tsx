@@ -1,13 +1,20 @@
 import React from 'react';
 import { Quote, Loader2, Sparkles, ShieldAlert } from 'lucide-react';
 import type { CopyrightEvaluationResult } from '@/lib/copyright-engine';
+import { resolveSpreadQuoteLayout } from '@/lib/gutenberg/passages';
 
 export interface NotablePassagesSpreadProps {
   passage: {
+    openingLine?: string;
+    secondaryQuote?: string;
+    leftPageQuote2?: string;
     quoteExcerpt: string;
     rightPageQuote2?: string;
     tertiaryQuote?: string;
   };
+  title?: string;
+  hasContentAdvisory?: boolean;
+  cardHeight?: number;
   isRestricted?: boolean;
   isUnavailableOffline?: boolean;
   country?: string;
@@ -17,13 +24,24 @@ export interface NotablePassagesSpreadProps {
 
 export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
   passage,
+  title,
+  hasContentAdvisory,
+  cardHeight,
   isRestricted = false,
   isUnavailableOffline = false,
   country,
   isLoading = false,
   evaluation,
 }) => {
-  const rightQuotesCount = 1 + (passage.rightPageQuote2 ? 1 : 0) + (passage.tertiaryQuote ? 1 : 0);
+  const { rightQuotes, rightLineClampClass } = resolveSpreadQuoteLayout(passage, {
+    title,
+    hasContentAdvisory,
+    cardHeight,
+  });
+  const cleanPrimary = rightQuotes[0] || '';
+  const cleanSecondary = rightQuotes[1];
+  const cleanTertiary = rightQuotes[2];
+  const rightQuotesCount = rightQuotes.length || 1;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
@@ -120,19 +138,15 @@ export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
               <Quote className={`${rightQuotesCount === 1 ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-primary/60 mb-1.5 shrink-0`} />
               <p
                 className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                  rightQuotesCount === 1
-                    ? 'text-xs sm:text-sm line-clamp-8 sm:line-clamp-9'
-                    : rightQuotesCount === 2
-                    ? 'text-xs sm:text-[13px] line-clamp-5'
-                    : 'text-xs sm:text-[13px] line-clamp-4'
-                }`}
+                  rightQuotesCount === 1 ? 'text-xs sm:text-sm' : 'text-xs sm:text-[13px]'
+                } ${rightLineClampClass}`}
               >
-                {passage.quoteExcerpt}
+                &ldquo;{cleanPrimary}&rdquo;
               </p>
             </div>
 
             {/* Secondary Book Quote Box */}
-            {passage.rightPageQuote2 && (
+            {cleanSecondary && (
               <div
                 data-testid="notable-passage-secondary"
                 className={`rounded-lg bg-card/60 border border-border shadow-xs ${
@@ -141,26 +155,22 @@ export const NotablePassagesSpread: React.FC<NotablePassagesSpreadProps> = ({
               >
                 <Quote className="w-3.5 h-3.5 text-primary/60 mb-1.5 shrink-0" />
                 <p
-                  className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                    rightQuotesCount === 2
-                      ? 'text-xs sm:text-[13px] line-clamp-5'
-                      : 'text-xs sm:text-[13px] line-clamp-3'
-                  }`}
+                  className={`font-serif italic text-foreground leading-relaxed text-pretty text-xs sm:text-[13px] ${rightLineClampClass}`}
                 >
-                  {passage.rightPageQuote2}
+                  &ldquo;{cleanSecondary}&rdquo;
                 </p>
               </div>
             )}
 
             {/* Tertiary Book Quote Box */}
-            {passage.tertiaryQuote && (
+            {cleanTertiary && (
               <div
                 data-testid="notable-passage-tertiary"
                 className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
               >
                 <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-                <p className="text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed line-clamp-2 text-pretty">
-                  {passage.tertiaryQuote}
+                <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${rightLineClampClass}`}>
+                  &ldquo;{cleanTertiary}&rdquo;
                 </p>
               </div>
             )}
