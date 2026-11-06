@@ -339,8 +339,89 @@ describe('sync-gutenberg-catalog parser', () => {
         logger: silentLogger,
       });
       expect(res.updatedCount).toBe(2);
+      expect(res.demotedCount).toBe(0);
       expect(updateMock).toHaveBeenCalledWith({ download_count: 55420 });
       expect(eqMock).toHaveBeenCalledWith('id', 1342);
+    });
+
+    it('steps down cooled-off books in the top 1000 when entries reach minEntriesForDemote', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          next: null,
+          results: [
+            { id: 101, download_count: 1000 },
+            { id: 102, download_count: 800 },
+          ],
+        }),
+      });
+
+      const updatedIds: number[] = [];
+      const demotedChunks: number[][] = [];
+      let demotedCountValue: number | null = null;
+
+      // Existing top rows in Supabase:
+      // - 101 (in fetched set, count 1000)
+      // - 102 (in fetched set, count 800)
+      // - 1342 (PROTECTED HERO classic, count 950 - must NEVER be demoted!)
+      // - 555 (cooled-off book, count 850 >= minFetchedCount 800 -> must demote to 799)
+      // - 666 (cooled-off book, count 750 < minFetchedCount 800 -> untouched)
+      const topRows = [
+        { id: 101, download_count: 1000 },
+        { id: 1342, download_count: 950 },
+        { id: 555, download_count: 850 },
+        { id: 102, download_count: 800 },
+        { id: 666, download_count: 750 },
+      ];
+
+      const orderMock = vi.fn(() => ({
+        limit: vi.fn().mockResolvedValue({ data: topRows, error: null }),
+      }));
+      const selectMock = vi.fn(() => ({
+        order: orderMock,
+      }));
+
+      const inMock = vi.fn().mockImplementation(async (_col: string, ids: number[]) => {
+        demotedChunks.push(ids);
+        return { error: null };
+      });
+
+      const eqMock = vi.fn().mockImplementation(async (_col: string, id: number) => {
+        updatedIds.push(id);
+        return { error: null };
+      });
+
+      const updateMock = vi.fn((payload: { download_count: number }) => {
+        if (payload.download_count < 800) {
+          demotedCountValue = payload.download_count;
+        }
+        return {
+          eq: eqMock,
+          in: inMock,
+        };
+      });
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: selectMock,
+          update: updateMock,
+        })),
+      };
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+
+      const res = await syncPopularDownloadCounts(mockSupabase, {
+        pages: 1,
+        fetchFn: fetchMock,
+        minEntriesForDemote: 2, // Trigger demotion logic on test set of 2 entries
+        logger: silentLogger,
+      });
+
+      expect(res.updatedCount).toBe(2);
+      expect(res.demotedCount).toBe(1);
+      expect(updatedIds).toEqual([101, 102]);
+      expect(demotedCountValue).toBe(799); // minFetchedCount (800) - 1
+      expect(demotedChunks).toEqual([[555]]);
+      expect(orderMock).toHaveBeenCalledWith('download_count', { ascending: false });
     });
 
     it('gracefully handles network failures from Gutendex without throwing', async () => {

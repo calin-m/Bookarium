@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202280%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.29%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-211%20Suites%20%7C%202281%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.32%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2280 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2281 tests across 211 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -114,6 +114,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 - **Zero-Flash Header Cookie Synchronization for Theme Switcher & Account Button (`ADR-080`)**: Eliminated post-refresh header repaints across the Theme Switcher and Account button by synchronizing preferences to lightweight HTTP cookies: `applyThemeToDocument` stamps `bookarium-theme-preference` (`max-age=1y; SameSite=Lax`) while `syncAuthCookieHint` stamps `bookarium-auth-hint` (`authenticated` vs. `guest`, `max-age=30d`), enabling `layout.tsx` to read preferences during server rendering, apply the exact theme class (`dark` / `sepia`) to `<html>`, and pass `initialTheme` and `initialIsAuthenticated` into `Providers` (`AuthHintContext`); `Navbar.tsx` references store `theme` directly without forcing `hasMounted ? theme : "light"` (eliminating Sun -> Moon/Coffee icon swaps) and evaluates `isAuth` from session state and auth cookie hints on Frame 0, rendering the interactive `Account` link immediately without flashing `Sign In`.
 - **Synchronized 200ms Nav Tab Color Transitions & Pre-Paint Layout Measurement (`ADR-061`)**: Synchronized top navigation button text color and icon transition durations (`duration-200`) and cubic-bezier easing (`ease-[cubic-bezier(0.22,1,0.36,1)]`) with the tier-adaptive gliding underline indicator cradle. Integrated `useIsomorphicLayoutEffect` for pre-paint tab dimension measurement and React 19 `startTransition` during view switching in `page.tsx`, eliminating main-thread layout freezing, dropped color transition frames, and visual pop-in when switching between Catalog, Bookshelf, Favorites, Notebook, and Bookmarks.
 - **V8 Statement Coverage Expansion for CI Resilience (`ADR-080`)**: Streamlined `selectHourlyLiteraryQuotes` by removing unreachable duplicate loops and expanded unit test assertions across browser `popstate` filter synchronization, `usePrefetchNextPage` query parameter forwarding, deterministic quote-enriched book cache ordering, security cooldown timers, and Web Worker instantiation/teardown paths.
+- **20-Page Gutendex Popularity Hydration & Cooled-Off Popularity Demotion (`scripts/sync-gutenberg-catalog.js`, `scripts/sync-gutenberg-catalog.test.ts`, `ADR-080`)**: Scaled `syncPopularDownloadCounts` from 16 to 20 Gutendex pages (640 books) to hydrate all 500 English Popular volumes in `Featured Quotes Sync` with weekly download counts, and implemented cooled-off popularity demotion (`minEntriesForDemote = 500`) to step down stale volumes in the Top 1,000 absent from newly fetched pages to `minFetchedCount - 1` while safeguarding hero classics.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
