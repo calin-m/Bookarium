@@ -69,6 +69,24 @@ function pass05SecretScanner() {
     { name: 'GitHub Fine-Grained PAT', regex: new RegExp('github_pat_' + '[0-9a-zA-Z_]{82}') },
     { name: 'Supabase Personal Access Token', regex: new RegExp('sbp_' + '[0-9a-f]{40}') },
     {
+      name: 'Supabase Secret / Service Key',
+      regex: new RegExp('(?:sb_secret_' + '[A-Za-z0-9_-]{20,}|sbs_' + '[0-9a-f]{40})'),
+    },
+    {
+      name: 'OpenAI / Anthropic API Key',
+      regex: new RegExp('sk-(?:proj-|ant-)' + '[0-9a-zA-Z_-]{24,}'),
+    },
+    {
+      name: 'Google Cloud / Gemini API Key',
+      regex: new RegExp('AIza' + '[0-9A-Za-z_-]{35}'),
+    },
+    { name: 'npm Automation Token', regex: new RegExp('npm_' + '[0-9a-zA-Z]{36}') },
+    { name: 'Vercel Access Token', regex: new RegExp('vercel_' + '[0-9a-zA-Z_-]{24,}') },
+    {
+      name: 'Stripe Live Secret Key',
+      regex: new RegExp('(?:sk|rk)_live_' + '[0-9a-zA-Z]{24,}'),
+    },
+    {
       name: 'Slack / Discord Webhook URL',
       regex: new RegExp(
         'https://' +
@@ -233,6 +251,8 @@ function pass05SecretScanner() {
     /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT)(?:_|$)/i;
   const jwtCandidateRegex =
     /\beyJ[A-Za-z0-9_-]{10,}\.([A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}\b/g;
+  const trojanBidiRegex = /[\u202A-\u202E\u2066-\u2069]/;
+  const zeroWidthCodeRegex = /[\u200B-\u200F]|(?<=.)\uFEFF/;
 
   for (const filePath of scannedFiles) {
     const content = fs.readFileSync(filePath, 'utf-8');
@@ -241,6 +261,25 @@ function pass05SecretScanner() {
       if (pattern.regex.test(content)) {
         violations.push({ file: relPath, issue: pattern.name });
       }
+    }
+
+    // Scan for Unicode Trojan Source bidirectional control characters (CVE-2021-42574) & invisible zero-width codepoints
+    if (trojanBidiRegex.test(content)) {
+      violations.push({
+        file: relPath,
+        issue:
+          'Unicode Trojan Source bidirectional control character (U+202A..U+202E / U+2066..U+2069, CVE-2021-42574) detected.',
+      });
+    }
+    if (
+      /\.(ts|tsx|js|mjs|cjs|sql|yml|yaml|sh)$/.test(relPath) &&
+      zeroWidthCodeRegex.test(content)
+    ) {
+      violations.push({
+        file: relPath,
+        issue:
+          'Hidden zero-width or mid-file BOM control character (U+200B..U+200F / U+FEFF) detected in executable/config file.',
+      });
     }
 
     // Inspect any JWT token payload for encoded Supabase service_role keys
@@ -410,6 +449,27 @@ function pass075SecurityAndSastAudit() {
 
     if (typeof lockData.lockfileVersion !== 'number' || lockData.lockfileVersion < 3) {
       lockViolations.push(`package-lock.json lockfileVersion must be >= 3 (found ${lockData.lockfileVersion}).`);
+    }
+
+    const forbiddenLifecycleHooks = [
+      'preinstall',
+      'install',
+      'postinstall',
+      'prepublish',
+      'prepack',
+      'postpack',
+    ];
+    for (const hookName of forbiddenLifecycleHooks) {
+      if (pkgData.scripts && pkgData.scripts[hookName]) {
+        lockViolations.push(
+          `Unauthorized npm lifecycle script "${hookName}" in package.json (Supply-chain execution risk). Only "prepare": "husky" is permitted.`
+        );
+      }
+    }
+    if (pkgData.scripts && pkgData.scripts.prepare && pkgData.scripts.prepare !== 'husky') {
+      lockViolations.push(
+        `Unexpected "prepare" script in package.json: "${pkgData.scripts.prepare}" (expected "husky").`
+      );
     }
 
     const packagesMap = lockData.packages || {};
@@ -833,6 +893,57 @@ function pass075SecurityAndSastAudit() {
       }
     }
 
+    // Fellowship Participant Column-Lock & Ceiling Constraints Audit
+    if (!schemaSql.includes('public.enforce_fellowship_update_guard')) {
+      rlsViolations.push(
+        'Missing trigger function public.enforce_fellowship_update_guard() in supabase/schema.sql.'
+      );
+    }
+    if (!schemaSql.includes('trg_reader_circles_update_guard')) {
+      rlsViolations.push(
+        'Missing trigger trg_reader_circles_update_guard on public.reader_circles in supabase/schema.sql.'
+      );
+    }
+    if (!schemaSql.includes('trg_symposium_sessions_update_guard')) {
+      rlsViolations.push(
+        'Missing trigger trg_symposium_sessions_update_guard on public.symposium_sessions in supabase/schema.sql.'
+      );
+    }
+
+    const mandatoryCeilingConstraints = [
+      'chk_profiles_bio_length',
+      'chk_user_annotations_note_length',
+      'chk_user_annotations_selected_text_length',
+      'chk_user_reading_habits_active_dates_bound',
+    ];
+    for (const constraint of mandatoryCeilingConstraints) {
+      if (!schemaSql.includes(constraint)) {
+        rlsViolations.push(
+          `Missing payload/array ceiling constraint "${constraint}" in supabase/schema.sql.`
+        );
+      }
+    }
+
+    // Rule 9 Local Store Teardown Parity:
+    // Every persistent/user-scoped Zustand store in src/stores/ (except useAuthStore and useJurisdictionStore)
+    // must be referenced and wiped inside clearLocalUserStores() in src/stores/useAuthStore.ts.
+    const storesDir = path.join(rootDir, 'src', 'stores');
+    if (fs.existsSync(storesDir) && authStoreCode) {
+      const storeFiles = fs
+        .readdirSync(storesDir)
+        .filter((f) => /^use[A-Z][a-zA-Z0-9]*Store\.ts$/.test(f) && !f.endsWith('.test.ts'));
+      const exemptStores = new Set(['useAuthStore.ts', 'useJurisdictionStore.ts']);
+      for (const storeFile of storeFiles) {
+        if (exemptStores.has(storeFile)) continue;
+        const storeName = storeFile.replace(/\.ts$/, '');
+        if (!authStoreCode.includes(storeName)) {
+          rlsViolations.push(
+            `Rule 9 Local Store Teardown Parity: Store "${storeName}" is missing cleanup inside clearLocalUserStores() in src/stores/useAuthStore.ts.`
+          );
+        }
+      }
+    }
+
     if (rlsViolations.length > 0) {
       logFail(`Database schema security or idempotency violation(s) in supabase/schema.sql:`);
       rlsViolations.forEach((v) => console.error(`  - ${v}`));
@@ -878,6 +989,16 @@ function pass075SecurityAndSastAudit() {
       }
       if (swCode.includes('/auth/callback')) {
         headerViolations.push('Service Worker (public/sw.js) must never cache /auth/callback endpoints.');
+      }
+      if (!swCode.includes('url.origin !== self.location.origin')) {
+        headerViolations.push(
+          'Service Worker (public/sw.js) must enforce strict cross-origin pass-through (url.origin !== self.location.origin).'
+        );
+      }
+      if (/\b(?:importScripts|eval)\s*\(/.test(swCode)) {
+        headerViolations.push(
+          'Service Worker (public/sw.js) must never invoke importScripts() or eval().'
+        );
       }
     }
 
@@ -1070,6 +1191,20 @@ function pass5AdrValidation() {
       const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
       if (entry.isDirectory()) {
         verifyCoLocatedTests(relPath);
+      } else if (
+        (entry.name.endsWith('.test.ts') || entry.name.endsWith('.test.tsx')) &&
+        !entry.name.endsWith('.security.test.ts')
+      ) {
+        const baseNoTest = fullPath.replace(/\.test\.(ts|tsx)$/, '');
+        const hasSource =
+          fs.existsSync(`${baseNoTest}.ts`) ||
+          fs.existsSync(`${baseNoTest}.tsx`) ||
+          fs.existsSync(`${baseNoTest}.js`);
+        if (!hasSource) {
+          docViolations.push(
+            `Orphan test suite "${relPath}" has no matching 1:1 source module (consolidate into its 1:1 co-located test file or remove).`
+          );
+        }
       } else if (
         /\.(ts|tsx)$/.test(entry.name) &&
         !entry.name.endsWith('.test.ts') &&

@@ -510,18 +510,28 @@ describe('AuthModal Component', () => {
 
     render(<AuthModal />);
 
-    const closeBtn = screen.getByLabelText('Close Authentication Modal');
-    const passwordInput = screen.getByPlaceholderText('••••••••••••');
+    const dialog = screen.getByRole('dialog');
+    const tabbableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const tabbables = Array.from(dialog.querySelectorAll<HTMLElement>(tabbableSelector)).filter(
+      (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
+    );
+    expect(tabbables.length).toBeGreaterThan(2);
 
-    // First element + Shift+Tab wraps to last element
-    closeBtn.focus();
+    const firstElement = tabbables[0];
+    const lastElement = tabbables[tabbables.length - 1];
+
+    // First element + Shift+Tab wraps directly to lastElement
+    firstElement.focus();
+    expect(document.activeElement).toBe(firstElement);
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).not.toBeNull();
+    expect(document.activeElement).toBe(lastElement);
 
-    // Last element + Tab wraps to first element
-    passwordInput.focus();
+    // Last element + Tab wraps directly to firstElement
+    lastElement.focus();
+    expect(document.activeElement).toBe(lastElement);
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
-    expect(document.activeElement).not.toBeNull();
+    expect(document.activeElement).toBe(firstElement);
   });
 
   it('restores focus to previous active element when unmounted', () => {

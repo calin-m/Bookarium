@@ -23,22 +23,40 @@ const SERVER_ONLY_IMPORT_PATTERNS = [
 const SECRET_NEXT_PUBLIC_PATTERN =
   /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT)(?:_|$)/i;
 
-const SANITIZER_FUNCTION_NAMES = new Set([
-  'isSafeUpstreamUrl',
-  'sanitizeRedirectPath',
-  'resolveCanonicalAuthOrigin',
-  'buildAuthRedirectUrl',
-  'buildShareUrl',
-  'parseCatalogQuery',
-  'parseCatalogQueryParams',
-  'resolveClientCountry',
-  'sanitizeSupabaseUrl',
+const UNIVERSAL_SANITIZER_FUNCTIONS = new Set([
   'parseInt',
   'parseFloat',
   'Number',
   'Boolean',
+]);
+
+const FETCH_SANITIZER_FUNCTIONS = new Set([
+  'isSafeUpstreamUrl',
+  'sanitizeSupabaseUrl',
+]);
+
+const REDIRECT_SANITIZER_FUNCTIONS = new Set([
+  'sanitizeRedirectPath',
+  'resolveCanonicalAuthOrigin',
+  'buildAuthRedirectUrl',
+  'buildShareUrl',
+]);
+
+const DB_AND_QUERY_SANITIZER_FUNCTIONS = new Set([
+  'parseCatalogQuery',
+  'parseCatalogQueryParams',
+  'resolveClientCountry',
   'encodeURIComponent',
 ]);
+
+const ALL_KNOWN_SANITIZERS = new Set([
+  ...UNIVERSAL_SANITIZER_FUNCTIONS,
+  ...FETCH_SANITIZER_FUNCTIONS,
+  ...REDIRECT_SANITIZER_FUNCTIONS,
+  ...DB_AND_QUERY_SANITIZER_FUNCTIONS,
+]);
+
+const SANITIZER_FUNCTION_NAMES = ALL_KNOWN_SANITIZERS;
 
 const SANITIZER_MEMBER_METHODS = new Set([
   'trunc',
@@ -308,10 +326,14 @@ function detectDirectTaintSource(node) {
 }
 
 /**
- * Checks whether an AST expression passes through a recognized sanitizer or numeric primitive conversion.
+ * Returns the set of sinks for which an AST expression is sanitized, or null if unsanitized.
  */
-function isSanitizedNode(node) {
-  if (!node) return false;
+function getNodeSanitizedSinks(node, sanitizedVarMap = null, taintedVarMap = null) {
+  if (!node) return null;
+
+  if (node.type === 'Literal' || node.type === 'StringLiteral') {
+    return new Set(['*']);
+  }
 
   if (
     node.type === 'AwaitExpression' ||
@@ -320,20 +342,30 @@ function isSanitizedNode(node) {
     node.type === 'TSTypeAssertion' ||
     node.type === 'ParenthesizedExpression'
   ) {
-    return isSanitizedNode(node.argument || node.expression);
+    return getNodeSanitizedSinks(node.argument || node.expression, sanitizedVarMap, taintedVarMap);
+  }
+
+  if (node.type === 'Identifier') {
+    if (sanitizedVarMap && sanitizedVarMap.has(node.name)) {
+      return sanitizedVarMap.get(node.name);
+    }
+    if (taintedVarMap && !taintedVarMap.has(node.name)) {
+      return new Set(['*']);
+    }
+    return null;
   }
 
   if (node.type === 'CallExpression') {
     const { objectName, methodName } = getCalleeName(node);
-    if (methodName && SANITIZER_FUNCTION_NAMES.has(methodName)) {
-      return true;
+    if (methodName && UNIVERSAL_SANITIZER_FUNCTIONS.has(methodName)) {
+      return new Set(['*']);
     }
     if (
       (objectName === 'Math' || objectName === 'Number') &&
       methodName &&
       SANITIZER_MEMBER_METHODS.has(methodName)
     ) {
-      return true;
+      return new Set(['*']);
     }
     // Strict digit regex extraction: something.match(/^(\d{1,8})$/)
     if (methodName === 'match' && node.arguments && node.arguments[0]) {
@@ -343,63 +375,114 @@ function isSanitizedNode(node) {
         (regexArg.regex && regexArg.regex.pattern) ||
         '';
       if (rawRegex.includes('\\d')) {
-        return true;
+        return new Set(['*']);
       }
     }
     // String(Math.trunc(...)) or .toString() on a sanitized expression
     if (methodName === 'String' && node.arguments && node.arguments[0]) {
-      return isSanitizedNode(node.arguments[0]);
+      return getNodeSanitizedSinks(node.arguments[0], sanitizedVarMap, taintedVarMap);
     }
     if (
       methodName === 'toString' &&
-      node.callee.type === 'MemberExpression' &&
-      isSanitizedNode(node.callee.object)
+      node.callee.type === 'MemberExpression'
     ) {
-      return true;
+      return getNodeSanitizedSinks(node.callee.object, sanitizedVarMap, taintedVarMap);
+    }
+    if (methodName && FETCH_SANITIZER_FUNCTIONS.has(methodName)) {
+      return new Set(['fetch', 'navigation']);
+    }
+    if (methodName && REDIRECT_SANITIZER_FUNCTIONS.has(methodName)) {
+      return new Set(['redirect', 'navigation']);
+    }
+    if (methodName && DB_AND_QUERY_SANITIZER_FUNCTIONS.has(methodName)) {
+      return new Set(['db', 'filter', 'query']);
+    }
+  }
+
+  // new URL(pathArg, baseArg)
+  if (
+    node.type === 'NewExpression' &&
+    node.callee &&
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'URL'
+  ) {
+    const [pathArg, baseArg] = node.arguments || [];
+    const pathSinks = pathArg
+      ? getNodeSanitizedSinks(pathArg, sanitizedVarMap, taintedVarMap)
+      : null;
+    const baseSinks = !baseArg
+      ? new Set(['*'])
+      : getNodeSanitizedSinks(baseArg, sanitizedVarMap, taintedVarMap);
+
+    if (pathSinks && baseSinks) {
+      if (pathSinks.has('*')) return baseSinks;
+      if (baseSinks.has('*')) return pathSinks;
+      const intersection = new Set([...pathSinks].filter((s) => baseSinks.has(s)));
+      return intersection.size > 0 ? intersection : null;
     }
   }
 
   // Member access on a strict numeric regex match `idParam.match(/^(\d{1,8})$/)?.[1]`
   if (
     (node.type === 'MemberExpression' || node.type === 'ChainExpression') &&
-    node.object &&
-    isSanitizedNode(node.object)
+    node.object
   ) {
-    return true;
+    const objSinks = getNodeSanitizedSinks(node.object, sanitizedVarMap, taintedVarMap);
+    if (objSinks && objSinks.has('*')) {
+      return new Set(['*']);
+    }
   }
   if (node.type === 'ChainExpression') {
-    return isSanitizedNode(node.expression);
+    return getNodeSanitizedSinks(node.expression, sanitizedVarMap, taintedVarMap);
   }
 
   // Logical OR / Nullish coalescing where all branches are sanitized or static literals
   if (node.type === 'LogicalExpression') {
-    const leftClean =
-      isSanitizedNode(node.left) ||
-      node.left.type === 'Literal' ||
-      node.left.type === 'StringLiteral';
-    const rightClean =
-      isSanitizedNode(node.right) ||
-      node.right.type === 'Literal' ||
-      node.right.type === 'StringLiteral';
-    if (leftClean && rightClean) return true;
+    const leftLiteral =
+      node.left.type === 'Literal' || node.left.type === 'StringLiteral';
+    const rightLiteral =
+      node.right.type === 'Literal' || node.right.type === 'StringLiteral';
+    const leftSinks = leftLiteral
+      ? new Set(['*'])
+      : getNodeSanitizedSinks(node.left, sanitizedVarMap, taintedVarMap);
+    const rightSinks = rightLiteral
+      ? new Set(['*'])
+      : getNodeSanitizedSinks(node.right, sanitizedVarMap, taintedVarMap);
+
+    if (leftSinks && rightSinks) {
+      if (leftSinks.has('*')) return rightSinks;
+      if (rightSinks.has('*')) return leftSinks;
+      const intersection = new Set([...leftSinks].filter((s) => rightSinks.has(s)));
+      return intersection.size > 0 ? intersection : null;
+    }
   }
 
-  return false;
+  return null;
 }
 
 /**
- * Evaluates whether an expression node carries unsanitized taint given the current scope's `taintedVars`.
+ * Checks whether an AST expression passes through a recognized sanitizer for a given target sink.
  */
-function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
+function isSanitizedNode(node, targetSink = '*', sanitizedVarMap = null, taintedVarMap = null) {
+  const sinks = getNodeSanitizedSinks(node, sanitizedVarMap, taintedVarMap);
+  if (!sinks) return false;
+  if (sinks.has('*') || targetSink === '*') return true;
+  return sinks.has(targetSink);
+}
+
+/**
+ * Evaluates whether an expression node carries unsanitized taint for a target sink.
+ */
+function evaluateNodeTaint(node, taintedVars, sanitizedVars, targetSink = '*') {
   if (!node) return null;
-  if (isSanitizedNode(node)) return null;
+  if (isSanitizedNode(node, targetSink, sanitizedVars, taintedVars)) return null;
 
   const direct = detectDirectTaintSource(node);
   if (direct) return direct;
 
   switch (node.type) {
     case 'Identifier': {
-      if (sanitizedVars && sanitizedVars.has(node.name)) return null;
+      if (sanitizedVars && isSanitizedNode(node, targetSink, sanitizedVars, taintedVars)) return null;
       return taintedVars.get(node.name) || null;
     }
     case 'AwaitExpression':
@@ -411,11 +494,12 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
       return evaluateNodeTaint(
         node.argument || node.expression,
         taintedVars,
-        sanitizedVars
+        sanitizedVars,
+        targetSink
       );
     case 'TemplateLiteral': {
       for (const expr of node.expressions || []) {
-        const taint = evaluateNodeTaint(expr, taintedVars, sanitizedVars);
+        const taint = evaluateNodeTaint(expr, taintedVars, sanitizedVars, targetSink);
         if (taint) return taint;
       }
       return null;
@@ -423,29 +507,29 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
     case 'BinaryExpression': {
       if (node.operator === '+') {
         return (
-          evaluateNodeTaint(node.left, taintedVars, sanitizedVars) ||
-          evaluateNodeTaint(node.right, taintedVars, sanitizedVars)
+          evaluateNodeTaint(node.left, taintedVars, sanitizedVars, targetSink) ||
+          evaluateNodeTaint(node.right, taintedVars, sanitizedVars, targetSink)
         );
       }
       return null;
     }
     case 'LogicalExpression': {
       return (
-        evaluateNodeTaint(node.left, taintedVars, sanitizedVars) ||
-        evaluateNodeTaint(node.right, taintedVars, sanitizedVars)
+        evaluateNodeTaint(node.left, taintedVars, sanitizedVars, targetSink) ||
+        evaluateNodeTaint(node.right, taintedVars, sanitizedVars, targetSink)
       );
     }
     case 'ConditionalExpression': {
       return (
-        evaluateNodeTaint(node.consequent, taintedVars, sanitizedVars) ||
-        evaluateNodeTaint(node.alternate, taintedVars, sanitizedVars)
+        evaluateNodeTaint(node.consequent, taintedVars, sanitizedVars, targetSink) ||
+        evaluateNodeTaint(node.alternate, taintedVars, sanitizedVars, targetSink)
       );
     }
     case 'MemberExpression': {
       const prop = getPropertyName(node);
       if (prop === 'length') return null;
       if (node.object && node.object.type === 'Identifier') {
-        if (sanitizedVars && sanitizedVars.has(node.object.name)) return null;
+        if (sanitizedVars && isSanitizedNode(node.object, targetSink, sanitizedVars)) return null;
         if (taintedVars.has(node.object.name)) {
           return taintedVars.get(node.object.name);
         }
@@ -462,7 +546,14 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
         ) &&
         node.callee.type === 'MemberExpression'
       ) {
-        return evaluateNodeTaint(node.callee.object, taintedVars, sanitizedVars);
+        return evaluateNodeTaint(node.callee.object, taintedVars, sanitizedVars, targetSink);
+      }
+      // If calling a known sanitizer that is not valid for this targetSink, check its arguments
+      if (methodName && ALL_KNOWN_SANITIZERS.has(methodName)) {
+        for (const arg of node.arguments || []) {
+          const argTaint = evaluateNodeTaint(arg, taintedVars, sanitizedVars, targetSink);
+          if (argTaint) return argTaint;
+        }
       }
       return null;
     }
@@ -474,7 +565,7 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
         node.callee.name === 'URL'
       ) {
         for (const arg of node.arguments || []) {
-          const taint = evaluateNodeTaint(arg, taintedVars, sanitizedVars);
+          const taint = evaluateNodeTaint(arg, taintedVars, sanitizedVars, targetSink);
           if (taint) return taint;
         }
       }
@@ -483,14 +574,14 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
     case 'ObjectExpression': {
       for (const prop of node.properties || []) {
         const val = prop.value || prop.argument;
-        const taint = evaluateNodeTaint(val, taintedVars, sanitizedVars);
+        const taint = evaluateNodeTaint(val, taintedVars, sanitizedVars, targetSink);
         if (taint) return taint;
       }
       return null;
     }
     case 'ArrayExpression': {
       for (const el of node.elements || []) {
-        const taint = evaluateNodeTaint(el, taintedVars, sanitizedVars);
+        const taint = evaluateNodeTaint(el, taintedVars, sanitizedVars, targetSink);
         if (taint) return taint;
       }
       return null;
@@ -501,7 +592,7 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars) {
 }
 
 /**
- * Extracts identifier names guarded by `isSafeUpstreamUrl(id)` inside an IfStatement test.
+ * Extracts identifier names and their allowed sinks guarded by `isSafeUpstreamUrl(id)` or numeric guards inside an IfStatement test.
  */
 function extractUrlValidatorGuardedVars(testNode) {
   const positiveGuarded = [];
@@ -527,10 +618,14 @@ function extractUrlValidatorGuardedVars(testNode) {
       ) {
         const arg0 = n.arguments && n.arguments[0];
         if (arg0 && arg0.type === 'Identifier') {
+          const sinks =
+            methodName === 'isSafeUpstreamUrl'
+              ? new Set(['fetch', 'navigation'])
+              : new Set(['*']);
           if (negated) {
-            negativeGuarded.push(arg0.name);
+            negativeGuarded.push({ name: arg0.name, sinks });
           } else {
-            positiveGuarded.push(arg0.name);
+            positiveGuarded.push({ name: arg0.name, sinks });
           }
         }
       }
@@ -647,12 +742,13 @@ const rules = {
       const filename = normalizeFilename(context);
       if (isTestOrMockFile(filename)) return {};
 
-      const sanitizedIdentifiers = new Set();
+      const sanitizedIdentifiersMap = new Map();
 
       function checkInitSanitized(idNode, initNode) {
         if (!idNode || idNode.type !== 'Identifier' || !initNode) return;
-        if (isSanitizedNode(initNode)) {
-          sanitizedIdentifiers.add(idNode.name);
+        const sinks = getNodeSanitizedSinks(initNode, sanitizedIdentifiersMap);
+        if (sinks && (sinks.has('*') || sinks.has('redirect') || sinks.has('navigation'))) {
+          sanitizedIdentifiersMap.set(idNode.name, sinks);
           return;
         }
         if (
@@ -664,7 +760,7 @@ const rules = {
             initNode.value.startsWith('/') &&
             !initNode.value.startsWith('//')
           ) {
-            sanitizedIdentifiers.add(idNode.name);
+            sanitizedIdentifiersMap.set(idNode.name, new Set(['redirect']));
           }
         }
         if (
@@ -678,7 +774,7 @@ const rules = {
             isSafeRedirectPart(pathArg) &&
             (!originArg || isSafeRedirectPart(originArg))
           ) {
-            sanitizedIdentifiers.add(idNode.name);
+            sanitizedIdentifiersMap.set(idNode.name, new Set(['redirect']));
           }
         }
       }
@@ -695,9 +791,12 @@ const rules = {
             argNode.value.startsWith('https://')
           );
         }
-        if (isSanitizedNode(argNode)) return true;
-        if (argNode.type === 'Identifier' && sanitizedIdentifiers.has(argNode.name)) {
-          return true;
+        if (isSanitizedNode(argNode, 'redirect', sanitizedIdentifiersMap)) return true;
+        if (argNode.type === 'Identifier') {
+          const sinks = sanitizedIdentifiersMap.get(argNode.name);
+          if (sinks && (sinks.has('*') || sinks.has('redirect') || sinks.has('navigation'))) {
+            return true;
+          }
         }
         if (
           argNode.type === 'NewExpression' &&
@@ -864,14 +963,15 @@ const rules = {
 
   /**
    * 4. `bookarium-security/no-dangerous-execution`
-   * Flags eval(), new Function(), string-argument setTimeout/setInterval, and child_process in src/.
+   * Flags eval(), new Function(), string-argument setTimeout/setInterval, child_process in src/,
+   * and catastrophic backtracking ReDoS regex literals (CWE-1333).
    */
   'no-dangerous-execution': {
     meta: {
       type: 'problem',
       docs: {
         description:
-          'Disallow dangerous code execution primitives (eval, new Function, string timers, shell execution in src/).',
+          'Disallow dangerous code execution primitives (eval, new Function, string timers, shell execution in src/, and ReDoS regexes).',
       },
       schema: [],
     },
@@ -879,7 +979,29 @@ const rules = {
       const filename = normalizeFilename(context);
       if (isTestOrMockFile(filename)) return {};
 
+      const nestedQuantifierRedosRegex =
+        /\((?:\?:)?(?:\\.|[^()\\])*(?:\+|\*|\{\d+,\d*\})\)(?:\+|\*|\{\d+,\d*\})/;
+
+      function checkRegexPattern(node, pattern) {
+        if (typeof pattern === 'string' && nestedQuantifierRedosRegex.test(pattern)) {
+          context.report({
+            node,
+            message: `Catastrophic backtracking ReDoS pattern (CWE-1333): nested repeating quantifier detected in /${pattern}/. Rewrite using non-overlapping linear quantifiers.`,
+          });
+        }
+      }
+
       return {
+        Literal(node) {
+          if (node.regex && typeof node.regex.pattern === 'string') {
+            checkRegexPattern(node, node.regex.pattern);
+          }
+        },
+        RegExpLiteral(node) {
+          if (typeof node.pattern === 'string') {
+            checkRegexPattern(node, node.pattern);
+          }
+        },
         CallExpression(node) {
           const { objectName, methodName } = getCalleeName(node);
 
@@ -958,13 +1080,16 @@ const rules = {
 
   /**
    * 5. `bookarium-security/no-unsafe-dom-injection`
-   * Flags dangerouslySetInnerHTML, .innerHTML, .outerHTML, iframe.srcdoc, document.write, insertAdjacentHTML, createContextualFragment.
+   * Flags dangerouslySetInnerHTML, .innerHTML, .outerHTML, iframe.srcdoc, document.write,
+   * insertAdjacentHTML, createContextualFragment, JSX javascript:/data:text/html URIs,
+   * Reverse Tabnabbing (<a target="_blank"> without rel="noopener"), and wildcard postMessage('*').
    */
   'no-unsafe-dom-injection': {
     meta: {
       type: 'problem',
       docs: {
-        description: 'Disallow DOM XSS injection sinks across React and DOM APIs.',
+        description:
+          'Disallow DOM XSS injection sinks, unsafe JSX URI schemes, reverse tabnabbing, and wildcard postMessage origins.',
       },
       schema: [],
     },
@@ -972,17 +1097,86 @@ const rules = {
       const filename = normalizeFilename(context);
       if (isTestOrMockFile(filename)) return {};
 
+      function getJsxAttrStaticString(attrNode) {
+        if (!attrNode || !attrNode.value) return null;
+        const val = attrNode.value;
+        if ((val.type === 'Literal' || val.type === 'StringLiteral') && typeof val.value === 'string') {
+          return val.value;
+        }
+        if (val.type === 'JSXExpressionContainer' && val.expression) {
+          const expr = val.expression;
+          if (
+            (expr.type === 'Literal' || expr.type === 'StringLiteral') &&
+            typeof expr.value === 'string'
+          ) {
+            return expr.value;
+          }
+          if (
+            expr.type === 'TemplateLiteral' &&
+            expr.quasis &&
+            expr.quasis[0] &&
+            expr.quasis[0].value
+          ) {
+            return String(expr.quasis[0].value.cooked || expr.quasis[0].value.raw || '');
+          }
+        }
+        return null;
+      }
+
       return {
         JSXAttribute(node) {
-          if (
-            node.name &&
-            node.name.type === 'JSXIdentifier' &&
-            node.name.name === 'dangerouslySetInnerHTML'
-          ) {
+          if (!node.name || node.name.type !== 'JSXIdentifier') return;
+          const attrName = node.name.name;
+          if (attrName === 'dangerouslySetInnerHTML') {
             context.report({
               node,
               message:
                 'DOM XSS sink "dangerouslySetInnerHTML" is forbidden. Render structured React elements instead.',
+            });
+            return;
+          }
+          if (attrName === 'href' || attrName === 'src') {
+            const rawVal = getJsxAttrStaticString(node);
+            if (
+              typeof rawVal === 'string' &&
+              /^\s*(?:javascript|vbscript|data\s*:\s*text\/html)\s*:/i.test(rawVal)
+            ) {
+              context.report({
+                node,
+                message: `DOM XSS sink: dangerous "${attrName}" URI scheme (${rawVal.trim().slice(0, 24)}) is forbidden.`,
+              });
+            }
+          }
+        },
+        JSXOpeningElement(node) {
+          const tagName =
+            node.name && node.name.type === 'JSXIdentifier' ? node.name.name : null;
+          if (tagName !== 'a' && tagName !== 'area') return;
+
+          const attrs = Array.isArray(node.attributes) ? node.attributes : [];
+          let targetBlankAttr = null;
+          let relValue = null;
+
+          for (const attr of attrs) {
+            if (!attr || attr.type !== 'JSXAttribute' || !attr.name) continue;
+            const name = attr.name.name;
+            if (name === 'target') {
+              const v = getJsxAttrStaticString(attr);
+              if (v && v.trim().toLowerCase() === '_blank') {
+                targetBlankAttr = attr;
+              }
+            } else if (name === 'rel') {
+              relValue = getJsxAttrStaticString(attr);
+            }
+          }
+
+          if (
+            targetBlankAttr &&
+            (!relValue || !/\b(?:noopener|noreferrer)\b/i.test(relValue))
+          ) {
+            context.report({
+              node: targetBlankAttr,
+              message: `Reverse Tabnabbing risk (CWE-1022): <${tagName} target="_blank"> must include rel="noopener noreferrer".`,
             });
           }
         },
@@ -1017,6 +1211,26 @@ const rules = {
               node,
               message: `Unsafe HTML parsing sink ".${methodName}()" is forbidden.`,
             });
+            return;
+          }
+          if (
+            methodName === 'postMessage' &&
+            (objectName === 'window' || objectName === 'self' || objectName === 'globalThis') &&
+            node.arguments &&
+            node.arguments.length >= 2
+          ) {
+            const targetOriginArg = node.arguments[1];
+            if (
+              targetOriginArg &&
+              (targetOriginArg.type === 'Literal' || targetOriginArg.type === 'StringLiteral') &&
+              targetOriginArg.value === '*'
+            ) {
+              context.report({
+                node: targetOriginArg,
+                message:
+                  'Cross-origin message leak (CWE-345): postMessage() with wildcard "*" targetOrigin is forbidden. Specify window.location.origin.',
+              });
+            }
           }
         },
       };
@@ -1050,7 +1264,7 @@ const rules = {
 
       function enterFunctionScope(fnNode) {
         const taintedVars = new Map();
-        const sanitizedVars = new Set();
+        const sanitizedVars = new Map();
 
         // Check if route handler parameters destructure `{ params }`
         if (Array.isArray(fnNode.params)) {
@@ -1085,12 +1299,13 @@ const rules = {
         const scope = currentScope();
         if (!scope || !idNode || !initNode) return;
 
-        if (isSanitizedNode(initNode)) {
-          if (idNode.type === 'Identifier') {
-            scope.sanitizedVars.add(idNode.name);
+        const sinks = getNodeSanitizedSinks(initNode, scope.sanitizedVars, scope.taintedVars);
+        if (sinks && idNode.type === 'Identifier') {
+          scope.sanitizedVars.set(idNode.name, sinks);
+          if (sinks.has('*')) {
             scope.taintedVars.delete(idNode.name);
+            return;
           }
-          return;
         }
 
         // `const { searchParams } = new URL(request.url)` or `request.nextUrl`
@@ -1098,7 +1313,8 @@ const rules = {
           const initTaint = evaluateNodeTaint(
             initNode,
             scope.taintedVars,
-            scope.sanitizedVars
+            scope.sanitizedVars,
+            'UNKNOWN'
           );
           for (const prop of idNode.properties || []) {
             const targetId =
@@ -1123,11 +1339,12 @@ const rules = {
           const taintSource = evaluateNodeTaint(
             initNode,
             scope.taintedVars,
-            scope.sanitizedVars
+            scope.sanitizedVars,
+            'UNKNOWN'
           );
           if (taintSource) {
             scope.taintedVars.set(idNode.name, taintSource);
-          } else {
+          } else if (!sinks) {
             scope.taintedVars.delete(idNode.name);
           }
         }
@@ -1155,7 +1372,8 @@ const rules = {
               const keyTaint = evaluateNodeTaint(
                 node.left.property,
                 scope.taintedVars,
-                scope.sanitizedVars
+                scope.sanitizedVars,
+                '*'
               );
               if (keyTaint) {
                 context.report({
@@ -1179,7 +1397,8 @@ const rules = {
               const taint = evaluateNodeTaint(
                 node.right,
                 scope.taintedVars,
-                scope.sanitizedVars
+                scope.sanitizedVars,
+                'navigation'
               );
               if (taint) {
                 context.report({
@@ -1201,18 +1420,22 @@ const rules = {
             node.test
           );
           // Positive guard: `if (isSafeUpstreamUrl(x)) { ... }` -> mark sanitized inside consequent
-          for (const name of positiveGuarded) {
-            scope.sanitizedVars.add(name);
-            scope.taintedVars.delete(name);
+          for (const item of positiveGuarded) {
+            scope.sanitizedVars.set(item.name, item.sinks);
+            if (item.sinks.has('*')) {
+              scope.taintedVars.delete(item.name);
+            }
           }
           // Early-return negative guard: `if (!isSafeUpstreamUrl(x)) { return ... }` -> mark sanitized for rest of scope
           if (
             negativeGuarded.length > 0 &&
             blockAlwaysReturnsOrThrows(node.consequent)
           ) {
-            for (const name of negativeGuarded) {
-              scope.sanitizedVars.add(name);
-              scope.taintedVars.delete(name);
+            for (const item of negativeGuarded) {
+              scope.sanitizedVars.set(item.name, item.sinks);
+              if (item.sinks.has('*')) {
+                scope.taintedVars.delete(item.name);
+              }
             }
           }
         },
@@ -1234,7 +1457,8 @@ const rules = {
             const taint = evaluateNodeTaint(
               arg0,
               scope.taintedVars,
-              scope.sanitizedVars
+              scope.sanitizedVars,
+              'fetch'
             );
             if (taint) {
               context.report({
@@ -1254,7 +1478,8 @@ const rules = {
             const taint = evaluateNodeTaint(
               arg0,
               scope.taintedVars,
-              scope.sanitizedVars
+              scope.sanitizedVars,
+              'redirect'
             );
             if (taint) {
               context.report({
@@ -1275,7 +1500,8 @@ const rules = {
             const taint = evaluateNodeTaint(
               payloadArg,
               scope.taintedVars,
-              scope.sanitizedVars
+              scope.sanitizedVars,
+              'db'
             );
             if (taint) {
               context.report({
@@ -1292,7 +1518,8 @@ const rules = {
               const taint = evaluateNodeTaint(
                 arg,
                 scope.taintedVars,
-                scope.sanitizedVars
+                scope.sanitizedVars,
+                'shell'
               );
               if (taint) {
                 context.report({
@@ -1309,7 +1536,8 @@ const rules = {
             const taint = evaluateNodeTaint(
               arg0,
               scope.taintedVars,
-              scope.sanitizedVars
+              scope.sanitizedVars,
+              'fs'
             );
             if (taint) {
               context.report({
@@ -1329,12 +1557,83 @@ const rules = {
             const taint = evaluateNodeTaint(
               arg0,
               scope.taintedVars,
-              scope.sanitizedVars
+              scope.sanitizedVars,
+              'navigation'
             );
             if (taint) {
               context.report({
                 node: arg0,
                 message: `Tainted data from ${taint} reaches external URL navigation sink (${objectName}.${methodName}()) without sanitization.`,
+              });
+            }
+            return;
+          }
+
+          // 7. SINK: PostgREST filter string injection (.or(), .filter()) (CWE-943)
+          if (
+            (methodName === 'or' || methodName === 'filter') &&
+            node.callee.type === 'MemberExpression'
+          ) {
+            for (const arg of node.arguments || []) {
+              const taint = evaluateNodeTaint(
+                arg,
+                scope.taintedVars,
+                scope.sanitizedVars,
+                'filter'
+              );
+              if (taint) {
+                context.report({
+                  node: arg,
+                  message: `Tainted data from ${taint} reaches PostgREST .${methodName}() filter string without sanitization (PostgREST Filter Injection CWE-943). Sanitize via parseCatalogQuery() or numeric validation first.`,
+                });
+              }
+            }
+            return;
+          }
+
+          // 8. SINK: Dynamic RegExp(tainted) call (ReDoS CWE-1333)
+          if (
+            methodName === 'RegExp' &&
+            (objectName === null ||
+              objectName === 'globalThis' ||
+              objectName === 'window')
+          ) {
+            const taint = evaluateNodeTaint(
+              arg0,
+              scope.taintedVars,
+              scope.sanitizedVars,
+              'regex'
+            );
+            if (taint) {
+              context.report({
+                node: arg0,
+                message: `Tainted data from ${taint} reaches dynamic RegExp() constructor without sanitization (ReDoS CWE-1333 risk).`,
+              });
+            }
+          }
+        },
+
+        NewExpression(node) {
+          const scope = currentScope();
+          if (!scope) return;
+          const { objectName, methodName } = getCalleeName(node);
+          if (
+            methodName === 'RegExp' &&
+            (objectName === null ||
+              objectName === 'globalThis' ||
+              objectName === 'window')
+          ) {
+            const arg0 = node.arguments && node.arguments[0];
+            const taint = evaluateNodeTaint(
+              arg0,
+              scope.taintedVars,
+              scope.sanitizedVars,
+              'regex'
+            );
+            if (taint) {
+              context.report({
+                node: arg0,
+                message: `Tainted data from ${taint} reaches dynamic new RegExp() constructor without sanitization (ReDoS CWE-1333 risk).`,
               });
             }
           }
@@ -1489,6 +1788,48 @@ const rules = {
       const filename = normalizeFilename(context);
       if (!isTestOrMockFile(filename)) return {};
 
+      function hasAssertionInNode(rootNode) {
+        const stack = [rootNode];
+        const visited = new Set();
+        while (stack.length > 0) {
+          const cur = stack.pop();
+          if (!cur || typeof cur !== 'object' || visited.has(cur)) continue;
+          visited.add(cur);
+
+          if (cur.type === 'CallExpression' && cur.callee) {
+            const callee = cur.callee;
+            if (
+              callee.type === 'Identifier' &&
+              (callee.name === 'expect' || /^(?:assert|verify|check|expect)[A-Z_]/.test(callee.name))
+            ) {
+              return true;
+            }
+            if (
+              callee.type === 'MemberExpression' &&
+              callee.object &&
+              callee.object.type === 'Identifier' &&
+              callee.object.name === 'expect'
+            ) {
+              return true;
+            }
+          }
+
+          for (const [k, v] of Object.entries(cur)) {
+            if (k === 'parent' || k === 'loc' || k === 'range' || k === 'tokens' || k === 'comments') {
+              continue;
+            }
+            if (Array.isArray(v)) {
+              for (const item of v) {
+                if (item && typeof item === 'object') stack.push(item);
+              }
+            } else if (v && typeof v === 'object') {
+              stack.push(v);
+            }
+          }
+        }
+        return false;
+      }
+
       return {
         MemberExpression(node) {
           const prop = getPropertyName(node);
@@ -1505,7 +1846,35 @@ const rules = {
           }
         },
         CallExpression(node) {
-          // Detect expect(<literal>).toBe(<same literal>)
+          // 1. Detect zero-assertion it(...) / test(...) blocks
+          if (
+            node.callee &&
+            node.callee.type === 'Identifier' &&
+            (node.callee.name === 'it' || node.callee.name === 'test') &&
+            Array.isArray(node.arguments) &&
+            node.arguments.length >= 2
+          ) {
+            const titleArg = node.arguments[0];
+            const fnArg = node.arguments.find(
+              (a) =>
+                a &&
+                (a.type === 'ArrowFunctionExpression' || a.type === 'FunctionExpression')
+            );
+            if (fnArg && !hasAssertionInNode(fnArg.body)) {
+              const titleText =
+                titleArg &&
+                (titleArg.type === 'Literal' || titleArg.type === 'StringLiteral') &&
+                typeof titleArg.value === 'string'
+                  ? titleArg.value
+                  : '<anonymous test>';
+              context.report({
+                node,
+                message: `Zero-assertion test "${titleText}" violates Rule 3 (Anti-Tautology Protocol). Every test must assert genuine application state or DOM behavior via expect(...).`,
+              });
+            }
+          }
+
+          // 2. Detect expect(<literal>).toBe(<same literal>)
           if (
             node.callee &&
             node.callee.type === 'MemberExpression' &&
@@ -1563,6 +1932,35 @@ const rules = {
     create(context) {
       const filename = normalizeFilename(context);
       const isTestFile = isTestOrMockFile(filename);
+      const pkBoundedVars = new Set();
+
+      function exprHasPrimaryKeyInCall(exprNode) {
+        if (!exprNode || typeof exprNode !== 'object') return false;
+        if (exprNode.type === 'Identifier') {
+          return pkBoundedVars.has(exprNode.name);
+        }
+        if (exprNode.type === 'ConditionalExpression') {
+          return (
+            exprHasPrimaryKeyInCall(exprNode.consequent) ||
+            exprHasPrimaryKeyInCall(exprNode.alternate)
+          );
+        }
+        if (exprNode.type === 'CallExpression') {
+          const info = getCalleeName(exprNode);
+          const arg0 = exprNode.arguments && exprNode.arguments[0];
+          const arg0Val =
+            arg0 && (arg0.type === 'Literal' || arg0.type === 'StringLiteral')
+              ? arg0.value
+              : null;
+          if (info.methodName === 'in' && arg0Val === 'id') {
+            return true;
+          }
+          if (exprNode.callee && exprNode.callee.type === 'MemberExpression') {
+            return exprHasPrimaryKeyInCall(exprNode.callee.object);
+          }
+        }
+        return false;
+      }
 
       function checkStringForCopyrightTrue(node, strValue) {
         if (isTestFile) return;
@@ -1576,6 +1974,16 @@ const rules = {
       }
 
       return {
+        VariableDeclarator(node) {
+          if (node.id && node.id.type === 'Identifier' && exprHasPrimaryKeyInCall(node.init)) {
+            pkBoundedVars.add(node.id.name);
+          }
+        },
+        AssignmentExpression(node) {
+          if (node.left && node.left.type === 'Identifier' && exprHasPrimaryKeyInCall(node.right)) {
+            pkBoundedVars.add(node.left.name);
+          }
+        },
         Literal(node) {
           if (typeof node.value === 'string') {
             checkStringForCopyrightTrue(node, node.value);
@@ -1686,6 +2094,72 @@ const rules = {
                   'Public Domain violation (Rule 2/4): setting "copyright" parameter to "true" is forbidden. Always enforce "copyright=false".',
               });
               return;
+            }
+          }
+
+          // Rule 10: 78k-Row public.books Index & Query Execution Invariants
+          if (methodName === 'order' || methodName === 'neq') {
+            const chainCalls = [];
+            let cur = node;
+            while (cur && cur.type === 'CallExpression') {
+              const calleeInfo = getCalleeName(cur);
+              const firstArg = cur.arguments && cur.arguments[0];
+              const firstArgLiteral =
+                firstArg &&
+                (firstArg.type === 'Literal' || firstArg.type === 'StringLiteral') &&
+                typeof firstArg.value === 'string'
+                  ? firstArg.value
+                  : null;
+              chainCalls.push({
+                method: calleeInfo.methodName,
+                col: firstArgLiteral,
+                node: cur,
+              });
+              cur =
+                cur.callee && cur.callee.type === 'MemberExpression'
+                  ? cur.callee.object
+                  : null;
+            }
+
+            const firstCall = chainCalls[0];
+            if (
+              firstCall &&
+              firstCall.method === 'order' &&
+              firstCall.col === 'id' &&
+              chainCalls
+                .slice(1)
+                .some((c) => c.method === 'order' && c.col === 'download_count')
+            ) {
+              context.report({
+                node,
+                message:
+                  '78k-Row Index Violation (Rule 10): Chaining .order("id") onto .order("download_count") breaks single-column index idx_books_download_count and triggers a 78,000-row sort. Perform id ASC tie-breaking in memory in JS.',
+              });
+              return;
+            }
+
+            if (
+              firstCall &&
+              ((firstCall.method === 'order' && firstCall.col === 'download_count') ||
+                (firstCall.method === 'neq' && firstCall.col === 'quotes'))
+            ) {
+              const hasOrderDownloadCount = chainCalls.some(
+                (c) => c.method === 'order' && c.col === 'download_count'
+              );
+              const hasNeqQuotes = chainCalls.some(
+                (c) => c.method === 'neq' && c.col === 'quotes'
+              );
+              const hasPrimaryKeyInBound =
+                chainCalls.some((c) => c.method === 'in' && c.col === 'id') ||
+                (cur && cur.type === 'Identifier' && pkBoundedVars.has(cur.name));
+              if (hasOrderDownloadCount && hasNeqQuotes && !hasPrimaryKeyInBound) {
+                context.report({
+                  node,
+                  message:
+                    '78k-Row Index Violation (Rule 10): Combining .neq("quotes", ...) with .order("download_count") without a Primary Key .in("id", chunk) bound forces a 78,000-row table scan.',
+                });
+                return;
+              }
             }
           }
 

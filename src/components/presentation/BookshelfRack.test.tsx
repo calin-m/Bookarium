@@ -667,10 +667,8 @@ describe('BookshelfRack Component', () => {
     const selectElements = screen.getAllByLabelText(`Move ${mockBooks[0].title} to shelf`);
     const sheetSelect = selectElements.find((el) => el.closest('[data-testid="mobile-book-action-sheet"]'));
     expect(sheetSelect).toBeDefined();
-    if (sheetSelect) {
-      fireEvent.change(sheetSelect, { target: { value: 'shelf-2' } });
-      expect(moveMock).toHaveBeenCalledWith(mockBooks[0].id, 'shelf-2', 'user-1');
-    }
+    fireEvent.change(sheetSelect!, { target: { value: 'shelf-2' } });
+    expect(moveMock).toHaveBeenCalledWith(mockBooks[0].id, 'shelf-2', 'user-1');
 
     // Read action default fallback
     const readBtn = within(sheet).getByRole('button', { name: `Read ${mockBooks[0].title}` });

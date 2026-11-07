@@ -942,6 +942,7 @@ Bookarium uses Supabase PostgreSQL for optional cloud synchronization and dedica
 | **`public.handle_new_user()`** | Trigger / Function (`on_auth_user_created`) | `auth.users` -> `public.profiles`, `public.bookshelves` | Auto-provisions scholar profile and default `General` shelf on signup (`SECURITY DEFINER`, `SET search_path = ''`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |
 | **`public.books_search_vector_trigger()`** | Trigger / Function (`trigger_books_search_vector`) | `public.books` | Automatically generates and updates `search_vector tsvector` from `title`, `subjects`, and `bookshelves` on insert/update (`SET search_path = ''`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |
 | **`public.handle_profile_identity_sync()`** | Trigger / Function (`trg_profile_identity_sync`) | `public.profiles` -> `reader_circles`, `symposium_sessions` | Propagates scholar `@username` and `display_name` updates across active/pending fellowship circles and symposium sessions on profile update (`SECURITY DEFINER`, `SET search_path = ''`). |
+| **`public.enforce_fellowship_update_guard()`** | Trigger / Function (`trg_reader_circles_update_guard`, `trg_symposium_sessions_update_guard`) | `public.reader_circles`, `public.symposium_sessions` | Locks critical fellowship columns (`created_by`, `leader_id`, `host_id`, `circle_id`, `is_private`, `max_participants`, `status`) against unauthorized modification by participating students/fellows (`SECURITY DEFINER`, `SET search_path = ''`). |
 | **`public.delete_current_user()`** | RPC Function | `auth.users` | Atomic server-side 11-table + `storage.objects` user data erasure prior to `auth.users` account deletion (`SECURITY DEFINER`, `SET search_path = ''`, authenticated-only execution, null session guard). |
 | **`public.lookup_scholar_by_username()`** | RPC Function | `public.profiles` | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`SECURITY DEFINER`, `SET search_path = ''`, authenticated-only). |
 | **`public.rls_auto_enable()` (Guard)** | Conditional Hardening Block | `pg_proc` (`public.rls_auto_enable`) | Idempotent `DO $$` guard revoking RPC execution from `PUBLIC, anon, authenticated` and locking `search_path = ''` if provisioned on the remote Supabase instance. |
@@ -980,7 +981,7 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 
 | Artifact File | Classification | File Size | Architectural Responsibility |
 | :--- | :--- | :--- | :--- |
-| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `42.4 KB` | Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 23 explicit search/uniqueness indexes. |
+| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `48.5 KB` | Single source of truth defining all 14 database tables, 38 granular RLS policies, 6 stored functions/triggers, and 23 explicit search/uniqueness indexes. |
 | [`supabase/seed_books.sql`](supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.4 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
 | [`supabase/seed_translations.sql`](supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
 | [`scripts/data/wikidata-translations-cache.json`](scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |
@@ -1092,7 +1093,7 @@ Root build, compiler, styling, deployment, static analysis, and multi-agent gove
 
 ## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture
 
-Bookarium enforces a 4-tier hermetic testing and security verification architecture across **211 Test Suites** (`207` co-located `src/**/*.test.{ts,tsx}` suites + `4` CLI pipeline suites in `scripts/`) with zero external network calls:
+Bookarium enforces a 4-tier hermetic testing and security verification architecture across **208 Test Suites** (`204` co-located `src/**/*.test.{ts,tsx}` suites + `4` CLI pipeline suites in `scripts/`) with zero external network calls:
 
 ### 1. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline
 
@@ -1109,7 +1110,7 @@ flowchart TD
         MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\n• MSW v2 setupServer(...handlers) lifecycle\n• GET /api/books, /api/books/content, /api/books/translations\n• HTTPS Gutendex & 4 Allowlisted Gutenberg Mirrors\n• mockBooks & sampleBookText fixtures (0 external network calls)"]
     end
 
-    subgraph TestTiers ["4-Tier Co-Located Test Suites (211 Suites)"]
+    subgraph TestTiers ["4-Tier Co-Located Test Suites (208 Suites)"]
         Tier1["Tier 1: Pure Domain, Security & AST Suites\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]
         Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\n• useBooks, useBookContent, useBookTranslations\n• supabase-provider, gutendex-provider"]
         Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\n• bookshelf-cloud-sync, sync-utils, offline-storage"]
@@ -1149,18 +1150,18 @@ flowchart TD
 | **`sync-featured-quotes.test.ts`** | [`scripts/sync-featured-quotes.test.ts`](scripts/sync-featured-quotes.test.ts) | CLI Data Pipeline Test Suite | Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), post-batch `1-for-1` sliding window auto-pruning, `1.0h–2.0h` float schedule gating, per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts. |
 | **`sync-gutenberg-catalog.test.ts`** | [`scripts/sync-gutenberg-catalog.test.ts`](scripts/sync-gutenberg-catalog.test.ts) | CLI Data Pipeline Test Suite | Hermetic unit & integration tests verifying Project Gutenberg `pg_catalog.csv.gz` streaming decompression, CSV RFC 4180 parsing, author lifespan extraction, exact-diff metadata comparison (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and adaptive Supabase batch upserts. |
 
-### 3. Architectural Layer Test Suite Distribution (211 Suites)
+### 3. Architectural Layer Test Suite Distribution (208 Suites)
 
 | Architectural Layer | Target File Scope | Co-Located Suites | Verified Assertions | Hermetic & Security Testing Strategy |
 | :--- | :--- | :--- | :--- | :--- |
 | **App Router Pages, Layouts & API Routes** | `src/app/**/*.test.{ts,tsx}` | `27` | `286` | NextRequest/NextResponse edge route verification, MSW v2 upstream failover, SSR metadata, and full-page user journeys. |
-| **React 19 UI & Presentation Components** | `src/components/**/*.test.tsx` | `86` | `850` | `@testing-library/react` + `userEvent` accessible role assertions (`getByRole`), WCAG 2.2 focus trapping, confirmation modals, and viewport interaction parity. |
+| **React 19 UI & Presentation Components** | `src/components/**/*.test.tsx` | `86` | `852` | `@testing-library/react` + `userEvent` accessible role assertions (`getByRole`), WCAG 2.2 focus trapping, confirmation modals, and viewport interaction parity. |
 | **Zustand Persistent State Stores** | `src/stores/*.test.ts` | `10` | `204` | Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, and 6-store session teardown. |
-| **Custom Hooks & TanStack Queries** | `src/hooks/**/*.test.{ts,tsx}` | `28` | `294` | `renderHook` with `QueryClientProvider` + MSW v2 network interception, IndexedDB offline-first reads, Web Speech TTS, and reading ledger hydration. |
-| **Domain Engines, Security Primitives & Gutenberg AST** | `src/lib/**/*.test.ts` | `40` | `464` | Pure computational & security verification (multi-jurisdictional copyright, SSRF/redirect sanitizers, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator). |
-| **Configuration, Anthologies & Design Tokens** | `src/config/*.test.ts` | `14` | `76` | Schema integrity, curated 27-masterwork anthology lifespan validation, and theme/accolade token invariants. |
+| **Custom Hooks & TanStack Queries** | `src/hooks/**/*.test.{ts,tsx}` | `27` | `292` | `renderHook` with `QueryClientProvider` + MSW v2 network interception, IndexedDB offline-first reads, Web Speech TTS, and reading ledger hydration. |
+| **Domain Engines, Security Primitives & Gutenberg AST** | `src/lib/**/*.test.ts` | `39` | `458` | Pure computational & security verification (multi-jurisdictional copyright, SSRF/redirect sanitizers, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator). |
+| **Configuration, Anthologies & Design Tokens** | `src/config/*.test.ts` | `13` | `54` | Schema integrity, curated 27-masterwork anthology lifespan validation, and theme/accolade token invariants. |
 | **Background Web Worker & Edge Reverse Proxy** | `src/workers/*.test.ts` & `src/proxy.test.ts` | `2` | `12` | Off-thread Web Worker message lifecycle (`PARSE_BOOK`) and Edge Geo-IP / cookie / Supabase session refresh proxy tests. |
-| **CLI Data Ingestion Pipelines & AST Security Rules** | `scripts/**/*.test.ts` | `4` | `74` | Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification. |
+| **CLI Data Ingestion Pipelines & AST Security Rules** | `scripts/**/*.test.ts` | `4` | `78` | Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification. |
 
 ---
 
@@ -1180,7 +1181,7 @@ flowchart TD
 | **`src/workers/`** | Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations. |
 | **`src/mocks/ & src/test/`** | Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`). |
 | **`public/`** | Progressive Web App Service Worker (`public/sw.js` `v4`) and multi-resolution transparent squircle icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`). |
-| **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 6 functions/triggers, and 23 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
+| **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 38 RLS policies, 7 functions/triggers, and 23 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
 | **`scripts/`** | 16 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), PGLAF mirror-first featured quotes extraction (`sync-featured-quotes.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites. |
 | **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 80 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
 | **`.github/workflows/ & .husky/`** | Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), and scheduled/manual featured quotes ingestion (`quotes-sync.yml`), plus Husky pre-commit quality gates. |
@@ -1193,7 +1194,7 @@ flowchart TD
 | **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** | 100% AST-Generated | `scripts/generate-architecture-matrix.js` | Complete 360° full-repository C4 architecture map, event/state-flow bus, temporal sequence workflows, external integration boundaries, failure/retry topology, edge deployment & 5-layer caching hierarchy, AST-verified environment variable bindings, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology. |
 | **[`docs/DECISIONS.md`](docs/DECISIONS.md)** | Append-Only Governance Ledger | `_Append-Only Ledger_ (Validated in Pass 5)` | Sequential Architectural Decision Records (ADR-001 through ADR-080) documenting context, trade-offs, and consequences. |
 | **[`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md)** | 100% AST-Generated | `scripts/generate-parser-docs.js` | Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine. |
-| **[`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all 211 test suites and 2,260 tests. |
+| **[`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all 208 test suites and 2,260 tests. |
 | **[`docs/quality-audit-results.json`](docs/quality-audit-results.json)** | 100% Telemetry-Generated | `scripts/generate-quality-report.js` | Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals. |
 | **[`ROADMAP.md`](ROADMAP.md)** | 100% AST-Generated | `scripts/generate-roadmap.js` | Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–11. |
 | **[`CHANGELOG.md`](CHANGELOG.md)** | 100% Script-Generated | `scripts/generate-changelog.js` | Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions. |
@@ -1639,6 +1640,7 @@ Enforced continuously by [`scripts/eslint-rules/bookarium-security.js`](scripts/
 | **Auth Callback Redirect (`?next=`, `origin`, `x-forwarded-host`)** | External OAuth / Magic Link -> `/auth/callback` | [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`) | Rejects `//`, `http:`, `javascript:`, backslash tricks, and foreign hosts; locks redirect origin to `NEXT_PUBLIC_SITE_URL` | `NextResponse.redirect()` in `/auth/callback` |
 | **Persisted Cloud Preferences & Dynamic Object Keys (`profiles.preferences`)** | Cloud / Local Storage -> Client State Hydration | [`src/lib/preferences-sync.ts`](src/lib/preferences-sync.ts) (`normalizePreferencesSnapshot`) & [`scripts/eslint-rules/bookarium-security.js`](scripts/eslint-rules/bookarium-security.js) (`no-tainted-request-sink`) | Strict 13-key schema normalization, finite range clamping, and prototype-pollution key rejection (`__proto__`, `constructor`, `prototype`) | Zustand Stores (`usePreferencesStore`, `useReaderStore`, `useThemeStore`) |
 | **Privileged Server Credentials (`SUPABASE_SERVICE_ROLE_KEY`)** | Node.js CLI / CI -> Client Bundle Guard | [`scripts/verify-build.js`](scripts/verify-build.js) (`Pass 0.5`) & `no-client-server-boundary-violation` | Transitive Babel AST import graph verifies zero `src/lib/supabase/server` or `SUPABASE_SERVICE_ROLE_KEY` references in `"use client"` graph | Isolated strictly to `scripts/*.js` CLI pipelines |
+| **Fellowship Participant Mutations (Reader Circles & Symposiums)** | Direct Client PostgREST -> Supabase DB | [`supabase/schema.sql`](supabase/schema.sql) (`enforce_fellowship_update_guard`, payload `CHECK` constraints) | Locks `created_by`, `leader_id`, `host_id`, `circle_id`, `is_private`, `max_participants`, `status` against non-leader edits; clamps text and array lengths | `public.reader_circles`, `public.symposium_sessions` |
 
 ---
 
@@ -1683,7 +1685,7 @@ Bookarium executes on **Node.js `>=22.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | **`postcss`** | `^8.5.32` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
 | **`tailwindcss`** | `^4.3.3` | Development & AST Tooling | Utility-first CSS framework v4 with Oxide compiler engine. |
 | **`typescript`** | `^5.9.3` | Development & AST Tooling | Static type system verifying strict compile-time safety (zero any). |
-| **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 211 unit and integration suites. |
+| **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 208 unit and integration suites. |
 | **`postcss-selector-parser`** | `^7.1.6` | Supply-Chain Security Override | Supply-chain override pinning selector parser to patched secure release. |
 | **`fast-glob`** | `npm:tinyglobby@^0.2.17` | Supply-Chain Security Override | Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities. |
 | **`@typescript-eslint/typescript-estree`** | `minimatch: ^11.0.1` | Supply-Chain Security Override | Supply-chain override upgrading transitive minimatch in typescript-estree to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249). |

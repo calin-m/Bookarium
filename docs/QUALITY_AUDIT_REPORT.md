@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 07 Nov 2026 10:47:07 GMT  
+**Last Generated**: Sat, 07 Nov 2026 13:00:07 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2285 passed  
+**Total Test Suites**: 208 passed  
+**Total Verified Tests**: 2260 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2285 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **208/208 test suites passed** (2260 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.32%** (12573/12918) — *Target: $\ge$ 95%*
-- **Statements**: **96.01%** (13625/14190) — *Target: $\ge$ 95%*
-- **Functions**: **94.8%** (2866/3023) — *Target: $\ge$ 92%*
-- **Branches**: **88.45%** (12477/14106) — *Target: $\ge$ 85%*
+- **Lines**: **97.37%** (12579/12918) — *Target: $\ge$ 95%*
+- **Statements**: **96.08%** (13635/14190) — *Target: $\ge$ 95%*
+- **Functions**: **94.74%** (2864/3023) — *Target: $\ge$ 92%*
+- **Branches**: **88.4%** (12470/14106) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2285 Tests)
+## 🧪 Comprehensive Test Suite Catalog (208 Suites / 2260 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 286 Tests)
 
@@ -1752,7 +1752,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 537 Tests)
+### 📚 Gutenberg Parsers & Metadata (43 Suites · 534 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2407,18 +2407,6 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/supabase/supabase.test.ts</code></b> (6 tests)</summary>
-
-- ✔ `creates a browser Supabase client with environment variables`
-- ✔ `creates a server Supabase client with cookie store and invokes cookie helpers`
-- ✔ `handles updateSession middleware for incoming requests and cookies`
-- ✔ `gracefully handles updateSession when getUser rejects with an error`
-- ✔ `returns next response early when Supabase environment variables are missing`
-- ✔ `sanitizes Supabase URLs with trailing slashes, /rest/v1, or empty values`
-
-</details>
-
-<details>
 <summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `triggers syncWithCloud concurrently on Auth, Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration`
@@ -2459,7 +2447,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
 - ✔ `permits HTTPS and relative internal API fetch() calls`
@@ -2467,16 +2455,19 @@
 - ✔ `permits NextResponse.redirect() when path and origin are sanitized via redirect-sanitizer`
 - ✔ `flags server-only module imports and secret process.env access in client components`
 - ✔ `permits NEXT_PUBLIC_* and NODE_ENV in client-reachable modules`
-- ✔ `flags eval(), new Function(), string setTimeout(), and shell execSync() in src/`
+- ✔ `flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals`
 - ✔ `permits function-reference setTimeout(), setInterval(), and RegExp.prototype.exec()`
-- ✔ `flags dangerouslySetInnerHTML, .innerHTML, document.write, and insertAdjacentHTML`
-- ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, and external URLs`
+- ✔ `flags dangerouslySetInnerHTML, .innerHTML, document.write, insertAdjacentHTML, JSX javascript: href, Reverse Tabnabbing target="_blank", and wildcard postMessage("*")`
+- ✔ `permits <a target="_blank" rel="noopener noreferrer"> and explicit origin postMessage`
+- ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, external URLs, PostgREST .or(), and new RegExp()`
 - ✔ `clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards`
+- ✔ `enforces sink-scoped sanitization and catches cross-sink sanitizer misuse`
 - ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, and missing RateLimiter`
 - ✔ `passes compliant public API route handlers that invoke RateLimiter.check()`
-- ✔ `flags describe.only, it.only, and expect(true).toBe(true) in test files`
+- ✔ `flags describe.only, it.only, expect(true).toBe(true), and zero-assertion test blocks in test files`
 - ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
-- ✔ `permits copyright=false and mirror-prioritized fetches`
+- ✔ `permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries`
+- ✔ `flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")`
 - ✔ `verifies zero AST or taint violations across the entire production src/ directory`
 
 </details>
@@ -2555,7 +2546,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (28 Suites · 294 Tests)
+### 🔄 Hooks & React Query (27 Suites · 292 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2634,17 +2625,6 @@
 - ✔ `requires title keyword match when volume has an anonymous or placeholder author`
 - ✔ `prioritizes Tier 1 relational database editions when returned from /api/books/translations`
 - ✔ `covers edge-case helper branches, DB missing current volume injection, and translator/duplicate language prioritization`
-
-</details>
-
-<details>
-<summary><b><code>src/hooks/reader/speech-utils.test.ts</code></b> (5 tests)</summary>
-
-- ✔ `returns true for high-definition neural, natural, and voiceURI network voices`
-- ✔ `returns false for standard mechanical or missing voice names and normalizes locales`
-- ✔ `splits paragraphs into punctuation-delimited sentences`
-- ✔ `handles quotes and dialogue gracefully`
-- ✔ `returns empty array for empty or whitespace text`
 
 </details>
 
@@ -2757,8 +2737,11 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSpeech.test.ts</code></b> (25 tests)</summary>
 
+- ✔ `returns true for high-definition neural, natural, and voiceURI network voices`
+- ✔ `returns false for standard mechanical or missing voice names and normalizes locales`
+- ✔ `splits paragraphs into punctuation-delimited sentences and handles dialogue and whitespace`
 - ✔ `detects Web Speech API support, filters voices to match the book language, and prioritizes Natural voices`
 - ✔ `falls back to all device voices when no voice matches the book language and normalizes Android underscore locales`
 - ✔ `plays sentences and updates playback state`
@@ -3019,7 +3002,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 269 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 249 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3034,14 +3017,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/accolades/ExLibrisBookplate.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders title, Latin motto, and description`
 - ✔ `displays unlocked state with date and interactive pin button`
 - ✔ `displays pinned state when isPinned is true`
 - ✔ `displays locked state with progress indicator and lock icon`
 - ✔ `disables pinning when isPinningDisabled is true and item is not already pinned`
-- ✔ `handles mouse interactions for 3D perspective sheen without crashing`
+- ✔ `handles mouse interactions for 3D perspective sheen and resets on mouse leave`
+- ✔ `triggers mobile haptic vibration when pinning and falls back to Award icon for unknown iconName`
 - ✔ `applies theme-aware solid borders on woodcut frame and dividers without vanishing fractional opacities`
 - ✔ `applies GPU-stabilized vector rendering and z-index isolation without conflicting scale-105`
 
@@ -3280,12 +3264,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/Button.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/ui/Button.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `should render button text and handle click events`
 - ✔ `should display loading spinner and disable button when isLoading is true`
 - ✔ `should apply variant and size classes properly`
 - ✔ `should render polymorphically with as="a" and apply chip size styling`
+- ✔ `supports all 6 variants, all 5 sizes, and forwards refs to the underlying element`
 
 </details>
 
@@ -3453,35 +3438,6 @@
 </details>
 
 <details>
-<summary><b><code>src/config/config.test.ts</code></b> (23 tests)</summary>
-
-- ✔ `defines valid non-empty endpoint URLs`
-- ✔ `provides literary eras with valid date boundaries`
-- ✔ `provides genre facets with valid IDs and labels including children literature`
-- ✔ `provides language mappings with ISO-639 codes`
-- ✔ `provides valid sort and format options`
-- ✔ `provides valid hero book spotlight and collection of classics`
-- ✔ `extracts passages for featured and generic books via getBookPassages`
-- ✔ `getHourlyHeroBook returns deterministic book based on hourly index`
-- ✔ `getDailyEditorialBook rotates daily and avoids collision with heroBookId`
-- ✔ `filters out titles protected in Life + 100 countries (Mexico)`
-- ✔ `filters out titles with protected modern translators in Life + 70 countries (Romania / EU)`
-- ✔ `includes all featured books for US jurisdiction`
-- ✔ `provides 36+ curated quotes with complete metadata including author birth and death years`
-- ✔ `filters out quotes protected under Life + 100 jurisdiction (Mexico)`
-- ✔ `filters out quotes with protected modern translators in Life + 70 countries (Romania / EU)`
-- ✔ `includes all literary quotes for US jurisdiction`
-- ✔ `handles empty candidate pools and small distinct-book pools in selectHourlyLiteraryQuotes`
-- ✔ `provides complete theme configs for light, sepia, and dark`
-- ✔ `getReaderTheme returns exact theme or falls back to light`
-- ✔ `provides valid site branding and repository URLs`
-- ✔ `defines legal intake form configuration property`
-- ✔ `generates valid canonical Gutenberg eBook URL`
-- ✔ `defines persistent localStorage keys`
-
-</details>
-
-<details>
 <summary><b><code>src/config/featured-books.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `exports a curated list of featured hero books with Pride and Prejudice as primary default`
@@ -3490,9 +3446,9 @@
 - ✔ `returns the canonical 1-spread static fallback for featured books when Supabase quotes are not yet loaded`
 - ✔ `synthesizes truthful bibliographic edition spread for non-featured catalog books without generic other-author quotes`
 - ✔ `allows all featured books in the US public domain`
-- ✔ `filters out Life+100 restricted authors or translators in Mexico (MX)`
+- ✔ `filters out Life+70 and Life+100 restricted authors or translators in Romania (RO) and Mexico (MX)`
 - ✔ `deterministically rotates the hourly hero book every 3,600,000 ms`
-- ✔ `advances getDailyEditorialBook to the next candidate when it collides with heroBookId`
+- ✔ `advances getDailyEditorialBook to the next candidate when it collides with heroBookId and wraps around at the end`
 - ✔ `identifies Classics by canonical ID, pre-1900 author death_year, or classical taxonomy`
 - ✔ `maps GutendexBook to FeaturedHeroBook using exclusively database quotes`
 - ✔ `selects Featured Book from the entire quoteEnrichedBooks pool and supports topic/language filters`
@@ -3512,10 +3468,11 @@
 </details>
 
 <details>
-<summary><b><code>src/config/literary-quotes.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/config/literary-quotes.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `maintains a rich collection of unique, well-formed literary quotes`
 - ✔ `returns all quotes for US default jurisdiction and filters Life+70 / Life+100 restricted quotes`
+- ✔ `handles empty candidate pools and small distinct-book pools in selectHourlyLiteraryQuotes`
 
 </details>
 
@@ -3552,7 +3509,7 @@
 - ✔ `provides site branding and metadata constants`
 - ✔ `dynamically resolves repository URL across environments without hardcoding personal usernames`
 - ✔ `builds Project Gutenberg-compliant descriptive User-Agent strings with optional contact email`
-- ✔ `builds canonical Gutenberg ebook URL`
+- ✔ `builds canonical Gutenberg ebook URL and defines legal intake form property`
 - ✔ `provides persistent storage keys`
 
 </details>
@@ -3572,7 +3529,7 @@
 - ✔ `contains all 5 primary navigation items`
 - ✔ `has valid labels, titles, and icons for each nav item`
 - ✔ `assigns correct countKey for collections`
-- ✔ `has configuration for all views including account`
+- ✔ `has label and activeColor configuration for all views including account`
 - ✔ `correctly calculates catalog titles and subtitles`
 - ✔ `correctly formats bookshelf and favorites content`
 

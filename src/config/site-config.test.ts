@@ -79,8 +79,10 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(uaWithEmail).toBe('Bookarium-Reader/2.0 (+https://bookarium.vercel.app; contact@example.org)');
   });
 
-  it('builds canonical Gutenberg ebook URL', () => {
+  it('builds canonical Gutenberg ebook URL and defines legal intake form property', () => {
     expect(SITE_CONFIG.GUTENBERG_EBOOK(1342)).toBe('https://www.gutenberg.org/ebooks/1342');
+    expect(SITE_CONFIG.GUTENBERG_EBOOK('84')).toBe('https://www.gutenberg.org/ebooks/84');
+    expect(typeof SITE_CONFIG.LEGAL_CONTACT_FORM).toBe('string');
   });
 
   it('provides persistent storage keys', () => {

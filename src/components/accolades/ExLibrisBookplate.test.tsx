@@ -97,15 +97,64 @@ describe('ExLibrisBookplate', () => {
     expect(pinBtn).toBeDisabled();
   });
 
-  it('handles mouse interactions for 3D perspective sheen without crashing', () => {
+  it('handles mouse interactions for 3D perspective sheen and resets on mouse leave', () => {
     const { container } = render(
       <ExLibrisBookplate definition={sampleDef} progress={unlockedProgress} />
     );
 
-    const card = container.firstChild as HTMLElement;
+    const card = screen.getByTestId(`accolade-card-${sampleDef.id}`);
+    vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 200,
+      right: 200,
+      bottom: 200,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
     fireEvent.mouseEnter(card);
-    fireEvent.mouseMove(card, { clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(card, { clientX: 150, clientY: 50 });
+
+    // x = 150/200 = 0.75 -> rotY = (0.75 - 0.5) * 4 = 1deg, sheenPos.x = 75%
+    // y = 50/200 = 0.25 -> rotX = (0.25 - 0.5) * -4 = 1deg, sheenPos.y = 25%
+    expect(card.style.transform).toBe(
+      'perspective(1000px) rotateX(1deg) rotateY(1deg) scale3d(1, 1, 1)'
+    );
+    expect(container.innerHTML).toContain('radial-gradient(circle at 75% 25%');
+
     fireEvent.mouseLeave(card);
+    expect(card.style.transform).toBe(
+      'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)'
+    );
+    expect(container.innerHTML).not.toContain('radial-gradient(circle at 75% 25%');
+  });
+
+  it('triggers mobile haptic vibration when pinning and falls back to Award icon for unknown iconName', async () => {
+    const vibrateMock = vi.fn();
+    Object.defineProperty(window.navigator, 'vibrate', {
+      value: vibrateMock,
+      configurable: true,
+      writable: true,
+    });
+
+    const onTogglePin = vi.fn();
+    const customDef = { ...sampleDef, iconName: 'UnknownCustomIcon' };
+    render(
+      <ExLibrisBookplate
+        definition={customDef}
+        progress={unlockedProgress}
+        onTogglePin={onTogglePin}
+      />
+    );
+
+    const pinBtn = screen.getByRole('button', { name: /pin seven-day sage to showcase/i });
+    fireEvent.click(pinBtn);
+
+    expect(vibrateMock).toHaveBeenCalledWith(15);
+    expect(onTogglePin).toHaveBeenCalledWith('seven-day-sage');
   });
 
   it('applies theme-aware solid borders on woodcut frame and dividers without vanishing fractional opacities', () => {

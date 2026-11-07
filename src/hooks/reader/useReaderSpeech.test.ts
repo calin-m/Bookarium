@@ -1,6 +1,74 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useReaderSpeech } from './useReaderSpeech';
+import {
+  useReaderSpeech,
+  segmentTextIntoSentences,
+  isNaturalVoice,
+  normalizeSpeechLang,
+  isVoiceLanguageCompatible,
+} from './useReaderSpeech';
+
+describe('speech utilities: isNaturalVoice, language helpers & segmentTextIntoSentences', () => {
+  it('returns true for high-definition neural, natural, and voiceURI network voices', () => {
+    expect(
+      isNaturalVoice({ name: 'Microsoft Jenny Natural (Online)' } as unknown as SpeechSynthesisVoice)
+    ).toBe(true);
+    expect(isNaturalVoice({ name: 'Google US English' } as unknown as SpeechSynthesisVoice)).toBe(
+      true
+    );
+    expect(isNaturalVoice({ name: 'Apple Siri Voice 2' } as unknown as SpeechSynthesisVoice)).toBe(
+      true
+    );
+    expect(isNaturalVoice({ name: 'Samantha Enhanced' } as unknown as SpeechSynthesisVoice)).toBe(
+      true
+    );
+    expect(isNaturalVoice({ name: 'Neural Voice Engine' } as unknown as SpeechSynthesisVoice)).toBe(
+      true
+    );
+    expect(isNaturalVoice({ name: 'Aria Premium' } as unknown as SpeechSynthesisVoice)).toBe(true);
+    expect(
+      isNaturalVoice({
+        name: 'English (United States)',
+        voiceURI: 'en-us-x-sfg-network',
+      } as unknown as SpeechSynthesisVoice)
+    ).toBe(true);
+  });
+
+  it('returns false for standard mechanical or missing voice names and normalizes locales', () => {
+    expect(
+      isNaturalVoice({ name: 'Microsoft David Desktop' } as unknown as SpeechSynthesisVoice)
+    ).toBe(false);
+    expect(isNaturalVoice({ name: 'espeak-ng' } as unknown as SpeechSynthesisVoice)).toBe(false);
+    expect(isNaturalVoice(null as unknown as SpeechSynthesisVoice)).toBe(false);
+    expect(isNaturalVoice({} as unknown as SpeechSynthesisVoice)).toBe(false);
+    expect(normalizeSpeechLang('en_GB')).toBe('en-GB');
+    expect(
+      isVoiceLanguageCompatible({ lang: 'en_GB' } as unknown as SpeechSynthesisVoice, 'en')
+    ).toBe(true);
+    expect(
+      isVoiceLanguageCompatible({ lang: 'fr-FR' } as unknown as SpeechSynthesisVoice, 'en')
+    ).toBe(false);
+  });
+
+  it('splits paragraphs into punctuation-delimited sentences and handles dialogue and whitespace', () => {
+    const raw =
+      'Call me Ishmael. Some years ago—never mind how long precisely—I took to the sea! Did you hear that?';
+    const result = segmentTextIntoSentences(raw);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe('Call me Ishmael.');
+    expect(result[1]).toBe('Some years ago—never mind how long precisely—I took to the sea!');
+    expect(result[2]).toBe('Did you hear that?');
+
+    const dialogue =
+      '“It is a truth universally acknowledged,” said Mrs. Bennet. “That is all!”';
+    const dialogueResult = segmentTextIntoSentences(dialogue);
+    expect(dialogueResult.length).toBeGreaterThanOrEqual(1);
+    expect(dialogueResult[0]).toContain('truth universally acknowledged');
+
+    expect(segmentTextIntoSentences('')).toEqual([]);
+    expect(segmentTextIntoSentences('   \n\n  ')).toEqual([]);
+  });
+});
 
 describe('useReaderSpeech', () => {
   let mockVoices: SpeechSynthesisVoice[] = [];

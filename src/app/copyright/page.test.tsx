@@ -148,10 +148,9 @@ describe('CopyrightPage', () => {
     render(<CopyrightPage />);
 
     const bookshelfButtons = screen.getAllByRole('button', { name: /bookshelf/i });
-    if (bookshelfButtons.length > 0) {
-      fireEvent.click(bookshelfButtons[0]);
-      expect(mockPush).toHaveBeenCalledWith(ROUTES.BOOKSHELF);
-    }
+    expect(bookshelfButtons.length).toBeGreaterThan(0);
+    fireEvent.click(bookshelfButtons[0]);
+    expect(mockPush).toHaveBeenCalledWith(ROUTES.BOOKSHELF);
   });
 
   it('renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top', () => {

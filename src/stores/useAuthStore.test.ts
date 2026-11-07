@@ -305,17 +305,16 @@ describe('useAuthStore', () => {
       profile: { id: 'init-user', display_name: 'Init User' } as any,
     });
 
-    if (authChangeCallback) {
-      authChangeCallback('PASSWORD_RECOVERY', {
-        user: { id: 'init-user', email: 'init@bookarium.test' },
-      });
-      expect(useAuthStore.getState().isPasswordRecovery).toBe(true);
+    expect(authChangeCallback).toBeTypeOf('function');
+    authChangeCallback('PASSWORD_RECOVERY', {
+      user: { id: 'init-user', email: 'init@bookarium.test' },
+    });
+    expect(useAuthStore.getState().isPasswordRecovery).toBe(true);
 
-      authChangeCallback('SIGNED_OUT', null);
-      expect(useAuthStore.getState().user).toBeNull();
-      expect(useAuthStore.getState().profile).toBeNull();
-      expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
-    }
+    authChangeCallback('SIGNED_OUT', null);
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(useAuthStore.getState().profile).toBeNull();
+    expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
   });
 
   it('unsubscribes cleanly when initializeAuth cleanup function is called', () => {

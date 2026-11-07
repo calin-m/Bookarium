@@ -126,12 +126,10 @@ describe('BookReaderLayout and generateMetadata', () => {
 
     const script = document.querySelector('script[type="application/ld+json"]');
     expect(script).toBeInTheDocument();
-    if (script) {
-      const parsed = JSON.parse(script.textContent || '{}');
-      expect(parsed['@type']).toBe('Book');
-      expect(parsed.name).toContain('Frankenstein');
-      expect(parsed.author?.name).toContain('Shelley');
-    }
+    const parsed = JSON.parse(script!.textContent || '{}');
+    expect(parsed['@type']).toBe('Book');
+    expect(parsed.name).toContain('Frankenstein');
+    expect(parsed.author?.name).toContain('Shelley');
   });
 
   it('falls back gracefully when upstream fetch times out or fails', async () => {

@@ -105,12 +105,20 @@ describe('featured-books configuration & passage selectors', () => {
       expect(usBooks.length).toBe(FEATURED_HERO_BOOKS.length);
     });
 
-    it('filters out Life+100 restricted authors or translators in Mexico (MX)', () => {
+    it('filters out Life+70 and Life+100 restricted authors or translators in Romania (RO) and Mexico (MX)', () => {
+      const roBooks = getJurisdictionSafeFeaturedBooks('RO');
+      // The Metamorphosis (ID 5200) and The Art of War (ID 132, Lionel Giles d. 1958) are blocked in Life+70
+      expect(roBooks.some((b) => b.id === 5200)).toBe(false);
+      expect(roBooks.some((b) => b.id === 132)).toBe(false);
+      expect(roBooks.some((b) => b.title === 'War and Peace')).toBe(true);
+      expect(roBooks.some((b) => b.title === 'Pride and Prejudice')).toBe(true);
+
       const mxBooks = getJurisdictionSafeFeaturedBooks('MX');
       expect(mxBooks.length).toBeLessThan(FEATURED_HERO_BOOKS.length);
       // F. Scott Fitzgerald (d. 1940) and H. G. Wells (d. 1946) are within Life+100
       expect(mxBooks.some((b) => b.id === 64317)).toBe(false);
       expect(mxBooks.some((b) => b.id === 35)).toBe(false);
+      expect(mxBooks.some((b) => b.title === 'War and Peace')).toBe(false);
       // Jane Austen (d. 1817) remains public domain everywhere
       expect(mxBooks.some((b) => b.id === 1342)).toBe(true);
     });
@@ -124,15 +132,23 @@ describe('featured-books configuration & passage selectors', () => {
       const second = getHourlyHeroBook(t1, 'US');
       expect(first.id).toBe(FEATURED_HERO_BOOKS[0].id);
       expect(second.id).toBe(FEATURED_HERO_BOOKS[1].id);
+      expect(getHourlyHeroBook()).toBeDefined();
     });
 
-    it('advances getDailyEditorialBook to the next candidate when it collides with heroBookId', () => {
+    it('advances getDailyEditorialBook to the next candidate when it collides with heroBookId and wraps around at the end', () => {
+      const dayMs = 86400000;
       const timestamp = 0; // dayIndex = 0 -> candidateIndex = 0 (id: 1342)
       const nonColliding = getDailyEditorialBook(84, timestamp, 'US');
       expect(nonColliding.id).toBe(FEATURED_HERO_BOOKS[0].id);
 
       const colliding = getDailyEditorialBook(FEATURED_HERO_BOOKS[0].id, timestamp, 'US');
       expect(colliding.id).toBe(FEATURED_HERO_BOOKS[1].id);
+
+      const lastIndex = FEATURED_HERO_BOOKS.length - 1;
+      const lastCandidateId = FEATURED_HERO_BOOKS[lastIndex].id;
+      const wrappedLast = getDailyEditorialBook(lastCandidateId, lastIndex * dayMs, 'US');
+      expect(wrappedLast).toBe(FEATURED_HERO_BOOKS[0]);
+      expect(getDailyEditorialBook()).toBeDefined();
     });
   });
 

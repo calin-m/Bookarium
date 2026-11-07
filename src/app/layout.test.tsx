@@ -81,19 +81,17 @@ describe('RootLayout', () => {
     render(layoutJsx);
     const script = document.querySelector('script[type="application/ld+json"]');
     expect(script).toBeInTheDocument();
-    if (script) {
-      const parsed = JSON.parse(script.textContent || '{}');
-      expect(parsed['@context']).toBe('https://schema.org');
-      expect(Array.isArray(parsed['@graph'])).toBe(true);
-      const website = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebSite');
-      const webApp = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebApplication');
-      expect(website).toBeDefined();
-      expect(website.potentialAction).toBeDefined();
-      expect(webApp).toBeDefined();
-      expect(webApp.isAccessibleForFree).toBe(true);
-      expect(webApp.applicationCategory).toBe('BooksApplication');
-      expect(webApp.license).toBe('https://opensource.org/licenses/MIT');
-    }
+    const parsed = JSON.parse(script!.textContent || '{}');
+    expect(parsed['@context']).toBe('https://schema.org');
+    expect(Array.isArray(parsed['@graph'])).toBe(true);
+    const website = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebSite');
+    const webApp = parsed['@graph'].find((e: Record<string, unknown>) => e['@type'] === 'WebApplication');
+    expect(website).toBeDefined();
+    expect(website.potentialAction).toBeDefined();
+    expect(webApp).toBeDefined();
+    expect(webApp.isAccessibleForFree).toBe(true);
+    expect(webApp.applicationCategory).toBe('BooksApplication');
+    expect(webApp.license).toBe('https://opensource.org/licenses/MIT');
   });
 
   it('should gracefully handle cookie exception and fallback to US', async () => {

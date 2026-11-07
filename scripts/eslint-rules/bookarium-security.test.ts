@@ -162,17 +162,19 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('4. no-dangerous-execution', () => {
-    it('flags eval(), new Function(), string setTimeout(), and shell execSync() in src/', () => {
+    it('flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals', () => {
       const violations = runRuleOnCode(
         'no-dangerous-execution',
         `import { execSync } from 'child_process';
         eval('2 + 2');
         const fn = new Function('a', 'return a');
         setTimeout('alert(1)', 100);
-        execSync('ls -la');`,
+        execSync('ls -la');
+        const redos = /(\\w+)+/;`,
         'src/lib/unsafe-helper.ts'
       );
-      expect(violations).toHaveLength(4);
+      expect(violations).toHaveLength(5);
+      expect(violations[4].message).toContain('Catastrophic backtracking ReDoS pattern (CWE-1333)');
     });
 
     it('permits function-reference setTimeout(), setInterval(), and RegExp.prototype.exec()', () => {
@@ -190,23 +192,45 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('5. no-unsafe-dom-injection', () => {
-    it('flags dangerouslySetInnerHTML, .innerHTML, document.write, and insertAdjacentHTML', () => {
+    it('flags dangerouslySetInnerHTML, .innerHTML, document.write, insertAdjacentHTML, JSX javascript: href, Reverse Tabnabbing target="_blank", and wildcard postMessage("*")', () => {
       const violations = runRuleOnCode(
         'no-unsafe-dom-injection',
         `export function BadComponent({ html, el }: { html: string; el: HTMLElement }) {
           el.innerHTML = html;
           document.write(html);
           el.insertAdjacentHTML('beforeend', html);
-          return <div dangerouslySetInnerHTML={{ __html: html }} />;
+          window.postMessage({ type: 'PING' }, '*');
+          return (
+            <div>
+              <div dangerouslySetInnerHTML={{ __html: html }} />
+              <a href="javascript:alert(1)">Bad Link</a>
+              <a href="https://example.com" target="_blank">Tabnabbing Link</a>
+            </div>
+          );
         }`,
         'src/components/reader/ReaderSurface.tsx'
       );
-      expect(violations).toHaveLength(4);
+      expect(violations).toHaveLength(7);
+      expect(violations.some((v) => v.message.includes('Cross-origin message leak (CWE-345)'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('dangerous "href" URI scheme'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('Reverse Tabnabbing risk (CWE-1022)'))).toBe(true);
+    });
+
+    it('permits <a target="_blank" rel="noopener noreferrer"> and explicit origin postMessage', () => {
+      const clean = runRuleOnCode(
+        'no-unsafe-dom-injection',
+        `export function SafeComponent() {
+          window.postMessage({ type: 'PING' }, window.location.origin);
+          return <a href="https://www.gutenberg.org" target="_blank" rel="noopener noreferrer">Safe</a>;
+        }`,
+        'src/components/presentation/Footer.tsx'
+      );
+      expect(clean).toHaveLength(0);
     });
   });
 
   describe('6. no-tainted-request-sink (Intra-Procedural Request Taint Analysis)', () => {
-    it('tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, and external URLs', () => {
+    it('tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, external URLs, PostgREST .or(), and new RegExp()', () => {
       const violations = runRuleOnCode(
         'no-tainted-request-sink',
         `import { NextResponse } from 'next/server';
@@ -228,10 +252,13 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
           location.href = headerUrl;
           const configObj: Record<string, string> = {};
           configObj[rawTarget] = 'polluted';
+          await supabase.from('books').select('*').or(\`title.ilike.%\${rawTarget}%\`);
+          const rx = new RegExp(rawTarget);
+          return rx;
         }`,
         'src/app/api/books/route.ts'
       );
-      expect(violations).toHaveLength(8);
+      expect(violations).toHaveLength(10);
       expect(violations[0].message).toContain('reaches fetch() sink');
       expect(violations[1].message).toContain('reaches redirect() sink');
       expect(violations[2].message).toContain('reaches database write sink (.insert())');
@@ -240,6 +267,8 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(violations[5].message).toContain('reaches external URL navigation sink');
       expect(violations[6].message).toContain('reaches external URL sink (location.href)');
       expect(violations[7].message).toContain('Prototype Pollution risk');
+      expect(violations[8].message).toContain('PostgREST Filter Injection CWE-943');
+      expect(violations[9].message).toContain('dynamic new RegExp() constructor');
     });
 
     it('clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards', () => {
@@ -266,6 +295,54 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         'src/app/api/books/content/route.ts'
       );
       expect(clean).toHaveLength(0);
+    });
+
+    it('enforces sink-scoped sanitization and catches cross-sink sanitizer misuse', () => {
+      // 1. Cross-sink misuse: passing parseCatalogQuery into fetch() or NextResponse.redirect()
+      const crossSinkViolations = runRuleOnCode(
+        'no-tainted-request-sink',
+        `import { NextResponse } from 'next/server';
+        import { parseCatalogQuery } from '@/lib/catalog-query-parser';
+        import { sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
+        export async function GET(request: Request) {
+          const { searchParams } = new URL(request.url);
+          const rawQ = searchParams.get('q') || '';
+          const cleanQuery = parseCatalogQuery(rawQ);
+          const safePath = sanitizeRedirectPath(searchParams.get('next'));
+
+          // Misuse: cleanQuery (scoped to db/filter/query) passed to fetch() and redirect()
+          await fetch(cleanQuery);
+          NextResponse.redirect(cleanQuery);
+
+          // Misuse: safePath (scoped to redirect/navigation) passed to PostgREST .or()
+          await supabase.from('books').select('*').or(\`title.ilike.%\${safePath}%\`);
+        }`,
+        'src/app/api/books/route.ts'
+      );
+      expect(crossSinkViolations).toHaveLength(3);
+      expect(crossSinkViolations[0].message).toContain('reaches fetch() sink');
+      expect(crossSinkViolations[1].message).toContain('reaches redirect() sink');
+      expect(crossSinkViolations[2].message).toContain('PostgREST Filter Injection CWE-943');
+
+      // 2. Correct sink usage: parseCatalogQuery in .or() and sanitizeRedirectPath in redirect()
+      const correctSink = runRuleOnCode(
+        'no-tainted-request-sink',
+        `import { NextResponse } from 'next/server';
+        import { parseCatalogQuery } from '@/lib/catalog-query-parser';
+        import { sanitizeRedirectPath, resolveCanonicalAuthOrigin } from '@/lib/redirect-sanitizer';
+        export async function GET(request: Request) {
+          const { searchParams, origin } = new URL(request.url);
+          const rawQ = searchParams.get('q') || '';
+          const cleanQuery = parseCatalogQuery(rawQ);
+          const safePath = sanitizeRedirectPath(searchParams.get('next'));
+          const safeOrigin = resolveCanonicalAuthOrigin(origin);
+
+          await supabase.from('books').select('*').or(\`title.ilike.%\${cleanQuery}%\`);
+          return NextResponse.redirect(new URL(safePath, safeOrigin));
+        }`,
+        'src/app/api/books/route.ts'
+      );
+      expect(correctSink).toHaveLength(0);
     });
   });
 
@@ -305,17 +382,23 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('8. no-focused-or-tautological-tests', () => {
-    it('flags describe.only, it.only, and expect(true).toBe(true) in test files', () => {
+    it('flags describe.only, it.only, expect(true).toBe(true), and zero-assertion test blocks in test files', () => {
       const violations = runRuleOnCode(
         'no-focused-or-tautological-tests',
         `describe.only('suite', () => {
           it.only('tautology', () => {
             expect(true).toBe(true);
           });
+          it('zero assertion test', () => {
+            const x = 1 + 1;
+          });
         });`,
         'src/components/BookCard.test.tsx'
       );
-      expect(violations).toHaveLength(3);
+      expect(violations).toHaveLength(4);
+      expect(violations[3].message).toContain(
+        'Zero-assertion test "zero assertion test" violates Rule 3'
+      );
     });
   });
 
@@ -345,17 +428,33 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(violations[5].message).toContain('Incomplete URL substring sanitization (CodeQL CWE-20)');
     });
 
-    it('permits copyright=false and mirror-prioritized fetches', () => {
+    it('permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries', () => {
       const clean = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',
-        `export async function goodCatalogFetch() {
+        `export async function goodCatalogFetch(supabase: any, ids: number[]) {
           const params = new URLSearchParams();
           params.set('copyright', 'false');
           await fetch('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+          await supabase.from('books').select('*').order('download_count', { ascending: false });
+          await supabase.from('books').select('id').in('id', ids).neq('quotes', '[]').order('download_count', { ascending: false });
         }`,
         'src/lib/catalog/gutendex-provider.ts'
       );
       expect(clean).toHaveLength(0);
+    });
+
+    it('flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")', () => {
+      const violations = runRuleOnCode(
+        'enforce-gutenberg-and-copyright-policy',
+        `export async function badIndexQueries(supabase: any) {
+          await supabase.from('books').select('*').order('download_count', { ascending: false }).order('id', { ascending: true });
+          await supabase.from('books').select('*').neq('quotes', '[]').order('download_count', { ascending: false });
+        }`,
+        'src/lib/catalog/supabase-provider.ts'
+      );
+      expect(violations).toHaveLength(2);
+      expect(violations[0].message).toContain('Chaining .order("id") onto .order("download_count")');
+      expect(violations[1].message).toContain('Combining .neq("quotes", ...) with .order("download_count")');
     });
   });
 

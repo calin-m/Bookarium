@@ -17,19 +17,33 @@ describe('reader-themes', () => {
       expect(config.surface).toBeTruthy();
       expect(config.header).toBeTruthy();
       expect(config.footer).toBeTruthy();
-      expect(config.button).toBeTruthy();
-      expect(config.border).toBeTruthy();
       expect(config.pill).toBeTruthy();
       expect(config.activePill).toBeTruthy();
+      expect(config.inactivePill).toBeTruthy();
+      expect(config.button).toBeTruthy();
+      expect(config.border).toBeTruthy();
+      expect(config.textMuted).toBeTruthy();
+      expect(config.drawerBg).toBeTruthy();
+      expect(config.drawerActive).toBeTruthy();
+      expect(config.drawerHover).toBeTruthy();
+      expect(config.scrollbarClass).toContain(`reader-surface-${theme}`);
+      expect(config.iconAccent).toBeTruthy();
       expect(config.speechHighlight).toBeTruthy();
       expect(config.popoverBg).toBeTruthy();
     });
+
+    expect(READER_THEMES.light.surface).toContain('bg-[#fcfbf9]');
+    expect(READER_THEMES.sepia.surface).toContain('bg-[#2b1d16]');
+    expect(READER_THEMES.dark.surface).toContain('bg-[#0e1117]');
+    expect(READER_THEMES.light.header).toContain('shadow-sm');
+    expect(READER_THEMES.sepia.header).toContain('bg-[#332219]');
+    expect(READER_THEMES.dark.header).toContain('bg-[#161b26]');
   });
 
   it('falls back gracefully to light theme for null, undefined, or invalid theme', () => {
     expect(getReaderTheme(null)).toBe(READER_THEMES.light);
     expect(getReaderTheme(undefined)).toBe(READER_THEMES.light);
-    expect(getReaderTheme('invalid-theme' as any)).toBe(READER_THEMES.light);
+    expect(getReaderTheme('invalid-theme' as unknown as ReaderTheme)).toBe(READER_THEMES.light);
   });
 
   it('correctly cycles through themes with NEXT_READER_THEME', () => {

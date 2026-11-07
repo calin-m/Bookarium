@@ -1027,3 +1027,128 @@ FROM public.profiles p
 WHERE ss.fellow_id = p.id
   AND p.username IS NOT NULL
   AND (ss.fellow_username = '' OR ss.fellow_username = 'scholar' OR ss.fellow_username <> p.username);
+
+-- ============================================================================
+-- 12. Security Hardening: Participant Update Guards & Payload Ceiling Constraints
+-- ============================================================================
+
+-- Participant Column-Lock Guard: Restricts mutations in reader_circles and symposium_sessions
+CREATE OR REPLACE FUNCTION public.enforce_fellowship_update_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+BEGIN
+  -- Allow nested triggers (such as trg_profile_identity_sync) and service-role / maintenance queries without JWT
+  IF pg_trigger_depth() > 1 OR current_user_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_TABLE_NAME = 'reader_circles' THEN
+    -- Immutable relational keys
+    IF NEW.id <> OLD.id OR NEW.requester_id <> OLD.requester_id OR NEW.recipient_id <> OLD.recipient_id OR NEW.created_at <> OLD.created_at THEN
+      RAISE EXCEPTION 'Immutable fields in reader_circles cannot be altered.';
+    END IF;
+
+    -- Only the recipient can accept a pending invitation
+    IF OLD.status = 'pending' AND NEW.status = 'accepted' AND current_user_id <> OLD.recipient_id THEN
+      RAISE EXCEPTION 'Only the recipient may accept a reader circle invitation.';
+    END IF;
+
+    -- The requester cannot change recipient details, and recipient cannot change requester details
+    IF current_user_id = OLD.requester_id THEN
+      NEW.recipient_username := OLD.recipient_username;
+      NEW.recipient_display_name := OLD.recipient_display_name;
+    ELSIF current_user_id = OLD.recipient_id THEN
+      NEW.requester_username := OLD.requester_username;
+      NEW.requester_display_name := OLD.requester_display_name;
+    END IF;
+
+  ELSIF TG_TABLE_NAME = 'symposium_sessions' THEN
+    -- Immutable relational keys
+    IF NEW.id <> OLD.id OR NEW.book_id <> OLD.book_id OR NEW.host_id <> OLD.host_id OR NEW.fellow_id <> OLD.fellow_id OR NEW.created_at <> OLD.created_at THEN
+      RAISE EXCEPTION 'Immutable fields in symposium_sessions cannot be altered.';
+    END IF;
+
+    -- Host-scoped permissions
+    IF current_user_id = OLD.host_id THEN
+      -- Host cannot mutate fellow reading progress or chapter
+      IF NEW.fellow_chapter <> OLD.fellow_chapter OR NEW.fellow_progress <> OLD.fellow_progress THEN
+        RAISE EXCEPTION 'Host cannot modify fellow reading progress.';
+      END IF;
+      -- Host cannot accept their own pending invitation
+      IF OLD.status = 'pending' AND NEW.status = 'active' THEN
+        RAISE EXCEPTION 'Host cannot self-accept a pending symposium invitation.';
+      END IF;
+      -- Host cannot overwrite fellow identity
+      NEW.fellow_username := OLD.fellow_username;
+      NEW.fellow_display_name := OLD.fellow_display_name;
+
+    -- Fellow-scoped permissions
+    ELSIF current_user_id = OLD.fellow_id THEN
+      -- Fellow cannot mutate host reading progress or chapter
+      IF NEW.host_chapter <> OLD.host_chapter OR NEW.host_progress <> OLD.host_progress THEN
+        RAISE EXCEPTION 'Fellow cannot modify host reading progress.';
+      END IF;
+      -- Fellow cannot change book title
+      IF NEW.book_title <> OLD.book_title THEN
+        RAISE EXCEPTION 'Fellow cannot modify shared book title.';
+      END IF;
+      -- Fellow cannot overwrite host identity
+      NEW.host_username := OLD.host_username;
+      NEW.host_display_name := OLD.host_display_name;
+    ELSE
+      RAISE EXCEPTION 'Unauthorized symposium update.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.enforce_fellowship_update_guard() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.enforce_fellowship_update_guard() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.enforce_fellowship_update_guard() FROM authenticated;
+
+DROP TRIGGER IF EXISTS trg_reader_circles_update_guard ON public.reader_circles;
+CREATE TRIGGER trg_reader_circles_update_guard
+  BEFORE UPDATE ON public.reader_circles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_fellowship_update_guard();
+
+DROP TRIGGER IF EXISTS trg_symposium_sessions_update_guard ON public.symposium_sessions;
+CREATE TRIGGER trg_symposium_sessions_update_guard
+  BEFORE UPDATE ON public.symposium_sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_fellowship_update_guard();
+
+-- Idempotent Payload & Array Size Ceiling CHECK Constraints:
+-- Protects against storage exhaustion and memory amplification from direct PostgREST calls
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_display_name_length') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_display_name_length CHECK (char_length(display_name) <= 120);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_bio_length') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_bio_length CHECK (bio IS NULL OR char_length(bio) <= 1000);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bookshelves_name_length') THEN
+    ALTER TABLE public.bookshelves ADD CONSTRAINT chk_bookshelves_name_length CHECK (char_length(name) <= 100);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_reading_progress_bookmark_length') THEN
+    ALTER TABLE public.reading_progress ADD CONSTRAINT chk_reading_progress_bookmark_length CHECK (bookmark_text IS NULL OR char_length(bookmark_text) <= 2000);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_annotations_selected_text_length') THEN
+    ALTER TABLE public.user_annotations ADD CONSTRAINT chk_user_annotations_selected_text_length CHECK (char_length(selected_text) <= 5000);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_annotations_note_length') THEN
+    ALTER TABLE public.user_annotations ADD CONSTRAINT chk_user_annotations_note_length CHECK (note IS NULL OR char_length(note) <= 10000);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_reading_habits_active_dates_bound') THEN
+    ALTER TABLE public.user_reading_habits ADD CONSTRAINT chk_user_reading_habits_active_dates_bound CHECK (jsonb_typeof(active_dates) = 'array' AND jsonb_array_length(active_dates) <= 5000);
+  END IF;
+END $$;
+

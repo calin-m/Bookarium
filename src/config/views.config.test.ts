@@ -34,13 +34,23 @@ describe('views.config', () => {
   });
 
   describe('NAVBAR_VIEW_CONFIG', () => {
-    it('has configuration for all views including account', () => {
-      expect(NAVBAR_VIEW_CONFIG.catalog).toBeDefined();
-      expect(NAVBAR_VIEW_CONFIG.bookshelf).toBeDefined();
-      expect(NAVBAR_VIEW_CONFIG.favorites).toBeDefined();
-      expect(NAVBAR_VIEW_CONFIG.notebook).toBeDefined();
-      expect(NAVBAR_VIEW_CONFIG.bookmarks).toBeDefined();
-      expect(NAVBAR_VIEW_CONFIG.account).toBeDefined();
+    it('has label and activeColor configuration for all views including account', () => {
+      const expectedViews: Array<keyof typeof NAVBAR_VIEW_CONFIG> = [
+        'catalog',
+        'bookshelf',
+        'favorites',
+        'notebook',
+        'bookmarks',
+        'account',
+      ];
+      for (const viewId of expectedViews) {
+        const entry = NAVBAR_VIEW_CONFIG[viewId];
+        expect(entry).toBeDefined();
+        expect(entry.label.length).toBeGreaterThan(0);
+        expect(entry.activeColor).toContain('text-');
+      }
+      expect(NAVBAR_VIEW_CONFIG.account.label).toBe('Account');
+      expect(NAVBAR_VIEW_CONFIG.account.activeColor).toBe('text-primary');
     });
   });
 

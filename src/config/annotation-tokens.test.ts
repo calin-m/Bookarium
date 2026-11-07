@@ -35,6 +35,7 @@ describe('annotation-tokens', () => {
       expect(theme.cardTextClass).toContain('text-');
       expect(theme.drawerCardClass).toContain('border-l-');
       expect(theme.surfaceHighlightClass).toContain('border-b-2');
+      expect(theme.overlapRingClass).toContain('ring-');
     }
   });
 
