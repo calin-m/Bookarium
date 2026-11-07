@@ -79,14 +79,9 @@ export const useAccoladesStore = create<AccoladesState>()(
               metadata: {},
             }));
 
-            supabase
+            void supabase
               .from('user_accolades')
-              .upsert(inserts, { onConflict: 'user_id,accolade_id' })
-              .then(({ error }) => {
-                if (error) {
-                  console.warn('[AccoladesStore] Cloud sync error on unlock:', error.message);
-                }
-              });
+              .upsert(inserts, { onConflict: 'user_id,accolade_id' });
           }
         }
 
@@ -249,7 +244,6 @@ export const useAccoladesStore = create<AccoladesState>()(
             .eq('user_id', userId);
 
           if (error) {
-            console.warn('[AccoladesStore] Cloud fetch error:', error.message);
             set({ isSyncing: false });
             return;
           }
@@ -313,8 +307,7 @@ export const useAccoladesStore = create<AccoladesState>()(
               lastSyncAt: new Date().toISOString(),
             };
           });
-        } catch (err) {
-          console.warn('[AccoladesStore] Unexpected error during sync:', err);
+        } catch {
           set({ isSyncing: false });
         }
       },

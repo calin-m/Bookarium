@@ -650,12 +650,13 @@
   will-change: opacity, transform;
 }
 
-/* Mobile Touch-Swipe Viewports: View slide is the sole transition inside view-slide containers.
-   Disable nested vertical pageTurnFade inside view-slide containers to eliminate
-   double-animations while preserving .animate-page-turn in the dedicated Book Reader. */
+/* Mobile Touch-Swipe Viewports: Keep the outer [data-view-transition-stage="true"]
+   as the single animation owner (either .animate-page-turn on header tap or
+   .animate-view-slide-left/right on touch swipe) while permanently suppressing
+   nested descendant .animate-page-turn containers so they neither double-animate
+   nor re-trigger when onAnimationEnd removes the outer animation class. */
 @media (max-width: 767px) {
-  .animate-view-slide-left .animate-page-turn,
-  .animate-view-slide-right .animate-page-turn {
+  [data-view-transition-stage="true"] .animate-page-turn {
     animation: none !important;
     transform: none !important;
     will-change: auto !important;

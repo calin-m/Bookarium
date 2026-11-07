@@ -615,9 +615,7 @@ function HomeContent() {
             }
             return;
           }
-          React.startTransition(() => {
-            setActiveView(view);
-          });
+          setActiveView(view);
         }}
         isVisible={isHeaderVisible}
       />
@@ -700,6 +698,7 @@ function HomeContent() {
 
         <div
           key={`view-transition-${activeView}`}
+          data-view-transition-stage="true"
           className={
             isTransitioning
               ? swipeDirection === 'forward'
@@ -738,9 +737,7 @@ function HomeContent() {
             <CatalogOfflineView
               onNavigateView={(view) => {
                 setSwipeDirection(null);
-                React.startTransition(() => {
-            setActiveView(view);
-          });
+                setActiveView(view);
               }}
             />
           ) : (

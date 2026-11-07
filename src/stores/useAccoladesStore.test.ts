@@ -164,13 +164,12 @@ describe('useAccoladesStore', () => {
   it('covers authenticated evaluateAndUnlock, authenticated togglePin, dismissCelebration empty guard, syncWithCloud errors, and useHydratedAccolades', async () => {
     const { renderHook } = await import('@testing-library/react');
     const { useHydratedAccolades } = await import('./useAccoladesStore');
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     // 1. dismissCelebration when activeCelebration is null
     useAccoladesStore.getState().dismissCelebration();
     expect(useAccoladesStore.getState().activeCelebration).toBeNull();
 
-    // 2. evaluateAndUnlock with userId and upsert error warning
+    // 2. evaluateAndUnlock with userId and upsert fallback
     mockUpsert.mockResolvedValueOnce({ data: null, error: { message: 'Upsert warning' } });
     useAccoladesStore.getState().evaluateAndUnlock({ currentStreak: 7 }, 'user-123');
     expect(mockUpsert).toHaveBeenCalled();
@@ -214,8 +213,6 @@ describe('useAccoladesStore', () => {
     // 5. useHydratedAccolades hook
     const { result } = renderHook(() => useHydratedAccolades());
     expect(result.current.isHydrated).toBe(true);
-
-    warnSpy.mockRestore();
   });
 
   it('queues pendingPinUpdates when togglePin is called offline and flushes them on syncWithCloud', async () => {

@@ -894,8 +894,17 @@ describe('Home page integration', () => {
       act(() => {
         fireEvent.animationEnd(returnTransitionContainer!);
       });
+      expect(returnTransitionContainer).toHaveAttribute('data-view-transition-stage', 'true');
       expect(returnTransitionContainer).not.toHaveClass('animate-view-slide-right');
       expect(returnTransitionContainer).not.toHaveClass('animate-page-turn');
+
+      // Tapping a header tab (Favorites) applies upward .animate-page-turn on [data-view-transition-stage="true"]
+      fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
+      expect(screen.getByText('Favorite Works')).toBeInTheDocument();
+      const headerTapStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(headerTapStage).toHaveClass('animate-page-turn');
+      expect(headerTapStage).not.toHaveClass('animate-view-slide-left');
+      expect(headerTapStage).not.toHaveClass('animate-view-slide-right');
     } finally {
       window.matchMedia = originalMatchMedia;
     }

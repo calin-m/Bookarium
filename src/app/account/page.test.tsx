@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import AccountPage from './page';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -36,13 +36,21 @@ describe('AccountPage', () => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
     useThemeStore.setState({ theme: 'light' });
-    useAuthStore.setState({ isPasswordRecovery: false });
+    useAuthStore.setState({
+      user: null,
+      profile: null,
+      isLoading: false,
+      isPasswordRecovery: false,
+    });
     useFellowshipStore.setState({ fetchFellowshipData: vi.fn().mockResolvedValue(undefined) });
   });
 
   afterEach(async () => {
+    cleanup();
     cancelPendingPreferencesCloudSync();
-    await act(async () => {});
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   });
 
   it('renders guest prompt when unauthenticated and handles scroll to top', () => {
@@ -797,6 +805,11 @@ describe('AccountPage', () => {
     });
 
     it('enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs', () => {
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+      });
       render(<AccountPage />);
 
       const main = screen.getByRole('main');
@@ -1014,6 +1027,11 @@ describe('AccountPage', () => {
 
     it('automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)', () => {
       mockSearchParams = new URLSearchParams('recovery=true');
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+      });
       render(<AccountPage />);
       const securityTab = screen.getByRole('tab', { name: /Security/i });
       expect(securityTab).toHaveAttribute('aria-selected', 'true');
@@ -1022,6 +1040,11 @@ describe('AccountPage', () => {
     it('suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])', () => {
       const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
       document.body.setAttribute('data-scrubbing', 'true');
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+      });
       try {
         render(<AccountPage />);
         const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
