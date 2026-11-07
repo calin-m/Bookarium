@@ -7,6 +7,9 @@ import {
   exportReadingCardBlob,
   buildReadingShareText,
   buildSocialShareUrls,
+  encodeReadingCardShareToken,
+  decodeReadingCardShareToken,
+  buildReadingCardShareUrl,
 } from './reading-card-export';
 
 function createMockCanvasContext(): CanvasRenderingContext2D {
@@ -223,6 +226,73 @@ describe('reading-card-export', () => {
         expect(target.href.length).toBeGreaterThan(10);
         expect(target.href).toContain(encodeURIComponent('https://bookarium.app/read/1342'));
       }
+    });
+  });
+
+  describe('Signed Share Token Codec (encodeReadingCardShareToken & decodeReadingCardShareToken)', () => {
+    it('roundtrips light, sepia, and dark themes with or without progress and rejects tampered or cross-book tokens', () => {
+      const tokenSepia = encodeReadingCardShareToken({
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        author: 'Jane Austen',
+        theme: 'sepia',
+        includeProgress: true,
+        progress: 64,
+        currentSection: 12,
+        totalSections: 61,
+      });
+
+      expect(tokenSepia).toMatch(/^[A-Za-z0-9_-]+$/);
+      expect(decodeReadingCardShareToken(1342, tokenSepia)).toEqual({
+        theme: 'sepia',
+        includeProgress: true,
+        progress: 64,
+        currentSection: 12,
+        totalSections: 61,
+      });
+
+      // Cross-book replay must fail signature verification
+      expect(decodeReadingCardShareToken(84, tokenSepia)).toBeNull();
+
+      // Tampering with payload or signature must fail verification
+      const tampered = `${tokenSepia.slice(0, -2)}AA`;
+      expect(decodeReadingCardShareToken(1342, tampered)).toBeNull();
+
+      // Dark theme without progress
+      const tokenDark = encodeReadingCardShareToken({
+        bookId: 84,
+        title: 'Frankenstein',
+        author: 'Mary Shelley',
+        theme: 'dark',
+        includeProgress: false,
+        progress: 80,
+      });
+      expect(decodeReadingCardShareToken(84, tokenDark)).toEqual({
+        theme: 'dark',
+        includeProgress: false,
+        progress: 80,
+        currentSection: 1,
+        totalSections: 1,
+      });
+
+      // Light theme roundtrip & buildReadingCardShareUrl
+      const shareUrl = buildReadingCardShareUrl('https://bookarium.vercel.app/', {
+        bookId: 2701,
+        title: 'Moby-Dick',
+        author: 'Herman Melville',
+        theme: 'light',
+        includeProgress: true,
+        progress: 33,
+        currentSection: 5,
+        totalSections: 135,
+      });
+      expect(shareUrl).toMatch(/^https:\/\/bookarium\.vercel\.app\/read\/2701\?s=[A-Za-z0-9_-]+$/);
+
+      // Invalid/malformed inputs return null safely
+      expect(decodeReadingCardShareToken(1342, null)).toBeNull();
+      expect(decodeReadingCardShareToken(1342, '')).toBeNull();
+      expect(decodeReadingCardShareToken(1342, 'invalid!token')).toBeNull();
+      expect(decodeReadingCardShareToken(0, tokenSepia)).toBeNull();
     });
   });
 });

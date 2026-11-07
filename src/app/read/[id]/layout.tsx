@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { SITE_CONFIG } from '@/config/site-config';
 import { resolveBookMetadata } from '@/lib/book-metadata';
+import { decodeReadingCardShareToken } from '@/lib/reading-card-export';
 import {
   serverMetadataCache,
   isClientSideNavigation,
@@ -44,6 +46,21 @@ export async function generateMetadata({
     bookData?.formats?.['image/jpeg'] ||
     `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
 
+  let validShareToken: string | null = null;
+  try {
+    const headersList = await headers();
+    const rawToken = headersList.get('x-bookarium-share-token');
+    if (rawToken && decodeReadingCardShareToken(bookId, rawToken)) {
+      validShareToken = rawToken;
+    }
+  } catch {
+    // Non-blocking fallback outside request context
+  }
+
+  const cardImageUrl = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=card${
+    validShareToken ? `&s=${validShareToken}` : ''
+  }`;
+
   return {
     title,
     description,
@@ -59,6 +76,12 @@ export async function generateMetadata({
       description,
       images: [
         {
+          url: cardImageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${meta.title} — Bookarium Reading Card`,
+        },
+        {
           url: coverUrl,
           width: 800,
           height: 1200,
@@ -70,7 +93,7 @@ export async function generateMetadata({
       card: 'summary_large_image',
       title: `${title} | Bookarium`,
       description,
-      images: [coverUrl],
+      images: [cardImageUrl],
     },
   };
 }

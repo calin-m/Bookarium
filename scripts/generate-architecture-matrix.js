@@ -1280,8 +1280,8 @@ function generateMarkdown() {
       cacheDesc = '`s-maxage=3600, stale-while-revalidate=86400` • Sliding-Window Rate Limit (30 req/min)';
       upstream = 'Supabase `public.books` -> `https://gutendex.com/books/`';
     } else if (r.path === '/api/books/content') {
-      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` (text) / `s-maxage=604800, stale-while-revalidate=2592000` (cover) • 20-Book In-Memory LRU (`bookContentLruCache`), In-Flight Mirror Coalescing (`inFlightMirrorFetches`), Anti-SSRF Allowlist, Binary Cover Streaming & Jurisdictional Gate';
-      upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN';
+      cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` (text & `type=card` OpenGraph PNG) / `s-maxage=604800, stale-while-revalidate=2592000` (`type=cover`) • 20-Book In-Memory LRU (`bookContentLruCache`), In-Flight Mirror Coalescing (`inFlightMirrorFetches`), Anti-SSRF Allowlist, Binary Cover Streaming, Stateless `next/og` Reading Card Unfurling (`decodeReadingCardShareToken`) & Jurisdictional Gate';
+      upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN & `next/og` `ImageResponse`';
     } else if (r.path === '/api/books/translations') {
       cacheDesc = '`s-maxage=86400, stale-while-revalidate=604800` • Sliding-Window Rate Limit & Jurisdictional Filter';
       upstream = 'Supabase `public.book_translations` & `public.books`';
@@ -1301,7 +1301,7 @@ function generateMarkdown() {
     'src/app/error.tsx': 'Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback.',
     'src/app/global-error.tsx': 'Root document-level React Error Boundary catching fatal top-level layout exceptions.',
     'src/app/not-found.tsx': 'Editorial 404 Not Found boundary with direct navigation back to the public domain catalog.',
-    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`).',
+    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`), verifying signed `x-bookarium-share-token` (`decodeReadingCardShareToken`) to bind `/api/books/content?id=<id>&type=card&s=<token>` (`1200×630`) as the primary social preview image.',
     'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with warm `currentBook` metadata reuse (`hasCompleteCurrentBook`), continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
     'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
     'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and Preferences.',
@@ -1474,7 +1474,7 @@ function generateMarkdown() {
     'preferences-sync':
       'Unified 13-key scholar preferences snapshot coordinator (`ScholarPreferencesSnapshot`, `FACTORY_PREFERENCES`), two-tier custom default preset & factory reset actions (`saveCurrentAsCustomDefaults`, `revertToCustomDefaults`, `resetAllPreferencesToFactoryDefaults`, `resetReaderAppearanceToDefaults`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud synchronization (`schedulePreferencesCloudSync`, `reconcileCloudPreferencesWithLocal`).',
     'reading-card-export':
-      'Client-side HTML5 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`) and zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`) across X, Reddit, WhatsApp, Telegram, Bluesky, Facebook, LinkedIn, and Email.',
+      'Client-side HTML5 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`), book-bound FNV-1a signed Base64URL share token codec (`encodeReadingCardShareToken`, `decodeReadingCardShareToken`, `buildReadingCardShareUrl`, `computeShareTokenSignature`), and zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`) across X, Reddit, WhatsApp, Telegram, Bluesky, Facebook, LinkedIn, and Email.',
   };
 
   for (const u of utilities) {
@@ -1757,7 +1757,7 @@ function generateMarkdown() {
     '',
     '| Module | Source File | Responsibilities & Security Directives |',
     '| :--- | :--- | :--- |',
-    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie on page routes (skipping `updateSession` and `Set-Cookie` on `/api/books*` to preserve Vercel Edge CDN `s-maxage` caching), handling development query override (`?country=XX`), and enforcing strict security headers. |',
+    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie on page routes (skipping `updateSession` and `Set-Cookie` on `/api/books*` to preserve Vercel Edge CDN `s-maxage` caching), forwarding validated `?s=<token>` share parameters via `x-bookarium-share-token` to Server Component layouts, handling development query override (`?country=XX`), and enforcing strict security headers. |',
     '',
     '---',
     '',

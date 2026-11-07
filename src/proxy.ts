@@ -11,6 +11,16 @@ export { GEO_COOKIE_NAME, DEV_OVERRIDE_COOKIE_NAME } from '@/lib/country-resolve
 
 export async function proxy(request: NextRequest) {
   const isPublicBookApi = request.nextUrl.pathname.startsWith('/api/books');
+  const rawShareToken = request.nextUrl.searchParams.get('s');
+  const validShareToken =
+    rawShareToken && /^[A-Za-z0-9_-]{8,64}$/.test(rawShareToken)
+      ? rawShareToken
+      : null;
+
+  if (validShareToken) {
+    request.headers.set('x-bookarium-share-token', validShareToken);
+  }
+
   let response: NextResponse;
 
   if (isPublicBookApi) {
@@ -52,6 +62,9 @@ export async function proxy(request: NextRequest) {
 
   // Stamp header for downstream Route Handlers & Server Components
   response.headers.set('x-bookarium-country', detectedCountry);
+  if (validShareToken) {
+    response.headers.set('x-bookarium-share-token', validShareToken);
+  }
 
   return response;
 }

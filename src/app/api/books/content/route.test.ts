@@ -5,6 +5,7 @@ import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache'
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { sampleBookText } from '@/mocks/handlers';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
+import { encodeReadingCardShareToken } from '@/lib/reading-card-export';
 
 describe('GET /api/books/content', () => {
   beforeEach(() => {
@@ -677,6 +678,38 @@ describe('GET /api/books/content', () => {
 
       expect(res.status).toBe(502);
       fetchSpy.mockRestore();
+    });
+  });
+
+  describe('Stateless OpenGraph Social Reading Card (type=card)', () => {
+    it('renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token', async () => {
+      const signedToken = encodeReadingCardShareToken({
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        author: 'Jane Austen',
+        theme: 'sepia',
+        includeProgress: true,
+        progress: 64,
+        currentSection: 12,
+        totalSections: 61,
+      });
+
+      const reqWithToken = new NextRequest(
+        `http://localhost:3000/api/books/content?id=1342&type=card&s=${signedToken}`
+      );
+      const resWithToken = await GET(reqWithToken);
+
+      expect(resWithToken.status).toBe(200);
+      expect(resWithToken.headers.get('Content-Type')).toContain('image/png');
+      expect(resWithToken.headers.get('Cache-Control')).toContain('s-maxage=86400');
+
+      const reqFallback = new NextRequest(
+        'http://localhost:3000/api/books/content?id=1342&type=card&s=tampered_token'
+      );
+      const resFallback = await GET(reqFallback);
+
+      expect(resFallback.status).toBe(200);
+      expect(resFallback.headers.get('Content-Type')).toContain('image/png');
     });
   });
 });

@@ -23,10 +23,10 @@ import {
   exportReadingCardBlob,
   buildReadingShareText,
   buildSocialShareUrls,
+  buildReadingCardShareUrl,
   type ReadingCardConfig,
   type SocialPlatformId,
 } from '@/lib/reading-card-export';
-import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 import { useCopyFeedback } from '@/hooks/useCopyFeedback';
 
@@ -99,8 +99,14 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
   const activeTheme = getReaderTheme(theme);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [cardThemeOverride, setCardThemeOverride] = useState<ReaderTheme | null>(null);
-  const cardTheme: ReaderTheme = cardThemeOverride ?? theme;
+  const [cardThemeOverride, setCardThemeOverride] = useState<{
+    baseTheme: ReaderTheme;
+    selectedTheme: ReaderTheme;
+  } | null>(null);
+  const cardTheme: ReaderTheme =
+    isOpen && cardThemeOverride && cardThemeOverride.baseTheme === theme
+      ? cardThemeOverride.selectedTheme
+      : theme;
   const [includeProgress, setIncludeProgress] = useState<boolean>(true);
   const { copiedKey, triggerCopied, copyWithFeedback } = useCopyFeedback<'link' | 'image'>(2000);
   const isLinkCopied = copiedKey === 'link';
@@ -112,21 +118,19 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
     onClose();
   }, [onClose]);
 
-  const shareUrl = useMemo(() => {
-    const origin =
-      typeof window !== 'undefined' && window.location?.origin
-        ? window.location.origin
-        : SITE_CONFIG.SITE_URL;
-    return `${origin}${ROUTES.READ(bookId)}`;
-  }, [bookId]);
+  const origin = useMemo(() => {
+    return typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : SITE_CONFIG.SITE_URL;
+  }, []);
 
   const siteHost = useMemo(() => {
     try {
-      return new URL(shareUrl).host;
+      return new URL(origin).host;
     } catch {
       return 'bookarium.vercel.app';
     }
-  }, [shareUrl]);
+  }, [origin]);
 
   const cardConfig: ReadingCardConfig = useMemo(
     () => ({
@@ -141,6 +145,11 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
       siteHost,
     }),
     [bookId, title, author, cardTheme, progress, currentChapterIndex, totalChapters, includeProgress, siteHost]
+  );
+
+  const shareUrl = useMemo(
+    () => buildReadingCardShareUrl(origin, cardConfig),
+    [origin, cardConfig]
   );
 
   const shareText = useMemo(() => buildReadingShareText(cardConfig), [cardConfig]);
@@ -287,7 +296,7 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
       closeAriaLabel="Close Share Dialog"
       backdropTestId="reader-share-backdrop"
       panelTestId="reader-share-modal"
-      className="z-[10005] sm:w-[27rem] sm:max-w-lg"
+      className="z-[10005] max-h-[92dvh] p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:p-4 sm:top-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:max-h-[calc(100dvh-5.25rem)] sm:w-[27rem] sm:max-w-lg"
       titleIcon={<Share2 className={`w-3.5 h-3.5 ${activeTheme.iconAccent}`} aria-hidden="true" />}
       title={
         <h3 className={`text-xs font-bold uppercase tracking-wider ${activeTheme.textMuted}`}>
@@ -295,9 +304,9 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
         </h3>
       }
     >
-      <div className="flex-1 overflow-y-auto overscroll-contain pr-0.5 space-y-3.5">
+      <div className="flex-1 overflow-y-auto overscroll-contain pr-0.5 space-y-2 sm:space-y-2.5">
         {/* Live HTML5 Canvas Reading Card Preview */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div
             className={`relative rounded-xl overflow-hidden border shadow-sm ${activeTheme.border} ${activeTheme.pill}`}
           >
@@ -311,10 +320,10 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
             />
           </div>
 
-          {/* Card Customization Row: Theme Style + Progress Toggle */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+          {/* Card Customization Row: Guaranteed Single-Line Theme Style + Progress Toggle */}
+          <div className="flex items-center justify-between gap-1.5 whitespace-nowrap pt-0.5">
             <div
-              className={`inline-flex items-center gap-1 p-0.5 rounded-lg border ${activeTheme.pill}`}
+              className={`inline-flex items-center gap-0.5 p-0.5 rounded-lg border shrink-0 ${activeTheme.pill}`}
               role="group"
               aria-label="Reading card theme"
             >
@@ -330,23 +339,23 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setCardThemeOverride(id)}
+                    onClick={() => setCardThemeOverride({ baseTheme: theme, selectedTheme: id })}
                     aria-pressed={isSelected}
                     data-testid={`share-card-theme-${id}`}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                    className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                       isSelected
                         ? `${activeTheme.activePill} shadow-2xs`
                         : `${activeTheme.textMuted} ${activeTheme.drawerHover}`
                     }`}
                   >
-                    <Icon className="w-3 h-3" aria-hidden="true" />
+                    <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />
                     <span>{label}</span>
                   </button>
                 );
               })}
             </div>
 
-            <label className="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none">
+            <label className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-medium cursor-pointer select-none shrink-0">
               <input
                 type="checkbox"
                 checked={includeProgress}
@@ -354,18 +363,18 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
                 data-testid="share-include-progress-toggle"
                 className="rounded border-stone-300 text-amber-700 focus:ring-amber-600 cursor-pointer"
               />
-              <span>Include Progress ({Math.round(progress)}%)</span>
+              <span>Progress ({Math.round(progress)}%)</span>
             </label>
           </div>
         </div>
 
         {/* Primary Card & Link Actions (PC, Tablet & Mobile) */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={handleCopyCardImage}
             data-testid="share-copy-image-btn"
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
               isImageCopied
                 ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                 : activeTheme.button
@@ -388,7 +397,7 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
             type="button"
             onClick={handleDownloadCard}
             data-testid="share-download-image-btn"
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${activeTheme.button}`}
+            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${activeTheme.button}`}
           >
             <Download className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             <span>Download PNG</span>
@@ -398,7 +407,7 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
             type="button"
             onClick={handleCopyLink}
             data-testid="share-copy-link-btn"
-            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
               canNativeShare ? '' : 'col-span-2'
             } ${
               isLinkCopied
@@ -424,7 +433,7 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
               type="button"
               onClick={handleNativeShare}
               data-testid="share-native-os-btn"
-              className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${activeTheme.activePill}`}
+              className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${activeTheme.activePill}`}
             >
               <Share2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>Device Share</span>
@@ -432,48 +441,43 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
           )}
         </div>
 
-        {/* Copyable Share Caption Preview */}
+        {/* Compact Single-Line Copyable Share Caption Bar */}
         <div
-          className={`px-3 py-2 rounded-lg border text-[11px] leading-relaxed ${activeTheme.pill}`}
+          className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] ${activeTheme.pill}`}
         >
-          <div className="flex items-center justify-between gap-2 mb-0.5">
-            <span className={`font-semibold uppercase tracking-wider text-[10px] ${activeTheme.textMuted}`}>
-              Share Caption
-            </span>
-            <button
-              type="button"
-              onClick={async () => {
-                if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-                  await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-                  setStatusMessage('Caption and link copied');
-                }
-              }}
-              data-testid="share-copy-caption-btn"
-              className={`inline-flex items-center gap-1 text-[10px] font-semibold hover:underline cursor-pointer ${activeTheme.iconAccent}`}
-            >
-              <Copy className="w-2.5 h-2.5" aria-hidden="true" />
-              <span>Copy Text</span>
-            </button>
-          </div>
-          <p className="line-clamp-2" data-testid="share-caption-preview">
+          <p className="truncate min-w-0 flex-1" data-testid="share-caption-preview" title={shareText}>
             {shareText}
           </p>
+          <button
+            type="button"
+            onClick={async () => {
+              if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+                setStatusMessage('Caption and link copied');
+              }
+            }}
+            data-testid="share-copy-caption-btn"
+            className={`inline-flex items-center gap-1 text-[10px] font-semibold hover:underline cursor-pointer shrink-0 ${activeTheme.iconAccent}`}
+          >
+            <Copy className="w-2.5 h-2.5" aria-hidden="true" />
+            <span>Copy Text</span>
+          </button>
         </div>
 
-        {/* Social Platform Direct Share Intents (Works on PC, Tablet & Mobile) */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
+        {/* Social Platform Direct Share Intents: Unified 2x4 Grid Across Phone, Tablet & PC */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2 whitespace-nowrap">
             <span
               className={`text-[10px] font-bold uppercase tracking-wider ${activeTheme.textMuted}`}
             >
-              Share Directly to Social Media
+              Share to Social Media
             </span>
-            <span className={`text-[10px] ${activeTheme.textMuted}`}>
+            <span className={`hidden sm:inline text-[10px] ${activeTheme.textMuted}`}>
               Tip: Copy Card Image to paste into posts
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {socialTargets.map((target) => (
               <a
                 key={target.id}
@@ -482,17 +486,18 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
                 rel="noopener noreferrer"
                 data-testid={`share-platform-${target.id}`}
                 title={target.description}
-                className={`flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-colors ${activeTheme.button}`}
+                className={`flex items-center justify-center sm:justify-between gap-1 sm:gap-1.5 px-1.5 py-1.5 sm:px-2.5 sm:py-2 rounded-lg border text-[11px] sm:text-xs font-medium transition-colors ${activeTheme.button}`}
               >
-                <span className="inline-flex items-center gap-1.5 min-w-0">
+                <span className="inline-flex items-center gap-1 sm:gap-1.5 min-w-0">
                   <SocialPlatformIcon
                     platform={target.id}
                     className={`w-3.5 h-3.5 shrink-0 ${activeTheme.iconAccent}`}
                   />
-                  <span className="truncate">{target.label}</span>
+                  <span className="truncate sm:hidden">{target.shortLabel}</span>
+                  <span className="truncate hidden sm:inline">{target.label}</span>
                 </span>
                 <ExternalLink
-                  className={`w-3 h-3 shrink-0 opacity-60 ${activeTheme.textMuted}`}
+                  className={`hidden sm:inline-block w-3 h-3 shrink-0 opacity-60 ${activeTheme.textMuted}`}
                   aria-hidden="true"
                 />
               </a>

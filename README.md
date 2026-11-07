@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202276%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.33%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202281%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2276 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2281 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,8 +110,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.9.6)
 
-- **Client-Side HTML5 Canvas Reading Card Export Engine (`ADR-080`)**: Built a zero-key 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`) rendering `1200 × 630` archival bookplate cards in `< 15ms` across `Light`, `Sepia`, and `Dark` palettes with double-line ornamental borders, `GUTENBERG #<bookId>` badge, multi-line serif title/author wrapping, and optional live reading progress (`<progress>% COMPLETED • SECTION <X> OF <Y>`), plus a zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`).
-- **Universal Social Share Modal for PC, Tablet & Mobile (`ADR-080`)**: Wired `ReaderShareModal` (`ReaderDrawerShell`, `z-[10005]`) to the desktop (`reader-share-button`) and mobile (`mobile-reader-share-btn`) share buttons in `ReaderHeader.tsx`, providing live interactive `<canvas>` preview, `Light`/`Sepia`/`Dark` card theme selection, an `Include Progress` toggle, `Copy Card Image` (`ClipboardItem` `image/png` for direct `Ctrl+V` pasting into Discord, X, Reddit, WhatsApp Web, or Slack), `Download PNG`, `Copy Share Link`, `Device Share` (`navigator.share` with PNG file attachment), and 8 zero-key social platform links (`X / Twitter`, `Reddit`, `WhatsApp`, `Telegram`, `Bluesky`, `Facebook`, `LinkedIn`, `Email`) with inline SVG brand icons and Lucide `Mail`.
+- **Client-Side HTML5 Canvas Reading Card Engine & Tamper-Proof Signed Share Tokens (`ADR-080`)**: Built a zero-key 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`) rendering `1200 × 630` archival bookplate cards in `< 15ms` across `Light`, `Sepia`, and `Dark` palettes with ornamental borders, `GUTENBERG #<bookId>` badge, serif title/author wrapping, and optional live reading progress (`<progress>% COMPLETED • SECTION <X> OF <Y>`), plus a book-bound FNV-1a signed Base64URL token codec (`encodeReadingCardShareToken`, `decodeReadingCardShareToken`, `buildReadingCardShareUrl`) and 8-platform social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`).
+- **Zero-Scroll Multi-Resolution Share Modal & Active Theme Initialization (`ADR-080`)**: Wired `ReaderShareModal` (`ReaderDrawerShell`, `z-[10005]`) to desktop (`reader-share-button`) and mobile (`mobile-reader-share-btn`) share buttons in `ReaderHeader.tsx`, automatically syncing the card theme to the active reader theme on open and fitting phone (`360×667`–`412×915`), tablet (`768×1024`), and laptop (`1366×768`+) viewports with zero internal scroll via a `2 × 4` `grid-cols-4` social grid, single-line Theme + Progress row, single-line Share Caption bar, `Copy Card Image` (`ClipboardItem` `image/png`), `Download PNG`, `Copy Share Link`, and `Device Share` (`navigator.share`).
+- **Stateless On-the-Fly OpenGraph Social Card Unfurling (`ADR-080`)**: Forwarded valid `?s=<token>` share tokens via `x-bookarium-share-token` in `src/proxy.ts` to `generateMetadata` in `src/app/read/[id]/layout.tsx` and rendered `1200 × 630` PNG reading cards on the fly in `GET /api/books/content?id=<bookId>&type=card&s=<token>` using `ImageResponse` (`next/og`, `s-maxage=86400`), so WhatsApp, Reddit, X, Facebook, LinkedIn, Telegram, Discord, and Bluesky unfurl the exact themed reading card thumbnail with zero Vercel or Supabase storage.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

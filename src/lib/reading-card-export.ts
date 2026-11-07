@@ -26,8 +26,17 @@ export type SocialPlatformId =
 export interface SocialShareTarget {
   id: SocialPlatformId;
   label: string;
+  shortLabel: string;
   href: string;
   description: string;
+}
+
+export interface DecodedReadingCardToken {
+  theme: ReaderTheme;
+  includeProgress: boolean;
+  progress: number;
+  currentSection: number;
+  totalSections: number;
 }
 
 export interface ReadingCardPalette {
@@ -421,50 +430,174 @@ export function buildSocialShareUrls(shareOptions: {
     {
       id: 'x',
       label: 'X / Twitter',
+      shortLabel: 'X',
       href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
       description: 'Post on X',
     },
     {
       id: 'reddit',
       label: 'Reddit',
+      shortLabel: 'Reddit',
       href: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedText}`,
       description: 'Share to a community',
     },
     {
       id: 'whatsapp',
       label: 'WhatsApp',
+      shortLabel: 'WhatsApp',
       href: `https://api.whatsapp.com/send?text=${encodedCombined}`,
       description: 'Send to chat or group',
     },
     {
       id: 'telegram',
       label: 'Telegram',
+      shortLabel: 'Telegram',
       href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
       description: 'Share via Telegram',
     },
     {
       id: 'bluesky',
       label: 'Bluesky',
+      shortLabel: 'Bluesky',
       href: `https://bsky.app/intent/compose?text=${encodedCombined}`,
       description: 'Post on Bluesky',
     },
     {
       id: 'facebook',
       label: 'Facebook',
+      shortLabel: 'Facebook',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
       description: 'Share link card',
     },
     {
       id: 'linkedin',
       label: 'LinkedIn',
+      shortLabel: 'LinkedIn',
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
       description: 'Share on feed',
     },
     {
       id: 'email',
       label: 'Email',
+      shortLabel: 'Email',
       href: `mailto:?subject=${encodedTitle}&body=${encodedCombined}`,
       description: 'Send via email client',
     },
   ];
 }
+
+const SHARE_TOKEN_SALT = 'bookarium-card-sig-v1';
+
+/**
+ * Computes a deterministic 32-bit FNV-1a integrity signature bound to bookId and payload.
+ */
+export function computeShareTokenSignature(bookId: string | number, payload: string): string {
+  const input = `${SHARE_TOKEN_SALT}:${String(bookId)}:${payload}`;
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function toBase64Url(input: string): string {
+  const base64 =
+    typeof Buffer !== 'undefined'
+      ? Buffer.from(input, 'utf-8').toString('base64')
+      : btoa(input);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function fromBase64Url(encoded: string): string | null {
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(encoded)) return null;
+  try {
+    const padded = encoded
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(encoded.length / 4) * 4, '=');
+    return typeof Buffer !== 'undefined'
+      ? Buffer.from(padded, 'base64').toString('utf-8')
+      : atob(padded);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Encodes reading card state into a compact, tamper-proof Base64URL token (`?s=<token>`).
+ */
+export function encodeReadingCardShareToken(config: ReadingCardConfig): string {
+  const themeCode = config.theme === 'sepia' ? 's' : config.theme === 'dark' ? 'd' : 'l';
+  const incCode = config.includeProgress !== false ? '1' : '0';
+  const progress = Math.max(0, Math.min(100, Math.round(config.progress ?? 0)));
+  const currentSec = Math.max(1, Math.min(9999, Math.round(config.currentSection ?? 1)));
+  const totalSec = Math.max(currentSec, Math.min(9999, Math.round(config.totalSections ?? 1)));
+
+  const payload = `${themeCode}.${incCode}.${progress}.${currentSec}.${totalSec}`;
+  const sig = computeShareTokenSignature(config.bookId, payload);
+  return toBase64Url(`${payload}.${sig}`);
+}
+
+/**
+ * Verifies and decodes a signed reading card share token (`?s=<token>`).
+ * Returns null if tampered, malformed, or replayed across a different bookId.
+ */
+export function decodeReadingCardShareToken(
+  bookId: string | number,
+  token: string | null | undefined
+): DecodedReadingCardToken | null {
+  if (!token || typeof token !== 'string') return null;
+  const decoded = fromBase64Url(token.trim());
+  if (!decoded) return null;
+
+  const parts = decoded.split('.');
+  if (parts.length !== 6) return null;
+
+  const [themeCode, incCode, progStr, secStr, totStr, sig] = parts;
+  const payload = `${themeCode}.${incCode}.${progStr}.${secStr}.${totStr}`;
+  const expectedSig = computeShareTokenSignature(bookId, payload);
+  if (sig !== expectedSig) return null;
+
+  if (themeCode !== 'l' && themeCode !== 's' && themeCode !== 'd') return null;
+  if (incCode !== '0' && incCode !== '1') return null;
+
+  const progress = Number.parseInt(progStr, 10);
+  const currentSection = Number.parseInt(secStr, 10);
+  const totalSections = Number.parseInt(totStr, 10);
+
+  if (
+    !Number.isFinite(progress) ||
+    progress < 0 ||
+    progress > 100 ||
+    !Number.isFinite(currentSection) ||
+    currentSection < 1 ||
+    currentSection > 9999 ||
+    !Number.isFinite(totalSections) ||
+    totalSections < currentSection ||
+    totalSections > 9999
+  ) {
+    return null;
+  }
+
+  const theme: ReaderTheme =
+    themeCode === 's' ? 'sepia' : themeCode === 'd' ? 'dark' : 'light';
+
+  return {
+    theme,
+    includeProgress: incCode === '1',
+    progress,
+    currentSection,
+    totalSections,
+  };
+}
+
+/**
+ * Builds the canonical signed share URL (`/read/<id>?s=<token>`) for social unfurling.
+ */
+export function buildReadingCardShareUrl(origin: string, config: ReadingCardConfig): string {
+  const cleanOrigin = origin.replace(/\/+$/, '');
+  const token = encodeReadingCardShareToken(config);
+  return `${cleanOrigin}/read/${String(config.bookId)}?s=${token}`;
+}
+

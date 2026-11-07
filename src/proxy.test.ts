@@ -118,5 +118,15 @@ describe('Root Proxy (Next.js 16)', () => {
     expect(res.headers.get('set-cookie')).toBeNull();
     expect(res.headers.get('x-bookarium-country')).toBe('DE');
   });
+
+  it('forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens', async () => {
+    const validReq = new NextRequest('https://bookarium.vercel.app/read/1342?s=MTpkOjE6NDg6MTI6NjF_f791a453');
+    const validRes = await proxy(validReq);
+    expect(validRes.headers.get('x-bookarium-share-token')).toBe('MTpkOjE6NDg6MTI6NjF_f791a453');
+
+    const invalidReq = new NextRequest('https://bookarium.vercel.app/read/1342?s=bad!');
+    const invalidRes = await proxy(invalidReq);
+    expect(invalidRes.headers.get('x-bookarium-share-token')).toBeNull();
+  });
 });
 

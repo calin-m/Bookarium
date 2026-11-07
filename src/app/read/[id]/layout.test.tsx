@@ -7,6 +7,7 @@ import {
   clearServerMetadataCache,
   isClientSideNavigation,
 } from './reader-layout-utils';
+import { encodeReadingCardShareToken } from '@/lib/reading-card-export';
 
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),
@@ -32,6 +33,37 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(og?.type).toBe('book');
     expect(tw?.card).toBe('summary_large_image');
     expect(meta.alternates?.canonical).toBe('/read/84');
+    const ogImages = og?.images as Array<{ url: string }> | undefined;
+    expect(ogImages?.[0]?.url).toContain('/api/books/content?id=84&type=card');
+  });
+
+  it('attaches verified ?s= share token to OpenGraph and Twitter card image URLs when x-bookarium-share-token is valid', async () => {
+    const signedToken = encodeReadingCardShareToken({
+      bookId: 84,
+      title: 'Frankenstein',
+      author: 'Mary Wollstonecraft Shelley',
+      theme: 'sepia',
+      includeProgress: true,
+      progress: 52,
+      currentSection: 8,
+      totalSections: 24,
+    });
+
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({ 'x-bookarium-share-token': signedToken })
+    );
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ id: '84' }),
+    });
+
+    const og = meta.openGraph as Record<string, unknown> | undefined;
+    const tw = meta.twitter as Record<string, unknown> | undefined;
+    const ogImages = og?.images as Array<{ url: string }> | undefined;
+    const twImages = tw?.images as string[] | undefined;
+
+    expect(ogImages?.[0]?.url).toContain(`/api/books/content?id=84&type=card&s=${signedToken}`);
+    expect(twImages?.[0]).toContain(`/api/books/content?id=84&type=card&s=${signedToken}`);
   });
 
   it('provides safe fallback metadata for invalid book ID', async () => {

@@ -1,9 +1,17 @@
+import React from 'react';
 import { NextRequest, NextResponse } from 'next/server';
+import { ImageResponse } from 'next/og';
 import { SITE_CONFIG } from '@/config/site-config';
 import { bookContentRateLimiter } from '@/lib/rate-limiter';
 import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
 import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { resolveClientCountry } from '@/lib/country-resolver';
+import { formatAuthorName } from '@/lib/utils';
+import {
+  CARD_DIMENSIONS,
+  CARD_PALETTES,
+  decodeReadingCardShareToken,
+} from '@/lib/reading-card-export';
 
 import { isSafeUpstreamUrl } from './url-validator';
 import {
@@ -111,6 +119,263 @@ export async function GET(request: NextRequest) {
         }
       );
     }
+  }
+
+  // ==========================================================================
+  // Stateless On-the-Fly OpenGraph Social Reading Card (1200x630 PNG)
+  // ==========================================================================
+  if (typeParam === 'card') {
+    const metadata = await resolveBookMetadata(bookId);
+    const rawTitle = metadata?.title || `Project Gutenberg Volume #${bookId}`;
+    const firstAuthor = metadata?.authors?.[0];
+    const rawAuthor = firstAuthor
+      ? typeof firstAuthor === 'string'
+        ? firstAuthor
+        : firstAuthor.name
+      : 'Classic Literature';
+    const displayAuthor = formatAuthorName(rawAuthor) || 'Classic Literature';
+
+    const sParam = searchParams.get('s');
+    const decoded = decodeReadingCardShareToken(bookId, sParam) ?? {
+      theme: 'light' as const,
+      includeProgress: false,
+      progress: 0,
+      currentSection: 1,
+      totalSections: 1,
+    };
+    const palette = CARD_PALETTES[decoded.theme];
+
+    const cardElement = React.createElement(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          backgroundColor: palette.cardSurface,
+          padding: '48px 56px',
+          border: `3px solid ${palette.outerBorder}`,
+          boxSizing: 'border-box',
+          fontFamily: 'Georgia, serif',
+        },
+      },
+      React.createElement(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+          },
+        },
+        React.createElement(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              padding: '8px 20px',
+              borderRadius: '999px',
+              backgroundColor: palette.accentSoft,
+              border: `1.5px solid ${palette.innerBorder}`,
+              color: palette.accent,
+              fontSize: '18px',
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              fontFamily: 'sans-serif',
+            },
+          },
+          decoded.includeProgress ? 'CURRENTLY READING' : 'FEATURED CLASSIC'
+        ),
+        React.createElement(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              color: palette.mutedInk,
+              fontSize: '20px',
+              fontWeight: 600,
+              fontFamily: 'sans-serif',
+            },
+          },
+          `GUTENBERG #${bookId}`
+        )
+      ),
+      React.createElement(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            marginTop: '16px',
+            marginBottom: '16px',
+          },
+        },
+        React.createElement(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              color: palette.primaryInk,
+              fontSize: '54px',
+              fontWeight: 700,
+              lineHeight: 1.18,
+              marginBottom: '16px',
+            },
+          },
+          rawTitle.length > 90 ? `${rawTitle.slice(0, 87)}...` : rawTitle
+        ),
+        React.createElement(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              color: palette.secondaryInk,
+              fontSize: '30px',
+              fontStyle: 'italic',
+            },
+          },
+          `by ${displayAuthor}`
+        )
+      ),
+      React.createElement(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+          },
+        },
+        decoded.includeProgress
+          ? React.createElement(
+              'div',
+              {
+                style: {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  width: '100%',
+                  marginBottom: '22px',
+                },
+              },
+              React.createElement(
+                'div',
+                {
+                  style: {
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    marginBottom: '10px',
+                    fontFamily: 'sans-serif',
+                    fontSize: '20px',
+                    fontWeight: 600,
+                    color: palette.mutedInk,
+                  },
+                },
+                React.createElement(
+                  'span',
+                  null,
+                  `Section ${decoded.currentSection} of ${decoded.totalSections}`
+                ),
+                React.createElement(
+                  'span',
+                  { style: { color: palette.accent, fontWeight: 700 } },
+                  `${decoded.progress}% Completed`
+                )
+              ),
+              React.createElement(
+                'div',
+                {
+                  style: {
+                    display: 'flex',
+                    width: '100%',
+                    height: '14px',
+                    borderRadius: '999px',
+                    backgroundColor: palette.trackBg,
+                    overflow: 'hidden',
+                  },
+                },
+                React.createElement('div', {
+                  style: {
+                    display: 'flex',
+                    width: `${Math.max(2, decoded.progress)}%`,
+                    height: '100%',
+                    borderRadius: '999px',
+                    backgroundColor: palette.accent,
+                  },
+                })
+              )
+            )
+          : null,
+        React.createElement(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              width: '100%',
+              paddingTop: '18px',
+              borderTop: `1.5px solid ${palette.innerBorder}`,
+              fontFamily: 'sans-serif',
+            },
+          },
+          React.createElement(
+            'div',
+            {
+              style: {
+                display: 'flex',
+                flexDirection: 'column',
+              },
+            },
+            React.createElement(
+              'span',
+              {
+                style: {
+                  fontSize: '24px',
+                  fontWeight: 700,
+                  color: palette.primaryInk,
+                  letterSpacing: '0.08em',
+                },
+              },
+              'BOOKARIUM'
+            ),
+            React.createElement(
+              'span',
+              {
+                style: {
+                  fontSize: '16px',
+                  color: palette.mutedInk,
+                },
+              },
+              'Unabridged Public Domain Literature — Free & Legal Forever'
+            )
+          ),
+          React.createElement(
+            'span',
+            {
+              style: {
+                fontSize: '18px',
+                fontWeight: 600,
+                color: palette.accent,
+              },
+            },
+            `bookarium.vercel.app/read/${bookId}`
+          )
+        )
+      )
+    );
+
+    return new ImageResponse(cardElement, {
+      width: CARD_DIMENSIONS.width,
+      height: CARD_DIMENSIONS.height,
+      headers: {
+        'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
+        Vary: 'x-vercel-ip-country, Accept-Encoding',
+      },
+    });
   }
 
   // ==========================================================================

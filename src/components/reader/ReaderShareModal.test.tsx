@@ -99,7 +99,9 @@ describe('ReaderShareModal Component', () => {
 
     fireEvent.click(screen.getByTestId('share-copy-link-btn'));
     await waitFor(() => {
-      expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+      expect(writeTextMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/read\/1342\?s=[A-Za-z0-9_-]+$/)
+      );
     });
     expect(screen.getByText('Link Copied!')).toBeInTheDocument();
 
@@ -109,6 +111,14 @@ describe('ReaderShareModal Component', () => {
         expect.stringContaining('Currently reading “Pride and Prejudice” by Jane Austen (48% completed)')
       );
     });
+  });
+
+  it('initializes the reading card theme to match the active reader theme on open', () => {
+    const { rerender } = render(<ReaderShareModal {...defaultProps} theme="dark" />);
+    expect(screen.getByTestId('share-card-theme-dark')).toHaveAttribute('aria-pressed', 'true');
+
+    rerender(<ReaderShareModal {...defaultProps} theme="light" />);
+    expect(screen.getByTestId('share-card-theme-light')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('copies the rendered PNG card image to the clipboard when ClipboardItem is supported', async () => {
@@ -223,7 +233,7 @@ describe('ReaderShareModal Component', () => {
       expect(shareMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           title: 'Pride and Prejudice — Jane Austen',
-          url: expect.stringMatching(/\/read\/1342$/),
+          url: expect.stringMatching(/\/read\/1342\?s=[A-Za-z0-9_-]+$/),
         })
       );
     });

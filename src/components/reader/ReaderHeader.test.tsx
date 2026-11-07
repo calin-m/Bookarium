@@ -373,7 +373,9 @@ describe('ReaderHeader', () => {
     expect(screen.getByTestId('reading-card-canvas')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('share-copy-link-btn'));
-    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(writeTextMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/read\/1342\?s=[A-Za-z0-9_-]+$/)
+    );
     expect(await screen.findByText('Link Copied!')).toBeInTheDocument();
   });
 

@@ -423,6 +423,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
       {/* Social Share & Reading Card Export Modal */}
       <ReaderShareModal
+        key={isShareModalOpen ? `share-open-${theme}` : 'share-closed'}
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         bookId={bookId}

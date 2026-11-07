@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 07 Nov 2026 16:43:55 GMT  
+**Last Generated**: Sat, 07 Nov 2026 17:41:13 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 210 passed  
-**Total Verified Tests**: 2276 passed  
+**Total Verified Tests**: 2281 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2276 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2281 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.33%** (13080/13438) — *Target: $\ge$ 95%*
-- **Statements**: **96%** (14146/14734) — *Target: $\ge$ 95%*
-- **Functions**: **94.87%** (2943/3102) — *Target: $\ge$ 92%*
-- **Branches**: **88.36%** (12711/14384) — *Target: $\ge$ 85%*
+- **Lines**: **97.34%** (13147/13506) — *Target: $\ge$ 95%*
+- **Statements**: **96.03%** (14223/14810) — *Target: $\ge$ 95%*
+- **Functions**: **94.78%** (2947/3109) — *Target: $\ge$ 92%*
+- **Branches**: **88.28%** (12777/14473) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2276 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2281 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 286 Tests)
+### 🚀 App Routes & Pages (27 Suites · 288 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -112,7 +112,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (31 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (32 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -145,6 +145,7 @@
 - ✔ `safely follows trusted redirect hops when fetching cover image`
 - ✔ `returns 502 when all mirrors fail or return error`
 - ✔ `skips oversized cover responses exceeding 2MB threshold`
+- ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
 
 </details>
 
@@ -372,9 +373,10 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `generates rich metadata for a curated hero classic (Frankenstein #84)`
+- ✔ `attaches verified ?s= share token to OpenGraph and Twitter card image URLs when x-bookarium-share-token is valid`
 - ✔ `provides safe fallback metadata for invalid book ID`
 - ✔ `bypasses outbound network calls on client-side router navigation (rsc: 1 fast-path)`
 - ✔ `detects client-side navigation correctly from various Next.js headers`
@@ -1160,7 +1162,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (19 Suites · 182 Tests)
+### 📖 In-Browser Focus Reader (19 Suites · 183 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1340,10 +1342,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderShareModal.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/reader/ReaderShareModal.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders the live canvas reading card preview, customization controls, and all 8 social share links`
 - ✔ `copies the share link and share caption to the clipboard`
+- ✔ `initializes the reading card theme to match the active reader theme on open`
 - ✔ `copies the rendered PNG card image to the clipboard when ClipboardItem is supported`
 - ✔ `handles unsupported ClipboardItem gracefully when copying card image`
 - ✔ `downloads the reading card as a PNG file`
@@ -1765,7 +1768,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 543 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 544 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2309,7 +2312,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reading-card-export.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/reading-card-export.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `returns empty array for empty or whitespace-only text`
 - ✔ `wraps words across multiple lines within maxWidth and truncates with ellipsis when exceeding maxLines`
@@ -2320,6 +2323,7 @@
 - ✔ `resolves with null when canvas.toBlob is missing or throws`
 - ✔ `formats share text with or without reading progress`
 - ✔ `builds all 8 zero-key social platform Web Intent URLs`
+- ✔ `roundtrips light, sepia, and dark themes with or without progress and rejects tampered or cross-book tokens`
 
 </details>
 
@@ -3030,7 +3034,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 249 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 250 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3564,7 +3568,7 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
@@ -3575,6 +3579,7 @@
 - ✔ `infers country from system timezone in development when no override or edge header exists`
 - ✔ `defaults to US when no geo signals exist in production`
 - ✔ `skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching`
+- ✔ `forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens`
 
 </details>
 
