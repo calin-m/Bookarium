@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 07 Nov 2026 13:00:07 GMT  
+**Last Generated**: Sat, 07 Nov 2026 15:25:29 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 208 passed  
-**Total Verified Tests**: 2260 passed  
+**Total Verified Tests**: 2261 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **208/208 test suites passed** (2260 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **208/208 test suites passed** (2261 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.37%** (12579/12918) — *Target: $\ge$ 95%*
-- **Statements**: **96.08%** (13635/14190) — *Target: $\ge$ 95%*
-- **Functions**: **94.74%** (2864/3023) — *Target: $\ge$ 92%*
-- **Branches**: **88.4%** (12470/14106) — *Target: $\ge$ 85%*
+- **Lines**: **97.35%** (12797/13145) — *Target: $\ge$ 95%*
+- **Statements**: **96.06%** (13862/14430) — *Target: $\ge$ 95%*
+- **Functions**: **94.72%** (2909/3071) — *Target: $\ge$ 92%*
+- **Branches**: **88.34%** (12594/14255) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (208 Suites / 2260 Tests)
+## 🧪 Comprehensive Test Suite Catalog (208 Suites / 2261 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 286 Tests)
 
@@ -1160,7 +1160,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (18 Suites · 175 Tests)
+### 📖 In-Browser Focus Reader (18 Suites · 176 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1229,7 +1229,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/reader/ReaderDrawerShell.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `renders children when open`
 - ✔ `does not render when isOpen is false`
@@ -1242,6 +1242,7 @@
 - ✔ `traps focus with Tab and Shift+Tab within the drawer panel`
 - ✔ `restores focus to previous element when unmounted`
 - ✔ `supports ReactNode titles, sepia/dark themes, backdrop touchMove lock, auto-focus timer, and mobile viewport motion branches`
+- ✔ `supports mobile pull-down-to-dismiss gesture on header and grab handle while springing back on short pulls`
 
 </details>
 
@@ -1265,7 +1266,7 @@
 - ✔ `handles page jump input changes`
 - ✔ `disables previous and next buttons when boundary disabled flags are set`
 - ✔ `renders continuous flow indicator and chapter navigation when in scroll mode`
-- ✔ `renders mobile quick tools and dispatches drawer and theme actions`
+- ✔ `renders contoured TOC button, [Search + Settings] mobile bar controls, and vertical draggable floating toolbar with modal auto-suspend/restore and idle translucency`
 - ✔ `renders Prev and Next buttons with visible labels and accessible touch target classes`
 - ✔ `slides footer down out of view as a fixed overlay when isHidden is true`
 

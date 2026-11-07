@@ -592,7 +592,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
         onMouseUp={handleSelection}
-        className={`mx-auto pl-12 pr-5 sm:px-14 md:px-16 pt-[calc(7.5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(9rem+env(safe-area-inset-top,0px))] ${
+        className={`mx-auto px-5 sm:px-14 md:px-16 pt-[calc(7.5rem+env(safe-area-inset-top,0px))] sm:pt-[calc(9rem+env(safe-area-inset-top,0px))] ${
           isSpeechOpen || highlightedSentence
             ? 'pb-[calc(11.5rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(12.5rem+env(safe-area-inset-bottom,0px))]'
             : 'pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]'

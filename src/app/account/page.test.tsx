@@ -40,8 +40,9 @@ describe('AccountPage', () => {
     useFellowshipStore.setState({ fetchFellowshipData: vi.fn().mockResolvedValue(undefined) });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cancelPendingPreferencesCloudSync();
+    await act(async () => {});
   });
 
   it('renders guest prompt when unauthenticated and handles scroll to top', () => {

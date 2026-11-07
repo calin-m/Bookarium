@@ -813,6 +813,8 @@ function BookReaderContent() {
         isSpeechOpen={isSpeechOpen}
         isAnnotationsOpen={isAnnotationsOpen}
         isTranslationsOpen={isTranslationsOpen}
+        isSelectionPopoverOpen={selectionPopover.isOpen}
+        annotationsCount={bookAnnotations.length + bookFellowAnnotations.length}
         isHidden={areBarsHidden}
       />
 

@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-208%20Suites%20%7C%202260%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.37%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-208%20Suites%20%7C%202261%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.35%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2260 tests across 208 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2261 tests across 208 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,12 +108,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.4)
+## 🛠️ Latest Improvements (v2.9.5)
 
-- **GitHub Collaboration Template Modernization (`ADR-080`)**: Streamlined the GitHub issue chooser by removing redundant `contact_links` from `config.yml`, and modernized `bug_report.yml` (severity dropdown, PC/Tablet/Mobile device categories, screen aspect ratio, theme mode, network/cache mode, and visual attachments), `feature_request.yml` (all v2 architectural layers, target device form factor, and mockups), `good_first_issue.yml` (technology area, estimated effort, and 95% V8 coverage floor), and `pull_request_template.md` (`Closes #` issue linking).
-- **8-File Version Sync, Zero-Bloat Script Pruning & Pass 5 Anti-Drift Gate (`ADR-080`)**: Pruned the redundant 0-byte `scripts/new-adr.js` stub, extended `syncReleaseVersionFiles()` in `scripts/generate-changelog.js` to automatically propagate `RELEASES[0].version` to `bug_report.yml`, and expanded `Pass 5` in `scripts/verify-build.js` to enforce non-empty `scripts/*.js` files, valid `npm run` commands, `src/` file path existence on disk, version placeholder parity, and the 95% coverage floor across all `.github` collaboration templates.
-- **Sink-Scoped Request Taint Analysis & Categorized Sanitizer Sets (`ADR-080`)**: Upgraded `bookarium-security.js` with categorized sanitizer sets (`UNIVERSAL_SANITIZER_FUNCTIONS`, `FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) and sink-scoped taint tracking to catch cross-sink misuse (e.g. routing query parsers to fetch or redirects) while preserving recursive `new URL(...)` redirect propagation across mirror hops with full 1:1 test coverage.
-- **Fellowship Participant Column Guard, Ceiling Constraints & CI Deduplication (`ADR-080`)**: Appended trigger `public.enforce_fellowship_update_guard()` on `public.reader_circles` and `public.symposium_sessions` locking sensitive columns against non-leader edits, and created ceiling `CHECK` constraints on user inputs (`chk_profiles_bio_length`, `chk_user_annotations_note_length`, `chk_user_annotations_selected_text_length`, `chk_user_reading_habits_active_dates_bound`). Fortified `scripts/verify-build.js` (`Pass 0.75` Pillar 6) with automated trigger, constraint, and Rule 9 local store teardown checks, and deduplicated `.github/workflows/ci.yml` by running `npm run verify:build` directly.
+- **Symmetrical Mobile Reader Layout, Page-Turn Animation Restoration & Translucent In-Page Line Guide (`ADR-080`)**: Balanced mobile reader article padding (`px-5 sm:px-14 md:px-16`) to center title, author, and body text, and scoped mobile nested animation suppression in `globals.css` to `.animate-view-slide-*` containers to restore the `180ms` `.animate-page-turn` transition on phones. Streamlined the line bookmark into an icon-only handle (`mr-0.5 sm:mr-2`) with translucent resting states (`opacity-35` active, `opacity-25 sm:opacity-0` at Row 0 for touch discoverability) that elevates to `opacity-100` on touch, hover, or drag.
+- **Contoured Mobile TOC Button, Inertial Floating Tools Pod & Bottom Sheet Pull-Down-to-Dismiss (`ADR-080`)**: Styled the mobile chapter trigger as a contoured button, arranged `[Search] [Settings]` on the right, and rendered the vertical toolbar via `createPortal` at `z-[10002]` with live Expanded (`252px`) / Minimized (`152px`) Read Aloud clearance, a ref-based `3.0s` idle opacity timer (`opacity-35`), whole-pod `6px` drag discrimination, velocity-based inertial flick projection, swipe-right dismissal, `isSelectionPopoverOpen` auto-suspend, and pull-down-to-dismiss (`> 70px`) across all 5 Reader Bottom Sheets in `ReaderDrawerShell.tsx`.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

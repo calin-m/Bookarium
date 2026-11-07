@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.5',
+    date: '2026-11-07',
+    title: 'Symmetrical Mobile Reader Layout, Translucent Line Guide, Inertial Floating Tools Pod & Bottom Sheet Pull-to-Dismiss',
+    sections: {
+      Added: [
+        'Symmetrical Mobile Reader Layout, Page-Turn Animation Restoration & Translucent In-Page Line Guide (`src/components/reader/ReaderSurface.tsx`, `src/components/reader/ReaderRowBookmark.tsx`, `src/app/globals.css`, `src/components/reader/ReaderSurface.test.tsx`, `src/components/reader/ReaderRowBookmark.test.tsx`, `docs/DECISIONS.md`, `ADR-080`): Balanced mobile reader article padding (`px-5 sm:px-14 md:px-16`) to center title, author, and body text, and scoped mobile nested animation suppression in `globals.css` to `.animate-view-slide-*` containers to restore the `180ms` `.animate-page-turn` transition on phones. Streamlined the line bookmark into an icon-only handle (`mr-0.5 sm:mr-2`) with translucent resting states (`opacity-35` active, `opacity-25 sm:opacity-0` at Row 0 for touch discoverability) that elevates to `opacity-100` on touch, hover, or drag.',
+        'Contoured Mobile TOC Button, Inertial Floating Tools Pod & Bottom Sheet Pull-Down-to-Dismiss (`src/components/reader/ReaderFooter.tsx`, `src/components/reader/ReaderDrawerShell.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/app/read/[id]/page.tsx`, `src/components/reader/ReaderFooter.test.tsx`, `src/components/reader/ReaderDrawerShell.test.tsx`, `src/components/reader/TextHighlightPopover.test.tsx`, `src/app/account/page.test.tsx`, `docs/DECISIONS.md`, `ADR-080`): Styled the mobile chapter trigger as a contoured button, arranged `[Search] [Settings]` on the right, and rendered the vertical toolbar via `createPortal` at `z-[10002]` with live Expanded (`252px`) / Minimized (`152px`) Read Aloud clearance, a ref-based `3.0s` idle opacity timer (`opacity-35`), whole-pod `6px` drag discrimination, velocity-based inertial flick projection, swipe-right dismissal, `isSelectionPopoverOpen` auto-suspend, and pull-down-to-dismiss (`> 70px`) across all 5 Reader Bottom Sheets in `ReaderDrawerShell.tsx`.',
+      ],
+    },
+  },
+  {
     version: '2.9.4',
     date: '2026-11-07',
     title: 'GitHub Collaboration Template Modernization, Automated Version Placeholder Sync & Pass 5 Anti-Drift Gate',

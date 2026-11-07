@@ -904,11 +904,11 @@ describe('ReaderSurface', () => {
     expect(bookmarkSlider).toHaveAttribute('aria-valuenow', '1');
     expect(bookmarkSlider).toHaveStyle({ top: '0px', height: '40px' });
 
-    // Verify non-overlapping left gutter geometry on article and bookmark handle
+    // Verify symmetrical mobile padding on article and bookmark handle
     const articleEl = bookmarkSlider.closest('article');
-    expect(articleEl).toHaveClass('pl-12');
-    const badgeEl = screen.getByTestId('reader-bookmark-line-badge').parentElement;
-    expect(badgeEl).toHaveClass('right-full', 'origin-right');
+    expect(articleEl).toHaveClass('px-5');
+    const tabEl = screen.getByTestId('reader-bookmark-tab');
+    expect(tabEl).toHaveClass('right-full', 'origin-right');
 
     const guideLine = screen.getByTestId('reader-bookmark-guide-line');
     expect(guideLine).toHaveClass('opacity-0');
@@ -930,7 +930,8 @@ describe('ReaderSurface', () => {
     expect(bookmarkSlider).toHaveAttribute('aria-valuenow', '4');
     expect(bookmarkSlider).toHaveStyle({ top: '120px', height: '40px' });
     expect(guideLine).toHaveClass('opacity-100');
-    expect(screen.getByTestId('reader-bookmark-line-badge')).toHaveTextContent('L4');
+    expect(screen.queryByTestId('reader-bookmark-line-badge')).toBeNull();
+    expect(screen.getByTestId('reader-bookmark-tab')).toBeInTheDocument();
 
     // ArrowUp decrements row, Home resets to 0
     fireEvent.keyDown(bookmarkSlider, { key: 'ArrowUp' });
@@ -1038,7 +1039,8 @@ describe('ReaderSurface', () => {
       expect(bookmarkSlider).toHaveAttribute('data-bookmark-end-row', '3');
       // Starts at row 2 (2 * 40 = 80px) and spans 2 rows (2 * 40 = 80px)
       expect(bookmarkSlider).toHaveStyle({ top: '80px', height: '80px' });
-      expect(screen.getByTestId('reader-bookmark-line-badge')).toHaveTextContent('L3–4');
+      expect(screen.queryByTestId('reader-bookmark-line-badge')).toBeNull();
+      expect(screen.getByTestId('reader-bookmark-tab')).toBeInTheDocument();
       expect(onBookmarkRowChange).toHaveBeenCalledWith(2);
     } finally {
       document.createRange = origCreateRange;

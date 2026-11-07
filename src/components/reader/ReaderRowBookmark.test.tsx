@@ -27,7 +27,9 @@ describe('ReaderRowBookmark', () => {
     const slider = screen.getByRole('slider', { name: 'Reading line bookmark' });
     expect(slider).toHaveAttribute('aria-valuenow', '4');
     expect(slider).toHaveAttribute('aria-valuetext', 'Line 4');
-    expect(screen.getByTestId('reader-bookmark-line-badge')).toHaveTextContent('L4');
+    expect(screen.queryByTestId('reader-bookmark-line-badge')).toBeNull();
+    const tabEl = screen.getByTestId('reader-bookmark-tab');
+    expect(tabEl).toHaveClass('mr-0.5', 'sm:mr-2', 'opacity-35', 'backdrop-blur-xs');
 
     fireEvent.click(screen.getByTestId('reader-bookmark-rail'), { clientY: 140 });
     expect(onEmitRowChange).toHaveBeenCalledWith(5);
@@ -70,7 +72,26 @@ describe('ReaderRowBookmark', () => {
     );
 
     expect(slider).toHaveAttribute('aria-valuetext', 'Lines 3 to 5');
-    expect(screen.getByTestId('reader-bookmark-line-badge')).toHaveTextContent('L3–5');
+    expect(screen.queryByTestId('reader-bookmark-line-badge')).toBeNull();
+    const draggingTabEl = screen.getByTestId('reader-bookmark-tab');
+    expect(draggingTabEl).toHaveClass('opacity-100', 'scale-110');
+
+    rerender(
+      <ReaderRowBookmark
+        effectiveStartRow={0}
+        effectiveEndRow={0}
+        bookmarkSpanRows={1}
+        estimatedMaxBookmarkRows={20}
+        lineStepPx={28}
+        isBookmarkActive={false}
+        isDraggingBookmark={false}
+        getMaxBookmarkRows={() => 15}
+        computeRowFromClientY={() => 5}
+        onStartDrag={onStartDrag}
+        onEmitRowChange={onEmitRowChange}
+      />
+    );
+    expect(screen.getByTestId('reader-bookmark-tab')).toHaveClass('opacity-25', 'sm:opacity-0');
   });
 });
 

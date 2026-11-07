@@ -173,7 +173,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
           isTouchDevice
             ? {
                 position: 'fixed',
-                bottom: '5.25rem',
+                bottom: '6rem',
                 left: '50%',
                 zIndex: 60,
               }

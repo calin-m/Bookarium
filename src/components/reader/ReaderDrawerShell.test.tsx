@@ -261,5 +261,52 @@ describe('ReaderDrawerShell Component', () => {
       vi.useRealTimers();
     }
   });
+
+  it('supports mobile pull-down-to-dismiss gesture on header and grab handle while springing back on short pulls', () => {
+    const handleClose = vi.fn();
+    render(
+      <ReaderDrawerShell
+        isOpen={true}
+        onClose={handleClose}
+        title="Swipeable Sheet"
+        ariaLabel="Swipeable Sheet"
+        closeAriaLabel="Close Swipeable Sheet"
+        panelTestId="swipe-panel"
+      >
+        <div>Sheet Body</div>
+      </ReaderDrawerShell>
+    );
+
+    const dragRegion = screen.getByTestId('reader-drawer-drag-region');
+    const panel = screen.getByTestId('swipe-panel');
+    const closeBtn = screen.getByRole('button', { name: 'Close Swipeable Sheet' });
+
+    // Clicking or pressing down on the Close button inside dragRegion ignores drag start
+    fireEvent.pointerDown(closeBtn, { clientY: 100 });
+    fireEvent.mouseDown(closeBtn, { clientY: 100 });
+    fireEvent.touchStart(closeBtn, { touches: [{ clientY: 100 }] });
+
+    // Short downward pull (< 70px) translates panel during drag and springs back to 0px on release without closing
+    fireEvent(
+      dragRegion,
+      new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 200 })
+    );
+    fireEvent(window, new MouseEvent('pointermove', { clientY: 240 })); // +40px
+    expect(panel).toHaveStyle({ transform: 'translateY(40px)' });
+    fireEvent.pointerUp(window);
+    expect(handleClose).not.toHaveBeenCalled();
+
+    // Full downward pull (> 70px) via mouse dismisses the bottom sheet
+    fireEvent.mouseDown(dragRegion, { clientY: 200 });
+    fireEvent.mouseMove(window, { clientY: 290 }); // +90px > 70px
+    fireEvent.mouseUp(window);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+
+    // Full downward pull (> 70px) via touch dismisses the bottom sheet
+    fireEvent.touchStart(dragRegion, { touches: [{ clientY: 150 }] });
+    fireEvent.touchMove(window, { touches: [{ clientY: 240 }] }); // +90px > 70px
+    fireEvent.touchEnd(window);
+    expect(handleClose).toHaveBeenCalledTimes(2);
+  });
 });
 

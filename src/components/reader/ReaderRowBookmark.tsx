@@ -110,28 +110,19 @@ export const ReaderRowBookmark: React.FC<ReaderRowBookmarkProps> = ({
           isDraggingBookmark ? 'transition-none' : 'transition-[top,height] duration-150 ease-out'
         }`}
       >
-        {/* Interactive Margin Ribbon Tab */}
+        {/* Interactive Margin Ribbon Tab (Sleek Icon Handle with Translucent Idle Resting State) */}
         <div
+          data-testid="reader-bookmark-tab"
           data-prevent-swipe
-          className={`pointer-events-auto absolute right-full mr-1.5 sm:mr-2.5 origin-right top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded-l-md rounded-r-xs border transition-all cursor-grab active:cursor-grabbing shadow-2xs ${
-            isBookmarkActive
-              ? 'bg-primary text-primary-foreground border-primary scale-105 opacity-100'
-              : 'bg-card/85 text-primary border-primary/30 opacity-65 hover:opacity-100 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
+          className={`pointer-events-auto absolute right-full mr-0.5 sm:mr-2 origin-right top-1/2 -translate-y-1/2 flex items-center justify-center p-1 sm:p-1.5 rounded-l-md rounded-r-xs border transition-all cursor-grab active:cursor-grabbing backdrop-blur-xs shadow-2xs ${
+            isDraggingBookmark
+              ? 'bg-primary text-primary-foreground border-primary scale-110 opacity-100 shadow-md'
+              : isBookmarkActive
+                ? 'bg-primary/25 hover:bg-primary text-primary hover:text-primary-foreground border-primary/40 hover:border-primary opacity-35 hover:opacity-100 group-hover/bookmark:opacity-100 scale-100 hover:scale-105'
+                : 'bg-card/40 text-primary/60 border-primary/20 opacity-25 sm:opacity-0 sm:group-hover/bookmark:opacity-60 hover:!opacity-100 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
           }`}
         >
           <Bookmark className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />
-          <span
-            data-testid="reader-bookmark-line-badge"
-            className={`text-[9px] font-mono font-bold leading-none ${
-              isBookmarkActive
-                ? 'inline'
-                : 'hidden sm:group-hover/bookmark:inline'
-            }`}
-          >
-            {effectiveEndRow > effectiveStartRow
-              ? `L${effectiveStartRow + 1}–${effectiveEndRow + 1}`
-              : `L${effectiveStartRow + 1}`}
-          </span>
         </div>
 
         {/* Subtle Full-Width Row Guide Line & Highlight */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
@@ -43,10 +43,83 @@ export const ReaderDrawerShell: React.FC<ReaderDrawerShellProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.();
+    };
+  }, []);
+
+  const handleStartSheetDrag = useCallback((startClientY: number) => {
+    if (!Number.isFinite(startClientY)) return;
+    dragCleanupRef.current?.();
+    let currentOffset = 0;
+    let hasSampledMove = false;
+    let lastY = startClientY;
+    let lastTime = Date.now();
+    let velocityY = 0;
+
+    const updateDrag = (clientY: number) => {
+      if (!Number.isFinite(clientY)) return;
+      const deltaY = Math.max(0, clientY - startClientY);
+      const now = Date.now();
+      if (hasSampledMove) {
+        const dt = now - lastTime;
+        if (dt >= 8 && dt <= 120) {
+          velocityY = (clientY - lastY) / dt;
+        } else if (dt > 120) {
+          velocityY = 0;
+        }
+      }
+      hasSampledMove = true;
+      lastY = clientY;
+      lastTime = now;
+      currentOffset = deltaY;
+      setDragOffsetY(Math.round(deltaY));
+    };
+
+    const handlePointerMove = (e: PointerEvent) => updateDrag(e.clientY);
+    const handleMouseMove = (e: MouseEvent) => updateDrag(e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        updateDrag(e.touches[0].clientY);
+      }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('pointerup', handleEnd);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
+      dragCleanupRef.current = null;
+    };
+
+    const handleEnd = () => {
+      cleanup();
+      setDragOffsetY(0);
+      if (currentOffset > 70 || (currentOffset > 20 && velocityY > 0.45)) {
+        onCloseRef.current();
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('pointerup', handleEnd);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
+    dragCleanupRef.current = cleanup;
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -158,36 +231,61 @@ export const ReaderDrawerShell: React.FC<ReaderDrawerShellProps> = ({
             role={role}
             aria-label={ariaLabel}
             data-testid={panelTestId}
+            style={
+              dragOffsetY > 0
+                ? { transform: `translateY(${dragOffsetY}px)`, transition: 'none' }
+                : undefined
+            }
           >
-            {/* Mobile Grab Handle Bar */}
+            {/* Mobile Pull-Down-to-Dismiss Header & Grab Handle Region */}
             <div
-              className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2.5 shrink-0 sm:hidden"
-              aria-hidden="true"
-              data-testid="reader-drawer-grab-handle"
-            />
+              data-testid="reader-drawer-drag-region"
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement | null)?.closest?.('button')) return;
+                handleStartSheetDrag(e.clientY);
+              }}
+              onMouseDown={(e) => {
+                if ((e.target as HTMLElement | null)?.closest?.('button')) return;
+                handleStartSheetDrag(e.clientY);
+              }}
+              onTouchStart={(e) => {
+                if ((e.target as HTMLElement | null)?.closest?.('button')) return;
+                if (e.touches.length > 0) {
+                  handleStartSheetDrag(e.touches[0].clientY);
+                }
+              }}
+              className="shrink-0 touch-none select-none cursor-grab active:cursor-grabbing sm:cursor-default"
+            >
+              {/* Mobile Grab Handle Bar */}
+              <div
+                className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto -mt-1 mb-2.5 shrink-0 sm:hidden"
+                aria-hidden="true"
+                data-testid="reader-drawer-grab-handle"
+              />
 
-            {/* Standard Reader Drawer Header */}
-            <div className={`flex items-center justify-between pb-2 mb-3 border-b shrink-0 ${activeTheme.border}`}>
-              <div className="flex items-center gap-2 min-w-0">
-                {titleIcon}
-                <div className="min-w-0">
-                  {typeof title === 'string' ? (
-                    <h3 className="font-serif font-bold text-sm leading-tight truncate">
-                      {title}
-                    </h3>
-                  ) : (
-                    title
-                  )}
+              {/* Standard Reader Drawer Header */}
+              <div className={`flex items-center justify-between pb-2 mb-3 border-b shrink-0 ${activeTheme.border}`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  {titleIcon}
+                  <div className="min-w-0">
+                    {typeof title === 'string' ? (
+                      <h3 className="font-serif font-bold text-sm leading-tight truncate">
+                        {title}
+                      </h3>
+                    ) : (
+                      title
+                    )}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={`p-1.5 rounded-lg border transition-colors shrink-0 cursor-pointer active:scale-95 ${activeTheme.button}`}
+                  aria-label={closeAriaLabel || (typeof title === 'string' ? `Close ${title}` : 'Close Drawer')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className={`p-1.5 rounded-lg border transition-colors shrink-0 cursor-pointer active:scale-95 ${activeTheme.button}`}
-                aria-label={closeAriaLabel || (typeof title === 'string' ? `Close ${title}` : 'Close Drawer')}
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             {/* Scrollable / Flexible Drawer Content */}

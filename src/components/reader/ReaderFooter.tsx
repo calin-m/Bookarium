@@ -1,12 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   BookMarked,
   Sparkles,
   Search,
+  Settings,
   Sliders,
   Headphones,
   Highlighter,
@@ -14,6 +17,7 @@ import {
   Moon,
   Coffee,
   Globe,
+  GripHorizontal,
 } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
@@ -47,6 +51,8 @@ export interface ReaderFooterProps {
   isSpeechOpen?: boolean;
   isAnnotationsOpen?: boolean;
   isTranslationsOpen?: boolean;
+  isSelectionPopoverOpen?: boolean;
+  annotationsCount?: number;
   isHidden?: boolean;
 }
 
@@ -73,15 +79,229 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
   onToggleAnnotations,
   onToggleTranslations,
   onThemeChange,
-  isTocOpen: _isTocOpen = false,
+  isTocOpen = false,
   isControlsOpen = false,
   isSearchOpen = false,
   isSpeechOpen = false,
   isAnnotationsOpen = false,
   isTranslationsOpen = false,
+  isSelectionPopoverOpen = false,
+  annotationsCount = 0,
   isHidden = false,
 }) => {
   const activeTheme = getReaderTheme(theme);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [isToolbarIdle, setIsToolbarIdle] = useState(false);
+  const [userBottomOffset, setUserBottomOffset] = useState<number>(96);
+  const [isDraggingToolbar, setIsDraggingToolbar] = useState(false);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  const hasSecondaryTools = Boolean(
+    onToggleSpeech ||
+      onToggleAnnotations ||
+      onToggleControls ||
+      onToggleTranslations ||
+      onThemeChange
+  );
+  const isAnySecondaryToolActive = Boolean(
+    isSpeechOpen || isAnnotationsOpen || isControlsOpen || isTranslationsOpen
+  );
+  const isAnyModalDrawerOpen = Boolean(
+    isTocOpen ||
+      isSearchOpen ||
+      isControlsOpen ||
+      isAnnotationsOpen ||
+      isTranslationsOpen ||
+      isSelectionPopoverOpen
+  );
+  const effectiveToolsMenuOpen = isToolsMenuOpen && !isHidden && !isAnyModalDrawerOpen;
+
+  // Dynamically detect whether ReaderSpeechBar is minimized ([data-testid="speech-bar-minimized"]) or expanded
+  const isSpeechMinimized = useSyncExternalStore(
+    useCallback(
+      (onStoreChange) => {
+        if (!isSpeechOpen || typeof document === 'undefined') {
+          return () => {};
+        }
+        const observer = new MutationObserver(onStoreChange);
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+      },
+      [isSpeechOpen]
+    ),
+    () =>
+      isSpeechOpen && typeof document !== 'undefined'
+        ? Boolean(document.querySelector('[data-testid="speech-bar-minimized"]'))
+        : false,
+    () => false
+  );
+
+  const minBottomPx = !isSpeechOpen ? 96 : isSpeechMinimized ? 152 : 252;
+  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const maxBottomPx = Math.max(minBottomPx, viewportH - 340);
+  const effectiveBottomPx = Math.min(maxBottomPx, Math.max(minBottomPx, userBottomOffset));
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current !== null) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const pauseIdleTimerAndWake = useCallback(() => {
+    clearIdleTimer();
+    setIsToolbarIdle(false);
+  }, [clearIdleTimer]);
+
+  const scheduleIdleDim = useCallback(() => {
+    clearIdleTimer();
+    setIsToolbarIdle(false);
+    idleTimerRef.current = setTimeout(() => {
+      idleTimerRef.current = null;
+      setIsToolbarIdle(true);
+    }, 3000);
+  }, [clearIdleTimer]);
+
+  // Automatically start 3.0s post-open/post-restore countdown when vertical toolbar becomes visible
+  useEffect(() => {
+    clearIdleTimer();
+    if (!effectiveToolsMenuOpen || isDraggingToolbar) {
+      return;
+    }
+
+    idleTimerRef.current = setTimeout(() => {
+      idleTimerRef.current = null;
+      setIsToolbarIdle(true);
+    }, 3000);
+
+    return () => {
+      clearIdleTimer();
+    };
+  }, [effectiveToolsMenuOpen, isDraggingToolbar, clearIdleTimer]);
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.();
+      clearIdleTimer();
+    };
+  }, [clearIdleTimer]);
+
+  const handleStartToolbarDrag = useCallback(
+    (startClientY: number, startClientX = 0, isFromDragHandle = false) => {
+      if (!Number.isFinite(startClientY)) return;
+      dragCleanupRef.current?.();
+      pauseIdleTimerAndWake();
+      suppressNextClickRef.current = false;
+      let hasCrossedThreshold = false;
+      let hasSampledMove = false;
+      let dismissedBySwipeRight = false;
+      const startBottom = effectiveBottomPx;
+      let currentBottom = startBottom;
+      let lastY = startClientY;
+      let lastTime = Date.now();
+      let velocityY = 0;
+
+      const updatePosition = (clientY: number, clientX = startClientX) => {
+        if (!Number.isFinite(clientY)) return;
+        const deltaY = startClientY - clientY;
+        const deltaX = Number.isFinite(clientX) ? clientX - startClientX : 0;
+
+        // Horizontal swipe-right toward screen edge dismisses/tucks the floating toolbar
+        if (deltaX > 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+          dismissedBySwipeRight = true;
+          if (!isFromDragHandle) {
+            suppressNextClickRef.current = true;
+          }
+          return;
+        }
+
+        if (!hasCrossedThreshold && Math.abs(deltaY) <= 6) {
+          return;
+        }
+        hasCrossedThreshold = true;
+        if (!isFromDragHandle) {
+          suppressNextClickRef.current = true;
+        }
+        setIsDraggingToolbar(true);
+
+        const now = Date.now();
+        if (hasSampledMove) {
+          const dt = now - lastTime;
+          if (dt >= 8 && dt <= 120) {
+            const rawVy = (lastY - clientY) / dt;
+            velocityY = Math.max(-2.5, Math.min(2.5, rawVy));
+          } else if (dt > 120) {
+            velocityY = 0;
+          }
+        }
+        hasSampledMove = true;
+        lastY = clientY;
+        lastTime = now;
+
+        const currentViewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
+        const currentMaxBottom = Math.max(minBottomPx, currentViewportH - 340);
+        currentBottom = Math.min(currentMaxBottom, Math.max(minBottomPx, startBottom + deltaY));
+        setUserBottomOffset(Math.round(currentBottom));
+      };
+
+      const handlePointerMove = (e: PointerEvent) => updatePosition(e.clientY, e.clientX);
+      const handleMouseMove = (e: MouseEvent) => updatePosition(e.clientY, e.clientX);
+      const handleTouchMove = (e: TouchEvent) => {
+        if (e.touches.length > 0) {
+          updatePosition(e.touches[0].clientY, e.touches[0].clientX);
+        }
+      };
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('pointerup', handleEnd);
+        window.removeEventListener('mouseup', handleEnd);
+        window.removeEventListener('touchend', handleEnd);
+        window.removeEventListener('touchcancel', handleEnd);
+        dragCleanupRef.current = null;
+      };
+
+      const handleEnd = (e: Event) => {
+        cleanup();
+        if (e.type === 'touchend' || e.type === 'touchcancel') {
+          suppressNextClickRef.current = false;
+        }
+        setIsDraggingToolbar(false);
+
+        if (dismissedBySwipeRight) {
+          suppressNextClickRef.current = false;
+          setIsToolsMenuOpen(false);
+          return;
+        }
+
+        if (hasCrossedThreshold && Date.now() - lastTime <= 80 && Math.abs(velocityY) > 0.15) {
+          const currentViewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
+          const currentMaxBottom = Math.max(minBottomPx, currentViewportH - 340);
+          const projectedBottom = Math.min(
+            currentMaxBottom,
+            Math.max(minBottomPx, currentBottom + velocityY * 140)
+          );
+          setUserBottomOffset(Math.round(projectedBottom));
+        }
+
+        scheduleIdleDim();
+      };
+
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('touchmove', handleTouchMove, { passive: true });
+      window.addEventListener('pointerup', handleEnd);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchend', handleEnd);
+      window.addEventListener('touchcancel', handleEnd);
+      dragCleanupRef.current = cleanup;
+    },
+    [effectiveBottomPx, minBottomPx, pauseIdleTimerAndWake, scheduleIdleDim]
+  );
 
   return (
     <footer
@@ -91,16 +311,20 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
         isHidden ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
       }`}
     >
-      {/* Mobile Top Tier: Slim Chapter Ribbon & Quick Tools (< md) */}
+      {/* Mobile Top Tier: Contoured Chapter Button & [Search + Settings] Controls (< md) */}
       <div className={`md:hidden w-full px-3 py-1.5 border-b ${activeTheme.border} flex items-center justify-between gap-2 text-xs font-mono transition-colors duration-theme`}>
-        {/* Left: Chapter Title (tappable to open TOC if onToggleToc is provided) */}
+        {/* Left: Contoured Chapter / Table of Contents Button */}
         <button
           type="button"
-          onClick={onToggleToc}
+          onClick={() => {
+            scheduleIdleDim();
+            onToggleToc?.();
+          }}
           disabled={!onToggleToc}
-          className={`flex items-center gap-1.5 min-w-0 max-w-[50%] text-left truncate transition-opacity active:scale-98 ${
-            onToggleToc ? 'cursor-pointer hover:opacity-80' : 'pointer-events-none'
-          }`}
+          aria-expanded={isTocOpen}
+          className={`inline-flex items-center gap-1.5 min-w-0 max-w-[calc(100%-5.25rem)] px-2.5 py-1 rounded-lg border shadow-2xs text-left truncate transition-all active:scale-98 ${
+            isTocOpen ? activeTheme.activePill : activeTheme.button
+          } ${onToggleToc ? 'cursor-pointer' : 'pointer-events-none opacity-75'}`}
           title="Open Table of Contents"
           aria-label="Open Table of Contents"
           data-testid="footer-toc-trigger"
@@ -110,18 +334,32 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
             {chapterTitle || 'Preamble'}
           </span>
           {readingMode === 'paginated' && chapterPageCount > 1 && (
-            <span className={`text-[10px] font-mono shrink-0 ${activeTheme.textMuted}`}>
+            <span className={`text-[10px] font-mono shrink-0 ${isTocOpen ? 'opacity-85' : activeTheme.textMuted}`}>
               ({chapterPage}/{chapterPageCount})
             </span>
           )}
+          {onToggleToc && (
+            <ChevronUp
+              className={`w-3 h-3 shrink-0 transition-transform duration-200 opacity-65 ${
+                isTocOpen ? 'rotate-180' : ''
+              }`}
+              aria-hidden="true"
+            />
+          )}
         </button>
 
-        {/* Right: Quick Reading Tools Row */}
-        <div className="flex items-center gap-1 shrink-0" data-testid="footer-quick-tools">
+        {/* Right: Search Button + Rightmost Settings Toggle & Vertical Draggable Floating Toolbar */}
+        <div
+          className="relative flex items-center gap-1.5 shrink-0"
+          data-testid="footer-quick-tools"
+        >
           {onToggleSearch && (
             <button
               type="button"
-              onClick={onToggleSearch}
+              onClick={() => {
+                scheduleIdleDim();
+                onToggleSearch();
+              }}
               aria-label="Search in Book"
               title="Search in Book"
               className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
@@ -132,79 +370,209 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
             </button>
           )}
 
-          {onToggleSpeech && (
+          {hasSecondaryTools && (
             <button
               type="button"
-              onClick={onToggleSpeech}
-              aria-label="Read Aloud Narration"
-              title="Listen with Read Aloud"
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                isSpeechOpen ? activeTheme.activePill : activeTheme.button
+              onClick={() => {
+                scheduleIdleDim();
+                setIsToolsMenuOpen((prev) => !prev);
+              }}
+              aria-label="Reader Settings & Tools"
+              aria-expanded={effectiveToolsMenuOpen}
+              title="Reader Settings & Tools"
+              data-testid="footer-settings-toggle"
+              className={`relative p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
+                isToolsMenuOpen || isAnySecondaryToolActive
+                  ? activeTheme.activePill
+                  : activeTheme.button
               }`}
             >
-              <Headphones className="w-3.5 h-3.5" />
+              <Settings
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  isToolsMenuOpen ? 'rotate-90' : ''
+                }`}
+              />
             </button>
           )}
 
-          {onToggleAnnotations && (
-            <button
-              type="button"
-              onClick={onToggleAnnotations}
-              aria-label="Notes & Highlights"
-              title="View Notes & Highlights"
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                isAnnotationsOpen ? activeTheme.activePill : activeTheme.button
-              }`}
-            >
-              <Highlighter className="w-3.5 h-3.5" />
-            </button>
-          )}
+          {/* Right-Edge Vertical Floating Toolbar via Document Portal (z-[10002] Above Read Aloud Bar) */}
+          {effectiveToolsMenuOpen &&
+            hasSecondaryTools &&
+            typeof document !== 'undefined' &&
+            createPortal(
+              <div
+                role="toolbar"
+                aria-label="Mobile Reader Tools"
+                data-testid="footer-floating-tools-bar"
+                data-prevent-swipe
+                onPointerEnter={pauseIdleTimerAndWake}
+                onPointerLeave={scheduleIdleDim}
+                onPointerDown={(e) => {
+                  handleStartToolbarDrag(e.clientY, e.clientX, false);
+                }}
+                onMouseDown={(e) => {
+                  handleStartToolbarDrag(e.clientY, e.clientX, false);
+                }}
+                onTouchStart={(e) => {
+                  if (e.touches.length > 0) {
+                    handleStartToolbarDrag(e.touches[0].clientY, e.touches[0].clientX, false);
+                  } else {
+                    scheduleIdleDim();
+                  }
+                }}
+                onClickCapture={(e) => {
+                  if (suppressNextClickRef.current) {
+                    suppressNextClickRef.current = false;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                  scheduleIdleDim();
+                }}
+                style={{ bottom: `${effectiveBottomPx}px` }}
+                className={`fixed right-2.5 z-[10002] md:hidden flex flex-col items-center gap-1.5 p-1.5 rounded-2xl border backdrop-blur-xs origin-bottom-right ${
+                  isDraggingToolbar
+                    ? 'transition-opacity duration-200'
+                    : 'transition-[bottom,opacity,transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] animate-in fade-in zoom-in-95'
+                } ${
+                  isDraggingToolbar || !isToolbarIdle
+                    ? 'opacity-100 shadow-xl'
+                    : 'opacity-35 hover:opacity-100 shadow-sm'
+                } ${activeTheme.drawerBg} ${activeTheme.border}`}
+              >
+                {/* Top Enlarged Vertical Drag Handle Capsule */}
+                <div
+                  role="slider"
+                  tabIndex={0}
+                  aria-label="Drag to reposition reader tools vertically"
+                  aria-orientation="vertical"
+                  aria-valuemin={minBottomPx}
+                  aria-valuemax={maxBottomPx}
+                  aria-valuenow={effectiveBottomPx}
+                  data-testid="footer-floating-tools-drag-handle"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleStartToolbarDrag(e.clientY, e.clientX, true);
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleStartToolbarDrag(e.clientY, e.clientX, true);
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                    if (e.touches.length > 0) {
+                      handleStartToolbarDrag(e.touches[0].clientY, e.touches[0].clientX, true);
+                    } else {
+                      scheduleIdleDim();
+                    }
+                  }}
+                  className={`w-full flex items-center justify-center py-1.5 px-2 border-b ${activeTheme.border} rounded-t-lg cursor-grab active:cursor-grabbing touch-none select-none ${activeTheme.textMuted} hover:text-foreground transition-colors`}
+                  title="Drag up or down to reposition toolbar"
+                >
+                  <GripHorizontal className="w-4 h-4 opacity-70" />
+                </div>
 
-          {onToggleControls && (
-            <button
-              type="button"
-              onClick={onToggleControls}
-              aria-label="Typography & Theme Controls"
-              title="Typography & Appearance"
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                isControlsOpen ? activeTheme.activePill : activeTheme.button
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-            </button>
-          )}
+                {onThemeChange && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scheduleIdleDim();
+                      onThemeChange(NEXT_READER_THEME[theme]);
+                    }}
+                    aria-label={`Current theme: ${theme}. Click to switch theme.`}
+                    title={`Current theme: ${theme}. Click to switch theme.`}
+                    className={`p-2 rounded-xl border shrink-0 transition-all cursor-pointer active:scale-95 ${activeTheme.button}`}
+                  >
+                    {theme === 'light' ? (
+                      <Sun className="w-4 h-4 text-amber-500" />
+                    ) : theme === 'sepia' ? (
+                      <Coffee className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <Moon className="w-4 h-4 text-indigo-400" />
+                    )}
+                  </button>
+                )}
 
-          {onToggleTranslations && (
-            <button
-              type="button"
-              onClick={onToggleTranslations}
-              aria-label="Language Editions & Translations"
-              title="Translations"
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                isTranslationsOpen ? activeTheme.activePill : activeTheme.button
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-            </button>
-          )}
+                {onToggleControls && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scheduleIdleDim();
+                      onToggleControls();
+                    }}
+                    aria-label="Typography & Theme Controls"
+                    title="Typography & Appearance"
+                    className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isControlsOpen ? activeTheme.activePill : activeTheme.button
+                    }`}
+                  >
+                    <Sliders className="w-4 h-4" />
+                  </button>
+                )}
 
-          {onThemeChange && (
-            <button
-              type="button"
-              onClick={() => onThemeChange(NEXT_READER_THEME[theme])}
-              aria-label={`Current theme: ${theme}. Click to switch theme.`}
-              title={`Current theme: ${theme}. Click to switch theme.`}
-              className={`p-1.5 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 ${activeTheme.button}`}
-            >
-              {theme === 'light' ? (
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-              ) : theme === 'sepia' ? (
-                <Coffee className="w-3.5 h-3.5 text-amber-500" />
-              ) : (
-                <Moon className="w-3.5 h-3.5 text-indigo-400" />
-              )}
-            </button>
-          )}
+                {onToggleAnnotations && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scheduleIdleDim();
+                      onToggleAnnotations();
+                    }}
+                    aria-label="Notes & Highlights"
+                    title="View Notes & Highlights"
+                    className={`relative p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isAnnotationsOpen ? activeTheme.activePill : activeTheme.button
+                    }`}
+                  >
+                    <Highlighter className="w-4 h-4" />
+                    {annotationsCount > 0 && (
+                      <span
+                        data-testid="footer-annotations-badge"
+                        className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary-600 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-2xs"
+                      >
+                        {annotationsCount > 99 ? '99+' : annotationsCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {onToggleSpeech && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scheduleIdleDim();
+                      onToggleSpeech();
+                    }}
+                    aria-label="Read Aloud Narration"
+                    title="Listen with Read Aloud"
+                    className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isSpeechOpen ? activeTheme.activePill : activeTheme.button
+                    }`}
+                  >
+                    <Headphones className="w-4 h-4" />
+                  </button>
+                )}
+
+                {onToggleTranslations && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scheduleIdleDim();
+                      onToggleTranslations();
+                    }}
+                    aria-label="Language Editions & Translations"
+                    title="Translations"
+                    className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isTranslationsOpen ? activeTheme.activePill : activeTheme.button
+                    }`}
+                  >
+                    <Globe className="w-4 h-4" />
+                  </button>
+                )}
+              </div>,
+              document.body
+            )}
         </div>
       </div>
 
