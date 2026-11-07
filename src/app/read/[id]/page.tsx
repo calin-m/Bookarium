@@ -724,7 +724,10 @@ function BookReaderContent() {
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
-        onThemeChange={setTheme}
+        onThemeChange={(nextTheme) => {
+          setTheme(nextTheme);
+          schedulePreferencesCloudSync(0);
+        }}
         resumeNotice={resumeNotice}
         onRestart={handleRestart}
         onDismissResume={dismissResumeNotice}
@@ -800,7 +803,10 @@ function BookReaderContent() {
         }}
         onToggleAnnotations={() => handleToggleDrawer('annotations')}
         onToggleTranslations={() => handleToggleDrawer('translations')}
-        onThemeChange={setTheme}
+        onThemeChange={(nextTheme) => {
+          setTheme(nextTheme);
+          schedulePreferencesCloudSync(0);
+        }}
         isTocOpen={isTocOpen}
         isControlsOpen={isControlsOpen}
         isSearchOpen={isSearchOpen}

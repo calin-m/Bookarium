@@ -3,6 +3,8 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Navbar } from './Navbar';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useThemeStore } from '@/stores/useThemeStore';
+import { useReaderStore } from '@/stores/useReaderStore';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { mockBooks } from '@/mocks/handlers';
 
 const mockPush = vi.fn();
@@ -136,23 +138,29 @@ describe('Navbar component', () => {
     expect(favoritesBtn).toHaveClass('border-destructive');
   });
 
-  it('should cycle through themes when clicking theme button', () => {
+  it('should cycle through themes when clicking theme button and synchronize reader store and preferences timestamp', () => {
+    usePreferencesStore.getState().setPreferencesUpdatedAt(null);
+    useReaderStore.setState({ theme: 'light' });
     render(<Navbar activeView="catalog" />);
     const themeBtn = screen.getByRole('button', { name: /Current theme:/i });
 
     // Light -> Sepia
     fireEvent.click(themeBtn);
     expect(useThemeStore.getState().theme).toBe('sepia');
+    expect(useReaderStore.getState().theme).toBe('sepia');
+    expect(usePreferencesStore.getState().preferencesUpdatedAt).toBeTruthy();
     expect(document.documentElement.classList.contains('sepia')).toBe(true);
 
     // Sepia -> Dark
     fireEvent.click(themeBtn);
     expect(useThemeStore.getState().theme).toBe('dark');
+    expect(useReaderStore.getState().theme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
 
     // Dark -> Light
     fireEvent.click(themeBtn);
     expect(useThemeStore.getState().theme).toBe('light');
+    expect(useReaderStore.getState().theme).toBe('light');
   });
 
   it('renders Sign In button for guests immediately without a pulsing skeleton placeholder', () => {
@@ -221,19 +229,41 @@ describe('Navbar component', () => {
     expect(sepiaContainer.querySelector('svg.lucide-sun')).toBeNull();
   });
 
-  it('handles keyboard Enter and Space on brand logo to navigate back to catalog', () => {
+  it('handles keyboard Enter and Space on brand logo to navigate back to catalog without reloading or resetting theme', () => {
     const handleViewChange = vi.fn();
     const handleBrandReset = vi.fn();
+    mockPush.mockClear();
+    useThemeStore.getState().setTheme('dark');
+
     render(<Navbar activeView="bookshelf" onViewChange={handleViewChange} onBrandReset={handleBrandReset} />);
 
     const brand = screen.getByLabelText('Bookarium logo, click to refresh catalog');
     fireEvent.keyDown(brand, { key: 'Enter' });
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
     expect(handleBrandReset).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(window.location.reload).not.toHaveBeenCalled();
+    expect(useThemeStore.getState().theme).toBe('dark');
 
     fireEvent.keyDown(brand, { key: ' ' });
     expect(handleViewChange).toHaveBeenCalledWith('catalog');
     expect(handleBrandReset).toHaveBeenCalledTimes(2);
+    expect(useThemeStore.getState().theme).toBe('dark');
+  });
+
+  it('falls back to router.push(ROUTES.HOME) when brand logo is clicked without onViewChange and preserves sepia/dark theme', () => {
+    mockPush.mockClear();
+    useThemeStore.getState().setTheme('sepia');
+
+    render(<Navbar activeView="catalog" />);
+
+    const brand = screen.getByLabelText('Bookarium logo, click to refresh catalog');
+    fireEvent.click(brand);
+
+    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(window.location.reload).not.toHaveBeenCalled();
+    expect(useThemeStore.getState().theme).toBe('sepia');
+    expect(document.documentElement.classList.contains('sepia')).toBe(true);
   });
 
   it('applies -translate-y-full when isVisible is false', () => {

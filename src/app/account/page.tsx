@@ -447,8 +447,8 @@ function AccountDashboardContent() {
     setReaderTheme(newTheme);
     if (user) {
       updateProfile({ preferred_theme: newTheme }).catch(() => {});
-      schedulePreferencesCloudSync();
     }
+    schedulePreferencesCloudSync(0);
   };
 
   const preferencesSectionProps = {

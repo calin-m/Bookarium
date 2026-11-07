@@ -18,6 +18,7 @@ import { SITE_CONFIG, STORAGE_KEYS } from '@/config/site-config';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
 import { NAV_ITEMS, NAVBAR_VIEW_CONFIG, type NavViewId, type ViewId } from '@/config/views.config';
 import { useAuthHint } from '@/app/providers';
+import { schedulePreferencesCloudSync } from '@/lib/preferences-sync';
 
 export interface NavbarProps {
   activeView?: ViewId;
@@ -114,19 +115,25 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const isGlidingActive = Boolean(allowHeavyMotion && indicatorRect && indicatorRect.width > 0);
 
+  const handleThemeCycle = () => {
+    cycleTheme();
+    const nextTheme = useThemeStore.getState().theme;
+    useReaderStore.getState().setTheme(nextTheme);
+    schedulePreferencesCloudSync(0);
+  };
+
   const handleBrandClick = () => {
     onBrandReset?.();
-    onViewChange?.('catalog');
+    if (onViewChange) {
+      onViewChange('catalog');
+    } else {
+      router.push(ROUTES.HOME);
+    }
     if (typeof window !== 'undefined') {
       try {
-        window.scrollTo({ top: 0, behavior: 'instant' });
-        if (window.location.pathname === ROUTES.HOME && !window.location.search) {
-          window.location.reload();
-        } else {
-          router.push(ROUTES.HOME);
-        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch {
-        router.push(ROUTES.HOME);
+        // Ignore scroll errors in non-DOM environments
       }
     }
   };
@@ -301,7 +308,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={cycleTheme}
+            onClick={handleThemeCycle}
             aria-label={`Current theme: ${theme}. Click to switch theme.`}
             className="h-8 w-8 rounded text-muted-foreground hover:text-foreground shrink-0"
           >

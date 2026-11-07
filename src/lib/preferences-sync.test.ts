@@ -314,10 +314,73 @@ describe('preferences-sync', () => {
       reconcileCloudPreferencesWithLocal(legacyProfile);
       expect(useThemeStore.getState().theme).toBe('sepia');
       expect(useReaderStore.getState().fontSize).toBe(22);
+      expect(usePreferencesStore.getState().preferencesUpdatedAt).toBe('2026-10-31T10:00:00.000Z');
 
       const payload = buildProfilePreferencesPayload('2026-10-31T12:00:00.000Z');
       expect(payload.preferred_theme).toBe('sepia');
       expect(payload.font_size).toBe(22);
+    });
+
+    it('self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over default legacy light on refresh', () => {
+      const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
+      useAuthStore.setState({
+        user: { id: 'u1' } as unknown as NonNullable<ReturnType<typeof useAuthStore.getState>['user']>,
+        updateProfile: mockUpdateProfile,
+      });
+
+      // 1. Divergent state: useThemeStore is dark while useReaderStore is light
+      useThemeStore.getState().setTheme('dark');
+      useReaderStore.setState({ theme: 'light' });
+
+      const staleStructuredProfile: Profile = {
+        id: 'u1',
+        display_name: 'Scholar',
+        username: 'scholar',
+        bio: null,
+        is_public: false,
+        show_streak: true,
+        show_challenge: true,
+        show_bookshelves: true,
+        preferred_theme: 'light',
+        font_size: 18,
+        preferences: {
+          active: FACTORY_PREFERENCES,
+          customDefaults: null,
+          updatedAt: '2026-10-31T10:00:00.000Z',
+        },
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-10-31T10:00:00.000Z',
+      };
+
+      reconcileCloudPreferencesWithLocal(staleStructuredProfile);
+      expect(useThemeStore.getState().theme).toBe('dark');
+      expect(useReaderStore.getState().theme).toBe('dark');
+      expect(mockUpdateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferred_theme: 'dark',
+        })
+      );
+
+      // 2. Legacy profile with default preferred_theme: 'light' and null localUpdatedAt while local theme is sepia
+      mockUpdateProfile.mockClear();
+      usePreferencesStore.getState().setPreferencesUpdatedAt(null);
+      useThemeStore.getState().setTheme('sepia');
+      useReaderStore.setState({ theme: 'sepia' });
+
+      const uninitializedLegacyProfile: Profile = {
+        ...staleStructuredProfile,
+        preferred_theme: 'light',
+        preferences: {},
+      };
+
+      reconcileCloudPreferencesWithLocal(uninitializedLegacyProfile);
+      expect(useThemeStore.getState().theme).toBe('sepia');
+      expect(useReaderStore.getState().theme).toBe('sepia');
+      expect(mockUpdateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferred_theme: 'sepia',
+        })
+      );
     });
   });
 });

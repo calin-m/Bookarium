@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 06 Nov 2026 21:17:58 GMT  
+**Last Generated**: Sat, 07 Nov 2026 08:49:43 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2281 passed  
+**Total Verified Tests**: 2285 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2281 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2285 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.32%** (12538/12882) — *Target: $\ge$ 95%*
-- **Statements**: **96.03%** (13593/14154) — *Target: $\ge$ 95%*
-- **Functions**: **94.83%** (2862/3018) — *Target: $\ge$ 92%*
-- **Branches**: **88.37%** (12441/14078) — *Target: $\ge$ 85%*
+- **Lines**: **97.34%** (12575/12918) — *Target: $\ge$ 95%*
+- **Statements**: **96.06%** (13631/14190) — *Target: $\ge$ 95%*
+- **Functions**: **94.74%** (2864/3023) — *Target: $\ge$ 92%*
+- **Branches**: **88.38%** (12468/14106) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2281 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2285 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 286 Tests)
 
@@ -367,7 +367,7 @@
 - ✔ `opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount`
 - ✔ `opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount`
 - ✔ `provides initialIsAuthenticated through useAuthHint context`
-- ✔ `initializes theme in store when initialTheme is provided`
+- ✔ `initializes theme in store when initialTheme is provided and never reverts client theme changes on rerender`
 
 </details>
 
@@ -485,7 +485,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 492 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 493 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -975,7 +975,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (37 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (38 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -988,13 +988,14 @@
 - ✔ `should fill heart icon when books are favorited`
 - ✔ `should trigger onViewChange callback when clicking tabs`
 - ✔ `applies active styling when activeView is favorites`
-- ✔ `should cycle through themes when clicking theme button`
+- ✔ `should cycle through themes when clicking theme button and synchronize reader store and preferences timestamp`
 - ✔ `renders Sign In button for guests immediately without a pulsing skeleton placeholder`
 - ✔ `renders direct Account Link when user is authenticated`
 - ✔ `renders Account Link on initial render when initialIsAuthenticated is true`
 - ✔ `renders Account Link on initial render when auth hint cookie is set`
 - ✔ `renders theme icon synchronously according to store theme without defaulting to light`
-- ✔ `handles keyboard Enter and Space on brand logo to navigate back to catalog`
+- ✔ `handles keyboard Enter and Space on brand logo to navigate back to catalog without reloading or resetting theme`
+- ✔ `falls back to router.push(ROUTES.HOME) when brand logo is clicked without onViewChange and preserves sepia/dark theme`
 - ✔ `applies -translate-y-full when isVisible is false`
 - ✔ `applies translate-y-0 when isVisible is true`
 - ✔ `renders active account button styling when activeView is account`
@@ -1485,7 +1486,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 202 Tests)
+### ⚡ Zustand State Stores (10 Suites · 204 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1738,7 +1739,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useThemeStore.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/stores/useThemeStore.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `initializes with default light theme`
 - ✔ `sets sepia theme and syncs sepia DOM class`
@@ -1746,10 +1747,12 @@
 - ✔ `sets light theme and clears dark/sepia DOM classes`
 - ✔ `cycles theme through light -> sepia -> dark -> light`
 - ✔ `applyThemeToDocument handles document manipulation safely`
+- ✔ `preserves client-persisted dark or sepia theme when initializeTheme is called with fallback light`
+- ✔ `synchronizes getInitialState().theme with active theme during initializeTheme, setTheme, and cycleTheme for SSR`
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 536 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 537 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2180,7 +2183,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/preferences-sync.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/preferences-sync.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `returns FACTORY_PREFERENCES clone when input is null, undefined, or non-object`
 - ✔ `clamps out-of-range numeric values and falls back on invalid enum strings`
@@ -2190,6 +2193,7 @@
 - ✔ `hydrates local stores from structured cloud profile.preferences when remote is newer`
 - ✔ `pushes newer local preferences to cloud when local preferencesUpdatedAt is newer than remote`
 - ✔ `falls back to legacy profile.preferred_theme and profile.font_size when structured preferences is empty`
+- ✔ `self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over default legacy light on refresh`
 
 </details>
 

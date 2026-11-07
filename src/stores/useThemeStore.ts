@@ -16,7 +16,7 @@ export function getCookieValue(cookieName: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export function resolveInitialTheme(): AppTheme {
+export function getClientPersistedTheme(): AppTheme | null {
   const cookieVal = getCookieValue(STORAGE_KEYS.THEME);
   if (cookieVal === 'dark' || cookieVal === 'sepia' || cookieVal === 'light') {
     return cookieVal;
@@ -33,18 +33,33 @@ export function resolveInitialTheme(): AppTheme {
       // Fallback
     }
   }
-  return 'light';
+  return null;
+}
+
+export function resolveInitialTheme(): AppTheme {
+  return getClientPersistedTheme() ?? 'light';
 }
 
 export function initializeTheme(initialTheme?: AppTheme): void {
   if (!initialTheme || (initialTheme !== 'dark' && initialTheme !== 'sepia' && initialTheme !== 'light')) {
     return;
   }
+  const clientPersisted = getClientPersistedTheme();
+  const effectiveTheme: AppTheme =
+    initialTheme === 'light' && (clientPersisted === 'dark' || clientPersisted === 'sepia')
+      ? clientPersisted
+      : initialTheme;
   const current = useThemeStore.getState().theme;
-  if (current !== initialTheme) {
-    useThemeStore.setState({ theme: initialTheme });
-    applyThemeToDocument(initialTheme);
+  if (current !== effectiveTheme) {
+    useThemeStore.setState({ theme: effectiveTheme });
   }
+  if (typeof useThemeStore.getInitialState === 'function') {
+    const initialState = useThemeStore.getInitialState();
+    if (initialState) {
+      initialState.theme = effectiveTheme;
+    }
+  }
+  applyThemeToDocument(effectiveTheme);
 }
 
 export function applyThemeToDocument(theme: AppTheme) {
@@ -69,6 +84,12 @@ export const useThemeStore = create<ThemeState>()(
       theme: resolveInitialTheme(),
       setTheme: (theme: AppTheme) => {
         set({ theme });
+        if (typeof useThemeStore.getInitialState === 'function') {
+          const initialState = useThemeStore.getInitialState();
+          if (initialState) {
+            initialState.theme = theme;
+          }
+        }
         applyThemeToDocument(theme);
       },
       cycleTheme: () => {
@@ -76,6 +97,12 @@ export const useThemeStore = create<ThemeState>()(
         const next: AppTheme =
           current === 'light' ? 'sepia' : current === 'sepia' ? 'dark' : 'light';
         set({ theme: next });
+        if (typeof useThemeStore.getInitialState === 'function') {
+          const initialState = useThemeStore.getInitialState();
+          if (initialState) {
+            initialState.theme = next;
+          }
+        }
         applyThemeToDocument(next);
       },
     }),

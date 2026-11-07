@@ -37,9 +37,12 @@ export function Providers({
   if (initialCountry) {
     initializeJurisdiction(initialCountry);
   }
-  if (initialTheme) {
-    initializeTheme(initialTheme);
-  }
+  useState(() => {
+    if (initialTheme) {
+      initializeTheme(initialTheme);
+    }
+    return true;
+  });
   const [queryClient] = useState(
     () =>
       new QueryClient({

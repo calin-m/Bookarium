@@ -159,14 +159,29 @@ describe('Providers component', () => {
     expect(screen.getByTestId('auth-hint')).toHaveTextContent('guest');
   });
 
-  it('initializes theme in store when initialTheme is provided', () => {
-    render(
+  it('initializes theme in store when initialTheme is provided and never reverts client theme changes on rerender', () => {
+    const { rerender } = render(
       <Providers initialTheme="dark">
         <div>Content</div>
       </Providers>
     );
 
     expect(useThemeStore.getState().theme).toBe('dark');
+
+    // User switches to sepia on the client, then Providers re-renders with a stale initialTheme="light" prop
+    act(() => {
+      useThemeStore.getState().setTheme('sepia');
+    });
+    expect(useThemeStore.getState().theme).toBe('sepia');
+
+    rerender(
+      <Providers initialTheme="light">
+        <div>Content Updated</div>
+      </Providers>
+    );
+
+    expect(useThemeStore.getState().theme).toBe('sepia');
+    expect(document.documentElement.classList.contains('sepia')).toBe(true);
   });
 });
 

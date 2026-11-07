@@ -391,6 +391,15 @@ export function reconcileCloudPreferencesWithLocal(
 ): void {
   if (!profile) return;
 
+  // Self-heal any un-synced local Navbar theme change where useThemeStore diverged from useReaderStore
+  const globalTheme = useThemeStore.getState().theme;
+  const readerTheme = useReaderStore.getState().theme;
+  if (isValidTheme(globalTheme) && globalTheme !== readerTheme) {
+    useReaderStore.getState().setTheme(globalTheme);
+    schedulePreferencesCloudSync(0);
+    return;
+  }
+
   const localUpdatedAt = usePreferencesStore.getState().preferencesUpdatedAt;
   const localTime = localUpdatedAt ? new Date(localUpdatedAt).getTime() : 0;
 
@@ -435,6 +444,11 @@ export function reconcileCloudPreferencesWithLocal(
 
   // Fallback for legacy profile rows that only have preferred_theme or font_size populated
   if (!localUpdatedAt) {
+    if (isValidTheme(globalTheme) && globalTheme !== 'light' && profile.preferred_theme === 'light') {
+      useReaderStore.getState().setTheme(globalTheme);
+      schedulePreferencesCloudSync(0);
+      return;
+    }
     const partialLegacy: Partial<ScholarPreferencesSnapshot> = {};
     if (isValidTheme(profile.preferred_theme)) {
       partialLegacy.theme = profile.preferred_theme;
@@ -444,6 +458,9 @@ export function reconcileCloudPreferencesWithLocal(
     }
     if (Object.keys(partialLegacy).length > 0) {
       applyPreferencesSnapshot(partialLegacy, { syncCloud: false });
+      if (profile.updated_at) {
+        usePreferencesStore.getState().setPreferencesUpdatedAt(profile.updated_at);
+      }
     }
   } else {
     // Seed structured preferences to cloud for the first time
