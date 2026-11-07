@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 07 Nov 2026 15:25:29 GMT  
+**Last Generated**: Sat, 07 Nov 2026 16:43:55 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 208 passed  
-**Total Verified Tests**: 2261 passed  
+**Total Test Suites**: 210 passed  
+**Total Verified Tests**: 2276 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **208/208 test suites passed** (2261 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2276 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.35%** (12797/13145) — *Target: $\ge$ 95%*
-- **Statements**: **96.06%** (13862/14430) — *Target: $\ge$ 95%*
-- **Functions**: **94.72%** (2909/3071) — *Target: $\ge$ 92%*
-- **Branches**: **88.34%** (12594/14255) — *Target: $\ge$ 85%*
+- **Lines**: **97.33%** (13080/13438) — *Target: $\ge$ 95%*
+- **Statements**: **96%** (14146/14734) — *Target: $\ge$ 95%*
+- **Functions**: **94.87%** (2943/3102) — *Target: $\ge$ 92%*
+- **Branches**: **88.36%** (12711/14384) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (208 Suites / 2261 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2276 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 286 Tests)
 
@@ -1160,7 +1160,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (18 Suites · 176 Tests)
+### 📖 In-Browser Focus Reader (19 Suites · 182 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1288,8 +1288,8 @@
 - ✔ `renders language and translation switcher and handles edition selection`
 - ✔ `renders language button with current language label for single edition`
 - ✔ `renders language button with count badge when multiple editions exist and maintains invariant border across themes for zero CLS`
-- ✔ `handles link copying when share button is clicked`
-- ✔ `renders mobile quick share button and handles link copying`
+- ✔ `opens the social share and reading card modal when desktop share button is clicked and supports link copying`
+- ✔ `opens and closes the social share and reading card modal from the mobile share button`
 - ✔ `dispatches TOC, Search, and Controls actions from desktop tool row`
 - ✔ `renders and dispatches Annotations toggle with count badge`
 - ✔ `renders Read Aloud button and handles click toggles`
@@ -1336,6 +1336,18 @@
 - ✔ `closes drawer on Escape key press`
 - ✔ `closes drawer when clicking the backdrop`
 - ✔ `applies crisp focus ring styling to search input`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderShareModal.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `renders the live canvas reading card preview, customization controls, and all 8 social share links`
+- ✔ `copies the share link and share caption to the clipboard`
+- ✔ `copies the rendered PNG card image to the clipboard when ClipboardItem is supported`
+- ✔ `handles unsupported ClipboardItem gracefully when copying card image`
+- ✔ `downloads the reading card as a PNG file`
+- ✔ `triggers native device share with PNG file attachment or falls back to link share`
 
 </details>
 
@@ -1753,7 +1765,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (43 Suites · 534 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 543 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2293,6 +2305,21 @@
 - ✔ `resolves online habitRow and merges localCompletedBooksCount when provided`
 - ✔ `preserves explicit current_streak, longest_streak, and remote completed_books_count for visitor views`
 - ✔ `resolves offline local fallback when habitRow is null`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/reading-card-export.test.ts</code></b> (9 tests)</summary>
+
+- ✔ `returns empty array for empty or whitespace-only text`
+- ✔ `wraps words across multiple lines within maxWidth and truncates with ellipsis when exceeding maxLines`
+- ✔ `keeps a single short line intact without truncation`
+- ✔ `returns false when canvas 2d context is unavailable`
+- ✔ `renders archival bookplate card with reading progress bar across light, sepia, and dark themes`
+- ✔ `resolves with a PNG Blob when canvas.toBlob succeeds`
+- ✔ `resolves with null when canvas.toBlob is missing or throws`
+- ✔ `formats share text with or without reading progress`
+- ✔ `builds all 8 zero-key social platform Web Intent URLs`
 
 </details>
 

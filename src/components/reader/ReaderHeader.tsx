@@ -10,7 +10,6 @@ import {
   Sun,
   Moon,
   Coffee,
-  Check,
   Share2,
   Headphones,
   Highlighter,
@@ -33,8 +32,8 @@ import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
-import { useCopyFeedback } from '@/hooks/useCopyFeedback';
 import { GutenbergInfoModal } from './GutenbergInfoModal';
+import { ReaderShareModal } from './ReaderShareModal';
 import {
   CopyBookLinkIndicator,
   handleCopyBookLinkClick,
@@ -120,8 +119,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onDismissSymposiumMilestone,
   isHidden = false,
 }) => {
-  const { copiedKey, copyWithFeedback } = useCopyFeedback(2000);
-  const isCopied = copiedKey === 'share';
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isInfoCardOpen, setIsInfoCardOpen] = useState(false);
   const activeTheme = getReaderTheme(theme);
 
@@ -131,8 +129,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   const languageButtonTitle = `Language Editions (${currentBookLang})`;
 
   const handleShare = () => {
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
-    copyWithFeedback('share', shareUrl);
+    setIsShareModalOpen((prev) => !prev);
   };
 
   const numericId = typeof bookId === 'number' ? bookId : parseInt(String(bookId), 10);
@@ -359,47 +356,39 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
               </button>
             )}
 
-            {/* Share Book Direct Link Button */}
+            {/* Share Book & Reading Card Modal Trigger */}
             <button
               type="button"
               onClick={handleShare}
               className={`p-2 rounded-lg border shrink-0 transition-colors cursor-pointer active:scale-95 shadow-2xs ${
-                isCopied
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
-                  : activeTheme.button
+                isShareModalOpen ? activeTheme.activePill : activeTheme.button
               }`}
-              aria-label={isCopied ? 'Link Copied to Clipboard' : 'Share Book Link'}
-              title={isCopied ? 'Link Copied!' : 'Share Book Link'}
+              aria-label="Share Book & Reading Card"
+              aria-haspopup="dialog"
+              aria-expanded={isShareModalOpen}
+              title="Share Book & Reading Card"
               data-testid="reader-share-button"
             >
-              {isCopied ? (
-                <Check className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <Share2 className="w-4 h-4" />
-              )}
+              <Share2 className="w-4 h-4" />
             </button>
 
           </div>
 
-          {/* Right: Mobile Clean Quick Share Action (Relieved of sliding drawer) */}
+          {/* Right: Mobile Share Action (Opens Share & Reading Card Sheet) */}
           <div className="sm:hidden flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={handleShare}
               className={`p-2 rounded-lg border shrink-0 transition-all cursor-pointer active:scale-95 shadow-2xs ${
-                isCopied
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
-                  : activeTheme.button
+                isShareModalOpen ? activeTheme.activePill : activeTheme.button
               }`}
-              aria-label={isCopied ? 'Link Copied to Clipboard' : 'Share Book Link'}
-              title={isCopied ? 'Link Copied!' : 'Share Book Link'}
+              aria-label="Share Book & Reading Card"
+              aria-haspopup="dialog"
+              aria-expanded={isShareModalOpen}
+              title="Share Book & Reading Card"
               data-testid="mobile-reader-share-btn"
             >
-              {isCopied ? (
-                <Check className="w-4 h-4 text-emerald-500" />
-              ) : (
-                <Share2 className="w-4 h-4" />
-              )}
+              <Share2 className="w-4 h-4" />
             </button>
           </div>
 
@@ -430,6 +419,19 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
         title={displayTitle}
         author={displayAuthor}
         theme={theme}
+      />
+
+      {/* Social Share & Reading Card Export Modal */}
+      <ReaderShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        bookId={bookId}
+        title={displayTitle}
+        author={displayAuthor}
+        theme={theme}
+        progress={progress}
+        currentChapterIndex={currentChapterIndex}
+        totalChapters={totalChapters}
       />
     </>
   );

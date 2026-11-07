@@ -912,6 +912,7 @@ function generateMarkdown() {
     '        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]',
     '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]',
     '        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]',
+    '        ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • reading-card-export.ts)"]',
     '    end',
     '',
     '    subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]',
@@ -1472,6 +1473,8 @@ function generateMarkdown() {
       'Reading position cloud synchronization helpers, ghost-row filtering (`isGhostReadingPosition`, `isGhostCloudRow`), fractional row-bookmark decoding (`decodeRemoteReadingPosition`), and lifespan-preserving author extraction (`extractVerifiedAuthors`).',
     'preferences-sync':
       'Unified 13-key scholar preferences snapshot coordinator (`ScholarPreferencesSnapshot`, `FACTORY_PREFERENCES`), two-tier custom default preset & factory reset actions (`saveCurrentAsCustomDefaults`, `revertToCustomDefaults`, `resetAllPreferencesToFactoryDefaults`, `resetReaderAppearanceToDefaults`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud synchronization (`schedulePreferencesCloudSync`, `reconcileCloudPreferencesWithLocal`).',
+    'reading-card-export':
+      'Client-side HTML5 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`) and zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`) across X, Reddit, WhatsApp, Telegram, Bluesky, Facebook, LinkedIn, and Email.',
   };
 
   for (const u of utilities) {

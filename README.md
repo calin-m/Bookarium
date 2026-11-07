@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-208%20Suites%20%7C%202261%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.35%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202276%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.33%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2261 tests across 208 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2276 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,10 +108,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.5)
+## 🛠️ Latest Improvements (v2.9.6)
 
-- **Symmetrical Mobile Reader Layout, Page-Turn Animation Restoration & Translucent In-Page Line Guide (`ADR-080`)**: Balanced mobile reader article padding (`px-5 sm:px-14 md:px-16`) to center title, author, and body text, and scoped mobile nested animation suppression in `globals.css` to `.animate-view-slide-*` containers to restore the `180ms` `.animate-page-turn` transition on phones. Streamlined the line bookmark into an icon-only handle (`mr-0.5 sm:mr-2`) with translucent resting states (`opacity-35` active, `opacity-25 sm:opacity-0` at Row 0 for touch discoverability) that elevates to `opacity-100` on touch, hover, or drag.
-- **Contoured Mobile TOC Button, Inertial Floating Tools Pod & Bottom Sheet Pull-Down-to-Dismiss (`ADR-080`)**: Styled the mobile chapter trigger as a contoured button, arranged `[Search] [Settings]` on the right, and rendered the vertical toolbar via `createPortal` at `z-[10002]` with live Expanded (`252px`) / Minimized (`152px`) Read Aloud clearance, a ref-based `3.0s` idle opacity timer (`opacity-35`), whole-pod `6px` drag discrimination, velocity-based inertial flick projection, swipe-right dismissal, `isSelectionPopoverOpen` auto-suspend, and pull-down-to-dismiss (`> 70px`) across all 5 Reader Bottom Sheets in `ReaderDrawerShell.tsx`.
+- **Client-Side HTML5 Canvas Reading Card Export Engine (`ADR-080`)**: Built a zero-key 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`) rendering `1200 × 630` archival bookplate cards in `< 15ms` across `Light`, `Sepia`, and `Dark` palettes with double-line ornamental borders, `GUTENBERG #<bookId>` badge, multi-line serif title/author wrapping, and optional live reading progress (`<progress>% COMPLETED • SECTION <X> OF <Y>`), plus a zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`).
+- **Universal Social Share Modal for PC, Tablet & Mobile (`ADR-080`)**: Wired `ReaderShareModal` (`ReaderDrawerShell`, `z-[10005]`) to the desktop (`reader-share-button`) and mobile (`mobile-reader-share-btn`) share buttons in `ReaderHeader.tsx`, providing live interactive `<canvas>` preview, `Light`/`Sepia`/`Dark` card theme selection, an `Include Progress` toggle, `Copy Card Image` (`ClipboardItem` `image/png` for direct `Ctrl+V` pasting into Discord, X, Reddit, WhatsApp Web, or Slack), `Download PNG`, `Copy Share Link`, `Device Share` (`navigator.share` with PNG file attachment), and 8 zero-key social platform links (`X / Twitter`, `Reddit`, `WhatsApp`, `Telegram`, `Bluesky`, `Facebook`, `LinkedIn`, `Email`) with inline SVG brand icons and Lucide `Mail`.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

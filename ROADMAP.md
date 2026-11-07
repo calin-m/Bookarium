@@ -2,16 +2,16 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.5-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-87%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-41_of_47-blue?style=flat-square)](ROADMAP.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.6-teal?style=flat-square)](CHANGELOG.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-42_of_47-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[█████████████████░░░]` **41/47 (87%)**
+`[██████████████████░░]` **42/47 (89%)**
 
 ---
 
@@ -177,8 +177,8 @@
 
 ---
 
-### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.5)`)
-`[█████░░░░░░░░░░░░░░░]` **1/4 (25%)**
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.6)`)
+`[██████████░░░░░░░░░░]` **2/4 (50%)**
 
 > Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, Gutendex popularity hydration (`syncPopularDownloadCounts`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.
 
@@ -188,7 +188,7 @@
   Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—reserving live Gutenberg mirror pulls strictly for uncached volumes opened by readers.
 - [ ] **[Target: v2.9.x] Dual-Page Spread Reader Mode for Horizontal Screens (Tablets, Laptops & Desktops)** `⏳ PLANNED`
   Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.
-- [ ] **[Target: v2.9.x] Shareable Reading Cards & Social Milestone Canvas Export** `⏳ PLANNED`
+- [x] **[Target: v2.9.x] Shareable Reading Cards & Social Milestone Canvas Export** `✅ VERIFIED`
   Client-side canvas card generator exporting aesthetic, tactile summary images of annual reading goals and milestones for social sharing.
 
 ---

@@ -350,10 +350,11 @@ describe('ReaderHeader', () => {
     expect(badgeDark.className).toContain('border-primary/20');
   });
 
-  it('handles link copying when share button is clicked', async () => {
+  it('opens the social share and reading card modal when desktop share button is clicked and supports link copying', async () => {
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, {
-      clipboard: {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
         writeText: writeTextMock,
       },
     });
@@ -362,33 +363,32 @@ describe('ReaderHeader', () => {
 
     const shareBtn = screen.getByTestId('reader-share-button');
     expect(shareBtn).toBeInTheDocument();
-    expect(shareBtn).toHaveAttribute('aria-label', 'Share Book Link');
+    expect(shareBtn).toHaveAttribute('aria-label', 'Share Book & Reading Card');
+    expect(shareBtn).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(shareBtn);
 
-    expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
-    const copiedBtns = await screen.findAllByLabelText('Link Copied to Clipboard');
-    expect(copiedBtns[0]).toBeInTheDocument();
+    expect(shareBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('reader-share-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('reading-card-canvas')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('share-copy-link-btn'));
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+    expect(await screen.findByText('Link Copied!')).toBeInTheDocument();
   });
 
-  it('renders mobile quick share button and handles link copying', async () => {
-    const writeTextMock = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, {
-      clipboard: {
-        writeText: writeTextMock,
-      },
-    });
-
+  it('opens and closes the social share and reading card modal from the mobile share button', () => {
     render(<ReaderHeader {...defaultProps} />);
 
     const mobileShareBtn = screen.getByTestId('mobile-reader-share-btn');
     expect(mobileShareBtn).toBeInTheDocument();
-    expect(mobileShareBtn).toHaveAttribute('aria-label', 'Share Book Link');
+    expect(mobileShareBtn).toHaveAttribute('aria-label', 'Share Book & Reading Card');
 
     fireEvent.click(mobileShareBtn);
-    expect(writeTextMock).toHaveBeenCalledWith(window.location.href);
-    const copiedBtns = await screen.findAllByLabelText('Link Copied to Clipboard');
-    expect(copiedBtns[0]).toBeInTheDocument();
+    expect(screen.getByTestId('reader-share-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close Share Dialog' }));
+    expect(screen.queryByTestId('reader-share-modal')).not.toBeInTheDocument();
   });
 
   it('dispatches TOC, Search, and Controls actions from desktop tool row', () => {

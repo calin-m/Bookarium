@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.6] - 2026-11-07
+### *Zero-Key Social Share Modal & Client-Side HTML5 Canvas Reading Card Generator*
+
+### Added
+- Client-Side HTML5 Canvas Reading Card Export Engine (`src/lib/reading-card-export.ts`, `src/lib/reading-card-export.test.ts`, `docs/DECISIONS.md`, `ADR-080`): Built a zero-key 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`) rendering `1200 × 630` archival bookplate cards in `< 15ms` across `Light`, `Sepia`, and `Dark` palettes with double-line ornamental borders, `GUTENBERG #<bookId>` badge, multi-line serif title/author wrapping, and optional live reading progress (`<progress>% COMPLETED • SECTION <X> OF <Y>`), plus a zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`).
+- Universal Social Share Modal for PC, Tablet & Mobile (`src/components/reader/ReaderShareModal.tsx`, `src/components/reader/ReaderShareModal.test.tsx`, `src/components/reader/ReaderHeader.tsx`, `src/components/reader/ReaderHeader.test.tsx`, `docs/DECISIONS.md`, `ADR-080`): Wired `ReaderShareModal` (`ReaderDrawerShell`, `z-[10005]`) to the desktop (`reader-share-button`) and mobile (`mobile-reader-share-btn`) share buttons in `ReaderHeader.tsx`, providing live interactive `<canvas>` preview, `Light`/`Sepia`/`Dark` card theme selection, an `Include Progress` toggle, `Copy Card Image` (`ClipboardItem` `image/png` for direct `Ctrl+V` pasting into Discord, X, Reddit, WhatsApp Web, or Slack), `Download PNG`, `Copy Share Link`, `Device Share` (`navigator.share` with PNG file attachment), and 8 zero-key social platform links (`X / Twitter`, `Reddit`, `WhatsApp`, `Telegram`, `Bluesky`, `Facebook`, `LinkedIn`, `Email`) with inline SVG brand icons and Lucide `Mail`.
+
+
 ## [2.9.5] - 2026-11-07
 ### *Symmetrical Mobile Reader Layout, Translucent Line Guide, Inertial Floating Tools Pod & Bottom Sheet Pull-to-Dismiss*
 
