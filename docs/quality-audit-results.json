@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-07T08:49:43.704Z",
+  "timestamp": "2026-11-07T10:47:07.951Z",
   "status": "PASSED",
   "testSummary": {
     "totalSuites": 211,
@@ -27,10 +27,10 @@
       "totalSuites": 211,
       "totalTests": 2285,
       "metrics": {
-        "lines": 97.34,
-        "statements": 96.06,
-        "functions": 94.74,
-        "branches": 88.38
+        "lines": 97.32,
+        "statements": 96.01,
+        "functions": 94.8,
+        "branches": 88.45
       }
     },
     "pass4_docs_sync": {

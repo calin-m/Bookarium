@@ -36,11 +36,30 @@ body:
         - In-Browser Focus Reader (/read/[id])
         - Text Highlighting & Annotations Engine
         - Commonplace Notebook & Reading Journal
+        - Scholar Fellowship & Reader Circles (Symposium, Marginalia Sync)
+        - Catalog Discovery & Editorial Treasury (Words That Shaped Humanity, 3D Hero Book)
         - 3D Bookcase & Shelf Organization
         - Audio & Text-to-Speech (Web Speech API)
+        - Language Editions & Parallel Translations (Wikidata SPARQL / Gutenberg)
+        - Reading Habits, Streaks & Accolades System
+        - Multi-Jurisdictional Copyright & Public Domain Engine
         - Offline Storage & PWA Service Worker (IndexedDB)
         - Cloud Synchronization & Auth (Supabase)
         - Performance, Accessibility (a11y), or Core Web Vitals
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target_device
+    attributes:
+      label: Target Device & Form Factor
+      description: Which device form factor does this feature primarily target?
+      options:
+        - Universal (All Devices & Screen Sizes)
+        - Desktop & Widescreen Displays (>= 1024px)
+        - Tablets & Foldable Displays (iPad, Android 2K Tablets)
+        - Mobile Phones (< 640px)
+        - Installed PWA Specific (Offline Shell, App Badging)
     validations:
       required: true
 
@@ -49,6 +68,15 @@ body:
     attributes:
       label: Alternative Approaches Considered
       description: Describe any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: textarea
+    id: visual_mockups
+    attributes:
+      label: Mockups or Visual References (Optional)
+      description: Drag and drop sketches, Figma screenshots, or UI design references.
+      placeholder: "Drag & drop images or paste links here..."
     validations:
       required: false
 
@@ -61,4 +89,3 @@ body:
           required: true
         - label: I confirm this feature requires zero paid third-party API keys or mandatory subscription walls for end users.
           required: true
-

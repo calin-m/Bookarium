@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.4] - 2026-11-07
+### *GitHub Collaboration Template Modernization, Automated Version Placeholder Sync & Pass 5 Anti-Drift Gate*
+
+### Added
+- GitHub Collaboration Template Modernization (`.github/ISSUE_TEMPLATE/config.yml`, `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/feature_request.yml`, `.github/ISSUE_TEMPLATE/good_first_issue.yml`, `.github/pull_request_template.md`, `CONTRIBUTING.md`, `ADR-080`): Streamlined the GitHub issue chooser by removing redundant `contact_links` from `config.yml`, and modernized `bug_report.yml` (severity dropdown, PC/Tablet/Mobile device categories, screen aspect ratio, theme mode, network/cache mode, and visual attachments), `feature_request.yml` (all v2 architectural layers, target device form factor, and mockups), `good_first_issue.yml` (technology area, estimated effort, and 95% V8 coverage floor), and `pull_request_template.md` (`Closes #` issue linking).
+- 8-File Version Sync, Zero-Bloat Script Pruning & Pass 5 Anti-Drift Gate (`scripts/generate-changelog.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `AGENTS.md`, `.agents/AGENTS.md`, `ADR-080`): Pruned the redundant 0-byte `scripts/new-adr.js` stub, extended `syncReleaseVersionFiles()` in `scripts/generate-changelog.js` to automatically propagate `RELEASES[0].version` to `bug_report.yml`, and expanded `Pass 5` in `scripts/verify-build.js` to enforce non-empty `scripts/*.js` files, valid `npm run` commands, `src/` file path existence on disk, version placeholder parity, and the 95% coverage floor across all `.github` collaboration templates.
+
+
 ## [2.9.3] - 2026-11-06
 ### *Instant Frame-0 Quote Hydration, Zero-Flash Header Cookie Synchronization & Nav Transition Parity*
 

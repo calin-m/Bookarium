@@ -14,7 +14,20 @@ body:
     attributes:
       label: Bookarium Version / Release
       description: What version or release of Bookarium are you using?
-      placeholder: "e.g. v1.9.0, commit 9065c48, or bookarium.vercel.app"
+      placeholder: "e.g. v2.9.4, latest master, or bookarium.vercel.app"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity & Impact Priority
+      description: How severely does this issue affect your ability to read or browse Bookarium?
+      options:
+        - "Low — Minor visual glitch, cosmetic typo, or styling imperfection"
+        - "Medium — Feature impaired but usable via workaround"
+        - "High — Major feature broken (e.g. reader crash, downloads failing, settings not saving)"
+        - "Critical — Complete blocker (e.g. white screen of death, unhandled fatal crash, data loss)"
     validations:
       required: true
 
@@ -30,17 +43,57 @@ body:
   - type: dropdown
     id: environment
     attributes:
-      label: Environment & Device Form Factor
-      description: Which environment did this issue occur on?
+      label: Device Category & Environment
+      description: Which device category and environment did this issue occur on?
       options:
-        - Desktop Browser (Chrome / Edge / Brave)
-        - Desktop Browser (Firefox)
-        - Desktop Browser (Safari / macOS)
-        - Mobile Browser (iOS Safari)
-        - Mobile Browser (Android Chrome)
-        - Installed PWA (Desktop macOS / Windows)
-        - Installed PWA (iOS Home Screen)
-        - Installed PWA (Android WebAPK)
+        - PC / Laptop (Desktop Browser: Chrome / Edge / Brave)
+        - PC / Laptop (Desktop Browser: Firefox)
+        - PC / Laptop (Desktop Browser: Safari / macOS)
+        - Tablet / iPad (Browser: Safari / Chrome)
+        - Mobile / Smartphone (Browser: iOS Safari)
+        - Mobile / Smartphone (Browser: Android Chrome)
+        - Installed PWA (Desktop PC / Mac)
+        - Installed PWA (Tablet / iPad)
+        - Installed PWA (Mobile Phone)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: screen_aspect_ratio
+    attributes:
+      label: Screen Orientation & Aspect Ratio
+      description: What is the screen orientation and approximate aspect ratio of the device?
+      options:
+        - "Horizontal / Landscape (16:9, 16:10, 21:9 Widescreen PC or Tablet)"
+        - "Vertical / Portrait (9:16, 9:19.5, 9:20 Mobile Phone or Vertical Monitor)"
+        - "Square / Near-Square (4:3 Tablet / iPad, 3:2 Laptop, ~1:1 Foldable Display)"
+        - "Multi-Window / Split-Screen (Half-Screen Snapped or Floating Window)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme_mode
+    attributes:
+      label: Active Atmosphere Theme
+      description: Which theme was active when the issue occurred?
+      options:
+        - Light Mode
+        - Sepia Mode
+        - Dark Mode
+        - Not Applicable / General UI
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network_mode
+    attributes:
+      label: Network & Offline State
+      description: What was your network connection status when the issue occurred?
+      options:
+        - Online (Connected)
+        - Offline (No Internet / Airplane Mode)
+        - Slow / Flaky Connection
+        - Unknown / Not Relevant
     validations:
       required: true
 
@@ -75,6 +128,15 @@ body:
       required: true
 
   - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or Screen Recording (Optional)
+      description: Drag and drop screenshots, screen recordings, or GIFs showing the issue to help us diagnose quickly.
+      placeholder: "Drag & drop images here..."
+    validations:
+      required: false
+
+  - type: textarea
     id: logs
     attributes:
       label: Console Error Logs (Optional)
@@ -92,4 +154,3 @@ body:
           required: true
         - label: I have searched existing open and closed issues to ensure this is not a duplicate.
           required: true
-

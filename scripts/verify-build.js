@@ -1244,6 +1244,9 @@ function pass5AdrValidation() {
     'SECURITY.md',
     'docs/PIPELINE_GUIDE.md',
     '.github/pull_request_template.md',
+    '.github/ISSUE_TEMPLATE/bug_report.yml',
+    '.github/ISSUE_TEMPLATE/feature_request.yml',
+    '.github/ISSUE_TEMPLATE/good_first_issue.yml',
     'AGENTS.md',
     '.agents/AGENTS.md',
   ];
@@ -1260,6 +1263,68 @@ function pass5AdrValidation() {
       if (validNpmScripts.size > 0 && !validNpmScripts.has(cmdName)) {
         docViolations.push(
           `Stale or invalid command reference "npm run ${cmdName}" in ${relDoc} (not found in package.json scripts).`
+        );
+      }
+    }
+  }
+
+  // Verify GitHub Collaboration Templates (.github/ISSUE_TEMPLATE/* & .github/pull_request_template.md) Parity
+  const githubCollaborationTemplates = [
+    '.github/ISSUE_TEMPLATE/config.yml',
+    '.github/ISSUE_TEMPLATE/bug_report.yml',
+    '.github/ISSUE_TEMPLATE/feature_request.yml',
+    '.github/ISSUE_TEMPLATE/good_first_issue.yml',
+    '.github/pull_request_template.md',
+  ];
+  for (const relTpl of githubCollaborationTemplates) {
+    const fullTpl = path.join(rootDir, relTpl);
+    if (!fs.existsSync(fullTpl)) {
+      docViolations.push(`Missing GitHub collaboration template: ${relTpl}`);
+      continue;
+    }
+    const tplText = fs.readFileSync(fullTpl, 'utf-8');
+    if (tplText.trim().length === 0) {
+      docViolations.push(`GitHub collaboration template is empty: ${relTpl}`);
+      continue;
+    }
+
+    // Verify any explicit src/... file paths referenced in templates exist on disk
+    const srcRefMatches = tplText.matchAll(/\b(src\/[A-Za-z0-9_./-]+\.(?:ts|tsx|js|jsx|css))\b/g);
+    for (const refMatch of srcRefMatches) {
+      const relSrcRef = refMatch[1];
+      if (!fs.existsSync(path.join(rootDir, relSrcRef))) {
+        docViolations.push(
+          `Stale or non-existent source file reference "${relSrcRef}" in ${relTpl} (update template to match current codebase paths).`
+        );
+      }
+    }
+  }
+
+  const issueConfigPath = path.join(rootDir, '.github', 'ISSUE_TEMPLATE', 'config.yml');
+  if (fs.existsSync(issueConfigPath)) {
+    const issueConfigText = fs.readFileSync(issueConfigPath, 'utf-8');
+    if (!/blank_issues_enabled:\s*false/.test(issueConfigText)) {
+      docViolations.push(
+        '.github/ISSUE_TEMPLATE/config.yml must enforce "blank_issues_enabled: false".'
+      );
+    }
+    if (/contact_links\s*:/.test(issueConfigText)) {
+      docViolations.push(
+        '.github/ISSUE_TEMPLATE/config.yml must not include redundant "contact_links:" chooser entries.'
+      );
+    }
+  }
+
+  for (const coverageTpl of [
+    '.github/ISSUE_TEMPLATE/good_first_issue.yml',
+    '.github/pull_request_template.md',
+  ]) {
+    const fullCovTpl = path.join(rootDir, coverageTpl);
+    if (fs.existsSync(fullCovTpl)) {
+      const covTplText = fs.readFileSync(fullCovTpl, 'utf-8');
+      if (!covTplText.includes('95%') || /\b80%\b/.test(covTplText)) {
+        docViolations.push(
+          `Coverage threshold drift in ${coverageTpl}: must reference the canonical 95% V8 coverage floor (not legacy 80%).`
         );
       }
     }
@@ -1309,6 +1374,12 @@ function pass5AdrValidation() {
     if (fs.existsSync(scriptsDirPath)) {
       for (const entry of fs.readdirSync(scriptsDirPath, { withFileTypes: true })) {
         if (entry.isFile() && entry.name.endsWith('.js')) {
+          const fullScriptPath = path.join(scriptsDirPath, entry.name);
+          if (fs.statSync(fullScriptPath).size === 0) {
+            docViolations.push(
+              `Empty 0-byte CLI script detected: "scripts/${entry.name}" (implement or remove unused stub).`
+            );
+          }
           if (!archContent.includes(`scripts/${entry.name}`)) {
             docViolations.push(
               `CLI script "scripts/${entry.name}" is not cataloged in docs/ARCHITECTURE.md (update extractNodeScriptsCatalog in scripts/generate-architecture-matrix.js).`
@@ -1588,6 +1659,16 @@ function pass5AdrValidation() {
         if (!releaseWfText.includes(`default: 'v${pkgVersion}'`)) {
           docViolations.push(
             `Version drift in .github/workflows/release.yml: expected "default: 'v${pkgVersion}'" (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      const bugReportTplPath = path.join(rootDir, '.github', 'ISSUE_TEMPLATE', 'bug_report.yml');
+      if (fs.existsSync(bugReportTplPath)) {
+        const bugReportTplText = fs.readFileSync(bugReportTplPath, 'utf-8');
+        if (!bugReportTplText.includes(`e.g. v${pkgVersion},`)) {
+          docViolations.push(
+            `Version drift in .github/ISSUE_TEMPLATE/bug_report.yml: expected placeholder "e.g. v${pkgVersion}," (run "npm run docs:sync").`
           );
         }
       }

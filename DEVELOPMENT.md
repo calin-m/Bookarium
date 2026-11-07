@@ -49,9 +49,6 @@ npm run docs:sync
 # Quality audit report (Pass 4 engine audit)
 npm run report
 
-# Add a new Architecture Decision Record (ADR)
-npm run adr:new -- "Decision Title"
-
 # Public Domain Catalog Ingestion, Quotes & Translation Pipelines
 npm run catalog:sync
 npm run catalog:ingest

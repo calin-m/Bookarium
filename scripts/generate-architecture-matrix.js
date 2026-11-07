@@ -394,14 +394,6 @@ function extractNodeScriptsCatalog() {
         'Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes` via Primary-Key-Scoped quote discovery (`books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')`) and single-column `idx_books_download_count` scans (`<25ms` total), blending `40 Popular + 10 Recent` unpopulated English volumes per 50-book batch with cross-tier backfill and post-batch `1-for-1` sliding window auto-pruning, enforcing a deterministic 1.0h–2.0h float schedule gate on cron runs, and dispatching selectable per-mirror PGLAF workers (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays.',
     },
     {
-      name: 'new-adr.js',
-      file: 'scripts/new-adr.js',
-      npmCommand: '`npm run adr:new -- "Title"`',
-      nodeApis: '`fs`, `path`',
-      responsibility:
-        'Scaffolds new Architectural Decision Records in docs/DECISIONS.md with auto-incremented sequential ID and schema verification.',
-    },
-    {
       name: 'approval-gate.js',
       file: 'scripts/approval-gate.js',
       npmCommand: '`npm run gate:approve`',
@@ -567,7 +559,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
   const livingDocs = [
     { file: 'README.md', mode: 'Hybrid (Curated + Script-Synced)', generator: '`scripts/generate-changelog.js` & `scripts/generate-quality-report.js`', role: 'Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks.' },
     { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated', generator: '`scripts/generate-architecture-matrix.js`', role: 'Complete 360° full-repository C4 architecture map, event/state-flow bus, temporal sequence workflows, external integration boundaries, failure/retry topology, edge deployment & 5-layer caching hierarchy, AST-verified environment variable bindings, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology.' },
-    { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`scripts/new-adr.js` (Validated in Pass 5)', role: `Sequential Architectural Decision Records (ADR-001 through ${adrRangeEnd}) documenting context, trade-offs, and consequences.` },
+    { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`_Append-Only Ledger_ (Validated in Pass 5)`', role: `Sequential Architectural Decision Records (ADR-001 through ${adrRangeEnd}) documenting context, trade-offs, and consequences.` },
     { file: 'docs/GUTENBERG_PARSER.md', mode: '100% AST-Generated', generator: '`scripts/generate-parser-docs.js`', role: 'Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine.' },
     { file: 'docs/QUALITY_AUDIT_REPORT.md', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: `Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all ${auditTotals.suites} test suites and ${auditTotals.tests} tests.` },
     { file: 'docs/quality-audit-results.json', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: 'Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals.' },

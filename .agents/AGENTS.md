@@ -83,11 +83,7 @@ Never manually craft static component matrices, route catalogs, or architectural
 
 ### Rule 7: Approval-First Architectural Governance & Living ADR Evolution (`docs/DECISIONS.md`)
 - **Continuous ADR Audit & Non-Fragmentation (Evolve Existing Thematic ADRs First):** On every code, UI, pipeline, or architectural modification, inspect `docs/DECISIONS.md` to determine whether an existing thematic ADR covers the subsystem. When refining, extending, or adjusting an existing subsystem, update the governing `ADR-XXX` in place (refining parameters or appending a numbered Decision Item) and cite that `ADR-XXX` in the current `RELEASES[0]` patch entry in `scripts/generate-changelog.js`.
-- **When to Mint a New ADR (`npm run adr:new`):** Reserve creating a brand-new `ADR-XXX` strictly for net-new architectural subsystems, database tables, external dependencies, or security boundaries that do not belong to any existing ADR:
-  ```bash
-  npm run adr:new -- "Your Decision Title"
-  ```
-  All ADRs in `docs/DECISIONS.md` must adhere to standard schema (Status, Context, Decision, Consequences).
+- **When to Mint a New ADR (`docs/DECISIONS.md`):** Reserve appending a brand-new sequential `## ADR-XXX: Title` entry in `docs/DECISIONS.md` strictly for net-new architectural subsystems, database tables, external dependencies, or security boundaries that do not belong to any existing ADR. All ADRs in `docs/DECISIONS.md` must adhere to the standard 4-part schema (`Status`, `Context`, `Decision`, `Consequences`, validated automatically in `Pass 5`).
 
 ### Rule 8: Repository Hygiene, Secret Prevention & 7-Pillar SAST/OWASP/AST-Taint Governance
 - **Zero Secrets & Boundary Policy (Pass 0.5):** Never commit API keys, RSA/EC/OpenSSH private keys, GitHub/Supabase PATs, `service_role` JWT payloads, webhook tokens, passwords, database URLs with embedded credentials, or Git-tracked `.env*` files; enforce `.env.example` parity, `5 MB` binary limits, and transitive AST graph isolation so `SUPABASE_SERVICE_ROLE_KEY` or server-only modules never enter client bundles.
