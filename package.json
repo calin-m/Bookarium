@@ -41,48 +41,54 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.118.0",
-    "@tanstack/react-query": "^5.105.0",
+    "@supabase/supabase-js": "^2.119.0",
+    "@tanstack/react-query": "^5.107.1",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
+    "@vercel/speed-insights": "^2.1.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",
-    "lucide-react": "^1.58.0",
-    "next": "^16.4.3",
+    "lucide-react": "^1.70.0",
+    "next": "^16.4.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tailwind-merge": "^3.7.0",
-    "zustand": "^5.0.16"
+    "zustand": "^5.1.0"
   },
   "overrides": {
     "postcss-selector-parser": "^7.1.6",
     "fast-glob": "npm:tinyglobby@^0.2.17",
     "@typescript-eslint/typescript-estree": {
       "minimatch": "^11.0.1"
+    },
+    "eslint": {
+      "minimatch": "^11.0.1"
+    },
+    "@eslint/config-array": {
+      "minimatch": "^11.0.1"
     }
   },
   "devDependencies": {
-    "@babel/parser": "^8.0.8",
-    "@babel/traverse": "^8.0.8",
-    "@tailwindcss/postcss": "^4.3.3",
+    "@babel/parser": "^8.1.0",
+    "@babel/traverse": "^8.1.0",
+    "@tailwindcss/postcss": "^4.3.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.8",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
+    "@vitejs/plugin-react": "^6.2.1",
     "@vitest/coverage-v8": "^4.1.12",
     "@vitest/ui": "^4.1.12",
-    "concurrently": "^10.0.6",
-    "eslint": "^10.13.0",
-    "eslint-config-next": "^16.4.3",
+    "concurrently": "^10.0.7",
+    "eslint": "^10.14.0",
+    "eslint-config-next": "^16.4.5",
     "husky": "^9.1.7",
     "jsdom": "^25.0.1",
-    "knip": "^6.41.0",
+    "knip": "^6.44.2",
     "msw": "^2.15.0",
     "postcss": "^8.5.32",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^4.3.5",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12"
   }

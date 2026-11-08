@@ -64,8 +64,8 @@ describe('AccountTypographySubPanel', () => {
     expect(props.onFontSizeChange).toHaveBeenCalledWith(16);
     fireEvent.click(screen.getByRole('button', { name: 'Increase default font size' }));
     expect(props.onFontSizeChange).toHaveBeenCalledWith(20);
-    fireEvent.click(screen.getByRole('button', { name: '24px' }));
-    expect(props.onFontSizeChange).toHaveBeenCalledWith(24);
+    fireEvent.click(screen.getByRole('button', { name: '22px' }));
+    expect(props.onFontSizeChange).toHaveBeenCalledWith(22);
 
     // Line Spacing stepper & preset
     fireEvent.click(screen.getByRole('button', { name: 'Decrease default line spacing' }));

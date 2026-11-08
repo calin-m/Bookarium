@@ -180,6 +180,24 @@ describe('preferences-sync', () => {
       expect(getActivePreferencesSnapshot()).toEqual(FACTORY_PREFERENCES);
       expect(usePreferencesStore.getState().customDefaults).toBeNull();
       expect(revertToCustomDefaults({ syncCloud: false })).toBeNull();
+
+      // Verify device-adaptive factory reset on mobile viewport (< 640px -> 15px)
+      const originalInnerWidth = window.innerWidth;
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: 375,
+      });
+      resetReaderAppearanceToDefaults('factory', { syncCloud: false });
+      expect(useReaderStore.getState().fontSize).toBe(15);
+      expect(useReaderStore.getState().isFontSizeCustomized).toBe(false);
+      expect(getActivePreferencesSnapshot().fontSize).toBe(15);
+
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: originalInnerWidth,
+      });
     });
   });
 

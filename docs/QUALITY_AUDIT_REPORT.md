@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 08 Nov 2026 11:45:35 GMT  
+**Last Generated**: Sun, 08 Nov 2026 13:48:23 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 210 passed  
-**Total Verified Tests**: 2290 passed  
+**Total Verified Tests**: 2291 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2290 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2291 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.31%** (13138/13500) — *Target: $\ge$ 95%*
-- **Statements**: **95.98%** (14210/14804) — *Target: $\ge$ 95%*
-- **Functions**: **94.81%** (2945/3106) — *Target: $\ge$ 92%*
-- **Branches**: **88.34%** (12785/14471) — *Target: $\ge$ 85%*
+- **Lines**: **97.32%** (13161/13523) — *Target: $\ge$ 95%*
+- **Statements**: **95.99%** (14234/14828) — *Target: $\ge$ 95%*
+- **Functions**: **94.82%** (2948/3109) — *Target: $\ge$ 92%*
+- **Branches**: **88.35%** (12813/14502) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2290 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2291 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 288 Tests)
 
@@ -2538,7 +2538,7 @@
 - ✔ `computes zero-query tier progress, counting overlapping books once under Top, with ETA`
 - ✔ `formats the Markdown run report with progress, totals, escaped titles and tier labels`
 - ✔ `formats initial pool status banner with progress percentages and deficit backfill notes`
-- ✔ `logs the initial pool banner and formats dual-progress per-book log prefixes on automated runs`
+- ✔ `logs the initial pool banner and formats single-line dual-progress per-book logs without duplicate worker lines`
 - ✔ `appends the report to the GitHub step summary best-effort without ever throwing`
 - ✔ `reports manual --ids books with real tiers: already-quoted, topped-up, not-found and force-refreshed, without pruning`
 - ✔ `falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt`
@@ -2737,7 +2737,7 @@
 - ✔ `triggers onNextPage on leftward swipe with sufficient distance`
 - ✔ `triggers onPreviousPage on rightward swipe with sufficient distance`
 - ✔ `does not trigger swipe if vertical delta exceeds threshold ratio`
-- ✔ `handles 2-finger pinch scaling and clamps font size`
+- ✔ `handles 2-finger pinch scaling with 14px deadzone and 24px-per-step damping`
 - ✔ `cancels pending zoom feedback timeout upon unmounting or repeated pinch operations`
 - ✔ `suppresses swipe navigation when text selection is active`
 - ✔ `suppresses swipe navigation when touch target is inside a dialog or popover`
@@ -3043,7 +3043,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 250 Tests)
+### 🧩 UI Primitives & Motion (51 Suites · 251 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3518,10 +3518,11 @@
 </details>
 
 <details>
-<summary><b><code>src/config/reader-config.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/config/reader-config.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `defines valid font size boundaries and defaults`
-- ✔ `defines valid gesture thresholds`
+- ✔ `defines valid font size boundaries, device defaults, and presets`
+- ✔ `resolves device-adaptive default font size across phone, tablet, and desktop widths`
+- ✔ `defines valid gesture and damped pinch-to-zoom thresholds`
 
 </details>
 

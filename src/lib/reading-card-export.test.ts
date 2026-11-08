@@ -222,6 +222,9 @@ describe('reading-card-export', () => {
         'linkedin',
         'email',
       ]);
+      const xTarget = targets.find((t) => t.id === 'x');
+      expect(xTarget?.label).toBe('X');
+      expect(xTarget?.shortLabel).toBe('X');
       for (const target of targets) {
         expect(target.href.length).toBeGreaterThan(10);
         expect(target.href).toContain(encodeURIComponent('https://bookarium.app/read/1342'));

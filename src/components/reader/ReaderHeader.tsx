@@ -269,8 +269,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: Desktop Direct Tool Row (Hidden on small mobile screens) */}
-          <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Right: Desktop Direct Tool Row (Hidden on mobile & tablet screens < 1024px) */}
+          <div className="hidden lg:flex items-center gap-1.5 sm:gap-2 shrink-0">
             
             {/* Standard Tool Drawer Toggles */}
             {toolActions.map((action) => (
@@ -287,7 +287,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                 title={action.title}
               >
                 <action.icon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{action.label}</span>
+                <span className="inline">{action.label}</span>
                 {action.desktopBadge}
               </button>
             ))}
@@ -316,7 +316,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
                     }`}
                   />
                 </div>
-                <span className="hidden sm:inline font-bold">
+                <span className="inline font-bold">
                   {languageButtonLabel}
                 </span>
                 {translations.length > 1 && (
@@ -374,8 +374,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
           </div>
 
-          {/* Right: Mobile Share Action (Opens Share & Reading Card Sheet) */}
-          <div className="sm:hidden flex items-center gap-1.5 shrink-0">
+          {/* Right: Mobile & Tablet Share Action (< 1024px — Opens Share & Reading Card Sheet) */}
+          <div className="lg:hidden flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={handleShare}

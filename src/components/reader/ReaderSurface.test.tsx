@@ -298,7 +298,7 @@ describe('ReaderSurface', () => {
     const mainSurface = screen.getByRole('main');
     expect(mainSurface).toHaveClass('touch-pan-y');
 
-    // Start two-finger pinch with initial distance of 100px
+    // Start two-finger pinch with initial distance of 100px (waits for 14px deadzone before showing HUD)
     fireEvent.touchStart(mainSurface, {
       touches: [
         { clientX: 100, clientY: 100 },
@@ -306,20 +306,19 @@ describe('ReaderSurface', () => {
       ],
     });
 
-    // Font size HUD appears
-    expect(screen.getByTestId('font-zoom-hud')).toBeInTheDocument();
-    expect(screen.getByText(/Font Size: 18px/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('font-zoom-hud')).not.toBeInTheDocument();
 
-    // Spread fingers to distance of 150px (scale = 1.5 -> target size = 27px)
+    // Spread fingers to distance of 186px (delta = +86px -> effectiveDelta = 72px -> +3 steps at 24px/step -> target size = 21px)
     fireEvent.touchMove(mainSurface, {
       touches: [
-        { clientX: 75, clientY: 100 },
-        { clientX: 225, clientY: 100 },
+        { clientX: 57, clientY: 100 },
+        { clientX: 243, clientY: 100 },
       ],
     });
 
-    expect(onFontSizeChange).toHaveBeenCalledWith(27);
-    expect(screen.getByText(/Font Size: 27px/i)).toBeInTheDocument();
+    expect(screen.getByTestId('font-zoom-hud')).toBeInTheDocument();
+    expect(onFontSizeChange).toHaveBeenCalledWith(21);
+    expect(screen.getByText(/Font Size: 21px/i)).toBeInTheDocument();
 
     // Release pinch touch
     fireEvent.touchEnd(mainSurface, {
@@ -340,15 +339,15 @@ describe('ReaderSurface', () => {
     const mainSurface = screen.getByRole('main');
     expect(mainSurface).toHaveClass('touch-pan-y');
 
-    // Start pinch with 100px distance
+    // Start pinch with 300px distance
     fireEvent.touchStart(mainSurface, {
       touches: [
-        { clientX: 100, clientY: 100 },
-        { clientX: 200, clientY: 100 },
+        { clientX: 50, clientY: 100 },
+        { clientX: 350, clientY: 100 },
       ],
     });
 
-    // Pinch in close (20px distance -> scale = 0.2 -> clamped to 12px min)
+    // Pinch in close (20px distance -> delta = -280px -> clamped to 12px min)
     fireEvent.touchMove(mainSurface, {
       touches: [
         { clientX: 140, clientY: 100 },
@@ -381,11 +380,11 @@ describe('ReaderSurface', () => {
       ],
     });
 
-    // Pinch out wide (400px distance -> scale = 4.0 -> clamped to 36px max)
+    // Pinch out wide (600px distance -> delta = +500px -> clamped to 36px max)
     fireEvent.touchMove(mainSurface, {
       touches: [
         { clientX: 0, clientY: 100 },
-        { clientX: 400, clientY: 100 },
+        { clientX: 600, clientY: 100 },
       ],
     });
 

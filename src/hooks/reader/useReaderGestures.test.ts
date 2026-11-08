@@ -104,7 +104,7 @@ describe('useReaderGestures Hook', () => {
     expect(handleNext).not.toHaveBeenCalled();
   });
 
-  it('handles 2-finger pinch scaling and clamps font size', () => {
+  it('handles 2-finger pinch scaling with 14px deadzone and 24px-per-step damping', () => {
     const handleFontChange = vi.fn();
 
     const { result } = renderHook(() =>
@@ -115,7 +115,7 @@ describe('useReaderGestures Hook', () => {
       })
     );
 
-    // Initial 2-finger touch: distance = 100
+    // Initial 2-finger touch: distance = 100 -> waits for deadzone before showing feedback
     act(() => {
       result.current.handleTouchStart({
         touches: [
@@ -125,20 +125,32 @@ describe('useReaderGestures Hook', () => {
       } as unknown as React.TouchEvent);
     });
 
-    expect(result.current.zoomFeedback).toEqual({ visible: true, size: 18 });
+    expect(result.current.zoomFeedback).toBeNull();
 
-    // Pinch expand: distance = 150 -> ratio = 1.5 -> target = 27
+    // Small movement within 14px deadzone (distance = 108, delta = +8px < 14px) -> ignored
     act(() => {
       result.current.handleTouchMove({
         touches: [
-          { clientX: 75, clientY: 100 } as React.Touch,
-          { clientX: 225, clientY: 100 } as React.Touch,
+          { clientX: 96, clientY: 100 } as React.Touch,
+          { clientX: 204, clientY: 100 } as React.Touch,
+        ],
+      } as unknown as React.TouchEvent);
+    });
+    expect(handleFontChange).not.toHaveBeenCalled();
+    expect(result.current.zoomFeedback).toBeNull();
+
+    // Pinch expand: distance = 186 -> delta = +86px -> effectiveDelta = 86 - 14 = 72px -> +3 steps (72 / 24) -> target = 21
+    act(() => {
+      result.current.handleTouchMove({
+        touches: [
+          { clientX: 57, clientY: 100 } as React.Touch,
+          { clientX: 243, clientY: 100 } as React.Touch,
         ],
       } as unknown as React.TouchEvent);
     });
 
-    expect(handleFontChange).toHaveBeenCalledWith(27);
-    expect(result.current.zoomFeedback?.size).toBe(27);
+    expect(handleFontChange).toHaveBeenCalledWith(21);
+    expect(result.current.zoomFeedback).toEqual({ visible: true, size: 21 });
   });
 
   it('cancels pending zoom feedback timeout upon unmounting or repeated pinch operations', () => {
@@ -162,12 +174,18 @@ describe('useReaderGestures Hook', () => {
       } as unknown as React.TouchEvent);
     });
 
-    // Trigger pinch touch start
+    // Trigger pinch touch start + move beyond deadzone
     act(() => {
       result.current.handleTouchStart({
         touches: [
           { clientX: 100, clientY: 100 } as React.Touch,
           { clientX: 200, clientY: 100 } as React.Touch,
+        ],
+      } as unknown as React.TouchEvent);
+      result.current.handleTouchMove({
+        touches: [
+          { clientX: 80, clientY: 100 } as React.Touch,
+          { clientX: 220, clientY: 100 } as React.Touch,
         ],
       } as unknown as React.TouchEvent);
     });
@@ -209,12 +227,18 @@ describe('useReaderGestures Hook', () => {
     });
     expect(result.current.zoomFeedback).toBeNull();
 
-    // Trigger one more pinch touch end to schedule timeout before unmount
+    // Trigger one more pinch touch + move + end to schedule timeout before unmount
     act(() => {
       result.current.handleTouchStart({
         touches: [
           { clientX: 100, clientY: 100 } as React.Touch,
           { clientX: 200, clientY: 100 } as React.Touch,
+        ],
+      } as unknown as React.TouchEvent);
+      result.current.handleTouchMove({
+        touches: [
+          { clientX: 80, clientY: 100 } as React.Touch,
+          { clientX: 220, clientY: 100 } as React.Touch,
         ],
       } as unknown as React.TouchEvent);
       result.current.handleTouchEnd({

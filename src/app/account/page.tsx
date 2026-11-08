@@ -48,7 +48,7 @@ import { ActiveTabBorderArrows } from '@/components/ui/EditorialUnderlineTabs';
 import { AccountDeleteModal } from '@/components/account/AccountDeleteModal';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import {
-  FACTORY_PREFERENCES,
+  getFactoryPreferences,
   arePreferencesEqual,
   saveCurrentAsCustomDefaults,
   revertToCustomDefaults,
@@ -192,7 +192,8 @@ function AccountDashboardContent() {
     readingProgress,
     fontFamily,
     setFontFamily,
-    fontSize,
+    rawFontSize,
+    isFontSizeCustomized,
     setFontSize,
     lineHeight,
     setLineHeight,
@@ -208,7 +209,8 @@ function AccountDashboardContent() {
       readingProgress: s.readingProgress,
       fontFamily: s.fontFamily,
       setFontFamily: s.setFontFamily,
-      fontSize: s.fontSize,
+      rawFontSize: s.fontSize,
+      isFontSizeCustomized: s.isFontSizeCustomized,
       setFontSize: s.setFontSize,
       lineHeight: s.lineHeight,
       setLineHeight: s.setLineHeight,
@@ -221,6 +223,7 @@ function AccountDashboardContent() {
       setReaderTheme: s.setTheme,
     }))
   );
+  const fontSize = !isFontSizeCustomized ? getFactoryPreferences().fontSize : rawFontSize;
   const readingStreak = getStreakStats().currentStreak;
   const pendingInvitesCount = getPendingInviteCount(user?.id);
 
@@ -300,7 +303,7 @@ function AccountDashboardContent() {
   );
 
   const isAtFactoryDefaults = useMemo(
-    () => arePreferencesEqual(activePreferencesSnapshot, FACTORY_PREFERENCES),
+    () => arePreferencesEqual(activePreferencesSnapshot, getFactoryPreferences()),
     [activePreferencesSnapshot]
   );
 

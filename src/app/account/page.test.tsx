@@ -408,8 +408,8 @@ describe('AccountPage', () => {
     fireEvent.click(within(preferencesPanel).getByText('Mono'));
     expect(useReaderStore.getState().fontFamily).toBe('mono');
 
-    fireEvent.click(within(preferencesPanel).getByText('24px'));
-    expect(useReaderStore.getState().fontSize).toBe(24);
+    fireEvent.click(within(preferencesPanel).getByText('22px'));
+    expect(useReaderStore.getState().fontSize).toBe(22);
 
     fireEvent.click(within(preferencesPanel).getByText('2.1x'));
     expect(useReaderStore.getState().lineHeight).toBe(2.1);
@@ -458,11 +458,11 @@ describe('AccountPage', () => {
       'My Default Active'
     );
 
-    // Modify font size to 14px, then revert to My Default (24px)
-    fireEvent.click(within(preferencesPanel).getByText('14px'));
-    expect(useReaderStore.getState().fontSize).toBe(14);
+    // Modify font size to 15px, then revert to My Default (22px)
+    fireEvent.click(within(preferencesPanel).getByText('15px'));
+    expect(useReaderStore.getState().fontSize).toBe(15);
     fireEvent.click(within(preferencesPanel).getByTestId('revert-custom-defaults-btn'));
-    expect(useReaderStore.getState().fontSize).toBe(24);
+    expect(useReaderStore.getState().fontSize).toBe(22);
 
     // Reset to Factory Defaults via confirmation modal
     fireEvent.click(within(preferencesPanel).getByTestId('reset-factory-defaults-btn'));

@@ -871,6 +871,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       batchRecentCount: 0,
       totalBatchCount: 25,
     });
+    expect(banner).toContain('📚 Bookarium Featured Quotes Sync');
     expect(banner).toContain('📊 Two-Tier Pool Status (Pre-Batch):');
     expect(banner).toContain('• Top Popular:    125/500 ingested (375 remaining · 25.0%)');
     expect(banner).toContain('• Rolling Recent: 64/64 ingested (0 remaining · 100.0%)');
@@ -891,13 +892,50 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(partialBanner).toContain('• Top Popular:    200/500 ingested (300 remaining · 40.0%)');
     expect(partialBanner).toContain('• Rolling Recent: 50/64 ingested (14 remaining · 78.1%)');
     expect(partialBanner).not.toContain('Note: Rolling Recent pool is fully ingested');
+
+    const consoleSummary = quotesSync.formatConsoleSummary(
+      {
+        pruned: 3,
+        mirrorBreakdown: { 'https://gutenberg.pglaf.org': 2 },
+        books: [
+          { outcome: 'updated' },
+          { outcome: 'refreshed' },
+          { outcome: 'no-quotes' },
+        ],
+        progress: quotesSync.computeTierProgress({
+          popularPoolIds: new Set([1, 2, 3, 4]),
+          recentPoolIds: new Set([5, 6]),
+          quotedIds: new Set([1]),
+          newlyQuotedIds: new Set([2, 5]),
+          limit: 2,
+        }),
+      },
+      { dryRun: true }
+    );
+    expect(consoleSummary).toContain('✔ Featured Quotes Sync Complete (DRY RUN)!');
+    expect(consoleSummary).toContain('1 saved · 1 refreshed · 1 placeholder · 0 skipped · 0 failed · 3 pruned');
+    expect(consoleSummary).toContain('Mirrors:        gutenberg.pglaf.org (2)');
+    expect(consoleSummary).toContain('Top Popular:    2/4 ingested (2 remaining · 50.0% · +1 this run)');
+    expect(consoleSummary).toContain('Rolling Recent: 1/2 ingested (1 remaining · 50.0% · +1 this run)');
+    expect(consoleSummary).toContain('Total Pool:     3/6 ingested (3 remaining · 50.0% · ~2 run(s) left)');
+
+    const completedSummary = quotesSync.formatConsoleSummary({
+      books: [],
+      progress: quotesSync.computeTierProgress({
+        popularPoolIds: new Set([1]),
+        recentPoolIds: new Set([2]),
+        quotedIds: new Set([1, 2]),
+      }),
+    });
+    expect(completedSummary).toContain('100% complete');
   });
 
-  it('logs the initial pool banner and formats dual-progress per-book log prefixes on automated runs', async () => {
+  it('logs the initial pool banner and formats single-line dual-progress per-book logs without duplicate worker lines', async () => {
     const popularRows = [
       catalogRow({ id: 1, title: 'Book 1', quotes: makeQuotes(10, 'One') }),
       catalogRow({ id: 2, title: 'Book 2', quotes: [], content: SAMPLE_GUTENBERG_BOOK }),
-      catalogRow({ id: 3, title: 'Book 3', quotes: [], content: SAMPLE_GUTENBERG_BOOK }),
+      catalogRow({ id: 3, title: 'Book 3', quotes: [], content: null }),
+      catalogRow({ id: 4, title: 'Book 4', quotes: [], content: null }),
     ];
     const recentRows = [
       catalogRow({ id: 100, title: 'Recent 100', quotes: makeQuotes(5, 'Recent') }),
@@ -909,8 +947,20 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     );
     const logger = { log: vi.fn(), error: vi.fn() };
     await quotesSync.runFeaturedQuotesSync(
-      { limit: 2 },
-      { env: {}, supabaseClient: client, logger, writeSeedFile: false }
+      { limit: 3, minDelaySec: 8, maxDelaySec: 8, mirrors: ['pglaf'] },
+      {
+        env: {},
+        supabaseClient: client,
+        fetchFn: vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          text: async () => SAMPLE_GUTENBERG_BOOK,
+        }),
+        sleepFn: vi.fn().mockResolvedValue(undefined),
+        rng: () => 0,
+        logger,
+        writeSeedFile: false,
+      }
     );
 
     const logLines = logger.log.mock.calls.map((c) => String(c[0]));
@@ -922,7 +972,16 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
         )
       )
     ).toBe(true);
-    expect(logLines.some((l) => l.includes('[Top 1/2 · Pool: 2/3 (66.7%)]'))).toBe(true);
+    expect(logLines.some((l) => l.includes('[Top 1/3 · Pool: 2/4 (50.0%)] #2 "Book 2"'))).toBe(true);
+    expect(
+      logLines.some((l) =>
+        l.includes('[Top 3/3 · Pool: 4/4 (100.0%)] #4 "Book 4": 2 quotes saved (source: gutenberg.pglaf.org · waited 8.0s).')
+      )
+    ).toBe(true);
+    expect(logLines.some((l) => l.includes('[Supabase Content]'))).toBe(false);
+    expect(logLines.some((l) => l.includes('Downloaded #'))).toBe(false);
+    expect(logLines.some((l) => l.includes('Sleeping '))).toBe(false);
+    expect(logLines.some((l) => l.includes('✔ Featured Quotes Sync Complete!'))).toBe(true);
   });
 
   it('appends the report to the GitHub step summary best-effort without ever throwing', () => {

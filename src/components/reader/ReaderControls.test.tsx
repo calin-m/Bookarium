@@ -109,8 +109,8 @@ describe('ReaderControls', () => {
     expect(onLineHeightChange).toHaveBeenCalledWith(2.0);
 
     // Test quick preset buttons
-    fireEvent.click(screen.getByText('24px'));
-    expect(onFontSizeChange).toHaveBeenCalledWith(24);
+    fireEvent.click(screen.getByText('22px'));
+    expect(onFontSizeChange).toHaveBeenCalledWith(22);
 
     fireEvent.click(screen.getByText('1.4'));
     expect(onLineHeightChange).toHaveBeenCalledWith(1.4);

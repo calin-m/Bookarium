@@ -1186,6 +1186,29 @@ describe('useReaderStore', () => {
       expect(useReaderStore.getState().columnWidth).toBe('normal');
       useReaderStore.getState().setColumnWidth('wide');
       expect(useReaderStore.getState().columnWidth).toBe('wide');
+
+      // Device-adaptive default font size resolution when isFontSizeCustomized is false
+      const originalInnerWidth = window.innerWidth;
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: 390,
+      });
+      useReaderStore.setState({ fontSize: 18, isFontSizeCustomized: false });
+      const { result: hydratedMobile } = renderHook(() => useHydratedReader());
+      expect(hydratedMobile.current.fontSize).toBe(15);
+
+      act(() => {
+        hydratedMobile.current.setFontSize(20);
+      });
+      expect(hydratedMobile.current.fontSize).toBe(20);
+      expect(useReaderStore.getState().isFontSizeCustomized).toBe(true);
+
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        writable: true,
+        value: originalInnerWidth,
+      });
     });
   });
 });

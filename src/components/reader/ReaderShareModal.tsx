@@ -8,7 +8,6 @@ import {
   Check,
   Image as ImageIcon,
   Link2,
-  ExternalLink,
   Mail,
   Sun,
   Coffee,
@@ -486,20 +485,13 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
                 rel="noopener noreferrer"
                 data-testid={`share-platform-${target.id}`}
                 title={target.description}
-                className={`flex items-center justify-center sm:justify-between gap-1 sm:gap-1.5 px-1.5 py-1.5 sm:px-2.5 sm:py-2 rounded-lg border text-[11px] sm:text-xs font-medium transition-colors ${activeTheme.button}`}
+                className={`flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-lg border text-[11px] sm:text-xs font-medium transition-colors ${activeTheme.button}`}
               >
-                <span className="inline-flex items-center gap-1 sm:gap-1.5 min-w-0">
-                  <SocialPlatformIcon
-                    platform={target.id}
-                    className={`w-3.5 h-3.5 shrink-0 ${activeTheme.iconAccent}`}
-                  />
-                  <span className="truncate sm:hidden">{target.shortLabel}</span>
-                  <span className="truncate hidden sm:inline">{target.label}</span>
-                </span>
-                <ExternalLink
-                  className={`hidden sm:inline-block w-3 h-3 shrink-0 opacity-60 ${activeTheme.textMuted}`}
-                  aria-hidden="true"
+                <SocialPlatformIcon
+                  platform={target.id}
+                  className={`w-3.5 h-3.5 shrink-0 ${activeTheme.iconAccent}`}
                 />
+                <span className="truncate">{target.label}</span>
               </a>
             ))}
           </div>

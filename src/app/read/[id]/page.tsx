@@ -42,7 +42,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import {
-  FACTORY_PREFERENCES,
+  getFactoryPreferences,
   areReaderAppearancePreferencesEqual,
   resetReaderAppearanceToDefaults,
   schedulePreferencesCloudSync,
@@ -149,7 +149,7 @@ function BookReaderContent() {
 
   const isAtReaderFactoryDefaults = useMemo(
     () =>
-      areReaderAppearancePreferencesEqual(currentReaderAppearance, FACTORY_PREFERENCES),
+      areReaderAppearancePreferencesEqual(currentReaderAppearance, getFactoryPreferences()),
     [currentReaderAppearance]
   );
 

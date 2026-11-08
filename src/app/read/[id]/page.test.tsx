@@ -1142,9 +1142,9 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     fireEvent.click(screen.getAllByLabelText('Typography & Theme Controls')[0]);
     const controlsDrawer = screen.getByRole('region', { name: 'Reading Controls' });
 
-    // Tweak font size to 24px in-book
-    fireEvent.click(within(controlsDrawer).getByRole('button', { name: '24px' }));
-    expect(useReaderStore.getState().fontSize).toBe(24);
+    // Tweak font size to 15px in-book
+    fireEvent.click(within(controlsDrawer).getByRole('button', { name: '15px' }));
+    expect(useReaderStore.getState().fontSize).toBe(15);
 
     // Click "My Default" button inside ReaderControls -> snaps back to 22px mono scroll
     fireEvent.click(within(controlsDrawer).getByTestId('reader-revert-custom-defaults-btn'));

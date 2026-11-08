@@ -230,6 +230,10 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 194) {
     'postcss-selector-parser': 'Supply-chain override pinning selector parser to patched secure release.',
     '@typescript-eslint/typescript-estree':
       'Supply-chain override upgrading transitive minimatch in typescript-estree to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249).',
+    eslint:
+      'Supply-chain override upgrading transitive minimatch in eslint to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249).',
+    '@eslint/config-array':
+      'Supply-chain override upgrading transitive minimatch in @eslint/config-array to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249).',
   };
 
   if (pkg.dependencies) {
@@ -391,7 +395,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run quotes:sync`',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes` via Primary-Key-Scoped quote discovery (`books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')`) and single-column `idx_books_download_count` scans (`<25ms` total), blending `40 Popular + 10 Recent` unpopulated English volumes per 50-book batch with cross-tier backfill and post-batch `1-for-1` sliding window auto-pruning, enforcing a deterministic 1.0h–2.0h float schedule gate on cron runs, and dispatching selectable per-mirror PGLAF workers (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays.',
+        'Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes` via Primary-Key-Scoped quote discovery (`books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')`) and single-column `idx_books_download_count` scans (`<25ms` total), blending `40 Popular + 10 Recent` unpopulated English volumes per 50-book batch with cross-tier backfill and post-batch `1-for-1` sliding window auto-pruning across selectable PGLAF mirrors (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays, single-line per-book console progress (`formatConsoleSummary`), and Markdown job summary reporting (`formatRunReport`).',
     },
     {
       name: 'approval-gate.js',
@@ -846,7 +850,7 @@ function generateMarkdown() {
     '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
     '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
-    '    SyncQuotes -->|1.0h–2.0h Float-Gated Two-Tier Quotes JSONB Upsert & Prune| SupabaseCloud',
+    '    SyncQuotes -->|Every-2h Two-Tier Quotes JSONB Upsert & Prune| SupabaseCloud',
     '    SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN',
     '    ',
     '    Views --> StateStores',
@@ -870,7 +874,7 @@ function generateMarkdown() {
     'flowchart LR',
     '    subgraph ReaderState ["Zustand Reader & Fellowship Stores (useReaderStore • useFellowshipStore)"]',
     '        ActiveBook["Active Book Metadata"]',
-    '        FontSize["Font Size: 12px - 36px"]',
+    '        FontSize["Font Size: 12px - 36px (15px/17px/18px Device-Adaptive Default)"]',
     '        FontFamily["Font Family: Serif | Sans | Mono"]',
     '        LineHeight["Line Height: 1.2 - 2.6"]',
     '        Brightness["Page Brightness: 30% - 100%"]',
@@ -898,12 +902,12 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx • useReaderHabitTelemetry)"]',
-    '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Tactile Single-Tap Immersive Slide)"]',
+    '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Share Action + Desktop lg: Tools • Tactile Slide)"]',
     '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]',
     '        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • reader-bookmark-geometry.ts • startRow->endRow Span)"]',
     '        ProgressBar["Top Reading Progress Indicator"]',
     '        ResumeToast["Exact-Page Auto-Resume Toast"]',
-    '        FooterBar["Sticky Bottom Pagination & Page Jump (ReaderFooter • Tactile Single-Tap Immersive Slide)"]',
+    '        FooterBar["Sticky Bottom Pagination, Page Jump & Unified Mobile/Tablet (<1024px) Tools Pod (ReaderFooter • Tactile Slide)"]',
     '        TOC["Table of Contents Drawer (ReaderTocDrawer)"]',
     '        SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]',
     '        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]',
@@ -1344,7 +1348,7 @@ function generateMarkdown() {
     useReaderSession: 'Reading coordinates restoration, cross-page `bookmarkText` reflow self-healing on font-size re-pagination, resume ribbons, and cloud session synchronization.',
     useContinueReadingLedger: 'Headless continue reading ledger with authentic telemetry enrollment, placeholder-author detection (`hasAuthenticAuthor`), non-regressive author merge guardrails (`setOrMergeBook`), `readingPositions` author healing, query hydration, multi-attribute sorting, and offline volume filtering (`useOfflineBooks`).',
     useReaderDrawers: 'Mutual exclusivity coordination for in-reader tool drawers and modals.',
-    useReaderGestures: 'Touch swipe detection, tactile single-finger tap detection (`onTapSurface`) for immersive bar toggling, keyboard shortcuts, selection gesture conflict guards, and non-passive 2-finger touch/WebKit gesture cancellation preventing native canvas zoom while scaling typography.',
+    useReaderGestures: 'Touch swipe detection, tactile single-finger tap detection (`onTapSurface`) for immersive bar toggling, keyboard shortcuts, selection gesture conflict guards, and damped 2-finger pinch-to-zoom (`14px` deadzone `PINCH_DEADZONE_PX` + `24px`/step `PINCH_PIXELS_PER_STEP`) with non-passive touch/WebKit gesture cancellation.',
     useGutenbergParserWorker: 'Persistent Web Worker chapter segmentation and layout pagination calculations.',
     useCatalogFilters: 'Catalog filter state URL binding, default Recently Added (descending) sort, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
     useScrollDirection: 'Stepped directional scroll detection with user auto-hide preference persistence.',
@@ -1472,7 +1476,7 @@ function generateMarkdown() {
     'reader-cloud-sync':
       'Reading position cloud synchronization helpers, ghost-row filtering (`isGhostReadingPosition`, `isGhostCloudRow`), fractional row-bookmark decoding (`decodeRemoteReadingPosition`), and lifespan-preserving author extraction (`extractVerifiedAuthors`).',
     'preferences-sync':
-      'Unified 13-key scholar preferences snapshot coordinator (`ScholarPreferencesSnapshot`, `FACTORY_PREFERENCES`), two-tier custom default preset & factory reset actions (`saveCurrentAsCustomDefaults`, `revertToCustomDefaults`, `resetAllPreferencesToFactoryDefaults`, `resetReaderAppearanceToDefaults`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud synchronization (`schedulePreferencesCloudSync`, `reconcileCloudPreferencesWithLocal`).',
+      'Unified 13-key scholar preferences snapshot coordinator (`ScholarPreferencesSnapshot`, `FACTORY_PREFERENCES`, `getFactoryPreferences` with device-adaptive `15px`/`17px`/`18px` font size), two-tier custom default preset & factory reset actions (`saveCurrentAsCustomDefaults`, `revertToCustomDefaults`, `resetAllPreferencesToFactoryDefaults`, `resetReaderAppearanceToDefaults`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud synchronization (`schedulePreferencesCloudSync`, `reconcileCloudPreferencesWithLocal`).',
     'reading-card-export':
       'Client-side HTML5 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`), book-bound FNV-1a signed Base64URL share token codec (`encodeReadingCardShareToken`, `decodeReadingCardShareToken`, `buildReadingCardShareUrl`, `computeShareTokenSignature`), and zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`) across X, Reddit, WhatsApp, Telegram, Bluesky, Facebook, LinkedIn, and Email.',
   };
@@ -1531,7 +1535,7 @@ function generateMarkdown() {
       if (cronMatch && cronMatch[1]) {
         const cronExpr = cronMatch[1].trim();
         if (wfFile === 'quotes-sync.yml') {
-          triggerDesc = `\`cron: ${cronExpr}\` (\`1.0h–2.0h\` Gate) / On-Demand`;
+          triggerDesc = `\`cron: ${cronExpr}\` (Every 2 Hours) / On-Demand`;
         } else {
           triggerDesc = `\`cron: ${cronExpr}\` (Sundays) / On-Demand`;
         }
@@ -1562,7 +1566,7 @@ function generateMarkdown() {
     '    subgraph Triggers ["GitHub Actions Triggers & Concurrency Locks"]',
     '        CatTrigger["🕒 catalog-sync.yml\\n• cron: 0 2 * * 0 (Sundays 02:00 UTC) / workflow_dispatch\\n• concurrency: gutenberg-catalog-sync"]',
     '        TransTrigger["🕒 translations-sync.yml\\n• cron: 0 3 * * 0 (Sundays 03:00 UTC) / workflow_dispatch\\n• concurrency: gutenberg-translations-sync"]',
-    '        QuotesTrigger["🕒 quotes-sync.yml\\n• cron: 37 * * * * (1.0h–2.0h Float Gate) / workflow_dispatch\\n• concurrency: featured-quotes-sync"]',
+    '        QuotesTrigger["🕒 quotes-sync.yml\\n• cron: 37 */2 * * * (Every 2 Hours) / workflow_dispatch\\n• concurrency: featured-quotes-sync"]',
     '        CITrigger["✅ ci.yml & release.yml\\n• push / pull_request (master) & tags: v*\\n• Node 22 + 7-Gateway Quality Engine"]',
     '    end',
     '',
@@ -1604,7 +1608,7 @@ function generateMarkdown() {
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `rdf-files.tar.bz2` (121MB) and `pg_catalog.csv.gz` (5.3MB) across 3 mirrors, performs Primary-Key-Scoped exact-diff metadata and 30-day `download_count` updates (`filterChangedOrNewBooks` & `hasCatalogMetadataChanged`) via `books_pkey` and `idx_books_download_count` with sticky dynamic write pacing (`[25, 100]`) while keeping `quotes` untouched, and reconciles/prunes withdrawn Gutenberg volumes (`reconcileWithdrawnCatalogBooks`). |',
     '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting (`idx_book_translations_cluster`). |',
-    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / `1.0h–2.0h` Float Cron | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` via Primary-Key-Scoped `books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` and single-column `idx_books_download_count` scans (`<25ms`), `40 Popular + 10 Recent` blended 50-book batch, and post-batch `1-for-1` sliding window auto-pruning across selectable PGLAF mirrors with `8.0s–16.0s` float pacing, plus a zero-query Run Report (tier progress + per-book Top/Recent ledger) written to the GitHub Actions job summary. |',
+    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / Every 2h Cron (`37 */2 * * *`) | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` via Primary-Key-Scoped `books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` and single-column `idx_books_download_count` scans (`<25ms`), `40 Popular + 10 Recent` blended 50-book batch, and post-batch `1-for-1` sliding window auto-pruning across selectable PGLAF mirrors with `8.0s–16.0s` float pacing, single-line per-book console progress (`formatConsoleSummary`), and a zero-query Run Report (`formatRunReport`) written to the GitHub Actions job summary. |',
     '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
     ...dynamicWorkflowRows
   );
@@ -1843,7 +1847,7 @@ function generateMarkdown() {
       baseName === 'ingest-translations.test.ts'
         ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
         : baseName === 'sync-featured-quotes.test.ts'
-          ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), post-batch `1-for-1` sliding window auto-pruning, `1.0h–2.0h` float schedule gating, per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
+          ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), post-batch `1-for-1` sliding window auto-pruning, single-line console progress (`formatConsoleSummary`) and Markdown summary reporting (`formatRunReport`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
           : baseName === 'bookarium-security.test.ts'
             ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
             : 'Hermetic unit & integration tests verifying Project Gutenberg `rdf-files.tar.bz2` and `pg_catalog.csv.gz` streaming decompression across 3 mirrors, CSV RFC 4180 parsing, author lifespan extraction, exact-diff metadata and 30-day `download_count` comparison (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and sticky dynamic Supabase batch upserts.';
@@ -2157,7 +2161,7 @@ function generateMarkdown() {
     '        ReleaseWorkflow["🏷️ .github/workflows/release.yml\\n(Tag v* -> Verified GitHub Release)"]',
     '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> sync-gutenberg-catalog.js)"]',
     '        TransCron["🕒 .github/workflows/translations-sync.yml\\n(Sundays 03:00 UTC / Chained -> ingest-translations.js)"]',
-    '        QuotesCron["🕒 .github/workflows/quotes-sync.yml\\n(1.0h–2.0h Float Gate -> sync-featured-quotes.js)"]',
+    '        QuotesCron["🕒 .github/workflows/quotes-sync.yml\\n(Every 2 Hours: 37 */2 * * * -> sync-featured-quotes.js)"]',
     '    end',
     '',
     '    Client --> EdgeProxy',

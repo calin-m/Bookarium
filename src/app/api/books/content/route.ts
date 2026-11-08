@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
           justifyContent: 'space-between',
           backgroundColor: palette.cardSurface,
           padding: '48px 56px',
-          border: `3px solid ${palette.outerBorder}`,
+          border: `4px solid ${palette.outerBorder}`,
           boxSizing: 'border-box',
           fontFamily: 'Georgia, serif',
         },

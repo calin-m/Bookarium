@@ -118,7 +118,7 @@ describe('ReaderFooter', () => {
 
       // 1. Contoured Chapter / Table of Contents button on the left
       const tocTrigger = screen.getByTestId('footer-toc-trigger');
-      expect(tocTrigger).toHaveClass('rounded-lg', 'border', 'shadow-2xs');
+      expect(tocTrigger).toHaveClass('min-h-[34px]', 'rounded-lg', 'border', 'shadow-2xs');
       expect(tocTrigger).toHaveAttribute('aria-expanded', 'false');
       fireEvent.click(tocTrigger);
       expect(onToggleToc).toHaveBeenCalledTimes(1);
@@ -144,7 +144,7 @@ describe('ReaderFooter', () => {
       expect(settingsBtn).toHaveAttribute('aria-expanded', 'true');
       const floatingBar = screen.getByTestId('footer-floating-tools-bar');
       expect(floatingBar).toBeInTheDocument();
-      expect(floatingBar).toHaveClass('fixed', 'right-2.5', 'z-[10002]', 'md:hidden', 'flex-col', 'opacity-100');
+      expect(floatingBar).toHaveClass('fixed', 'right-2.5', 'z-[10002]', 'lg:hidden', 'flex-col', 'opacity-100');
       expect(floatingBar).toHaveStyle({ bottom: '96px' });
 
       // 4. Deterministic Ref-Based Idle Opacity State Machine (3,000ms post-release countdown):
@@ -390,11 +390,11 @@ describe('ReaderFooter', () => {
 
     const prevBtn = screen.getByLabelText('Previous Page');
     expect(prevBtn).toHaveTextContent('Prev');
-    expect(prevBtn.className).toContain('min-h-[42px]');
+    expect(prevBtn.className).toContain('min-h-[36px]');
 
     const nextBtn = screen.getByLabelText('Next Page');
     expect(nextBtn).toHaveTextContent('Next');
-    expect(nextBtn.className).toContain('min-h-[42px]');
+    expect(nextBtn.className).toContain('min-h-[36px]');
   });
 
   it('slides footer down out of view as a fixed overlay when isHidden is true', () => {

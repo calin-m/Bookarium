@@ -5,7 +5,7 @@ import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 import { useAuthStore } from './useAuthStore';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
-import { READER_FONT_CONFIG } from '@/config/reader-config';
+import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
@@ -33,6 +33,7 @@ export interface ReaderState {
   currentBook: GutendexBook | Book | null;
   isOpen: boolean;
   fontSize: number;
+  isFontSizeCustomized: boolean;
   lineHeight: number;
   fontFamily: ReaderFontFamily;
   theme: ReaderTheme;
@@ -83,6 +84,7 @@ export const useReaderStore = create<ReaderState>()(
       currentBook: null,
       isOpen: false,
       fontSize: READER_FONT_CONFIG.DEFAULT_SIZE,
+      isFontSizeCustomized: false,
       lineHeight: READER_FONT_CONFIG.DEFAULT_LINE_HEIGHT,
       fontFamily: 'serif',
       theme: 'light',
@@ -152,7 +154,7 @@ export const useReaderStore = create<ReaderState>()(
 
       setFontSize: (size) => {
         const clamped = Math.min(Math.max(size, 12), 36);
-        set({ fontSize: clamped });
+        set({ fontSize: clamped, isFontSizeCustomized: true });
       },
 
       setLineHeight: (height) => {
@@ -660,6 +662,7 @@ export function useHydratedReader() {
   const currentBook = useReaderStore((s) => s.currentBook);
   const isOpen = useReaderStore((s) => s.isOpen);
   const fontSize = useReaderStore((s) => s.fontSize);
+  const isFontSizeCustomized = useReaderStore((s) => s.isFontSizeCustomized);
   const lineHeight = useReaderStore((s) => s.lineHeight);
   const fontFamily = useReaderStore((s) => s.fontFamily);
   const theme = useReaderStore((s) => s.theme);
@@ -689,11 +692,14 @@ export function useHydratedReader() {
   const clearAllVolumes = useReaderStore((s) => s.clearAllVolumes);
   const syncWithCloud = useReaderStore((s) => s.syncWithCloud);
 
+  const effectiveFontSize =
+    hasMounted && !isFontSizeCustomized ? resolveDefaultReaderFontSize() : fontSize;
+
   const hydratedState = hasMounted
     ? {
         currentBook,
         isOpen,
-        fontSize,
+        fontSize: effectiveFontSize,
         lineHeight,
         fontFamily,
         theme,

@@ -429,7 +429,7 @@ export function buildSocialShareUrls(shareOptions: {
   return [
     {
       id: 'x',
-      label: 'X / Twitter',
+      label: 'X',
       shortLabel: 'X',
       href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
       description: 'Post on X',

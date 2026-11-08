@@ -39,7 +39,11 @@ export function useReaderGestures({
   containerRef,
 }: UseReaderGesturesOptions): UseReaderGesturesReturn {
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const pinchStartRef = useRef<{ distance: number; initialFontSize: number } | null>(null);
+  const pinchStartRef = useRef<{
+    distance: number;
+    initialFontSize: number;
+    activated: boolean;
+  } | null>(null);
   const [zoomFeedback, setZoomFeedback] = useState<ZoomFeedbackState | null>(null);
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -78,7 +82,7 @@ export function useReaderGestures({
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && onFontSizeChange) {
-      // 2-finger touch: Initialize pinch-to-zoom font scaler
+      // 2-finger touch: Initialize pinch-to-zoom font scaler (waits for PINCH_DEADZONE_PX before activating)
       touchStartRef.current = null;
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
@@ -87,8 +91,8 @@ export function useReaderGestures({
       pinchStartRef.current = {
         distance: Math.max(10, dist),
         initialFontSize: fontSize,
+        activated: false,
       };
-      setZoomFeedback({ visible: true, size: fontSize });
     } else if (e.touches.length === 1) {
       // 1-finger touch: Initialize page swipe or single-tap immersive toggle
       pinchStartRef.current = null;
@@ -112,8 +116,20 @@ export function useReaderGestures({
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const ratio = currentDist / pinchStartRef.current.distance;
-      const targetSize = Math.round(pinchStartRef.current.initialFontSize * ratio);
+      const deltaDist = currentDist - pinchStartRef.current.distance;
+      const absDelta = Math.abs(deltaDist);
+
+      if (!pinchStartRef.current.activated && absDelta < READER_GESTURE_CONFIG.PINCH_DEADZONE_PX) {
+        return;
+      }
+
+      pinchStartRef.current.activated = true;
+      const effectiveDelta =
+        absDelta < READER_GESTURE_CONFIG.PINCH_DEADZONE_PX
+          ? 0
+          : Math.sign(deltaDist) * (absDelta - READER_GESTURE_CONFIG.PINCH_DEADZONE_PX);
+      const stepDelta = Math.round(effectiveDelta / READER_GESTURE_CONFIG.PINCH_PIXELS_PER_STEP);
+      const targetSize = pinchStartRef.current.initialFontSize + stepDelta;
       const clampedSize = Math.min(
         READER_FONT_CONFIG.MAX_SIZE,
         Math.max(READER_FONT_CONFIG.MIN_SIZE, targetSize)
@@ -132,11 +148,14 @@ export function useReaderGestures({
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (pinchStartRef.current) {
+      const wasActivated = pinchStartRef.current.activated;
       pinchStartRef.current = null;
-      if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current);
-      zoomTimeoutRef.current = setTimeout(() => {
-        setZoomFeedback(null);
-      }, READER_GESTURE_CONFIG.ZOOM_FEEDBACK_DURATION_MS);
+      if (wasActivated) {
+        if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current);
+        zoomTimeoutRef.current = setTimeout(() => {
+          setZoomFeedback(null);
+        }, READER_GESTURE_CONFIG.ZOOM_FEEDBACK_DURATION_MS);
+      }
       return;
     }
 

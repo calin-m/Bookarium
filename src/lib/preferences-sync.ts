@@ -1,4 +1,4 @@
-import { READER_FONT_CONFIG } from '@/config/reader-config';
+import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import {
   useReaderStore,
@@ -48,6 +48,17 @@ export const FACTORY_PREFERENCES: Readonly<ScholarPreferencesSnapshot> = Object.
   speechAutoPageAdvance: true,
   speechHighlightEnabled: true,
 });
+
+/**
+ * Resolves the factory preferences snapshot with device-adaptive default font size
+ * (`15px` on phones `< 640px`, `17px` on tablets `640px–1023px`, `18px` on desktop `>= 1024px`).
+ */
+export function getFactoryPreferences(viewportWidth?: number): ScholarPreferencesSnapshot {
+  return {
+    ...FACTORY_PREFERENCES,
+    fontSize: resolveDefaultReaderFontSize(viewportWidth),
+  };
+}
 
 function isValidTheme(val: unknown): val is AppTheme {
   return val === 'light' || val === 'sepia' || val === 'dark';
@@ -186,7 +197,9 @@ export function getActivePreferencesSnapshot(): ScholarPreferencesSnapshot {
     theme: themeState.theme || readerState.theme || FACTORY_PREFERENCES.theme,
     stickyScrollEnabled: prefState.stickyScrollEnabled,
     fontFamily: readerState.fontFamily,
-    fontSize: readerState.fontSize,
+    fontSize: !readerState.isFontSizeCustomized
+      ? resolveDefaultReaderFontSize()
+      : readerState.fontSize,
     lineHeight: readerState.lineHeight,
     brightness: readerState.brightness,
     readingMode: readerState.readingMode,
@@ -331,7 +344,7 @@ export function revertToCustomDefaults(
 }
 
 /**
- * Resets all active settings back to Bookarium's factory defaults (`FACTORY_PREFERENCES`).
+ * Resets all active settings back to Bookarium's factory defaults (`getFactoryPreferences()`).
  */
 export function resetAllPreferencesToFactoryDefaults(
   options: {
@@ -343,10 +356,12 @@ export function resetAllPreferencesToFactoryDefaults(
   if (options.clearCustomPreset) {
     usePreferencesStore.getState().setCustomDefaults(null);
   }
-  const applied = applyPreferencesSnapshot(FACTORY_PREFERENCES, {
+  const factoryTarget = getFactoryPreferences();
+  const applied = applyPreferencesSnapshot(factoryTarget, {
     syncCloud: options.syncCloud ?? true,
     syncDelayMs: options.syncDelayMs ?? 0,
   });
+  useReaderStore.setState({ isFontSizeCustomized: false });
   if (options.clearCustomPreset && options.syncCloud === false) {
     usePreferencesStore.getState().setPreferencesUpdatedAt(null);
   }
@@ -363,9 +378,9 @@ export function resetReaderAppearanceToDefaults(
 ): ScholarPreferencesSnapshot {
   const { customDefaults } = usePreferencesStore.getState();
   const targetSource =
-    mode === 'custom' && customDefaults ? customDefaults : FACTORY_PREFERENCES;
+    mode === 'custom' && customDefaults ? customDefaults : getFactoryPreferences();
 
-  return applyPreferencesSnapshot(
+  const applied = applyPreferencesSnapshot(
     {
       theme: targetSource.theme,
       fontFamily: targetSource.fontFamily,
@@ -380,6 +395,10 @@ export function resetReaderAppearanceToDefaults(
       syncDelayMs: options.syncDelayMs ?? 0,
     }
   );
+  if (mode === 'factory') {
+    useReaderStore.setState({ isFontSizeCustomized: false });
+  }
+  return applied;
 }
 
 /**

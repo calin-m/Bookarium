@@ -2,9 +2,9 @@ name: Featured Quotes Sync
 
 on:
   schedule:
-    # Wakes up every hour; scripts/sync-featured-quotes.js enforces a randomized 1.0h–2.0h float window
-    # and syncs a blended 40 Popular (Top 500) + 10 Recent (Rolling 64) batch (50 books/run) with post-batch 1-for-1 sliding window auto-pruning.
-    - cron: '37 * * * *'
+    # Wakes up every 2 hours; scripts/sync-featured-quotes.js syncs a blended 40 Popular (Top 500) + 10 Recent (Rolling 64)
+    # batch (50 books/run) with post-batch 1-for-1 sliding window auto-pruning and exits in <2s once both pools are 100% full.
+    - cron: '37 */2 * * *'
   workflow_dispatch:
     inputs:
       limit:
@@ -97,7 +97,7 @@ jobs:
         run: |
           QUOTE_ARGS=""
           if [ "$EVENT_NAME" = "schedule" ]; then
-            QUOTE_ARGS="$QUOTE_ARGS --schedule-gate --mirrors=pglaf"
+            QUOTE_ARGS="$QUOTE_ARGS --mirrors=pglaf"
           else
             MIRRORS=""
             if [ "$INPUT_MIRROR_PGLAF" != "false" ]; then

@@ -134,10 +134,12 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
     },
     async () => {
       const { useReaderStore } = await import('@/stores/useReaderStore');
+      const { resolveDefaultReaderFontSize } = await import('@/config/reader-config');
       if (options.wipeDeviceStorage) {
         await useReaderStore.getState().clearAllVolumes();
         useReaderStore.setState({
-          fontSize: 18,
+          fontSize: resolveDefaultReaderFontSize(),
+          isFontSizeCustomized: false,
           lineHeight: 1.75,
           fontFamily: 'serif',
           theme: 'light',

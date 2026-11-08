@@ -1213,6 +1213,8 @@ function formatInitialPoolBanner({
     recentPoolSize > 0 ? (Math.round((recentDone / recentPoolSize) * 1000) / 10).toFixed(1) : '100.0';
 
   const lines = [
+    '📚 Bookarium Featured Quotes Sync',
+    '=================================',
     '📊 Two-Tier Pool Status (Pre-Batch):',
     `  • Top Popular:    ${topDone}/${topPoolSize} ingested (${topRemaining} remaining · ${topPct}%)`,
     `  • Rolling Recent: ${recentDone}/${recentPoolSize} ingested (${recentRemaining} remaining · ${recentPct}%)`,
@@ -1328,6 +1330,40 @@ function formatRunReport(summary, context = {}) {
       );
     }
     lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Builds a concise, human-readable console summary printed at the end of a run
+ * (avoiding duplicating the full raw Markdown table in stdout while `$GITHUB_STEP_SUMMARY`
+ * receives the rich Markdown report via `writeStepSummary`).
+ */
+function formatConsoleSummary(summary, context = {}) {
+  const books = Array.isArray(summary.books) ? summary.books : [];
+  const countOutcome = (outcome) => books.filter((b) => b.outcome === outcome).length;
+  const lines = [
+    `✔ Featured Quotes Sync Complete${context.dryRun ? ' (DRY RUN)' : ''}!`,
+    `  • This Run:       ${countOutcome('updated')} saved · ${countOutcome('refreshed')} refreshed · ${countOutcome('no-quotes')} placeholder · ${countOutcome('already-quoted')} skipped · ${countOutcome('failed')} failed · ${summary.pruned || 0} pruned`,
+  ];
+
+  const mirrorEntries = Object.entries(summary.mirrorBreakdown || {});
+  if (mirrorEntries.length > 0) {
+    lines.push(
+      `  • Mirrors:        ${mirrorEntries.map(([url, n]) => `${describeQuoteSource(url)} (${n})`).join(', ')}`
+    );
+  }
+
+  const progress = summary.progress;
+  if (progress) {
+    const fmtTier = (t) =>
+      `${t.doneNow}/${t.pool} ingested (${t.remaining} remaining · ${t.percent.toFixed(1)}%${t.addedThisRun > 0 ? ` · +${t.addedThisRun} this run` : ''})`;
+    lines.push(
+      `  • Top Popular:    ${fmtTier(progress.top)}`,
+      `  • Rolling Recent: ${fmtTier(progress.recent)}`,
+      `  • Total Pool:     ${progress.total.doneNow}/${progress.total.pool} ingested (${progress.total.remaining} remaining · ${progress.total.percent.toFixed(1)}%${progress.etaRuns > 0 ? ` · ~${progress.etaRuns} run(s) left` : ' · 100% complete'})`
+    );
   }
 
   return lines.join('\n');
@@ -1591,7 +1627,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       dryRun: options.dryRun,
       tierResolutionError: options._tierResolutionError,
     });
-    logger.log(summary.report);
+    logger.log(formatConsoleSummary(summary, { dryRun: options.dryRun }));
     writeStepSummary(deps.stepSummaryPath, summary.report, logger);
     return summary;
   };
@@ -1639,10 +1675,11 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     }
   }
 
-  async function persistExtractedBookQuotes(book, existingQuotes, rawText, source) {
+  async function persistExtractedBookQuotes(book, existingQuotes, rawText, source, waitedMs = 0) {
     const extracted = extractBookQuoteSpreads(rawText, book, options.targetCount);
     const mergedQuotes = mergeDistinctQuoteSpreads(existingQuotes, extracted, 16);
     const sourceLabel = describeQuoteSource(source);
+    const waitSuffix = waitedMs > 0 ? ` · waited ${(waitedMs / 1000).toFixed(1)}s` : '';
 
     if (mergedQuotes.length === 0) {
       const sentinel = [buildSentinelQuoteSpread(book)];
@@ -1654,7 +1691,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         existingQuoteCount: existingQuotes.length,
       });
       logger.log(
-        `${bookPrefix(book.id)} #${book.id} "${book.title}": no quotes extractable, placeholder saved (source: ${sourceLabel}).`
+        `${bookPrefix(book.id)} #${book.id} "${book.title}": no quotes extractable, placeholder saved (source: ${sourceLabel}${waitSuffix}).`
       );
       return false;
     }
@@ -1673,7 +1710,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       : existingQuotes.length > 0
         ? `topped up ${existingQuotes.length} → ${mergedQuotes.length} quotes`
         : `${mergedQuotes.length} quotes saved`;
-    logger.log(`${bookPrefix(book.id)} #${book.id} "${book.title}": ${detail} (source: ${sourceLabel}).`);
+    logger.log(`${bookPrefix(book.id)} #${book.id} "${book.title}": ${detail} (source: ${sourceLabel}${waitSuffix}).`);
     return true;
   }
 
@@ -1699,8 +1736,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
 
       if (book.content && book.content.trim().length >= 500) {
         summary.fromSupabaseContent++;
-        logger.log(`[Supabase Content] Using stored text for #${book.id} "${book.title}".`);
-        await persistExtractedBookQuotes(book, existingQuotes, book.content, 'supabase-content');
+        await persistExtractedBookQuotes(book, existingQuotes, book.content, 'supabase-content', 0);
       } else {
         mirrorWorkQueue.push({
           book,
@@ -1747,18 +1783,14 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         workItem.attemptedMirrors.add(mirrorBaseUrl);
         inFlightCount++;
 
+        let waitedMs = 0;
         if (workerDownloads > 0) {
-          const delayMs = computeRandomDelayMs(
+          waitedMs = computeRandomDelayMs(
             options.minDelaySec,
             options.maxDelaySec,
             deps.rng
           );
-          logger.log(
-            `[Mirror Worker ${mirrorBaseUrl}] Sleeping ${(delayMs / 1000).toFixed(
-              2
-            )}s before fetching #${workItem.book.id}...`
-          );
-          await sleepFn(delayMs);
+          await sleepFn(waitedMs);
         }
 
         workerDownloads++;
@@ -1773,15 +1805,13 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
           summary.fromMirrors++;
           summary.mirrorBreakdown[mirrorBaseUrl] =
             (summary.mirrorBreakdown[mirrorBaseUrl] || 0) + 1;
-          logger.log(
-            `[Mirror Worker ${mirrorBaseUrl}] Downloaded #${workItem.book.id} "${workItem.book.title}" from ${fetchRes.mirrorUrl}.`
-          );
           try {
             await persistExtractedBookQuotes(
               workItem.book,
               workItem.existingQuotes,
               fetchRes.text,
-              mirrorBaseUrl
+              mirrorBaseUrl,
+              waitedMs
             );
           } catch (err) {
             summary.failed++;
@@ -1823,9 +1853,16 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
                   existingQuoteCount: workItem.existingQuotes.length,
                   note: 'text not available on enabled mirrors',
                 });
+                const waitSuffix = waitedMs > 0 ? ` · waited ${(waitedMs / 1000).toFixed(1)}s` : '';
+                logger.log(
+                  `${bookPrefix(workItem.book.id)} #${workItem.book.id} "${workItem.book.title}": text not available on enabled mirrors, placeholder saved (${describeQuoteSource(mirrorBaseUrl)}${waitSuffix}).`
+                );
               } catch (err) {
                 summary.failed++;
                 recordBook(workItem.book, { outcome: 'failed', note: err.message });
+                logger.error(
+                  `[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`
+                );
               }
             } else {
               summary.failed++;
@@ -1833,10 +1870,10 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
                 outcome: 'failed',
                 note: 'enabled mirrors unavailable',
               });
+              logger.error(
+                `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`
+              );
             }
-            logger.error(
-              `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`
-            );
           }
 
           inFlightCount--;
@@ -1891,9 +1928,6 @@ if (require.main === module) {
   const cliOptions = parseCliArgs(process.argv.slice(2));
   runFeaturedQuotesSync(cliOptions, { stepSummaryPath: process.env.GITHUB_STEP_SUMMARY })
     .then((res) => {
-      console.log(
-        `Featured Quotes Sync complete: ${res.updated} updated, ${res.skippedExisting} skipped, ${res.sentinelMarked} sentinel-marked, ${res.pruned} pruned, ${res.failed} failed.`
-      );
       process.exit(res.failed > 0 && res.updated === 0 && !res.skippedByScheduleGate ? 1 : 0);
     })
     .catch((err) => {
@@ -1940,6 +1974,7 @@ module.exports = {
   computeTierProgress,
   formatInitialPoolBanner,
   formatRunReport,
+  formatConsoleSummary,
   writeStepSummary,
   fetchCandidateBooksFromSupabase,
   runFeaturedQuotesSync,
