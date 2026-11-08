@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 07 Nov 2026 20:06:16 GMT  
+**Last Generated**: Sun, 08 Nov 2026 11:45:35 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 210 passed  
-**Total Verified Tests**: 2281 passed  
+**Total Verified Tests**: 2290 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2281 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2290 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.34%** (13141/13500) — *Target: $\ge$ 95%*
-- **Statements**: **96.03%** (14217/14804) — *Target: $\ge$ 95%*
-- **Functions**: **94.78%** (2944/3106) — *Target: $\ge$ 92%*
-- **Branches**: **88.28%** (12776/14471) — *Target: $\ge$ 85%*
+- **Lines**: **97.31%** (13138/13500) — *Target: $\ge$ 95%*
+- **Statements**: **95.98%** (14210/14804) — *Target: $\ge$ 95%*
+- **Functions**: **94.81%** (2945/3106) — *Target: $\ge$ 92%*
+- **Branches**: **88.34%** (12785/14471) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2281 Tests)
+## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2290 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 288 Tests)
 
@@ -1768,7 +1768,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 544 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 553 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2546,7 +2546,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (27 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (36 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -2572,9 +2572,18 @@
 - ✔ `ignores JSONB key-order differences when all catalog fields match byte-for-byte`
 - ✔ `detects even a single-character, single-space, or lifespan year change across any catalog field`
 - ✔ `deduplicates duplicate book IDs within a batch and filters out unchanged rows while preserving quotes isolation`
+- ✔ `retries in place and adaptively splits .in(id, batchIds) when encountering connection pool timeouts`
+- ✔ `re-checks database state before retrying a timed-out upsertBatch so already-updated books are not re-sent`
 - ✔ `skips pruning if activeCatalogIds is below the safety floor`
 - ✔ `scans public.books via keyset pagination, protects Hero classics, and deletes withdrawn book IDs`
 - ✔ `triggers the maxPrunePerRun safety circuit breaker when candidate removals exceed cap`
+- ✔ `retries keyset scan and delete chunks in place when encountering transient connection pool timeouts`
+- ✔ `retries a timed-out or HTTP 503 Gutendex page in place and continues fetching remaining pages`
+- ✔ `retries transient Supabase errors during popularity updates and cooled-off demotion`
+- ✔ `extracts bookId and download_count pairs from a multi-chunk RDF XML stream`
+- ✔ `enforces RDF feed mirror allowlist, prioritizes Fastly CDN feed, and fails over to the next official mirror when one fails`
+- ✔ `attaches download_count in normalizeCsvRow when downloadCountsMap is provided and detects download_count diffs`
+- ✔ `supports 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch`
 
 </details>
 

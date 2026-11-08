@@ -697,18 +697,27 @@ ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE public.books ADD COLUMN IF NOT EXISTS quotes JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 -- Trigger to automatically populate and maintain search_vector on insert/update
+-- Guards UPDATE with IS DISTINCT FROM so download_count-only upserts never recompute
+-- to_tsvector() or dirty the idx_books_search_vector GIN index.
 CREATE OR REPLACE FUNCTION public.books_search_vector_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = ''
 AS $$
 BEGIN
-  NEW.search_vector := pg_catalog.to_tsvector(
-    'pg_catalog.english'::pg_catalog.regconfig,
-    COALESCE(NEW.title, '') || ' ' ||
-    COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '') || ' ' ||
-    COALESCE(pg_catalog.array_to_string(NEW.bookshelves, ' '), '')
-  );
+  IF TG_OP = 'INSERT'
+     OR NEW.search_vector IS NULL
+     OR NEW.title IS DISTINCT FROM OLD.title
+     OR NEW.subjects IS DISTINCT FROM OLD.subjects
+     OR NEW.bookshelves IS DISTINCT FROM OLD.bookshelves
+  THEN
+    NEW.search_vector := pg_catalog.to_tsvector(
+      'pg_catalog.english'::pg_catalog.regconfig,
+      COALESCE(NEW.title, '') || ' ' ||
+      COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '') || ' ' ||
+      COALESCE(pg_catalog.array_to_string(NEW.bookshelves, ' '), '')
+    );
+  END IF;
   RETURN NEW;
 END;
 $$;

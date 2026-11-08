@@ -1,16 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
+import { Readable } from 'stream';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
   CATALOG_DIFF_SELECT_COLUMNS,
+  GUTENBERG_RDF_FEED_MIRRORS,
+  GUTENBERG_CSV_FEED_MIRRORS,
   parseContributors,
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  isAllowedRdfFeedUrl,
+  isAllowedCsvFeedUrl,
+  parseRdfDownloadCountsStream,
+  streamGutenbergRdfDownloadCounts,
+  streamGutenbergCatalog,
   areStringArraysEqual,
   areContributorArraysEqual,
   hasCatalogMetadataChanged,
   deduplicateBatchById,
+  isTransientDatabaseTimeout,
   filterChangedOrNewBooks,
+  getDynamicWriteChunkSize,
+  resetDynamicWriteChunkSize,
   upsertBatch,
   reconcileWithdrawnCatalogBooks,
   fetchPopularCountsFromGutendex,
@@ -432,6 +443,8 @@ describe('sync-gutenberg-catalog parser', () => {
       const res = await syncPopularDownloadCounts(mockSupabase, {
         pages: 1,
         fetchFn: failFetch,
+        pageRetries: 1,
+        pageBaseDelayMs: 0,
         logger: silentLogger,
       });
       expect(res.updatedCount).toBe(0);
@@ -528,7 +541,7 @@ describe('sync-gutenberg-catalog parser', () => {
 
       expect(deduplicateBatchById(duplicateBatch)).toHaveLength(3);
       expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('quotes');
-      expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('download_count');
+      expect(CATALOG_DIFF_SELECT_COLUMNS).toContain('download_count');
 
       const inMock = vi.fn().mockResolvedValue({
         data: [
@@ -557,6 +570,125 @@ describe('sync-gutenberg-catalog parser', () => {
       const forced = await filterChangedOrNewBooks(mockSupabase, duplicateBatch, true);
       expect(forced.toUpsert).toHaveLength(3);
       expect(forced.updatedCount).toBe(3);
+    });
+
+    it('retries in place and adaptively splits .in(id, batchIds) when encountering connection pool timeouts', async () => {
+      expect(
+        isTransientDatabaseTimeout(new Error('Timed out acquiring connection from connection pool.'))
+      ).toBe(true);
+      expect(isTransientDatabaseTimeout(new Error('canceling statement due to statement timeout'))).toBe(
+        true
+      );
+      expect(isTransientDatabaseTimeout(new Error('syntax error at or near SELECT'))).toBe(false);
+
+      // 1. Small batch (<= 25): retries in place on the exact same batchIds when pool times out once
+      let smallCallCount = 0;
+      const smallInMock = vi.fn().mockImplementation(async (_col: string, ids: number[]) => {
+        smallCallCount++;
+        if (smallCallCount === 1) {
+          return {
+            data: null,
+            error: new Error('Timed out acquiring connection from connection pool.'),
+          };
+        }
+        return {
+          data: ids.map((id) => ({ ...baseBook, id, title: `Book ${id}` })),
+          error: null,
+        };
+      });
+      const smallSupabase = {
+        from: vi.fn(() => ({ select: vi.fn(() => ({ in: smallInMock })) })),
+      };
+      const smallBatch = [
+        { ...baseBook, id: 1, title: 'Book 1' },
+        { ...baseBook, id: 2, title: 'Book 2 (Updated)' },
+      ];
+      const smallRes = await filterChangedOrNewBooks(smallSupabase, smallBatch, false, {
+        retries: 3,
+        baseDelayMs: 0,
+      });
+      expect(smallCallCount).toBe(2);
+      expect(smallRes.unchangedCount).toBe(1);
+      expect(smallRes.updatedCount).toBe(1);
+      expect(smallRes.toUpsert.map((b: { id: number }) => b.id)).toEqual([2]);
+
+      // 2. Large batch (> 25): adaptively splits batchIds in half when pool times out
+      const queriedIdChunks: number[][] = [];
+      const largeInMock = vi.fn().mockImplementation(async (_col: string, ids: number[]) => {
+        queriedIdChunks.push(ids);
+        if (ids.length > 25) {
+          return {
+            data: null,
+            error: new Error('Timed out acquiring connection from connection pool.'),
+          };
+        }
+        return {
+          data: ids.map((id) => ({ ...baseBook, id, title: `Book ${id}` })),
+          error: null,
+        };
+      });
+      const largeSupabase = {
+        from: vi.fn(() => ({ select: vi.fn(() => ({ in: largeInMock })) })),
+      };
+      const largeBatch = Array.from({ length: 40 }, (_, i) => ({
+        ...baseBook,
+        id: i + 1,
+        title: i === 39 ? 'Book 40 Revised' : `Book ${i + 1}`,
+      }));
+
+      const largeRes = await filterChangedOrNewBooks(largeSupabase, largeBatch, false, {
+        retries: 2,
+        baseDelayMs: 0,
+      });
+      expect(queriedIdChunks).toHaveLength(3); // 40 (failed) -> 20 + 20 (succeeded)
+      expect(queriedIdChunks[0]).toHaveLength(40);
+      expect(queriedIdChunks[1]).toHaveLength(20);
+      expect(queriedIdChunks[2]).toHaveLength(20);
+      expect(largeRes.unchangedCount).toBe(39);
+      expect(largeRes.updatedCount).toBe(1);
+      expect(largeRes.toUpsert.map((b: { id: number }) => b.id)).toEqual([40]);
+    });
+
+    it('re-checks database state before retrying a timed-out upsertBatch so already-updated books are not re-sent', async () => {
+      const upsertedBatches: Array<Array<{ id: number; title: string }>> = [];
+
+      // Simulate: Book 10 and Book 20 are sent in attempt 1, which times out AFTER Book 10 was already committed in DB
+      const inMock = vi.fn().mockResolvedValue({
+        data: [
+          { ...baseBook, id: 10, title: 'Book 10 Updated' }, // Already committed before timeout!
+          { ...baseBook, id: 20, title: 'Book 20 Old Title' }, // Still needs update
+        ],
+        error: null,
+      });
+
+      let upsertAttempt = 0;
+      const upsertMock = vi.fn().mockImplementation(async (rows: Array<{ id: number; title: string }>) => {
+        upsertAttempt++;
+        upsertedBatches.push(rows);
+        if (upsertAttempt === 1) {
+          return { error: new Error('Timed out acquiring connection from connection pool.') };
+        }
+        return { error: null };
+      });
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({ in: inMock })),
+          upsert: upsertMock,
+        })),
+      };
+
+      const batchToWrite = [
+        { ...baseBook, id: 10, title: 'Book 10 Updated' },
+        { ...baseBook, id: 20, title: 'Book 20 New Title' },
+      ];
+
+      await upsertBatch(mockSupabase, batchToWrite, 3, false, { baseDelayMs: 0 });
+
+      expect(upsertedBatches).toHaveLength(2);
+      expect(upsertedBatches[0].map((b) => b.id)).toEqual([10, 20]);
+      // Second attempt only retries Book 20 because Book 10 was verified as already updated in DB!
+      expect(upsertedBatches[1].map((b) => b.id)).toEqual([20]);
     });
   });
 
@@ -626,6 +758,8 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(deleteInSpy).toHaveBeenCalledWith('id', [78050]);
       expect(deleteInSpy).toHaveBeenCalledWith('id', [78051]);
       expect(res.prunedCount).toBe(2);
+      expect(res.scannedCount).toBe(5);
+      expect(res.remainingCount).toBe(3);
       expect(res.prunedIds).toEqual([78050, 78051]);
       expect(deletedChunks).toEqual([[78050], [78051]]);
     });
@@ -661,6 +795,376 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(res.prunedCount).toBe(0);
       expect(res.skippedReason).toBe('exceeded-max-prune-cap');
       expect(deleteMock).not.toHaveBeenCalled();
+    });
+
+    it('retries keyset scan and delete chunks in place when encountering transient connection pool timeouts', async () => {
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const activeIds = new Set([100, 200]);
+
+      let scanCalls = 0;
+      let deleteCalls = 0;
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            gt: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn().mockImplementation(async () => {
+                  scanCalls++;
+                  if (scanCalls === 1) {
+                    return {
+                      data: null,
+                      error: new Error('Timed out acquiring connection from connection pool.'),
+                    };
+                  }
+                  return {
+                    data: [{ id: 100 }, { id: 78099 }],
+                    error: null,
+                  };
+                }),
+              })),
+            })),
+          })),
+          delete: vi.fn(() => ({
+            in: vi.fn().mockImplementation(async () => {
+              deleteCalls++;
+              if (deleteCalls === 1) {
+                return { error: new Error('Timed out acquiring connection from connection pool.') };
+              }
+              return { error: null };
+            }),
+          })),
+        })),
+      };
+
+      const res = await reconcileWithdrawnCatalogBooks(mockSupabase, activeIds, {
+        minCatalogSize: 2,
+        pageSize: 10,
+        retries: 3,
+        baseDelayMs: 0,
+        logger: silentLogger,
+      });
+
+      expect(scanCalls).toBe(2);
+      expect(deleteCalls).toBe(2);
+      expect(res.prunedCount).toBe(1);
+      expect(res.prunedIds).toEqual([78099]);
+    });
+  });
+
+  describe('fetchPopularCountsFromGutendex & syncPopularDownloadCounts retry resilience', () => {
+    it('retries a timed-out or HTTP 503 Gutendex page in place and continues fetching remaining pages', async () => {
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      let page2Attempts = 0;
+
+      const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes('page=1')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              results: [
+                { id: 1342, download_count: 85000, copyright: false },
+                { id: 99999, download_count: 90000, copyright: true },
+                { id: 99998, download_count: 88000, copyright: null },
+              ],
+              next: 'https://gutendex.com/books/?page=2',
+            }),
+          };
+        }
+        if (url.includes('page=2')) {
+          page2Attempts++;
+          if (page2Attempts === 1) {
+            return { ok: false, status: 503 };
+          }
+          if (page2Attempts === 2) {
+            throw new Error('The operation was aborted due to timeout');
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              results: [{ id: 84, download_count: 72000, copyright: false }],
+              next: 'https://gutendex.com/books/?page=3',
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            results: [{ id: 1513, download_count: 68000, copyright: false }],
+            next: null,
+          }),
+        };
+      });
+
+      const entries = await fetchPopularCountsFromGutendex(3, mockFetch, {
+        retries: 3,
+        baseDelayMs: 0,
+        logger: silentLogger,
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://gutendex.com/books/?page=1',
+        expect.any(Object)
+      );
+      expect(page2Attempts).toBe(3);
+      expect(entries).toEqual([
+        { id: 1342, download_count: 85000 },
+        { id: 84, download_count: 72000 },
+        { id: 1513, download_count: 68000 },
+      ]);
+      expect(silentLogger.warn).toHaveBeenCalledTimes(2);
+      expect(silentLogger.log).toHaveBeenCalledWith(
+        expect.stringContaining('Fetched popularity page 1/3')
+      );
+    });
+
+    it('retries transient Supabase errors during popularity updates and cooled-off demotion', async () => {
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          results: [
+            { id: 1342, download_count: 85000 },
+            { id: 84, download_count: 72000 },
+          ],
+          next: null,
+        }),
+      });
+
+      let eqAttempts = 0;
+      let scanAttempts = 0;
+      let demoteInAttempts = 0;
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          update: vi.fn(() => ({
+            eq: vi.fn().mockImplementation(async (col: string, val: number) => {
+              if (col === 'id' && val === 1342) {
+                eqAttempts++;
+                if (eqAttempts === 1) {
+                  return { error: new Error('Timed out acquiring connection from connection pool.') };
+                }
+              }
+              return { error: null };
+            }),
+            in: vi.fn().mockImplementation(async () => {
+              demoteInAttempts++;
+              if (demoteInAttempts === 1) {
+                return { error: new Error('Timed out acquiring connection from connection pool.') };
+              }
+              return { error: null };
+            }),
+          })),
+          select: vi.fn(() => ({
+            order: vi.fn(() => ({
+              limit: vi.fn().mockImplementation(async () => {
+                scanAttempts++;
+                if (scanAttempts === 1) {
+                  return {
+                    data: null,
+                    error: new Error('Timed out acquiring connection from connection pool.'),
+                  };
+                }
+                return {
+                  data: [
+                    { id: 1342, download_count: 85000 },
+                    { id: 84, download_count: 72000 },
+                    { id: 50000, download_count: 75000 },
+                  ],
+                  error: null,
+                };
+              }),
+            })),
+          })),
+        })),
+      };
+
+      const res = await syncPopularDownloadCounts(mockSupabase, {
+        pages: 1,
+        fetchFn: mockFetch,
+        minEntriesForDemote: 2,
+        pauseMs: 0,
+        retries: 2,
+        baseDelayMs: 0,
+        pageBaseDelayMs: 0,
+        logger: silentLogger,
+      });
+
+      expect(eqAttempts).toBe(2);
+      expect(scanAttempts).toBe(2);
+      expect(demoteInAttempts).toBe(2);
+      expect(res.updatedCount).toBe(2);
+      expect(res.demotedCount).toBe(1);
+    });
+  });
+
+  describe('Unified RDF Download Counts Stream & Single-Batch Diff Integration', () => {
+    it('extracts bookId and download_count pairs from a multi-chunk RDF XML stream', async () => {
+      const rdfChunks = [
+        '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF>\n  <pgterms:ebook rdf:about="ebooks/1342">\n',
+        '    <dcterms:title>Pride and Prejudice</dcterms:title>\n    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">55420</pgt',
+        'erms:downloads>\n  </pgterms:ebook>\n</rdf:RDF>\n<rdf:RDF>\n  <pgterms:ebook rdf:about="ebooks/84">\n    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">85210</pgterms:downloads>\n  </pgterms:ebook>\n</rdf:RDF>',
+      ];
+
+      const readable = Readable.from(rdfChunks);
+      const countsMap = await parseRdfDownloadCountsStream(readable);
+
+      expect(countsMap.get(1342)).toBe(55420);
+      expect(countsMap.get(84)).toBe(85210);
+      expect(countsMap.size).toBe(2);
+    });
+
+    it('enforces RDF feed mirror allowlist, prioritizes Fastly CDN feed, and fails over to the next official mirror when one fails', async () => {
+      expect(GUTENBERG_RDF_FEED_MIRRORS[0]).toBe(
+        'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2'
+      );
+      expect(isAllowedRdfFeedUrl('https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
+        true
+      );
+      expect(isAllowedRdfFeedUrl('https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
+        true
+      );
+      expect(isAllowedRdfFeedUrl('https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
+        true
+      );
+      expect(isAllowedRdfFeedUrl('http://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
+        false
+      );
+      expect(isAllowedRdfFeedUrl('https://evil.example.com/rdf-files.tar.bz2')).toBe(false);
+
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const streamMirrorFn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('Mirror 1 connection reset'))
+        .mockResolvedValueOnce(
+          new Map([
+            [1342, 55420],
+            [84, 85210],
+          ])
+        );
+
+      const countsMap = await streamGutenbergRdfDownloadCounts({
+        mirrors: [
+          'https://evil.example.com/ignored.tar.bz2',
+          'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+          'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+        ],
+        streamMirrorFn,
+        logger: silentLogger,
+      });
+
+      expect(streamMirrorFn).toHaveBeenCalledTimes(2);
+      expect(countsMap.get(1342)).toBe(55420);
+      expect(countsMap.get(84)).toBe(85210);
+    });
+
+    it('attaches download_count in normalizeCsvRow when downloadCountsMap is provided and detects download_count diffs', () => {
+      const sampleRow = [
+        '1342',
+        'Text',
+        '1998-06-01',
+        'Pride and Prejudice',
+        'en',
+        'Austen, Jane, 1775-1817',
+        'England -- Fiction',
+        'PR',
+        'Best Books Ever',
+      ];
+      const countsMap = new Map([[1342, 55420]]);
+
+      const withCount = normalizeCsvRow(sampleRow, countsMap);
+      expect(withCount.download_count).toBe(55420);
+
+      const defaultedZero = normalizeCsvRow(
+        ['84', 'Text', '1993-10-01', 'Frankenstein', 'en', 'Shelley, Mary, 1797-1851', '', 'PR', ''],
+        countsMap
+      );
+      expect(defaultedZero.download_count).toBe(0);
+
+      const withoutMap = normalizeCsvRow(sampleRow, null);
+      expect(withoutMap).not.toHaveProperty('download_count');
+
+      // hasCatalogMetadataChanged detects download_count delta when incomingBook includes download_count
+      const existingRow = { ...withCount, download_count: 54000 };
+      expect(hasCatalogMetadataChanged(existingRow, withCount)).toBe(true);
+      expect(hasCatalogMetadataChanged({ ...withCount, download_count: 55420 }, withCount)).toBe(
+        false
+      );
+      // When incomingBook omits download_count (e.g. --no-rdf mode), existing download_count is ignored
+      expect(hasCatalogMetadataChanged(existingRow, withoutMap)).toBe(false);
+    });
+
+    it('supports 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch', async () => {
+      expect(GUTENBERG_CSV_FEED_MIRRORS[0]).toBe(
+        'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz'
+      );
+      expect(isAllowedCsvFeedUrl('https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz')).toBe(
+        true
+      );
+      expect(isAllowedCsvFeedUrl('https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz')).toBe(
+        true
+      );
+      expect(isAllowedCsvFeedUrl('https://evil.example.com/pg_catalog.csv.gz')).toBe(false);
+
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const emittedRows: string[][] = [];
+      const streamMirrorFn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('CSV mirror 1 timeout'))
+        .mockImplementationOnce(async (onRecord: (row: string[]) => Promise<void> | void) => {
+          await onRecord(['1342', 'Text', '1998-06-01', 'Pride and Prejudice', 'en', 'Austen, Jane', '', 'PR', '']);
+        });
+
+      await streamGutenbergCatalog(
+        async (row: string[]) => {
+          await new Promise((r) => setTimeout(r, 5));
+          emittedRows.push(row);
+        },
+        {
+          mirrors: GUTENBERG_CSV_FEED_MIRRORS,
+          streamMirrorFn,
+          logger: silentLogger,
+        }
+      );
+      expect(streamMirrorFn).toHaveBeenCalledTimes(2);
+      expect(emittedRows).toHaveLength(1);
+
+      // Verify sticky dynamicWriteChunkSize steps down when a statement timeout occurs
+      resetDynamicWriteChunkSize(100);
+      expect(getDynamicWriteChunkSize()).toBe(100);
+
+      let callNum = 0;
+      const chunkLengths: number[] = [];
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            in: vi.fn().mockResolvedValue({ data: [], error: null }),
+          })),
+          upsert: vi.fn().mockImplementation(async (rows: Array<{ id: number }>) => {
+            callNum++;
+            chunkLengths.push(rows.length);
+            if (callNum === 1) {
+              return { error: new Error('canceling statement due to statement timeout') };
+            }
+            return { error: null };
+          }),
+        })),
+      };
+
+      const batch80 = Array.from({ length: 80 }, (_, idx) => ({
+        id: idx + 1,
+        title: `Volume ${idx + 1}`,
+      }));
+
+      await upsertBatch(mockSupabase, batch80, 3, false, { baseDelayMs: 0 });
+      // 80 failed on attempt 1 -> split into 40 + 40 and sticky dynamicWriteChunkSize stepped down to 40
+      expect(chunkLengths).toEqual([80, 40, 40]);
+      expect(getDynamicWriteChunkSize()).toBe(40);
+      resetDynamicWriteChunkSize(100);
     });
   });
 });

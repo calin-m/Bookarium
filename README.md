@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202281%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-210%20Suites%20%7C%202290%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.31%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2281 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2290 tests across 210 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -114,6 +114,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 - **Zero-Scroll Multi-Resolution Share Modal & Active Theme Initialization (`ADR-080`)**: Wired `ReaderShareModal` (`ReaderDrawerShell`, `z-[10005]`) to desktop (`reader-share-button`) and mobile (`mobile-reader-share-btn`) share buttons in `ReaderHeader.tsx`, automatically syncing the card theme to the active reader theme on open and fitting phone (`360×667`–`412×915`), tablet (`768×1024`), and laptop (`1366×768`+) viewports with zero internal scroll via a `2 × 4` `grid-cols-4` social grid, single-line Theme + Progress row, single-line Share Caption bar, `Copy Card Image` (`ClipboardItem` `image/png`), `Download PNG`, `Copy Share Link`, and `Device Share` (`navigator.share`).
 - **Stateless On-the-Fly OpenGraph Social Card Unfurling (`ADR-080`)**: Forwarded valid `?s=<token>` share tokens via `x-bookarium-share-token` in `src/proxy.ts` to `generateMetadata` in `src/app/read/[id]/layout.tsx` and rendered `1200 × 630` PNG reading cards on the fly in `GET /api/books/content?id=<bookId>&type=card&s=<token>` using `ImageResponse` (`next/og`, `s-maxage=86400`), so WhatsApp, Reddit, X, Facebook, LinkedIn, Telegram, Discord, and Bluesky unfurl the exact themed reading card thumbnail with zero Vercel or Supabase storage.
 - **Mobile Header Upward View Transition, Touch-Swipe Slide Harmony & Silent Cloud Fallback Teardown (`ADR-080`)**: Added `data-view-transition-stage="true"` to the outer view transition container in `src/app/page.tsx` with synchronous `setActiveView(view)` on header tab clicks, and scoped mobile (`max-width: 767px`) nested animation suppression in `src/app/globals.css` to `[data-view-transition-stage="true"] .animate-page-turn` so header tab switches cleanly animate `.animate-page-turn` upward (`translateY(4px) -> 0`, `180ms`) and touch swipes animate `.animate-view-slide-left`/`right` (`220ms`) without nested double-animations or `onAnimationEnd` class-removal re-triggers; aligned `useAccoladesStore` cloud fallback handling with the other 5 stores and added explicit `cleanup()` + macrotask flushing in `src/app/account/page.test.tsx` to eliminate Vitest `onUserConsoleLog` worker teardown races.
+- **Unified Full-Catalog RDF Download-Count Ingestion, Search-Vector Trigger Guard, Sticky Dynamic Write Pacing & Connection-Pool Retry (`ADR-080`)**: Added `streamGutenbergRdfDownloadCounts` and `parseRdfDownloadCountsStream` (`rdf-files.tar.bz2` via `tar -xOjf -`) and `GUTENBERG_CSV_FEED_MIRRORS` with `[Mirror X/Y: host]` labels and live `MB/s` download telemetry to attach 30-day `download_count` values across all 78,461 volumes directly in `normalizeCsvRow` and `filterChangedOrNewBooks` (`CATALOG_DIFF_SELECT_COLUMNS`); guarded `public.books_search_vector_trigger()` in `supabase/schema.sql` with `IS DISTINCT FROM` so `download_count`-only upserts never recompute `to_tsvector()` or dirty `idx_books_search_vector`, and added sticky dynamic write pacing (`dynamicWriteChunkSize` `[25, 100]`), `fetchExistingRowsWithRetry`, pre-retry state verification in `upsertBatch`, live progress and exact `remainingCount` reporting in `reconcileWithdrawnCatalogBooks`, and retry-hardened `syncPopularDownloadCounts` fallback.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -564,7 +565,7 @@ NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 | `public.handle_new_user()` | Trigger | Automatically provisions profile and default General shelf on auth creation (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 | `public.delete_current_user()` | RPC Function | Atomic server-side 11-table + `storage.objects` user data erasure prior to `auth.users` deletion (authenticated-only execution, null session guard, immutable `search_path`). |
 | `public.lookup_scholar_by_username()` | RPC Function | Zero-PII handle resolution returning minimal `(id, username, display_name)` so scholars can invite Fellow Scholars by `@username` even when their sanctuary is private (`is_public = false`). |
-| `public.books_search_vector_trigger()` | Trigger | Automatically maintains `search_vector` across `title`, `subjects`, and `bookshelves` on book insert/update (RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
+| `public.books_search_vector_trigger()` | Trigger | Automatically maintains `search_vector` across `title`, `subjects`, and `bookshelves` on book insert or when `title`, `subjects`, or `bookshelves` change (`IS DISTINCT FROM` guard skips `to_tsvector()` recomputation on `download_count`-only updates; RPC execution revoked from `PUBLIC`, `anon`, `authenticated`, immutable `search_path`). |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
 To activate the dedicated PostgreSQL book catalog and bypass third-party rate limits, you have three options:
@@ -583,7 +584,7 @@ npm run catalog:sync
 >
 > 1. **Gutenberg Catalog Sync ([`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml))**:
 >    - **Schedule**: Every Sunday at `02:00 UTC`.
->    - **Action**: Streams newly added Gutenberg titles and batch-upserts metadata into `public.books`, hydrates `download_count` for the Top 500+ popular volumes from Gutendex (`syncPopularDownloadCounts`), and automatically chains relational translation clustering into `public.book_translations`.
+>    - **Action**: Streams Project Gutenberg's official `rdf-files.tar.bz2` and `pg_catalog.csv.gz` feeds across 3 official mirrors (`www.gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`), exact-diff upserts metadata and 30-day `download_count` across all 78,000+ volumes into `public.books` (`filterChangedOrNewBooks` preserving `quotes`, with `syncPopularDownloadCounts` retained for `--no-rdf` / `--popular-only` fallback), reconciles and prunes withdrawn Gutenberg volumes (`reconcileWithdrawnCatalogBooks`), and automatically chains relational translation clustering into `public.book_translations`.
 >    - **Manual Dispatch**: Can be triggered on-demand with custom inputs (`limit`, `update_existing`, `dry_run`) directly from the GitHub Actions tab.
 > 2. **Gutenberg Translations Sync ([`.github/workflows/translations-sync.yml`](.github/workflows/translations-sync.yml))**:
 >    - **Schedule**: Every Sunday at `03:00 UTC` (1 hour after catalog sync).
@@ -708,7 +709,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run lint` | Runs ESLint 10 rules and Core Web Vitals checks (`--max-warnings 0`) |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
-| `npm run catalog:sync` | Streams Project Gutenberg's catalog dump (78,000+ titles), batch-upserts into Supabase, and hydrates `download_count` for Top 500+ popular titles from Gutendex |
+| `npm run catalog:sync` | Streams Project Gutenberg's official `rdf-files.tar.bz2` and `pg_catalog.csv.gz` feeds across 3 official mirrors to exact-diff sync metadata and 30-day `download_count` for all 78,000+ titles in Supabase (with `--no-rdf` / `--popular-only` Gutendex fallback) |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
 | `npm run quotes:sync` | Maintains the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` (blending `40 Popular + 10 Recent` per 50-book batch with post-batch `1-for-1` sliding window auto-pruning) via `public.books.content` and 3 dedicated per-mirror PGLAF workers (`8.0s–16.0s` per-worker float pacing + cooldown circuit breaker) (`--limit=N`, `--popular-pool=500`, `--recent-pool=64`, `--delay-range=8-16`, `--mirrors=pglaf,aleph,readingroo`, `--schedule-gate`, `--target-count=N`, `--ids=...`, `--force`, `--dry-run`); ingesting runs publish a Run Report (tier progress + per-book Top/Recent ledger) to the GitHub Actions job summary |

@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const zlib = require('zlib');
+const { spawn } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
 
 // 1. Environment Loading (Native, zero-dependency)
@@ -190,7 +191,7 @@ function buildStandardFormats(bookId) {
 }
 
 // 5. Parse Raw CSV Row into Normalized Book Record
-function normalizeCsvRow(row) {
+function normalizeCsvRow(row, downloadCountsMap = null) {
   if (!row || row.length < 5) return null;
 
   const id = parseInt(row[0], 10);
@@ -218,7 +219,7 @@ function normalizeCsvRow(row) {
     .map((b) => b.trim())
     .filter(Boolean);
 
-  return {
+  const record = {
     id,
     title,
     authors,
@@ -232,88 +233,483 @@ function normalizeCsvRow(row) {
     max_author_death_year: maxDeath,
     min_author_birth_year: minBirth,
   };
+
+  if (downloadCountsMap instanceof Map && downloadCountsMap.size > 0) {
+    const rawCount = downloadCountsMap.get(id);
+    record.download_count = typeof rawCount === 'number' && rawCount >= 0 ? rawCount : 0;
+  }
+
+  return record;
 }
 
-// 6. Streaming RFC 4180 CSV Consumer with Multi-line Quoted Field Support
-function streamGutenbergCatalog(onRecord, catalogUrl = 'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz') {
+// 5b. Streaming RDF Archive Consumer for Full-Catalog Download Counts (rdf-files.tar.bz2)
+const GUTENBERG_RDF_FEED_MIRRORS = [
+  'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+  'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+  'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
+];
+
+const GUTENBERG_CSV_FEED_MIRRORS = [
+  'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
+  'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
+  'https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv.gz',
+];
+
+const ALLOWED_RDF_FEED_HOSTS = new Set([
+  'gutenberg.pglaf.org',
+  'aleph.gutenberg.org',
+  'gutenberg.readingroo.ms',
+  'www.gutenberg.org',
+  'gutenberg.org',
+]);
+
+function isAllowedRdfFeedUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    return (
+      parsed.protocol === 'https:' &&
+      ALLOWED_RDF_FEED_HOSTS.has(parsed.hostname.toLowerCase())
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedCsvFeedUrl(rawUrl) {
+  return isAllowedRdfFeedUrl(rawUrl);
+}
+
+function parseRdfDownloadCountsStream(readableStream, onProgress = null) {
   return new Promise((resolve, reject) => {
-    https
-      .get(
-        catalogUrl,
-        {
-          headers: {
-            'User-Agent': resolveCatalogUserAgent(),
-            Accept: 'application/gzip, */*',
-          },
-        },
-        (res) => {
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            return reject(new Error(`Gutenberg feed returned HTTP ${res.statusCode}: ${res.statusMessage}`));
+    const countsMap = new Map();
+    let currentBookId = null;
+    let remainder = '';
+
+    const ebookTagRegex = /<pgterms:ebook\s+rdf:about="ebooks\/(\d+)"/i;
+    const downloadsTagRegex = /<pgterms:downloads[^>]*>(\d+)<\/pgterms:downloads>/i;
+
+    const processLine = (line) => {
+      const ebookMatch = line.match(ebookTagRegex);
+      if (ebookMatch) {
+        const parsedId = parseInt(ebookMatch[1], 10);
+        currentBookId = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
+      }
+
+      if (currentBookId !== null) {
+        const dlMatch = line.match(downloadsTagRegex);
+        if (dlMatch) {
+          const parsedCount = parseInt(dlMatch[1], 10);
+          if (Number.isInteger(parsedCount) && parsedCount >= 0) {
+            countsMap.set(currentBookId, parsedCount);
+            if (typeof onProgress === 'function' && countsMap.size % 500 === 0) {
+              onProgress(countsMap.size);
+            }
           }
+        }
+      }
 
-          const gunzip = zlib.createGunzip();
-          res.pipe(gunzip);
+      if (line.includes('</pgterms:ebook>')) {
+        currentBookId = null;
+      }
+    };
 
-          let inQuotes = false;
-          let currentField = '';
-          let currentRow = [];
-          let isHeader = true;
+    readableStream.on('data', (chunk) => {
+      const text = remainder + chunk.toString('utf8');
+      const lines = text.split('\n');
+      remainder = lines.pop() || '';
+      for (let i = 0; i < lines.length; i++) {
+        processLine(lines[i]);
+      }
+    });
 
-          gunzip.on('data', (chunk) => {
-            const str = chunk.toString('utf8');
-            for (let i = 0; i < str.length; i++) {
-              const char = str[i];
-              if (char === '"') {
-                if (inQuotes && str[i + 1] === '"') {
-                  currentField += '"';
-                  i++;
-                } else {
-                  inQuotes = !inQuotes;
-                }
-              } else if (char === ',' && !inQuotes) {
+    readableStream.on('end', () => {
+      if (remainder) {
+        processLine(remainder);
+        remainder = '';
+      }
+      resolve(countsMap);
+    });
+
+    readableStream.on('error', reject);
+  });
+}
+
+function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
+  return new Promise((resolve, reject) => {
+    if (!isAllowedRdfFeedUrl(feedUrl)) {
+      return reject(new Error(`Disallowed RDF feed mirror URL: ${feedUrl}`));
+    }
+    if (redirectHop > 3) {
+      return reject(new Error(`Exceeded maximum redirect hops for RDF feed: ${feedUrl}`));
+    }
+
+    const req = https.get(
+      feedUrl,
+      {
+        headers: {
+          'User-Agent': resolveCatalogUserAgent(),
+          Accept: 'application/x-bzip2, application/octet-stream, */*',
+        },
+        timeout: 30000,
+      },
+      (res) => {
+        if (
+          res.statusCode &&
+          [301, 302, 303, 307, 308].includes(res.statusCode) &&
+          res.headers.location
+        ) {
+          res.resume();
+          try {
+            const nextUrl = new URL(res.headers.location, feedUrl).toString();
+            streamRdfMirrorOnce(nextUrl, options, redirectHop + 1)
+              .then(resolve)
+              .catch(reject);
+          } catch (err) {
+            reject(err);
+          }
+          return;
+        }
+
+        if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+          res.resume();
+          return reject(
+            new Error(`RDF feed mirror returned HTTP ${res.statusCode}: ${res.statusMessage}`)
+          );
+        }
+
+        const totalBytes = parseInt(res.headers['content-length'] || '0', 10) || 0;
+        let downloadedBytes = 0;
+        let parsedBookCount = 0;
+        let lastReportMs = 0;
+
+        const emitProgress = (force = false) => {
+          if (typeof options.onProgress !== 'function') return;
+          const now = Date.now();
+          if (force || now - lastReportMs >= 250) {
+            lastReportMs = now;
+            options.onProgress(parsedBookCount, downloadedBytes, totalBytes);
+          }
+        };
+
+        res.on('data', (chunk) => {
+          downloadedBytes += chunk.length;
+          emitProgress(false);
+        });
+
+        const tarProc = spawn('tar', ['-xOjf', '-'], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        let tarStderr = '';
+        tarProc.stderr.on('data', (d) => {
+          if (tarStderr.length < 1024) {
+            tarStderr += d.toString('utf8');
+          }
+        });
+
+        res.pipe(tarProc.stdin);
+        tarProc.stdin.on('error', () => {});
+
+        parseRdfDownloadCountsStream(tarProc.stdout, (count) => {
+          parsedBookCount = count;
+          emitProgress(false);
+        })
+          .then((countsMap) => {
+            parsedBookCount = countsMap.size;
+            emitProgress(true);
+            tarProc.on('close', (code) => {
+              if (code !== 0 && countsMap.size === 0) {
+                reject(
+                  new Error(`tar exited with code ${code}: ${tarStderr.trim() || 'unknown error'}`)
+                );
+              } else {
+                resolve(countsMap);
+              }
+            });
+          })
+          .catch((err) => {
+            tarProc.kill();
+            reject(err);
+          });
+
+        tarProc.on('error', (err) => {
+          res.destroy();
+          reject(err);
+        });
+        res.on('error', (err) => {
+          tarProc.kill();
+          reject(err);
+        });
+      }
+    );
+
+    req.on('timeout', () => {
+      req.destroy(new Error(`Timeout connecting to RDF feed mirror: ${feedUrl}`));
+    });
+    req.on('error', reject);
+  });
+}
+
+async function streamGutenbergRdfDownloadCounts(options = {}) {
+  const rawMirrors = Array.isArray(options.mirrors) && options.mirrors.length > 0
+    ? options.mirrors
+    : GUTENBERG_RDF_FEED_MIRRORS;
+  const validMirrors = rawMirrors.filter(isAllowedRdfFeedUrl);
+  const logger = options.logger || console;
+  const streamMirrorFn = options.streamMirrorFn || streamRdfMirrorOnce;
+
+  for (let idx = 0; idx < validMirrors.length; idx++) {
+    const mirrorUrl = validMirrors[idx];
+    const host = new URL(mirrorUrl).hostname;
+    try {
+      const startMs = Date.now();
+      logger.log(
+        `\n📦 Streaming full-catalog download counts [Mirror ${idx + 1}/${validMirrors.length}: ${host}] (${mirrorUrl})...`
+      );
+      const countsMap = await streamMirrorFn(mirrorUrl, {
+        onProgress: (count, downloadedBytes = 0, totalBytes = 0) => {
+          if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
+            const elapsedSec = Math.max(0.1, (Date.now() - startMs) / 1000);
+            const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
+            const speedMb = (downloadedBytes / (1024 * 1024) / elapsedSec).toFixed(1);
+            const sizePart =
+              totalBytes > 0
+                ? `${dlMb}/${(totalBytes / (1024 * 1024)).toFixed(1)} MB (${((downloadedBytes / totalBytes) * 100).toFixed(1)}%) @ ${speedMb} MB/s`
+                : downloadedBytes > 0
+                  ? `${dlMb} MB @ ${speedMb} MB/s`
+                  : 'connecting...';
+            process.stdout.write(
+              `\r  ↳ RDF: ${sizePart} | ${(count || 0).toLocaleString()} books (${elapsedSec.toFixed(1)}s)   `
+            );
+          }
+        },
+      });
+      if (countsMap instanceof Map && countsMap.size > 0) {
+        const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+        logger.log(
+          `\n  ✔ Extracted 30-day download_count for ${countsMap.size.toLocaleString()} books from ${host} (${elapsed}s).`
+        );
+        return countsMap;
+      }
+    } catch (err) {
+      logger.warn(
+        `  ⚠ Warning: RDF feed mirror [${idx + 1}/${validMirrors.length}: ${host}] failed (${err.message || err}); trying next mirror...`
+      );
+    }
+  }
+
+  logger.warn(
+    '  ⚠ Warning: All RDF feed mirrors failed; will fall back to Gutendex Top Popular hydration.'
+  );
+  return new Map();
+}
+
+// 6. Streaming RFC 4180 CSV Consumer with Multi-line Quoted Field Support, Mirror Failover & Download Progress
+function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop = 0) {
+  return new Promise((resolve, reject) => {
+    if (!isAllowedCsvFeedUrl(catalogUrl)) {
+      return reject(new Error(`Disallowed CSV feed mirror URL: ${catalogUrl}`));
+    }
+    if (redirectHop > 3) {
+      return reject(new Error(`Exceeded maximum redirect hops for CSV feed: ${catalogUrl}`));
+    }
+
+    const startMs = Date.now();
+    const req = https.get(
+      catalogUrl,
+      {
+        headers: {
+          'User-Agent': resolveCatalogUserAgent(),
+          Accept: 'application/gzip, */*',
+        },
+        timeout: 30000,
+      },
+      (res) => {
+        if (
+          res.statusCode &&
+          [301, 302, 303, 307, 308].includes(res.statusCode) &&
+          res.headers.location
+        ) {
+          res.resume();
+          try {
+            const nextUrl = new URL(res.headers.location, catalogUrl).toString();
+            streamCatalogMirrorOnce(onRecord, nextUrl, options, redirectHop + 1)
+              .then(resolve)
+              .catch(reject);
+          } catch (err) {
+            reject(err);
+          }
+          return;
+        }
+
+        if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+          res.resume();
+          return reject(
+            new Error(`Gutenberg feed returned HTTP ${res.statusCode}: ${res.statusMessage}`)
+          );
+        }
+
+        const totalBytes = parseInt(res.headers['content-length'] || '0', 10) || 0;
+        let downloadedBytes = 0;
+
+        res.on('data', (chunk) => {
+          downloadedBytes += chunk.length;
+          if (typeof options.onDownloadProgress === 'function') {
+            const elapsedSec = Math.max(0.1, (Date.now() - startMs) / 1000);
+            options.onDownloadProgress({
+              downloadedBytes,
+              totalBytes,
+              speedMBps: downloadedBytes / (1024 * 1024) / elapsedSec,
+              elapsedSec,
+              mirrorHost: new URL(catalogUrl).hostname,
+            });
+          }
+        });
+
+        const gunzip = zlib.createGunzip();
+        res.pipe(gunzip);
+
+        let inQuotes = false;
+        let currentField = '';
+        let currentRow = [];
+        let isHeader = true;
+        const parsedRows = [];
+        let settled = false;
+
+        const safeReject = (err) => {
+          if (settled) return;
+          settled = true;
+          gunzip.destroy();
+          res.destroy();
+          reject(err);
+        };
+
+        gunzip.on('data', (chunk) => {
+          const str = chunk.toString('utf8');
+          for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '"') {
+              if (inQuotes && str[i + 1] === '"') {
+                currentField += '"';
+                i++;
+              } else {
+                inQuotes = !inQuotes;
+              }
+            } else if (char === ',' && !inQuotes) {
+              currentRow.push(currentField);
+              currentField = '';
+            } else if ((char === '\n' || char === '\r') && !inQuotes) {
+              if (char === '\r' && str[i + 1] === '\n') {
+                i++;
+              }
+              if (currentRow.length > 0 || currentField.length > 0) {
                 currentRow.push(currentField);
                 currentField = '';
-              } else if ((char === '\n' || char === '\r') && !inQuotes) {
-                if (char === '\r' && str[i + 1] === '\n') {
-                  i++;
+                if (isHeader) {
+                  isHeader = false;
+                } else {
+                  parsedRows.push(currentRow);
                 }
-                if (currentRow.length > 0 || currentField.length > 0) {
-                  currentRow.push(currentField);
-                  currentField = '';
-                  if (isHeader) {
-                    isHeader = false;
-                  } else {
-                    onRecord(currentRow);
-                  }
-                  currentRow = [];
-                }
-              } else {
-                currentField += char;
+                currentRow = [];
               }
+            } else {
+              currentField += char;
             }
-          });
+          }
+        });
 
-          gunzip.on('end', () => {
-            if (currentRow.length > 0 || currentField.length > 0) {
-              currentRow.push(currentField);
-              if (!isHeader) {
-                onRecord(currentRow);
-              }
+        gunzip.on('end', async () => {
+          if (currentRow.length > 0 || currentField.length > 0) {
+            currentRow.push(currentField);
+            if (!isHeader) {
+              parsedRows.push(currentRow);
             }
-            resolve();
-          });
+          }
+          try {
+            for (let i = 0; i < parsedRows.length; i++) {
+              const row = parsedRows[i];
+              parsedRows[i] = null;
+              await onRecord(row);
+            }
+            if (!settled) {
+              settled = true;
+              resolve();
+            }
+          } catch (err) {
+            safeReject(err);
+          }
+        });
 
-          gunzip.on('error', reject);
-          res.on('error', reject);
-        }
-      )
-      .on('error', reject);
+        gunzip.on('error', safeReject);
+        res.on('error', safeReject);
+      }
+    );
+
+    req.on('timeout', () => {
+      req.destroy(new Error(`Timeout connecting to CSV feed mirror: ${catalogUrl}`));
+    });
+    req.on('error', reject);
   });
+}
+
+async function streamGutenbergCatalog(
+  onRecord,
+  catalogUrlOrOptions = GUTENBERG_CSV_FEED_MIRRORS[0]
+) {
+  const options =
+    typeof catalogUrlOrOptions === 'string'
+      ? { mirrors: [catalogUrlOrOptions] }
+      : catalogUrlOrOptions || {};
+  const rawMirrors =
+    Array.isArray(options.mirrors) && options.mirrors.length > 0
+      ? options.mirrors
+      : GUTENBERG_CSV_FEED_MIRRORS;
+  const validMirrors = rawMirrors.filter(isAllowedCsvFeedUrl);
+  const logger = options.logger || null;
+  const streamMirrorFn = options.streamMirrorFn || streamCatalogMirrorOnce;
+
+  let recordsEmitted = 0;
+  let lastError = null;
+
+  for (let idx = 0; idx < validMirrors.length; idx++) {
+    const mirrorUrl = validMirrors[idx];
+    const host = new URL(mirrorUrl).hostname;
+    try {
+      if (logger && typeof logger.log === 'function') {
+        logger.log(
+          `\n🌐 Streaming Project Gutenberg catalog [Mirror ${idx + 1}/${validMirrors.length}: ${host}] (${mirrorUrl})...`
+        );
+      }
+      await streamMirrorFn(
+        (row) => {
+          recordsEmitted++;
+          return onRecord(row);
+        },
+        mirrorUrl,
+        options
+      );
+      return;
+    } catch (err) {
+      lastError = err;
+      if (recordsEmitted > 0 || idx === validMirrors.length - 1) {
+        throw err;
+      }
+      if (logger && typeof logger.warn === 'function') {
+        logger.warn(
+          `  ⚠ Warning: CSV catalog mirror [${idx + 1}/${validMirrors.length}: ${host}] failed (${err.message || err}); trying next mirror...`
+        );
+      }
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
 }
 
 // 7. Exact-Diff Catalog Metadata Comparison & Safe Supabase Batch Upsert
 const CATALOG_DIFF_SELECT_COLUMNS =
-  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, max_author_death_year, min_author_birth_year';
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, max_author_death_year, min_author_birth_year, download_count';
 
 const MIN_ACTIVE_CATALOG_FOR_PRUNE = 50000;
 const MAX_WITHDRAWN_PRUNE_PER_RUN = 500;
@@ -353,6 +749,12 @@ function hasCatalogMetadataChanged(existingRow, incomingBook) {
   if ((existingRow.media_type || 'Text') !== (incomingBook.media_type || 'Text')) return true;
   if ((existingRow.max_author_death_year ?? null) !== (incomingBook.max_author_death_year ?? null)) return true;
   if ((existingRow.min_author_birth_year ?? null) !== (incomingBook.min_author_birth_year ?? null)) return true;
+  if (
+    typeof incomingBook.download_count === 'number' &&
+    (existingRow.download_count ?? 0) !== incomingBook.download_count
+  ) {
+    return true;
+  }
   if (!areStringArraysEqual(existingRow.languages, incomingBook.languages)) return true;
   if (!areStringArraysEqual(existingRow.subjects, incomingBook.subjects)) return true;
   if (!areStringArraysEqual(existingRow.bookshelves, incomingBook.bookshelves)) return true;
@@ -372,7 +774,62 @@ function deduplicateBatchById(batch) {
   return Array.from(byId.values());
 }
 
-async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = false) {
+function isTransientDatabaseTimeout(err) {
+  const msg = String((err && err.message) || err || '').toLowerCase();
+  return (
+    msg.includes('statement timeout') ||
+    msg.includes('canceling statement') ||
+    msg.includes('timed out acquiring connection') ||
+    msg.includes('connection pool') ||
+    msg.includes('fetch failed') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('502') ||
+    msg.includes('503') ||
+    msg.includes('504')
+  );
+}
+
+async function fetchExistingRowsWithRetry(supabase, batchIds, options = {}) {
+  if (!Array.isArray(batchIds) || batchIds.length === 0) return [];
+  const retries = typeof options.retries === 'number' && options.retries > 0 ? options.retries : 4;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1200;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const { data: existingRows, error } = await supabase
+        .from('books')
+        .select(CATALOG_DIFF_SELECT_COLUMNS)
+        .in('id', batchIds);
+
+      if (error) {
+        throw error;
+      }
+      return Array.isArray(existingRows) ? existingRows : [];
+    } catch (err) {
+      if (isTransientDatabaseTimeout(err) && batchIds.length > 25) {
+        if (baseDelayMs > 0) {
+          await new Promise((r) => setTimeout(r, baseDelayMs));
+        }
+        const mid = Math.floor(batchIds.length / 2);
+        const leftRows = await fetchExistingRowsWithRetry(supabase, batchIds.slice(0, mid), options);
+        const rightRows = await fetchExistingRowsWithRetry(supabase, batchIds.slice(mid), options);
+        return [...leftRows, ...rightRows];
+      }
+
+      if (attempt === retries) {
+        throw new Error(`Failed to query existing catalog rows for diff check: ${err.message || err}`);
+      }
+      if (baseDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+      }
+    }
+  }
+  return [];
+}
+
+async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = false, options = {}) {
   const dedupedBatch = deduplicateBatchById(batch);
   if (dedupedBatch.length === 0) {
     return { toUpsert: [], insertedCount: 0, updatedCount: 0, unchangedCount: 0 };
@@ -388,14 +845,7 @@ async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = f
   }
 
   const batchIds = dedupedBatch.map((b) => b.id);
-  const { data: existingRows, error } = await supabase
-    .from('books')
-    .select(CATALOG_DIFF_SELECT_COLUMNS)
-    .in('id', batchIds);
-
-  if (error) {
-    throw new Error(`Failed to query existing catalog rows for diff check: ${error.message}`);
-  }
+  const existingRows = await fetchExistingRowsWithRetry(supabase, batchIds, options);
 
   const existingById = new Map();
   if (Array.isArray(existingRows)) {
@@ -427,15 +877,42 @@ async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = f
   return { toUpsert, insertedCount, updatedCount, unchangedCount };
 }
 
-async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true) {
-  const dedupedBatch = deduplicateBatchById(batch);
-  if (dedupedBatch.length === 0) return;
+// Sticky dynamic write chunk sizing & latency governor so statement timeouts never repeat across batches
+const MIN_DYNAMIC_WRITE_CHUNK_SIZE = 25;
+const MAX_DYNAMIC_WRITE_CHUNK_SIZE = 100;
+let dynamicWriteChunkSize = MAX_DYNAMIC_WRITE_CHUNK_SIZE;
+let consecutiveFastWrites = 0;
+
+function getDynamicWriteChunkSize() {
+  return dynamicWriteChunkSize;
+}
+
+function resetDynamicWriteChunkSize(size = MAX_DYNAMIC_WRITE_CHUNK_SIZE) {
+  dynamicWriteChunkSize = Math.max(
+    MIN_DYNAMIC_WRITE_CHUNK_SIZE,
+    Math.min(MAX_DYNAMIC_WRITE_CHUNK_SIZE, size)
+  );
+  consecutiveFastWrites = 0;
+}
+
+async function upsertSingleWriteChunk(
+  supabase,
+  chunk,
+  retries = 3,
+  ignoreDuplicates = true,
+  options = {}
+) {
+  let remainingBatch = deduplicateBatchById(chunk);
+  if (remainingBatch.length === 0) return;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1200;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
+    const writeStartMs = Date.now();
     try {
       const { error } = await supabase
         .from('books')
-        .upsert(dedupedBatch, {
+        .upsert(remainingBatch, {
           onConflict: 'id',
           ignoreDuplicates,
         });
@@ -443,23 +920,107 @@ async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true
       if (error) {
         throw error;
       }
+
+      const writeElapsedMs = Date.now() - writeStartMs;
+      if (writeElapsedMs > 3500) {
+        dynamicWriteChunkSize = Math.max(
+          MIN_DYNAMIC_WRITE_CHUNK_SIZE,
+          Math.floor(dynamicWriteChunkSize / 2)
+        );
+        consecutiveFastWrites = 0;
+      } else if (writeElapsedMs < 800) {
+        consecutiveFastWrites++;
+        if (consecutiveFastWrites >= 5 && dynamicWriteChunkSize < MAX_DYNAMIC_WRITE_CHUNK_SIZE) {
+          dynamicWriteChunkSize = Math.min(
+            MAX_DYNAMIC_WRITE_CHUNK_SIZE,
+            dynamicWriteChunkSize + 25
+          );
+          consecutiveFastWrites = 0;
+        }
+      }
       return;
     } catch (err) {
-      // Adaptive split-and-conquer on statement timeouts
-      const isTimeout = err.message && (err.message.includes('statement timeout') || err.message.includes('canceling statement'));
-      if (isTimeout && dedupedBatch.length > 25) {
-        const mid = Math.floor(dedupedBatch.length / 2);
-        await upsertBatch(supabase, dedupedBatch.slice(0, mid), retries, ignoreDuplicates);
-        await upsertBatch(supabase, dedupedBatch.slice(mid), retries, ignoreDuplicates);
+      // If a timeout/pool error occurred during a diff-upsert, check which books in the batch
+      // were already committed properly before retrying or splitting the remainder.
+      if (!ignoreDuplicates && supabase && typeof supabase.from === 'function') {
+        try {
+          const tableRef = supabase.from('books');
+          if (tableRef && typeof tableRef.select === 'function') {
+            const recheck = await filterChangedOrNewBooks(supabase, remainingBatch, false, {
+              retries: 2,
+              baseDelayMs: Math.min(baseDelayMs, 500),
+            });
+            remainingBatch = recheck.toUpsert;
+            if (remainingBatch.length === 0) {
+              return;
+            }
+          }
+        } catch {
+          // Non-blocking fallback: continue retrying the full remainingBatch
+        }
+      }
+
+      // Adaptive split-and-conquer on statement or connection-pool timeouts
+      const isTimeout = isTransientDatabaseTimeout(err);
+      if (isTimeout) {
+        dynamicWriteChunkSize = Math.max(
+          MIN_DYNAMIC_WRITE_CHUNK_SIZE,
+          Math.min(dynamicWriteChunkSize, Math.floor(remainingBatch.length / 2) || MIN_DYNAMIC_WRITE_CHUNK_SIZE)
+        );
+        consecutiveFastWrites = 0;
+      }
+      if (isTimeout && remainingBatch.length > MIN_DYNAMIC_WRITE_CHUNK_SIZE) {
+        const mid = Math.floor(remainingBatch.length / 2);
+        await upsertSingleWriteChunk(
+          supabase,
+          remainingBatch.slice(0, mid),
+          retries,
+          ignoreDuplicates,
+          options
+        );
+        await upsertSingleWriteChunk(
+          supabase,
+          remainingBatch.slice(mid),
+          retries,
+          ignoreDuplicates,
+          options
+        );
         return;
       }
 
       if (attempt === retries) {
         throw new Error(`Failed to upsert batch after ${retries} attempts: ${err.message}`);
       }
-      const backoffMs = attempt * 1200;
-      await new Promise((r) => setTimeout(r, backoffMs));
+      if (baseDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+      }
     }
+  }
+}
+
+async function upsertBatch(supabase, batch, retries = 3, ignoreDuplicates = true, options = {}) {
+  const deduped = deduplicateBatchById(batch);
+  if (deduped.length === 0) return;
+
+  const maxChunk =
+    typeof options.maxWriteChunkSize === 'number' && options.maxWriteChunkSize > 0
+      ? options.maxWriteChunkSize
+      : dynamicWriteChunkSize;
+
+  if (deduped.length <= maxChunk) {
+    await upsertSingleWriteChunk(supabase, deduped, retries, ignoreDuplicates, options);
+    return;
+  }
+
+  let cursor = 0;
+  while (cursor < deduped.length) {
+    const activeStep =
+      typeof options.maxWriteChunkSize === 'number' && options.maxWriteChunkSize > 0
+        ? options.maxWriteChunkSize
+        : dynamicWriteChunkSize;
+    const slice = deduped.slice(cursor, cursor + activeStep);
+    cursor += slice.length;
+    await upsertSingleWriteChunk(supabase, slice, retries, ignoreDuplicates, options);
   }
 }
 
@@ -473,6 +1034,9 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
   const pageSize = typeof options.pageSize === 'number' && options.pageSize > 0 ? options.pageSize : 1000;
   const deleteChunkSize =
     typeof options.deleteChunkSize === 'number' && options.deleteChunkSize > 0 ? options.deleteChunkSize : 100;
+  const retries = typeof options.retries === 'number' && options.retries > 0 ? options.retries : 4;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1200;
 
   if (!supabase || !(activeCatalogIds instanceof Set)) {
     return { prunedCount: 0, prunedIds: [], skippedReason: 'missing-client-or-set' };
@@ -488,17 +1052,30 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
   logger.log('\n🧹 Reconciling catalog for withdrawn/removed Project Gutenberg volumes...');
   const withdrawnIds = [];
   let lastId = 0;
+  let scannedCount = 0;
+  const reconcileStartMs = Date.now();
+  const expectedTotal = Math.max(1, activeCatalogIds.size);
 
   while (true) {
-    const { data, error } = await supabase
-      .from('books')
-      .select('id')
-      .gt('id', lastId)
-      .order('id', { ascending: true })
-      .limit(pageSize);
+    let data = null;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      const res = await supabase
+        .from('books')
+        .select('id')
+        .gt('id', lastId)
+        .order('id', { ascending: true })
+        .limit(pageSize);
 
-    if (error) {
-      throw new Error(`Failed to scan existing catalog IDs for reconciliation: ${error.message}`);
+      if (!res.error) {
+        data = res.data;
+        break;
+      }
+      if (attempt === retries) {
+        throw new Error(`Failed to scan existing catalog IDs for reconciliation: ${res.error.message}`);
+      }
+      if (baseDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+      }
     }
 
     if (!Array.isArray(data) || data.length === 0) {
@@ -508,10 +1085,19 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
     for (const row of data) {
       if (row && Number.isInteger(row.id) && row.id > 0) {
         lastId = row.id;
+        scannedCount++;
         if (!activeCatalogIds.has(row.id) && !PROTECTED_HERO_BOOK_IDS.has(row.id)) {
           withdrawnIds.push(row.id);
         }
       }
+    }
+
+    if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
+      const elapsedSec = ((Date.now() - reconcileStartMs) / 1000).toFixed(1);
+      const pct = Math.min(100, (scannedCount / expectedTotal) * 100).toFixed(1);
+      process.stdout.write(
+        `\r  ↳ Scanned: ${scannedCount.toLocaleString()} / ${activeCatalogIds.size.toLocaleString()} (${pct}%) | Withdrawn: ${withdrawnIds.length} (${elapsedSec}s)   `
+      );
     }
 
     if (data.length < pageSize) {
@@ -519,24 +1105,46 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
     }
   }
 
+  if (process.stdout && typeof process.stdout.write === 'function' && logger === console && scannedCount > 0) {
+    process.stdout.write('\n');
+  }
+
   if (withdrawnIds.length === 0) {
     logger.log('  ✔ Zero withdrawn books found (100% of Supabase catalog IDs remain active in Project Gutenberg).');
-    return { prunedCount: 0, prunedIds: [], skippedReason: null };
+    return {
+      prunedCount: 0,
+      prunedIds: [],
+      scannedCount,
+      remainingCount: scannedCount,
+      skippedReason: null,
+    };
   }
 
   if (!forcePrune && withdrawnIds.length > maxPrunePerRun) {
     logger.warn(
       `  ⚠ Safety circuit breaker triggered: ${withdrawnIds.length.toLocaleString()} candidate removals exceed maxPrunePerRun (${maxPrunePerRun}). Pass --force-prune to override.`
     );
-    return { prunedCount: 0, prunedIds: withdrawnIds, skippedReason: 'exceeded-max-prune-cap' };
+    return {
+      prunedCount: 0,
+      prunedIds: withdrawnIds,
+      scannedCount,
+      remainingCount: scannedCount,
+      skippedReason: 'exceeded-max-prune-cap',
+    };
   }
 
   let prunedCount = 0;
   for (let i = 0; i < withdrawnIds.length; i += deleteChunkSize) {
     const chunk = withdrawnIds.slice(i, i + deleteChunkSize);
-    const { error: deleteErr } = await supabase.from('books').delete().in('id', chunk);
-    if (deleteErr) {
-      throw new Error(`Failed to delete withdrawn catalog book IDs: ${deleteErr.message}`);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      const { error: deleteErr } = await supabase.from('books').delete().in('id', chunk);
+      if (!deleteErr) break;
+      if (attempt === retries) {
+        throw new Error(`Failed to delete withdrawn catalog book IDs: ${deleteErr.message}`);
+      }
+      if (baseDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+      }
     }
     prunedCount += chunk.length;
   }
@@ -544,48 +1152,95 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
   logger.log(
     `  ✔ Pruned ${prunedCount.toLocaleString()} withdrawn Project Gutenberg volume(s) (and their quotes): [${withdrawnIds.slice(0, 15).join(', ')}${withdrawnIds.length > 15 ? ', ...' : ''}]`
   );
-  return { prunedCount, prunedIds: withdrawnIds, skippedReason: null };
+  return {
+    prunedCount,
+    prunedIds: withdrawnIds,
+    scannedCount,
+    remainingCount: Math.max(0, scannedCount - prunedCount),
+    skippedReason: null,
+  };
 }
 
 // 8. Popularity Download Count Hydration from Gutendex (Top 500+ Public Domain Titles)
-async function fetchPopularCountsFromGutendex(pages = 20, fetchFn = globalThis.fetch) {
+async function fetchPopularCountsFromGutendex(pages = 21, fetchFn = globalThis.fetch, options = {}) {
   const popularEntries = [];
   const seenIds = new Set();
+  const maxRetries = typeof options.retries === 'number' && options.retries >= 0 ? options.retries : 4;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1200;
+  const timeoutMs =
+    typeof options.timeoutMs === 'number' && options.timeoutMs > 0 ? options.timeoutMs : 25000;
+  const logger = options.logger || null;
 
   for (let page = 1; page <= pages; page++) {
-    const url = `https://gutendex.com/books/?copyright=false&page=${page}`;
-    try {
-      const res = await fetchFn(url, {
-        headers: {
-          'User-Agent': resolveCatalogUserAgent(),
-          Accept: 'application/json',
-        },
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res || !res.ok) break;
-      const data = await res.json();
-      if (!data || !Array.isArray(data.results) || data.results.length === 0) break;
+    // Query index-backed /books/?page=N (avoiding unindexed WHERE copyright=false full-table scans on Gutendex)
+    // and enforce public-domain copyright filtering in memory below.
+    const url = `https://gutendex.com/books/?page=${page}`;
+    let pageData = null;
 
-      for (const item of data.results) {
-        if (
-          item &&
-          Number.isInteger(item.id) &&
-          item.id > 0 &&
-          typeof item.download_count === 'number' &&
-          item.download_count > 0 &&
-          !seenIds.has(item.id)
-        ) {
-          seenIds.add(item.id);
-          popularEntries.push({
-            id: item.id,
-            download_count: item.download_count,
-          });
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        const res = await fetchFn(url, {
+          headers: {
+            'User-Agent': resolveCatalogUserAgent(),
+            Accept: 'application/json',
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (!res || !res.ok) {
+          const status = res ? res.status : 'NO_RESPONSE';
+          throw new Error(`Gutendex HTTP ${status} on page ${page}`);
+        }
+        const data = await res.json();
+        if (!data || !Array.isArray(data.results) || data.results.length === 0) {
+          break;
+        }
+        pageData = data;
+        break;
+      } catch (err) {
+        if (attempt <= maxRetries) {
+          if (logger && typeof logger.warn === 'function') {
+            logger.warn(
+              `  ⚠ Warning: Popularity page ${page}/${pages} attempt ${attempt}/${maxRetries} failed (${err.message || err}); retrying...`
+            );
+          }
+          if (baseDelayMs > 0) {
+            await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+          }
         }
       }
-      if (!data.next) break;
-    } catch {
+    }
+
+    if (!pageData || !Array.isArray(pageData.results) || pageData.results.length === 0) {
       break;
     }
+
+    for (const item of pageData.results) {
+      if (
+        item &&
+        item.copyright !== true &&
+        item.copyright !== null &&
+        Number.isInteger(item.id) &&
+        item.id > 0 &&
+        typeof item.download_count === 'number' &&
+        item.download_count > 0 &&
+        !seenIds.has(item.id)
+      ) {
+        seenIds.add(item.id);
+        popularEntries.push({
+          id: item.id,
+          download_count: item.download_count,
+        });
+      }
+    }
+
+    if (logger && typeof logger.log === 'function') {
+      logger.log(
+        `  ↳ Fetched popularity page ${page}/${pages} (${popularEntries.length.toLocaleString()} public-domain books)...`
+      );
+    }
+
+    if (!pageData.next) break;
   }
 
   return popularEntries;
@@ -593,14 +1248,22 @@ async function fetchPopularCountsFromGutendex(pages = 20, fetchFn = globalThis.f
 
 async function syncPopularDownloadCounts(supabase, options = {}) {
   if (!supabase) return { updatedCount: 0, demotedCount: 0 };
-  const pages = typeof options.pages === 'number' && options.pages > 0 ? options.pages : 20;
+  const pages = typeof options.pages === 'number' && options.pages > 0 ? options.pages : 21;
   const fetchFn = options.fetchFn || globalThis.fetch;
   const logger = options.logger || console;
   const minEntriesForDemote =
     typeof options.minEntriesForDemote === 'number' ? options.minEntriesForDemote : 500;
+  const maxRetries = typeof options.retries === 'number' && options.retries >= 0 ? options.retries : 3;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1000;
 
   logger.log(`\n🔥 Hydrating download_count for Top Popular Gutenberg titles (${pages} pages)...`);
-  const entries = await fetchPopularCountsFromGutendex(pages, fetchFn);
+  const entries = await fetchPopularCountsFromGutendex(pages, fetchFn, {
+    retries: options.pageRetries,
+    baseDelayMs: options.pageBaseDelayMs,
+    timeoutMs: options.pageTimeoutMs,
+    logger,
+  });
   if (entries.length === 0) {
     logger.warn('  ⚠ Warning: Could not retrieve popular download counts from Gutendex; keeping existing counts.');
     return { updatedCount: 0, demotedCount: 0 };
@@ -613,12 +1276,18 @@ async function syncPopularDownloadCounts(supabase, options = {}) {
     const chunk = entries.slice(i, i + CHUNK_SIZE);
     await Promise.all(
       chunk.map(async (entry) => {
-        const { error } = await supabase
-          .from('books')
-          .update({ download_count: entry.download_count })
-          .eq('id', entry.id);
-        if (!error) {
-          updatedCount++;
+        for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+          const { error } = await supabase
+            .from('books')
+            .update({ download_count: entry.download_count })
+            .eq('id', entry.id);
+          if (!error) {
+            updatedCount++;
+            break;
+          }
+          if (attempt <= maxRetries && baseDelayMs > 0) {
+            await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+          }
         }
       })
     );
@@ -637,11 +1306,24 @@ async function syncPopularDownloadCounts(supabase, options = {}) {
     const fetchedIdSet = new Set(entries.map((e) => e.id));
 
     // Single-column index alignment: idx_books_download_count across top candidate pool
-    const { data: topRows, error: scanErr } = await supabase
-      .from('books')
-      .select('id, download_count')
-      .order('download_count', { ascending: false })
-      .limit(1000);
+    let topRows = null;
+    let scanErr = null;
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      const res = await supabase
+        .from('books')
+        .select('id, download_count')
+        .order('download_count', { ascending: false })
+        .limit(1000);
+      if (!res.error) {
+        topRows = res.data;
+        scanErr = null;
+        break;
+      }
+      scanErr = res.error;
+      if (attempt <= maxRetries && baseDelayMs > 0) {
+        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+      }
+    }
 
     if (scanErr) {
       logger.warn(`  ⚠ Warning: Failed to scan top books for popularity demotion: ${scanErr.message}`);
@@ -662,10 +1344,21 @@ async function syncPopularDownloadCounts(supabase, options = {}) {
       if (demoteCandidateIds.length > 0) {
         for (let i = 0; i < demoteCandidateIds.length; i += CHUNK_SIZE) {
           const chunk = demoteCandidateIds.slice(i, i + CHUNK_SIZE);
-          const { error: demoteErr } = await supabase
-            .from('books')
-            .update({ download_count: demotedCountValue })
-            .in('id', chunk);
+          let demoteErr = null;
+          for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+            const res = await supabase
+              .from('books')
+              .update({ download_count: demotedCountValue })
+              .in('id', chunk);
+            if (!res.error) {
+              demoteErr = null;
+              break;
+            }
+            demoteErr = res.error;
+            if (attempt <= maxRetries && baseDelayMs > 0) {
+              await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+            }
+          }
           if (!demoteErr) {
             demotedCount += chunk.length;
           } else {
@@ -690,6 +1383,8 @@ async function main() {
   const shouldUpdateExisting = args.includes('--update-existing');
   const noPrune = args.includes('--no-prune');
   const forcePrune = args.includes('--force-prune');
+  const popularOnly = args.includes('--popular-only');
+  const noRdf = args.includes('--no-rdf');
   const limitArg = args.find((a) => a.startsWith('--limit='));
   const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : null;
   const languagesArg = args.find((a) => a.startsWith('--languages='));
@@ -711,6 +1406,8 @@ Options:
   --update-existing     Force full overwrite of all existing records (default: smart exact-diff update preserving quotes)
   --no-prune            Skip withdrawn-book reconciliation at the end of a full sync
   --force-prune         Override the 500-book per-run safety cap during withdrawn-book pruning
+  --no-rdf              Skip streaming rdf-files.tar.bz2 full-catalog download counts (falls back to Gutendex Top Popular)
+  --popular-only        Refresh Top-500 popular download_count and cooled-off demotion only
   --help, -h            Show this help guide
 `);
     process.exit(0);
@@ -722,9 +1419,9 @@ Options:
 
   console.log('📚 Bookarium Gutenberg Catalog Sync');
   console.log('====================================');
-  console.log(`• Mode:        ${isDryRun ? 'DRY-RUN (No database writes)' : 'LIVE UPSERT'}`);
+  console.log(`• Mode:        ${isDryRun ? 'DRY-RUN (No database writes)' : popularOnly ? 'POPULARITY HYDRATION ONLY' : 'LIVE UPSERT'}`);
   console.log(
-    `• Strategy:    ${shouldUpdateExisting ? 'FORCE OVERWRITE (Rebuild all records)' : 'SMART EXACT-DIFF (Insert new + update changed metadata, preserving quotes)'}`
+    `• Strategy:    ${shouldUpdateExisting ? 'FORCE OVERWRITE (Rebuild all records)' : 'SMART EXACT-DIFF (Insert new + update changed metadata & download_count, preserving quotes)'}`
   );
   console.log(`• Batch Size:  ${batchSize} books/request`);
   if (limit) console.log(`• Limit:       ${limit} books`);
@@ -751,8 +1448,19 @@ Options:
     });
   }
 
+  if (popularOnly) {
+    if (!isDryRun && supabase) {
+      await syncPopularDownloadCounts(supabase);
+    }
+    return;
+  }
+
+  let rdfDownloadCounts = new Map();
+  if (!noRdf && !limit) {
+    rdfDownloadCounts = await streamGutenbergRdfDownloadCounts({ logger: console });
+  }
+
   const startTime = Date.now();
-  console.log('\n🌐 Connecting to Project Gutenberg catalog feed (pg_catalog.csv.gz)...');
 
   let totalParsed = 0;
   let totalAccepted = 0;
@@ -760,6 +1468,8 @@ Options:
   let totalInserted = 0;
   let totalUpdated = 0;
   let totalUnchanged = 0;
+  let hasPrintedCsvSummary = false;
+  let lastCsvDownloadLogMs = 0;
   let currentBatch = [];
   let isAborted = false;
   const activeCatalogIds = new Set();
@@ -769,6 +1479,12 @@ Options:
     const toSend = [...currentBatch];
     currentBatch = [];
 
+    if (!hasPrintedCsvSummary) {
+      hasPrintedCsvSummary = true;
+      process.stdout.write('\n');
+    }
+
+    let wroteRows = 0;
     if (!isDryRun && supabase) {
       const { toUpsert, insertedCount, updatedCount, unchangedCount } = await filterChangedOrNewBooks(
         supabase,
@@ -776,6 +1492,7 @@ Options:
         shouldUpdateExisting
       );
       if (toUpsert.length > 0) {
+        wroteRows = toUpsert.length;
         await upsertBatch(supabase, toUpsert, 3, false);
       }
       totalInserted += insertedCount;
@@ -787,39 +1504,68 @@ Options:
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const speed = Math.round(totalProcessed / (parseFloat(elapsed) || 1));
     process.stdout.write(
-      `\r  ↳ Processed: ${totalProcessed.toLocaleString()} | New: ${totalInserted.toLocaleString()} | Updated: ${totalUpdated.toLocaleString()} | Unchanged: ${totalUnchanged.toLocaleString()} | ${speed} books/s (${elapsed}s)`
+      `\r  ↳ Processed: ${totalProcessed.toLocaleString()} | New: ${totalInserted.toLocaleString()} | Updated: ${totalUpdated.toLocaleString()} | Unchanged: ${totalUnchanged.toLocaleString()} | ${speed} books/s (${elapsed}s)   `
     );
 
-    // Anti-throttling micro-pause
-    await new Promise((r) => setTimeout(r, 75));
+    // Dynamic anti-throttling pause: 50ms when read-only/unchanged, scaled when writing
+    const pauseMs =
+      wroteRows === 0
+        ? 50
+        : dynamicWriteChunkSize < MAX_DYNAMIC_WRITE_CHUNK_SIZE
+          ? 200
+          : 100;
+    await new Promise((r) => setTimeout(r, pauseMs));
   };
 
   try {
-    await streamGutenbergCatalog(async (row) => {
-      if (isAborted) return;
+    await streamGutenbergCatalog(
+      async (row) => {
+        if (isAborted) return;
 
-      totalParsed++;
-      const book = normalizeCsvRow(row);
-      if (!book) return;
+        totalParsed++;
+        const book = normalizeCsvRow(row, rdfDownloadCounts);
+        if (!book) return;
 
-      activeCatalogIds.add(book.id);
+        activeCatalogIds.add(book.id);
 
-      if (allowedLanguages) {
-        const matchesLang = book.languages.some((l) => allowedLanguages.has(l));
-        if (!matchesLang) return;
+        if (allowedLanguages) {
+          const matchesLang = book.languages.some((l) => allowedLanguages.has(l));
+          if (!matchesLang) return;
+        }
+
+        totalAccepted++;
+        currentBatch.push(book);
+
+        if (currentBatch.length >= batchSize) {
+          await flushBatch();
+        }
+
+        if (limit && totalAccepted >= limit) {
+          isAborted = true;
+        }
+      },
+      {
+        logger: console,
+        onDownloadProgress: ({ downloadedBytes, totalBytes, speedMBps, elapsedSec }) => {
+          if (hasPrintedCsvSummary) return;
+          const now = Date.now();
+          if (
+            (totalBytes > 0 && downloadedBytes >= totalBytes) ||
+            now - lastCsvDownloadLogMs >= 200
+          ) {
+            lastCsvDownloadLogMs = now;
+            const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
+            const sizePart =
+              totalBytes > 0
+                ? `${dlMb}/${(totalBytes / (1024 * 1024)).toFixed(1)} MB (${((downloadedBytes / totalBytes) * 100).toFixed(1)}%) @ ${speedMBps.toFixed(1)} MB/s`
+                : `${dlMb} MB @ ${speedMBps.toFixed(1)} MB/s`;
+            process.stdout.write(
+              `\r  ↳ CSV: ${sizePart} (${elapsedSec.toFixed(1)}s)   `
+            );
+          }
+        },
       }
-
-      totalAccepted++;
-      currentBatch.push(book);
-
-      if (currentBatch.length >= batchSize) {
-        await flushBatch();
-      }
-
-      if (limit && totalAccepted >= limit) {
-        isAborted = true;
-      }
-    });
+    );
 
     // Flush any trailing batch
     if (currentBatch.length > 0) {
@@ -834,17 +1580,28 @@ Options:
     console.log(`  • Diff updated:   ${totalUpdated.toLocaleString()}`);
     console.log(`  • Unchanged skip: ${totalUnchanged.toLocaleString()}`);
 
+    let reconcileResult = null;
     if (!isDryRun && supabase && !limit && !allowedLanguages && !noPrune) {
-      await reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, { forcePrune });
+      reconcileResult = await reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, { forcePrune });
     }
 
-    if (!isDryRun && supabase && !limit) {
+    // Only fall back to Gutendex Top Popular hydration if the RDF archive was skipped or unreachable
+    if (!isDryRun && supabase && !limit && rdfDownloadCounts.size === 0) {
       await syncPopularDownloadCounts(supabase);
     }
 
     if (!isDryRun && supabase) {
-      const { count } = await supabase.from('books').select('*', { count: 'exact', head: true });
-      console.log(`  • Current Supabase Catalog Total: ${count ? count.toLocaleString() : 'N/A'} books`);
+      let catalogTotal =
+        reconcileResult && typeof reconcileResult.remainingCount === 'number' && reconcileResult.remainingCount > 0
+          ? reconcileResult.remainingCount
+          : null;
+      if (!catalogTotal) {
+        const { count } = await supabase
+          .from('books')
+          .select('id', { count: 'estimated', head: true });
+        catalogTotal = count || activeCatalogIds.size || null;
+      }
+      console.log(`  • Current Supabase Catalog Total: ${catalogTotal ? catalogTotal.toLocaleString() : 'N/A'} books`);
     }
   } catch (err) {
     console.error('\n✖ Sync failed:', err.message || err);
@@ -855,6 +1612,8 @@ Options:
 // Export for unit tests
 module.exports = {
   CATALOG_DIFF_SELECT_COLUMNS,
+  GUTENBERG_RDF_FEED_MIRRORS,
+  GUTENBERG_CSV_FEED_MIRRORS,
   MIN_ACTIVE_CATALOG_FOR_PRUNE,
   MAX_WITHDRAWN_PRUNE_PER_RUN,
   PROTECTED_HERO_BOOK_IDS,
@@ -863,11 +1622,20 @@ module.exports = {
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  isAllowedRdfFeedUrl,
+  isAllowedCsvFeedUrl,
+  parseRdfDownloadCountsStream,
+  streamGutenbergRdfDownloadCounts,
+  streamGutenbergCatalog,
   areStringArraysEqual,
   areContributorArraysEqual,
   hasCatalogMetadataChanged,
   deduplicateBatchById,
+  isTransientDatabaseTimeout,
+  fetchExistingRowsWithRetry,
   filterChangedOrNewBooks,
+  getDynamicWriteChunkSize,
+  resetDynamicWriteChunkSize,
   upsertBatch,
   reconcileWithdrawnCatalogBooks,
   fetchPopularCountsFromGutendex,
