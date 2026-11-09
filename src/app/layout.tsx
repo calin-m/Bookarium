@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
 import { Providers } from './providers';
-import { SITE_CONFIG, STORAGE_KEYS } from '@/config/site-config';
+import { SITE_CONFIG, STORAGE_KEYS, resolveGoogleSiteVerification } from '@/config/site-config';
 import { GEO_COOKIE_NAME } from '@/proxy';
 import { normalizeCountryCode } from '@/lib/copyright-engine';
 import type { AppTheme } from '@/stores/useThemeStore';
@@ -68,6 +68,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  verification: resolveGoogleSiteVerification(),
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -78,7 +79,7 @@ export const metadata: Metadata = {
       'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
     images: [
       {
-        url: '/icons/apple-touch-icon.png?v=2',
+        url: '/icons/apple-touch-icon.png?v=4',
         width: 512,
         height: 512,
         alt: 'Bookarium Logo',
@@ -90,7 +91,7 @@ export const metadata: Metadata = {
     title: 'Bookarium | Zero-Copyright Public Domain Library',
     description:
       'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
-    images: ['/icons/apple-touch-icon.png?v=2'],
+    images: ['/icons/apple-touch-icon.png?v=4'],
   },
   robots: {
     index: true,
@@ -111,10 +112,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon.svg?v=2', type: 'image/svg+xml' },
-      { url: '/favicon.ico?v=2', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/icon.svg?v=4', type: 'image/svg+xml' },
+      { url: '/favicon.ico?v=4', sizes: '32x32', type: 'image/x-icon' },
     ],
-    apple: '/icons/apple-touch-icon.png?v=2',
+    apple: '/icons/apple-touch-icon.png?v=4',
   },
 };
 
@@ -182,8 +183,9 @@ export default async function RootLayout({
     const rawAuthHint = cookieStore.get(STORAGE_KEYS.AUTH_HINT)?.value;
     const hasSbCookie = cookieStore
       .getAll()
-      .some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
-    initialIsAuthenticated = rawAuthHint === 'authenticated' || hasSbCookie;
+      .some((c) => /^sb-.*-auth-token(\.\d+)?$/.test(c.name));
+    initialIsAuthenticated =
+      rawAuthHint === 'authenticated' || (rawAuthHint !== 'guest' && hasSbCookie);
   } catch {
     // Gracefully fallback to defaults when cookies()/headers() is called outside request scope (e.g. build/test)
   }

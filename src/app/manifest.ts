@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/?source=pwa',
     scope: '/',
-    name: 'Bookarium — Universal Public Domain Library & Reader',
+    name: 'Bookarium',
     short_name: 'Bookarium',
     description: SITE_CONFIG.DESCRIPTION,
     start_url: '/',
@@ -21,37 +21,37 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['books', 'education', 'literature', 'reference'],
     icons: [
       {
-        src: '/icon.svg?v=2',
+        src: '/icon.svg?v=4',
         sizes: 'any',
         type: 'image/svg+xml',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-192.png?v=2',
+        src: '/icons/icon-192.png?v=4',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-512.png?v=2',
+        src: '/icons/icon-512.png?v=4',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-1024.png?v=2',
+        src: '/icons/icon-1024.png?v=4',
         sizes: '1024x1024',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-maskable-192.png?v=2',
+        src: '/icons/icon-maskable-192.png?v=4',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/icons/icon-maskable-512.png?v=2',
+        src: '/icons/icon-maskable-512.png?v=4',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

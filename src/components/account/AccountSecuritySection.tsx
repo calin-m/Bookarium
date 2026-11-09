@@ -43,6 +43,16 @@ export interface AccountSecuritySectionProps {
   onSignOut: () => Promise<void>;
   onOpenDeleteModal: () => void;
   userEmail?: string;
+  hasGoogleIdentity?: boolean;
+  hasPasswordIdentity?: boolean;
+  canUnlinkGoogle?: boolean;
+  googleIdentityEmail?: string;
+  isLinkingGoogle?: boolean;
+  isUnlinkingGoogle?: boolean;
+  identitySuccess?: string | null;
+  identityError?: string | null;
+  onLinkGoogle?: () => void;
+  onUnlinkGoogle?: () => void;
 }
 
 export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
@@ -70,6 +80,16 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   onSignOut,
   onOpenDeleteModal,
   userEmail,
+  hasGoogleIdentity = false,
+  hasPasswordIdentity = true,
+  canUnlinkGoogle = false,
+  googleIdentityEmail,
+  isLinkingGoogle = false,
+  isUnlinkingGoogle = false,
+  identitySuccess = null,
+  identityError = null,
+  onLinkGoogle,
+  onUnlinkGoogle,
 }) => {
   const { isOffline } = useNetworkStatus();
   return (
@@ -94,7 +114,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold">
-              Update Account Password
+              {hasPasswordIdentity ? 'Update Account Password' : 'Set Account Password'}
             </h3>
             <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
               Minimum 6 characters
@@ -111,6 +131,17 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 <Check className="w-3.5 h-3.5 shrink-0" />
                 <span>
                   Email recovery link verified — enter and confirm your new password below.
+                </span>
+              </div>
+            ) : !hasPasswordIdentity ? (
+              <div
+                data-testid="oauth-set-password-banner"
+                role="status"
+                className="p-3 rounded-xl bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150"
+              >
+                <KeyRound className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  You signed in with Google. Set a password below if you also want to sign in with email and password.
                 </span>
               </div>
             ) : (
@@ -253,10 +284,10 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                 size="chip"
                 isLoading={isUpdatingPassword}
                 disabled={isOffline || !newPassword || !confirmPassword}
-                aria-label="Update Password"
+                aria-label={hasPasswordIdentity ? 'Update Password' : 'Set Password'}
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Update Password</span>
+                <span>{hasPasswordIdentity ? 'Update Password' : 'Set Password'}</span>
               </Button>
               {passwordSuccess && (
                 <span className="inline-flex items-center gap-1 text-xs font-mono text-success animate-in fade-in duration-150">
@@ -276,8 +307,118 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
           </form>
         </div>
 
-        {/* Right Column (5 cols): Active Device Session & Quarantined Danger Zone */}
+        {/* Right Column (5 cols): Connected Accounts, Active Device Session & Quarantined Danger Zone */}
         <div className="lg:col-span-5 space-y-6 lg:border-l lg:border-border lg:pl-8">
+          {/* Section 1.5: Connected Sign-In Providers */}
+          <div
+            data-testid="connected-accounts-card"
+            className="p-5 rounded-xl border border-border bg-muted/20 space-y-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-mono font-bold text-foreground uppercase tracking-wider">
+                Connected Accounts
+              </p>
+              <span
+                className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  hasGoogleIdentity
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-muted text-muted-foreground border-border'
+                }`}
+              >
+                {hasGoogleIdentity ? 'Google Connected' : 'Not Connected'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <svg
+                  className="w-4 h-4 shrink-0"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+                <div className="min-w-0">
+                  <p className="text-xs font-mono font-bold text-foreground">Google</p>
+                  <p className="text-[11px] font-sans text-muted-foreground truncate">
+                    {hasGoogleIdentity
+                      ? googleIdentityEmail || userEmail || 'Linked for 1-click sign-in'
+                      : 'Link your Google account for 1-click sign-in'}
+                  </p>
+                </div>
+              </div>
+
+              {hasGoogleIdentity ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="chip"
+                  isLoading={isUnlinkingGoogle}
+                  disabled={isOffline || isUnlinkingGoogle || !canUnlinkGoogle}
+                  onClick={onUnlinkGoogle}
+                  data-testid="disconnect-google-button"
+                  className="shrink-0 font-mono text-xs cursor-pointer"
+                >
+                  <span>Disconnect</span>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="chip"
+                  isLoading={isLinkingGoogle}
+                  disabled={isOffline || isLinkingGoogle}
+                  onClick={onLinkGoogle}
+                  data-testid="connect-google-button"
+                  className="shrink-0 font-mono text-xs cursor-pointer"
+                >
+                  <span>Connect Google</span>
+                </Button>
+              )}
+            </div>
+
+            {hasGoogleIdentity && !canUnlinkGoogle && (
+              <p
+                data-testid="google-unlink-lockout-hint"
+                className="text-[11px] font-mono text-muted-foreground leading-relaxed"
+              >
+                Set an account password first before disconnecting Google so you keep access to your account.
+              </p>
+            )}
+
+            {identitySuccess && (
+              <p
+                role="status"
+                className="text-xs font-mono text-success flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5 shrink-0" />
+                <span>{identitySuccess}</span>
+              </p>
+            )}
+
+            {identityError && (
+              <p className="text-xs font-mono text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{identityError}</span>
+              </p>
+            )}
+          </div>
+
           {/* Section 2: Active Device Session */}
           <div className="p-5 rounded-xl border border-border bg-muted/20 space-y-3">
             <div className="flex items-center justify-between gap-2">

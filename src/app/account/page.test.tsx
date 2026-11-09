@@ -908,7 +908,7 @@ describe('AccountPage', () => {
       fireEvent.click(screen.getByRole('tab', { name: /Streaks & Challenge/i }));
 
       // Profile save error & catch (open quick profile editor first)
-      fireEvent.click(screen.getByRole('button', { name: /Toggle quick display name editor/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Edit display name/i }));
       fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
       expect(await screen.findByText('Profile save error')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
@@ -973,11 +973,16 @@ describe('AccountPage', () => {
       ).toBeInTheDocument();
       fireEvent.click(within(modal).getByRole('button', { name: /Cancel/i }));
 
-      // Sign Out button in security panel
+      // Sign Out button in security panel and top-level identity ribbon
       fireEvent.click(within(securityPanel).getByRole('button', { name: /Sign Out/i }));
       await waitFor(() => {
         expect(signOutMock).toHaveBeenCalledTimes(1);
         expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
+      });
+
+      fireEvent.click(screen.getByTestId('identity-sign-out-button'));
+      await waitFor(() => {
+        expect(signOutMock).toHaveBeenCalledTimes(2);
       });
     }, 15000);
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Sun, Moon, Coffee, User as UserIcon } from 'lucide-react';
+import { Sun, Moon, Coffee, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
 import { useHydratedBookshelfCounts } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotationCount } from '@/stores/useAnnotationStore';
 import { useReaderStore, getActiveReadingCount } from '@/stores/useReaderStore';
@@ -13,6 +13,7 @@ import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Button } from '@/components/ui/Button';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG, STORAGE_KEYS } from '@/config/site-config';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
@@ -52,17 +53,66 @@ export const Navbar: React.FC<NavbarProps> = ({
     activeReadingCount,
   };
   const user = useAuthStore((s) => s.user);
+  const profile = useAuthStore((s) => s.profile);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
+  const signOut = useAuthStore((s) => s.signOut);
   const { isOffline } = useNetworkStatus();
+
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTouchPointerRef = useRef(false);
+
+  const clearAccountMenuCloseTimer = () => {
+    if (accountMenuCloseTimerRef.current) {
+      clearTimeout(accountMenuCloseTimerRef.current);
+      accountMenuCloseTimerRef.current = null;
+    }
+  };
+
+  const handleAccountPointerDown = (e: React.PointerEvent) => {
+    const pointerType = e.pointerType || (e.nativeEvent as { pointerType?: string })?.pointerType;
+    isTouchPointerRef.current = pointerType === 'touch';
+    if (pointerType === 'touch') {
+      setIsAccountMenuOpen(false);
+    }
+  };
+
+  const handleAccountTouchStart = () => {
+    isTouchPointerRef.current = true;
+    setIsAccountMenuOpen(false);
+  };
+
+  const handleAccountMouseEnter = () => {
+    if (isTouchPointerRef.current) return;
+    clearAccountMenuCloseTimer();
+    setIsAccountMenuOpen(true);
+  };
+
+  const handleAccountMouseLeave = () => {
+    clearAccountMenuCloseTimer();
+    accountMenuCloseTimerRef.current = setTimeout(() => {
+      setIsAccountMenuOpen(false);
+    }, 150);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (accountMenuCloseTimerRef.current) {
+        clearTimeout(accountMenuCloseTimerRef.current);
+      }
+    };
+  }, []);
 
   const authHint = useAuthHint();
   const isAuthHint = initialIsAuthenticated ?? authHint;
   const hasCookieHint =
     typeof document !== 'undefined' && getCookieValue(STORAGE_KEYS.AUTH_HINT) === 'authenticated';
-  const isAuth = Boolean(
-    user || (initialIsAuthenticated ?? ((isAuthHint || hasCookieHint) && (isAuthLoading || !hasMounted)))
-  );
+  const isAuth = hasMounted
+    ? Boolean(
+        user || (initialIsAuthenticated ?? ((isAuthHint || hasCookieHint) && isAuthLoading))
+      )
+    : Boolean(initialIsAuthenticated ?? (isAuthHint || hasCookieHint));
 
   const { allowHeavyMotion } = usePerformanceTier();
   const navRef = useRef<HTMLElement | null>(null);
@@ -140,7 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-30 w-full pt-[env(safe-area-inset-top,0px)] bg-background border-b border-border shadow-md transition-transform duration-300 ease-in-out ${
+      className={`sticky top-0 z-40 w-full pt-[env(safe-area-inset-top,0px)] bg-background border-b border-border shadow-md transition-transform duration-300 ease-in-out ${
         isVisible ? 'translate-y-0' : '-translate-y-full pointer-events-none'
       }`}
     >
@@ -159,8 +209,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Refresh and return to catalog"
           aria-label="Bookarium logo, click to refresh catalog"
         >
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-primary-foreground shadow-xs group-hover:scale-105 transition-transform shrink-0">
-            <BookOpen className="w-4 h-4" />
+          <div className="w-8 h-8 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+            <BrandLogo
+              idPrefix="navbar"
+              className="w-8 h-8"
+              testId="brand-monogram-icon"
+            />
           </div>
           <div className="flex flex-col justify-center min-w-0">
             <span className="hidden min-[375px]:inline text-xs min-[440px]:text-sm sm:text-base lg:text-xl font-bold tracking-tight text-foreground font-serif whitespace-nowrap leading-tight">
@@ -238,40 +292,97 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Actions: Auth, Theme */}
           {isAuth ? (
-            <Link
-              href={ROUTES.ACCOUNT}
-              title={isOffline ? 'User Account (Offline Mode)' : 'User Account'}
-              className={`relative h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
-                isOffline
-                  ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15 font-bold shadow-xs'
-                  : activeView === 'account'
-                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
-                    : 'border-border bg-card hover:border-primary text-foreground'
-              }`}
-              aria-label="User Account"
+            <div
+              className="relative"
+              onPointerDown={handleAccountPointerDown}
+              onTouchStart={handleAccountTouchStart}
+              onMouseEnter={handleAccountMouseEnter}
+              onMouseLeave={handleAccountMouseLeave}
             >
-              <UserIcon
-                className={`w-3.5 h-3.5 shrink-0 ${
-                  isOffline ? 'text-destructive' : 'text-primary'
+              <Link
+                href={ROUTES.ACCOUNT}
+                onClick={() => setIsAccountMenuOpen(false)}
+                title={isOffline ? 'User Account (Offline Mode)' : 'User Account'}
+                className={`relative h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
+                  isOffline
+                    ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15 font-bold shadow-xs'
+                    : activeView === 'account'
+                      ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                      : 'border-border bg-card hover:border-primary text-foreground'
                 }`}
-              />
-              <span className="hidden lg:inline font-mono">Account</span>
-              {isOffline ? (
-                <span
-                  data-testid="navbar-offline-dot"
-                  className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0 animate-pulse"
-                  aria-label="Offline Mode"
+                aria-label="User Account"
+              >
+                <UserIcon
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    isOffline ? 'text-destructive' : 'text-primary'
+                  }`}
                 />
-              ) : (
-                Boolean(user && useFellowshipStore.getState().getPendingInviteCount(user.id) > 0) && (
+                <span className="hidden lg:inline font-mono">Account</span>
+                {isOffline ? (
                   <span
-                    data-testid="navbar-fellowship-dot"
-                    className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary"
-                    aria-label="Pending Reader Circle or Symposium invitations"
+                    data-testid="navbar-offline-dot"
+                    className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0 animate-pulse"
+                    aria-label="Offline Mode"
                   />
-                )
+                ) : (
+                  Boolean(user && useFellowshipStore.getState().getPendingInviteCount(user.id) > 0) && (
+                    <span
+                      data-testid="navbar-fellowship-dot"
+                      className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary"
+                      aria-label="Pending Reader Circle or Symposium invitations"
+                    />
+                  )
+                )}
+              </Link>
+
+              {isAccountMenuOpen && (
+                <div
+                  data-testid="navbar-account-hover-menu"
+                  role="menu"
+                  aria-label="Account Quick Actions"
+                  className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-border bg-card shadow-xl p-1.5 z-50 animate-in fade-in duration-150"
+                >
+                  {(profile?.display_name || user) && (
+                    <div className="px-2.5 py-2 border-b border-border mb-1">
+                      <p className="text-xs font-serif font-bold text-foreground truncate">
+                        {profile?.display_name ||
+                          (typeof user?.user_metadata?.display_name === 'string'
+                            ? user.user_metadata.display_name
+                            : 'Scholar')}
+                      </p>
+                      <p className="text-[11px] font-mono text-muted-foreground truncate">
+                        {profile?.username ? `@${profile.username}` : 'Scholar Account'}
+                      </p>
+                    </div>
+                  )}
+
+                  <Link
+                    href={ROUTES.ACCOUNT}
+                    role="menuitem"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>Account Sanctuary</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-testid="navbar-hover-sign-out-button"
+                    onClick={async () => {
+                      setIsAccountMenuOpen(false);
+                      await signOut();
+                      router.push(ROUTES.HOME);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer mt-0.5"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               )}
-            </Link>
+            </div>
           ) : (
             <Button
               variant={!isOffline && activeView === 'account' ? 'primary' : 'outline'}

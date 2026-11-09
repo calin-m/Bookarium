@@ -22,6 +22,8 @@ export interface UseAccountSecurityActionsParams {
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   requestAccountDeletion: () => Promise<{ error: Error | null }>;
   resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
+  linkOAuthIdentity?: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
+  unlinkOAuthIdentity?: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
 }
 
 export function useAccountSecurityActions({
@@ -35,7 +37,35 @@ export function useAccountSecurityActions({
   resetPasswordForEmail,
   requestAccountDeletion,
   resendVerificationEmail,
+  linkOAuthIdentity,
+  unlinkOAuthIdentity,
 }: UseAccountSecurityActionsParams) {
+  const identities = user?.identities ?? [];
+  const providers = Array.isArray(user?.app_metadata?.providers)
+    ? (user.app_metadata.providers as string[])
+    : [];
+  const primaryProvider =
+    typeof user?.app_metadata?.provider === 'string' ? user.app_metadata.provider : undefined;
+
+  const hasGoogleIdentity =
+    identities.some((id) => id.provider === 'google') ||
+    providers.includes('google') ||
+    primaryProvider === 'google';
+
+  const hasPasswordIdentity =
+    identities.length > 0 || providers.length > 0 || primaryProvider !== undefined
+      ? identities.some((id) => id.provider === 'email') ||
+        providers.includes('email') ||
+        (primaryProvider === 'email' && !hasGoogleIdentity) ||
+        (!hasGoogleIdentity && identities.length === 0 && providers.length === 0)
+      : true;
+
+  const canUnlinkGoogle = hasGoogleIdentity && hasPasswordIdentity;
+
+  const googleIdentityRecord = identities.find((id) => id.provider === 'google');
+  const googleIdentityEmail =
+    (googleIdentityRecord?.identity_data as { email?: string } | undefined)?.email ||
+    (hasGoogleIdentity ? user?.email : undefined);
   const defaultName =
     profile?.display_name || user?.user_metadata?.display_name || '';
   const [customName, setCustomName] = useState<string | null>(null);
@@ -187,14 +217,14 @@ export function useAccountSecurityActions({
       return;
     }
 
-    if (!isRecoveryMode && !currentPassword) {
+    if (!isRecoveryMode && hasPasswordIdentity && !currentPassword) {
       setPasswordError(
         'Please enter your current password, or send a reset link to your email.'
       );
       return;
     }
 
-    if (!isRecoveryMode && newPassword === currentPassword) {
+    if (!isRecoveryMode && hasPasswordIdentity && newPassword === currentPassword) {
       setPasswordError('New password must be different from your current password.');
       return;
     }
@@ -204,9 +234,10 @@ export function useAccountSecurityActions({
     setPasswordSuccess(false);
 
     try {
-      const { error } = isRecoveryMode
-        ? await updatePassword(newPassword)
-        : await updatePassword(newPassword, currentPassword);
+      const { error } =
+        isRecoveryMode || !hasPasswordIdentity
+          ? await updatePassword(newPassword)
+          : await updatePassword(newPassword, currentPassword);
 
       if (error) {
         setPasswordError(error.message);
@@ -244,6 +275,57 @@ export function useAccountSecurityActions({
       setDeleteError('An unexpected error occurred while requesting account deletion.');
     } finally {
       setIsSendingDeletionEmail(false);
+    }
+  };
+
+  // Connected OAuth Identities state
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+  const [isUnlinkingGoogle, setIsUnlinkingGoogle] = useState(false);
+  const [identitySuccess, setIdentitySuccess] = useState<string | null>(null);
+  const [identityError, setIdentityError] = useState<string | null>(null);
+
+  const handleLinkGoogle = async () => {
+    if (!user || !linkOAuthIdentity || isLinkingGoogle) return;
+    setIsLinkingGoogle(true);
+    setIdentityError(null);
+    setIdentitySuccess(null);
+
+    try {
+      const { error } = await linkOAuthIdentity('google');
+      if (error) {
+        setIdentityError(error.message);
+      }
+    } catch {
+      setIdentityError('Failed to initiate Google account connection. Please try again.');
+    } finally {
+      setIsLinkingGoogle(false);
+    }
+  };
+
+  const handleUnlinkGoogle = async () => {
+    if (!user || !unlinkOAuthIdentity || isUnlinkingGoogle) return;
+    if (!canUnlinkGoogle) {
+      setIdentityError(
+        'Set an account password first before disconnecting Google so you do not lose access to your account.'
+      );
+      return;
+    }
+    setIsUnlinkingGoogle(true);
+    setIdentityError(null);
+    setIdentitySuccess(null);
+
+    try {
+      const { error } = await unlinkOAuthIdentity('google');
+      if (error) {
+        setIdentityError(error.message);
+      } else {
+        setIdentitySuccess('Google account disconnected.');
+        setTimeout(() => setIdentitySuccess(null), 4000);
+      }
+    } catch {
+      setIdentityError('Failed to disconnect Google account. Please try again.');
+    } finally {
+      setIsUnlinkingGoogle(false);
     }
   };
 
@@ -285,6 +367,16 @@ export function useAccountSecurityActions({
     resetEmailError,
     resetCooldown,
     handleRequestPasswordReset,
+    hasGoogleIdentity,
+    hasPasswordIdentity,
+    canUnlinkGoogle,
+    googleIdentityEmail,
+    isLinkingGoogle,
+    isUnlinkingGoogle,
+    identitySuccess,
+    identityError,
+    handleLinkGoogle,
+    handleUnlinkGoogle,
     isDeleteModalOpen,
     setIsDeleteModalOpen,
     closeDeleteModal,

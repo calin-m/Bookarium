@@ -121,6 +121,8 @@ function AccountDashboardContent() {
     signOut,
     openAuthModal,
     resendVerificationEmail,
+    linkOAuthIdentity,
+    unlinkOAuthIdentity,
   } = useAuthStore(
     useShallow((s) => ({
       user: s.user,
@@ -135,6 +137,8 @@ function AccountDashboardContent() {
       signOut: s.signOut,
       openAuthModal: s.openAuthModal,
       resendVerificationEmail: s.resendVerificationEmail,
+      linkOAuthIdentity: s.linkOAuthIdentity,
+      unlinkOAuthIdentity: s.unlinkOAuthIdentity,
     }))
   );
 
@@ -418,6 +422,16 @@ function AccountDashboardContent() {
     resetEmailError,
     resetCooldown,
     handleRequestPasswordReset,
+    hasGoogleIdentity,
+    hasPasswordIdentity,
+    canUnlinkGoogle,
+    googleIdentityEmail,
+    isLinkingGoogle,
+    isUnlinkingGoogle,
+    identitySuccess,
+    identityError,
+    handleLinkGoogle,
+    handleUnlinkGoogle,
     isDeleteModalOpen,
     setIsDeleteModalOpen,
     closeDeleteModal,
@@ -443,6 +457,8 @@ function AccountDashboardContent() {
     resetPasswordForEmail,
     requestAccountDeletion,
     resendVerificationEmail,
+    linkOAuthIdentity,
+    unlinkOAuthIdentity,
   });
 
   const handleThemeChange = (newTheme: AppTheme) => {
@@ -699,6 +715,10 @@ function AccountDashboardContent() {
                 handleTabChange('habits');
                 setHabitsSubTab('streaks');
               }}
+              onSignOut={async () => {
+                await signOut();
+                router.push(ROUTES.HOME);
+              }}
             />
 
             {/* Tier 1: Primary Segmented Navigation Bar (5 Tabs) */}
@@ -916,6 +936,16 @@ function AccountDashboardContent() {
                 }}
                 onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
                 userEmail={user.email ?? ''}
+                hasGoogleIdentity={hasGoogleIdentity}
+                hasPasswordIdentity={hasPasswordIdentity}
+                canUnlinkGoogle={canUnlinkGoogle}
+                googleIdentityEmail={googleIdentityEmail}
+                isLinkingGoogle={isLinkingGoogle}
+                isUnlinkingGoogle={isUnlinkingGoogle}
+                identitySuccess={identitySuccess}
+                identityError={identityError}
+                onLinkGoogle={handleLinkGoogle}
+                onUnlinkGoogle={handleUnlinkGoogle}
               />
             </section>
 

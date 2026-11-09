@@ -4,7 +4,7 @@
  * and seamless fallback for saved IndexedDB book reading in offline mode.
  */
 
-const CACHE_NAME = 'bookarium-app-shell-v4';
+const CACHE_NAME = 'bookarium-app-shell-v6';
 
 const STATIC_PRECACHE = [
   '/',

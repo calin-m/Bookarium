@@ -303,6 +303,14 @@ export async function executeFlushOutbox(
 
     for (const action of outbox) {
       try {
+        if (
+          'user_id' in action.payload &&
+          action.payload.user_id &&
+          String(action.payload.user_id) !== userId
+        ) {
+          completedActionIds.add(action.id);
+          continue;
+        }
         const dispatcher = OUTBOX_DISPATCHERS[action.type];
         if (dispatcher) {
           const { error } = await dispatcher(supabase, action.payload);

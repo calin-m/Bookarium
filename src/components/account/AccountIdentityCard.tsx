@@ -16,6 +16,7 @@ import {
   Bookmark,
   PenLine,
   AtSign,
+  LogOut,
 } from 'lucide-react';
 import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
@@ -48,6 +49,7 @@ export interface AccountIdentityCardProps {
   resendCooldown?: number;
   stats?: AccountRibbonStats;
   onOpenLibraryBreakdown?: () => void;
+  onSignOut?: () => Promise<void> | void;
 }
 
 export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
@@ -67,8 +69,18 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
   resendCooldown = 0,
   stats,
   onOpenLibraryBreakdown,
+  onSignOut,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
+  const [prevSaveSuccess, setPrevSaveSuccess] = useState(saveSuccess);
+
+  // Auto-close editor upon transition to saveSuccess during rendering (no cascading render effect)
+  if (saveSuccess !== prevSaveSuccess) {
+    setPrevSaveSuccess(saveSuccess);
+    if (saveSuccess && isEditingName) {
+      setIsEditingName(false);
+    }
+  }
 
   const isEmailVerified = Boolean(
     user.email_confirmed_at ||
@@ -81,7 +93,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
   return (
     <div
-      className="bg-card border border-border rounded-2xl pt-4 sm:pt-5 px-4 sm:px-5 pb-2 sm:pb-2.5 shadow-booksaw space-y-3.5"
+      className="bg-card border border-border rounded-2xl pt-4 sm:pt-5 px-4 sm:px-5 pb-1.5 sm:pb-2 shadow-booksaw space-y-3"
       data-testid="scholar-identity-ribbon"
     >
       {/* Top Row: Monogram Seal, Scholar Identity & Verification Badge */}
@@ -108,30 +120,31 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
                   <span>{profile.username}</span>
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => setIsEditingName((prev) => !prev)}
-                aria-expanded={isEditingName}
-                aria-label="Toggle quick display name editor"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-              >
-                <PenLine className="w-3 h-3" />
-                <span>{isEditingName ? 'Close' : 'Edit Name'}</span>
-              </button>
+              {!isEditingName && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(true)}
+                  aria-expanded={isEditingName}
+                  aria-label="Edit display name"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+                >
+                  <PenLine className="w-3 h-3" />
+                  <span>Edit Name</span>
+                </button>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-muted-foreground mt-0.5">
-              <span
-                className="flex items-center gap-1 truncate max-w-[220px]"
-                title={user.email}
-              >
-                <Mail className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{user.email}</span>
-              </span>
               <span className="flex items-center gap-1 shrink-0">
                 <Calendar className="w-3.5 h-3.5 shrink-0" />
-                <span>{formattedDate}</span>
+                <span>Joined {formattedDate}</span>
               </span>
+              {saveSuccess && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-success animate-in fade-in duration-150">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Changes saved to cloud</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -163,6 +176,19 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span>Email Unverified</span>
             </div>
+          )}
+
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              data-testid="identity-sign-out-button"
+              title="Sign out from this browser"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border border-border bg-muted/30 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3 h-3 shrink-0" />
+              <span>Sign Out</span>
+            </button>
           )}
         </div>
       </div>
@@ -284,7 +310,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
       <form
         onSubmit={onSaveProfile}
         className={
-          isEditingName || saveError || saveSuccess
+          isEditingName || saveError
             ? 'space-y-3 pt-3 border-t border-border animate-in fade-in duration-150'
             : 'hidden'
         }
@@ -322,7 +348,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
         {saveError && <p className="text-xs font-mono text-destructive">{saveError}</p>}
 
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center gap-2 pt-1">
           <Button
             type="submit"
             variant="primary"
@@ -333,12 +359,20 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
             <Check className="w-3.5 h-3.5" />
             <span>Save Changes</span>
           </Button>
-          {saveSuccess && (
-            <span className="inline-flex items-center gap-1 text-xs font-mono text-success animate-in fade-in duration-150">
-              <Check className="w-3.5 h-3.5" />
-              <span>Changes saved to cloud</span>
-            </span>
-          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="chip"
+            onClick={() => {
+              setIsEditingName(false);
+              onDisplayNameChange(profile?.display_name || user?.user_metadata?.display_name || 'Reader');
+            }}
+            aria-label="Cancel editing display name"
+            className="text-xs font-mono text-muted-foreground hover:text-foreground"
+          >
+            Cancel
+          </Button>
         </div>
       </form>
     </div>

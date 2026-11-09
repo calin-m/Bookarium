@@ -787,4 +787,45 @@ describe('AuthModal Component', () => {
       delete window.turnstile;
     }
   });
+
+  it('renders Continue with Google button on sign_in and sign_up views and invokes signInWithOAuth', async () => {
+    const mockSignInWithOAuth = vi.fn().mockResolvedValue({ error: null });
+    const setError = vi.fn();
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'sign_in',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError,
+      signInWithPassword: mockSignInWithPassword,
+      signInWithOAuth: mockSignInWithOAuth,
+    });
+
+    const { rerender } = render(<AuthModal />);
+
+    const googleBtn = screen.getByTestId('google-oauth-button');
+    expect(googleBtn).toBeInTheDocument();
+    expect(googleBtn).toHaveTextContent(/Continue with Google/i);
+
+    fireEvent.click(googleBtn);
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith('google');
+    });
+
+    // Verify it is not shown on magic_link view
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      isAuthModalOpen: true,
+      authModalView: 'magic_link',
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError,
+      signInWithOtp: mockSignInWithOtp,
+      signInWithOAuth: mockSignInWithOAuth,
+    });
+    rerender(<AuthModal />);
+    expect(screen.queryByTestId('google-oauth-button')).not.toBeInTheDocument();
+  });
 });

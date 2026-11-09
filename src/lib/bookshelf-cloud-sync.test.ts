@@ -122,6 +122,21 @@ describe('bookshelf-cloud-sync', () => {
     expect(state.outbox.map((action) => action.id)).toEqual(['2', '3']);
   });
 
+  it('discards stale cross-account outbox actions whose payload.user_id does not match the active userId without calling Supabase', async () => {
+    state.outbox = [
+      {
+        id: 'stale-other-user',
+        timestamp: '',
+        type: 'UPSERT_CURATION',
+        payload: { user_id: 'other-user-id', book_id: 1342, rating: 5 },
+      },
+    ];
+
+    await executeFlushOutbox('active-user-id', get, set);
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(state.outbox).toHaveLength(0);
+  });
+
   it('resets syncing state when flushing the outbox rejects', async () => {
     const onLineSpy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     state.flushOutbox = vi.fn().mockRejectedValue(new Error('Outbox flush failed'));

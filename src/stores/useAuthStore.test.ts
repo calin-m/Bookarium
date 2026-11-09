@@ -5,6 +5,9 @@ const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
 const mockSignInWithOtp = vi.fn();
 const mockSignInWithOAuth = vi.fn();
+const mockLinkIdentity = vi.fn();
+const mockUnlinkIdentity = vi.fn();
+const mockGetUserIdentities = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetUser = vi.fn();
 const mockOnAuthStateChange = vi.fn();
@@ -23,6 +26,9 @@ vi.mock('@/lib/supabase/client', () => ({
       resend: mockResend,
       signInWithOtp: mockSignInWithOtp,
       signInWithOAuth: mockSignInWithOAuth,
+      linkIdentity: mockLinkIdentity,
+      unlinkIdentity: mockUnlinkIdentity,
+      getUserIdentities: mockGetUserIdentities,
       signOut: mockSignOut,
       getUser: mockGetUser,
       onAuthStateChange: mockOnAuthStateChange,
@@ -196,7 +202,7 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().error).toBe('Rate limit exceeded');
   });
 
-  it('handles signInWithOAuth success and error with /auth/callback redirect', async () => {
+  it('handles signInWithOAuth success, non-root next path preservation, and error with /auth/callback redirect', async () => {
     mockSignInWithOAuth.mockResolvedValueOnce({ error: null });
     const res1 = await useAuthStore.getState().signInWithOAuth('google');
     expect(res1.error).toBeNull();
@@ -209,10 +215,115 @@ describe('useAuthStore', () => {
       })
     );
 
+    // Non-root route preserves ?next=
+    window.location.pathname = '/read/1342';
+    mockSignInWithOAuth.mockResolvedValueOnce({ error: null });
+    await useAuthStore.getState().signInWithOAuth('google');
+    expect(mockSignInWithOAuth).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        provider: 'google',
+        options: expect.objectContaining({
+          redirectTo: expect.stringContaining('/auth/callback?next=%2Fread%2F1342'),
+        }),
+      })
+    );
+    window.location.pathname = '/';
+
     mockSignInWithOAuth.mockResolvedValueOnce({ error: { message: 'OAuth failed' } });
     const res2 = await useAuthStore.getState().signInWithOAuth('github');
     expect(res2.error?.message).toBe('OAuth failed');
     expect(useAuthStore.getState().error).toBe('OAuth failed');
+  });
+
+  it('handles linkOAuthIdentity and unlinkOAuthIdentity with anti-lockout protection', async () => {
+    // 1. linkOAuthIdentity success & error
+    mockLinkIdentity.mockResolvedValueOnce({ error: null });
+    const linkOk = await useAuthStore.getState().linkOAuthIdentity('google');
+    expect(linkOk.error).toBeNull();
+    expect(mockLinkIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'google',
+        options: expect.objectContaining({
+          redirectTo: expect.stringContaining('/auth/callback?next=%2Faccount%3Ftab%3Dsecurity'),
+        }),
+      })
+    );
+
+    mockLinkIdentity.mockResolvedValueOnce({ error: { message: 'Manual linking disabled' } });
+    const linkErr = await useAuthStore.getState().linkOAuthIdentity('google');
+    expect(linkErr.error?.message).toBe('Manual linking disabled');
+
+    // 2. unlinkOAuthIdentity with no user
+    useAuthStore.setState({ user: null });
+    const noUserRes = await useAuthStore.getState().unlinkOAuthIdentity('google');
+    expect(noUserRes.error?.message).toBe('No active user session found');
+
+    // 3. Anti-lockout guard when user only has 1 identity (Google-only)
+    useAuthStore.setState({
+      user: {
+        id: 'u1',
+        email: 'reader@bookarium.org',
+        identities: [{ id: 'id-google', provider: 'google' }],
+        app_metadata: { providers: ['google'] },
+      } as never,
+    });
+    const lockoutRes = await useAuthStore.getState().unlinkOAuthIdentity('google');
+    expect(lockoutRes.error?.message).toContain('Set an account password first');
+    expect(mockUnlinkIdentity).not.toHaveBeenCalled();
+
+    // 4. Fallback to getUserIdentities() and missing target provider branch
+    useAuthStore.setState({
+      user: {
+        id: 'u1',
+        email: 'reader@bookarium.org',
+        identities: [],
+        app_metadata: { providers: ['email', 'google'] },
+      } as never,
+    });
+    mockGetUserIdentities.mockResolvedValueOnce({
+      data: {
+        identities: [
+          { id: 'id-email', provider: 'email' },
+          { id: 'id-google', provider: 'google' },
+        ],
+      },
+    });
+    const missingProviderRes = await useAuthStore.getState().unlinkOAuthIdentity('github');
+    expect(missingProviderRes.error?.message).toBe('No linked github account found.');
+
+    // 5. Unlink error & success when both email and google identities exist
+    useAuthStore.setState({
+      user: {
+        id: 'u1',
+        email: 'reader@bookarium.org',
+        identities: [
+          { id: 'id-email', provider: 'email' },
+          { id: 'id-google', provider: 'google' },
+        ],
+        app_metadata: { providers: ['email', 'google'] },
+      } as never,
+    });
+    mockUnlinkIdentity.mockResolvedValueOnce({ error: { message: 'Unlink failed' } });
+    const unlinkErr = await useAuthStore.getState().unlinkOAuthIdentity('google');
+    expect(unlinkErr.error?.message).toBe('Unlink failed');
+
+    mockUnlinkIdentity.mockResolvedValueOnce({ error: null });
+    mockGetUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'u1',
+          email: 'reader@bookarium.org',
+          identities: [{ id: 'id-email', provider: 'email' }],
+          app_metadata: { providers: ['email'] },
+        },
+      },
+    });
+    const unlinkOk = await useAuthStore.getState().unlinkOAuthIdentity('google');
+    expect(unlinkOk.error).toBeNull();
+    expect(mockUnlinkIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'id-google', provider: 'google' })
+    );
+    expect(useAuthStore.getState().user?.identities).toHaveLength(1);
   });
 
   it('hydrates user on initializeAuth when active session exists', async () => {
@@ -315,6 +426,55 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().profile).toBeNull();
     expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
+  });
+
+  it('clears local user stores when initializeAuth or onAuthStateChange switches from a cached user to a different user', async () => {
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    const { useBookshelfStore } = await import('@/stores/useBookshelfStore');
+    const resetReaderSessionSpy = vi.spyOn(useReaderStore.getState(), 'resetReaderSession');
+    const clearBookshelfSpy = vi.spyOn(useBookshelfStore.getState(), 'clearBookshelf');
+
+    let authChangeCallback: any;
+    mockOnAuthStateChange.mockImplementationOnce((callback: any) => {
+      authChangeCallback = callback;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+
+    // Seed cached User A
+    useAuthStore.setState({
+      user: { id: 'user-a', email: 'a@bookarium.test' } as any,
+      profile: { id: 'user-a', display_name: 'Reader A' } as any,
+      isLoading: true,
+    });
+
+    // Server returns User B on initializeAuth
+    mockGetUser.mockResolvedValueOnce({
+      data: { user: { id: 'user-b', email: 'b@bookarium.test' } },
+      error: null,
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: 'user-b', display_name: 'Reader B' },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    useAuthStore.getState().initializeAuth();
+    // Concurrent onAuthStateChange for User B while cleanup is running
+    authChangeCallback('SIGNED_IN', {
+      user: { id: 'user-b', email: 'b@bookarium.test' },
+    });
+
+    await vi.waitFor(() => {
+      expect(useAuthStore.getState().user?.id).toBe('user-b');
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+    expect(resetReaderSessionSpy).toHaveBeenCalledTimes(1);
+    expect(clearBookshelfSpy).toHaveBeenCalledTimes(1);
   });
 
   it('unsubscribes cleanly when initializeAuth cleanup function is called', () => {

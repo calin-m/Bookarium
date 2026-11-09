@@ -4,6 +4,7 @@ import {
   STORAGE_KEYS,
   resolveRepositoryUrl,
   buildDescriptiveUserAgent,
+  resolveGoogleSiteVerification,
 } from './site-config';
 
 describe('SITE_CONFIG & STORAGE_KEYS', () => {
@@ -83,6 +84,8 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(SITE_CONFIG.GUTENBERG_EBOOK(1342)).toBe('https://www.gutenberg.org/ebooks/1342');
     expect(SITE_CONFIG.GUTENBERG_EBOOK('84')).toBe('https://www.gutenberg.org/ebooks/84');
     expect(typeof SITE_CONFIG.LEGAL_CONTACT_FORM).toBe('string');
+    expect(resolveGoogleSiteVerification('  token-123  ')).toEqual({ google: 'token-123' });
+    expect(resolveGoogleSiteVerification('')).toBeUndefined();
   });
 
   it('provides persistent storage keys', () => {

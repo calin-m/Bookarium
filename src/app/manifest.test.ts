@@ -7,7 +7,7 @@ describe('Web App Manifest (PWA)', () => {
 
     expect(data.id).toBe('/?source=pwa');
     expect(data.scope).toBe('/');
-    expect(data.name).toBe('Bookarium — Universal Public Domain Library & Reader');
+    expect(data.name).toBe('Bookarium');
     expect(data.short_name).toBe('Bookarium');
     expect(data.start_url).toBe('/');
     expect(data.display).toBe('standalone');
@@ -31,6 +31,11 @@ describe('Web App Manifest (PWA)', () => {
     const purposes = icons?.map((i) => i.purpose);
     expect(purposes).toContain('any');
     expect(purposes).toContain('maskable');
+
+    // Ensure icon URLs have ?v=4 cache-busting parameter
+    icons?.forEach((icon) => {
+      expect(icon.src).toMatch(/\?v=4$/);
+    });
   });
 });
 

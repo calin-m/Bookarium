@@ -53,11 +53,11 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
 
     const ribbon = screen.getByTestId('scholar-identity-ribbon');
     expect(ribbon).toBeInTheDocument();
-    expect(ribbon).toHaveClass('pt-4', 'sm:pt-5', 'px-4', 'sm:px-5', 'pb-2', 'sm:pb-2.5');
+    expect(ribbon).toHaveClass('pt-4', 'sm:pt-5', 'px-4', 'sm:px-5', 'pb-1.5', 'sm:pb-2');
     expect(screen.getByText('Test Reader')).toBeInTheDocument();
     expect(screen.getByText('test_scholar')).toBeInTheDocument();
-    expect(screen.getByText('reader@bookarium.test')).toBeInTheDocument();
-    expect(screen.getByText('January 2026')).toBeInTheDocument();
+    expect(screen.queryByText('reader@bookarium.test')).not.toBeInTheDocument();
+    expect(screen.getByText('Joined January 2026')).toBeInTheDocument();
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
     const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
     expect(statStrip).toBeInTheDocument();
@@ -68,12 +68,11 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
     expect(screen.getByTestId('identity-streak-badge')).toBeInTheDocument();
 
-    // Toggle quick name editor
-    const toggleBtn = screen.getByRole('button', {
-      name: /Toggle quick display name editor/i,
+    // Open quick name editor
+    const editBtn = screen.getByRole('button', {
+      name: /Edit display name/i,
     });
-    fireEvent.click(toggleBtn);
-    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(editBtn);
 
     const input = screen.getByLabelText('Display Name');
     fireEvent.change(input, { target: { value: 'Updated Reader' } });
@@ -82,6 +81,11 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
     fireEvent.click(saveBtn);
     expect(handleSaveProfile).toHaveBeenCalled();
+
+    // Cancel button resets display name
+    const cancelBtn = screen.getByRole('button', { name: /Cancel editing display name/i });
+    fireEvent.click(cancelBtn);
+    expect(handleDisplayNameChange).toHaveBeenCalledWith('Test Reader');
   });
 
   it('always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS', () => {
@@ -279,5 +283,28 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     );
     expect(screen.getByText('Reader')).toBeInTheDocument();
     expect(screen.getByText('R')).toBeInTheDocument();
+  });
+
+  it('renders top-level Sign Out pill button when onSignOut is provided and invokes it on click', () => {
+    const handleSignOut = vi.fn();
+    render(
+      <AccountIdentityCard
+        user={mockVerifiedUser}
+        profile={mockProfile}
+        formattedDate="January 2026"
+        displayName="Test Reader"
+        onDisplayNameChange={vi.fn()}
+        onSaveProfile={vi.fn()}
+        isSaving={false}
+        saveSuccess={false}
+        saveError={null}
+        onSignOut={handleSignOut}
+      />
+    );
+
+    const signOutBtn = screen.getByTestId('identity-sign-out-button');
+    expect(signOutBtn).toBeInTheDocument();
+    fireEvent.click(signOutBtn);
+    expect(handleSignOut).toHaveBeenCalledTimes(1);
   });
 });

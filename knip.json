@@ -19,7 +19,8 @@
     "types"
   ],
   "ignoreDependencies": [
-    "husky"
+    "husky",
+    "sharp"
   ],
   "ignoreExportsUsedInFile": true
 }

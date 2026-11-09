@@ -967,9 +967,9 @@ function extractPublicAssetsCatalog(rootDir) {
 
   const assets = [];
   const roleMap = {
-    'public/sw.js': 'PWA Service Worker (`bookarium-app-shell-v4`) managing App Shell caching, static asset discovery, and offline route navigation fallback.',
-    'public/favicon.ico': 'Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with anti-aliased squircle transparency for browser tabs.',
-    'public/icon.svg': 'Scalable vector editorial `BookOpen` icon on the `#c05621` terracotta squircle with crisp white stroked pages.',
+    'public/sw.js': 'PWA Service Worker (`bookarium-app-shell-v6`) managing App Shell caching, static asset discovery, and offline route navigation fallback.',
+    'public/favicon.ico': 'Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with soaring book brand emblem for browser tabs.',
+    'public/icon.svg': 'Scalable vector soaring book brand emblem with 3-tiered page depths, sunlit amber peaks, core terracotta arches, and deep burnt outer wings.',
     'public/icons/apple-touch-icon.png': 'High-DPI iOS / iPadOS Home Screen Web Clip icon (`512×512` PNG).',
     'public/icons/icon-192.png': 'Standard PWA Web App Manifest home screen icon (`192×192` PNG, `purpose: "any"`).',
     'public/icons/icon-512.png': 'High-DPI PWA splash screen and desktop application icon (`512×512` PNG, `purpose: "any"`).',

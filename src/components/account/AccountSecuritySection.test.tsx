@@ -162,5 +162,119 @@ describe('AccountSecuritySection', () => {
       Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
     }
   });
+
+  it('renders Connected Accounts card with Connect Google, Google-only Set Account Password mode, and Disconnect when dual-linked', () => {
+    const onLinkGoogle = vi.fn();
+    const onUnlinkGoogle = vi.fn();
+
+    const { rerender } = render(
+      <AccountSecuritySection
+        newPassword=""
+        confirmPassword=""
+        showPassword={false}
+        copiedPassword={false}
+        isUpdatingPassword={false}
+        passwordSuccess={false}
+        passwordError={null}
+        strength={{ score: 0, label: 'Weak', color: 'bg-destructive' }}
+        onNewPasswordChange={vi.fn()}
+        onConfirmPasswordChange={vi.fn()}
+        onToggleShowPassword={vi.fn()}
+        onGeneratePassword={vi.fn()}
+        onUpdatePassword={vi.fn()}
+        onSignOut={vi.fn()}
+        onOpenDeleteModal={vi.fn()}
+        userEmail="scholar@bookarium.test"
+        hasGoogleIdentity={false}
+        hasPasswordIdentity={true}
+        canUnlinkGoogle={false}
+        onLinkGoogle={onLinkGoogle}
+        onUnlinkGoogle={onUnlinkGoogle}
+      />
+    );
+
+    // 1. Email-only user: shows Connect Google
+    expect(screen.getByTestId('connected-accounts-card')).toBeInTheDocument();
+    const connectBtn = screen.getByTestId('connect-google-button');
+    expect(connectBtn).toHaveTextContent('Connect Google');
+    fireEvent.click(connectBtn);
+    expect(onLinkGoogle).toHaveBeenCalledTimes(1);
+
+    // 2. Google-only user (!hasPasswordIdentity): shows Set Account Password banner, hides Current Password, disables Disconnect
+    rerender(
+      <AccountSecuritySection
+        newPassword="password123"
+        confirmPassword="password123"
+        showPassword={false}
+        copiedPassword={false}
+        isUpdatingPassword={false}
+        passwordSuccess={false}
+        passwordError={null}
+        strength={{ score: 2, label: 'Moderate', color: 'bg-amber-500' }}
+        onNewPasswordChange={vi.fn()}
+        onConfirmPasswordChange={vi.fn()}
+        onToggleShowPassword={vi.fn()}
+        onGeneratePassword={vi.fn()}
+        onUpdatePassword={vi.fn()}
+        onSignOut={vi.fn()}
+        onOpenDeleteModal={vi.fn()}
+        userEmail="scholar@gmail.com"
+        hasGoogleIdentity={true}
+        hasPasswordIdentity={false}
+        canUnlinkGoogle={false}
+        googleIdentityEmail="scholar@gmail.com"
+        onLinkGoogle={onLinkGoogle}
+        onUnlinkGoogle={onUnlinkGoogle}
+      />
+    );
+
+    expect(screen.getByText('Set Account Password')).toBeInTheDocument();
+    expect(screen.getByTestId('oauth-set-password-banner')).toHaveTextContent(
+      /You signed in with Google\. Set a password below/i
+    );
+    expect(screen.queryByLabelText('Current Password')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set Password' })).toBeInTheDocument();
+    expect(screen.getByTestId('disconnect-google-button')).toBeDisabled();
+    expect(screen.getByTestId('google-unlink-lockout-hint')).toHaveTextContent(
+      /Set an account password first before disconnecting Google/i
+    );
+
+    // 3. Dual-linked user (canUnlinkGoogle = true): Disconnect button enabled & displays status messages
+    rerender(
+      <AccountSecuritySection
+        newPassword=""
+        confirmPassword=""
+        showPassword={false}
+        copiedPassword={false}
+        isUpdatingPassword={false}
+        passwordSuccess={false}
+        passwordError={null}
+        strength={{ score: 0, label: 'Weak', color: 'bg-destructive' }}
+        onNewPasswordChange={vi.fn()}
+        onConfirmPasswordChange={vi.fn()}
+        onToggleShowPassword={vi.fn()}
+        onGeneratePassword={vi.fn()}
+        onUpdatePassword={vi.fn()}
+        onSignOut={vi.fn()}
+        onOpenDeleteModal={vi.fn()}
+        userEmail="scholar@gmail.com"
+        hasGoogleIdentity={true}
+        hasPasswordIdentity={true}
+        canUnlinkGoogle={true}
+        googleIdentityEmail="scholar@gmail.com"
+        identitySuccess="Google account disconnected."
+        identityError="Sample error"
+        onLinkGoogle={onLinkGoogle}
+        onUnlinkGoogle={onUnlinkGoogle}
+      />
+    );
+
+    const disconnectBtn = screen.getByTestId('disconnect-google-button');
+    expect(disconnectBtn).not.toBeDisabled();
+    fireEvent.click(disconnectBtn);
+    expect(onUnlinkGoogle).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Google account disconnected.')).toBeInTheDocument();
+    expect(screen.getByText('Sample error')).toBeInTheDocument();
+  });
 });
 

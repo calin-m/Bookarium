@@ -1,7 +1,7 @@
 /**
- * Zero-dependency High-DPI Analytical SDF PNG, SVG, and ICO icon generator for Bookarium PWA & browser tab assets.
- * Renders the exact Lucide `BookOpen` vector geometry on the editorial terracotta squircle (#c05621)
- * with analytical Signed Distance Field (SDF) sub-pixel anti-aliasing across 16x16 through 1024x1024.
+ * High-DPI Vector and Raster PWA & Browser Tab Asset Generator for Bookarium.
+ * Renders the custom Book-`"B"` brand monogram emblem across 16x16 through 1024x1024
+ * with sharp SVG rasterization and binary multi-resolution ICO packing.
  */
 
 const fs = require('fs');
@@ -241,43 +241,92 @@ function generateIco(entries) {
   return Buffer.concat([header, ...dirEntries, ...entries.map((e) => e.png)]);
 }
 
-// 1. Generate scalable vector public/icon.svg with exact Lucide BookOpen geometry on #c05621 squircle
-const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="512" height="512" fill="none">
-  <rect width="32" height="32" rx="7" fill="#c05621"/>
-  <g transform="translate(6.64 6.64) scale(0.78)" stroke="#ffffff" stroke-width="2.16" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 7v14"/>
-    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
-  </g>
-</svg>
-`;
-const svgTarget = path.join(publicDir, 'icon.svg');
-fs.writeFileSync(svgTarget, svgContent, 'utf8');
-console.log(`Generated: ${svgTarget} (vector SVG with Lucide BookOpen geometry)`);
+async function generateAllAssets() {
+  const svgTarget = path.join(publicDir, 'icon.svg');
+  if (!fs.existsSync(svgTarget)) {
+    console.error(`Error: Source vector ${svgTarget} not found.`);
+    process.exit(1);
+  }
 
-// 2. Generate High-DPI PNG icon suite (192, 512, 1024, maskable, and 512x512 apple-touch-icon)
-const icons = [
-  { name: 'icon-192.png', size: 192, isMaskable: false, isOpaque: false },
-  { name: 'icon-512.png', size: 512, isMaskable: false, isOpaque: false },
-  { name: 'icon-1024.png', size: 1024, isMaskable: false, isOpaque: false },
-  { name: 'icon-maskable-192.png', size: 192, isMaskable: true, isOpaque: true },
-  { name: 'icon-maskable-512.png', size: 512, isMaskable: true, isOpaque: true },
-  { name: 'apple-touch-icon.png', size: 512, isMaskable: false, isOpaque: true },
-];
+  const svgBuf = fs.readFileSync(svgTarget);
+  console.log(`Using source vector: ${svgTarget}`);
 
-for (const icon of icons) {
-  const buf = generatePng(icon.size, { isMaskable: icon.isMaskable, isOpaque: icon.isOpaque });
-  const target = path.join(outDir, icon.name);
-  fs.writeFileSync(target, buf);
-  console.log(`Generated: ${target} (${icon.size}x${icon.size}, maskable=${icon.isMaskable}, opaque=${icon.isOpaque})`);
+  let sharp;
+  try {
+    sharp = require('sharp');
+  } catch {
+    sharp = null;
+  }
+
+  // 2. Generate High-DPI PNG icon suite (192, 512, 1024, maskable, and 512x512 apple-touch-icon)
+  const icons = [
+    { name: 'icon-192.png', size: 192, isMaskable: false, isOpaque: false },
+    { name: 'icon-512.png', size: 512, isMaskable: false, isOpaque: false },
+    { name: 'icon-1024.png', size: 1024, isMaskable: false, isOpaque: false },
+    { name: 'icon-maskable-192.png', size: 192, isMaskable: true, isOpaque: true },
+    { name: 'icon-maskable-512.png', size: 512, isMaskable: true, isOpaque: true },
+    { name: 'apple-touch-icon.png', size: 512, isMaskable: false, isOpaque: true },
+  ];
+
+  if (sharp) {
+    for (const icon of icons) {
+      let buf;
+      if (icon.isMaskable || icon.isOpaque) {
+        const scaleFactor = icon.isMaskable ? 0.72 : 0.82;
+        const emblemSize = Math.round(icon.size * scaleFactor);
+        const emblemBuf = await sharp(svgBuf).resize(emblemSize, emblemSize).png().toBuffer();
+        buf = await sharp({
+          create: {
+            width: icon.size,
+            height: icon.size,
+            channels: 4,
+            background: { r: 252, g: 251, b: 249, alpha: 1 },
+          },
+        })
+          .composite([{ input: emblemBuf, gravity: 'center' }])
+          .png()
+          .toBuffer();
+      } else {
+        buf = await sharp(svgBuf).resize(icon.size, icon.size).png().toBuffer();
+      }
+
+      const target = path.join(outDir, icon.name);
+      fs.writeFileSync(target, buf);
+      console.log(`Generated via sharp: ${target} (${icon.size}x${icon.size}, maskable=${icon.isMaskable})`);
+    }
+
+    // 3. Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48)
+    const icoSizes = [16, 32, 48];
+    const icoEntries = [];
+    for (const size of icoSizes) {
+      const pngBuf = await sharp(svgBuf).resize(size, size).png().toBuffer();
+      icoEntries.push({ size, png: pngBuf });
+    }
+    const icoBuf = generateIco(icoEntries);
+    const icoTarget = path.join(publicDir, 'favicon.ico');
+    fs.writeFileSync(icoTarget, icoBuf);
+    console.log(`Generated via sharp: ${icoTarget} (binary multi-res ICO: ${icoSizes.join(',')})`);
+  } else {
+    for (const icon of icons) {
+      const buf = generatePng(icon.size, { isMaskable: icon.isMaskable, isOpaque: icon.isOpaque });
+      const target = path.join(outDir, icon.name);
+      fs.writeFileSync(target, buf);
+      console.log(`Generated: ${target} (${icon.size}x${icon.size})`);
+    }
+
+    const icoSizes = [16, 32, 48];
+    const icoEntries = icoSizes.map((size) => ({
+      size,
+      png: generatePng(size, { isMaskable: false, isOpaque: false }),
+    }));
+    const icoBuf = generateIco(icoEntries);
+    const icoTarget = path.join(publicDir, 'favicon.ico');
+    fs.writeFileSync(icoTarget, icoBuf);
+    console.log(`Generated: ${icoTarget} (binary multi-res ICO)`);
+  }
 }
 
-// 3. Generate multi-resolution binary favicon.ico (16x16, 32x32, 48x48)
-const icoSizes = [16, 32, 48];
-const icoEntries = icoSizes.map((size) => ({
-  size,
-  png: generatePng(size, { isMaskable: false, isOpaque: false }),
-}));
-const icoBuf = generateIco(icoEntries);
-const icoTarget = path.join(publicDir, 'favicon.ico');
-fs.writeFileSync(icoTarget, icoBuf);
-console.log(`Generated: ${icoTarget} (binary multi-res ICO, sizes: ${icoSizes.join(',')})`);
+generateAllAssets().catch((err) => {
+  console.error('Failed generating PWA icons:', err);
+  process.exit(1);
+});

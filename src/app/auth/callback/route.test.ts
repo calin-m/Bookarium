@@ -29,6 +29,7 @@ describe('GET /auth/callback', () => {
     expect(mockExchangeCodeForSession).toHaveBeenCalledWith('valid-pkce-code');
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('http://localhost:3000/account');
+    expect(response.cookies.get('bookarium-auth-hint')?.value).toBe('authenticated');
   });
 
   it('normalizes Vercel preview deployment origins to the canonical production domain', async () => {
@@ -142,6 +143,19 @@ describe('GET /auth/callback', () => {
 
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/?auth_error=verification_failed'
+    );
+  });
+
+  it('redirects to /?auth_error=oauth_failed when OAuth callback contains access_denied without OTP parameters', async () => {
+    const request = new Request(
+      'http://localhost:3000/auth/callback?error=access_denied&error_description=User+cancelled'
+    );
+    const response = await GET(request);
+
+    expect(mockExchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mockVerifyOtp).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/?auth_error=oauth_failed'
     );
   });
 });

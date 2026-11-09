@@ -736,16 +736,34 @@ function pass075SecurityAndSastAudit() {
 
   const { runStandaloneAstSecurityAudit } = require('./eslint-rules/bookarium-security');
   const astSecurityViolations = runStandaloneAstSecurityAudit(rootDir);
+  const engineeringGovernanceRules = new Set([
+    'bookarium-security/no-focused-or-tautological-tests',
+    'bookarium-security/enforce-gutenberg-and-copyright-policy',
+  ]);
+  const astEngineeringViolations = [];
+
   for (const v of astSecurityViolations) {
-    redirectViolations.push({
+    const entry = {
       file: `${v.file}:${v.line}`,
       issue: `[${v.ruleId}] ${v.message}`,
-    });
+    };
+    if (engineeringGovernanceRules.has(v.ruleId)) {
+      astEngineeringViolations.push(entry);
+    } else {
+      redirectViolations.push(entry);
+    }
   }
 
   if (redirectViolations.length > 0) {
     logFail(`AST security or open-redirect taint violation detected in ${redirectViolations.length} location(s):`);
     redirectViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
+    return false;
+  }
+  if (astEngineeringViolations.length > 0) {
+    logFail(
+      `AST test-quality, Gutenberg policy, or query-index invariant violation detected in ${astEngineeringViolations.length} location(s):`
+    );
+    astEngineeringViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
     return false;
   }
   logPass('Pillar 4: All redirects origin-locked and 9-rule AST + intra-procedural taint analysis passed with 0 defects.');
@@ -1978,19 +1996,29 @@ function pass7ProductionBuild() {
 async function runAllGateways() {
   if (process.argv.includes('--security-only')) {
     console.log(`\n${colors.bright}${colors.cyan}🔒 EXECUTING STANDALONE PRE-COMMIT SECURITY, SAST & GOVERNANCE AUDIT${colors.reset}\n`);
-    const securityGateways = [
-      pass05SecretScanner,
-      pass075SecurityAndSastAudit,
-      pass5AdrValidation,
+    const preCommitGateways = [
+      {
+        run: pass05SecretScanner,
+        haltBanner: '🚫 PRE-COMMIT SECURITY AUDIT HALTED: Secret, env-var, or client-server boundary violation detected.',
+      },
+      {
+        run: pass075SecurityAndSastAudit,
+        haltBanner: '🚫 PRE-COMMIT SECURITY AUDIT HALTED: SAST, OWASP, or AST rule violation detected.',
+      },
+      {
+        run: pass5AdrValidation,
+        haltBanner:
+          '🚫 PRE-COMMIT GOVERNANCE AUDIT HALTED: Documentation, changelog box-capacity, schema parity, or test co-location issue detected (0 security vulnerabilities).',
+      },
     ];
-    for (const gateway of securityGateways) {
-      const ok = gateway();
+    for (const gateway of preCommitGateways) {
+      const ok = gateway.run();
       if (!ok) {
-        console.error(`\n${colors.bright}${colors.red}🚫 SECURITY AUDIT HALTED. Vulnerabilities detected.${colors.reset}\n`);
+        console.error(`\n${colors.bright}${colors.red}${gateway.haltBanner}${colors.reset}\n`);
         process.exit(1);
       }
     }
-    console.log(`\n${colors.bright}${colors.green}🎉 ALL SECURITY GATES PASSED! CODEBASE IS OWASP COMPLIANT.${colors.reset}\n`);
+    console.log(`\n${colors.bright}${colors.green}🎉 ALL SECURITY (PASS 0.5 & 0.75) AND GOVERNANCE (PASS 5) GATES PASSED!${colors.reset}\n`);
     process.exit(0);
   }
 

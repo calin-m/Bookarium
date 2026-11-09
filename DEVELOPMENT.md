@@ -66,7 +66,7 @@ Configure these variables in `.env.local` for local development, in **Vercel Pro
 
 | Target Platform | What Goes Here | How to Set Up |
 | :--- | :--- | :--- |
-| 🚀 **Vercel Project Settings**<br>*(Production Web App)* | • `NEXT_PUBLIC_SITE_URL`<br>• `NEXT_PUBLIC_SUPABASE_URL`<br>• `NEXT_PUBLIC_SUPABASE_ANON_KEY`<br>• `NEXT_PUBLIC_GITHUB_REPO` *(Optional)*<br>• `NEXT_PUBLIC_TURNSTILE_SITE_KEY` *(Optional)*<br>• `NEXT_PUBLIC_LEGAL_CONTACT_FORM` *(Optional)* | Go to **Vercel Dashboard $\to$ Project $\to$ Settings $\to$ Environment Variables**. Ensure all variables needed by browser visitors and edge routes are set. |
+| 🚀 **Vercel Project Settings**<br>*(Production Web App)* | • `NEXT_PUBLIC_SITE_URL`<br>• `NEXT_PUBLIC_SUPABASE_URL`<br>• `NEXT_PUBLIC_SUPABASE_ANON_KEY`<br>• `NEXT_PUBLIC_GITHUB_REPO` *(Optional)*<br>• `NEXT_PUBLIC_TURNSTILE_SITE_KEY` *(Optional)*<br>• `NEXT_PUBLIC_LEGAL_CONTACT_FORM` *(Optional)*<br>• `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` *(Optional)* | Go to **Vercel Dashboard $\to$ Project $\to$ Settings $\to$ Environment Variables**. Ensure all variables needed by browser visitors and edge routes are set. |
 | ⚙️ **GitHub Actions Secrets**<br>*(Automated Cron / CI Sync)* | • `NEXT_PUBLIC_SUPABASE_URL`<br>• `SUPABASE_SERVICE_ROLE_KEY`<br>• `GUTENBERG_CONTACT_EMAIL` *(Optional)* | Go to **GitHub Repository $\to$ Settings $\to$ Secrets and variables $\to$ Actions $\to$ New repository secret**. Used by background catalog, quote, and translation workflows. |
 | 💻 **Local `.env.local`**<br>*(Development Machine)* | • All public `NEXT_PUBLIC_*` variables<br>• `SUPABASE_SERVICE_ROLE_KEY` *(if running local sync)*<br>• `GUTENBERG_CONTACT_EMAIL` *(Optional)* | Copy `.env.example` to `.env.local`. This file is gitignored and stays strictly on your computer. |
 | 🔑 **Supabase Dashboard**<br>*(Where to obtain keys)* | • `NEXT_PUBLIC_SUPABASE_URL` *(Project URL)*<br>• `NEXT_PUBLIC_SUPABASE_ANON_KEY` *(anon public key)*<br>• `SUPABASE_SERVICE_ROLE_KEY` *(service_role secret key)* | Open your **Supabase Dashboard $\to$ Project Settings $\to$ API**. Copy keys from *Project API Keys*. |
@@ -84,5 +84,27 @@ Configure these variables in `.env.local` for local development, in **Vercel Pro
 | **`NEXT_PUBLIC_SITE_URL`** | Your production domain (e.g. `https://bookarium.vercel.app`) | • `.env.local`<br>• Vercel Project Settings | **Public Origin**: Canonical origin for OpenGraph social preview images, sitemaps, and shareable links. |
 | **`NEXT_PUBLIC_TURNSTILE_SITE_KEY`** | [Cloudflare Dashboard](https://dash.cloudflare.com/) $\to$ Turnstile $\to$ Add Site | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | **Public Bot Protection**: Renders Cloudflare Turnstile challenge on the auth modal to prevent automated account spam. |
 | **`NEXT_PUBLIC_LEGAL_CONTACT_FORM`** | Any external form link (Google Forms, Tally, Formspree) | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | **Optional Intake**: Link displayed on `/copyright` for DMCA/jurisdictional requests. Falls back to GitHub Issues if blank. |
+| **`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`** | [Google Search Console](https://search.google.com/search-console) $\to$ Add Property (`URL prefix`) $\to$ HTML tag `content` value | • Vercel Project Settings *(Optional)*<br>• `.env.local` *(Optional)* | **Domain Ownership Verification**: Dynamically emits `<meta name="google-site-verification" content="..." />` in root metadata without hardcoding verification tokens. |
 | **`GUTENDEX_API_URL`** | Custom Gutendex instance URL | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | **API Override**: Overrides default public Gutendex endpoint (`https://gutendex.com/books`). |
 | **`DEV_COUNTRY`** | ISO 3166-1 alpha-2 code (`US`, `RO`, `DE`, `MX`, `GB`) | • `.env.local` only *(Dev)* | **Dev Override**: Simulates reading from specific countries to test multi-jurisdictional copyright rules (`Life+70`, `Life+80`, `Life+100`). |
+
+---
+
+## 🔑 Google OAuth & Account Linking Setup (Supabase Dashboard & Google Cloud Console)
+
+Bookarium's **Continue with Google** sign-in and **Connected Accounts** linking/unlinking require **zero repository or `.env.local` secrets**. All OAuth credentials live strictly inside your Supabase Dashboard:
+
+1. **Google Cloud Console (`APIs & Services -> Credentials`)**:
+   - Create an **OAuth client ID** (`Web application`).
+   - **Authorized redirect URIs**: Add your Supabase OAuth callback URL:
+     ```text
+     https://<your-project-ref>.supabase.co/auth/v1/callback
+     ```
+   - **Authorized JavaScript origins**: Set to your production domain (`https://<your-production-domain>`) or leave blank (`http://localhost:3000` is not needed in Google Cloud Console because Supabase brokers the OAuth redirect server-side).
+2. **Supabase Dashboard (`Authentication -> Providers -> Google`)**:
+   - Toggle **Enable Sign in with Google** to **ON** and paste your **Client ID** and **Client Secret**.
+   - Keep **Skip nonce checks** and **Allow users without an email** **OFF** to enforce full OIDC replay protection and verified email requirements.
+3. **Supabase Dashboard (`Authentication -> User Signups` & `URL Configuration`)**:
+   - Toggle **Enable Manual Linking** to **ON** so authenticated users can manually connect or disconnect Google inside `/account?tab=security`.
+   - Under **Redirect URLs**, include your exact production callback (`https://<your-production-domain>/auth/callback`) and local callback (`http://localhost:3000/auth/callback`).
+

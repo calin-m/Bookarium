@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen } from 'lucide-react';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 import { SITE_CONFIG } from '@/config/site-config';
 
 /**
@@ -17,10 +17,12 @@ export default function Loading() {
       <div className="flex flex-col items-center text-center space-y-4 animate-in fade-in duration-300">
         {/* Animated Brand Emblem */}
         <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shadow-booksaw animate-pulse motion-reduce:animate-none">
-            <BookOpen className="w-8 h-8" />
-          </div>
-          <div className="absolute -inset-1 rounded-2xl bg-primary/20 blur-md -z-10 animate-pulse motion-reduce:animate-none" />
+          <BrandLogo
+            idPrefix="loading"
+            className="w-16 h-16 animate-pulse motion-reduce:animate-none"
+            testId="loading-brand-emblem"
+          />
+          <div className="absolute -inset-2 rounded-full bg-primary/15 blur-xl -z-10 animate-pulse motion-reduce:animate-none" />
         </div>
 
         {/* Wordmark & Status */}

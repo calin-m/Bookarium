@@ -12,6 +12,11 @@ describe('Loading Component (App Router Splash)', () => {
     expect(screen.getByRole('heading', { level: 1, name: /Bookarium/i })).toBeInTheDocument();
     expect(screen.getByText(/Opening universal public domain library/i)).toBeInTheDocument();
     expect(screen.getByText('Loading...')).toHaveClass('sr-only');
+
+    const emblem = screen.getByTestId('loading-brand-emblem');
+    expect(emblem).toBeInTheDocument();
+    expect(emblem).toHaveAttribute('viewBox', '30 38 456 456');
+    expect(emblem).toHaveClass('w-16', 'h-16');
   });
 });
 

@@ -2,13 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import RootLayout, { metadata, viewport } from './layout';
+import { resolveGoogleSiteVerification } from '@/config/site-config';
 
 const mockGetCookie = vi.fn();
+const mockGetAllCookies = vi.fn(() => [] as Array<{ name: string; value: string }>);
 const mockGetHeader = vi.fn();
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     get: (name: string) => mockGetCookie(name),
+    getAll: () => mockGetAllCookies(),
   })),
   headers: vi.fn(async () => ({
     get: (name: string) => mockGetHeader(name),
@@ -54,12 +57,17 @@ describe('RootLayout', () => {
     expect(metadata.icons).toBeDefined();
     const icons = metadata.icons as { icon: Array<{ url: string }>; apple: string };
     expect(icons.icon).toEqual([
-      { url: '/icon.svg?v=2', type: 'image/svg+xml' },
-      { url: '/favicon.ico?v=2', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/icon.svg?v=4', type: 'image/svg+xml' },
+      { url: '/favicon.ico?v=4', sizes: '32x32', type: 'image/x-icon' },
     ]);
-    expect(icons.apple).toBe('/icons/apple-touch-icon.png?v=2');
+    expect(icons.apple).toBe('/icons/apple-touch-icon.png?v=4');
     expect(viewport.viewportFit).toBe('cover');
     expect(viewport.width).toBe('device-width');
+
+    expect(resolveGoogleSiteVerification('  gsc-token-xyz  ')).toEqual({
+      google: 'gsc-token-xyz',
+    });
+    expect(resolveGoogleSiteVerification('')).toBeUndefined();
   });
 
   it('should render children within html structure alongside analytics and performance telemetry', async () => {
@@ -117,6 +125,20 @@ describe('RootLayout', () => {
     expect(screen.getByTestId('header-geo-child')).toBeInTheDocument();
     expect(mockGetHeader).toHaveBeenCalledWith('x-vercel-ip-country');
     mockGetHeader.mockReset();
+  });
+
+  it('should detect chunked Supabase OAuth session cookies (sb-*-auth-token.0) for SSR auth hint', async () => {
+    mockGetCookie.mockReturnValue(undefined);
+    mockGetAllCookies.mockReturnValueOnce([
+      { name: 'sb-project-auth-token.0', value: 'chunk-0' },
+      { name: 'sb-project-auth-token.1', value: 'chunk-1' },
+    ]);
+    const layoutJsx = await RootLayout({
+      children: <div data-testid="chunked-oauth-child">Chunked OAuth</div>,
+    });
+    render(layoutJsx);
+    expect(screen.getByTestId('chunked-oauth-child')).toBeInTheDocument();
+    expect(mockGetAllCookies).toHaveBeenCalled();
   });
 });
 

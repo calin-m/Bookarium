@@ -33,9 +33,10 @@ describe('Providers component', () => {
     expect(screen.getByText('Child Content')).toBeInTheDocument();
   });
 
-  it('should call syncAllStoresWithCloud when user is logged in', () => {
+  it('should call syncAllStoresWithCloud only after auth initialization finishes (!isLoading)', () => {
     useAuthStore.setState({
       user: { id: 'user-123', email: 'test@example.com' } as any,
+      isLoading: true,
     });
 
     render(
@@ -43,6 +44,12 @@ describe('Providers component', () => {
         <div>Child Content</div>
       </Providers>
     );
+
+    expect(syncAllStoresWithCloud).not.toHaveBeenCalled();
+
+    act(() => {
+      useAuthStore.setState({ isLoading: false });
+    });
 
     expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-123');
   });
@@ -133,6 +140,23 @@ describe('Providers component', () => {
     expect(authState.isAuthModalOpen).toBe(true);
     expect(authState.authModalView).toBe('sign_in');
     expect(authState.error).toContain('expired or was already used');
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+  });
+
+  it('opens AuthModal with OAuth failure notice when ?auth_error=oauth_failed is present on mount', () => {
+    window.location.search = '?auth_error=oauth_failed';
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    const authState = useAuthStore.getState();
+    expect(authState.isAuthModalOpen).toBe(true);
+    expect(authState.authModalView).toBe('sign_in');
+    expect(authState.error).toContain('Google sign-in was cancelled or could not be completed');
     expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 

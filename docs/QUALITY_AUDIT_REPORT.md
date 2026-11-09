@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 08 Nov 2026 13:48:23 GMT  
+**Last Generated**: Mon, 09 Nov 2026 18:46:48 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 210 passed  
-**Total Verified Tests**: 2291 passed  
+**Total Test Suites**: 211 passed  
+**Total Verified Tests**: 2307 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **210/210 test suites passed** (2291 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2307 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.32%** (13161/13523) — *Target: $\ge$ 95%*
-- **Statements**: **95.99%** (14234/14828) — *Target: $\ge$ 95%*
-- **Functions**: **94.82%** (2948/3109) — *Target: $\ge$ 92%*
-- **Branches**: **88.35%** (12813/14502) — *Target: $\ge$ 85%*
+- **Lines**: **97.39%** (13350/13707) — *Target: $\ge$ 95%*
+- **Statements**: **96.08%** (14438/15026) — *Target: $\ge$ 95%*
+- **Functions**: **94.81%** (2982/3145) — *Target: $\ge$ 92%*
+- **Branches**: **88.26%** (13002/14730) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (210 Suites / 2291 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2307 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 288 Tests)
+### 🚀 App Routes & Pages (27 Suites · 291 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -196,7 +196,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `exchanges PKCE code for session and redirects to sanitized next path on localhost`
 - ✔ `normalizes Vercel preview deployment origins to the canonical production domain`
@@ -206,6 +206,7 @@
 - ✔ `redirects to /?auth_error=verification_failed when upstream error query param is present`
 - ✔ `redirects to /?auth_error=verification_failed when verifyOtp fails or parameters are missing`
 - ✔ `redirects to /?auth_error=verification_failed when exchangeCodeForSession fails with a generic error`
+- ✔ `redirects to /?auth_error=oauth_failed when OAuth callback contains access_denied without OTP parameters`
 
 </details>
 
@@ -253,13 +254,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/layout.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/app/layout.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `should expose valid metadata with OpenGraph, Twitter, and canonical alternates`
 - ✔ `should render children within html structure alongside analytics and performance telemetry`
 - ✔ `should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities`
 - ✔ `should gracefully handle cookie exception and fallback to US`
 - ✔ `should fall back to x-vercel-ip-country header on first visit when geo cookie is absent`
+- ✔ `should detect chunked Supabase OAuth session cookies (sb-*-auth-token.0) for SSR auth hint`
 
 </details>
 
@@ -359,14 +361,15 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
-- ✔ `should call syncAllStoresWithCloud when user is logged in`
+- ✔ `should call syncAllStoresWithCloud only after auth initialization finishes (!isLoading)`
 - ✔ `should trigger syncAllStoresWithCloud on window online event when user is logged in`
 - ✔ `should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed`
 - ✔ `opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount`
 - ✔ `opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount`
+- ✔ `opens AuthModal with OAuth failure notice when ?auth_error=oauth_failed is present on mount`
 - ✔ `provides initialIsAuthenticated through useAuthHint context`
 - ✔ `initializes theme in store when initialTheme is provided and never reverts client theme changes on rerender`
 
@@ -487,7 +490,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 493 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 495 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -977,7 +980,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (38 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (40 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -999,7 +1002,7 @@
 - ✔ `handles keyboard Enter and Space on brand logo to navigate back to catalog without reloading or resetting theme`
 - ✔ `falls back to router.push(ROUTES.HOME) when brand logo is clicked without onViewChange and preserves sepia/dark theme`
 - ✔ `applies -translate-y-full when isVisible is false`
-- ✔ `applies translate-y-0 when isVisible is true`
+- ✔ `applies translate-y-0 and z-40 stacking context when isVisible is true so popovers stack above z-30 toolbars`
 - ✔ `renders active account button styling when activeView is account`
 - ✔ `renders active Sign In button styling for guests when activeView is account`
 - ✔ `renders GitHub repository link with target _blank on the header`
@@ -1017,6 +1020,8 @@
 - ✔ `fades out with opacity-0 and scale-x-50 when activeView is account`
 - ✔ `re-measures on window resize event`
 - ✔ `disables gliding indicator and stays on fallback border when prefers-reduced-motion is active`
+- ✔ `opens the hover quick-menu on mouse enter, closes after 150ms on mouse leave, and triggers signOut on Sign Out click`
+- ✔ `suppresses the hover quick-menu on touch pointer events so mobile taps navigate directly`
 
 </details>
 
@@ -1461,10 +1466,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (2 Suites · 27 Tests)
+### 🔐 Authentication & Security (2 Suites · 28 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (23 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (24 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1489,6 +1494,7 @@
 - ✔ `executes useShallow selector, syncs cloud on sign-in/sign-up, switches views across all 4 modes, and handles resend verification errors`
 - ✔ `blocks automated form submissions when the honeypot field is populated`
 - ✔ `mounts Cloudflare Turnstile when NEXT_PUBLIC_TURNSTILE_SITE_KEY is configured, enforces verification, forwards token, and resets widget`
+- ✔ `renders Continue with Google button on sign_in and sign_up views and invokes signInWithOAuth`
 
 </details>
 
@@ -1502,7 +1508,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 204 Tests)
+### ⚡ Zustand State Stores (10 Suites · 206 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1562,7 +1568,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (31 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1571,10 +1577,12 @@
 - ✔ `handles signUpWithPassword success (with session and unconfirmed)`
 - ✔ `handles resendVerificationEmail success and error`
 - ✔ `handles signInWithOtp (magic link) success and error with /auth/callback redirect`
-- ✔ `handles signInWithOAuth success and error with /auth/callback redirect`
+- ✔ `handles signInWithOAuth success, non-root next path preservation, and error with /auth/callback redirect`
+- ✔ `handles linkOAuthIdentity and unlinkOAuthIdentity with anti-lockout protection`
 - ✔ `hydrates user on initializeAuth when active session exists`
 - ✔ `short-circuits network getUser in initializeAuth when getSession reports no local session for anonymous visitors`
 - ✔ `updates auth state when onAuthStateChange triggers SIGNED_OUT`
+- ✔ `clears local user stores when initializeAuth or onAuthStateChange switches from a cached user to a different user`
 - ✔ `unsubscribes cleanly when initializeAuth cleanup function is called`
 - ✔ `returns error when updateProfile is called while logged out`
 - ✔ `updates profile display name in Supabase and local store when logged in`
@@ -1768,7 +1776,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 553 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 554 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1897,10 +1905,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
+- ✔ `discards stale cross-account outbox actions whose payload.user_id does not match the active userId without calling Supabase`
 - ✔ `resets syncing state when flushing the outbox rejects`
 - ✔ `executes custom shelf creation, rename, privacy toggle, move, migration, and deletion`
 - ✔ `dispatches all 6 outbox action types and handles empty outbox`
@@ -2587,7 +2596,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (27 Suites · 292 Tests)
+### 🔄 Hooks & React Query (27 Suites · 293 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2809,11 +2818,12 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
 - ✔ `handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions`
+- ✔ `resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions`
 
 </details>
 
@@ -3043,7 +3053,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (51 Suites · 251 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 257 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3109,7 +3119,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor`
 - ✔ `always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS`
@@ -3118,6 +3128,7 @@
 - ✔ `displays save error and save success alert banners`
 - ✔ `renders muted streak badge when readingStreak is 0`
 - ✔ `falls back gracefully to user_metadata display name or Scholar monogram S when name is missing`
+- ✔ `renders top-level Sign Out pill button when onSignOut is provided and invokes it on click`
 
 </details>
 
@@ -3164,11 +3175,12 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
 - ✔ `renders forgot-password email trigger, confirmation banner, and recovery mode state`
 - ✔ `disables Update Password and Delete Account buttons when offline`
+- ✔ `renders Connected Accounts card with Connect Google, Google-only Set Account Password mode, and Disconnect when dual-linked`
 
 </details>
 
@@ -3301,6 +3313,16 @@
 - ✔ `should render badge content with variant and size classes`
 - ✔ `should render success variant correctly`
 - ✔ `should render default secondary variant and md size`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/BrandLogo.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `renders default soaring book emblem with optically centered viewBox and default attributes`
+- ✔ `correctly namespaces gradient IDs and fill references using custom idPrefix`
+- ✔ `applies custom className and forwards extra SVG attributes`
+- ✔ `removes aria-hidden when an explicit aria-label is provided for accessibility`
 
 </details>
 

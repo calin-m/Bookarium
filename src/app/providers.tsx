@@ -62,6 +62,7 @@ export function Providers({
   const setError = useAuthStore((s) => s.setError);
   const setStatusMessage = useAuthStore((s) => s.setStatusMessage);
   const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthModalOpen = useAuthStore((s) => s.isAuthModalOpen);
 
   useEffect(() => {
@@ -91,6 +92,12 @@ export function Providers({
         'This verification link has expired or was already used. Please sign in or request a new link.'
       );
       params.delete('auth_error');
+    } else if (authError === 'oauth_failed') {
+      openAuthModal('sign_in');
+      setError(
+        'Google sign-in was cancelled or could not be completed. Please try again or sign in with email.'
+      );
+      params.delete('auth_error');
     }
 
     const nextQuery = params.toString();
@@ -99,10 +106,10 @@ export function Providers({
   }, [openAuthModal, setError, setStatusMessage]);
 
   useEffect(() => {
-    if (user?.id) {
+    if (!isLoading && user?.id) {
       syncAllStoresWithCloud(user.id);
     }
-  }, [user?.id]);
+  }, [isLoading, user?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -110,14 +117,14 @@ export function Providers({
     let lastSyncTime = Date.now();
 
     const handleOnline = () => {
-      if (user?.id) {
+      if (!isLoading && user?.id) {
         lastSyncTime = Date.now();
         syncAllStoresWithCloud(user.id);
       }
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && user?.id) {
+      if (document.visibilityState === 'visible' && !isLoading && user?.id) {
         const now = Date.now();
         if (now - lastSyncTime >= 15000) {
           lastSyncTime = now;
@@ -132,7 +139,7 @@ export function Providers({
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user?.id]);
+  }, [isLoading, user?.id]);
 
   return (
     <AuthHintContext.Provider value={initialIsAuthenticated}>

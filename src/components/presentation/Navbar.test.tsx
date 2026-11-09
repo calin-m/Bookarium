@@ -273,10 +273,10 @@ describe('Navbar component', () => {
     expect(header).toHaveClass('pointer-events-none');
   });
 
-  it('applies translate-y-0 when isVisible is true', () => {
+  it('applies translate-y-0 and z-40 stacking context when isVisible is true so popovers stack above z-30 toolbars', () => {
     const { container } = render(<Navbar activeView="catalog" isVisible={true} />);
     const header = container.querySelector('header');
-    expect(header).toHaveClass('translate-y-0');
+    expect(header).toHaveClass('translate-y-0', 'z-40');
   });
 
   it('renders active account button styling when activeView is account', async () => {
@@ -697,6 +697,88 @@ describe('Navbar component', () => {
       expect(screen.queryByTestId('navbar-active-indicator')).not.toBeInTheDocument();
       const favoritesBtn = screen.getByLabelText('Favorites');
       expect(favoritesBtn).toHaveClass('border-destructive');
+    });
+  });
+
+  describe('Desktop Account Hover Menu & Touch Suppression', () => {
+    it('opens the hover quick-menu on mouse enter, closes after 150ms on mouse leave, and triggers signOut on Sign Out click', async () => {
+      vi.useFakeTimers();
+      const mockSignOut = vi.fn().mockResolvedValue(undefined);
+      const { useAuthStore } = await import('@/stores/useAuthStore');
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'scholar@bookarium.test' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['user'],
+        profile: { display_name: 'Ada Lovelace' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['profile'],
+        signOut: mockSignOut,
+      });
+
+      render(<Navbar activeView="catalog" />);
+      const userLink = screen.getByLabelText('User Account');
+      const wrapper = userLink.parentElement!;
+
+      expect(screen.queryByTestId('navbar-account-hover-menu')).not.toBeInTheDocument();
+
+      fireEvent.mouseEnter(wrapper);
+      expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('Scholar Account')).toBeInTheDocument();
+      expect(screen.queryByText('scholar@bookarium.test')).not.toBeInTheDocument();
+
+      // Mouse leave schedules 150ms close timer, re-entering cancels it
+      fireEvent.mouseLeave(wrapper);
+      fireEvent.mouseEnter(wrapper);
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
+
+      // Clicking Sign Out invokes signOut and redirects to home
+      const signOutBtn = screen.getByTestId('navbar-hover-sign-out-button');
+      await act(async () => {
+        fireEvent.click(signOutBtn);
+      });
+      expect(mockSignOut).toHaveBeenCalledTimes(1);
+      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(screen.queryByTestId('navbar-account-hover-menu')).not.toBeInTheDocument();
+
+      // Re-open and let 150ms timer expire on mouseLeave
+      fireEvent.mouseEnter(wrapper);
+      expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
+      fireEvent.mouseLeave(wrapper);
+      act(() => {
+        vi.advanceTimersByTime(160);
+      });
+      expect(screen.queryByTestId('navbar-account-hover-menu')).not.toBeInTheDocument();
+      vi.useRealTimers();
+    });
+
+    it('suppresses the hover quick-menu on touch pointer events so mobile taps navigate directly', async () => {
+      const { useAuthStore } = await import('@/stores/useAuthStore');
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'scholar@bookarium.test' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['user'],
+        profile: { display_name: 'Ada Lovelace' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['profile'],
+      });
+
+      render(<Navbar activeView="catalog" />);
+      const userLink = screen.getByLabelText('User Account');
+      const wrapper = userLink.parentElement!;
+
+      fireEvent.touchStart(wrapper);
+      fireEvent.mouseEnter(wrapper);
+      expect(screen.queryByTestId('navbar-account-hover-menu')).not.toBeInTheDocument();
+
+      // Mouse pointerDown resets the touch suppression flag
+      fireEvent.pointerDown(wrapper, { pointerType: 'mouse' });
+      fireEvent.mouseEnter(wrapper);
+      expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
+      expect(screen.getByTestId('brand-monogram-icon')).toHaveAttribute('viewBox', '30 38 456 456');
     });
   });
 });

@@ -61,5 +61,6 @@ describe('Footer component', () => {
 
     const wikidataLink = screen.getByRole('link', { name: /Wikidata Knowledge Graph/i });
     expect(wikidataLink).toHaveClass('py-1');
+    expect(screen.getByTestId('brand-monogram-icon')).toHaveAttribute('viewBox', '30 38 456 456');
   });
 });

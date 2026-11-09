@@ -305,5 +305,123 @@ describe('useAccountSecurityActions', () => {
 
     vi.useRealTimers();
   });
+
+  it('resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions', async () => {
+    const updatePassword = vi.fn().mockResolvedValue({ error: null });
+    const linkOAuthIdentity = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Link failed') })
+      .mockRejectedValueOnce(new Error('Network crash'));
+    const unlinkOAuthIdentity = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Unlink failed') })
+      .mockRejectedValueOnce(new Error('Network crash'));
+
+    // 1. Google-only user (hasGoogleIdentity = true, hasPasswordIdentity = false, canUnlinkGoogle = false)
+    const googleOnlyUser = {
+      id: 'u-google',
+      email: 'scholar@gmail.com',
+      identities: [
+        {
+          id: 'id-google',
+          provider: 'google',
+          identity_data: { email: 'scholar@gmail.com' },
+        },
+      ],
+      app_metadata: { provider: 'google', providers: ['google'] },
+    } as never;
+
+    const { result, rerender } = renderHook(
+      ({ activeUser }) =>
+        useAccountSecurityActions({
+          user: activeUser,
+          profile: null,
+          isRecoveryMode: false,
+          onClearRecoveryParam: vi.fn(),
+          updateProfile: vi.fn().mockResolvedValue({ error: null }),
+          updatePassword,
+          resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+          requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+          resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+          linkOAuthIdentity,
+          unlinkOAuthIdentity,
+        }),
+      { initialProps: { activeUser: googleOnlyUser } }
+    );
+
+    expect(result.current.hasGoogleIdentity).toBe(true);
+    expect(result.current.hasPasswordIdentity).toBe(false);
+    expect(result.current.canUnlinkGoogle).toBe(false);
+    expect(result.current.googleIdentityEmail).toBe('scholar@gmail.com');
+
+    // Anti-lockout guard on handleUnlinkGoogle when !canUnlinkGoogle
+    await act(async () => {
+      await result.current.handleUnlinkGoogle();
+    });
+    expect(result.current.identityError).toContain('Set an account password first');
+    expect(unlinkOAuthIdentity).not.toHaveBeenCalled();
+
+    // Setting password without currentPassword succeeds for Google-only user
+    act(() => {
+      result.current.setNewPassword('NewStrongPass123!');
+      result.current.setConfirmPassword('NewStrongPass123!');
+    });
+    await act(async () => {
+      await result.current.handleUpdatePassword({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent);
+    });
+    expect(updatePassword).toHaveBeenCalledWith('NewStrongPass123!');
+
+    // 2. Dual-identity user (both email and google -> canUnlinkGoogle = true)
+    const dualUser = {
+      id: 'u-google',
+      email: 'scholar@gmail.com',
+      identities: [
+        { id: 'id-email', provider: 'email' },
+        { id: 'id-google', provider: 'google', identity_data: { email: 'scholar@gmail.com' } },
+      ],
+      app_metadata: { provider: 'email', providers: ['email', 'google'] },
+    } as never;
+
+    rerender({ activeUser: dualUser });
+    expect(result.current.hasGoogleIdentity).toBe(true);
+    expect(result.current.hasPasswordIdentity).toBe(true);
+    expect(result.current.canUnlinkGoogle).toBe(true);
+
+    // Link & Unlink success, error, and catch paths
+    await act(async () => {
+      await result.current.handleLinkGoogle();
+    });
+    expect(linkOAuthIdentity).toHaveBeenCalledWith('google');
+
+    await act(async () => {
+      await result.current.handleLinkGoogle();
+    });
+    expect(result.current.identityError).toBe('Link failed');
+
+    await act(async () => {
+      await result.current.handleLinkGoogle();
+    });
+    expect(result.current.identityError).toContain('Failed to initiate Google account connection');
+
+    await act(async () => {
+      await result.current.handleUnlinkGoogle();
+    });
+    expect(unlinkOAuthIdentity).toHaveBeenCalledWith('google');
+    expect(result.current.identitySuccess).toBe('Google account disconnected.');
+
+    await act(async () => {
+      await result.current.handleUnlinkGoogle();
+    });
+    expect(result.current.identityError).toBe('Unlink failed');
+
+    await act(async () => {
+      await result.current.handleUnlinkGoogle();
+    });
+    expect(result.current.identityError).toContain('Failed to disconnect Google account');
+  });
 });
 

@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { User, Session, AuthError } from '@supabase/supabase-js';
+import type { User, UserIdentity, Session, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Profile, Json } from '@/types/database.types';
 import { ROUTES } from '@/config/routes';
 import { STORAGE_KEYS } from '@/config/site-config';
-import { buildAuthRedirectUrl } from '@/lib/redirect-sanitizer';
+import { buildAuthRedirectUrl, sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
 
 export function syncAuthCookieHint(isAuthenticated: boolean): void {
   if (typeof document === 'undefined') return;
@@ -70,6 +70,8 @@ export interface AuthState {
   resendVerificationEmail: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithOtp: (email: string, captchaToken?: string) => Promise<{ error: AuthError | null }>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
+  linkOAuthIdentity: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
+  unlinkOAuthIdentity: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   fetchProfile: () => Promise<void>;
   syncWithCloud: (userId?: string) => Promise<void>;
@@ -201,12 +203,37 @@ export const useAuthStore = create<AuthState>()(
       set({ isLoading: false });
     }
 
+    let lastKnownUserId: string | null = get().user?.id ?? null;
+    let activeCleanupPromise: Promise<void> | null = null;
+
+    const cleanPreviousUserStoresIfSwitched = async (nextUser: User | null): Promise<void> => {
+      const nextUserId = nextUser?.id ?? null;
+      const currentCachedId = get().user?.id ?? lastKnownUserId;
+      if (currentCachedId && currentCachedId !== nextUserId) {
+        lastKnownUserId = nextUserId;
+        if (!activeCleanupPromise) {
+          activeCleanupPromise = clearLocalUserStores({ wipeDeviceStorage: false }).finally(() => {
+            activeCleanupPromise = null;
+          });
+        }
+        await activeCleanupPromise;
+      } else {
+        lastKnownUserId = nextUserId;
+        if (activeCleanupPromise) {
+          await activeCleanupPromise;
+        }
+      }
+    };
+
     // Check active session on initialization (short-circuiting network getUser when anonymous)
     const checkInitialUser = async () => {
       try {
         if (typeof supabase.auth.getSession === 'function') {
           const { data: sessionData } = await supabase.auth.getSession();
-          if (!sessionData?.session?.user && !get().user) {
+          const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+          if (!sessionData?.session?.user && (!get().user || !isOffline)) {
+            await cleanPreviousUserStoresIfSwitched(null);
+            syncAuthCookieHint(false);
             set({ user: null, profile: null, isLoading: false });
             return;
           }
@@ -224,7 +251,12 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return;
         }
-        set({ user: user ?? null, isLoading: false });
+        await cleanPreviousUserStoresIfSwitched(user ?? null);
+        set((state) => ({
+          user: user ?? null,
+          profile: user ? (state.profile?.id === user.id ? state.profile : null) : null,
+          isLoading: false,
+        }));
         syncAuthCookieHint(Boolean(user));
         if (user) {
           get().fetchProfile();
@@ -254,7 +286,33 @@ export const useAuthStore = create<AuthState>()(
         return;
       }
       const user = session?.user ?? null;
+      const currentCachedId = get().user?.id ?? lastKnownUserId;
+      const needsStoreCleanup = Boolean(currentCachedId && currentCachedId !== (user?.id ?? null));
+
       syncAuthCookieHint(Boolean(user));
+
+      if (needsStoreCleanup) {
+        set((state) => ({
+          user: null,
+          profile: null,
+          isLoading: Boolean(user),
+          isPasswordRecovery:
+            event === 'PASSWORD_RECOVERY'
+              ? true
+              : event === 'SIGNED_OUT'
+                ? false
+                : state.isPasswordRecovery,
+        }));
+        void cleanPreviousUserStoresIfSwitched(user).then(() => {
+          set({ user, isLoading: false });
+          if (user) {
+            get().fetchProfile();
+          }
+        });
+        return;
+      }
+
+      lastKnownUserId = user?.id ?? null;
       set((state) => ({
         user,
         isLoading: false,
@@ -392,7 +450,15 @@ export const useAuthStore = create<AuthState>()(
   signInWithOAuth: async (provider) => {
     set({ error: null, statusMessage: null });
     const supabase = createClient();
-    const redirectTo = buildAuthRedirectUrl('/auth/callback');
+    const currentPath =
+      typeof window !== 'undefined'
+        ? sanitizeRedirectPath(`${window.location.pathname}${window.location.search}`)
+        : '/';
+    const callbackPath =
+      currentPath !== '/'
+        ? `/auth/callback?next=${encodeURIComponent(currentPath)}`
+        : '/auth/callback';
+    const redirectTo = buildAuthRedirectUrl(callbackPath);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -403,6 +469,98 @@ export const useAuthStore = create<AuthState>()(
       set({ error: error.message });
       return { error };
     }
+    return { error: null };
+  },
+
+  linkOAuthIdentity: async (provider) => {
+    set({ error: null, statusMessage: null });
+    const supabase = createClient();
+    const redirectTo = buildAuthRedirectUrl(
+      `/auth/callback?next=${encodeURIComponent(`${ROUTES.ACCOUNT}?tab=security`)}`
+    );
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: {
+        redirectTo,
+      },
+    });
+    if (error) {
+      set({ error: error.message });
+      return { error };
+    }
+    return { error: null };
+  },
+
+  unlinkOAuthIdentity: async (provider) => {
+    set({ error: null, statusMessage: null });
+    const supabase = createClient();
+    const currentUser = get().user;
+    if (!currentUser) {
+      const noUserError = { message: 'No active user session found' } as AuthError;
+      set({ error: noUserError.message });
+      return { error: noUserError };
+    }
+
+    let identities: UserIdentity[] = currentUser.identities ?? [];
+    if (identities.length === 0 && typeof supabase.auth.getUserIdentities === 'function') {
+      const { data: identitiesData } = await supabase.auth.getUserIdentities();
+      identities = identitiesData?.identities ?? [];
+    }
+
+    const providers = Array.isArray(currentUser.app_metadata?.providers)
+      ? (currentUser.app_metadata.providers as string[])
+      : [];
+    const totalAuthMethods = Math.max(identities.length, providers.length);
+    if (totalAuthMethods < 2) {
+      const lockoutError = {
+        message:
+          'Set an account password first before disconnecting Google so you do not lose access to your account.',
+      } as AuthError;
+      set({ error: lockoutError.message });
+      return { error: lockoutError };
+    }
+
+    const targetIdentity = identities.find((id) => id.provider === provider);
+    if (!targetIdentity) {
+      const missingError = {
+        message: `No linked ${provider} account found.`,
+      } as AuthError;
+      set({ error: missingError.message });
+      return { error: missingError };
+    }
+
+    const { error } = await supabase.auth.unlinkIdentity(targetIdentity);
+    if (error) {
+      set({ error: error.message });
+      return { error };
+    }
+
+    const remainingIdentities = identities.filter((id) => id.provider !== provider);
+    const remainingProviders = providers.filter((p) => p !== provider);
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            identities: remainingIdentities,
+            app_metadata: {
+              ...state.user.app_metadata,
+              providers: remainingProviders,
+            },
+          }
+        : null,
+    }));
+
+    if (typeof supabase.auth.getUser === 'function') {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          set({ user: data.user });
+        }
+      } catch {
+        // Non-blocking refresh
+      }
+    }
+
     return { error: null };
   },
 
@@ -618,14 +776,35 @@ export const useAuthStore = create<AuthState>()(
       }
     }
 
-    const { error } = await supabase.auth.updateUser({
+    const { data, error } = await supabase.auth.updateUser({
       password: newPassword,
     });
     if (error) {
       set({ error: error.message });
       return { error };
     }
-    set({ isPasswordRecovery: false });
+    set((state) => {
+      const baseUser = data?.user ?? state.user;
+      if (!baseUser) {
+        return { isPasswordRecovery: false };
+      }
+      const existingProviders = Array.isArray(baseUser.app_metadata?.providers)
+        ? (baseUser.app_metadata.providers as string[])
+        : [];
+      const updatedProviders = existingProviders.includes('email')
+        ? existingProviders
+        : [...existingProviders, 'email'];
+      return {
+        isPasswordRecovery: false,
+        user: {
+          ...baseUser,
+          app_metadata: {
+            ...baseUser.app_metadata,
+            providers: updatedProviders,
+          },
+        },
+      };
+    });
     return { error: null };
   },
 

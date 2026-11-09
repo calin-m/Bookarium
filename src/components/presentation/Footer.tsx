@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Heart, ExternalLink, BookOpen } from 'lucide-react';
+import { ShieldCheck, Heart, ExternalLink } from 'lucide-react';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 import { SITE_CONFIG } from '@/config/site-config';
 import { ROUTES } from '@/config/routes';
 
@@ -19,8 +20,12 @@ export const Footer: React.FC = () => {
               className="inline-flex items-center gap-2 group hover:opacity-90 transition-opacity"
               aria-label="Bookarium GitHub repository"
             >
-              <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-primary-foreground group-hover:scale-105 transition-transform">
-                <BookOpen className="w-3.5 h-3.5" />
+              <div className="w-7 h-7 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <BrandLogo
+                  idPrefix="footer"
+                  className="w-7 h-7"
+                  testId="brand-monogram-icon"
+                />
               </div>
               <span className="text-xl font-serif font-bold text-foreground group-hover:text-primary transition-colors">
                 {SITE_CONFIG.LOGO_TEXT}

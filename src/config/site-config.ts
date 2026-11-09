@@ -41,6 +41,13 @@ export function buildDescriptiveUserAgent(
   return `${appName}/${version} (${contactPart})`;
 }
 
+export function resolveGoogleSiteVerification(
+  rawToken = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+): { google: string } | undefined {
+  const trimmed = rawToken?.trim();
+  return trimmed ? { google: trimmed } : undefined;
+}
+
 export const SITE_CONFIG = {
   NAME: 'Bookarium',
   LOGO_TEXT: 'BOOKARIUM',

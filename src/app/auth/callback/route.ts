@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { STORAGE_KEYS } from '@/config/site-config';
 import {
   sanitizeRedirectPath,
   resolveCanonicalAuthOrigin,
@@ -42,11 +43,21 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get('token_hash');
   const otpType = searchParams.get('type');
   const upstreamError = searchParams.get('error');
+  const upstreamErrorCode = (searchParams.get('error_code') || '').toLowerCase();
   const next = sanitizeRedirectPath(searchParams.get('next'));
 
   if (upstreamError) {
+    const isOtpError =
+      upstreamErrorCode.startsWith('otp_') ||
+      Boolean(tokenHash) ||
+      Boolean(otpType);
+    if (isOtpError) {
+      return NextResponse.redirect(
+        new URL('/?auth_error=verification_failed', targetOrigin)
+      );
+    }
     return NextResponse.redirect(
-      new URL('/?auth_error=verification_failed', targetOrigin)
+      new URL('/?auth_error=oauth_failed', targetOrigin)
     );
   }
 
@@ -57,7 +68,13 @@ export async function GET(request: Request) {
       type: otpType,
     });
     if (!error) {
-      return NextResponse.redirect(new URL(next, targetOrigin));
+      const response = NextResponse.redirect(new URL(next, targetOrigin));
+      response.cookies.set(STORAGE_KEYS.AUTH_HINT, 'authenticated', {
+        path: '/',
+        maxAge: 2592000,
+        sameSite: 'lax',
+      });
+      return response;
     }
   }
 
@@ -65,7 +82,13 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(new URL(next, targetOrigin));
+      const response = NextResponse.redirect(new URL(next, targetOrigin));
+      response.cookies.set(STORAGE_KEYS.AUTH_HINT, 'authenticated', {
+        path: '/',
+        maxAge: 2592000,
+        sameSite: 'lax',
+      });
+      return response;
     }
 
     // When a user signs up on one device/browser and clicks the confirmation email on another
