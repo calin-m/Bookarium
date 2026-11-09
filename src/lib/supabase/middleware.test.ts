@@ -62,16 +62,24 @@ describe('src/lib/supabase/middleware', () => {
       expect(Array.isArray(capturedCookies!.getAll())).toBe(true);
 
       capturedCookies!.setAll([
-        { name: 'sb-access-token', value: 'jwt-123', options: { path: '/' } },
+        { name: 'sb-project-auth-token.0', value: 'jwt-chunk-0', options: { path: '/' } },
+        { name: 'sb-project-auth-token.1', value: '', options: { path: '/', maxAge: 0 } },
       ]);
-      expect(req.cookies.get('sb-access-token')?.value).toBe('jwt-123');
+      expect(req.cookies.get('sb-project-auth-token.0')?.value).toBe('jwt-chunk-0');
+
+      // When all cookie values are empty (failed/raced server refresh), setAll must ignore the deletion
+      capturedCookies!.setAll([
+        { name: 'sb-project-auth-token.0', value: '', options: { path: '/', maxAge: 0 } },
+        { name: 'sb-project-auth-token.1', value: '', options: { path: '/', maxAge: 0 } },
+      ]);
+      expect(req.cookies.get('sb-project-auth-token.0')?.value).toBe('jwt-chunk-0');
     } finally {
       process.env.NEXT_PUBLIC_SUPABASE_URL = origUrl;
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = origKey;
     }
   });
 
-  it('bypasses Supabase client creation and auth.getUser for anonymous requests without sb-* cookies', async () => {
+  it('bypasses Supabase client creation for anonymous requests or PKCE code-verifier-only cookies', async () => {
     const origUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const origKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://project.supabase.co';
@@ -79,7 +87,10 @@ describe('src/lib/supabase/middleware', () => {
 
     try {
       const req = new NextRequest('https://bookarium.app/catalog', {
-        headers: { cookie: 'bookarium-geo-country=US' },
+        headers: {
+          cookie:
+            'bookarium-geo-country=US; sb-project-auth-token-code-verifier=pkce-verifier-123',
+        },
       });
       const res = await updateSession(req);
 

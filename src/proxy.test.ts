@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
-import { proxy, config, GEO_COOKIE_NAME } from './proxy';
+import { proxy, config, GEO_COOKIE_NAME, shouldSkipSessionRefresh } from './proxy';
 import * as supabaseMiddleware from '@/lib/supabase/middleware';
 
 describe('Root Proxy (Next.js 16)', () => {
@@ -127,6 +127,46 @@ describe('Root Proxy (Next.js 16)', () => {
     const invalidReq = new NextRequest('https://bookarium.vercel.app/read/1342?s=bad!');
     const invalidRes = await proxy(invalidReq);
     expect(invalidRes.headers.get('x-bookarium-share-token')).toBeNull();
+  });
+
+  it('skips updateSession for auth callback routes, service worker precache, and background link prefetches', async () => {
+    const updateSessionSpy = vi.spyOn(supabaseMiddleware, 'updateSession');
+    updateSessionSpy.mockClear();
+
+    const authCallbackReq = new NextRequest('https://bookarium.vercel.app/auth/callback?code=pkce123');
+    expect(shouldSkipSessionRefresh(authCallbackReq)).toBe(true);
+    await proxy(authCallbackReq);
+
+    const swScriptReq = new NextRequest('https://bookarium.vercel.app/sw.js');
+    expect(shouldSkipSessionRefresh(swScriptReq)).toBe(true);
+
+    const manifestReq = new NextRequest('https://bookarium.vercel.app/manifest.webmanifest');
+    expect(shouldSkipSessionRefresh(manifestReq)).toBe(true);
+
+    const prefetchReq = new NextRequest('https://bookarium.vercel.app/account', {
+      headers: { purpose: 'prefetch' },
+    });
+    expect(shouldSkipSessionRefresh(prefetchReq)).toBe(true);
+    await proxy(prefetchReq);
+
+    const secPrefetchReq = new NextRequest('https://bookarium.vercel.app/account', {
+      headers: { 'sec-purpose': 'prefetch;prerender' },
+    });
+    expect(shouldSkipSessionRefresh(secPrefetchReq)).toBe(true);
+
+    const routerPrefetchReq = new NextRequest('https://bookarium.vercel.app/privacy', {
+      headers: { 'next-router-prefetch': '1' },
+    });
+    expect(shouldSkipSessionRefresh(routerPrefetchReq)).toBe(true);
+
+    const swPrecacheReq = new NextRequest('https://bookarium.vercel.app/account', {
+      headers: { 'x-bookarium-sw-precache': '1' },
+    });
+    expect(shouldSkipSessionRefresh(swPrecacheReq)).toBe(true);
+    const swRes = await proxy(swPrecacheReq);
+    expect(swRes.cookies.get(GEO_COOKIE_NAME)).toBeUndefined();
+
+    expect(updateSessionSpy).not.toHaveBeenCalled();
   });
 });
 

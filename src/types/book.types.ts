@@ -76,7 +76,7 @@ export interface Book {
   downloadCount: number;
 }
 
-export type LedgerFilter = 'all' | 'in_progress' | 'completed' | 'on_hold';
+export type LedgerFilter = 'all' | 'in_progress' | 'completed' | 'on_hold' | 'downloaded';
 export type LedgerItemStatus = 'in_progress' | 'completed' | 'on_hold';
 
 /**

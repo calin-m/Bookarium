@@ -89,6 +89,21 @@ describe('LiteraryQuotes component', () => {
     expect(quoteCard).toHaveClass('p-5', 'sm:p-8');
   });
 
+  it('displays a single quote card on mobile while preserving multi-card on tablet/desktop, and aligns Discover More on a single row', () => {
+    const { container } = render(<LiteraryQuotes />);
+    const quoteCards = container.querySelectorAll('[data-testid^="quote-card-"]');
+    expect(quoteCards).toHaveLength(3);
+
+    // Card 0 is visible on mobile (flex); cards 1 and 2 are hidden on mobile (<sm) and flex on tablet/desktop (sm:flex)
+    expect(quoteCards[0]).toHaveClass('flex');
+    expect(quoteCards[0]).not.toHaveClass('hidden');
+    expect(quoteCards[1]).toHaveClass('hidden', 'sm:flex');
+    expect(quoteCards[2]).toHaveClass('hidden', 'sm:flex');
+
+    const discoverBtn = screen.getByLabelText(/Discover more literary quotes/i);
+    expect(discoverBtn).toHaveClass('shrink-0', 'whitespace-nowrap');
+  });
+
   it('handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes', async () => {
     const { vi } = await import('vitest');
     const { act } = await import('@testing-library/react');

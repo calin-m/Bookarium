@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { BookOpen, CheckCircle2, PauseCircle, Clock, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
+import { BookOpen, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import {
@@ -80,9 +80,6 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
   }, [book.id, isOffline, offlineCoverUrl]);
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<CollectionRemovalType | null>(null);
-  const [isStatusTruncated, setIsStatusTruncated] = useState(false);
-  const [showStatusIndicator, setShowStatusIndicator] = useState(false);
-  const statusLabelRef = useRef<HTMLSpanElement | null>(null);
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
@@ -105,66 +102,32 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 
   const statusBadges: Record<
     LedgerItemStatus,
-    { label: string; className: string; selectBorderClass: string; icon: React.ReactNode }
+    { label: string; className: string; selectBorderClass: string }
   > = {
     in_progress: {
       label: 'In Progress',
       className: 'bg-primary/10 text-primary border-border',
       selectBorderClass: 'border-primary/40 focus:ring-primary',
-      icon: <Clock className="w-3 h-3 shrink-0" />,
     },
     completed: {
       label: 'Completed',
       className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sepia:text-emerald-400 border-emerald-500/30',
       selectBorderClass: 'border-emerald-500/40 focus:ring-emerald-500',
-      icon: <CheckCircle2 className="w-3 h-3 shrink-0" />,
     },
     on_hold: {
       label: 'On Hold',
       className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border-amber-500/30',
       selectBorderClass: 'border-amber-500/40 focus:ring-amber-500',
-      icon: <PauseCircle className="w-3 h-3 shrink-0" />,
     },
   };
 
   const currentBadge = statusBadges[status] || statusBadges.in_progress;
 
-  const checkStatusTruncation = useCallback(() => {
-    const el = statusLabelRef.current;
-    if (!el) return;
-    const truncated = el.scrollWidth > el.clientWidth;
-    setIsStatusTruncated(truncated);
-    if (!truncated) {
-      setShowStatusIndicator(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkStatusTruncation();
-    const el = statusLabelRef.current;
-    let observer: ResizeObserver | null = null;
-    if (el && typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(() => checkStatusTruncation());
-      observer.observe(el);
-    }
-    window.addEventListener('resize', checkStatusTruncation, { passive: true });
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', checkStatusTruncation);
-    };
-  }, [checkStatusTruncation, currentBadge.label, isRestricted, isUnavailableOffline]);
-
-  useEffect(() => {
-    if (!showStatusIndicator) return;
-    const timer = setTimeout(() => setShowStatusIndicator(false), 2000);
-    return () => clearTimeout(timer);
-  }, [showStatusIndicator]);
-
   return (
     <article
       onClick={() => onActivate?.(book.id)}
       onMouseLeave={() => {
-        if (typeof window === 'undefined' || window.innerWidth >= 768) {
+        if (typeof window === 'undefined' || window.innerWidth >= 1024) {
           onDeactivate?.(book.id);
         }
       }}
@@ -258,59 +221,10 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               <div className="relative flex items-center gap-1.5 flex-wrap min-w-0">
                 <span
                   data-testid="bookmark-card-status-badge"
-                  role={isStatusTruncated ? 'button' : undefined}
-                  tabIndex={isStatusTruncated ? 0 : undefined}
-                  title={isStatusTruncated ? currentBadge.label : undefined}
-                  onClick={(e) => {
-                    const el = statusLabelRef.current;
-                    const truncated = Boolean(el && el.scrollWidth > el.clientWidth) || isStatusTruncated;
-                    if (truncated) {
-                      e.stopPropagation();
-                      setIsStatusTruncated(true);
-                      setShowStatusIndicator((prev) => !prev);
-                    }
-                  }}
-                  onPointerEnter={() => {
-                    const el = statusLabelRef.current;
-                    const truncated = Boolean(el && el.scrollWidth > el.clientWidth) || isStatusTruncated;
-                    if (truncated) {
-                      setIsStatusTruncated(true);
-                      setShowStatusIndicator(true);
-                    }
-                  }}
-                  onPointerLeave={() => {
-                    if (isStatusTruncated) {
-                      setShowStatusIndicator(false);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    const el = statusLabelRef.current;
-                    const truncated = Boolean(el && el.scrollWidth > el.clientWidth) || isStatusTruncated;
-                    if (truncated && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsStatusTruncated(true);
-                      setShowStatusIndicator((prev) => !prev);
-                    }
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold border whitespace-nowrap min-w-0 max-w-full ${currentBadge.className} ${
-                    isStatusTruncated ? 'cursor-pointer' : ''
-                  }`}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold border whitespace-nowrap ${currentBadge.className}`}
                 >
-                  {currentBadge.icon}
-                  <span ref={statusLabelRef} className="truncate">
-                    {currentBadge.label}
-                  </span>
+                  {currentBadge.label}
                 </span>
-                {isStatusTruncated && showStatusIndicator && (
-                  <span
-                    role="status"
-                    data-testid="bookmark-card-status-indicator"
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wider font-semibold border shadow-xs whitespace-nowrap ${currentBadge.className}`}
-                  >
-                    {currentBadge.label}
-                  </span>
-                )}
                 {isRestricted ? (
                   <span
                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 sepia:text-amber-400 border border-amber-500/30 whitespace-nowrap"

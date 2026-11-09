@@ -17,6 +17,40 @@ export function syncAuthCookieHint(isAuthenticated: boolean): void {
   }
 }
 
+const DEFINITIVE_AUTH_ERROR_CODES = new Set([
+  'session_not_found',
+  'user_not_found',
+  'user_banned',
+  'refresh_token_not_found',
+  'refresh_token_already_used',
+  'session_expired',
+  'invalid_jwt',
+  'bad_jwt',
+]);
+
+/**
+ * Distinguishes definitive server-side session/token rejection errors from
+ * transient network, timeout, or navigation-abort errors during page reloads.
+ */
+export function isDefinitiveAuthInvalidError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { status?: unknown; code?: unknown; name?: unknown };
+  if (
+    candidate.status === 400 ||
+    candidate.status === 401 ||
+    candidate.status === 403
+  ) {
+    return true;
+  }
+  if (typeof candidate.code === 'string' && DEFINITIVE_AUTH_ERROR_CODES.has(candidate.code)) {
+    return true;
+  }
+  if (candidate.name === 'AuthSessionMissingError') {
+    return true;
+  }
+  return false;
+}
+
 export type AuthModalView = 'sign_in' | 'sign_up' | 'magic_link' | 'forgot_password';
 
 export interface UsernameValidationResult {
@@ -228,10 +262,12 @@ export const useAuthStore = create<AuthState>()(
     // Check active session on initialization (short-circuiting network getUser when anonymous)
     const checkInitialUser = async () => {
       try {
+        let sessionUser: User | null = null;
         if (typeof supabase.auth.getSession === 'function') {
           const { data: sessionData } = await supabase.auth.getSession();
+          sessionUser = sessionData?.session?.user ?? null;
           const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-          if (!sessionData?.session?.user && (!get().user || !isOffline)) {
+          if (!sessionUser && (!get().user || !isOffline)) {
             await cleanPreviousUserStoresIfSwitched(null);
             syncAuthCookieHint(false);
             set({ user: null, profile: null, isLoading: false });
@@ -251,14 +287,23 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           return;
         }
-        await cleanPreviousUserStoresIfSwitched(user ?? null);
+        const resolvedUser =
+          user ??
+          (error && !isDefinitiveAuthInvalidError(error)
+            ? (sessionUser ?? get().user)
+            : null);
+        await cleanPreviousUserStoresIfSwitched(resolvedUser);
         set((state) => ({
-          user: user ?? null,
-          profile: user ? (state.profile?.id === user.id ? state.profile : null) : null,
+          user: resolvedUser,
+          profile: resolvedUser
+            ? state.profile?.id === resolvedUser.id
+              ? state.profile
+              : null
+            : null,
           isLoading: false,
         }));
-        syncAuthCookieHint(Boolean(user));
-        if (user) {
+        syncAuthCookieHint(Boolean(resolvedUser));
+        if (resolvedUser) {
           get().fetchProfile();
         }
       } catch {
@@ -283,6 +328,12 @@ export const useAuthStore = create<AuthState>()(
         get().user
       ) {
         set({ isLoading: false });
+        return;
+      }
+      // Let checkInitialUser() authoritatively resolve the initial session state when online;
+      // GoTrueClient._emitInitialSession can emit ('INITIAL_SESSION', null) on transient
+      // network/reload aborts even when a valid session exists in cookies.
+      if (event === 'INITIAL_SESSION' && !session) {
         return;
       }
       const user = session?.user ?? null;

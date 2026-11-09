@@ -228,7 +228,7 @@ describe('BookmarkCard', () => {
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toHaveAttribute('aria-valuenow', '1');
 
-    const badge = screen.getByText('In Progress').parentElement;
+    const badge = screen.getByTestId('bookmark-card-status-badge');
     expect(badge).toHaveClass('rounded-full', 'border-border');
   });
 
@@ -635,59 +635,16 @@ describe('BookmarkCard', () => {
     );
   });
 
-  it('keeps the status pill single-line and only displays the floating status indicator on tap/hover when the label is truncated', () => {
-    vi.useFakeTimers();
+  it('renders the compact text-only status pill without icons or truncation popovers', () => {
     const handleActivate = vi.fn();
 
     render(<BookmarkCard volume={mockVolume} onActivate={handleActivate} />);
 
     const badge = screen.getByTestId('bookmark-card-status-badge');
-    expect(badge).toHaveClass('whitespace-nowrap', 'min-w-0', 'max-w-full');
-
-    const labelSpan = within(badge).getByText('In Progress');
-    expect(labelSpan).toHaveClass('truncate');
-
-    // When not truncated (scrollWidth <= clientWidth), clicking does not show the floating indicator
-    Object.defineProperty(labelSpan, 'scrollWidth', { configurable: true, value: 70 });
-    Object.defineProperty(labelSpan, 'clientWidth', { configurable: true, value: 70 });
-    fireEvent(window, new Event('resize'));
-
-    fireEvent.click(badge);
+    expect(badge).toHaveClass('whitespace-nowrap', 'text-[10px]', 'px-2', 'py-0.5', 'rounded-full');
+    expect(badge).toHaveTextContent('In Progress');
+    expect(badge.querySelector('svg')).toBeNull();
     expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
-    handleActivate.mockClear();
-
-    // Simulate 1080p narrow viewport truncation (scrollWidth > clientWidth)
-    Object.defineProperty(labelSpan, 'scrollWidth', { configurable: true, value: 114 });
-    Object.defineProperty(labelSpan, 'clientWidth', { configurable: true, value: 64 });
-    fireEvent(window, new Event('resize'));
-
-    expect(badge).toHaveAttribute('role', 'button');
-
-    // Tap to reveal indicator without activating card
-    fireEvent.click(badge);
-    expect(handleActivate).not.toHaveBeenCalled();
-    const indicator = screen.getByTestId('bookmark-card-status-indicator');
-    expect(indicator).toBeInTheDocument();
-    expect(indicator).toHaveTextContent('In Progress');
-
-    // Auto-dismisses after 2000ms
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-    expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
-
-    // Pointer hover enter & leave when truncated
-    fireEvent.pointerEnter(badge);
-    expect(screen.getByTestId('bookmark-card-status-indicator')).toBeInTheDocument();
-    fireEvent.pointerLeave(badge);
-    expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
-
-    // Keyboard Enter/Space on truncated badge toggles indicator without activating card
-    fireEvent.keyDown(badge, { key: 'Enter' });
-    expect(screen.getByTestId('bookmark-card-status-indicator')).toBeInTheDocument();
-    expect(handleActivate).not.toHaveBeenCalled();
-
-    vi.useRealTimers();
   });
 });
 

@@ -51,6 +51,7 @@ export interface UseContinueReadingLedgerReturn {
     in_progress: number;
     completed: number;
     on_hold: number;
+    downloaded: number;
   };
   isLoading: boolean;
   isBookOffline: (bookId: number) => boolean;
@@ -441,11 +442,13 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
     let inProgress = 0;
     let completed = 0;
     let onHold = 0;
+    let downloaded = 0;
 
     volumes.forEach((vol) => {
       if (vol.status === 'in_progress') inProgress++;
       else if (vol.status === 'completed') completed++;
       else if (vol.status === 'on_hold') onHold++;
+      if (isBookOffline(vol.book.id)) downloaded++;
     });
 
     return {
@@ -453,12 +456,15 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       in_progress: inProgress,
       completed,
       on_hold: onHold,
+      downloaded,
     };
-  }, [volumes]);
+  }, [volumes, isBookOffline]);
 
   const filteredVolumes = useMemo(() => {
     let result = volumes;
-    if (activeFilter !== 'all') {
+    if (activeFilter === 'downloaded') {
+      result = result.filter((vol) => isBookOffline(vol.book.id));
+    } else if (activeFilter !== 'all') {
       result = result.filter((vol) => vol.status === activeFilter);
     }
     const cleanQuery = searchQuery.trim().toLowerCase();

@@ -67,6 +67,8 @@ export interface NotebookQuoteCardProps {
   isRestricted?: boolean;
   isUnavailableOffline?: boolean;
   jurisdictionCountry?: string;
+  isActive?: boolean;
+  onActivate?: (id: string) => void;
   isEditing?: boolean;
   onStartEdit?: (ann: Annotation) => void;
   onCancelEdit?: () => void;
@@ -100,6 +102,8 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   isRestricted = false,
   isUnavailableOffline = false,
   jurisdictionCountry,
+  isActive = false,
+  onActivate,
   isEditing = false,
   onStartEdit,
   onCancelEdit,
@@ -186,8 +190,13 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   return (
     <article
       data-testid={`notebook-quote-card-${ann.id}`}
-      className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-border bg-card shadow-booksaw hover:shadow-booksaw-hover hover:border-primary/40 transition-all border-l-4 ${
-        isFellow ? 'border-l-amber-600' : colorStyle.border
+      data-notebook-quote-id={ann.id}
+      data-active={isActive ? 'true' : 'false'}
+      onClick={() => onActivate?.(ann.id)}
+      className={`relative flex flex-col justify-between p-4 sm:p-5 rounded-xl border transition-all duration-300 border-l-4 ${
+        isActive
+          ? 'border-primary/40 shadow-booksaw-hover bg-card'
+          : `${isFellow ? 'border-l-amber-600' : colorStyle.border} border-border bg-card shadow-booksaw hover:shadow-booksaw-hover hover:border-primary/40`
       }`}
     >
       <div className="space-y-3">

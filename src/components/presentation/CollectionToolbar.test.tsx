@@ -106,8 +106,8 @@ describe('CollectionToolbar', () => {
     expect(select).toHaveValue('recent');
 
     const dropdown = screen.getByTestId('collection-sort-dropdown');
-    expect(dropdown).toHaveClass('flex-1', 'min-w-[105px]', 'max-w-[155px]', 'sm:flex-none', 'sm:min-w-[145px]', 'sm:max-w-[195px]');
-    expect(dropdown.parentElement).toHaveClass('flex-1', 'min-w-0', 'sm:flex-none');
+    expect(dropdown).toHaveClass('min-w-[125px]', 'max-w-[170px]', 'sm:max-w-[195px]');
+    expect(dropdown.parentElement).toHaveClass('w-auto', 'shrink-0', 'min-w-0');
 
     fireEvent.change(select, { target: { value: 'title_asc' } });
     expect(onSortChange).toHaveBeenCalledWith('title_asc');
@@ -162,5 +162,108 @@ describe('CollectionToolbar', () => {
 
     expect(screen.getByTestId('collection-item-count')).toHaveTextContent('18 volumes');
     expect(screen.getByTestId('custom-mode-toggle')).toBeInTheDocument();
+  });
+
+  it('renders status filter dropdown and handles value changes when filterOptions provided', () => {
+    const onFilterChange = vi.fn();
+    const filterOptions: SortOption[] = [
+      { value: 'all', label: 'All Volumes (10)' },
+      { value: 'in_progress', label: 'In Progress (3)' },
+      { value: 'completed', label: 'Completed (5)' },
+    ];
+
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        filterValue="all"
+        onFilterChange={onFilterChange}
+        filterOptions={filterOptions}
+        filterAriaLabel="Filter collection status"
+      />
+    );
+
+    expect(screen.getByTestId('collection-filter-dropdown')).toBeInTheDocument();
+    const select = screen.getByRole('combobox', { name: 'Filter collection status' });
+    expect(select).toBeInTheDocument();
+    expect(select).toHaveValue('all');
+    expect(select).toHaveClass('pl-2.5', 'sm:pl-3');
+
+    fireEvent.change(select, { target: { value: 'in_progress' } });
+    expect(onFilterChange).toHaveBeenCalledWith('in_progress');
+  });
+
+  it('passes sort direction props down to sort dropdown', () => {
+    const onDirectionToggle = vi.fn();
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        sortValue="title"
+        onSortChange={vi.fn()}
+        sortOptions={sortOptions}
+        sortDirection="asc"
+        onDirectionToggle={onDirectionToggle}
+        directionAriaLabel="Sort Ascending"
+      />
+    );
+
+    const dirBtn = screen.getByTestId('collection-sort-direction-btn');
+    expect(dirBtn).toBeInTheDocument();
+    expect(dirBtn).toHaveAttribute('aria-label', 'Sort Ascending');
+
+    fireEvent.click(dirBtn);
+    expect(onDirectionToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies adaptive single-row layout (sm:flex-row) when only one control is present (Bookshelf/Favorites Option A)', () => {
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        sortValue="recent"
+        onSortChange={vi.fn()}
+        sortOptions={sortOptions}
+      />
+    );
+
+    const toolbar = screen.getByTestId('collection-toolbar');
+    expect(toolbar).toHaveClass('sm:flex-row', 'sm:items-center');
+  });
+
+  it('applies two-handed tactile layout (justify-between md:justify-end) and md:flex-row when multiple controls are present (Bookmarks/Notebook)', () => {
+    const filterOptions: SortOption[] = [
+      { value: 'all', label: 'All Volumes (10)' },
+      { value: 'in_progress', label: 'In Progress (3)' },
+    ];
+
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        filterValue="all"
+        onFilterChange={vi.fn()}
+        filterOptions={filterOptions}
+        sortValue="title"
+        onSortChange={vi.fn()}
+        sortOptions={sortOptions}
+        sortDirection="asc"
+        onDirectionToggle={vi.fn()}
+      />
+    );
+
+    const toolbar = screen.getByTestId('collection-toolbar');
+    expect(toolbar).toHaveClass('md:flex-row', 'md:items-center');
+
+    const filterDropdown = screen.getByTestId('collection-filter-dropdown');
+    const sortDropdown = screen.getByTestId('collection-sort-dropdown');
+
+    // Left group sits in a justify-start wrapper, Right group sits in a justify-end wrapper
+    expect(filterDropdown.parentElement).toHaveClass('justify-start');
+    expect(sortDropdown.parentElement).toHaveClass('justify-end');
+
+    // Row 2 utility container uses justify-between on narrow/stacked viewports and md:justify-end on desktop
+    const utilityRow = filterDropdown.parentElement?.parentElement;
+    expect(utilityRow).toHaveClass('justify-between', 'md:justify-end');
   });
 });

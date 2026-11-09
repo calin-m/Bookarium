@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/types/database.types';
 import { sanitizeSupabaseUrl } from './client';
 
+export const SUPABASE_AUTH_COOKIE_PATTERN = /^sb-.*-auth-token(\.\d+)?$/;
+
 export const updateSession = async (request: NextRequest) => {
   let supabaseResponse = NextResponse.next({
     request,
@@ -17,7 +19,7 @@ export const updateSession = async (request: NextRequest) => {
 
   const hasAuthCookie = request.cookies
     .getAll()
-    .some((cookie) => cookie.name.startsWith('sb-'));
+    .some((cookie) => SUPABASE_AUTH_COOKIE_PATTERN.test(cookie.name));
   if (!hasAuthCookie) {
     return supabaseResponse;
   }
@@ -30,6 +32,13 @@ export const updateSession = async (request: NextRequest) => {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
+        // Prevent a failed/raced server-side token refresh from emitting Max-Age=0
+        // cookie deletions that wipe a valid session rotated by a concurrent request.
+        // Explicit sign-outs execute client-side via createBrowserClient.
+        const hasNonEmptyCookieValue = cookiesToSet.some(({ value }) => Boolean(value));
+        if (!hasNonEmptyCookieValue) {
+          return;
+        }
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         supabaseResponse = NextResponse.next({
           request,

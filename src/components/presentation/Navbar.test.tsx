@@ -273,10 +273,17 @@ describe('Navbar component', () => {
     expect(header).toHaveClass('pointer-events-none');
   });
 
-  it('applies translate-y-0 and z-40 stacking context when isVisible is true so popovers stack above z-30 toolbars', () => {
+  it('applies translate-y-0, transition-transform kinematics, and z-40 stacking context when isVisible is true so popovers stack above z-30 toolbars', () => {
     const { container } = render(<Navbar activeView="catalog" isVisible={true} />);
     const header = container.querySelector('header');
-    expect(header).toHaveClass('translate-y-0', 'z-40');
+    expect(header).toHaveClass('translate-y-0', 'z-40', 'shadow-md', 'transition-transform', 'duration-300', 'ease-in-out');
+    expect(header).not.toHaveClass('sm:shadow-none');
+  });
+
+  it('suppresses desktop drop shadow via sm:shadow-none when hasShadow is false while retaining z-40 and mobile shadow-md', () => {
+    const { container } = render(<Navbar activeView="catalog" isVisible={true} hasShadow={false} />);
+    const header = container.querySelector('header');
+    expect(header).toHaveClass('z-40', 'sm:shadow-none', 'shadow-md');
   });
 
   it('renders active account button styling when activeView is account', async () => {
@@ -724,7 +731,7 @@ describe('Navbar component', () => {
       fireEvent.mouseEnter(wrapper);
       expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
       expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-      expect(screen.getByText('Scholar Account')).toBeInTheDocument();
+      expect(screen.queryByText('Scholar Account')).not.toBeInTheDocument();
       expect(screen.queryByText('scholar@bookarium.test')).not.toBeInTheDocument();
 
       // Mouse leave schedules 150ms close timer, re-entering cancels it
@@ -755,7 +762,7 @@ describe('Navbar component', () => {
       vi.useRealTimers();
     });
 
-    it('suppresses the hover quick-menu on touch pointer events so mobile taps navigate directly', async () => {
+    it('toggles the hover quick-menu on touch pointer events and closes on outside tap', async () => {
       const { useAuthStore } = await import('@/stores/useAuthStore');
       useAuthStore.setState({
         user: { id: 'u1', email: 'scholar@bookarium.test' } as unknown as ReturnType<
@@ -770,8 +777,24 @@ describe('Navbar component', () => {
       const userLink = screen.getByLabelText('User Account');
       const wrapper = userLink.parentElement!;
 
+      // Initial touch tap on Account button toggles the quick-menu open
       fireEvent.touchStart(wrapper);
-      fireEvent.mouseEnter(wrapper);
+      fireEvent.click(userLink);
+      expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.queryByText('@')).not.toBeInTheDocument();
+
+      // Outside tap closes the menu
+      fireEvent.pointerDown(document.body);
+      expect(screen.queryByTestId('navbar-account-hover-menu')).not.toBeInTheDocument();
+
+      // Second touch tap toggles it open again, tapping Account Sanctuary closes menu
+      fireEvent.touchStart(wrapper);
+      fireEvent.click(userLink);
+      expect(screen.getByTestId('navbar-account-hover-menu')).toBeInTheDocument();
+
+      const sanctuaryLink = screen.getByText('Account Sanctuary');
+      fireEvent.click(sanctuaryLink);
       expect(screen.queryByTestId('navbar-account-hover-menu')).not.toBeInTheDocument();
 
       // Mouse pointerDown resets the touch suppression flag

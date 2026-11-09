@@ -4,20 +4,17 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bookmark,
-  Clock,
   CheckCircle2,
-  PauseCircle,
   Compass,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
-import { useContinueReadingLedger, type BookmarksSortOption } from '@/hooks/reader/useContinueReadingLedger';
+import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedger';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
 import { CollectionToolbar, type SortOption } from './CollectionToolbar';
 import { smartScrollToContent } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
-import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { Modal } from '@/components/ui/Modal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { Pagination } from '@/components/ui/Pagination';
@@ -29,15 +26,11 @@ export interface BookmarksViewProps {
   onBrowseCatalog?: () => void;
 }
 
-const BOOKMARK_SORT_OPTIONS: SortOption[] = [
+const BOOKMARK_SORT_FIELD_OPTIONS: SortOption[] = [
   { value: 'recent', label: 'Recently Read' },
-  { value: 'title_asc', label: 'Title (A → Z)' },
-  { value: 'title_desc', label: 'Title (Z → A)' },
-  { value: 'author_asc', label: 'Author (A → Z)' },
-  { value: 'author_desc', label: 'Author (Z → A)' },
-  { value: 'progress_desc', label: 'Progress (High → Low)' },
-  { value: 'progress_asc', label: 'Progress (Low → High)' },
-  { value: 'downloaded', label: 'Downloaded' },
+  { value: 'title', label: 'Title' },
+  { value: 'author', label: 'Author' },
+  { value: 'progress', label: 'Progress' },
 ];
 
 const BOOKMARKS_PAGE_SIZE = 12;
@@ -92,12 +85,12 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     return filteredVolumes.slice(start, start + BOOKMARKS_PAGE_SIZE);
   }, [filteredVolumes, safeCurrentPage]);
 
-  // Single-column mobile scroll focus zone (< 768px) and tactile dismissal
+  // Single-column mobile scroll focus zone (< 1024px) and tactile dismissal
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleScrollOrResize = () => {
-      if (window.innerWidth >= 768) return;
+      if (window.innerWidth >= 1024) return;
       const grid = document.getElementById('bookmarks-grid-content');
       if (!grid) return;
       const cardEls = Array.from(grid.querySelectorAll<HTMLElement>('[data-bookmark-card-id]'));
@@ -212,12 +205,74 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     router.push(ROUTES.READ(bookId));
   };
 
-  const filterTabs: Array<{ id: LedgerFilter; label: string; count: number; icon: React.ReactNode }> = [
-    { id: 'all', label: 'All Volumes', count: counts.all, icon: <Bookmark className="w-3.5 h-3.5" /> },
-    { id: 'in_progress', label: 'In Progress', count: counts.in_progress, icon: <Clock className="w-3.5 h-3.5" /> },
-    { id: 'completed', label: 'Completed', count: counts.completed, icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    { id: 'on_hold', label: 'On Hold', count: counts.on_hold, icon: <PauseCircle className="w-3.5 h-3.5" /> },
-  ];
+  const sortField = useMemo(() => {
+    if (sortBy.startsWith('title_')) return 'title';
+    if (sortBy.startsWith('author_')) return 'author';
+    if (sortBy.startsWith('progress_')) return 'progress';
+    return 'recent';
+  }, [sortBy]);
+
+  const sortDirection: 'asc' | 'desc' = useMemo(() => {
+    if (sortBy.endsWith('asc')) return 'asc';
+    return 'desc';
+  }, [sortBy]);
+
+  const isDirectionDisabled = sortField === 'recent';
+
+  const handleSortFieldChange = (newField: string) => {
+    if (newField === 'title') {
+      setSortBy('title_asc');
+    } else if (newField === 'author') {
+      setSortBy('author_asc');
+    } else if (newField === 'progress') {
+      setSortBy('progress_desc');
+    } else {
+      setSortBy('recent');
+    }
+  };
+
+  const handleDirectionToggle = () => {
+    if (sortField === 'title') {
+      setSortBy(sortBy === 'title_asc' ? 'title_desc' : 'title_asc');
+    } else if (sortField === 'author') {
+      setSortBy(sortBy === 'author_asc' ? 'author_desc' : 'author_asc');
+    } else if (sortField === 'progress') {
+      setSortBy(sortBy === 'progress_desc' ? 'progress_asc' : 'progress_desc');
+    }
+  };
+
+  const directionAriaLabel = useMemo(() => {
+    if (isDirectionDisabled) return 'Sorting direction is fixed for Recently Read';
+    if (sortField === 'title') {
+      return sortDirection === 'asc'
+        ? 'Title A to Z (click to sort Z to A)'
+        : 'Title Z to A (click to sort A to Z)';
+    }
+    if (sortField === 'author') {
+      return sortDirection === 'asc'
+        ? 'Author A to Z (click to sort Z to A)'
+        : 'Author Z to A (click to sort A to Z)';
+    }
+    if (sortField === 'progress') {
+      return sortDirection === 'desc'
+        ? 'Progress High to Low (click to sort Low to High)'
+        : 'Progress Low to High (click to sort High to Low)';
+    }
+    return sortDirection === 'asc'
+      ? 'Sort Ascending (click to sort Descending)'
+      : 'Sort Descending (click to sort Ascending)';
+  }, [isDirectionDisabled, sortField, sortDirection]);
+
+  const filterOptions: SortOption[] = useMemo(
+    () => [
+      { value: 'all', label: `All Volumes (${counts.all})` },
+      { value: 'in_progress', label: `In Progress (${counts.in_progress})` },
+      { value: 'completed', label: `Completed (${counts.completed})` },
+      { value: 'on_hold', label: `On Hold (${counts.on_hold})` },
+      { value: 'downloaded', label: `Downloaded (${counts.downloaded})` },
+    ],
+    [counts]
+  );
 
   return (
     <section
@@ -255,46 +310,23 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           searchPlaceholder="Search your reading bookmarks by title, author, or subject..."
           searchAriaLabel="Search bookmarks"
           clearAriaLabel="Clear bookmarks search"
-          totalCount={activeFilter === 'all' ? counts.all : counts[activeFilter]}
+          totalCount={counts[activeFilter] ?? counts.all}
           filteredCount={filteredVolumes.length}
-          sortValue={sortBy}
-          onSortChange={(newSort) => setSortBy(newSort as BookmarksSortOption)}
-          sortOptions={BOOKMARK_SORT_OPTIONS}
+          filterValue={activeFilter}
+          onFilterChange={(newFilter) => setActiveFilter(newFilter as LedgerFilter)}
+          filterOptions={filterOptions}
+          filterAriaLabel="Filter bookmarks by status"
+          sortValue={sortField}
+          onSortChange={handleSortFieldChange}
+          sortOptions={BOOKMARK_SORT_FIELD_OPTIONS}
           sortAriaLabel="Sort bookmarks"
-          currentPage={safeCurrentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          paginationAriaLabel="Top bookmarks pagination"
-          itemCountLabel={
-            filteredVolumes.length > 0
-              ? `${filteredVolumes.length} ${filteredVolumes.length === 1 ? 'volume' : 'volumes'}`
-              : undefined
-          }
+          sortDirection={sortDirection}
+          onDirectionToggle={handleDirectionToggle}
+          isDirectionDisabled={isDirectionDisabled}
+          directionAriaLabel={directionAriaLabel}
           className="mb-8"
         />
       )}
-
-      {/* Filter Navigation Tabs */}
-      <EditorialUnderlineTabs<LedgerFilter>
-        tabs={filterTabs.map((tab) => ({
-          id: tab.id,
-          label: tab.label,
-          icon: tab.icon,
-          count: tab.count,
-          ariaLabel: `${tab.label} (${tab.count} volumes)`,
-          title: `${tab.label} (${tab.count} volumes)`,
-          testId: `bookmarks-tab-${tab.id}`,
-        }))}
-        activeTab={activeFilter}
-        onSelectTab={setActiveFilter}
-        ariaLabel="Reading ledger filters"
-        wrapperClassName="flex items-center justify-center mb-8 border-b border-border"
-        navRole={null}
-        buttonRole={null}
-        selectionAttr="aria-pressed"
-        hideInactiveCountOnMobile
-        compactPadding
-      />
 
       {/* Main Ledger Content */}
       <div>
@@ -307,7 +339,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             <h3 className="font-serif font-bold text-xl text-foreground mb-2">
               {searchQuery.trim()
                 ? `No bookmarks matching "${searchQuery}"`
-                : sortBy === 'downloaded'
+                : activeFilter === 'downloaded' || sortBy === 'downloaded'
                 ? 'No downloaded volumes'
                 : activeFilter === 'all'
                 ? 'No active reading volumes yet'
@@ -317,7 +349,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             <p className="text-sm text-muted-foreground font-serif leading-relaxed mb-6">
               {searchQuery.trim()
                 ? 'Try adjusting your search terms, author name, or clear the search query.'
-                : sortBy === 'downloaded'
+                : activeFilter === 'downloaded' || sortBy === 'downloaded'
                 ? 'Volumes saved for offline reading will appear here.'
                 : 'Volumes you begin reading or place bookmarks in will appear in this ledger with exact coordinates, completion percentages, and one-click chapter resume.'}
             </p>
@@ -331,20 +363,23 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
               >
                 <span>Clear Search</span>
               </Button>
+            ) : activeFilter !== 'all' ? (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  setActiveFilter('all');
+                  if (sortBy === 'downloaded') setSortBy('recent');
+                }}
+                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
+              >
+                <span>View All Volumes</span>
+              </Button>
             ) : sortBy === 'downloaded' ? (
               <Button
                 variant="outline"
                 size="md"
                 onClick={() => setSortBy('recent')}
-                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
-              >
-                <span>View All Volumes</span>
-              </Button>
-            ) : activeFilter !== 'all' ? (
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => setActiveFilter('all')}
                 className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
               >
                 <span>View All Volumes</span>
@@ -363,7 +398,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           </div>
         ) : (
           <>
-            <div id="bookmarks-grid-content" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="bookmarks-grid-content" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {paginatedVolumes.map((vol) => (
                 <BookmarkCard
                   key={vol.book.id}

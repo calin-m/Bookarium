@@ -275,7 +275,7 @@ export const LiteraryQuotes: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
         {/* Section Heading & Interactive Shuffle Trigger */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 sm:pb-8 border-b border-border">
-          <div className="text-center sm:text-left space-y-2 max-w-2xl">
+          <div className="text-center sm:text-left space-y-2 max-w-2xl min-w-0 flex-1">
             <div className="inline-flex items-center gap-1.5 text-[11px] font-mono tracking-widest uppercase text-primary font-bold">
               <Sparkles className="w-3.5 h-3.5" />
               TIMELESS VOICES & PASSAGES
@@ -292,7 +292,7 @@ export const LiteraryQuotes: React.FC = () => {
             type="button"
             onClick={handleShuffle}
             disabled={!isPoolSettled}
-            className={`inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[38px] sm:min-h-[36px] rounded-lg border border-border bg-card text-foreground hover:text-primary hover:border-primary text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 ${
+            className={`shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[38px] sm:min-h-[36px] rounded-lg border border-border bg-card text-foreground hover:text-primary hover:border-primary text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-xs active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 ${
               isShuffling ? 'opacity-60 scale-95' : ''
             }`}
             aria-label="Discover more literary quotes"
@@ -302,7 +302,7 @@ export const LiteraryQuotes: React.FC = () => {
           </button>
         </div>
 
-        {/* Passages Grid: 1-Column Stack on Mobile & Tablet Portrait (<1024px), 3-Column on Desktop (>=1024px) */}
+        {/* Passages Grid: Single Card on Mobile (<640px), 3-Column on Desktop (>=1024px) */}
         <div
           data-testid="literary-quotes-grid"
           aria-busy={!isPoolSettled}
@@ -310,11 +310,13 @@ export const LiteraryQuotes: React.FC = () => {
             isPoolSettled ? 'animate-ink-appear' : 'opacity-0'
           }`}
         >
-          {displayedQuotes.map((item) => (
+          {displayedQuotes.map((item, index) => (
             <Link
               key={item.id}
               href={ROUTES.READ(item.bookId)}
-              className="group relative flex flex-col justify-between p-5 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer h-full"
+              className={`group relative flex-col justify-between p-5 sm:p-8 rounded-xl bg-card border border-border shadow-booksaw hover:shadow-booksaw-hover hover:-translate-y-1.5 transition-all duration-300 cursor-pointer h-full ${
+                index > 0 ? 'hidden sm:flex' : 'flex'
+              }`}
               data-testid={`quote-card-${item.id}`}
               aria-label={`Read ${item.bookTitle} by ${item.author}`}
             >

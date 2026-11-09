@@ -40,6 +40,7 @@ export interface StickyCatalogToolbarProps {
   onPageSizeChange?: (size: number) => void;
   isHeaderVisible?: boolean;
   isVisible?: boolean;
+  isDocked?: boolean;
   isMobileDockVisible?: boolean;
   mobileDockThreshold?: number;
   mobileDockIdleTimeoutMs?: number;
@@ -77,6 +78,7 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   onPageSizeChange,
   isHeaderVisible = true,
   isVisible = true,
+  isDocked = false,
   isMobileDockVisible,
   mobileDockThreshold = 300,
   mobileDockIdleTimeoutMs = 1400,
@@ -209,7 +211,9 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
     <>
       {/* Desktop / Tablet Sticky Sub-Header Toolbar */}
       <div
-        className={`hidden sm:block sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-30 w-full bg-background border-y border-border shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
+        className={`hidden sm:block sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-30 w-full bg-background ${
+          isDocked && isHeaderVisible ? 'border-b border-border' : 'border-y border-border'
+        } shadow-md transition-transform duration-300 ease-in-out py-2.5 px-4 sm:px-6 lg:px-8 ${
           !isVisible
             ? '-translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))] pointer-events-none'
             : isHeaderVisible

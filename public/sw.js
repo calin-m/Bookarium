@@ -4,7 +4,18 @@
  * and seamless fallback for saved IndexedDB book reading in offline mode.
  */
 
-const CACHE_NAME = 'bookarium-app-shell-v6';
+const CACHE_NAME = 'bookarium-app-shell-v7';
+
+const SW_PRECACHE_HEADERS = {
+  'x-bookarium-sw-precache': '1',
+};
+
+async function fetchPrecacheAsset(rawUrl) {
+  return fetch(rawUrl, {
+    credentials: 'same-origin',
+    headers: SW_PRECACHE_HEADERS,
+  });
+}
 
 const STATIC_PRECACHE = [
   '/',
@@ -56,7 +67,7 @@ async function warmStaticAssetsFromHtmlResponse(cache, response) {
       try {
         const existingAsset = await cache.match(assetUrl);
         if (!existingAsset) {
-          const assetResp = await fetch(assetUrl, { credentials: 'same-origin' });
+          const assetResp = await fetchPrecacheAsset(assetUrl);
           if (assetResp && assetResp.status === 200) {
             await cache.put(assetUrl, assetResp);
           }
@@ -75,13 +86,14 @@ self.addEventListener('install', (event) => {
     caches
       .open(CACHE_NAME)
       .then(async (cache) => {
-        try {
-          await cache.addAll(STATIC_PRECACHE);
-        } catch {
-          await Promise.allSettled(
-            STATIC_PRECACHE.map((url) => cache.add(url))
-          );
-        }
+        await Promise.allSettled(
+          STATIC_PRECACHE.map(async (rawUrl) => {
+            const response = await fetchPrecacheAsset(rawUrl);
+            if (response && response.status === 200) {
+              await cache.put(rawUrl, response);
+            }
+          })
+        );
         for (const htmlRoute of ['/', '/account', '/read/1342']) {
           const cachedHtml = await cache.match(htmlRoute, { ignoreSearch: true });
           if (cachedHtml) {
@@ -130,7 +142,7 @@ self.addEventListener('message', (event) => {
           try {
             const existing = await cache.match(rawUrl);
             if (!existing) {
-              const response = await fetch(rawUrl, { credentials: 'same-origin' });
+              const response = await fetchPrecacheAsset(rawUrl);
               if (response && response.status === 200) {
                 await cache.put(rawUrl, response.clone());
                 await warmStaticAssetsFromHtmlResponse(cache, response);
@@ -160,6 +172,11 @@ self.addEventListener('fetch', (event) => {
   // Ignore all cross-origin requests (e.g., Project Gutenberg covers, Supabase REST/Auth APIs, external CDNs)
   // Cross-origin <img> tags load directly via native browser pipeline and HTTP disk cache under CSP img-src
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Never intercept authentication handshake or redirect routes
+  if (url.pathname.startsWith('/auth/')) {
     return;
   }
 

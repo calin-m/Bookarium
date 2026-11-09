@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Highlighter,
@@ -102,6 +102,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
   const [reflectionToDelete, setReflectionToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+  const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
 
   // Reset page to 1 when filters, search query, mode, sorting, or marginalia source change
   const [prevFilterKey, setPrevFilterKey] = useState(
@@ -303,6 +304,89 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     }
   };
 
+  // Single-column mobile scroll focus zone (< 1024px) and tactile dismissal
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleScrollOrResize = () => {
+      if (window.innerWidth >= 1024) return;
+      const anchor = document.getElementById('notebook-content-anchor');
+      if (!anchor) return;
+      const cardEls = Array.from(anchor.querySelectorAll<HTMLElement>('[data-notebook-quote-id]'));
+      if (cardEls.length === 0) return;
+
+      // Top boundary: near page top
+      if (window.scrollY <= 32) {
+        const firstId = cardEls[0].getAttribute('data-notebook-quote-id');
+        if (firstId) {
+          setActiveAnnotationId(firstId);
+          return;
+        }
+      }
+
+      // Bottom boundary: near page bottom
+      const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 32;
+      if (isAtBottom) {
+        const lastId = cardEls[cardEls.length - 1].getAttribute('data-notebook-quote-id');
+        if (lastId) {
+          setActiveAnnotationId(lastId);
+          return;
+        }
+      }
+
+      // Viewport central focus band: ~46% from top
+      const targetY = window.innerHeight * 0.46;
+      let closestId: string | null = null;
+      let minDistance = Infinity;
+
+      for (const el of cardEls) {
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom >= 0 && rect.top <= window.innerHeight) {
+          const cardCenterY = rect.top + rect.height / 2;
+          const dist = Math.abs(cardCenterY - targetY);
+          if (dist < minDistance) {
+            minDistance = dist;
+            const id = el.getAttribute('data-notebook-quote-id');
+            if (id) {
+              closestId = id;
+            }
+          }
+        }
+      }
+
+      if (closestId !== null) {
+        setActiveAnnotationId(closestId);
+      }
+    };
+
+    let rafId: number | null = null;
+    const onScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(handleScrollOrResize);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    handleScrollOrResize();
+
+    // Tap outside cards clears active state
+    const handleDocumentPointerDown = (e: PointerEvent | MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target || typeof target.closest !== 'function' || !target.closest('[data-notebook-quote-id]')) {
+        setActiveAnnotationId(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleDocumentPointerDown, { passive: true });
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      document.removeEventListener('pointerdown', handleDocumentPointerDown);
+    };
+  }, [totalItems, groupMode, safeCurrentPage]);
+
   // Unique volume count across own and fellow annotations
   const uniqueBookCount = useMemo(() => {
     const ids = new Set<number>();
@@ -419,10 +503,6 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             }}
             sortOptions={groupMode === 'volume' ? VOLUME_SORT_OPTIONS : CHRONO_SORT_OPTIONS}
             sortAriaLabel={groupMode === 'volume' ? 'Sort book groups' : 'Sort quotes chronologically'}
-            currentPage={safeCurrentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            paginationAriaLabel="Top notebook pagination"
             extraControls={
               <div
                 {...createTabScrubberHandlers(setGroupMode)}
@@ -631,6 +711,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         isRestricted={isRestricted}
         isUnavailableOffline={isOffline && !isBookOffline(ann.bookId)}
         jurisdictionCountry={country}
+        isActive={activeAnnotationId === ann.id}
+        onActivate={(id) => setActiveAnnotationId(id)}
         isEditing={editingAnnotationId === ann.id}
         onStartEdit={(target) => setEditingAnnotationId(target.id)}
         onCancelEdit={() => setEditingAnnotationId(null)}

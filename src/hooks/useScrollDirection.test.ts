@@ -272,30 +272,41 @@ describe('useScrollDirection hook', () => {
       });
       expect(result.current.isHeaderVisible).toBe(true);
       expect(result.current.isToolbarVisible).toBe(true);
+      expect(result.current.isDocked).toBe(false);
 
       // Advance timeout
       act(() => {
         vi.advanceTimersByTime(180);
       });
 
-      // Arrive past dockOffset (450px > 430px): header remains visible on initial arrival
+      // Arrive past dockOffset (450px > 430px): header remains visible on initial arrival and isDocked becomes true
       act(() => {
         Object.defineProperty(window, 'scrollY', { value: 450, configurable: true });
         window.dispatchEvent(new Event('scroll'));
       });
       expect(result.current.isHeaderVisible).toBe(true);
       expect(result.current.isToolbarVisible).toBe(true);
+      expect(result.current.isDocked).toBe(true);
+
+      // Return back into hero section (<= 430px): isDocked resets to false
+      act(() => {
+        Object.defineProperty(window, 'scrollY', { value: 200, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+      });
+      expect(result.current.isDocked).toBe(false);
     } finally {
       document.body.removeChild(parent);
     }
   });
 
-  it('keeps both header and toolbar unconditionally visible when enabled is false', () => {
+  it('keeps both header and toolbar unconditionally visible when enabled is false while still tracking isDocked', () => {
     const { result } = renderHook(() =>
-      useScrollDirection({ enabled: false, threshold: 10, topOffset: 64 })
+      useScrollDirection({ enabled: false, threshold: 10, topOffset: 64, heroDockSelector: '' })
     );
 
-    // Scroll down deeply
+    expect(result.current.isDocked).toBe(false);
+
+    // Scroll down deeply past topOffset (64px)
     act(() => {
       Object.defineProperty(window, 'scrollY', { value: 1500, configurable: true });
       window.dispatchEvent(new Event('scroll'));
@@ -303,6 +314,15 @@ describe('useScrollDirection hook', () => {
 
     expect(result.current.isHeaderVisible).toBe(true);
     expect(result.current.isToolbarVisible).toBe(true);
+    expect(result.current.isDocked).toBe(true);
+
+    // Scroll back to top (<= 64px)
+    act(() => {
+      Object.defineProperty(window, 'scrollY', { value: 20, configurable: true });
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(result.current.isDocked).toBe(false);
   });
 
   it('clamps bottom rubber-band overscroll so bounce-back does not falsely trigger upward reveal', () => {

@@ -77,7 +77,9 @@ function HomeContent() {
   const initialSwipeDir = dirParam === 'forward' || dirParam === 'backward' ? dirParam : null;
   const hasMounted = useHasMounted();
   const stickyScrollEnabled = usePreferencesStore((s) => s.stickyScrollEnabled);
-  const { isHeaderVisible, isToolbarVisible } = useScrollDirection({ enabled: stickyScrollEnabled });
+  const { isHeaderVisible, isToolbarVisible, isDocked } = useScrollDirection({
+    enabled: stickyScrollEnabled,
+  });
   const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
   const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
   const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
@@ -618,6 +620,13 @@ function HomeContent() {
           setActiveView(view);
         }}
         isVisible={isHeaderVisible}
+        hasShadow={
+          !(
+            activeView === 'catalog' &&
+            (!isOffline || resolvedOfflineBooks.length > 0) &&
+            isDocked
+          )
+        }
       />
 
       <main
@@ -693,6 +702,7 @@ function HomeContent() {
             onPageSizeChange={handlePageSizeChange}
             isHeaderVisible={isHeaderVisible}
             isVisible={isToolbarVisible}
+            isDocked={isDocked}
           />
         )}
 
@@ -819,24 +829,6 @@ function HomeContent() {
                   }}
                   sortOptions={isShelf ? BOOKSHELF_SORT_OPTIONS : FAVORITES_SORT_OPTIONS}
                   sortAriaLabel={isShelf ? 'Sort bookshelf' : 'Sort favorites'}
-                  currentPage={isShelf ? safeShelfPage : safeFavoritesPage}
-                  totalPages={isShelf ? totalShelfPages : totalFavoritesPages}
-                  onPageChange={(newPage) => {
-                    if (isShelf) {
-                      setShelfPage(newPage);
-                    } else {
-                      setFavoritesPage(newPage);
-                    }
-                    scrollToCollectionContent();
-                  }}
-                  paginationAriaLabel={isShelf ? 'Top bookshelf pagination' : 'Top favorites pagination'}
-                  itemCountLabel={
-                    filteredCollectionBooks.length > 0
-                      ? `${filteredCollectionBooks.length} ${
-                          filteredCollectionBooks.length === 1 ? 'volume' : 'volumes'
-                        }`
-                      : undefined
-                  }
                   className="mb-8"
                 />
               )}

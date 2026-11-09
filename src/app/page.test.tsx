@@ -967,7 +967,7 @@ describe('Home page integration', () => {
         download_count: (i + 1) * 100,
       }));
 
-    it('renders sort dropdown, volume badge, top and bottom pagination on Bookshelf when books exceed 24 on desktop', () => {
+    it('renders sort dropdown and bottom pagination on Bookshelf when books exceed 24 on desktop', () => {
       const books = generateBooks(28);
       useBookshelfStore.setState({ savedBooks: books });
 
@@ -982,22 +982,14 @@ describe('Home page integration', () => {
       const sortSelect = screen.getByLabelText('Sort bookshelf');
       expect(sortSelect).toBeInTheDocument();
 
-      // Verify volume count badge
-      expect(screen.getByText('28 volumes')).toBeInTheDocument();
-
-      // Verify top compact pagination is rendered
-      const topPagination = screen.getByRole('navigation', { name: 'Top bookshelf pagination' });
-      expect(topPagination).toBeInTheDocument();
-      expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
-
       // Verify bottom pagination appears (28 items > 24 per page on desktop)
       const paginationNav = screen.getByTestId('pagination-nav');
       expect(paginationNav).toBeInTheDocument();
       expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
 
-      // Go to next page via top pagination
-      const topNextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
-      fireEvent.click(topNextBtn);
+      // Go to next page via bottom pagination
+      const nextBtn = within(paginationNav).getByRole('button', { name: /next/i });
+      fireEvent.click(nextBtn);
 
       // Verify page 2 is active
       expect(paginationNav).toHaveTextContent(/Showing 25–28 of 28 items/i);
@@ -1025,7 +1017,7 @@ describe('Home page integration', () => {
       expect(sortSelect).toHaveValue('author_desc');
     });
 
-    it('renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items', () => {
+    it('renders sort dropdown and bottom pagination on Favorites when exceeding 24 items', () => {
       const books = generateBooks(28);
       useBookshelfStore.setState({
         favoriteBooks: books,
@@ -1042,9 +1034,6 @@ describe('Home page integration', () => {
       // Verify sort dropdown
       const sortSelect = screen.getByLabelText('Sort favorites');
       expect(sortSelect).toBeInTheDocument();
-
-      // Verify volume count badge
-      expect(screen.getByText('28 volumes')).toBeInTheDocument();
 
       // Verify pagination
       const paginationNav = screen.getByTestId('pagination-nav');
@@ -1134,7 +1123,8 @@ describe('Home page integration', () => {
     // Switch to Bookshelf view and verify custom shelf filtering
     const banner = screen.getByRole('banner');
     fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
-    expect(screen.getByText('1 volume')).toBeInTheDocument();
+    expect(screen.getAllByText(pageMockBooks[0].title).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(pageMockBooks[1].title)).not.toBeInTheDocument();
   });
 
   it('handles BookPreviewModal onReadBook and BookshelfMobileModal callbacks', () => {
@@ -1249,12 +1239,14 @@ describe('Home page integration', () => {
     const banner = screen.getByRole('banner');
     fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
 
-    expect(screen.getByText('2 volumes')).toBeInTheDocument();
+    expect(screen.getAllByText(pageMockBooks[0].title).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(pageMockBooks[1].title).length).toBeGreaterThanOrEqual(1);
 
     const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
     fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
 
-    expect(screen.getByText('1 volume')).toBeInTheDocument();
+    expect(screen.getAllByText(pageMockBooks[0].title).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(pageMockBooks[1].title)).not.toBeInTheDocument();
     mockIsBookOffline.mockReturnValue(false);
   });
 
@@ -1271,7 +1263,8 @@ describe('Home page integration', () => {
     const banner = screen.getByRole('banner');
     fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf$/i }));
 
-    expect(screen.getByText('1 volume')).toBeInTheDocument();
+    expect(screen.getAllByText(pageMockBooks[0].title).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(pageMockBooks[1].title)).not.toBeInTheDocument();
     mockIsBookOffline.mockReturnValue(false);
   });
 
@@ -1288,12 +1281,14 @@ describe('Home page integration', () => {
     const favoritesBtn = screen.getByRole('button', { name: /^Favorites$/i });
     fireEvent.click(favoritesBtn);
 
-    expect(screen.getByText('2 volumes')).toBeInTheDocument();
+    expect(screen.getByText(pageMockBooks[0].title)).toBeInTheDocument();
+    expect(screen.getByText(pageMockBooks[1].title)).toBeInTheDocument();
 
     const sortSelect = screen.getByRole('combobox', { name: 'Sort favorites' });
     fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
 
-    expect(screen.getByText('1 volume')).toBeInTheDocument();
+    expect(screen.getAllByText(pageMockBooks[0].title).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(pageMockBooks[1].title)).not.toBeInTheDocument();
 
     // Now test empty state when 0 books are offline
     mockIsBookOffline.mockReturnValue(false);

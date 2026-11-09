@@ -400,6 +400,32 @@ describe('NotebookQuoteCard', () => {
     expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
     expect(screen.getByTestId('copy-book-link-indicator-1342')).toHaveTextContent('Copied!');
   });
+
+  it('applies active tactile styling matching hover effect when isActive is true', () => {
+    const { rerender } = render(<NotebookQuoteCard {...defaultProps} isActive={false} />);
+
+    const card = screen.getByTestId('notebook-quote-card-ann-1');
+    expect(card).toHaveAttribute('data-active', 'false');
+    expect(card).toHaveClass('border-l-amber-400');
+
+    rerender(<NotebookQuoteCard {...defaultProps} isActive={true} />);
+
+    expect(card).toHaveAttribute('data-active', 'true');
+    expect(card).toHaveAttribute('data-notebook-quote-id', 'ann-1');
+    expect(card).toHaveClass('shadow-booksaw-hover', 'border-primary/40');
+    // Original highlight border is replaced by hover-matching border-primary/40
+    expect(card).not.toHaveClass('border-l-amber-400');
+  });
+
+  it('invokes onActivate with annotation ID when card is clicked', () => {
+    const onActivate = vi.fn();
+    render(<NotebookQuoteCard {...defaultProps} onActivate={onActivate} />);
+
+    const card = screen.getByTestId('notebook-quote-card-ann-1');
+    fireEvent.click(card);
+
+    expect(onActivate).toHaveBeenCalledWith('ann-1');
+  });
 });
 
 

@@ -953,11 +953,47 @@ describe('StickyCatalogToolbar component', () => {
 
       // Desktop toolbar: hidden on mobile (< 640px), block on tablet & desktop (>= 640px)
       expect(desktopToolbar).toHaveClass('hidden', 'sm:block');
-      // Desktop toolbar must have border-y to ensure the bottom flush border is rendered
+      // Desktop toolbar must have border-y to ensure the bottom flush border is rendered when undocked
       expect(desktopToolbar).toHaveClass('border-y', 'border-border');
 
       // Mobile dock: active on mobile (< 640px), strictly hidden on tablet & desktop (>= 640px)
       expect(mobileDock).toHaveClass('sm:hidden');
+    });
+
+    it('collapses top border to border-b when isDocked and isHeaderVisible are both true to prevent a 2px double-border seam under Navbar', () => {
+      const { rerender } = render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isDocked={true}
+          isHeaderVisible={true}
+        />
+      );
+
+      const desktopToolbar = screen.getByTestId('sticky-catalog-toolbar');
+      expect(desktopToolbar).toHaveClass('border-b', 'border-border');
+      expect(desktopToolbar).not.toHaveClass('border-y');
+
+      // When header hides while docked, border-y is restored
+      rerender(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isDocked={true}
+          isHeaderVisible={false}
+        />
+      );
+      expect(desktopToolbar).toHaveClass('border-y', 'border-border');
     });
   });
 });

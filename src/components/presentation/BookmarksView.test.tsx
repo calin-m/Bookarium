@@ -88,7 +88,7 @@ describe('BookmarksView', () => {
     expect(handleBrowse).toHaveBeenCalledTimes(1);
   });
 
-  it('renders active volumes and updates filter tabs', () => {
+  it('renders active volumes and updates status filter dropdown', () => {
     useBookshelfStore.setState({
       savedBooks: [mockBook],
       bookStatuses: { 1342: 'currently_reading' },
@@ -106,16 +106,15 @@ describe('BookmarksView', () => {
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
 
-    // Click 'Completed' filter tab
-    const completedTab = screen.getByRole('button', { name: /Completed/i });
-    fireEvent.click(completedTab);
+    // Select 'Completed' in status filter dropdown
+    const filterSelect = screen.getByRole('combobox', { name: 'Filter bookmarks by status' });
+    fireEvent.change(filterSelect, { target: { value: 'completed' } });
 
     expect(screen.getByText(/No volumes marked as completed/i)).toBeInTheDocument();
     expect(screen.queryByText('Pride and Prejudice')).not.toBeInTheDocument();
 
-    // Click 'In Progress' tab
-    const inProgressTab = screen.getByRole('button', { name: /In Progress/i });
-    fireEvent.click(inProgressTab);
+    // Select 'In Progress'
+    fireEvent.change(filterSelect, { target: { value: 'in_progress' } });
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
   });
@@ -407,7 +406,8 @@ describe('BookmarksView', () => {
     expect(screen.getByText('45%')).toBeInTheDocument();
   });
 
-  it('applies adaptive responsive label expansion and tooltip attributes to filter tabs', () => {
+  it('provides status filter dropdown with live volume counts and handles downloaded filter', () => {
+    mockOfflineBookIds = [1342];
     useBookshelfStore.setState({
       savedBooks: [mockBook],
       bookStatuses: { 1342: 'currently_reading' },
@@ -416,29 +416,67 @@ describe('BookmarksView', () => {
 
     renderWithClient(<BookmarksView />);
 
-    // By default, 'all' filter is active
-    const allTab = screen.getByTestId('bookmarks-tab-all');
-    const inProgressTab = screen.getByTestId('bookmarks-tab-in_progress');
-    const completedTab = screen.getByTestId('bookmarks-tab-completed');
-    const onHoldTab = screen.getByTestId('bookmarks-tab-on_hold');
+    const filterSelect = screen.getByRole('combobox', { name: 'Filter bookmarks by status' });
+    expect(filterSelect).toBeInTheDocument();
+    expect(filterSelect).toHaveValue('all');
 
-    expect(allTab).toHaveAttribute('aria-label', expect.stringContaining('All Volumes'));
-    expect(allTab).toHaveAttribute('title', expect.stringContaining('All Volumes'));
-    expect(allTab).toHaveAttribute('aria-pressed', 'true');
+    // Check options with counts
+    expect(screen.getByRole('option', { name: 'All Volumes (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'In Progress (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Completed (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'On Hold (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Downloaded (1)' })).toBeInTheDocument();
 
-    // Distance-graded accordion classes on 4-tab bar
-    expect(allTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[220px]');
-    expect(inProgressTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
-    expect(completedTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[44px]', 'sm:inline');
-    expect(onHoldTab.querySelector('span')).toHaveClass('inline-block', 'max-w-0', 'sm:inline');
+    // Select downloaded filter
+    fireEvent.change(filterSelect, { target: { value: 'downloaded' } });
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
 
-    // Click 'in_progress' tab -> in_progress expands (d=0), all & completed shift to d=1
-    fireEvent.click(inProgressTab);
-    expect(inProgressTab).toHaveAttribute('aria-pressed', 'true');
-    expect(inProgressTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[220px]');
-    expect(allTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
-    expect(completedTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
-    expect(onHoldTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[44px]', 'sm:inline');
+    // When no downloaded volumes match
+    mockOfflineBookIds = [];
+    fireEvent.change(filterSelect, { target: { value: 'all' } });
+    fireEvent.change(filterSelect, { target: { value: 'downloaded' } });
+    expect(screen.getByText('No downloaded volumes')).toBeInTheDocument();
+  });
+
+  it('supports base sort field changes and direction toggle button with disabled state for recently read', () => {
+    const bookB = { ...mockBook, id: 84, title: 'Frankenstein', authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] };
+    useBookshelfStore.setState({
+      savedBooks: [mockBook, bookB],
+      bookStatuses: { 1342: 'currently_reading', 84: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 40);
+    useReaderStore.getState().setProgress(84, 80);
+
+    renderWithClient(<BookmarksView />);
+
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
+    expect(sortSelect).toHaveValue('recent');
+
+    // Recently Read: direction button is disabled
+    const dirBtn = screen.getByTestId('collection-sort-direction-btn');
+    expect(dirBtn).toBeDisabled();
+    expect(dirBtn).toHaveAttribute('aria-label', 'Sorting direction is fixed for Recently Read');
+
+    // Switch to Title: should default to title_asc and enable direction toggle
+    fireEvent.change(sortSelect, { target: { value: 'title' } });
+    expect(dirBtn).not.toBeDisabled();
+    expect(dirBtn).toHaveAttribute('aria-label', 'Title A to Z (click to sort Z to A)');
+
+    // Click direction toggle: should switch to title_desc
+    fireEvent.click(dirBtn);
+    expect(dirBtn).toHaveAttribute('aria-label', 'Title Z to A (click to sort A to Z)');
+
+    // Switch to Progress: should default to progress_desc
+    fireEvent.change(sortSelect, { target: { value: 'progress' } });
+    expect(dirBtn).toHaveAttribute('aria-label', 'Progress High to Low (click to sort Low to High)');
+
+    // Click direction toggle: should switch to progress_asc
+    fireEvent.click(dirBtn);
+    expect(dirBtn).toHaveAttribute('aria-label', 'Progress Low to High (click to sort High to Low)');
+
+    // Switch back to Recent: direction button should be disabled again
+    fireEvent.change(sortSelect, { target: { value: 'recent' } });
+    expect(dirBtn).toBeDisabled();
   });
 
   it('renders completed volume with 100% progress and Read Again action', () => {
@@ -478,14 +516,17 @@ describe('BookmarksView', () => {
     expect(sortSelect).toBeInTheDocument();
     expect(sortSelect).toHaveValue('recent');
 
-    // Verify 'downloaded' option exists
-    expect(screen.getByRole('option', { name: 'Downloaded' })).toBeInTheDocument();
+    // Verify sort options exist
+    expect(screen.getByRole('option', { name: 'Recently Read' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Title' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Author' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Progress' })).toBeInTheDocument();
 
-    fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
-    expect(sortSelect).toHaveValue('title_asc');
+    fireEvent.change(sortSelect, { target: { value: 'title' } });
+    expect(sortSelect).toHaveValue('title');
 
-    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
-    expect(sortSelect).toHaveValue('downloaded');
+    fireEvent.change(sortSelect, { target: { value: 'progress' } });
+    expect(sortSelect).toHaveValue('progress');
   });
 
   it('renders pagination when volumes exceed 12 items and navigates between pages', () => {
@@ -530,16 +571,11 @@ describe('BookmarksView', () => {
     expect(screen.getByText('Book Title 12')).toBeInTheDocument();
     expect(screen.queryByText('Book Title 13')).not.toBeInTheDocument();
 
-    // Top and bottom pagination should both be present
-    const topPagination = screen.getByRole('navigation', { name: 'Top bookmarks pagination' });
-    expect(topPagination).toBeInTheDocument();
-    expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
-
     const paginationNav = screen.getByTestId('pagination-nav');
     expect(paginationNav).toBeInTheDocument();
 
-    // Navigate to Next page (Page 2) via top pagination
-    const nextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
+    // Navigate to Next page (Page 2) via bottom pagination
+    const nextBtn = within(paginationNav).getByRole('button', { name: /next/i });
     fireEvent.click(nextBtn);
 
     // Page 2 should show remaining 3 items (13, 14, 15)
@@ -613,7 +649,7 @@ describe('BookmarksView', () => {
     expect(card).toHaveAttribute('data-active', 'true');
   });
 
-  it('filters active volumes to only offline books when Downloaded sort option is selected', () => {
+  it('filters active volumes to only offline books when Downloaded filter option is selected', () => {
     const secondBook: GutendexBook = {
       ...mockBook,
       id: 84,
@@ -637,8 +673,8 @@ describe('BookmarksView', () => {
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('Frankenstein')).toBeInTheDocument();
 
-    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
-    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+    const filterSelect = screen.getByRole('combobox', { name: 'Filter bookmarks by status' });
+    fireEvent.change(filterSelect, { target: { value: 'downloaded' } });
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.queryByText('Frankenstein')).not.toBeInTheDocument();
@@ -660,8 +696,8 @@ describe('BookmarksView', () => {
 
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
 
-    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
-    fireEvent.change(sortSelect, { target: { value: 'downloaded' } });
+    const filterSelect = screen.getByRole('combobox', { name: 'Filter bookmarks by status' });
+    fireEvent.change(filterSelect, { target: { value: 'downloaded' } });
 
     expect(screen.getByText('No downloaded volumes')).toBeInTheDocument();
     expect(screen.getByText('Volumes saved for offline reading will appear here.')).toBeInTheDocument();
@@ -940,8 +976,9 @@ describe('BookmarksView', () => {
 
     renderWithClient(<BookmarksView />);
 
-    // Switch to 'on_hold' tab (0 items)
-    fireEvent.click(screen.getByTestId('bookmarks-tab-on_hold'));
+    // Switch to 'on_hold' filter (0 items)
+    const filterSelect = screen.getByRole('combobox', { name: 'Filter bookmarks by status' });
+    fireEvent.change(filterSelect, { target: { value: 'on_hold' } });
     expect(screen.getByText(/No volumes marked as on hold/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'View All Volumes' }));
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();

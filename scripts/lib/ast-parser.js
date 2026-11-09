@@ -967,7 +967,7 @@ function extractPublicAssetsCatalog(rootDir) {
 
   const assets = [];
   const roleMap = {
-    'public/sw.js': 'PWA Service Worker (`bookarium-app-shell-v6`) managing App Shell caching, static asset discovery, and offline route navigation fallback.',
+    'public/sw.js': 'PWA Service Worker (`bookarium-app-shell-v7`) managing App Shell caching, static asset discovery, and offline route navigation fallback.',
     'public/favicon.ico': 'Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with soaring book brand emblem for browser tabs.',
     'public/icon.svg': 'Scalable vector soaring book brand emblem with 3-tiered page depths, sunlit amber peaks, core terracotta arches, and deep burnt outer wings.',
     'public/icons/apple-touch-icon.png': 'High-DPI iOS / iPadOS Home Screen Web Clip icon (`512×512` PNG).',

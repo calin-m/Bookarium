@@ -14,6 +14,7 @@ export interface UseScrollDirectionOptions {
 export interface ScrollNavState {
   isHeaderVisible: boolean;
   isToolbarVisible: boolean;
+  isDocked: boolean;
 }
 
 /**
@@ -55,15 +56,17 @@ export function useScrollDirection({
   const [navState, setNavState] = useState<ScrollNavState>({
     isHeaderVisible: true,
     isToolbarVisible: true,
+    isDocked: false,
   });
 
   const stateRef = useRef<ScrollNavState>({
     isHeaderVisible: true,
     isToolbarVisible: true,
+    isDocked: false,
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !enabled) return;
+    if (typeof window === 'undefined') return;
 
     let lastScrollY = window.scrollY || window.pageYOffset || 0;
     let accumulatedDelta = 0;
@@ -103,10 +106,29 @@ export function useScrollDirection({
         }
       }
 
-      // 1. Hero Guard: While in Hero section, EVERYTHING stays visible
+      if (!enabled) {
+        const isDocked = scrollY > dockOffset;
+        if (
+          stateRef.current.isDocked !== isDocked ||
+          !stateRef.current.isHeaderVisible ||
+          !stateRef.current.isToolbarVisible
+        ) {
+          const next = { isHeaderVisible: true, isToolbarVisible: true, isDocked };
+          stateRef.current = next;
+          setNavState(next);
+        }
+        lastScrollY = scrollY;
+        return;
+      }
+
+      // 1. Hero Guard: While in Hero section, EVERYTHING stays visible and undocked
       if (scrollY <= dockOffset) {
-        if (!stateRef.current.isHeaderVisible || !stateRef.current.isToolbarVisible) {
-          const next = { isHeaderVisible: true, isToolbarVisible: true };
+        if (
+          !stateRef.current.isHeaderVisible ||
+          !stateRef.current.isToolbarVisible ||
+          stateRef.current.isDocked
+        ) {
+          const next = { isHeaderVisible: true, isToolbarVisible: true, isDocked: false };
           stateRef.current = next;
           setNavState(next);
         }
@@ -122,6 +144,11 @@ export function useScrollDirection({
       // The header does not hide immediately; only when the user scrolls down again does it hide.
       if (wasInHero) {
         wasInHero = false;
+        if (!stateRef.current.isDocked) {
+          const next = { ...stateRef.current, isDocked: true };
+          stateRef.current = next;
+          setNavState(next);
+        }
         hasSteppedInCurrentGesture = true;
         accumulatedDelta = 0;
         lastScrollY = scrollY;
@@ -153,28 +180,28 @@ export function useScrollDirection({
 
       if (accumulatedDelta >= requiredDelta && currentDir) {
         let changed = false;
-        let next = { ...stateRef.current };
+        let next = { ...stateRef.current, isDocked: true };
 
         if (currentDir === 'down') {
           // State 0 (Both Visible) -> State 1 (Toolbar Only at top-0)
           if (stateRef.current.isHeaderVisible) {
-            next = { isHeaderVisible: false, isToolbarVisible: true };
+            next = { isHeaderVisible: false, isToolbarVisible: true, isDocked: true };
             changed = true;
           }
           // State 1 (Toolbar Only) -> State 2 (Both Hidden)
           else if (stateRef.current.isToolbarVisible) {
-            next = { isHeaderVisible: false, isToolbarVisible: false };
+            next = { isHeaderVisible: false, isToolbarVisible: false, isDocked: true };
             changed = true;
           }
         } else if (currentDir === 'up') {
           // State 2 (Both Hidden) -> State 1 (Toolbar Only at top-0)
           if (!stateRef.current.isToolbarVisible) {
-            next = { isHeaderVisible: false, isToolbarVisible: true };
+            next = { isHeaderVisible: false, isToolbarVisible: true, isDocked: true };
             changed = true;
           }
           // State 1 (Toolbar Only) -> State 0 (Both Visible: Header at 0, Toolbar at 16)
           else if (!stateRef.current.isHeaderVisible) {
-            next = { isHeaderVisible: true, isToolbarVisible: true };
+            next = { isHeaderVisible: true, isToolbarVisible: true, isDocked: true };
             changed = true;
           }
         }
@@ -207,7 +234,7 @@ export function useScrollDirection({
   }, [threshold, continuousThreshold, gestureEndTimeoutMs, topOffset, heroDockSelector, enabled]);
 
   if (!enabled) {
-    return { isHeaderVisible: true, isToolbarVisible: true };
+    return { isHeaderVisible: true, isToolbarVisible: true, isDocked: navState.isDocked };
   }
 
   return navState;

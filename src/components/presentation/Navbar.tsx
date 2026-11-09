@@ -26,6 +26,7 @@ export interface NavbarProps {
   onViewChange?: (view: NavViewId) => void;
   onBrandReset?: () => void;
   isVisible?: boolean;
+  hasShadow?: boolean;
   initialIsAuthenticated?: boolean;
 }
 
@@ -37,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onViewChange,
   onBrandReset,
   isVisible = true,
+  hasShadow = true,
   initialIsAuthenticated,
 }) => {
   const router = useRouter();
@@ -62,6 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const accountMenuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTouchPointerRef = useRef(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const clearAccountMenuCloseTimer = () => {
     if (accountMenuCloseTimerRef.current) {
@@ -73,13 +76,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleAccountPointerDown = (e: React.PointerEvent) => {
     const pointerType = e.pointerType || (e.nativeEvent as { pointerType?: string })?.pointerType;
     isTouchPointerRef.current = pointerType === 'touch';
-    if (pointerType === 'touch') {
-      setIsAccountMenuOpen(false);
-    }
   };
 
   const handleAccountTouchStart = () => {
     isTouchPointerRef.current = true;
+  };
+
+  const handleAccountClick = (e: React.MouseEvent) => {
+    if (isTouchPointerRef.current) {
+      e.preventDefault();
+      setIsAccountMenuOpen((prev) => !prev);
+      return;
+    }
     setIsAccountMenuOpen(false);
   };
 
@@ -95,6 +103,19 @@ export const Navbar: React.FC<NavbarProps> = ({
       setIsAccountMenuOpen(false);
     }, 150);
   };
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) return;
+    const handleOutsidePointer = (e: PointerEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsidePointer);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointer);
+    };
+  }, [isAccountMenuOpen]);
 
   useEffect(() => {
     return () => {
@@ -190,7 +211,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-40 w-full pt-[env(safe-area-inset-top,0px)] bg-background border-b border-border shadow-md transition-transform duration-300 ease-in-out ${
+      className={`sticky top-0 z-40 w-full pt-[env(safe-area-inset-top,0px)] bg-background border-b border-border ${
+        hasShadow ? 'shadow-md' : 'sm:shadow-none shadow-md'
+      } transition-transform duration-300 ease-in-out ${
         isVisible ? 'translate-y-0' : '-translate-y-full pointer-events-none'
       }`}
     >
@@ -293,6 +316,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Right Actions: Auth, Theme */}
           {isAuth ? (
             <div
+              ref={accountMenuRef}
               className="relative"
               onPointerDown={handleAccountPointerDown}
               onTouchStart={handleAccountTouchStart}
@@ -301,7 +325,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Link
                 href={ROUTES.ACCOUNT}
-                onClick={() => setIsAccountMenuOpen(false)}
+                onClick={handleAccountClick}
                 title={isOffline ? 'User Account (Offline Mode)' : 'User Account'}
                 className={`relative h-8 w-8 lg:w-auto px-0 lg:px-3 inline-flex items-center justify-center gap-1.5 rounded text-xs font-mono border transition-all cursor-pointer select-none active:scale-95 shadow-2xs ${
                   isOffline
@@ -349,9 +373,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                           (typeof user?.user_metadata?.display_name === 'string'
                             ? user.user_metadata.display_name
                             : 'Scholar')}
-                      </p>
-                      <p className="text-[11px] font-mono text-muted-foreground truncate">
-                        {profile?.username ? `@${profile.username}` : 'Scholar Account'}
                       </p>
                     </div>
                   )}

@@ -83,6 +83,7 @@ describe('useContinueReadingLedger', () => {
       in_progress: 0,
       completed: 0,
       on_hold: 0,
+      downloaded: 0,
     });
     expect(result.current.activeFilter).toBe('all');
   });
@@ -773,6 +774,34 @@ describe('useContinueReadingLedger', () => {
 
     act(() => {
       result.current.setSortBy('downloaded');
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredVolumes).toHaveLength(1);
+      expect(result.current.filteredVolumes[0].book.id).toBe(1342);
+    });
+  });
+
+  it('computes counts.downloaded accurately and filters when activeFilter is "downloaded"', async () => {
+    const bookOffline = { ...mockBook, id: 1342 };
+    const bookNotOffline = { ...mockBook, id: 84, title: 'Frankenstein' };
+
+    mockOfflineBookIds = [1342];
+
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [bookOffline, bookNotOffline] });
+      useReaderStore.setState({
+        readingProgress: { 1342: 40, 84: 80 },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    expect(result.current.counts.downloaded).toBe(1);
+    expect(result.current.counts.all).toBe(2);
+
+    act(() => {
+      result.current.setActiveFilter('downloaded');
     });
 
     await waitFor(() => {

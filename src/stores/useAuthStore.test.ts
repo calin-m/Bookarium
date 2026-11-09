@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAuthStore, validateUsername } from './useAuthStore';
+import {
+  useAuthStore,
+  validateUsername,
+  isDefinitiveAuthInvalidError,
+} from './useAuthStore';
 
 const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
@@ -940,6 +944,85 @@ describe('useAuthStore', () => {
         expect(useAuthStore.getState().isLoading).toBe(false);
       } finally {
         Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      }
+    });
+
+    it('preserves session user on transient network/reload errors while online and clears only on definitive 401/session_not_found errors', async () => {
+      expect(isDefinitiveAuthInvalidError(null)).toBe(false);
+      expect(isDefinitiveAuthInvalidError({ message: 'Failed to fetch', status: 0 })).toBe(false);
+      expect(isDefinitiveAuthInvalidError({ status: 401 })).toBe(true);
+      expect(isDefinitiveAuthInvalidError({ code: 'session_not_found' })).toBe(true);
+      expect(isDefinitiveAuthInvalidError({ name: 'AuthSessionMissingError' })).toBe(true);
+
+      const clientModule = await import('@/lib/supabase/client');
+      const mockGetSession = vi.fn().mockResolvedValue({
+        data: { session: { user: { id: 'oauth-user', email: 'oauth@bookarium.test' } } },
+        error: null,
+      });
+
+      const createClientSpy = vi.spyOn(clientModule, 'createClient').mockImplementation(
+        () =>
+          ({
+            auth: {
+              getSession: mockGetSession,
+              getUser: mockGetUser,
+              onAuthStateChange: mockOnAuthStateChange,
+            },
+            from: mockFrom,
+            rpc: mockRpc,
+          }) as unknown as ReturnType<typeof clientModule.createClient>
+      );
+
+      let authCallback: ((event: string, session: unknown) => void) | undefined;
+      mockOnAuthStateChange.mockImplementation((cb: (event: string, session: unknown) => void) => {
+        authCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      try {
+        // 1. Transient error (e.g. aborted fetch during deployment reload) + INITIAL_SESSION null race
+        useAuthStore.setState({
+          user: { id: 'oauth-user', email: 'oauth@bookarium.test' } as never,
+          profile: { id: 'oauth-user', display_name: 'OAuth Scholar' } as never,
+          isLoading: true,
+        });
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: null },
+          error: { name: 'AuthRetryableFetchError', message: 'Failed to fetch', status: 0 },
+        });
+        mockFrom.mockReturnValueOnce({
+          select: vi.fn().mockReturnValueOnce({
+            eq: vi.fn().mockReturnValueOnce({
+              single: vi.fn().mockResolvedValueOnce({
+                data: { id: 'oauth-user', display_name: 'OAuth Scholar' },
+                error: null,
+              }),
+            }),
+          }),
+        });
+
+        useAuthStore.getState().initializeAuth();
+        authCallback?.('INITIAL_SESSION', null);
+
+        await vi.waitFor(() => {
+          expect(useAuthStore.getState().isLoading).toBe(false);
+        });
+        expect(useAuthStore.getState().user?.id).toBe('oauth-user');
+        expect(useAuthStore.getState().profile?.display_name).toBe('OAuth Scholar');
+
+        // 2. Definitive 401 session_not_found error clears the invalid session
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: null },
+          error: { status: 401, code: 'session_not_found', message: 'Session not found' },
+        });
+
+        useAuthStore.getState().initializeAuth();
+        await vi.waitFor(() => {
+          expect(useAuthStore.getState().user).toBeNull();
+        });
+        expect(useAuthStore.getState().profile).toBeNull();
+      } finally {
+        createClientSpy.mockRestore();
       }
     });
 

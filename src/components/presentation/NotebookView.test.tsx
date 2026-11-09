@@ -1383,19 +1383,14 @@ describe('NotebookView component', () => {
       const quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
       expect(quoteCards).toHaveLength(12);
 
-      // Top pagination should be visible
-      const topPagination = screen.getByRole('navigation', { name: 'Top notebook pagination' });
-      expect(topPagination).toBeInTheDocument();
-      expect(within(topPagination).getByTestId('top-pagination-indicator')).toHaveTextContent(/1\s*\/\s*2/);
-
-      // Bottom pagination bar should also be visible
+      // Bottom pagination bar should be visible
       const paginationNav = screen.getByRole('navigation', { name: /Pagination navigation/i });
       expect(paginationNav).toBeInTheDocument();
       expect(within(paginationNav).getByRole('button', { name: 'Go to page 1' })).toBeInTheDocument();
       expect(within(paginationNav).getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument();
 
-      // Navigate to Page 2 via top pagination Next button
-      const nextBtn = within(topPagination).getByRole('button', { name: 'Next page' });
+      // Navigate to Page 2 via bottom pagination Next button
+      const nextBtn = within(paginationNav).getByRole('button', { name: /next/i });
       fireEvent.click(nextBtn);
 
       // Page 2 should have remaining 3 items
@@ -2053,6 +2048,140 @@ describe('NotebookView component', () => {
 
       expect(useReaderStore.getState().currentBook?.id).toBe(1342);
       expect(mockPush).toHaveBeenCalledWith('/read/1342');
+    });
+
+    it('handles mobile single-column scroll focus zone, boundaries, tap activation, and dismissal', async () => {
+      const originalInnerWidth = window.innerWidth;
+      const originalInnerHeight = window.innerHeight;
+      const originalScrollY = window.scrollY;
+
+      const rafCallbacks: FrameRequestCallback[] = [];
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+        rafCallbacks.push(cb);
+        return rafCallbacks.length;
+      });
+      vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+      const flushRaf = () => {
+        const latest = rafCallbacks[rafCallbacks.length - 1];
+        if (latest) latest(16);
+      };
+
+      try {
+        Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 });
+        Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 800 });
+        Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 100 });
+        Object.defineProperty(document.documentElement, 'scrollHeight', {
+          writable: true,
+          configurable: true,
+          value: 2000,
+        });
+
+        await useAnnotationStore.getState().addAnnotation({
+          bookId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Passage One',
+          color: 'yellow',
+        });
+
+        await useAnnotationStore.getState().addAnnotation({
+          bookId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          chapterIndex: 0,
+          chapterPage: 2,
+          selectedText: 'Passage Two',
+          color: 'mint',
+        });
+
+        const { container } = render(<NotebookView />);
+
+        const cardEls = container.querySelectorAll<HTMLElement>('[data-notebook-quote-id]');
+        expect(cardEls).toHaveLength(2);
+        const topCard = cardEls[0];
+        const bottomCard = cardEls[1];
+
+        // 1. Central focus band: target is 800 * 0.46 = 368px.
+        // topCard is top: 50, height: 100 -> center = 100 (dist = 268)
+        // bottomCard is top: 320, height: 100 -> center = 370 (dist = 2)
+        vi.spyOn(topCard, 'getBoundingClientRect').mockReturnValue({
+          top: 50,
+          bottom: 150,
+          left: 10,
+          right: 365,
+          width: 355,
+          height: 100,
+          x: 10,
+          y: 50,
+          toJSON: () => {},
+        });
+
+        vi.spyOn(bottomCard, 'getBoundingClientRect').mockReturnValue({
+          top: 320,
+          bottom: 420,
+          left: 10,
+          right: 365,
+          width: 355,
+          height: 100,
+          x: 10,
+          y: 320,
+          toJSON: () => {},
+        });
+
+        act(() => {
+          window.dispatchEvent(new Event('scroll'));
+          flushRaf();
+        });
+
+        expect(bottomCard).toHaveAttribute('data-active', 'true');
+        expect(topCard).toHaveAttribute('data-active', 'false');
+
+        // 2. Top boundary: scrollY <= 32 activates the first card
+        Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 0 });
+        act(() => {
+          window.dispatchEvent(new Event('scroll'));
+          flushRaf();
+        });
+        expect(topCard).toHaveAttribute('data-active', 'true');
+        expect(bottomCard).toHaveAttribute('data-active', 'false');
+
+        // 3. Bottom boundary: scrollY near bottom activates the last card
+        Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: 1250 });
+        act(() => {
+          window.dispatchEvent(new Event('scroll'));
+          flushRaf();
+        });
+        expect(bottomCard).toHaveAttribute('data-active', 'true');
+        expect(topCard).toHaveAttribute('data-active', 'false');
+
+        // 4. Outside pointer down clears active state
+        fireEvent.pointerDown(document.body);
+        expect(topCard).toHaveAttribute('data-active', 'false');
+        expect(bottomCard).toHaveAttribute('data-active', 'false');
+
+        // 5. Direct card click activates it
+        fireEvent.click(topCard);
+        expect(topCard).toHaveAttribute('data-active', 'true');
+
+        // 6. Desktop viewport (>= 1024) leaves scroll focus disabled
+        Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1200 });
+        fireEvent.pointerDown(document.body);
+        expect(topCard).toHaveAttribute('data-active', 'false');
+
+        act(() => {
+          window.dispatchEvent(new Event('scroll'));
+          flushRaf();
+        });
+        expect(topCard).toHaveAttribute('data-active', 'false');
+        expect(bottomCard).toHaveAttribute('data-active', 'false');
+      } finally {
+        Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth });
+        Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: originalInnerHeight });
+        Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: originalScrollY });
+      }
     });
   });
 });

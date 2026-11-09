@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 09 Nov 2026 18:46:48 GMT  
+**Last Generated**: Mon, 09 Nov 2026 23:10:52 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2307 passed  
+**Total Verified Tests**: 2324 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2307 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2324 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.39%** (13350/13707) — *Target: $\ge$ 95%*
-- **Statements**: **96.08%** (14438/15026) — *Target: $\ge$ 95%*
-- **Functions**: **94.81%** (2982/3145) — *Target: $\ge$ 92%*
-- **Branches**: **88.26%** (13002/14730) — *Target: $\ge$ 85%*
+- **Lines**: **97.41%** (13448/13805) — *Target: $\ge$ 95%*
+- **Statements**: **96.08%** (14542/15135) — *Target: $\ge$ 95%*
+- **Functions**: **94.89%** (2990/3151) — *Target: $\ge$ 92%*
+- **Branches**: **88.18%** (13138/14898) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2307 Tests)
+## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2324 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 291 Tests)
 
@@ -317,9 +317,9 @@
 - ✔ `smoothly scrolls to catalog-section when filters are cleared via quick clear button`
 - ✔ `switches views when swiping horizontally across main on mobile`
 - ✔ `switches views when swiping horizontally across main on tactile tablet devices`
-- ✔ `renders sort dropdown, volume badge, top and bottom pagination on Bookshelf when books exceed 24 on desktop`
+- ✔ `renders sort dropdown and bottom pagination on Bookshelf when books exceed 24 on desktop`
 - ✔ `sorts saved books on Bookshelf by title ascending and author descending`
-- ✔ `renders sort dropdown, volume badge, and pagination on Favorites when exceeding 24 items`
+- ✔ `renders sort dropdown and bottom pagination on Favorites when exceeding 24 items`
 - ✔ `resets pagination page to 1 when collection search query changes`
 - ✔ `enforces overflow-x-clip on root and main containers and tightens catalog-section padding`
 - ✔ `handles HeroSearch onReadFeaturedBook, active filter chip removal, and custom shelf filtering`
@@ -490,7 +490,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 495 Tests)
+### 🎨 Catalog & Presentation (30 Suites · 509 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -600,15 +600,15 @@
 - ✔ `disables Resume, Save for offline reading, and Symposium Invite when network is offline and book is not cached, but enables Resume and Remove when cached`
 - ✔ `toggles Favorite and Bookshelf state via header action buttons with full metadata preservation and without triggering card activation`
 - ✔ `applies status-tinted border and focus ring to the status selector while keeping neutral text and 1080p compact footer sizing`
-- ✔ `keeps the status pill single-line and only displays the floating status indicator on tap/hover when the label is truncated`
+- ✔ `renders the compact text-only status pill without icons or truncation popovers`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
-- ✔ `renders active volumes and updates filter tabs`
+- ✔ `renders active volumes and updates status filter dropdown`
 - ✔ `filters active volumes using the search bar and supports clearing search`
 - ✔ `opens confirmation modal on Clear Bookmarks, cancels, and clears ledger when confirmed`
 - ✔ `opens confirmation modal on removing single bookmark, cancels, and clears volume when confirmed`
@@ -618,14 +618,15 @@
 - ✔ `prompts confirmation when selecting Finished on a volume under 100% progress, handles cancel and confirm`
 - ✔ `updates status to Finished immediately without modal when volume is already at 100% progress`
 - ✔ `hydrates missing book metadata (e.g. Volume #55179) and displays real title and author`
-- ✔ `applies adaptive responsive label expansion and tooltip attributes to filter tabs`
+- ✔ `provides status filter dropdown with live volume counts and handles downloaded filter`
+- ✔ `supports base sort field changes and direction toggle button with disabled state for recently read`
 - ✔ `renders completed volume with 100% progress and Read Again action`
 - ✔ `renders sort dropdown and allows changing sort order`
 - ✔ `renders pagination when volumes exceed 12 items and navigates between pages`
 - ✔ `applies tightened vertical padding on bookmarks-ledger-section`
 - ✔ `activates bookmark card on click and clears active state when clicking outside`
 - ✔ `handles mobile single-column scroll focus zone on scroll and resize`
-- ✔ `filters active volumes to only offline books when Downloaded sort option is selected`
+- ✔ `filters active volumes to only offline books when Downloaded filter option is selected`
 - ✔ `renders No downloaded volumes empty state and resets to recent when clicking View All Volumes`
 - ✔ `activates card on click and deactivates on mouseLeave on desktop viewports`
 - ✔ `renders authentic author name for offline-saved volume on page refresh without reverting to Anonymous`
@@ -780,17 +781,20 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders all options with currently selected value`
 - ✔ `calls onChange with new value when an option is chosen`
 - ✔ `uses default ariaLabel when not explicitly provided`
 - ✔ `applies responsive mobile flex classes to prevent toolbar overflow`
+- ✔ `renders sort direction button and handles toggle clicks when onDirectionToggle is provided`
+- ✔ `disables direction button and sets aria-label when isDirectionDisabled is true`
+- ✔ `supports custom test-ids and leading icon override`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders search input with placeholder and accessible label`
 - ✔ `calls onSearchChange when user types in search input`
@@ -801,6 +805,10 @@
 - ✔ `renders top pagination when totalPages > 1 and handles page clicks`
 - ✔ `does not render top pagination when totalPages <= 1`
 - ✔ `renders item count label and extra controls when provided`
+- ✔ `renders status filter dropdown and handles value changes when filterOptions provided`
+- ✔ `passes sort direction props down to sort dropdown`
+- ✔ `applies adaptive single-row layout (sm:flex-row) when only one control is present (Bookshelf/Favorites Option A)`
+- ✔ `applies two-handed tactile layout (justify-between md:justify-end) and md:flex-row when multiple controls are present (Bookmarks/Notebook)`
 
 </details>
 
@@ -960,7 +968,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/LiteraryQuotes.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `should render section heading, kicker, and 3 literary quote cards`
 - ✔ `should shuffle quotes when clicking Discover More button`
@@ -969,6 +977,7 @@
 - ✔ `filters out quotes from protected authors in Life+100 jurisdiction (Mexico)`
 - ✔ `maintains strictly unique quote IDs and Project Gutenberg bookIds across all anthology entries`
 - ✔ `applies responsive section and balanced header divider spacing classes`
+- ✔ `displays a single quote card on mobile while preserving multi-card on tablet/desktop, and aligns Discover More on a single row`
 - ✔ `handles pre-mount fallback, rapid consecutive shuffles with timer completion, and jurisdiction backfill of shuffled quotes`
 - ✔ `populates anthology cards exclusively from useQuoteEnrichedBooks across 3 distinct books and disables redundant useFeaturedQuotes calls`
 - ✔ `rotates strictly to 3 unseen books on Discover More when 6+ quote-enriched books exist regardless of per-book passage count`
@@ -980,7 +989,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (40 tests)</summary>
+<summary><b><code>src/components/presentation/Navbar.test.tsx</code></b> (41 tests)</summary>
 
 - ✔ `should render brand and navigation items with responsive title classes`
 - ✔ `should fill highlighter icon when annotations are saved in notebook`
@@ -1002,7 +1011,8 @@
 - ✔ `handles keyboard Enter and Space on brand logo to navigate back to catalog without reloading or resetting theme`
 - ✔ `falls back to router.push(ROUTES.HOME) when brand logo is clicked without onViewChange and preserves sepia/dark theme`
 - ✔ `applies -translate-y-full when isVisible is false`
-- ✔ `applies translate-y-0 and z-40 stacking context when isVisible is true so popovers stack above z-30 toolbars`
+- ✔ `applies translate-y-0, transition-transform kinematics, and z-40 stacking context when isVisible is true so popovers stack above z-30 toolbars`
+- ✔ `suppresses desktop drop shadow via sm:shadow-none when hasShadow is false while retaining z-40 and mobile shadow-md`
 - ✔ `renders active account button styling when activeView is account`
 - ✔ `renders active Sign In button styling for guests when activeView is account`
 - ✔ `renders GitHub repository link with target _blank on the header`
@@ -1021,7 +1031,7 @@
 - ✔ `re-measures on window resize event`
 - ✔ `disables gliding indicator and stays on fallback border when prefers-reduced-motion is active`
 - ✔ `opens the hover quick-menu on mouse enter, closes after 150ms on mouse leave, and triggers signOut on Sign Out click`
-- ✔ `suppresses the hover quick-menu on touch pointer events so mobile taps navigate directly`
+- ✔ `toggles the hover quick-menu on touch pointer events and closes on outside tap`
 
 </details>
 
@@ -1054,7 +1064,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
 - ✔ `renders Protected badge when isRestricted is true`
@@ -1072,11 +1082,13 @@
 - ✔ `renders Save to My Notes button on standalone fellow note and calls onSaveFellowAsOwn`
 - ✔ `renders In My Notes badge and Edit My Note when matching personal annotation exists`
 - ✔ `disables Read Passage button without repeating topline Not Downloaded pill when isUnavailableOffline is true`
+- ✔ `applies active tactile styling matching hover effect when isActive is true`
+- ✔ `invokes onActivate with annotation ID when card is clicked`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (51 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (52 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -1129,11 +1141,12 @@
 - ✔ `covers paired fellow search/color matching and chronological & volume sort options including downloaded filter reset`
 - ✔ `clamps pagination when deleting the last item on the final page and resets page when switching marginalia source filter`
 - ✔ `primes useReaderStore when clicking a volume heading in By-Book mode`
+- ✔ `handles mobile single-column scroll focus zone, boundaries, tap activation, and dismissal`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (29 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (30 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and unified API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -1164,6 +1177,7 @@
 - ✔ `renders segmented quick clear button on desktop toolbar when filters are active and clears filters on click`
 - ✔ `does not render quick clear buttons on desktop or mobile when activeFilterCount is 0`
 - ✔ `enforces mutually exclusive responsive breakpoint isolation and border-y between desktop and mobile bars`
+- ✔ `collapses top border to border-b when isDocked and isHeaderVisible are both true to prevent a 2px double-border seam under Navbar`
 
 </details>
 
@@ -1508,7 +1522,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 206 Tests)
+### ⚡ Zustand State Stores (10 Suites · 207 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1568,7 +1582,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (33 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1601,6 +1615,7 @@
 - ✔ `normalizes empty string username to null`
 - ✔ `signs out from Supabase, clears user profile, flushes outboxes, and resets all 6 local user stores`
 - ✔ `preserves persisted user and profile when initializeAuth runs offline`
+- ✔ `preserves session user on transient network/reload errors while online and clears only on definitive 401/session_not_found errors`
 - ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
 - ✔ `forwards optional Cloudflare Turnstile captchaToken across auth actions`
 
@@ -2434,7 +2449,7 @@
 
 - ✔ `bypasses Supabase client creation when environment variables are missing`
 - ✔ `propagates request and response cookies and refreshes auth user session`
-- ✔ `bypasses Supabase client creation and auth.getUser for anonymous requests without sb-* cookies`
+- ✔ `bypasses Supabase client creation for anonymous requests or PKCE code-verifier-only cookies`
 - ✔ `suppresses auth.getUser rejections without failing route navigation`
 
 </details>
@@ -2596,7 +2611,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (27 Suites · 293 Tests)
+### 🔄 Hooks & React Query (27 Suites · 294 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2679,7 +2694,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (30 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (31 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -2704,6 +2719,7 @@
 - ✔ `extracts authorDetails lifespans and normalizes display names from embedded dates in readingPosition.bookAuthors`
 - ✔ `preserves verified authorDetails lifespans from favoriteBooks/savedBooks when currentBook is a partial book`
 - ✔ `filters volumes to only downloaded books when sortBy is "downloaded"`
+- ✔ `computes counts.downloaded accurately and filters when activeFilter is "downloaded"`
 - ✔ `resolves volume metadata directly from offlineBooks when book is not in savedBooks or favoriteBooks`
 - ✔ `never overwrites authentic authors with Anonymous from offlineBooks in setOrMergeBook`
 - ✔ `heals Anonymous authors when readingPosition has authentic bookAuthors`
@@ -3034,7 +3050,7 @@
 - ✔ `immediately reveals filter toolbar upon upward scroll reversal`
 - ✔ `measures dynamic element offset from DOM when heroDockSelector is provided`
 - ✔ `correctly calculates document Y by traversing nested offsetParent hierarchies`
-- ✔ `keeps both header and toolbar unconditionally visible when enabled is false`
+- ✔ `keeps both header and toolbar unconditionally visible when enabled is false while still tracking isDocked`
 - ✔ `clamps bottom rubber-band overscroll so bounce-back does not falsely trigger upward reveal`
 
 </details>
@@ -3053,7 +3069,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 257 Tests)
+### 🧩 UI Primitives & Motion (52 Suites · 258 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3600,7 +3616,7 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
@@ -3612,6 +3628,7 @@
 - ✔ `defaults to US when no geo signals exist in production`
 - ✔ `skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching`
 - ✔ `forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens`
+- ✔ `skips updateSession for auth callback routes, service worker precache, and background link prefetches`
 
 </details>
 
