@@ -945,6 +945,10 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
+  IF target_username IS NULL OR char_length(btrim(target_username)) NOT BETWEEN 1 AND 64 THEN
+    RETURN;
+  END IF;
+
   RETURN QUERY
   SELECT
     p.id,
@@ -997,6 +1001,11 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Security hardening: Trigger functions should never be executable via PostgREST RPC
+REVOKE EXECUTE ON FUNCTION public.handle_profile_identity_sync() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.handle_profile_identity_sync() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.handle_profile_identity_sync() FROM authenticated;
 
 DROP TRIGGER IF EXISTS trg_profile_identity_sync ON public.profiles;
 CREATE TRIGGER trg_profile_identity_sync

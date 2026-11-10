@@ -14,7 +14,7 @@
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Vitest](https://img.shields.io/badge/Vitest-217%20Suites%20%7C%202401%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.82%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.84%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -108,11 +108,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.15)
+## 🛠️ Latest Improvements (v2.9.16)
 
-- **Edge-Cached Quote Pool Gateway, 99.8% Supabase Egress Reduction & CDN Error Guard (`ADR-080`)**: Routed the 564-volume quote pool through an Edge-cached API endpoint (`GET /api/books?pool=quotes&limit=600`) with HTTP cache headers (`Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`), reducing Supabase PostgREST round-trips from 3 direct client queries per cold visitor to 1 Edge revalidation request per hour worldwide (~99.8% database egress reduction). Fortified `/api/books/route.ts` to return HTTP 503 with `Cache-Control: no-store, max-age=0` if Supabase is unavailable, preventing Edge CDN from caching empty responses, while `fetchQuoteEnrichedBooks` falls back gracefully to client Supabase and cached storage.
-- **2-Spread Browser Quota Optimization, 0ms Instant Hydration & Deep Spread Upgrades (`ADR-080`)**: Compressed the uncompressed JSON pool payload by 79% (from 8.74 MB down to 1.80 MB, or ~340 KB gzipped) by trimming the pool to the first 2 spreads per book (Spread I: Opening Incipit, Spread II: Second Movement). Slicing the pool eliminated the browser 5 MB `QuotaExceededError` in `writeCachedQuoteEnrichedBooks`, enabling 100% successful `localStorage` persistence and 0ms instantaneous hydration on all subsequent visits. Updated `fetchFeaturedQuotesMap` in `useBooks.ts` to query Supabase when cached spread count is `< 3`, ensuring the 2 cached pool spreads act as an instant-paint fallback while online requests retrieve all 16 spreads.
-- **Hero Book Incipit Preservation & 3D Preview Modal Parity (`ADR-080`)**: Updated `HeroFeaturedBook3D.tsx` to check `rawPoolQuotes.length >= 3` (differentiating raw pool books from the static incipit prepended on classic hero books) so Spreads I & II render with 0ms delay on initial paint while `useFeaturedQuotes([featuredBook.id])` lazily backfills all 16 spreads on demand for the active Hero book in the background. Updated `BookPreviewModal.tsx` (`hasInlineBookQuotes = quotes.length >= 3`) so opening any volume renders the 2 cached spreads instantly on paint and seamlessly upgrades to 16 spreads upon query resolution without loading flickers.
+- **PostgreSQL Trigger RPC Isolation, Handle-Lookup Bounds Guard & Pillar 6 REVOKE Gate (`ADR-073`)**: Resolved Supabase Security Advisor `0028_anon_security_definer_function_executable` and `0029_authenticated_security_definer_function_executable` warnings on `public.handle_profile_identity_sync()` by explicitly revoking `EXECUTE` from `PUBLIC`, `anon`, and `authenticated` so internal profile-sync table triggers cannot be invoked via PostgREST `/rest/v1/rpc/handle_profile_identity_sync`. Added a `1..64` trimmed-character bounds guard inside `public.lookup_scholar_by_username(TEXT)` to short-circuit empty or oversized handle inputs prior to index lookup, and upgraded `Pass 0.75` Pillar 6 in `scripts/verify-build.js` to statically enforce `REVOKE EXECUTE` across all `RETURNS TRIGGER` (`PUBLIC`, `anon`, `authenticated`) and `SECURITY DEFINER` (`PUBLIC`, `anon`) functions.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

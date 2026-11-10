@@ -9,6 +9,16 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.16',
+    date: '2026-11-10',
+    title: 'PostgreSQL Trigger RPC Isolation, Handle-Lookup Input Bounds & Automated Pillar 6 REVOKE Verification',
+    sections: {
+      Security: [
+        'PostgreSQL Trigger RPC Isolation, Handle-Lookup Bounds Guard & Pillar 6 REVOKE Gate (`supabase/schema.sql`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `SECURITY.md`, `docs/DECISIONS.md`, `ADR-073`): Resolved Supabase Security Advisor `0028_anon_security_definer_function_executable` and `0029_authenticated_security_definer_function_executable` warnings on `public.handle_profile_identity_sync()` by explicitly revoking `EXECUTE` from `PUBLIC`, `anon`, and `authenticated` so internal profile-sync table triggers cannot be invoked via PostgREST `/rest/v1/rpc/handle_profile_identity_sync`. Added a `1..64` trimmed-character bounds guard inside `public.lookup_scholar_by_username(TEXT)` to short-circuit empty or oversized handle inputs prior to index lookup, and upgraded `Pass 0.75` Pillar 6 in `scripts/verify-build.js` to statically enforce `REVOKE EXECUTE` across all `RETURNS TRIGGER` (`PUBLIC`, `anon`, `authenticated`) and `SECURITY DEFINER` (`PUBLIC`, `anon`) functions.',
+      ],
+    },
+  },
+  {
     version: '2.9.15',
     date: '2026-11-10',
     title: 'Edge-Cached Quote Pool Gateway, 2-Spread Quota Optimization, Single-Volume Deep Spreads & CDN Error Guard',

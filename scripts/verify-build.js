@@ -853,8 +853,45 @@ function pass075SecurityAndSastAudit() {
     for (const match of fnBlocks) {
       const fnName = match[1];
       const headerBlock = match[0];
-      if (/SECURITY\s+DEFINER/i.test(headerBlock) && !/SET\s+search_path\s*=\s*''/i.test(headerBlock)) {
+      const isSecurityDefiner = /SECURITY\s+DEFINER/i.test(headerBlock);
+      const isTriggerFunction = /RETURNS\s+TRIGGER\b/i.test(headerBlock);
+
+      if (isSecurityDefiner && !/SET\s+search_path\s*=\s*''/i.test(headerBlock)) {
         rlsViolations.push(`SECURITY DEFINER function "public.${fnName}" must explicitly set "SET search_path = ''".`);
+      }
+
+      if (isSecurityDefiner || isTriggerFunction) {
+        const escapedFn = fnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const revokeRegex = new RegExp(
+          `REVOKE\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+public\\.${escapedFn}\\s*\\([^)]*\\)\\s+FROM\\s+([^;]+);`,
+          'gi'
+        );
+        const revokedRoles = new Set();
+        let revMatch;
+        while ((revMatch = revokeRegex.exec(schemaSql)) !== null) {
+          for (const role of revMatch[1].split(',')) {
+            const cleanedRole = role.trim().toLowerCase();
+            if (cleanedRole) revokedRoles.add(cleanedRole);
+          }
+        }
+
+        if (isTriggerFunction) {
+          for (const requiredRole of ['public', 'anon', 'authenticated']) {
+            if (!revokedRoles.has(requiredRole)) {
+              rlsViolations.push(
+                `Trigger function "public.${fnName}()" must explicitly REVOKE EXECUTE FROM ${requiredRole === 'public' ? 'PUBLIC' : requiredRole} so it is never exposed via PostgREST RPC.`
+              );
+            }
+          }
+        } else if (isSecurityDefiner) {
+          for (const requiredRole of ['public', 'anon']) {
+            if (!revokedRoles.has(requiredRole)) {
+              rlsViolations.push(
+                `SECURITY DEFINER function "public.${fnName}" must explicitly REVOKE EXECUTE FROM ${requiredRole === 'public' ? 'PUBLIC' : requiredRole}.`
+              );
+            }
+          }
+        }
       }
     }
 
@@ -969,7 +1006,7 @@ function pass075SecurityAndSastAudit() {
     }
     const publicTableCount = dbTables.filter((t) => t.startsWith('public.')).length;
     const migrationTableCount = dbTables.length - publicTableCount;
-    logPass(`Pillar 6: Verified Row-Level Security across all ${dbTables.length} database tables (${publicTableCount} public tables + ${migrationTableCount} migration ledger), 100% DDL/policy/trigger idempotency, write-policy isolation, account-deletion parity, and search_path hardening on all SECURITY DEFINER functions.`);
+    logPass(`Pillar 6: Verified Row-Level Security across all ${dbTables.length} database tables (${publicTableCount} public tables + ${migrationTableCount} migration ledger), 100% DDL/policy/trigger idempotency, write-policy isolation, account-deletion parity, trigger RPC revocation, and search_path/REVOKE hardening on all SECURITY DEFINER functions.`);
   }
 
   // Pillar 7: HTTP Security Headers, Production CSP & Service Worker Cache Guard
