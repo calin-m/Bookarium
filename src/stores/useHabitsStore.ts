@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
@@ -324,7 +325,7 @@ export const useHabitsStore = create<HabitsState>()(
     }),
     {
       name: STORAGE_KEYS.HABITS,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
       partialize: (state) => ({
         annualGoal: state.annualGoal,
         annualGoalYear: state.annualGoalYear,

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 10 Nov 2026 15:37:16 GMT  
+**Last Generated**: Tue, 10 Nov 2026 15:28:25 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 216 passed  
-**Total Verified Tests**: 2382 passed  
+**Total Test Suites**: 217 passed  
+**Total Verified Tests**: 2394 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **216/216 test suites passed** (2382 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **217/217 test suites passed** (2394 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.91%** (13746/14183) — *Target: $\ge$ 95%*
-- **Statements**: **95.58%** (14865/15551) — *Target: $\ge$ 95%*
-- **Functions**: **94%** (3076/3272) — *Target: $\ge$ 92%*
-- **Branches**: **88.02%** (13635/15490) — *Target: $\ge$ 85%*
+- **Lines**: **96.83%** (13816/14268) — *Target: $\ge$ 95%*
+- **Statements**: **95.51%** (14938/15639) — *Target: $\ge$ 95%*
+- **Functions**: **93.87%** (3083/3284) — *Target: $\ge$ 92%*
+- **Branches**: **87.97%** (13675/15545) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (216 Suites / 2382 Tests)
+## 🧪 Comprehensive Test Suite Catalog (217 Suites / 2394 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 295 Tests)
 
@@ -494,7 +494,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (33 Suites · 547 Tests)
+### 🎨 Catalog & Presentation (33 Suites · 549 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -821,15 +821,17 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false`
 - ✔ `renders input, focuses on mount, and handles typing when isOpen is true`
 - ✔ `clears query and re-focuses input when clear button is clicked`
 - ✔ `dismisses when backdrop is clicked`
+- ✔ `dismisses when pointer down occurs outside the container`
 - ✔ `dismisses when Escape key is pressed`
 - ✔ `elevates container above software keyboard when keyboardHeight > 0`
 - ✔ `renders with deep elevation drop shadow and dark ambient light glow`
+- ✔ `supports submitOnEnter for Catalog: holds local state and triggers search only on Enter / submit button with 2-char guardrail`
 
 </details>
 
@@ -1851,7 +1853,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 562 Tests)
+### 📚 Gutenberg Parsers & Metadata (45 Suites · 572 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2033,7 +2035,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (30 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (31 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2060,6 +2062,7 @@
 - ✔ `throws CatalogProviderError when Supabase returns an error`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
 - ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
+- ✔ `automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch`
 - ✔ `returns empty array for invalid bookId`
 - ✔ `returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC`
 - ✔ `gracefully returns empty array on database error`
@@ -2433,6 +2436,19 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/safe-storage.test.ts</code></b> (7 tests)</summary>
+
+- ✔ `delegates getItem, setItem, and removeItem to window.localStorage`
+- ✔ `gracefully handles exceptions in window.localStorage.getItem`
+- ✔ `gracefully handles QuotaExceededError in window.localStorage.setItem`
+- ✔ `gracefully handles exceptions in window.localStorage.removeItem`
+- ✔ `returns null on getItem without throwing or referencing window`
+- ✔ `acts as a safe no-op on setItem without throwing`
+- ✔ `acts as a safe no-op on removeItem without throwing`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/scroll-utils.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
@@ -2638,7 +2654,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (36 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (38 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -2652,6 +2668,8 @@
 - ✔ `handles authors without any lifespan dates`
 - ✔ `returns nulls for empty inputs`
 - ✔ `calculates min birth and max death spanning authors and translators`
+- ✔ `sets maxDeath to null when any author or translator has completely unlisted dates under Berne Art. 7bis joint authorship`
+- ✔ `uses 100-year longevity heuristic when birth year is known but death year is null`
 - ✔ `constructs deterministic Gutenberg mirror endpoints for book id`
 - ✔ `returns null for malformed or non-text rows`
 - ✔ `normalizes valid Gutenberg CSV row into complete Book schema object`

@@ -5,6 +5,7 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import { createClient } from '@/lib/supabase/client';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import { useAuthStore } from './useAuthStore';
 import { useReaderStore } from './useReaderStore';
 import { toCloudBookInsert } from '@/lib/adapters/book.adapter';
@@ -726,7 +727,7 @@ export const useBookshelfStore = create<BookshelfState>()(
     }),
     {
       name: STORAGE_KEYS.BOOKSHELF,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 );

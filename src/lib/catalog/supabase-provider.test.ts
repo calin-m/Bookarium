@@ -597,6 +597,59 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results[0].quotes?.[0].chapterLabel).toBe('Chapter I');
       expect(result.count).toBe(1);
     });
+
+    it('automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch', async () => {
+      const validRow1: DatabaseBook = { ...sampleDbRows[0], id: 101, title: 'Book 101' };
+      const validRow2: DatabaseBook = { ...sampleDbRows[0], id: 102, title: 'Book 102' };
+      const restrictedRow1: DatabaseBook = { ...sampleDbRows[1], id: 103, title: 'Book 103' }; // Agatha Christie (d. 1976)
+      const restrictedRow2: DatabaseBook = { ...sampleDbRows[1], id: 104, title: 'Book 104' }; // Agatha Christie (d. 1976)
+      const backfillRow1: DatabaseBook = { ...sampleDbRows[0], id: 105, title: 'Book 105' };
+      const backfillRow2: DatabaseBook = { ...sampleDbRows[0], id: 106, title: 'Book 106' };
+
+      const initialBatch = [validRow1, restrictedRow1, validRow2, restrictedRow2]; // 4 rows, 2 valid under LIFE_70
+      const backfillBatch = [backfillRow1, backfillRow2]; // 2 valid rows
+
+      let callCount = 0;
+      const builder: any = {
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        textSearch: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        overlaps: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        lte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockReturnThis(),
+        then: vi.fn((resolve) => {
+          callCount++;
+          if (callCount === 1) {
+            resolve({ data: initialBatch, count: 10, error: null });
+          } else {
+            resolve({ data: backfillBatch, count: 10, error: null });
+          }
+        }),
+      };
+
+      const client = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue(builder),
+        }),
+      };
+
+      const provider = new SupabaseCatalogProvider(client as any);
+      const result = await provider.searchBooks({
+        page: 1,
+        limit: 4,
+        country: 'GB', // LIFE_70
+      });
+
+      expect(result.results).toHaveLength(4);
+      expect(result.results.map((b) => b.id)).toEqual([101, 102, 105, 106]);
+      expect(callCount).toBe(2);
+      expect(builder.range).toHaveBeenNthCalledWith(1, 0, 3);
+      expect(builder.range).toHaveBeenNthCalledWith(2, 4, 11);
+    });
   });
 
   describe('getBookTranslations', () => {

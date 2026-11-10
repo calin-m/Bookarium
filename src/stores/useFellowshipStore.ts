@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import type { ReaderCircleRow, SymposiumSessionRow } from '@/types/database.types';
 import {
   healProfileIdentity,
@@ -818,6 +819,7 @@ export const useFellowshipStore = create<FellowshipState>()(
     }),
     {
       name: 'bookarium-fellowship-storage',
+      storage: createJSONStorage(() => safeLocalStorage),
       partialize: (state) => ({
         circles: state.circles,
         symposiums: state.symposiums,

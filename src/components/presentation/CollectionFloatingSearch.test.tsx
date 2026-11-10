@@ -101,6 +101,26 @@ describe('CollectionFloatingSearch', () => {
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
+  it('dismisses when pointer down occurs outside the container', () => {
+    const handleClose = vi.fn();
+    render(
+      <div>
+        <div data-testid="outside-element">Outside</div>
+        <CollectionFloatingSearch
+          isOpen={true}
+          onClose={handleClose}
+          searchQuery=""
+          onSearchChange={vi.fn()}
+        />
+      </div>
+    );
+
+    const outsideEl = screen.getByTestId('outside-element');
+    fireEvent.pointerDown(outsideEl);
+
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
   it('dismisses when Escape key is pressed', () => {
     const handleClose = vi.fn();
     render(
@@ -145,8 +165,61 @@ describe('CollectionFloatingSearch', () => {
     );
 
     const input = screen.getByTestId('collection-floating-search-input');
-    const card = input.closest('div');
-    expect(card?.className).toContain('shadow-[');
-    expect(card?.className).toContain('dark:shadow-[');
+    const form = input.closest('form');
+    expect(form?.className).toContain('shadow-[');
+    expect(form?.className).toContain('dark:shadow-[');
+  });
+
+  it('supports submitOnEnter for Catalog: holds local state and triggers search only on Enter / submit button with 2-char guardrail', () => {
+    const handleSearchChange = vi.fn();
+    const handleSubmit = vi.fn();
+
+    render(
+      <CollectionFloatingSearch
+        isOpen={true}
+        onClose={vi.fn()}
+        searchQuery=""
+        onSearchChange={handleSearchChange}
+        submitOnEnter={true}
+        onSubmit={handleSubmit}
+      />
+    );
+
+    const input = screen.getByTestId('collection-floating-search-input') as HTMLInputElement;
+    expect(input.getAttribute('enterkeyhint')).toBe('search');
+
+    // 1. Typing 1 char -> does NOT trigger search or submit button
+    fireEvent.change(input, { target: { value: 'a' } });
+    expect(handleSearchChange).not.toHaveBeenCalled();
+    expect(handleSubmit).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('collection-floating-search-submit-btn')).not.toBeInTheDocument();
+
+    // Hitting Enter on 1 char -> blocked by 2-character guardrail
+    fireEvent.submit(input.closest('form')!);
+    expect(handleSearchChange).not.toHaveBeenCalled();
+    expect(handleSubmit).not.toHaveBeenCalled();
+
+    // 2. Typing >= 2 chars -> reveals submit button, but does not search until submitted
+    fireEvent.change(input, { target: { value: 'tolstoy' } });
+    expect(handleSearchChange).not.toHaveBeenCalled();
+    expect(handleSubmit).not.toHaveBeenCalled();
+
+    const submitBtn = screen.getByTestId('collection-floating-search-submit-btn');
+    expect(submitBtn).toBeInTheDocument();
+
+    // Submit via click
+    fireEvent.click(submitBtn);
+    expect(handleSearchChange).toHaveBeenCalledWith('tolstoy');
+    expect(handleSubmit).toHaveBeenCalledWith('tolstoy');
+
+    // 3. Clear button resets both local and upstream query
+    handleSearchChange.mockClear();
+    handleSubmit.mockClear();
+
+    const clearBtn = screen.getByTestId('collection-floating-search-clear-btn');
+    fireEvent.click(clearBtn);
+    expect(handleSearchChange).toHaveBeenCalledWith('');
+    expect(handleSubmit).toHaveBeenCalledWith('');
+    expect(input.value).toBe('');
   });
 });

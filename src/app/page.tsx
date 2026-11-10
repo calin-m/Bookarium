@@ -1096,6 +1096,12 @@ function HomeContent() {
           onClose={() => setIsCatalogSearchOpen(false)}
           searchQuery={search}
           onSearchChange={handleSearchChange}
+          submitOnEnter={true}
+          onSubmit={(query) => {
+            if (query) {
+              scrollToCatalogSection();
+            }
+          }}
           searchPlaceholder="Search 70,000+ books by title or author..."
           searchAriaLabel="Search catalog"
           clearAriaLabel="Clear catalog search"
@@ -1108,7 +1114,12 @@ function HomeContent() {
           isOpen={isCollectionSearchOpen}
           onClose={() => setIsCollectionSearchOpen(false)}
           searchQuery={collectionSearchQuery}
-          onSearchChange={setCollectionSearchQuery}
+          onSearchChange={(q) => {
+            setCollectionSearchQuery(q);
+            if (q) {
+              scrollToCollectionContent();
+            }
+          }}
           searchPlaceholder={viewConfig.searchPlaceholder || 'Search collection...'}
           searchAriaLabel={`Search ${viewConfig.collectionName}`}
           clearAriaLabel={`Clear ${viewConfig.collectionName} search`}

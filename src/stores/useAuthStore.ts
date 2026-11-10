@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Profile, Json } from '@/types/database.types';
 import { ROUTES } from '@/config/routes';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import { buildAuthRedirectUrl, sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
 
 export function syncAuthCookieHint(isAuthenticated: boolean): void {
@@ -926,7 +927,7 @@ export const useAuthStore = create<AuthState>()(
 }),
     {
       name: 'bookarium-auth-profile',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
       onRehydrateStorage: () => (state) => {
         if (state?.user) {
           syncAuthCookieHint(true);

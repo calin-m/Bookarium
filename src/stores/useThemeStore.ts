@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 
 export type AppTheme = 'light' | 'sepia' | 'dark';
 
@@ -108,7 +109,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: STORAGE_KEYS.THEME,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
       onRehydrateStorage: () => (state) => {
         if (state?.theme) {
           applyThemeToDocument(state.theme);

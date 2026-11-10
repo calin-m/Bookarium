@@ -136,6 +136,137 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     }
   }
 
+  /**
+   * Filters and verifies a raw database batch against copyright jurisdiction and formats.
+   */
+  private filterBatch(
+    rawRows: DatabaseBook[],
+    options: CatalogQueryOptions,
+    country: string,
+    currentYear: number
+  ): {
+    validBooks: GutendexBook[];
+    restrictedCount: number;
+    sentinelCount: number;
+  } {
+    const gutendexBooks = rawRows.map(mapDatabaseBookToGutendexBook);
+    const filteredResults = options.includeRestrictedMetadata
+      ? gutendexBooks
+      : gutendexBooks.filter((b) => {
+          const evalResult = isBookPublicDomainInJurisdiction(b, country, currentYear);
+          return evalResult.isAllowed;
+        });
+
+    const restrictedCount = gutendexBooks.length - filteredResults.length;
+
+    const mimeTypes = options.mimeType
+      ? options.mimeType.split(',').map((m) => m.trim()).filter(Boolean)
+      : [];
+    const mimeFilteredResults = mimeTypes.length > 0
+      ? filteredResults.filter((b) =>
+          mimeTypes.some((fmt) => {
+            const baseMime = fmt.split(';')[0].trim();
+            return Object.keys(b.formats || {}).some(
+              (key) => key === fmt || key.startsWith(baseMime)
+            );
+          })
+        )
+      : filteredResults;
+
+    const finalResults = options.hasQuotes
+      ? mimeFilteredResults.filter((b) => Array.isArray(b.quotes) && b.quotes.length > 0)
+      : mimeFilteredResults;
+
+    const sentinelCount = mimeFilteredResults.length - finalResults.length;
+
+    return {
+      validBooks: finalResults,
+      restrictedCount,
+      sentinelCount,
+    };
+  }
+
+  /**
+   * Constructs the base Supabase query with all filters and ordering applied (without range).
+   */
+  private buildSearchQuery(
+    supabase: SupabaseClient<Database>,
+    options: CatalogQueryOptions,
+    jurisdictionRule: string,
+    currentYear: number
+  ) {
+    let query = supabase.from('books').select(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
+
+    // Enforce zero-copyright
+    query = query.eq('copyright', false);
+
+    // IDs filter (comma-delimited)
+    if (options.ids) {
+      const idList = options.ids
+        .split(',')
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !isNaN(id));
+      if (idList.length > 0) {
+        query = query.in('id', idList);
+      }
+    }
+
+    // Full-text search and topic filtering on GIN search_vector (title + subjects)
+    const cleanSearch = options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
+    const cleanTopic = options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
+    const topicList = cleanTopic ? cleanTopic.split(',').map((t) => t.trim()).filter(Boolean) : [];
+    const searchVectorQuery = [cleanSearch, topicList.join(' or ')].filter(Boolean).join(' ');
+
+    if (searchVectorQuery) {
+      query = query.textSearch('search_vector', searchVectorQuery, {
+        type: !cleanSearch && topicList.length === 1 ? 'plain' : 'websearch',
+        config: 'english',
+      });
+    }
+
+    // Languages filter (array overlap)
+    if (options.languages && options.languages.length > 0) {
+      query = query.overlaps('languages', options.languages);
+    }
+
+    // Quote-enriched volumes filter (uses partial index idx_books_with_quotes_popular)
+    if (options.hasQuotes) {
+      query = query.neq('quotes', '[]');
+    }
+
+    // Author era bounds
+    if (options.authorYearStart !== undefined) {
+      query = query.gte('max_author_death_year', options.authorYearStart);
+    }
+    if (options.authorYearEnd !== undefined) {
+      query = query.lte('min_author_birth_year', options.authorYearEnd);
+    }
+
+    // Jurisdictional copyright filtering at query level (indexed B-Tree bounds)
+    if (!options.includeRestrictedMetadata && jurisdictionRule !== 'US_PUBLIC_DOMAIN') {
+      let termYears = 70;
+      if (jurisdictionRule === 'LIFE_100') {
+        termYears = 100;
+      } else if (jurisdictionRule === 'LIFE_80') {
+        termYears = 80;
+      }
+      const cutoffYear = currentYear - termYears - 1;
+      query = query.lte('max_author_death_year', cutoffYear);
+    }
+
+    // Sorting
+    if (options.sort === 'descending') {
+      query = query.order('id', { ascending: false });
+    } else if (options.sort === 'ascending') {
+      query = query.order('id', { ascending: true });
+    } else {
+      // Default / 'popular' (aligned 1:1 with single-column idx_books_download_count)
+      query = query.order('download_count', { ascending: false });
+    }
+
+    return query;
+  }
+
   public async searchBooks(options: CatalogQueryOptions): Promise<CatalogQueryResult> {
     const startTime = Date.now();
     const supabase = this.getSupabase();
@@ -144,75 +275,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     const currentYear = new Date().getFullYear();
 
     try {
-      // Use estimated count to prevent PostgreSQL statement timeout on large 78k-row catalog scans
-      let query = supabase.from('books').select(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
-
-      // Enforce zero-copyright
-      query = query.eq('copyright', false);
-
-      // IDs filter (comma-delimited)
-      if (options.ids) {
-        const idList = options.ids
-          .split(',')
-          .map((id) => parseInt(id.trim(), 10))
-          .filter((id) => !isNaN(id));
-        if (idList.length > 0) {
-          query = query.in('id', idList);
-        }
-      }
-
-      // Full-text search and topic filtering on GIN search_vector (title + subjects)
-      const cleanSearch = options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
-      const cleanTopic = options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
-      const topicList = cleanTopic ? cleanTopic.split(',').map((t) => t.trim()).filter(Boolean) : [];
-      const searchVectorQuery = [cleanSearch, topicList.join(' or ')].filter(Boolean).join(' ');
-
-      if (searchVectorQuery) {
-        query = query.textSearch('search_vector', searchVectorQuery, {
-          type: !cleanSearch && topicList.length === 1 ? 'plain' : 'websearch',
-          config: 'english',
-        });
-      }
-
-      // Languages filter (array overlap)
-      if (options.languages && options.languages.length > 0) {
-        query = query.overlaps('languages', options.languages);
-      }
-
-      // Quote-enriched volumes filter (uses partial index idx_books_with_quotes_popular)
-      if (options.hasQuotes) {
-        query = query.neq('quotes', '[]');
-      }
-
-      // Author era bounds
-      if (options.authorYearStart !== undefined) {
-        query = query.gte('max_author_death_year', options.authorYearStart);
-      }
-      if (options.authorYearEnd !== undefined) {
-        query = query.lte('min_author_birth_year', options.authorYearEnd);
-      }
-
-      // Jurisdictional copyright filtering at query level (indexed B-Tree bounds)
-      if (!options.includeRestrictedMetadata && jurisdictionRule !== 'US_PUBLIC_DOMAIN') {
-        let termYears = 70;
-        if (jurisdictionRule === 'LIFE_100') {
-          termYears = 100;
-        } else if (jurisdictionRule === 'LIFE_80') {
-          termYears = 80;
-        }
-        const cutoffYear = currentYear - termYears - 1;
-        query = query.lte('max_author_death_year', cutoffYear);
-      }
-
-      // Sorting
-      if (options.sort === 'descending') {
-        query = query.order('id', { ascending: false });
-      } else if (options.sort === 'ascending') {
-        query = query.order('id', { ascending: true });
-      } else {
-        // Default / 'popular' (aligned 1:1 with single-column idx_books_download_count)
-        query = query.order('download_count', { ascending: false });
-      }
+      const baseQuery = this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear);
 
       // Pagination
       const page = Math.max(1, options.page || 1);
@@ -220,7 +283,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
 
-      query = query.range(from, to);
+      const query = baseQuery.range(from, to);
 
       const { data, count, error } = await query;
 
@@ -233,41 +296,61 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       }
 
       const rawRows: DatabaseBook[] = (data || []) as DatabaseBook[];
-      const gutendexBooks = rawRows.map(mapDatabaseBookToGutendexBook);
+      const initialBatch = this.filterBatch(rawRows, options, country, currentYear);
+      const finalResults = [...initialBatch.validBooks];
+      let totalFiltered = initialBatch.restrictedCount;
+      let totalSentinelFiltered = initialBatch.sentinelCount;
 
-      // Runtime jurisdictional verification pass (guarantees translator & joint author compliance)
-      const filteredResults = options.includeRestrictedMetadata
-        ? gutendexBooks
-        : gutendexBooks.filter((b) => {
-            const evalResult = isBookPublicDomainInJurisdiction(b, country, currentYear);
-            return evalResult.isAllowed;
-          });
+      // Resilient dynamic backfill: if runtime jurisdictional or format filtering withheld
+      // rows and we haven't reached the end of the table, top up until finalResults.length === limit.
+      if (
+        finalResults.length < limit &&
+        rawRows.length === limit &&
+        !options.includeRestrictedMetadata
+      ) {
+        let nextOffset = to + 1;
+        let iterations = 0;
+        const MAX_BACKFILL_ITERATIONS = 2;
 
-      // Filter by mimeType if specified (supports comma-separated list of formats and MIME charset parameters)
-      const mimeTypes = options.mimeType
-        ? options.mimeType.split(',').map((m) => m.trim()).filter(Boolean)
-        : [];
-      const mimeFilteredResults = mimeTypes.length > 0
-        ? filteredResults.filter((b) =>
-            mimeTypes.some((fmt) => {
-              const baseMime = fmt.split(';')[0].trim();
-              return Object.keys(b.formats || {}).some(
-                (key) => key === fmt || key.startsWith(baseMime)
-              );
-            })
-          )
-        : filteredResults;
+        while (finalResults.length < limit && iterations < MAX_BACKFILL_ITERATIONS) {
+          iterations++;
+          const deficit = limit - finalResults.length;
+          const fetchBatch = Math.max(deficit * 2, 8);
+          const backfillQuery = this.buildSearchQuery(
+            supabase,
+            options,
+            jurisdictionRule,
+            currentYear
+          ).range(nextOffset, nextOffset + fetchBatch - 1);
 
-      // Filter out sentinel-only or quoteless rows when hasQuotes is requested
-      const finalResults = options.hasQuotes
-        ? mimeFilteredResults.filter((b) => Array.isArray(b.quotes) && b.quotes.length > 0)
-        : mimeFilteredResults;
+          const { data: backfillData, error: backfillError } = await backfillQuery;
+          if (backfillError || !backfillData || backfillData.length === 0) {
+            break;
+          }
 
-      const totalFiltered = gutendexBooks.length - filteredResults.length;
-      const sentinelFiltered = mimeFilteredResults.length - finalResults.length;
+          const rawBackfill = backfillData as DatabaseBook[];
+          const backfillBatch = this.filterBatch(rawBackfill, options, country, currentYear);
+          totalFiltered += backfillBatch.restrictedCount;
+          totalSentinelFiltered += backfillBatch.sentinelCount;
+
+          for (const book of backfillBatch.validBooks) {
+            if (finalResults.length < limit) {
+              finalResults.push(book);
+            } else {
+              break;
+            }
+          }
+
+          nextOffset += rawBackfill.length;
+          if (rawBackfill.length < fetchBatch) {
+            break;
+          }
+        }
+      }
+
       const totalCount =
         count !== null && count !== undefined
-          ? Math.max(0, count - totalFiltered - sentinelFiltered)
+          ? Math.max(0, count - totalFiltered - totalSentinelFiltered)
           : finalResults.length;
       const latencyMs = Date.now() - startTime;
 

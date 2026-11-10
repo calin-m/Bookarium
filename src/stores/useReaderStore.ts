@@ -6,6 +6,7 @@ import { useAuthStore } from './useAuthStore';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
@@ -630,7 +631,7 @@ export const useReaderStore = create<ReaderState>()(
     }),
     {
       name: STORAGE_KEYS.READER_SETTINGS,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 );

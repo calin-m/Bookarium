@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import type { AppTheme } from './useThemeStore';
 import type { ReaderFontFamily, ReaderReadingMode, ReaderColumnWidth } from './useReaderStore';
 
@@ -84,7 +85,7 @@ export const usePreferencesStore = create<PreferencesState>()(
     }),
     {
       name: STORAGE_KEYS.PREFERENCES,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 );

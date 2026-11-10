@@ -1430,6 +1430,8 @@ function generateMarkdown() {
       'Full-text in-volume search algorithm with canonical typography matching (`--` <-> `—`, curly/straight quotes), diacritic fallback, context snippet generation, and matched coordinate navigation.',
     'offline-storage':
       'IndexedDB storage abstraction providing offline book content caching, cover image Blob persistence (`saveOfflineBook`, `getOfflineBookCover`, `fetchAndPatchOfflineCover`), local store author resolution and asynchronous IndexedDB author back-fill (`patchOfflineBookAuthors`), storage change notifications (`notifyOfflineStorageChanged`), quota calculation, and LRU eviction.',
+    'safe-storage':
+      'Universal SSR-safe storage adapter (`safeLocalStorage`) for Zustand `persist` middleware, eliminating Node 22 experimental localStorage warnings and providing safe no-op setItem execution during server rendering with browser try/catch boundaries.',
     password:
       'Cryptographically secure password generation and multi-factor entropy evaluation engine.',
     'query-parser':
@@ -1447,7 +1449,7 @@ function generateMarkdown() {
     'speech-utils':
       'Web Speech API voice selection heuristics identifying natural/neural/cloud synthesis voices, BCP-47 locale normalization, book-language voice compatibility filtering, and quality score sorting (`getVoiceQualityScore`, `sortVoicesByQuality`, `resolveBestVoice`).',
     'supabase-provider':
-      'Dedicated Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries across title/subjects/bookshelves, MIME charset prefix matching, and author lifespan bounds for sub-50ms single-book lookups and ~1-2s catalog page queries.',
+      'Dedicated Supabase PostgreSQL catalog provider implementing ICatalogProvider with cached healthcheck (60s TTL), GIN full-text search_vector queries across title/subjects/bookshelves, MIME charset prefix matching, author lifespan bounds, and bounded dynamic backfill for sub-50ms single-book lookups and ~1-2s catalog page queries.',
     client:
       'Browser-side Supabase client initialization with credential sanitization and local session persistence.',
     middleware:

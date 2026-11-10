@@ -902,7 +902,12 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         isOpen={isBottomSearchOpen}
         onClose={() => setIsBottomSearchOpen(false)}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(q) => {
+          setSearchQuery(q);
+          if (q) {
+            smartScrollToContent('notebook-content-anchor', { offsetTop: 80 });
+          }
+        }}
         searchPlaceholder="Search notes & quotes..."
         searchAriaLabel="Search notebook"
         clearAriaLabel="Clear notebook search"

@@ -239,16 +239,39 @@ function buildStandardFormats(bookId) {
 // Helper: compute lifespan bounds from authors and translators
 function computeLifespanBounds(authors = [], translators = []) {
   const people = [...authors, ...translators];
+  if (people.length === 0) return { maxDeath: null, minBirth: null };
+
+  let hasUnverifiedContributor = false;
   let maxDeath = null;
   let minBirth = null;
 
   for (const person of people) {
-    if (person && typeof person.death_year === 'number') {
-      maxDeath = maxDeath === null ? person.death_year : Math.max(maxDeath, person.death_year);
+    if (!person) continue;
+    const death = typeof person.death_year === 'number' ? person.death_year : null;
+    const birth = typeof person.birth_year === 'number' ? person.birth_year : null;
+
+    if (death === null && birth === null) {
+      hasUnverifiedContributor = true;
     }
-    if (person && typeof person.birth_year === 'number') {
-      minBirth = minBirth === null ? person.birth_year : Math.min(minBirth, person.birth_year);
+
+    if (death !== null) {
+      maxDeath = maxDeath === null ? death : Math.max(maxDeath, death);
+    } else if (birth !== null) {
+      // Conservative human longevity heuristic (birth + 100)
+      const estimatedDeath = birth + 100;
+      maxDeath = maxDeath === null ? estimatedDeath : Math.max(maxDeath, estimatedDeath);
     }
+
+    if (birth !== null) {
+      minBirth = minBirth === null ? birth : Math.min(minBirth, birth);
+    }
+  }
+
+  // Under Berne Convention Art. 7bis, joint authorship copyright is measured from the
+  // death of the last surviving author. If any contributor's lifespan is completely unlisted,
+  // the volume cannot be verified as public domain in Life+70/80/100, so maxDeath is indeterminate (null).
+  if (hasUnverifiedContributor) {
+    maxDeath = null;
   }
 
   return { maxDeath, minBirth };

@@ -683,6 +683,7 @@ CREATE TABLE IF NOT EXISTS public.books (
   media_type TEXT NOT NULL DEFAULT 'Text',
   formats JSONB NOT NULL DEFAULT '{}'::jsonb,
   download_count INTEGER NOT NULL DEFAULT 0,
+  -- Joint-authorship invariant (Berne Convention Art. 7bis): NULL if any contributor has unlisted dates
   max_author_death_year INTEGER,
   min_author_birth_year INTEGER,
   quotes JSONB NOT NULL DEFAULT '[]'::jsonb,

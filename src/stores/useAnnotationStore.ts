@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
 import type { SymposiumSessionRow } from '@/types/database.types';
 import {
@@ -710,7 +711,7 @@ export const useAnnotationStore = create<AnnotationState>()(
     }),
     {
       name: STORAGE_KEYS.ANNOTATIONS,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
     }
   )
 );

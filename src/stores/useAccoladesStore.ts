@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
@@ -337,7 +338,7 @@ export const useAccoladesStore = create<AccoladesState>()(
     }),
     {
       name: STORAGE_KEYS.ACCOLADES,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
       partialize: (state) => ({
         unlockedAccolades: state.unlockedAccolades,
         pinnedAccoladeIds: state.pinnedAccoladeIds,

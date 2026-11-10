@@ -199,6 +199,31 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(bounds.minBirth).toBe(1800);
       expect(bounds.maxDeath).toBe(1920);
     });
+
+    it('sets maxDeath to null when any author or translator has completely unlisted dates under Berne Art. 7bis joint authorship', () => {
+      const authors = [
+        { name: 'Known Author', birth_year: 1800, death_year: 1860 },
+        { name: 'Unlisted Co-Author', birth_year: null, death_year: null },
+      ];
+      const bounds = computeLifespanBounds(authors, []);
+      expect(bounds.maxDeath).toBeNull();
+      expect(bounds.minBirth).toBe(1800);
+
+      const translators = [
+        { name: 'Unlisted Translator', birth_year: null, death_year: null },
+      ];
+      const translatorBounds = computeLifespanBounds([{ name: 'Author', birth_year: 1800, death_year: 1850 }], translators);
+      expect(translatorBounds.maxDeath).toBeNull();
+    });
+
+    it('uses 100-year longevity heuristic when birth year is known but death year is null', () => {
+      const authors = [
+        { name: 'Long-Lived Author', birth_year: 1820, death_year: null },
+      ];
+      const bounds = computeLifespanBounds(authors, []);
+      expect(bounds.minBirth).toBe(1820);
+      expect(bounds.maxDeath).toBe(1920); // 1820 + 100
+    });
   });
 
   describe('buildStandardFormats', () => {
