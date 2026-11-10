@@ -45,8 +45,27 @@ export async function GET(request: NextRequest) {
       result = null;
     }
 
-    // Fall back to upstream Gutendex API if Supabase is unseeded, unhealthy, or throws
+    // Fall back to upstream Gutendex API if Supabase is unseeded, unhealthy, or throws (quotes pool is Supabase-exclusive)
     if (!result) {
+      if (queryOptions.pool === 'quotes') {
+        return NextResponse.json(
+          {
+            error: 'Quote pool unavailable from database',
+            results: [],
+            count: 0,
+            source: 'supabase',
+            latencyMs: Date.now() - startTime,
+            clientCountry: queryOptions.country,
+            jurisdictionRule: getJurisdictionRule(queryOptions.country),
+          },
+          {
+            status: 503,
+            headers: {
+              'Cache-Control': 'no-store, max-age=0',
+            },
+          }
+        );
+      }
       result = await gutendexProvider.searchBooks(queryOptions);
     }
 

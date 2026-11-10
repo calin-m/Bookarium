@@ -353,4 +353,20 @@ describe('GET /api/books route handler', () => {
     searchBooksSpy.mockRestore();
     fetchSpy.mockRestore();
   });
+
+  it('should return 503 with no-store when pool=quotes and Supabase is unavailable', async () => {
+    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
+    const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValueOnce(false);
+
+    const req = new NextRequest('http://localhost:3000/api/books?pool=quotes');
+    const res = await GET(req);
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    const json = await res.json();
+    expect(json.error).toBe('Quote pool unavailable from database');
+    expect(json.results).toEqual([]);
+
+    isHealthySpy.mockRestore();
+  });
 });

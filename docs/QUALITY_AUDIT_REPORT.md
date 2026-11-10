@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 10 Nov 2026 17:09:09 GMT  
+**Last Generated**: Tue, 10 Nov 2026 21:10:41 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 217 passed  
-**Total Verified Tests**: 2396 passed  
+**Total Verified Tests**: 2401 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **217/217 test suites passed** (2396 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **217/217 test suites passed** (2401 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.87%** (13817/14263) — *Target: $\ge$ 95%*
-- **Statements**: **95.55%** (14939/15634) — *Target: $\ge$ 95%*
-- **Functions**: **93.93%** (3082/3281) — *Target: $\ge$ 92%*
-- **Branches**: **88.01%** (13676/15539) — *Target: $\ge$ 85%*
+- **Lines**: **96.82%** (13872/14327) — *Target: $\ge$ 95%*
+- **Statements**: **95.47%** (14990/15701) — *Target: $\ge$ 95%*
+- **Functions**: **93.97%** (3087/3285) — *Target: $\ge$ 92%*
+- **Branches**: **87.95%** (13743/15625) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (217 Suites / 2396 Tests)
+## 🧪 Comprehensive Test Suite Catalog (217 Suites / 2401 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 295 Tests)
+### 🚀 App Routes & Pages (27 Suites · 296 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -165,7 +165,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
@@ -182,6 +182,7 @@
 - ✔ `should return 502 status code when upstream API returns invalid non-JSON body`
 - ✔ `should query Supabase provider first when healthy and return source supabase`
 - ✔ `should gracefully degrade to upstream Gutendex when Supabase provider throws an error`
+- ✔ `should return 503 with no-store when pool=quotes and Supabase is unavailable`
 
 </details>
 
@@ -494,7 +495,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (33 Suites · 551 Tests)
+### 🎨 Catalog & Presentation (33 Suites · 553 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -642,7 +643,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/presentation/BookPreviewModal.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false or book is null`
 - ✔ `renders book preview modal and triggers cover open animation`
@@ -664,6 +665,7 @@
 - ✔ `does not render offline toggle button or downloaded tag inside the open book spread`
 - ✔ `disables Read button in spread footer when network is offline and book is not cached`
 - ✔ `normalizes pre-quoted passages without double quotation marks and gates leftPageQuote2 on concise quote lengths`
+- ✔ `renders quotes immediately for books with 2 pool spreads and allows deep spread upgrade`
 
 </details>
 
@@ -966,7 +968,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
 - ✔ `triggers shuffle when shuffle button is clicked`
@@ -983,6 +985,7 @@
 - ✔ `dynamically renders 3 concise quotes on Left and Right pages and selects a fitting cover quote`
 - ✔ `holds quote areas invisible until the quote pool settles, then reveals them once`
 - ✔ `does not fade the cover or right page on first paint, and only animates the content wrapper after a user shuffle`
+- ✔ `differentiates hero classic incipit from pool spreads using rawBook quote count`
 
 </details>
 
@@ -1855,7 +1858,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (45 Suites · 572 Tests)
+### 📚 Gutenberg Parsers & Metadata (45 Suites · 574 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2022,7 +2025,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `defaults to safe base values when no query parameters are provided`
 - ✔ `normalizes whitespace in search query and trims input`
@@ -2032,12 +2035,13 @@
 - ✔ `parses include_restricted_metadata and has_quotes flags`
 - ✔ `automatically expands default limit up to 100 when ids batch exceeds 32 items and limit is omitted`
 - ✔ `parses comma-separated languages into string array`
+- ✔ `parses pool=quotes parameter and supports expanded limit up to 600`
 - ✔ `resolves country code through the priority cascade`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (31 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (32 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2065,6 +2069,7 @@
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
 - ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
 - ✔ `automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch`
+- ✔ `handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically`
 - ✔ `returns empty array for invalid bookId`
 - ✔ `returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC`
 - ✔ `gracefully returns empty array on database error`

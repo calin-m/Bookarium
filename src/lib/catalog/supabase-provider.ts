@@ -11,13 +11,49 @@ import { createClient } from '@/lib/supabase/client';
 import {
   isBookPublicDomainInJurisdiction,
   getJurisdictionRule,
+  type JurisdictionRule,
 } from '@/lib/copyright-engine';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import { LITERARY_QUOTES } from '@/config/literary-quotes';
 
 /**
  * Columns explicitly selected for catalog search to prevent transferring large unabridged text.
  */
 export const CATALOG_METADATA_COLUMNS =
   'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, quotes, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
+
+const FEATURED_HERO_ORDER_MAP = new Map<number, number>(
+  FEATURED_HERO_BOOKS.map((b, idx) => [b.id, idx])
+);
+
+export function filterValidBookPassages(rawQuotes: unknown): BookPassage[] {
+  if (!Array.isArray(rawQuotes)) return [];
+  return rawQuotes.filter(
+    (item): item is BookPassage =>
+      Boolean(
+        item &&
+          typeof item === 'object' &&
+          typeof (item as BookPassage).openingLine === 'string' &&
+          typeof (item as BookPassage).quoteExcerpt === 'string' &&
+          !String((item as BookPassage).commentary || '').startsWith(
+            'Bibliographic sentinel record'
+          )
+      )
+  );
+}
+
+export function sortQuoteEnrichedBooksDeterministically(books: GutendexBook[]): GutendexBook[] {
+  return [...books].sort((a, b) => {
+    const idxA = FEATURED_HERO_ORDER_MAP.get(a.id);
+    const idxB = FEATURED_HERO_ORDER_MAP.get(b.id);
+    if (idxA !== undefined && idxB !== undefined) {
+      return idxA - idxB;
+    }
+    if (idxA !== undefined) return -1;
+    if (idxB !== undefined) return 1;
+    return (b.download_count ?? 0) - (a.download_count ?? 0) || a.id - b.id;
+  });
+}
 
 /**
  * Checks if Supabase credentials are genuinely configured (non-empty, non-placeholder).
@@ -267,12 +303,135 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     return query;
   }
 
+  /**
+   * Fetches quote-enriched books (`WHERE quotes <> '[]'::jsonb`) bounded by the top popular
+   * and recent candidate IDs (Primary Key scan), slicing each volume to 2 spreads to optimize
+   * Vercel Edge caching and browser localStorage quota capacity.
+   */
+  public async fetchQuoteEnrichedPool(
+    options: CatalogQueryOptions,
+    jurisdictionRule: JurisdictionRule
+  ): Promise<CatalogQueryResult> {
+    const startTime = Date.now();
+    const supabase = this.getSupabase();
+    const limit = Math.max(1, Math.min(600, options.limit || 600));
+
+    try {
+      const candidateIdSet = new Set<number>([
+        ...FEATURED_HERO_BOOKS.map((b) => b.id),
+        ...LITERARY_QUOTES.map((q) => q.bookId),
+      ]);
+      const idScanSpecs = [
+        { col: 'download_count', scanLimit: 500 },
+        { col: 'id', scanLimit: 64 },
+      ] as const;
+
+      const scanResults = await Promise.all(
+        idScanSpecs.map(async (spec) => {
+          const idSelect = supabase.from('books').select('id');
+          if (idSelect && typeof idSelect.order === 'function') {
+            const ordered = idSelect.order(spec.col, { ascending: false });
+            if (ordered && typeof ordered.limit === 'function') {
+              return ordered.limit(spec.scanLimit);
+            }
+          }
+          return { data: null };
+        })
+      );
+
+      for (const res of scanResults) {
+        if (Array.isArray(res?.data)) {
+          for (const row of res.data) {
+            if (row && typeof row.id === 'number') {
+              candidateIdSet.add(row.id);
+            }
+          }
+        }
+      }
+
+      const baseSelect = supabase
+        .from('books')
+        .select(
+          'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quotes'
+        );
+      const scopedSelect =
+        baseSelect && typeof baseSelect.in === 'function'
+          ? baseSelect.in('id', Array.from(candidateIdSet))
+          : baseSelect;
+
+      const { data, error } = await scopedSelect
+        .neq('quotes', '[]')
+        .order('download_count', { ascending: false })
+        .limit(limit);
+
+      if (error || !Array.isArray(data)) {
+        throw new CatalogProviderError(
+          `Supabase Quote Pool query error: ${error?.message || 'Empty or invalid response'}`,
+          500,
+          'supabase'
+        );
+      }
+
+      const books: GutendexBook[] = [];
+      for (const row of data) {
+        if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
+        const validPassages = filterValidBookPassages(row.quotes);
+        if (validPassages.length === 0) continue;
+
+        books.push({
+          id: row.id,
+          title: row.title,
+          authors: Array.isArray(row.authors)
+            ? (row.authors as unknown as GutendexBook['authors'])
+            : [],
+          translators: Array.isArray(row.translators)
+            ? (row.translators as unknown as GutendexBook['translators'])
+            : [],
+          subjects: Array.isArray(row.subjects) ? row.subjects : [],
+          bookshelves: Array.isArray((row as { bookshelves?: string[] }).bookshelves)
+            ? ((row as { bookshelves: string[] }).bookshelves)
+            : [],
+          languages: Array.isArray(row.languages) ? row.languages : ['en'],
+          copyright: typeof row.copyright === 'boolean' ? row.copyright : false,
+          media_type: 'Text',
+          formats: {},
+          download_count: typeof row.download_count === 'number' ? row.download_count : 0,
+          quotes: validPassages.slice(0, 2),
+        });
+      }
+
+      const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
+
+      return {
+        count: sortedBooks.length,
+        next: null,
+        previous: null,
+        results: sortedBooks,
+        source: 'supabase',
+        latencyMs: Date.now() - startTime,
+        clientCountry: options.country,
+        jurisdictionRule,
+      };
+    } catch (err: unknown) {
+      if (err instanceof CatalogProviderError) throw err;
+      throw new CatalogProviderError(
+        `Supabase Quote Pool error: ${err instanceof Error ? err.message : String(err)}`,
+        500,
+        'supabase'
+      );
+    }
+  }
+
   public async searchBooks(options: CatalogQueryOptions): Promise<CatalogQueryResult> {
     const startTime = Date.now();
     const supabase = this.getSupabase();
     const country = options.country;
     const jurisdictionRule = getJurisdictionRule(country);
     const currentYear = new Date().getFullYear();
+
+    if (options.pool === 'quotes') {
+      return this.fetchQuoteEnrichedPool(options, jurisdictionRule);
+    }
 
     try {
       const baseQuery = this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear);

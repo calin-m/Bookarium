@@ -17,6 +17,8 @@ import {
   QUOTE_POOL_SETTLE_TIMEOUT_MS,
 } from './useBooks';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
+import { server } from '@/mocks/server';
+import { http, HttpResponse } from 'msw';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -572,7 +574,51 @@ describe('useBooks hook', () => {
     expect(await fetchQuoteEnrichedBooks()).toEqual([]);
     onLineGetter.mockRestore();
 
-    // 3. Valid rows + sentinel row filtering + error/reject handling
+    // 2.5. Primary Edge API route (/api/books?pool=quotes) succeeds, slices to 2 spreads, and caches
+    server.use(
+      http.get('/api/books', ({ request }) => {
+        const url = new URL(request.url, 'http://localhost:3000');
+        if (url.searchParams.get('pool') === 'quotes') {
+          return HttpResponse.json({
+            count: 1,
+            next: null,
+            previous: null,
+            results: [
+              {
+                id: 1342,
+                title: 'Pride and Prejudice',
+                authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                translators: [],
+                subjects: ['Classic Literature'],
+                bookshelves: ['Best Books Ever'],
+                languages: ['en'],
+                copyright: false,
+                media_type: 'Text',
+                formats: { 'text/plain; charset=utf-8': 'https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt' },
+                download_count: 50000,
+                quotes: [
+                  { chapterLabel: 'Passage I', openingLine: 'Line 1', quoteExcerpt: 'Excerpt 1', commentary: 'Comm 1' },
+                  { chapterLabel: 'Passage II', openingLine: 'Line 2', quoteExcerpt: 'Excerpt 2', commentary: 'Comm 2' },
+                  { chapterLabel: 'Passage III', openingLine: 'Line 3', quoteExcerpt: 'Excerpt 3', commentary: 'Comm 3' },
+                ],
+              },
+            ],
+          });
+        }
+        return HttpResponse.json({ results: [], count: 0 });
+      })
+    );
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
+    const edgeBooks = await fetchQuoteEnrichedBooks(30);
+    expect(edgeBooks.length).toBeGreaterThan(0);
+    expect(edgeBooks[0].quotes).toHaveLength(2);
+    expect(readCachedQuoteEnrichedBooks(30)?.books.length).toBe(edgeBooks.length);
+    window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
+    server.resetHandlers();
+
+    // 3. Fallback to client Supabase when Edge API fails (MSW returns 503 by default for pool=quotes):
+    // valid rows + sentinel row filtering + error/reject handling
+    const fetchFailSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Edge route offline'));
     const limitMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -704,6 +750,7 @@ describe('useBooks hook', () => {
     expect(emptyScanBooks).toEqual([]);
 
     window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
+    fetchFailSpy.mockRestore();
     clientSpy.mockRestore();
     configSpy.mockRestore();
   });
@@ -818,6 +865,7 @@ describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
     const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
     const supabaseClientModule = await import('@/lib/supabase/client');
     vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Edge route offline'));
     vi.spyOn(supabaseClientModule, 'createClient').mockImplementation(() => {
       throw new Error('Supabase unavailable');
     });

@@ -27,12 +27,16 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
   const ids = (searchParams.get('ids') || '').trim() || undefined;
   const idCount = ids ? ids.split(',').filter((part) => part.trim().length > 0).length : 0;
 
-  // Limit / batch size (default 32, or up to 100 when an explicit batch of IDs is requested without limit)
+  const rawPool = (searchParams.get('pool') || '').trim().toLowerCase();
+  const pool = rawPool === 'quotes' ? ('quotes' as const) : undefined;
+
+  // Limit / batch size (default 32, up to 100 for catalog queries, or up to 600 for the quote pool)
   const rawLimitParam = searchParams.get('limit');
   const rawLimit = rawLimitParam !== null ? parseInt(rawLimitParam, 10) : NaN;
-  const defaultLimit = idCount > 32 ? Math.min(100, idCount) : 32;
+  const maxLimit = pool === 'quotes' ? 600 : 100;
+  const defaultLimit = pool === 'quotes' ? 600 : idCount > 32 ? Math.min(100, idCount) : 32;
   const limit =
-    Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 100 ? rawLimit : defaultLimit;
+    Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= maxLimit ? rawLimit : defaultLimit;
 
   // Author year bounds
   const rawAuthorYearStart = searchParams.get('author_year_start');
@@ -72,6 +76,7 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
     mimeType,
     ids,
     hasQuotes: hasQuotes || undefined,
+    pool,
     country,
     includeRestrictedMetadata: includeRestrictedMetadata || undefined,
   };

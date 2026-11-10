@@ -17,7 +17,11 @@ import {
   JURISDICTION_BASELINE_COUNTS,
 } from '@/lib/copyright-engine';
 import { createClient } from '@/lib/supabase/client';
-import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
+import {
+  isSupabaseConfigured,
+  filterValidBookPassages,
+  sortQuoteEnrichedBooksDeterministically,
+} from '@/lib/catalog/supabase-provider';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
 export interface UseBooksParams {
@@ -315,22 +319,6 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
   }, [queryClient, nextParams, hasNextPage]);
 }
 
-function filterValidBookPassages(rawQuotes: unknown): BookPassage[] {
-  if (!Array.isArray(rawQuotes)) return [];
-  return rawQuotes.filter(
-    (item): item is BookPassage =>
-      Boolean(
-        item &&
-          typeof item === 'object' &&
-          typeof (item as BookPassage).openingLine === 'string' &&
-          typeof (item as BookPassage).quoteExcerpt === 'string' &&
-          !String((item as BookPassage).commentary || '').startsWith(
-            'Bibliographic sentinel record'
-          )
-      )
-  );
-}
-
 /**
  * Queries `public.books.quotes` from Supabase for a list of featured book IDs.
  * Fail-safe: returns `{}` if Supabase is unconfigured, offline, or pre-migration.
@@ -364,7 +352,7 @@ export async function fetchFeaturedQuotesMap(
     }
   }
 
-  const remainingIds = uniqueIds.filter((id) => !quotesMap[id]);
+  const remainingIds = uniqueIds.filter((id) => (quotesMap[id]?.length ?? 0) < 3);
   if (remainingIds.length === 0 || !isSupabaseConfigured()) {
     return quotesMap;
   }
@@ -399,23 +387,6 @@ export async function fetchFeaturedQuotesMap(
 }
 
 export const QUOTE_ENRICHED_BOOKS_CACHE_KEY = 'bookarium-quote-enriched-books-v1' as const;
-
-const FEATURED_HERO_ORDER_MAP = new Map<number, number>(
-  FEATURED_HERO_BOOKS.map((b, idx) => [b.id, idx])
-);
-
-function sortQuoteEnrichedBooksDeterministically(books: GutendexBook[]): GutendexBook[] {
-  return [...books].sort((a, b) => {
-    const idxA = FEATURED_HERO_ORDER_MAP.get(a.id);
-    const idxB = FEATURED_HERO_ORDER_MAP.get(b.id);
-    if (idxA !== undefined && idxB !== undefined) {
-      return idxA - idxB;
-    }
-    if (idxA !== undefined) return -1;
-    if (idxB !== undefined) return 1;
-    return (b.download_count ?? 0) - (a.download_count ?? 0) || a.id - b.id;
-  });
-}
 
 export function readCachedQuoteEnrichedBooks(
   limit: number = 600
@@ -468,17 +439,56 @@ export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
 }
 
 /**
- * Queries top popular quote-enriched books (`WHERE quotes <> '[]'::jsonb`) from `public.books`.
- * Uses the partial index `idx_books_with_quotes_popular` for sub-10ms lookups and persists
- * non-empty results to `localStorage` for instant 0ms page-refresh hydration.
+ * Queries top popular quote-enriched books (`WHERE quotes <> '[]'::jsonb`) via the Edge-cached
+ * `/api/books?pool=quotes` endpoint (with graceful fallback to direct client Supabase and localStorage).
+ * Trims quote spreads to 2 passages per volume to safely respect the 5 MB browser localStorage quota.
  */
 export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<GutendexBook[]> {
+  const boundedLimit = Math.max(1, Math.min(600, limit));
+
   if (!isSupabaseConfigured()) {
     return [];
   }
 
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
+    return readCachedQuoteEnrichedBooks(boundedLimit)?.books ?? [];
+  }
+
+  // 1. Primary: Query the Edge-cached /api/books?pool=quotes endpoint (s-maxage=3600)
+  try {
+    const res = await fetch(`/api/books?pool=quotes&limit=${boundedLimit}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const json = (await res.json()) as { results?: unknown };
+      if (Array.isArray(json?.results) && json.results.length > 0) {
+        const books: GutendexBook[] = [];
+        for (const item of json.results) {
+          if (item && typeof item === 'object' && typeof (item as GutendexBook).id === 'number') {
+            const b = item as GutendexBook;
+            const validPassages = filterValidBookPassages(b.quotes);
+            if (validPassages.length > 0) {
+              books.push({
+                ...b,
+                quotes: validPassages.slice(0, 2),
+              });
+            }
+          }
+        }
+        const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
+        if (sortedBooks.length > 0) {
+          writeCachedQuoteEnrichedBooks(sortedBooks);
+          return sortedBooks;
+        }
+      }
+    }
+  } catch {
+    // Edge API unavailable or network glitch; gracefully fall through to client Supabase fallback
+  }
+
+  // 2. Secondary: Direct client Supabase fallback if Edge API is unreachable
+  if (!isSupabaseConfigured()) {
+    return readCachedQuoteEnrichedBooks(boundedLimit)?.books ?? [];
   }
 
   try {
@@ -528,10 +538,10 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
     const { data, error } = await scopedSelect
       .neq('quotes', '[]')
       .order('download_count', { ascending: false })
-      .limit(Math.max(1, Math.min(600, limit)));
+      .limit(boundedLimit);
 
     if (error || !Array.isArray(data)) {
-      return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
+      return readCachedQuoteEnrichedBooks(boundedLimit)?.books ?? [];
     }
 
     const books: GutendexBook[] = [];
@@ -558,7 +568,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
         media_type: 'Text',
         formats: {},
         download_count: typeof row.download_count === 'number' ? row.download_count : 0,
-        quotes: validPassages,
+        quotes: validPassages.slice(0, 2),
       });
     }
     const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
@@ -567,7 +577,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
     }
     return sortedBooks;
   } catch {
-    return readCachedQuoteEnrichedBooks(limit)?.books ?? [];
+    return readCachedQuoteEnrichedBooks(boundedLimit)?.books ?? [];
   }
 }
 

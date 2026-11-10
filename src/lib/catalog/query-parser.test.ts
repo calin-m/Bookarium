@@ -84,6 +84,32 @@ describe('parseCatalogQuery', () => {
     expect(options.languages).toEqual(['en', 'fr', 'de']);
   });
 
+  it('parses pool=quotes parameter and supports expanded limit up to 600', () => {
+    // 1. Explicit pool=quotes with omitted limit defaults to 600
+    const req1 = new NextRequest('http://localhost:3000/api/books?pool=quotes');
+    const options1 = parseCatalogQuery(req1);
+    expect(options1.pool).toBe('quotes');
+    expect(options1.limit).toBe(600);
+
+    // 2. Custom valid limit up to 600
+    const req2 = new NextRequest('http://localhost:3000/api/books?pool=quotes&limit=250');
+    const options2 = parseCatalogQuery(req2);
+    expect(options2.pool).toBe('quotes');
+    expect(options2.limit).toBe(250);
+
+    // 3. Excessive limit above 600 defaults to 600
+    const req3 = new NextRequest('http://localhost:3000/api/books?pool=quotes&limit=9999');
+    const options3 = parseCatalogQuery(req3);
+    expect(options3.pool).toBe('quotes');
+    expect(options3.limit).toBe(600);
+
+    // 4. Invalid or unrecognized pool values are ignored
+    const req4 = new NextRequest('http://localhost:3000/api/books?pool=invalid&limit=50');
+    const options4 = parseCatalogQuery(req4);
+    expect(options4.pool).toBeUndefined();
+    expect(options4.limit).toBe(50);
+  });
+
   it('resolves country code through the priority cascade', () => {
     // 1. Development query parameter
     vi.stubEnv('NODE_ENV', 'development');

@@ -650,6 +650,92 @@ describe('SupabaseCatalogProvider', () => {
       expect(builder.range).toHaveBeenNthCalledWith(1, 0, 3);
       expect(builder.range).toHaveBeenNthCalledWith(2, 4, 11);
     });
+
+    it('handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically', async () => {
+      const mockQuotesData = [
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: ['Science fiction', 'Gothic'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 50000,
+          quotes: [
+            { chapterLabel: 'Passage I', openingLine: 'Line 1', quoteExcerpt: 'Quote 1', commentary: 'Com 1' },
+            { chapterLabel: 'Passage II', openingLine: 'Line 2', quoteExcerpt: 'Quote 2', commentary: 'Com 2' },
+            { chapterLabel: 'Passage III', openingLine: 'Line 3', quoteExcerpt: 'Quote 3', commentary: 'Com 3' },
+            { chapterLabel: 'Passage IV', openingLine: 'Line 4', quoteExcerpt: 'Quote 4', commentary: 'Com 4' },
+          ],
+        },
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: ['Romance'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 65000,
+          quotes: [
+            { chapterLabel: 'Passage I', openingLine: 'P&P Line 1', quoteExcerpt: 'P&P Quote 1', commentary: 'P&P Com 1' },
+            { chapterLabel: 'Passage II', openingLine: 'P&P Line 2', quoteExcerpt: 'P&P Quote 2', commentary: 'P&P Com 2' },
+            { chapterLabel: 'Passage III', openingLine: 'P&P Line 3', quoteExcerpt: 'P&P Quote 3', commentary: 'P&P Com 3' },
+          ],
+        },
+      ];
+
+      const client = {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'books') {
+            return {
+              select: vi.fn().mockImplementation((cols: string) => {
+                if (cols === 'id') {
+                  return {
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockResolvedValue({ data: [{ id: 1342 }, { id: 84 }] }),
+                    }),
+                  };
+                }
+                // Scoped select
+                return {
+                  in: vi.fn().mockReturnValue({
+                    neq: vi.fn().mockReturnValue({
+                      order: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockResolvedValue({ data: mockQuotesData, error: null }),
+                      }),
+                    }),
+                  }),
+                };
+              }),
+            };
+          }
+          return {};
+        }),
+      };
+
+      const provider = new SupabaseCatalogProvider(client as any);
+      const result = await provider.searchBooks({
+        page: 1,
+        limit: 600,
+        pool: 'quotes',
+        country: 'US',
+      });
+
+      expect(result.source).toBe('supabase');
+      expect(result.results).toHaveLength(2);
+      // Deterministically sorted: Pride and Prejudice (Vol. 1342, first hero book) ahead of Frankenstein (Vol. 84)
+      expect(result.results[0].id).toBe(1342);
+      expect(result.results[1].id).toBe(84);
+      // Both books must have quotes trimmed to exactly 2 spreads for quota safety
+      expect(result.results[0].quotes).toHaveLength(2);
+      expect(result.results[1].quotes).toHaveLength(2);
+      expect(result.results[0].quotes![0].chapterLabel).toBe('Passage I');
+      expect(result.results[0].quotes![1].chapterLabel).toBe('Passage II');
+    });
   });
 
   describe('getBookTranslations', () => {

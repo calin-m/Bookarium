@@ -609,6 +609,40 @@ describe('BookPreviewModal component', () => {
       screen.queryByText('“Hidden third quote when opening line is over 120 characters.”')
     ).not.toBeInTheDocument();
   });
+
+  it('renders quotes immediately for books with 2 pool spreads and allows deep spread upgrade', () => {
+    const bookWithTwoPoolSpreads = {
+      ...defaultBook,
+      id: 88881,
+      title: 'Sense and Sensibility',
+      quotes: [
+        {
+          chapterLabel: 'Chapter I • Norland Park',
+          openingLine: 'The family of Dashwood had long been settled in Sussex.',
+          secondaryQuote: 'Their estate was large, and their residence was at Norland Park.',
+          quoteExcerpt: 'Marianne Dashwood was born of an impetuous and eager mind.',
+        },
+        {
+          chapterLabel: 'Chapter II • The Reduction',
+          openingLine: 'Mrs. John Dashwood did not at all approve of what her husband intended to do.',
+          secondaryQuote: 'To take three thousand pounds from the fortune of their dear little boy would be impoverishing him.',
+          quoteExcerpt: 'Altogether, it was decided that three thousand pounds was much more than was necessary.',
+        },
+      ],
+    };
+
+    renderWithQueryClient(
+      <BookPreviewModal book={bookWithTwoPoolSpreads} isOpen={true} onClose={vi.fn()} />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(
+      screen.getByText(/Marianne Dashwood was born of an impetuous and eager mind/i)
+    ).toBeInTheDocument();
+  });
 });
 
 

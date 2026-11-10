@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-217%20Suites%20%7C%202396%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.87%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-217%20Suites%20%7C%202401%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.82%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2396 tests across 217 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2401 tests across 217 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,10 +108,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.14)
+## 🛠️ Latest Improvements (v2.9.15)
 
-- **Universal Tactile Search Ergonomics, Keyboard Dismissal & Unified Submit (`ADR-080`)**: Resolved tactile search friction on mobile and tablet screens where virtual software keyboards remained permanently open after query execution, obscuring filtered items. Standardized on `inputRef.current?.blur()` on all form submissions across both Catalog and personal collections (Bookshelf, Favorites, Bookmarks, Notebook), immediately dismissing the on-screen keyboard upon search submission. Uncoupled live keystroke typing from per-letter scroll jumping in personal collection views to eliminate typing jitter while strictly preserving instant client-side filtering. Standardized on `enterKeyHint="search"` and rendered an in-pill submit button (`ArrowRight`) whenever text is present across all views, giving tactile users both physical on-screen and keyboard-driven submit actions.
-- **Content Anchor Centering & Collection Anchor Resolution (`ADR-080`)**: Encapsulated `contentAnchorId` directly into `CollectionFloatingSearch`, invoking `smartScrollToContent(contentAnchorId, { offsetTop: 80 })` upon search submission to smoothly center the top of filtered collection content into view without viewport overshooting. Wired persistent content anchors across Catalog (`catalog-section`), Bookshelf & Favorites (`catalog-section`), Bookmarks (`bookmarks-grid-content`), and Notebook (`notebook-content-anchor`), resolving the stale non-existent `book-grid-content` fallback in `src/app/page.tsx` and eliminating boilerplate scroll handlers across parent views.
+- **Edge-Cached Quote Pool Gateway, 99.8% Supabase Egress Reduction & CDN Error Guard (`ADR-080`)**: Routed the 564-volume quote pool through an Edge-cached API endpoint (`GET /api/books?pool=quotes&limit=600`) with HTTP cache headers (`Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`), reducing Supabase PostgREST round-trips from 3 direct client queries per cold visitor to 1 Edge revalidation request per hour worldwide (~99.8% database egress reduction). Fortified `/api/books/route.ts` to return HTTP 503 with `Cache-Control: no-store, max-age=0` if Supabase is unavailable, preventing Edge CDN from caching empty responses, while `fetchQuoteEnrichedBooks` falls back gracefully to client Supabase and cached storage.
+- **2-Spread Browser Quota Optimization, 0ms Instant Hydration & Deep Spread Upgrades (`ADR-080`)**: Compressed the uncompressed JSON pool payload by 79% (from 8.74 MB down to 1.80 MB, or ~340 KB gzipped) by trimming the pool to the first 2 spreads per book (Spread I: Opening Incipit, Spread II: Second Movement). Slicing the pool eliminated the browser 5 MB `QuotaExceededError` in `writeCachedQuoteEnrichedBooks`, enabling 100% successful `localStorage` persistence and 0ms instantaneous hydration on all subsequent visits. Updated `fetchFeaturedQuotesMap` in `useBooks.ts` to query Supabase when cached spread count is `< 3`, ensuring the 2 cached pool spreads act as an instant-paint fallback while online requests retrieve all 16 spreads.
+- **Hero Book Incipit Preservation & 3D Preview Modal Parity (`ADR-080`)**: Updated `HeroFeaturedBook3D.tsx` to check `rawPoolQuotes.length >= 3` (differentiating raw pool books from the static incipit prepended on classic hero books) so Spreads I & II render with 0ms delay on initial paint while `useFeaturedQuotes([featuredBook.id])` lazily backfills all 16 spreads on demand for the active Hero book in the background. Updated `BookPreviewModal.tsx` (`hasInlineBookQuotes = quotes.length >= 3`) so opening any volume renders the 2 cached spreads instantly on paint and seamlessly upgrades to 16 spreads upon query resolution without loading flickers.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

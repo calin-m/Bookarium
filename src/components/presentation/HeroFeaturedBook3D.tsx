@@ -73,24 +73,23 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
   }, []);
 
   const existingQuotes = featuredBook.quotes || featuredBook.rawBook?.quotes;
-  const hasExistingQuotes = Array.isArray(existingQuotes) && existingQuotes.length >= 2;
+  const rawPoolQuotes = featuredBook.rawBook?.quotes ?? existingQuotes;
+  const hasExistingQuotes = Array.isArray(rawPoolQuotes) && rawPoolQuotes.length >= 3;
   const { data: featuredQuotesMap } = useFeaturedQuotes([featuredBook.id], {
     enabled: !hasExistingQuotes,
   });
   const supabaseBookQuotes = useMemo(() => {
     const dbQuotes = featuredQuotesMap?.[featuredBook.id];
     if (Array.isArray(dbQuotes) && dbQuotes.length > 0 && !hasExistingQuotes) {
-      const firstStaticSpread = {
-        chapterLabel: 'Chapter I • The Opening Incipit',
-        openingLine: featuredBook.openingLine,
-        secondaryQuote: `“In the unfolding story of ${featuredBook.title}, ${featuredBook.author} explores timeless truths across ${featuredBook.primarySubject.toLowerCase()}.”`,
-        quoteExcerpt: featuredBook.quoteExcerpt,
-        commentary: `Preserved in complete unabridged form in the worldwide public domain (${featuredBook.year}).`,
-      };
-      return [firstStaticSpread, ...dbQuotes];
+      const isHeroClassicIncipit =
+        existingQuotes?.[0]?.chapterLabel === 'Chapter I • The Opening Incipit';
+      if (isHeroClassicIncipit) {
+        return [existingQuotes[0], ...dbQuotes];
+      }
+      return dbQuotes;
     }
     return existingQuotes;
-  }, [featuredQuotesMap, featuredBook, existingQuotes, hasExistingQuotes]);
+  }, [featuredQuotesMap, featuredBook.id, existingQuotes, hasExistingQuotes]);
 
   const {
     passages,

@@ -224,14 +224,14 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   // and completely hidden in the main catalog view
   const isCuratable = activeView === 'bookshelf' || activeView === 'favorites';
 
-  const hasInlineBookQuotes = Boolean(book?.quotes && book.quotes.length > 0);
+  const hasInlineBookQuotes = Boolean(book?.quotes && book.quotes.length >= 3);
   const { data: featuredQuotesMap } = useFeaturedQuotes(
     book?.id ? [book.id] : [],
     { enabled: isOpen && !isUnavailableOffline && !hasInlineBookQuotes }
   );
   const supabaseQuotes =
-    (hasInlineBookQuotes ? book?.quotes : undefined) ||
-    (book?.id ? featuredQuotesMap?.[book.id] : undefined);
+    (book?.id ? featuredQuotesMap?.[book.id] : undefined) ||
+    book?.quotes;
 
   const {
     passages,

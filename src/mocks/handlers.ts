@@ -235,6 +235,15 @@ export const handlers = [
   // Next.js internal API proxy handler
   http.get('/api/books', ({ request }) => {
     const url = new URL(request.url, 'http://localhost:3000');
+    const pool = url.searchParams.get('pool');
+
+    if (pool === 'quotes') {
+      return HttpResponse.json(
+        { error: 'Mock quote pool fallback', results: [], count: 0 },
+        { status: 503, headers: { 'Cache-Control': 'no-store, max-age=0' } }
+      );
+    }
+
     const search = url.searchParams.get('search')?.toLowerCase() || '';
     const topic = url.searchParams.get('topic')?.toLowerCase() || '';
     const languages = url.searchParams.get('languages')?.toLowerCase() || '';

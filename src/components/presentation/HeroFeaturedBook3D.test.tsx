@@ -436,4 +436,57 @@ describe('HeroFeaturedBook3D', () => {
       'animate-ink-appear'
     );
   });
+
+  it('differentiates hero classic incipit from pool spreads using rawBook quote count', () => {
+    const bookWithPoolAndIncipit = {
+      ...mockFeaturedBook,
+      id: 99991,
+      quotes: [
+        {
+          chapterLabel: 'Chapter I • The Opening Incipit',
+          openingLine: 'Opening line.',
+          secondaryQuote: 'Secondary quote.',
+          quoteExcerpt: 'Excerpt.',
+          commentary: 'Commentary.',
+        },
+        {
+          chapterLabel: 'Pool Spread 1',
+          openingLine: 'Pool line 1.',
+          secondaryQuote: 'Pool sec 1.',
+          quoteExcerpt: 'Pool exc 1.',
+          commentary: 'Pool comm 1.',
+        },
+        {
+          chapterLabel: 'Pool Spread 2',
+          openingLine: 'Pool line 2.',
+          secondaryQuote: 'Pool sec 2.',
+          quoteExcerpt: 'Pool exc 2.',
+          commentary: 'Pool comm 2.',
+        },
+      ],
+      rawBook: {
+        id: 99991,
+        title: 'Pride and Prejudice',
+        quotes: [
+          {
+            chapterLabel: 'Pool Spread 1',
+            openingLine: 'Pool line 1.',
+            secondaryQuote: 'Pool sec 1.',
+            quoteExcerpt: 'Pool exc 1.',
+            commentary: 'Pool comm 1.',
+          },
+          {
+            chapterLabel: 'Pool Spread 2',
+            openingLine: 'Pool line 2.',
+            secondaryQuote: 'Pool sec 2.',
+            quoteExcerpt: 'Pool exc 2.',
+            commentary: 'Pool comm 2.',
+          },
+        ],
+      } as unknown as import('@/types/book.types').GutendexBook,
+    };
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={bookWithPoolAndIncipit} />);
+    expect(screen.getByTestId('hero-book-cover-quote')).toBeInTheDocument();
+  });
 });
