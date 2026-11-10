@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 10 Nov 2026 15:28:25 GMT  
+**Last Generated**: Tue, 10 Nov 2026 17:09:09 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 217 passed  
-**Total Verified Tests**: 2394 passed  
+**Total Verified Tests**: 2396 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **217/217 test suites passed** (2394 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **217/217 test suites passed** (2396 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.83%** (13816/14268) — *Target: $\ge$ 95%*
-- **Statements**: **95.51%** (14938/15639) — *Target: $\ge$ 95%*
-- **Functions**: **93.87%** (3083/3284) — *Target: $\ge$ 92%*
-- **Branches**: **87.97%** (13675/15545) — *Target: $\ge$ 85%*
+- **Lines**: **96.87%** (13817/14263) — *Target: $\ge$ 95%*
+- **Statements**: **95.55%** (14939/15634) — *Target: $\ge$ 95%*
+- **Functions**: **93.93%** (3082/3281) — *Target: $\ge$ 92%*
+- **Branches**: **88.01%** (13676/15539) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (217 Suites / 2394 Tests)
+## 🧪 Comprehensive Test Suite Catalog (217 Suites / 2396 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 295 Tests)
 
@@ -494,7 +494,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (33 Suites · 549 Tests)
+### 🎨 Catalog & Presentation (33 Suites · 551 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -821,7 +821,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false`
 - ✔ `renders input, focuses on mount, and handles typing when isOpen is true`
@@ -832,6 +832,8 @@
 - ✔ `elevates container above software keyboard when keyboardHeight > 0`
 - ✔ `renders with deep elevation drop shadow and dark ambient light glow`
 - ✔ `supports submitOnEnter for Catalog: holds local state and triggers search only on Enter / submit button with 2-char guardrail`
+- ✔ `blurs input and dismisses keyboard on submit, and invokes smartScrollToContent when contentAnchorId is provided`
+- ✔ `submits on form submit for live collections, blurring input and triggering anchor scroll`
 
 </details>
 

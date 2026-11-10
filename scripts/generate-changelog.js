@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.14',
+    date: '2026-11-10',
+    title: 'Universal Tactile Search Ergonomics, Software Keyboard Dismissal & Content Anchor Encapsulation',
+    sections: {
+      Fixed: [
+        'Universal Tactile Search Ergonomics, Keyboard Dismissal & Unified Submit (`src/components/presentation/CollectionFloatingSearch.tsx`, `src/components/presentation/CollectionFloatingSearch.test.tsx`, `src/app/page.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/components/presentation/NotebookView.tsx`, `docs/DECISIONS.md`, `ADR-080`): Resolved tactile search friction on mobile and tablet screens where virtual software keyboards remained permanently open after query execution, obscuring filtered items. Standardized on `inputRef.current?.blur()` on all form submissions across both Catalog and personal collections (Bookshelf, Favorites, Bookmarks, Notebook), immediately dismissing the on-screen keyboard upon search submission. Uncoupled live keystroke typing from per-letter scroll jumping in personal collection views to eliminate typing jitter while strictly preserving instant client-side filtering. Standardized on `enterKeyHint="search"` and rendered an in-pill submit button (`ArrowRight`) whenever text is present across all views, giving tactile users both physical on-screen and keyboard-driven submit actions.',
+        'Content Anchor Centering & Collection Anchor Resolution (`src/components/presentation/CollectionFloatingSearch.tsx`, `src/components/presentation/CollectionFloatingSearch.test.tsx`, `src/app/page.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/components/presentation/NotebookView.tsx`, `docs/DECISIONS.md`, `ADR-080`): Encapsulated `contentAnchorId` directly into `CollectionFloatingSearch`, invoking `smartScrollToContent(contentAnchorId, { offsetTop: 80 })` upon search submission to smoothly center the top of filtered collection content into view without viewport overshooting. Wired persistent content anchors across Catalog (`catalog-section`), Bookshelf & Favorites (`catalog-section`), Bookmarks (`bookmarks-grid-content`), and Notebook (`notebook-content-anchor`), resolving the stale non-existent `book-grid-content` fallback in `src/app/page.tsx` and eliminating boilerplate scroll handlers across parent views.',
+      ],
+    },
+  },
+  {
     version: '2.9.13',
     date: '2026-11-10',
     title: 'Universal SSR-Safe Storage Adapter, Inset Modal Inputs & Zero-Crash Persisted Stores',

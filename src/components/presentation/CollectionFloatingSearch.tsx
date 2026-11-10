@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, ArrowRight } from 'lucide-react';
 import { useVisualViewportKeyboard } from '@/hooks/useVisualViewportKeyboard';
+import { smartScrollToContent } from '@/lib/scroll-utils';
 
 export interface CollectionFloatingSearchProps {
   isOpen: boolean;
@@ -14,11 +15,15 @@ export interface CollectionFloatingSearchProps {
   searchAriaLabel?: string;
   clearAriaLabel?: string;
   /**
-   * When true (used exclusively by Catalog), typing updates local input state,
+   * When true (used by Catalog), typing updates local input state,
    * and search execution waits for Enter / virtual keyboard 'Search' / submit button.
    */
   submitOnEnter?: boolean;
   onSubmit?: (query: string) => void;
+  /**
+   * Optional DOM element ID to smoothly center into view upon search submission.
+   */
+  contentAnchorId?: string;
 }
 
 export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> = ({
@@ -31,6 +36,7 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
   clearAriaLabel = 'Clear search query',
   submitOnEnter = false,
   onSubmit,
+  contentAnchorId,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +110,8 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    inputRef.current?.blur();
+
     if (submitOnEnter) {
       const normalized = localQuery.trim().replace(/\s+/g, ' ');
       // 2-character guardrail matching catalog rules (allow 0 to clear, or >= 2 to search)
@@ -112,6 +120,12 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
       }
       onSearchChange(normalized);
       onSubmit?.(normalized);
+    } else {
+      onSubmit?.(searchQuery);
+    }
+
+    if (contentAnchorId) {
+      smartScrollToContent(contentAnchorId, { offsetTop: 80 });
     }
   };
 
@@ -158,7 +172,7 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
               <input
                 ref={inputRef}
                 type="search"
-                enterKeyHint={submitOnEnter ? 'search' : 'done'}
+                enterKeyHint="search"
                 value={activeValue}
                 onChange={handleInputChange}
                 placeholder={searchPlaceholder}
@@ -178,13 +192,13 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
                   <X className="w-4 h-4" />
                 </button>
               ) : null}
-              {submitOnEnter && activeValue.trim().length >= 2 ? (
+              {(submitOnEnter ? activeValue.trim().length >= 2 : activeValue.trim().length > 0) ? (
                 <button
                   type="submit"
                   data-testid="collection-floating-search-submit-btn"
                   className="p-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-xs active:scale-95"
                   aria-label="Submit search"
-                  title="Search catalog (Enter)"
+                  title={submitOnEnter ? 'Search catalog (Enter)' : 'Filter collection (Enter)'}
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>

@@ -646,12 +646,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
         isOpen={isBottomSearchOpen}
         onClose={() => setIsBottomSearchOpen(false)}
         searchQuery={searchQuery}
-        onSearchChange={(q) => {
-          setSearchQuery(q);
-          if (q) {
-            smartScrollToContent('bookmarks-grid-content', { offsetTop: 80 });
-          }
-        }}
+        onSearchChange={setSearchQuery}
+        contentAnchorId="bookmarks-grid-content"
         searchPlaceholder="Search bookmarks by title or author..."
         searchAriaLabel="Search bookmarks"
         clearAriaLabel="Clear bookmarks search"

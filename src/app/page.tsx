@@ -457,8 +457,8 @@ function HomeContent() {
 
   const scrollToCollectionContent = () => {
     if (typeof window !== 'undefined') {
-      const didScroll = smartScrollToContent('book-grid-content', { offsetTop: 80 });
-      if (!didScroll && !document.getElementById('book-grid-content')) {
+      const didScroll = smartScrollToContent('catalog-section', { offsetTop: 80 });
+      if (!didScroll) {
         scrollToCatalogSection();
       }
     }
@@ -1097,6 +1097,7 @@ function HomeContent() {
           searchQuery={search}
           onSearchChange={handleSearchChange}
           submitOnEnter={true}
+          contentAnchorId="catalog-section"
           onSubmit={(query) => {
             if (query) {
               scrollToCatalogSection();
@@ -1114,12 +1115,8 @@ function HomeContent() {
           isOpen={isCollectionSearchOpen}
           onClose={() => setIsCollectionSearchOpen(false)}
           searchQuery={collectionSearchQuery}
-          onSearchChange={(q) => {
-            setCollectionSearchQuery(q);
-            if (q) {
-              scrollToCollectionContent();
-            }
-          }}
+          onSearchChange={setCollectionSearchQuery}
+          contentAnchorId="catalog-section"
           searchPlaceholder={viewConfig.searchPlaceholder || 'Search collection...'}
           searchAriaLabel={`Search ${viewConfig.collectionName}`}
           clearAriaLabel={`Clear ${viewConfig.collectionName} search`}

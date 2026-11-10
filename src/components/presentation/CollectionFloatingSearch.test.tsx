@@ -9,14 +9,21 @@ const mockKeyboardState = {
   isKeyboardOpen: false,
 };
 
+const mockSmartScrollToContent = vi.fn();
+
 vi.mock('@/hooks/useVisualViewportKeyboard', () => ({
   useVisualViewportKeyboard: () => mockKeyboardState,
+}));
+
+vi.mock('@/lib/scroll-utils', () => ({
+  smartScrollToContent: (...args: unknown[]) => mockSmartScrollToContent(...args),
 }));
 
 describe('CollectionFloatingSearch', () => {
   beforeEach(() => {
     mockKeyboardState.keyboardHeight = 0;
     mockKeyboardState.isKeyboardOpen = false;
+    mockSmartScrollToContent.mockClear();
     vi.useFakeTimers();
   });
 
@@ -221,5 +228,65 @@ describe('CollectionFloatingSearch', () => {
     expect(handleSearchChange).toHaveBeenCalledWith('');
     expect(handleSubmit).toHaveBeenCalledWith('');
     expect(input.value).toBe('');
+  });
+
+  it('blurs input and dismisses keyboard on submit, and invokes smartScrollToContent when contentAnchorId is provided', () => {
+    const handleSearchChange = vi.fn();
+    const handleSubmit = vi.fn();
+
+    render(
+      <CollectionFloatingSearch
+        isOpen={true}
+        onClose={vi.fn()}
+        searchQuery="Dostoevsky"
+        onSearchChange={handleSearchChange}
+        submitOnEnter={false}
+        onSubmit={handleSubmit}
+        contentAnchorId="test-content-anchor"
+      />
+    );
+
+    const input = screen.getByTestId('collection-floating-search-input') as HTMLInputElement;
+    expect(input.getAttribute('enterkeyhint')).toBe('search');
+
+    const blurSpy = vi.spyOn(input, 'blur');
+
+    // Submit button is present for live collections when text is entered
+    const submitBtn = screen.getByTestId('collection-floating-search-submit-btn');
+    expect(submitBtn).toBeInTheDocument();
+    expect(submitBtn.getAttribute('title')).toBe('Filter collection (Enter)');
+
+    fireEvent.click(submitBtn);
+
+    // Assert input blurred (dismisses virtual keyboard)
+    expect(blurSpy).toHaveBeenCalled();
+    // Assert onSubmit called
+    expect(handleSubmit).toHaveBeenCalledWith('Dostoevsky');
+    // Assert smartScrollToContent called with anchor
+    expect(mockSmartScrollToContent).toHaveBeenCalledWith('test-content-anchor', { offsetTop: 80 });
+  });
+
+  it('submits on form submit for live collections, blurring input and triggering anchor scroll', () => {
+    const handleSubmit = vi.fn();
+
+    render(
+      <CollectionFloatingSearch
+        isOpen={true}
+        onClose={vi.fn()}
+        searchQuery="Austen"
+        onSearchChange={vi.fn()}
+        onSubmit={handleSubmit}
+        contentAnchorId="shelf-anchor"
+      />
+    );
+
+    const input = screen.getByTestId('collection-floating-search-input') as HTMLInputElement;
+    const blurSpy = vi.spyOn(input, 'blur');
+
+    fireEvent.submit(input.closest('form')!);
+
+    expect(blurSpy).toHaveBeenCalled();
+    expect(handleSubmit).toHaveBeenCalledWith('Austen');
+    expect(mockSmartScrollToContent).toHaveBeenCalledWith('shelf-anchor', { offsetTop: 80 });
   });
 });
