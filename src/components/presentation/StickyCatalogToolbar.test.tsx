@@ -574,12 +574,10 @@ describe('StickyCatalogToolbar component', () => {
       expect(filterBtn).toHaveAttribute('aria-label', 'Open filters');
       expect(filterBtn).toHaveTextContent('3');
 
-      const gridBtn = screen.getByTestId('mobile-dock-grid-btn');
-      const shelfBtn = screen.getByTestId('mobile-dock-shelf-btn');
-      expect(gridBtn).toBeInTheDocument();
-      expect(gridBtn).toHaveAttribute('aria-pressed', 'true');
-      expect(shelfBtn).toBeInTheDocument();
-      expect(shelfBtn).toHaveAttribute('aria-pressed', 'false');
+      const viewModeBtn = screen.getByTestId('mobile-dock-view-mode-btn');
+      expect(viewModeBtn).toBeInTheDocument();
+      expect(viewModeBtn).toHaveAttribute('aria-label', 'Switch to bookshelf rack layout');
+      expect(viewModeBtn).toHaveAttribute('aria-pressed', 'false');
 
       const topBtn = screen.getByTestId('mobile-dock-top-btn');
       expect(topBtn).toBeInTheDocument();
@@ -605,16 +603,14 @@ describe('StickyCatalogToolbar component', () => {
       fireEvent.click(screen.getByTestId('mobile-dock-filters-btn'));
       expect(handleOpenFilters).toHaveBeenCalledTimes(1);
 
-      fireEvent.click(screen.getByTestId('mobile-dock-shelf-btn'));
+      fireEvent.click(screen.getByTestId('mobile-dock-view-mode-btn'));
       expect(handleViewModeChange).toHaveBeenCalledWith('shelf');
-
-      fireEvent.click(screen.getByTestId('mobile-dock-grid-btn'));
-      expect(handleViewModeChange).toHaveBeenCalledWith('grid');
     });
 
-    it('scrolls smoothly to top when mobile dock top button is clicked', () => {
+    it('scrolls smoothly to top when mobile dock top button is clicked while scrolled, and mutes button when at top', () => {
       const scrollToSpy = vi.fn();
       vi.stubGlobal('scrollTo', scrollToSpy);
+      Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
 
       render(
         <StickyCatalogToolbar
@@ -628,7 +624,18 @@ describe('StickyCatalogToolbar component', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('mobile-dock-top-btn'));
+      const topBtn = screen.getByTestId('mobile-dock-top-btn');
+      expect(topBtn).toHaveAttribute('aria-disabled', 'true');
+      expect(topBtn).toHaveClass('opacity-25', 'pointer-events-none');
+
+      // Scroll down past 60px
+      act(() => {
+        window.scrollY = 250;
+        window.dispatchEvent(new Event('scroll'));
+      });
+
+      expect(topBtn).not.toHaveClass('pointer-events-none');
+      fireEvent.click(topBtn);
       expect(scrollToSpy).toHaveBeenCalledWith({
         top: 0,
         behavior: 'smooth',
@@ -653,7 +660,6 @@ describe('StickyCatalogToolbar component', () => {
 
       const dock = screen.getByTestId('mobile-catalog-dock');
       expect(dock).toHaveClass('translate-y-0');
-      expect(dock).toHaveClass('opacity-100');
 
       rerender(
         <StickyCatalogToolbar
@@ -673,8 +679,8 @@ describe('StickyCatalogToolbar component', () => {
       expect(dock).toHaveClass('pointer-events-none');
     });
 
-    it('dynamically reveals mobile dock when scrolling past threshold and hides when at top', () => {
-      Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
+    it('keeps mobile dock docked at translate-y-0, resting dimmed at top and waking on scroll', () => {
+      Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
 
       render(
         <StickyCatalogToolbar
@@ -690,11 +696,11 @@ describe('StickyCatalogToolbar component', () => {
       );
 
       const dock = screen.getByTestId('mobile-catalog-dock');
-      // Initially at top (scrollY = 0 <= 300)
-      expect(dock).toHaveClass('translate-y-24');
-      expect(dock).toHaveClass('opacity-0');
+      // Initially at top (scrollY = 0): docked in resting dimmed state (opacity-30)
+      expect(dock).toHaveClass('translate-y-0');
+      expect(dock).toHaveClass('opacity-30');
 
-      // Scroll past hero into catalog (scrollY = 450 > 300)
+      // Scroll past hero into catalog (scrollY = 450)
       act(() => {
         window.scrollY = 450;
         window.dispatchEvent(new Event('scroll'));
@@ -703,17 +709,35 @@ describe('StickyCatalogToolbar component', () => {
       expect(dock).toHaveClass('translate-y-0');
       expect(dock).toHaveClass('opacity-100');
 
-      // Return to top hero section (scrollY = 100 <= 300)
+      // Return to top hero section (scrollY = 0)
       act(() => {
-        window.scrollY = 100;
+        window.scrollY = 0;
         window.dispatchEvent(new Event('scroll'));
       });
 
-      expect(dock).toHaveClass('translate-y-24');
-      expect(dock).toHaveClass('opacity-0');
+      expect(dock).toHaveClass('translate-y-0');
+      expect(dock).toHaveClass('opacity-30');
     });
 
-    it('fades out to opacity-0 with pointer-events-none after scroll inactivity timeout', () => {
+    it('renders ambient light aura and multi-stop dark/sepia shadows for mobile dock', () => {
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+        />
+      );
+
+      const aura = screen.getByTestId('mobile-dock-ambient-aura');
+      expect(aura).toBeInTheDocument();
+      expect(aura).toHaveClass('-inset-1.5', 'blur-md', 'rounded-full');
+    });
+
+    it('dims to opacity-30 after scroll inactivity timeout', () => {
       vi.useFakeTimers();
       Object.defineProperty(window, 'scrollY', { value: 0, writable: true });
 
@@ -749,12 +773,12 @@ describe('StickyCatalogToolbar component', () => {
       });
       expect(dock).toHaveClass('opacity-100');
 
-      // Advance past 1400ms
+      // Advance past 1400ms -> dims to opacity-30 (hover:opacity-100) instead of opacity-0
       act(() => {
         vi.advanceTimersByTime(200);
       });
-      expect(dock).toHaveClass('opacity-0');
-      expect(dock).toHaveClass('pointer-events-none');
+      expect(dock).toHaveClass('opacity-30');
+      expect(dock).not.toHaveClass('pointer-events-none');
 
       // Resume scrolling: instantly wakes back up
       act(() => {
@@ -803,7 +827,7 @@ describe('StickyCatalogToolbar component', () => {
       vi.useRealTimers();
     });
 
-    it('cancels idle fade-out while user hovers over dock and resumes timer on pointerleave', () => {
+    it('cancels idle dimming while user hovers over dock and resumes timer on pointerleave', () => {
       vi.useFakeTimers();
       Object.defineProperty(window, 'scrollY', { value: 500, writable: true });
 
@@ -841,8 +865,7 @@ describe('StickyCatalogToolbar component', () => {
       act(() => {
         vi.advanceTimersByTime(1500);
       });
-      expect(dock).toHaveClass('opacity-0');
-      expect(dock).toHaveClass('pointer-events-none');
+      expect(dock).toHaveClass('opacity-30');
 
       // Pointer down / touch wakes it up
       fireEvent.pointerDown(dock);
@@ -851,9 +874,8 @@ describe('StickyCatalogToolbar component', () => {
       vi.useRealTimers();
     });
 
-    it('renders segmented quick clear button on mobile dock when filters are active and clears filters on tap', () => {
+    it('renders circular filter button with absolute counter badge on mobile dock when filters are active', () => {
       const handleOpenFilters = vi.fn();
-      const handleClearAll = vi.fn();
 
       render(
         <StickyCatalogToolbar
@@ -867,18 +889,49 @@ describe('StickyCatalogToolbar component', () => {
             { id: 'topic', label: 'Philosophy', onRemove: vi.fn() },
             { id: 'lang', label: 'French', onRemove: vi.fn() },
           ]}
-          onClearAllFilters={handleClearAll}
+          onClearAllFilters={vi.fn()}
           isMobileDockVisible={true}
         />
       );
 
-      const clearBtn = screen.getByTestId('mobile-dock-clear-all-btn');
-      expect(clearBtn).toBeInTheDocument();
-      expect(clearBtn).toHaveAttribute('aria-label', 'Clear all 3 active filters');
+      const filtersBtn = screen.getByTestId('mobile-dock-filters-btn');
+      expect(filtersBtn).toBeInTheDocument();
+      expect(filtersBtn).toHaveClass('w-8', 'h-8', 'rounded-full');
 
-      fireEvent.click(clearBtn);
-      expect(handleClearAll).toHaveBeenCalledTimes(1);
-      expect(handleOpenFilters).not.toHaveBeenCalled();
+      const badge = screen.getByTestId('mobile-dock-filters-badge');
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent('3');
+
+      fireEvent.click(filtersBtn);
+      expect(handleOpenFilters).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders search trigger on mobile dock and handles toggle clicks', () => {
+      const handleSearchToggle = vi.fn();
+
+      render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isMobileDockVisible={true}
+          isSearchOpen={false}
+          onSearchToggle={handleSearchToggle}
+          searchQuery="Austen"
+        />
+      );
+
+      const searchBtn = screen.getByTestId('mobile-dock-search-btn');
+      expect(searchBtn).toBeInTheDocument();
+      expect(searchBtn).toHaveClass('w-8', 'h-8', 'rounded-full');
+      expect(searchBtn).toHaveAttribute('aria-label', 'Search catalog');
+
+      fireEvent.click(searchBtn);
+      expect(handleSearchToggle).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -956,8 +1009,8 @@ describe('StickyCatalogToolbar component', () => {
       // Desktop toolbar must have border-y to ensure the bottom flush border is rendered when undocked
       expect(desktopToolbar).toHaveClass('border-y', 'border-border');
 
-      // Mobile dock: active on mobile (< 640px), strictly hidden on tablet & desktop (>= 640px)
-      expect(mobileDock).toHaveClass('sm:hidden');
+      // Floating capsule dock: universal across mobile, tablet, and desktop viewports
+      expect(mobileDock).not.toHaveClass('lg:hidden');
     });
 
     it('collapses top border to border-b when isDocked and isHeaderVisible are both true to prevent a 2px double-border seam under Navbar', () => {
@@ -994,6 +1047,49 @@ describe('StickyCatalogToolbar component', () => {
         />
       );
       expect(desktopToolbar).toHaveClass('border-y', 'border-border');
+    });
+
+    it('renders mobile dock sort toggle button and invokes onSortToggle on click', () => {
+      const onSortToggle = vi.fn();
+      const { rerender } = render(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isMobileDockVisible={true}
+          currentSort="descending"
+          onSortToggle={onSortToggle}
+        />
+      );
+
+      const sortBtn = screen.getByTestId('mobile-dock-sort-toggle-btn');
+      expect(sortBtn).toBeInTheDocument();
+      expect(sortBtn).toHaveAttribute('aria-label', 'Switch to most popular books');
+
+      fireEvent.click(sortBtn);
+      expect(onSortToggle).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <StickyCatalogToolbar
+          page={1}
+          viewMode="grid"
+          onViewModeChange={vi.fn()}
+          onOpenFilters={vi.fn()}
+          activeFilterCount={0}
+          activeFilterChips={[]}
+          onClearAllFilters={vi.fn()}
+          isMobileDockVisible={true}
+          currentSort="popular"
+          onSortToggle={onSortToggle}
+        />
+      );
+
+      expect(sortBtn).toHaveAttribute('aria-label', 'Switch to most recent releases');
+      expect(sortBtn).toHaveClass('bg-amber-500/10');
     });
   });
 });

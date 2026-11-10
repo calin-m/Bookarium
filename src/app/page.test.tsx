@@ -967,8 +967,8 @@ describe('Home page integration', () => {
         download_count: (i + 1) * 100,
       }));
 
-    it('renders sort dropdown and bottom pagination on Bookshelf when books exceed 24 on desktop', () => {
-      const books = generateBooks(28);
+    it('renders sort dropdown and bottom pagination on Bookshelf when books exceed 2-shelf capacity on desktop', () => {
+      const books = generateBooks(35);
       useBookshelfStore.setState({ savedBooks: books });
 
       renderHome();
@@ -982,17 +982,17 @@ describe('Home page integration', () => {
       const sortSelect = screen.getByLabelText('Sort bookshelf');
       expect(sortSelect).toBeInTheDocument();
 
-      // Verify bottom pagination appears (28 items > 24 per page on desktop)
+      // Verify bottom pagination appears (35 items > 28 per page on desktop 1024px)
       const paginationNav = screen.getByTestId('pagination-nav');
       expect(paginationNav).toBeInTheDocument();
-      expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
+      expect(paginationNav).toHaveTextContent(/Showing 1–28 of 35 items/i);
 
       // Go to next page via bottom pagination
       const nextBtn = within(paginationNav).getByRole('button', { name: /next/i });
       fireEvent.click(nextBtn);
 
       // Verify page 2 is active
-      expect(paginationNav).toHaveTextContent(/Showing 25–28 of 28 items/i);
+      expect(paginationNav).toHaveTextContent(/Showing 29–35 of 35 items/i);
     });
 
     it('sorts saved books on Bookshelf by title ascending and author descending', () => {
@@ -1008,13 +1008,15 @@ describe('Home page integration', () => {
 
       const sortSelect = screen.getByLabelText('Sort bookshelf');
 
-      // Sort by Title A-Z
-      fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
-      expect(sortSelect).toHaveValue('title_asc');
+      // Sort by Title
+      fireEvent.change(sortSelect, { target: { value: 'title' } });
+      expect(sortSelect).toHaveValue('title');
 
-      // Sort by Author Z-A
-      fireEvent.change(sortSelect, { target: { value: 'author_desc' } });
-      expect(sortSelect).toHaveValue('author_desc');
+      // Sort by Author and toggle direction
+      fireEvent.change(sortSelect, { target: { value: 'author' } });
+      expect(sortSelect).toHaveValue('author');
+      const directionBtn = screen.getByTestId('collection-sort-direction-btn');
+      fireEvent.click(directionBtn);
     });
 
     it('renders sort dropdown and bottom pagination on Favorites when exceeding 24 items', () => {
@@ -1041,12 +1043,12 @@ describe('Home page integration', () => {
       expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
 
       // Sort by popularity
-      fireEvent.change(sortSelect, { target: { value: 'downloads_desc' } });
-      expect(sortSelect).toHaveValue('downloads_desc');
+      fireEvent.change(sortSelect, { target: { value: 'popularity' } });
+      expect(sortSelect).toHaveValue('popularity');
     });
 
     it('resets pagination page to 1 when collection search query changes', () => {
-      const books = generateBooks(28);
+      const books = generateBooks(35);
       useBookshelfStore.setState({ savedBooks: books });
 
       renderHome();
@@ -1059,14 +1061,14 @@ describe('Home page integration', () => {
       const paginationNav = screen.getByTestId('pagination-nav');
       const nextBtn = within(paginationNav).getByRole('button', { name: 'Go to next page' });
       fireEvent.click(nextBtn);
-      expect(paginationNav).toHaveTextContent(/Showing 25–28 of 28 items/i);
+      expect(paginationNav).toHaveTextContent(/Showing 29–35 of 35 items/i);
 
       // Type in collection search input
       const searchInput = screen.getByPlaceholderText(/search your bookshelf/i);
       fireEvent.change(searchInput, { target: { value: 'Volume' } });
 
       // Page should reset to 1
-      expect(paginationNav).toHaveTextContent(/Showing 1–24 of 28 items/i);
+      expect(paginationNav).toHaveTextContent(/Showing 1–28 of 35 items/i);
     });
   });
 
@@ -1081,6 +1083,7 @@ describe('Home page integration', () => {
 
     const catalogSection = utils.container.querySelector('#catalog-section');
     expect(catalogSection).toHaveClass('pt-6', 'sm:pt-12');
+    expect(catalogSection).toHaveClass('[overflow-anchor:none]');
   });
 
   it('handles HeroSearch onReadFeaturedBook, active filter chip removal, and custom shelf filtering', () => {
@@ -1542,6 +1545,107 @@ describe('Home page integration', () => {
       mockIsBookOffline.mockReturnValue(false);
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
     }
+  });
+
+  it('renders mobile capsule dock, handles floating search, filter drawer, and direction toggle on Bookshelf', async () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: pageMockBooks.slice(0, 3),
+        activeBookshelfId: null,
+      });
+    });
+
+    renderHome();
+
+    // Switch to Bookshelf view
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf/i }));
+
+    // Verify CollectionBottomDock is rendered
+    const dock = screen.getByTestId('collection-bottom-dock');
+    expect(dock).toBeInTheDocument();
+
+    // Toggle Floating Search
+    const searchBtn = screen.getByTestId('collection-dock-search-btn');
+    fireEvent.click(searchBtn);
+    expect(screen.getByTestId('collection-floating-search-wrapper')).toBeInTheDocument();
+
+    // Type query in floating search
+    const floatingInput = screen.getByTestId('collection-floating-search-input');
+    fireEvent.change(floatingInput, { target: { value: 'Frankenstein' } });
+
+    // Dismiss floating search via backdrop
+    fireEvent.click(screen.getByTestId('collection-floating-search-backdrop'));
+    expect(screen.queryByTestId('collection-floating-search-wrapper')).not.toBeInTheDocument();
+
+    // Toggle Filter Drawer
+    const filtersBtn = screen.getByTestId('collection-dock-filters-btn');
+    fireEvent.click(filtersBtn);
+    expect(screen.getByTestId('collection-filter-drawer')).toBeInTheDocument();
+
+    // Select shelf in drawer
+    const allShelfOption = screen.getByTestId('filter-shelf-all');
+    fireEvent.click(allShelfOption);
+
+    // Apply drawer
+    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
+    expect(screen.queryByTestId('collection-filter-drawer')).not.toBeInTheDocument();
+
+    // Toggle Sort Direction
+    const scrollIntoViewSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewSpy;
+
+    const directionBtn = screen.getByTestId('collection-dock-direction-btn');
+    fireEvent.click(directionBtn);
+
+    // Direction toggle should update state in place without calling scrollIntoView on catalog section
+    expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+  });
+
+  it('preserves scroll position when toggling 2-state sort on mobile sticky dock', () => {
+    Object.defineProperty(window, 'scrollY', { value: 650, writable: true, configurable: true });
+    const scrollToSpy = vi.fn();
+    window.scrollTo = scrollToSpy as unknown as typeof window.scrollTo;
+
+    renderHome();
+
+    const sortToggleBtn = screen.getByTestId('mobile-dock-sort-toggle-btn');
+    expect(sortToggleBtn).toBeInTheDocument();
+
+    fireEvent.click(sortToggleBtn);
+
+    // Should not trigger scroll jumps during sort toggle
+    expect(scrollToSpy).not.toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+  });
+
+  it('eliminates standalone BackToTop button in favor of the universal bottom capsule dock', () => {
+    Object.defineProperty(window, 'scrollY', { value: 650, writable: true, configurable: true });
+    renderHome();
+
+    expect(screen.queryByTestId('back-to-top-btn')).not.toBeInTheDocument();
+  });
+
+  it('allows searching the catalog mid-scroll via the floating capsule dock search button', () => {
+    Object.defineProperty(window, 'scrollY', { value: 650, writable: true, configurable: true });
+    renderHome();
+
+    // The Catalog capsule dock renders the search trigger
+    const searchBtn = screen.getByTestId('mobile-dock-search-btn');
+    expect(searchBtn).toBeInTheDocument();
+
+    fireEvent.click(searchBtn);
+
+    // Floating search wrapper should open
+    expect(screen.getByTestId('collection-floating-search-wrapper')).toBeInTheDocument();
+
+    // Type query in floating search
+    const floatingInput = screen.getByTestId('collection-floating-search-input');
+    fireEvent.change(floatingInput, { target: { value: 'Pride and Prejudice' } });
+    expect(floatingInput).toHaveValue('Pride and Prejudice');
+
+    // Dismiss floating search via backdrop
+    fireEvent.click(screen.getByTestId('collection-floating-search-backdrop'));
+    expect(screen.queryByTestId('collection-floating-search-wrapper')).not.toBeInTheDocument();
   });
 });
 

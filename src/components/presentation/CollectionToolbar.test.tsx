@@ -266,4 +266,57 @@ describe('CollectionToolbar', () => {
     const utilityRow = filterDropdown.parentElement?.parentElement;
     expect(utilityRow).toHaveClass('justify-between', 'md:justify-end');
   });
+
+  it('enforces single-row mobile layout and propagates compactOnMobile to sort dropdown when singleRowOnMobile is true', () => {
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        sortValue="recent"
+        onSortChange={vi.fn()}
+        sortOptions={sortOptions}
+        singleRowOnMobile={true}
+      />
+    );
+
+    const toolbar = screen.getByTestId('collection-toolbar');
+    expect(toolbar).toHaveClass('flex-row', 'items-center', 'justify-between');
+    expect(toolbar).not.toHaveClass('flex-col');
+
+    const sortDropdown = screen.getByTestId('collection-sort-dropdown');
+    expect(sortDropdown).toHaveClass('w-auto');
+
+    const compactTrigger = within(sortDropdown).getByTestId('compact-sort-trigger');
+    expect(compactTrigger).toHaveClass('w-8', 'h-8');
+  });
+
+  it('applies hidden sm:flex to root toolbar when hiddenOnMobile is true', () => {
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        hiddenOnMobile={true}
+      />
+    );
+
+    const toolbar = screen.getByTestId('collection-toolbar');
+    expect(toolbar).toHaveClass('hidden', 'sm:flex');
+
+    // Search container itself remains intact inside toolbar
+    const searchContainer = screen.getByTestId('collection-toolbar-search-container');
+    expect(searchContainer).not.toHaveClass('hidden');
+  });
+
+  it('keeps toolbar flex visible across all breakpoints when hiddenOnMobile is omitted', () => {
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+      />
+    );
+
+    const toolbar = screen.getByTestId('collection-toolbar');
+    expect(toolbar).toHaveClass('flex');
+    expect(toolbar).not.toHaveClass('hidden');
+  });
 });

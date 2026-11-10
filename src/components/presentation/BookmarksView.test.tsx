@@ -438,7 +438,7 @@ describe('BookmarksView', () => {
     expect(screen.getByText('No downloaded volumes')).toBeInTheDocument();
   });
 
-  it('supports base sort field changes and direction toggle button with disabled state for recently read', () => {
+  it('supports base sort field changes and direction toggle button across all fields including Date Read', () => {
     const bookB = { ...mockBook, id: 84, title: 'Frankenstein', authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] };
     useBookshelfStore.setState({
       savedBooks: [mockBook, bookB],
@@ -452,10 +452,13 @@ describe('BookmarksView', () => {
     const sortSelect = screen.getByRole('combobox', { name: 'Sort bookmarks' });
     expect(sortSelect).toHaveValue('recent');
 
-    // Recently Read: direction button is disabled
+    // Date Read: direction button is enabled and toggles between most and least recently read
     const dirBtn = screen.getByTestId('collection-sort-direction-btn');
-    expect(dirBtn).toBeDisabled();
-    expect(dirBtn).toHaveAttribute('aria-label', 'Sorting direction is fixed for Recently Read');
+    expect(dirBtn).not.toBeDisabled();
+    expect(dirBtn).toHaveAttribute('aria-label', 'Most recently read (click to sort least recently read)');
+    fireEvent.click(dirBtn);
+    expect(dirBtn).toHaveAttribute('aria-label', 'Least recently read (click to sort most recently read)');
+    fireEvent.click(dirBtn);
 
     // Switch to Title: should default to title_asc and enable direction toggle
     fireEvent.change(sortSelect, { target: { value: 'title' } });
@@ -474,9 +477,38 @@ describe('BookmarksView', () => {
     fireEvent.click(dirBtn);
     expect(dirBtn).toHaveAttribute('aria-label', 'Progress Low to High (click to sort High to Low)');
 
-    // Switch back to Recent: direction button should be disabled again
+    // Switch back to Recent: direction button should toggle smoothly
     fireEvent.change(sortSelect, { target: { value: 'recent' } });
-    expect(dirBtn).toBeDisabled();
+    expect(dirBtn).not.toBeDisabled();
+  });
+
+  it('preserves scroll position with overflow-anchor:none during sort direction toggles', () => {
+    const bookB = { ...mockBook, id: 84, title: 'Frankenstein', authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] };
+    useBookshelfStore.setState({
+      savedBooks: [mockBook, bookB],
+      bookStatuses: { 1342: 'currently_reading', 84: 'currently_reading' },
+    });
+    useReaderStore.getState().setProgress(1342, 40);
+    useReaderStore.getState().setProgress(84, 80);
+
+    const { container } = renderWithClient(<BookmarksView />);
+
+    const ledgerSection = container.querySelector('#bookmarks-ledger-section');
+    expect(ledgerSection).toHaveClass('[overflow-anchor:none]');
+
+    const gridContent = container.querySelector('#bookmarks-grid-content');
+    expect(gridContent).toHaveClass('[overflow-anchor:none]');
+
+    // Emulate existing scroll offset
+    Object.defineProperty(window, 'scrollY', { value: 380, writable: true, configurable: true });
+    const scrollToSpy = vi.fn();
+    window.scrollTo = scrollToSpy as unknown as typeof window.scrollTo;
+
+    const dirBtn = screen.getByTestId('collection-sort-direction-btn');
+    fireEvent.click(dirBtn);
+
+    // Verify direction button toggled without unintended scrolling
+    expect(screen.getByTestId('collection-sort-direction-btn')).toBeInTheDocument();
   });
 
   it('renders completed volume with 100% progress and Read Again action', () => {
@@ -517,7 +549,7 @@ describe('BookmarksView', () => {
     expect(sortSelect).toHaveValue('recent');
 
     // Verify sort options exist
-    expect(screen.getByRole('option', { name: 'Recently Read' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Date Read' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Title' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Author' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Progress' })).toBeInTheDocument();

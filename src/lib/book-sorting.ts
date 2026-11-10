@@ -5,6 +5,7 @@ import type { SortOption } from '@/components/presentation/CollectionSortDropdow
 
 export type BookshelfSortOption =
   | 'recent'
+  | 'recent_asc'
   | 'title_asc'
   | 'title_desc'
   | 'author_asc'
@@ -15,15 +16,18 @@ export type BookshelfSortOption =
 
 export type FavoritesSortOption =
   | 'recent'
+  | 'recent_asc'
   | 'title_asc'
   | 'title_desc'
   | 'author_asc'
   | 'author_desc'
   | 'downloads_desc'
+  | 'downloads_asc'
   | 'downloaded';
 
 export const BOOKSHELF_SORT_OPTIONS: SortOption[] = [
-  { value: 'recent', label: 'Recently Added' },
+  { value: 'recent', label: 'Date Added (Newest)' },
+  { value: 'recent_asc', label: 'Date Added (Oldest)' },
   { value: 'title_asc', label: 'Title (A → Z)' },
   { value: 'title_desc', label: 'Title (Z → A)' },
   { value: 'author_asc', label: 'Author (A → Z)' },
@@ -34,14 +38,111 @@ export const BOOKSHELF_SORT_OPTIONS: SortOption[] = [
 ];
 
 export const FAVORITES_SORT_OPTIONS: SortOption[] = [
-  { value: 'recent', label: 'Recently Favorited' },
+  { value: 'recent', label: 'Date Added (Newest)' },
+  { value: 'recent_asc', label: 'Date Added (Oldest)' },
   { value: 'title_asc', label: 'Title (A → Z)' },
   { value: 'title_desc', label: 'Title (Z → A)' },
   { value: 'author_asc', label: 'Author (A → Z)' },
   { value: 'author_desc', label: 'Author (Z → A)' },
-  { value: 'downloads_desc', label: 'Popularity (Downloads)' },
+  { value: 'downloads_desc', label: 'Popularity (High → Low)' },
+  { value: 'downloads_asc', label: 'Popularity (Low → High)' },
   { value: 'downloaded', label: 'Downloaded' },
 ];
+
+export type BookSortBaseField =
+  | 'recent'
+  | 'title'
+  | 'author'
+  | 'progress'
+  | 'popularity'
+  | 'downloaded';
+
+export const BOOKSHELF_BASE_SORT_OPTIONS: SortOption[] = [
+  { value: 'recent', label: 'Date Added' },
+  { value: 'title', label: 'Title' },
+  { value: 'author', label: 'Author' },
+  { value: 'progress', label: 'Progress' },
+  { value: 'downloaded', label: 'Downloaded' },
+];
+
+export const FAVORITES_BASE_SORT_OPTIONS: SortOption[] = [
+  { value: 'recent', label: 'Date Added' },
+  { value: 'title', label: 'Title' },
+  { value: 'author', label: 'Author' },
+  { value: 'popularity', label: 'Popularity' },
+  { value: 'downloaded', label: 'Downloaded' },
+];
+
+/**
+ * Resolves a composite Bookshelf or Favorites sort key from a base field and direction.
+ */
+export function resolveBookSortKey(
+  baseField: string,
+  direction: 'asc' | 'desc'
+): BookshelfSortOption | FavoritesSortOption {
+  switch (baseField) {
+    case 'title':
+      return direction === 'asc' ? 'title_asc' : 'title_desc';
+    case 'author':
+      return direction === 'asc' ? 'author_asc' : 'author_desc';
+    case 'progress':
+      return direction === 'asc' ? 'progress_asc' : 'progress_desc';
+    case 'popularity':
+      return direction === 'asc' ? 'downloads_asc' : 'downloads_desc';
+    case 'downloaded':
+      return 'downloaded';
+    case 'recent':
+    default:
+      return direction === 'asc' ? 'recent_asc' : 'recent';
+  }
+}
+
+/**
+ * Decomposes a composite sort key into its base field and direction.
+ */
+export function decomposeBookSortKey(sortKey: string): {
+  baseField: BookSortBaseField;
+  direction: 'asc' | 'desc';
+  isDirectionDisabled: boolean;
+} {
+  if (sortKey === 'recent') {
+    return { baseField: 'recent', direction: 'desc', isDirectionDisabled: false };
+  }
+  if (sortKey === 'recent_asc') {
+    return { baseField: 'recent', direction: 'asc', isDirectionDisabled: false };
+  }
+  if (sortKey === 'downloaded') {
+    return { baseField: 'downloaded', direction: 'desc', isDirectionDisabled: true };
+  }
+  if (sortKey === 'downloads_desc') {
+    return { baseField: 'popularity', direction: 'desc', isDirectionDisabled: false };
+  }
+  if (sortKey === 'downloads_asc') {
+    return { baseField: 'popularity', direction: 'asc', isDirectionDisabled: false };
+  }
+  if (sortKey.startsWith('title_')) {
+    return {
+      baseField: 'title',
+      direction: sortKey === 'title_asc' ? 'asc' : 'desc',
+      isDirectionDisabled: false,
+    };
+  }
+  if (sortKey.startsWith('author_')) {
+    return {
+      baseField: 'author',
+      direction: sortKey === 'author_asc' ? 'asc' : 'desc',
+      isDirectionDisabled: false,
+    };
+  }
+  if (sortKey.startsWith('progress_')) {
+    return {
+      baseField: 'progress',
+      direction: sortKey === 'progress_asc' ? 'asc' : 'desc',
+      isDirectionDisabled: false,
+    };
+  }
+  return { baseField: 'recent', direction: 'desc', isDirectionDisabled: false };
+}
 
 /**
  * Pure sorting engine for book collections (Bookshelf, Favorites).
@@ -100,6 +201,12 @@ export function sortBooks(
 
     case 'downloads_desc':
       return list.sort((a, b) => (b.download_count ?? 0) - (a.download_count ?? 0));
+
+    case 'downloads_asc':
+      return list.sort((a, b) => (a.download_count ?? 0) - (b.download_count ?? 0));
+
+    case 'recent_asc':
+      return list.reverse();
 
     case 'downloaded':
     case 'recent':

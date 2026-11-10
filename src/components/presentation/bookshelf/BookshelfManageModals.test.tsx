@@ -199,5 +199,125 @@ describe('BookshelfManageModals Component', () => {
     fireEvent.click(editCheckbox);
     expect(handleEditPrivacyChange).toHaveBeenCalledWith(true);
   });
+
+  it('supports clear button and smart 2-step Escape key hierarchy on shelf name inputs', () => {
+    const handleNameChange = vi.fn();
+    const handleCloseCreate = vi.fn();
+
+    const { rerender } = render(
+      <BookshelfManageModals
+        isCreatingShelf={true}
+        newShelfName="Philosophy"
+        onNewShelfNameChange={handleNameChange}
+        onCloseCreateShelf={handleCloseCreate}
+        onCreateShelf={vi.fn()}
+        editingShelfId={null}
+        editingShelfName=""
+        onEditingShelfNameChange={vi.fn()}
+        onCloseRenameShelf={vi.fn()}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isSubmitting={false}
+      />
+    );
+
+    // 1. Clear button click
+    const clearBtn = screen.getByLabelText('Clear input');
+    expect(clearBtn).toBeInTheDocument();
+    fireEvent.click(clearBtn);
+    expect(handleNameChange).toHaveBeenCalledWith('');
+
+    // 2. Escape key when input has text -> resets text, does NOT close modal
+    const input = screen.getByPlaceholderText('e.g. Philosophy & Logic');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(handleNameChange).toHaveBeenCalledWith('');
+    expect(handleCloseCreate).not.toHaveBeenCalled();
+
+    // 3. Escape key when input is empty -> bubbles to modal and triggers onClose
+    rerender(
+      <BookshelfManageModals
+        isCreatingShelf={true}
+        newShelfName=""
+        onNewShelfNameChange={handleNameChange}
+        onCloseCreateShelf={handleCloseCreate}
+        onCreateShelf={vi.fn()}
+        editingShelfId={null}
+        editingShelfName=""
+        onEditingShelfNameChange={vi.fn()}
+        onCloseRenameShelf={vi.fn()}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isSubmitting={false}
+      />
+    );
+
+    const emptyInput = screen.getByPlaceholderText('e.g. Philosophy & Logic');
+    fireEvent.keyDown(emptyInput, { key: 'Escape' });
+    expect(handleCloseCreate).toHaveBeenCalled();
+  });
+
+  it('supports clear button and 2-step Escape key hierarchy on rename shelf input', () => {
+    const handleRenameChange = vi.fn();
+    const handleCloseRename = vi.fn();
+
+    const { rerender } = render(
+      <BookshelfManageModals
+        isCreatingShelf={false}
+        newShelfName=""
+        onNewShelfNameChange={vi.fn()}
+        onCloseCreateShelf={vi.fn()}
+        onCreateShelf={vi.fn()}
+        editingShelfId="shelf-1"
+        editingShelfName="Old Name"
+        onEditingShelfNameChange={handleRenameChange}
+        onCloseRenameShelf={handleCloseRename}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isSubmitting={false}
+      />
+    );
+
+    // Clear button
+    const clearBtn = screen.getByLabelText('Clear input');
+    expect(clearBtn).toBeInTheDocument();
+    fireEvent.click(clearBtn);
+    expect(handleRenameChange).toHaveBeenCalledWith('');
+
+    // Escape with text
+    const renameInput = screen.getByPlaceholderText('Shelf Name');
+    fireEvent.keyDown(renameInput, { key: 'Escape' });
+    expect(handleRenameChange).toHaveBeenCalledWith('');
+    expect(handleCloseRename).not.toHaveBeenCalled();
+
+    // Escape when empty
+    rerender(
+      <BookshelfManageModals
+        isCreatingShelf={false}
+        newShelfName=""
+        onNewShelfNameChange={vi.fn()}
+        onCloseCreateShelf={vi.fn()}
+        onCreateShelf={vi.fn()}
+        editingShelfId="shelf-1"
+        editingShelfName=""
+        onEditingShelfNameChange={handleRenameChange}
+        onCloseRenameShelf={handleCloseRename}
+        onRenameShelf={vi.fn()}
+        deletingShelfId={null}
+        onCloseDeleteShelf={vi.fn()}
+        onDeleteShelf={vi.fn()}
+        isSubmitting={false}
+      />
+    );
+
+    const emptyRenameInput = screen.getByPlaceholderText('Shelf Name');
+    fireEvent.keyDown(emptyRenameInput, { key: 'Escape' });
+    expect(handleCloseRename).toHaveBeenCalled();
+  });
 });
 

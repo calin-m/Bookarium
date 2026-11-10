@@ -45,6 +45,12 @@ export interface CollectionToolbarProps {
   itemCountLabel?: string;
   extraControls?: React.ReactNode;
 
+  // Mobile Single-Row Layout
+  singleRowOnMobile?: boolean;
+
+  // Responsive Visibility Control (Hides entire toolbar on mobile screens in favor of bottom capsule dock)
+  hiddenOnMobile?: boolean;
+
   className?: string;
 }
 
@@ -76,6 +82,8 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
   paginationAriaLabel,
   itemCountLabel,
   extraControls,
+  singleRowOnMobile = false,
+  hiddenOnMobile = false,
   className = '',
 }) => {
   const isFiltering = Boolean(searchQuery.trim());
@@ -96,12 +104,21 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
   return (
     <div
       data-testid="collection-toolbar"
-      className={`flex flex-col ${
-        isSingleControl ? 'sm:flex-row sm:items-center' : 'md:flex-row md:items-center'
-      } items-stretch justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 bg-card border border-border rounded-xl shadow-booksaw ${className}`}
+      className={`${hiddenOnMobile ? 'hidden sm:flex' : 'flex'} ${
+        singleRowOnMobile
+          ? 'flex-row items-center'
+          : isSingleControl
+          ? 'flex-col sm:flex-row sm:items-center'
+          : 'flex-col md:flex-row md:items-center'
+      } items-stretch justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 bg-card border border-border rounded-xl shadow-booksaw ${className}`}
     >
-      {/* Search Input (Row 1 on Mobile, Left-side on Desktop) */}
-      <div className={`relative flex-1 min-w-0 ${isSingleControl ? 'sm:min-w-[260px]' : ''} md:min-w-[280px]`}>
+      {/* Search Input (Row 1 on Mobile when wrapped, Left-side on Desktop/Single-Row) */}
+      <div
+        data-testid="collection-toolbar-search-container"
+        className={`relative flex-1 min-w-0 ${
+          !singleRowOnMobile && isSingleControl ? 'sm:min-w-[260px]' : ''
+        } ${!singleRowOnMobile ? 'md:min-w-[280px]' : ''}`}
+      >
         <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center text-muted-foreground">
           <Search className="w-4 h-4" aria-hidden="true" />
         </div>
@@ -147,13 +164,15 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
         </div>
       </div>
 
-      {/* Utility Controls Row (Row 2 on Mobile/Tablet, Right-side on Desktop) */}
+      {/* Utility Controls Row (Row 2 on Mobile/Tablet when wrapped, Right-side on Desktop/Single-Row) */}
       <div
         className={`flex items-center ${
-          isSingleControl
+          singleRowOnMobile
+            ? 'justify-end w-auto shrink-0'
+            : isSingleControl
             ? 'justify-start sm:justify-end w-full sm:w-auto sm:shrink-0'
             : 'justify-between md:justify-end w-full md:w-auto md:shrink-0'
-        } gap-2 sm:gap-2.5 min-w-0`}
+        } gap-1.5 sm:gap-2.5 min-w-0`}
       >
         {/* Status / Category Filter Dropdown */}
         {hasFilter && (
@@ -165,6 +184,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
               ariaLabel={filterAriaLabel}
               icon={filterIcon}
               hideLeadingIcon={!filterIcon}
+              compactOnMobile={singleRowOnMobile}
               dataTestId="collection-filter-dropdown"
               selectTestId="collection-filter-select"
             />
@@ -176,7 +196,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
           <div
             className={`flex items-center ${
               hasFilter ? 'justify-end' : 'justify-start'
-            } gap-1.5 ${isSingleControl ? 'w-auto shrink-0' : 'flex-1 sm:flex-none'} min-w-0`}
+            } gap-1.5 ${isSingleControl && !singleRowOnMobile ? 'w-auto shrink-0' : singleRowOnMobile ? 'w-auto shrink-0' : 'flex-1 sm:flex-none'} min-w-0 relative z-20`}
           >
             <CollectionSortDropdown
               value={sortValue!}
@@ -187,14 +207,15 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
               onDirectionToggle={onDirectionToggle}
               isDirectionDisabled={isDirectionDisabled}
               directionAriaLabel={directionAriaLabel}
-              className={isSingleControl ? 'min-w-[125px] max-w-[170px] sm:max-w-[195px]' : undefined}
+              compactOnMobile={singleRowOnMobile}
+              className={isSingleControl && !singleRowOnMobile ? 'min-w-[125px] max-w-[170px] sm:max-w-[195px]' : undefined}
             />
           </div>
         )}
 
         {/* Extra Controls (e.g. Notebook's View Mode Toggle) */}
         {extraControls && (
-          <div className="flex items-center justify-end shrink-0 ml-auto md:ml-0">
+          <div className={`flex items-center justify-end shrink-0 relative z-10 ${singleRowOnMobile ? '' : 'ml-auto md:ml-0'}`}>
             {extraControls}
           </div>
         )}

@@ -755,7 +755,23 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
+@keyframes ambientBreathe {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(1.02);
+  }
+}
+
+.animate-ambient-breathe {
+  animation: ambientBreathe 5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-ambient-breathe,
   .animate-page-turn,
   .animate-ink-appear,
   .animate-view-slide-left,

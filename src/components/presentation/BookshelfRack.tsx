@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Sparkles, Plus, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
@@ -18,6 +17,7 @@ import {
   resolveBookshelfViewState,
   filterCustomShelfBooks,
 } from '@/lib/book-sorting';
+import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
@@ -80,7 +80,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     updateCloudBookshelf,
     deleteCloudBookshelf,
     moveBookToShelf,
-    isSyncing,
   } = useHydratedBookshelf();
   const user = useAuthStore((s) => s.user);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
@@ -120,12 +119,19 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const openModalTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const shelfRowRef = useRef<HTMLDivElement>(null);
   const [shelfCapacity, setShelfCapacity] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       return calculateShelfCapacity(window.innerWidth);
     }
     return 18;
   });
+
+  useEffect(() => {
+    const el = shelfRowRef.current;
+    if (!el) return;
+    return attachHorizontalDragAndWheelScroll(el);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -277,14 +283,14 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   }, [effectiveShelfBooks, country]);
 
   // Chunk books into shelves:
-  // - On Bookshelf page (showShelfControls = true): uniform max 12 books per shelf row on desktop
-  //   (scaling down to shelfCapacity on tablet/mobile, e.g. 6 on mobile) filled sequentially (2 shelves of up to 12 = 24/page).
+  // - On Bookshelf page (showShelfControls = true): fill sequentially up to physical shelfCapacity per row
+  //   (e.g. 18 on desktop, 14 on laptop, 10 on tablet, 6 on mobile). Shelf 1 fills first, then Shelf 2.
   // - On Catalog page (showShelfControls = false): predetermined batch sizes (8 or 16) up to shelfCapacity (18).
   const shelves = useMemo(() => {
     if (effectiveShelfBooks.length === 0) return [];
 
     if (showShelfControls) {
-      const effectiveRowLimit = Math.min(shelfCapacity, 12);
+      const effectiveRowLimit = shelfCapacity;
       const result: GutendexBook[][] = [];
       for (let i = 0; i < effectiveShelfBooks.length; i += effectiveRowLimit) {
         result.push(effectiveShelfBooks.slice(i, i + effectiveRowLimit));
@@ -311,34 +317,17 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     : (activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General'));
 
   return (
-    <div className="relative w-full py-6" data-testid="bookshelf-rack" ref={containerRef}>
-      {/* Sync Status Overlay Badge (Zero CLS Floating Pill) */}
-      <AnimatePresence>
-        {showShelfControls && isSyncing && (
-          <motion.aside
-            initial={{ opacity: 0, y: -4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-0 right-2 sm:right-4 z-20 pointer-events-none"
-            role="status"
-            aria-live="polite"
-            aria-label="Cloud sync in progress"
-            data-testid="syncing-indicator"
-          >
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-background/90 dark:bg-card/90 backdrop-blur-md border border-primary/30 rounded-full shadow-xs text-[11px] font-mono text-primary animate-pulse">
-              <Sparkles className="w-3 h-3 text-primary shrink-0" />
-              <span>Syncing with Cloud Bookshelf...</span>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      <div className="w-full space-y-8">
+    <div className="relative w-full pt-1 sm:pt-2 pb-6" data-testid="bookshelf-rack" ref={containerRef}>
+      <div className="w-full space-y-6 sm:space-y-8">
         {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
         {showShelfControls && (
           <div className="flex flex-wrap items-center justify-between gap-3 px-2 min-h-[32px]">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div
+              ref={shelfRowRef}
+              data-testid="bookshelf-shelves-strip"
+              data-no-swipe
+              className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-1 min-w-0 select-none py-1 px-1 touch-pan-x"
+            >
           {user && cloudBookshelves.length > 0 ? (
             <>
               {cloudBookshelves.map((shelf, index) => {
@@ -351,7 +340,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       type="button"
                       onClick={() => setActiveBookshelfId(shelf.id)}
                       aria-label={shelfDisplayName}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none shrink-0 whitespace-nowrap ${
                         isActive
                           ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                           : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border'
@@ -376,7 +365,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                         onClick={() => setActiveBookshelfId(DOWNLOADED_SHELF_ID)}
                         aria-label="Downloaded"
                         data-testid="downloaded-shelf-pill"
-                        className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none shrink-0 whitespace-nowrap ${
                           isViewingDownloaded
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                             : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
@@ -393,7 +382,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCreatingShelf(true)}
-                className="px-2.5 py-1.5 rounded-full text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted border border-dashed border-border transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1.5 rounded-full text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted border border-dashed border-border transition-colors flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap"
                 title="Create New Shelf"
                 aria-label="Create New Shelf"
               >
@@ -402,12 +391,12 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               </button>
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveBookshelfId(null)}
                 aria-label="General"
-                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none shrink-0 whitespace-nowrap ${
                   !isViewingDownloaded
                     ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                     : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border'
@@ -415,14 +404,14 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               >
                 <span>General</span>
               </button>
-              <span className="text-xs font-mono text-muted-foreground">({totalBooksCount ?? books.length} volumes)</span>
+              <span className="text-xs font-mono text-muted-foreground shrink-0 whitespace-nowrap">({totalBooksCount ?? books.length} volumes)</span>
               {downloadedSavedBooks.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setActiveBookshelfId(DOWNLOADED_SHELF_ID)}
                   aria-label="Downloaded"
                   data-testid="downloaded-shelf-pill"
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer select-none shrink-0 whitespace-nowrap ${
                     isViewingDownloaded
                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                       : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
@@ -578,7 +567,10 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
               <div className="relative w-full rounded-2xl border border-border shelf-ambient-niche shadow-md overflow-hidden sm:overflow-visible">
                 
                 {/* Shelf Items Row */}
-                <div className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 snap-x relative z-10">
+                <div
+                  data-testid={`shelf-items-row-${shelfIndex}`}
+                  className="flex items-end justify-center gap-2 sm:gap-3.5 overflow-x-auto sm:overflow-visible scrollbar-none pt-10 px-4 sm:px-8 snap-x relative z-10 min-h-[320px]"
+                >
                   {shelfBooks.map((book, bookIndex) => (
                     <BookshelfSpine
                       key={book.id}

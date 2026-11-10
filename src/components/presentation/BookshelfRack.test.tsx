@@ -40,10 +40,13 @@ describe('BookshelfRack Component', () => {
     });
   });
 
-  it('renders shelf with books', () => {
+  it('renders shelf with books and invariant minimum shelf height to prevent layout shifts', () => {
     render(<BookshelfRack books={mockBooks} />);
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
+    const shelfItemsRow = screen.getByTestId('shelf-items-row-0');
+    expect(shelfItemsRow).toBeInTheDocument();
+    expect(shelfItemsRow).toHaveClass('min-h-[320px]');
   });
 
   it('renders empty message when no books are provided', () => {
@@ -836,24 +839,12 @@ describe('BookshelfRack Component', () => {
     });
   });
 
-  describe('Syncing Status Overlay (Zero CLS)', () => {
-    it('does not render syncing indicator when isSyncing is false', () => {
-      useBookshelfStore.setState({ isSyncing: false });
-      render(<BookshelfRack books={mockBooks} />);
-
-      expect(screen.queryByTestId('syncing-indicator')).not.toBeInTheDocument();
-    });
-
-    it('renders floating syncing indicator with status role when isSyncing is true', () => {
+  describe('Silent Bookshelf Cloud Sync', () => {
+    it('operates silently without rendering an intrusive visual syncing badge', () => {
       useBookshelfStore.setState({ isSyncing: true });
       render(<BookshelfRack books={mockBooks} />);
 
-      const indicator = screen.getByTestId('syncing-indicator');
-      expect(indicator).toBeInTheDocument();
-      expect(indicator).toHaveAttribute('role', 'status');
-      expect(indicator).toHaveTextContent(/syncing with cloud bookshelf/i);
-      expect(indicator.className).toContain('absolute');
-      expect(indicator.className).toContain('pointer-events-none');
+      expect(screen.queryByTestId('syncing-indicator')).not.toBeInTheDocument();
     });
   });
 
@@ -916,24 +907,35 @@ describe('BookshelfRack Component', () => {
       }
     });
 
-    it('enforces uniform 12-book row limit on Bookshelf page, splitting 15 books into 12 on first shelf and 3 on second', () => {
+    it('fills shelves sequentially up to physical capacity on Bookshelf page without artificial row clamping', () => {
       const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
       Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 1280 });
 
       try {
+        // On 1280px (shelfCapacity = 18), 15 books fit completely on 1 single shelf
         const fifteenBooks = Array.from({ length: 15 }, (_, i) => ({
           ...mockBooks[i % mockBooks.length],
           id: 4000 + i,
           title: `Book ${i}`,
         }));
-        const { container } = render(<BookshelfRack books={fifteenBooks} showShelfControls={true} />);
-        const shelfRows = container.querySelectorAll('.shelf-ambient-niche');
+        const { container, rerender } = render(<BookshelfRack books={fifteenBooks} showShelfControls={true} />);
+        let shelfRows = container.querySelectorAll('.shelf-ambient-niche');
+        expect(shelfRows.length).toBe(1);
+        expect(shelfRows[0].querySelectorAll('[data-testid^="shelf-book-"]').length).toBe(15);
+
+        // When exceeding shelf capacity (24 books on 1280px clientWidth -> capacity 19), first shelf fills to 19, second shelf takes 5
+        const twentyFourBooks = Array.from({ length: 24 }, (_, i) => ({
+          ...mockBooks[i % mockBooks.length],
+          id: 4100 + i,
+          title: `Book ${i}`,
+        }));
+        rerender(<BookshelfRack books={twentyFourBooks} showShelfControls={true} />);
+        shelfRows = container.querySelectorAll('.shelf-ambient-niche');
         expect(shelfRows.length).toBe(2);
-        // First shelf row has 12 books, second shelf row has 3 books
         const firstShelfBooks = shelfRows[0].querySelectorAll('[data-testid^="shelf-book-"]');
         const secondShelfBooks = shelfRows[1].querySelectorAll('[data-testid^="shelf-book-"]');
-        expect(firstShelfBooks.length).toBe(12);
-        expect(secondShelfBooks.length).toBe(3);
+        expect(firstShelfBooks.length).toBe(19);
+        expect(secondShelfBooks.length).toBe(5);
       } finally {
         if (originalClientWidth) {
           Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth);
@@ -1232,6 +1234,32 @@ describe('BookshelfRack Component', () => {
     const cancelBtn = screen.getByRole('button', { name: 'Close' });
     fireEvent.click(cancelBtn);
     expect(screen.queryByText('Create New Bookshelf')).not.toBeInTheDocument();
+  });
+
+  it('renders shelves in a kinetic single-row horizontal strip with compact top padding', () => {
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    useBookshelfStore.setState({
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Philosophical Classics', is_default: false, created_at: '', updated_at: '' },
+      ],
+      activeBookshelfId: 'shelf-1',
+    });
+
+    render(<BookshelfRack books={mockBooks} />);
+
+    const rack = screen.getByTestId('bookshelf-rack');
+    expect(rack).toHaveClass('pt-1', 'sm:pt-2', 'pb-6');
+
+    const strip = screen.getByTestId('bookshelf-shelves-strip');
+    expect(strip).toBeInTheDocument();
+    expect(strip).toHaveClass('overflow-x-auto', 'flex-1', 'min-w-0', 'touch-pan-x');
+
+    const generalShelf = screen.getByRole('button', { name: 'General' });
+    expect(generalShelf).toHaveClass('shrink-0', 'whitespace-nowrap');
+
+    const customShelf = screen.getByRole('button', { name: 'Philosophical Classics' });
+    expect(customShelf).toHaveClass('shrink-0', 'whitespace-nowrap');
   });
 });
 

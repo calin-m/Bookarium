@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Highlighter,
   BookOpen,
@@ -13,14 +14,18 @@ import { NotebookQuoteCard } from './NotebookQuoteCard';
 import { NotebookFilterStrip } from './notebook/NotebookFilterStrip';
 import { NotebookVolumeGroup } from './notebook/NotebookVolumeGroup';
 import { CollectionToolbar } from './CollectionToolbar';
+import { CollectionBottomDock } from './CollectionBottomDock';
+import { CollectionFloatingSearch } from './CollectionFloatingSearch';
+import { CollectionFilterDrawer } from './CollectionFilterDrawer';
 import type { SortOption } from './CollectionSortDropdown';
-import { smartScrollToContent, createTabScrubberHandlers } from '@/lib/scroll-utils';
+import { smartScrollToContent, runPreservingScrollPosition } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import {
   useHydratedAnnotations,
   type Annotation,
   type FellowAnnotation,
   type HighlightColor,
+  type MarginaliaSourceFilter,
 } from '@/stores/useAnnotationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotebookMetadataResolver } from '@/hooks/useNotebookMetadataResolver';
@@ -43,33 +48,130 @@ export interface NotebookViewProps {
   onBrowseCatalog?: () => void;
 }
 
-export type NotebookChronoSortOption = 'date_desc' | 'date_asc' | 'title_asc' | 'author_asc' | 'downloaded';
+export type NotebookChronoSortOption =
+  | 'date_desc'
+  | 'date_asc'
+  | 'title_asc'
+  | 'title_desc'
+  | 'author_asc'
+  | 'author_desc'
+  | 'downloaded';
 export type NotebookVolumeSortOption =
   | 'title_asc'
   | 'title_desc'
   | 'author_asc'
   | 'author_desc'
   | 'count_desc'
+  | 'count_asc'
   | 'recent'
+  | 'recent_asc'
   | 'downloaded';
 
-const CHRONO_SORT_OPTIONS: SortOption[] = [
-  { value: 'date_desc', label: 'Date Added (Newest)' },
-  { value: 'date_asc', label: 'Date Added (Oldest)' },
-  { value: 'title_asc', label: 'Book Title (A → Z)' },
-  { value: 'author_asc', label: 'Author (A → Z)' },
+export type NotebookVolumeBaseSort = 'title' | 'author' | 'count' | 'recent' | 'downloaded';
+export type NotebookChronoBaseSort = 'date' | 'title' | 'author' | 'downloaded';
+
+export const NOTEBOOK_VOLUME_BASE_SORT_OPTIONS: SortOption[] = [
+  { value: 'title', label: 'Book Title' },
+  { value: 'author', label: 'Author' },
+  { value: 'count', label: 'Quote Count' },
+  { value: 'recent', label: 'Date Annotated' },
   { value: 'downloaded', label: 'Downloaded' },
 ];
 
-const VOLUME_SORT_OPTIONS: SortOption[] = [
-  { value: 'title_asc', label: 'Book Title (A → Z)' },
-  { value: 'title_desc', label: 'Book Title (Z → A)' },
-  { value: 'author_asc', label: 'Author (A → Z)' },
-  { value: 'author_desc', label: 'Author (Z → A)' },
-  { value: 'count_desc', label: 'Most Quotes First' },
-  { value: 'recent', label: 'Recently Annotated' },
+export const NOTEBOOK_CHRONO_BASE_SORT_OPTIONS: SortOption[] = [
+  { value: 'date', label: 'Date Added' },
+  { value: 'title', label: 'Book Title' },
+  { value: 'author', label: 'Author' },
   { value: 'downloaded', label: 'Downloaded' },
 ];
+
+export function decomposeVolumeSort(sort: NotebookVolumeSortOption): {
+  base: NotebookVolumeBaseSort;
+  dir: 'asc' | 'desc';
+  isDirectionDisabled: boolean;
+} {
+  switch (sort) {
+    case 'title_desc':
+      return { base: 'title', dir: 'desc', isDirectionDisabled: false };
+    case 'title_asc':
+      return { base: 'title', dir: 'asc', isDirectionDisabled: false };
+    case 'author_desc':
+      return { base: 'author', dir: 'desc', isDirectionDisabled: false };
+    case 'author_asc':
+      return { base: 'author', dir: 'asc', isDirectionDisabled: false };
+    case 'count_desc':
+      return { base: 'count', dir: 'desc', isDirectionDisabled: false };
+    case 'count_asc':
+      return { base: 'count', dir: 'asc', isDirectionDisabled: false };
+    case 'recent_asc':
+      return { base: 'recent', dir: 'asc', isDirectionDisabled: false };
+    case 'recent':
+      return { base: 'recent', dir: 'desc', isDirectionDisabled: false };
+    case 'downloaded':
+      return { base: 'downloaded', dir: 'desc', isDirectionDisabled: true };
+    default:
+      return { base: 'title', dir: 'asc', isDirectionDisabled: false };
+  }
+}
+
+export function resolveVolumeSort(
+  base: NotebookVolumeBaseSort,
+  dir: 'asc' | 'desc'
+): NotebookVolumeSortOption {
+  switch (base) {
+    case 'title':
+      return dir === 'asc' ? 'title_asc' : 'title_desc';
+    case 'author':
+      return dir === 'asc' ? 'author_asc' : 'author_desc';
+    case 'count':
+      return dir === 'asc' ? 'count_asc' : 'count_desc';
+    case 'recent':
+      return dir === 'asc' ? 'recent_asc' : 'recent';
+    case 'downloaded':
+      return 'downloaded';
+  }
+}
+
+export function decomposeChronoSort(sort: NotebookChronoSortOption): {
+  base: NotebookChronoBaseSort;
+  dir: 'asc' | 'desc';
+  isDirectionDisabled: boolean;
+} {
+  switch (sort) {
+    case 'date_asc':
+      return { base: 'date', dir: 'asc', isDirectionDisabled: false };
+    case 'date_desc':
+      return { base: 'date', dir: 'desc', isDirectionDisabled: false };
+    case 'title_asc':
+      return { base: 'title', dir: 'asc', isDirectionDisabled: false };
+    case 'title_desc':
+      return { base: 'title', dir: 'desc', isDirectionDisabled: false };
+    case 'author_asc':
+      return { base: 'author', dir: 'asc', isDirectionDisabled: false };
+    case 'author_desc':
+      return { base: 'author', dir: 'desc', isDirectionDisabled: false };
+    case 'downloaded':
+      return { base: 'downloaded', dir: 'desc', isDirectionDisabled: true };
+    default:
+      return { base: 'date', dir: 'desc', isDirectionDisabled: false };
+  }
+}
+
+export function resolveChronoSort(
+  base: NotebookChronoBaseSort,
+  dir: 'asc' | 'desc'
+): NotebookChronoSortOption {
+  switch (base) {
+    case 'date':
+      return dir === 'asc' ? 'date_asc' : 'date_desc';
+    case 'title':
+      return dir === 'asc' ? 'title_asc' : 'title_desc';
+    case 'author':
+      return dir === 'asc' ? 'author_asc' : 'author_desc';
+    case 'downloaded':
+      return 'downloaded';
+  }
+}
 
 const CHRONO_PAGE_SIZE = 12;
 const VOLUME_PAGE_SIZE = 6;
@@ -103,6 +205,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   const [reflectionToDelete, setReflectionToDelete] = useState<Annotation | null>(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
+  const [isBottomSearchOpen, setIsBottomSearchOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   // Reset page to 1 when filters, search query, mode, sorting, or marginalia source change
   const [prevFilterKey, setPrevFilterKey] = useState(
@@ -113,6 +217,53 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     setPrevFilterKey(filterKey);
     setCurrentPage(1);
   }
+
+  const {
+    base: volumeBaseSort,
+    dir: volumeSortDir,
+    isDirectionDisabled: isVolumeDirDisabled,
+  } = decomposeVolumeSort(volumeSort);
+
+  const {
+    base: chronoBaseSort,
+    dir: chronoSortDir,
+    isDirectionDisabled: isChronoDirDisabled,
+  } = decomposeChronoSort(chronoSort);
+
+  const currentNotebookBaseSort = groupMode === 'volume' ? volumeBaseSort : chronoBaseSort;
+  const currentNotebookSortDir = groupMode === 'volume' ? volumeSortDir : chronoSortDir;
+  const isCurrentNotebookDirDisabled =
+    groupMode === 'volume' ? isVolumeDirDisabled : isChronoDirDisabled;
+
+  const handleNotebookDirectionToggle = useCallback(() => {
+    runPreservingScrollPosition(() => {
+      if (groupMode === 'volume') {
+        const { base, dir, isDirectionDisabled } = decomposeVolumeSort(volumeSort);
+        if (!isDirectionDisabled) {
+          const nextDir = dir === 'asc' ? 'desc' : 'asc';
+          setVolumeSort(resolveVolumeSort(base, nextDir));
+        }
+      } else {
+        const { base, dir, isDirectionDisabled } = decomposeChronoSort(chronoSort);
+        if (!isDirectionDisabled) {
+          const nextDir = dir === 'asc' ? 'desc' : 'asc';
+          setChronoSort(resolveChronoSort(base, nextDir));
+        }
+      }
+    });
+  }, [groupMode, volumeSort, chronoSort]);
+
+  const handleNotebookBaseSortChange = useCallback(
+    (newBase: string) => {
+      const defaultDir = newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
+      if (groupMode === 'volume') {
+        setVolumeSort(resolveVolumeSort(newBase as NotebookVolumeBaseSort, defaultDir));
+      } else {
+        setChronoSort(resolveChronoSort(newBase as NotebookChronoBaseSort, defaultDir));
+      }
+    },
+    [groupMode]
+  );
 
   const pairedAllAnnotations = useMemo(() => {
     return pairOverlappingAnnotations(annotations, fellowAnnotations);
@@ -228,11 +379,23 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           const titleB = resolveBookDetails(b).title;
           return titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
         });
+      case 'title_desc':
+        return list.sort((a, b) => {
+          const titleA = resolveBookDetails(a).title;
+          const titleB = resolveBookDetails(b).title;
+          return titleB.localeCompare(titleA, undefined, { sensitivity: 'base' });
+        });
       case 'author_asc':
         return list.sort((a, b) => {
           const authorA = resolveBookDetails(a).author;
           const authorB = resolveBookDetails(b).author;
           return authorA.localeCompare(authorB, undefined, { sensitivity: 'base' });
+        });
+      case 'author_desc':
+        return list.sort((a, b) => {
+          const authorA = resolveBookDetails(a).author;
+          const authorB = resolveBookDetails(b).author;
+          return authorB.localeCompare(authorA, undefined, { sensitivity: 'base' });
         });
       case 'downloaded':
         return list
@@ -256,6 +419,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
         return list.sort((a, b) => b.author.localeCompare(a.author, undefined, { sensitivity: 'base' }));
       case 'count_desc':
         return list.sort((a, b) => b.items.length - a.items.length);
+      case 'count_asc':
+        return list.sort((a, b) => a.items.length - b.items.length);
+      case 'recent_asc':
+        return list.sort((a, b) => {
+          const timeA = Math.max(...a.items.map((i) => getItemRecentTimestamp(i)), 0);
+          const timeB = Math.max(...b.items.map((i) => getItemRecentTimestamp(i)), 0);
+          return timeA - timeB;
+        });
       case 'recent':
         return list.sort((a, b) => {
           const timeA = Math.max(...a.items.map((i) => getItemRecentTimestamp(i)), 0);
@@ -437,8 +608,26 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     setIsConfirmClearOpen(false);
   };
 
+  const drawerMarginaliaOptions = useMemo(
+    () => [
+      { id: 'all', label: 'All Passages', count: annotations.length + fellowAnnotations.length },
+      { id: 'own', label: 'My Notes', count: annotations.length },
+      { id: 'fellows', label: "Fellows' Notes", count: fellowAnnotations.length },
+    ],
+    [annotations.length, fellowAnnotations.length]
+  );
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedColor !== 'all') count++;
+    if (marginaliaSourceFilter !== 'all') count++;
+    if (searchQuery.trim().length > 0) count++;
+    if (groupMode === 'volume' ? volumeSort !== 'title_asc' : chronoSort !== 'date_desc') count++;
+    return count;
+  }, [selectedColor, marginaliaSourceFilter, searchQuery, groupMode, volumeSort, chronoSort]);
+
   return (
-    <section id="literary-notebook-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12" aria-label="Literary Commonplace Notebook">
+    <section id="literary-notebook-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 [overflow-anchor:none]" aria-label="Literary Commonplace Notebook">
       {/* Booksaw Centered Section Header */}
         <SectionHeader
           eyebrow="MARGINALIA & REFLECTIONS"
@@ -493,54 +682,68 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
             searchPlaceholder="Search quotes, reflections, books, or authors..."
             searchAriaLabel="Search quotes"
             searchTestId="notebook-search-input"
-            sortValue={groupMode === 'volume' ? volumeSort : chronoSort}
-            onSortChange={(newSort) => {
-              if (groupMode === 'volume') {
-                setVolumeSort(newSort as NotebookVolumeSortOption);
-              } else {
-                setChronoSort(newSort as NotebookChronoSortOption);
-              }
-            }}
-            sortOptions={groupMode === 'volume' ? VOLUME_SORT_OPTIONS : CHRONO_SORT_OPTIONS}
-            sortAriaLabel={groupMode === 'volume' ? 'Sort book groups' : 'Sort quotes chronologically'}
+            sortValue={currentNotebookBaseSort}
+            onSortChange={handleNotebookBaseSortChange}
+            sortOptions={
+              groupMode === 'volume'
+                ? NOTEBOOK_VOLUME_BASE_SORT_OPTIONS
+                : NOTEBOOK_CHRONO_BASE_SORT_OPTIONS
+            }
+            sortAriaLabel={
+              groupMode === 'volume' ? 'Sort book groups' : 'Sort quotes chronologically'
+            }
+            sortDirection={currentNotebookSortDir}
+            onDirectionToggle={handleNotebookDirectionToggle}
+            isDirectionDisabled={isCurrentNotebookDirDisabled}
+            singleRowOnMobile={true}
+            hiddenOnMobile={true}
             extraControls={
-              <div
-                {...createTabScrubberHandlers(setGroupMode)}
-                className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border border-border shrink-0 select-none touch-pan-y"
+              <button
+                type="button"
+                data-testid="notebook-view-mode-toggle"
+                onClick={() => setGroupMode(groupMode === 'volume' ? 'chronological' : 'volume')}
+                aria-label={
+                  groupMode === 'volume'
+                    ? 'Current mode: Grouped by Book. Click to switch to Chronological order'
+                    : 'Current mode: Chronological order. Click to switch to Grouped by Book'
+                }
+                title={
+                  groupMode === 'volume'
+                    ? 'Switch to Chronological order'
+                    : 'Switch to Grouped by Book'
+                }
+                className={`h-8 w-8 flex items-center justify-center rounded-lg border font-mono text-xs transition-all shadow-booksaw cursor-pointer shrink-0 select-none active:scale-95 ${
+                  groupMode === 'chronological'
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-border bg-card hover:border-primary/40 hover:text-primary text-foreground'
+                }`}
               >
-                <button
-                  type="button"
-                  data-tab-id="volume"
-                  onClick={() => setGroupMode('volume')}
-                  title="Group by Volume"
-                  aria-label="By Book"
-                  aria-pressed={groupMode === 'volume'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer select-none ${
-                    groupMode === 'volume'
-                      ? 'bg-background text-foreground shadow-xs font-bold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden lg:inline">By Book</span>
-                </button>
-                <button
-                  type="button"
-                  data-tab-id="chronological"
-                  onClick={() => setGroupMode('chronological')}
-                  title="All Passages in Chronological Order"
-                  aria-label="Chronological"
-                  aria-pressed={groupMode === 'chronological'}
-                  className={`flex items-center gap-1 sm:gap-1.5 px-2 lg:px-2.5 py-1 text-xs font-mono rounded-md transition-all cursor-pointer select-none ${
-                    groupMode === 'chronological'
-                      ? 'bg-background text-foreground shadow-xs font-bold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden lg:inline">Chronological</span>
-                </button>
-              </div>
+                <AnimatePresence mode="wait" initial={false}>
+                  {groupMode === 'volume' ? (
+                    <motion.div
+                      key="volume"
+                      initial={{ opacity: 0, scale: 0.8, rotate: -15, y: 1 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, rotate: 15, y: -1 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex items-center justify-center pointer-events-none"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="chronological"
+                      initial={{ opacity: 0, scale: 0.8, rotate: -15, y: 1 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, rotate: 15, y: -1 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex items-center justify-center pointer-events-none"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </button>
             }
           />
 
@@ -589,7 +792,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           <div
             id="notebook-content-anchor"
             key={`notebook-content-${groupMode}-${selectedColor}-${safeCurrentPage}`}
-            className="space-y-6 animate-page-turn"
+            className="space-y-6 animate-page-turn [overflow-anchor:none]"
           >
             {/* Grouped by Volume Display */}
             {groupMode === 'volume' && sortedGroupedByVolume.length > 0 && (
@@ -693,6 +896,77 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           </div>
         )}
       </ConfirmActionModal>
+
+      {/* Mobile Floating Search */}
+      <CollectionFloatingSearch
+        isOpen={isBottomSearchOpen}
+        onClose={() => setIsBottomSearchOpen(false)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search notes & quotes..."
+        searchAriaLabel="Search notebook"
+        clearAriaLabel="Clear notebook search"
+      />
+
+      {/* Mobile Filter & Sort Drawer */}
+      <CollectionFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        title="Notebook Filters & Sort"
+        subtitle={activeFilterCount > 0 ? `${activeFilterCount} active filters` : 'Marginalia source and sort order'}
+        activeFilterCount={activeFilterCount}
+        shelfOptions={drawerMarginaliaOptions}
+        selectedShelfId={marginaliaSourceFilter}
+        onSelectShelf={(id) => setMarginaliaSourceFilter(id as MarginaliaSourceFilter)}
+        shelfSectionTitle="Marginalia Source"
+        viewMode={groupMode === 'volume' ? 'book' : 'chronological'}
+        onViewModeChange={(mode) => setGroupMode(mode === 'book' ? 'volume' : 'chronological')}
+        sortOptions={
+          groupMode === 'volume'
+            ? NOTEBOOK_VOLUME_BASE_SORT_OPTIONS
+            : NOTEBOOK_CHRONO_BASE_SORT_OPTIONS
+        }
+        selectedSort={currentNotebookBaseSort}
+        onSortChange={handleNotebookBaseSortChange}
+        sortSectionTitle={
+          groupMode === 'volume' ? 'Sort Volume Groups' : 'Sort Quotes Chronologically'
+        }
+        sortDirection={currentNotebookSortDir}
+        onDirectionToggle={handleNotebookDirectionToggle}
+        onDirectionChange={(dir) => {
+          runPreservingScrollPosition(() => {
+            if (groupMode === 'volume') {
+              setVolumeSort(resolveVolumeSort(volumeBaseSort, dir));
+            } else {
+              setChronoSort(resolveChronoSort(chronoBaseSort, dir));
+            }
+          });
+        }}
+        isDirectionDisabled={isCurrentNotebookDirDisabled}
+        onResetAll={() => {
+          setSearchQuery('');
+          setSelectedColor('all');
+          setMarginaliaSourceFilter('all');
+          setGroupMode('volume');
+          setVolumeSort('title_asc');
+          setChronoSort('date_desc');
+        }}
+      />
+
+      {/* Mobile Capsule Bottom Dock */}
+      {(annotations.length > 0 || fellowAnnotations.length > 0) && (
+        <CollectionBottomDock
+          searchQuery={searchQuery}
+          isSearchOpen={isBottomSearchOpen}
+          onSearchToggle={() => setIsBottomSearchOpen((prev) => !prev)}
+          activeFilterCount={activeFilterCount}
+          isFiltersOpen={isFilterDrawerOpen}
+          onOpenFilters={() => setIsFilterDrawerOpen((prev) => !prev)}
+          modeType="view_mode"
+          viewMode={groupMode === 'volume' ? 'book' : 'chronological'}
+          onViewModeToggle={() => setGroupMode(groupMode === 'volume' ? 'chronological' : 'volume')}
+        />
+      )}
     </section>
   );
 

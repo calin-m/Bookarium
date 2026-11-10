@@ -6,6 +6,10 @@ import {
   filterCustomShelfBooks,
   BOOKSHELF_SORT_OPTIONS,
   FAVORITES_SORT_OPTIONS,
+  BOOKSHELF_BASE_SORT_OPTIONS,
+  FAVORITES_BASE_SORT_OPTIONS,
+  resolveBookSortKey,
+  decomposeBookSortKey,
 } from './book-sorting';
 import type { GutendexBook } from '@/types/book.types';
 
@@ -220,6 +224,111 @@ describe('book-sorting utility', () => {
       'shelf-gothic'
     );
     expect(filtered.map((b) => b.id)).toEqual([3]);
+  });
+
+  describe('base sort options and key resolution/decomposition', () => {
+    it('exposes de-duplicated base sort options without dual directional options', () => {
+      expect(BOOKSHELF_BASE_SORT_OPTIONS.map((o) => o.value)).toEqual([
+        'recent',
+        'title',
+        'author',
+        'progress',
+        'downloaded',
+      ]);
+      expect(FAVORITES_BASE_SORT_OPTIONS.map((o) => o.value)).toEqual([
+        'recent',
+        'title',
+        'author',
+        'popularity',
+        'downloaded',
+      ]);
+    });
+
+    it('resolves composite sort keys from base fields and directions correctly', () => {
+      expect(resolveBookSortKey('title', 'asc')).toBe('title_asc');
+      expect(resolveBookSortKey('title', 'desc')).toBe('title_desc');
+      expect(resolveBookSortKey('author', 'asc')).toBe('author_asc');
+      expect(resolveBookSortKey('author', 'desc')).toBe('author_desc');
+      expect(resolveBookSortKey('progress', 'asc')).toBe('progress_asc');
+      expect(resolveBookSortKey('progress', 'desc')).toBe('progress_desc');
+      expect(resolveBookSortKey('popularity', 'asc')).toBe('downloads_asc');
+      expect(resolveBookSortKey('popularity', 'desc')).toBe('downloads_desc');
+      expect(resolveBookSortKey('downloaded', 'asc')).toBe('downloaded');
+      expect(resolveBookSortKey('recent', 'asc')).toBe('recent_asc');
+      expect(resolveBookSortKey('recent', 'desc')).toBe('recent');
+    });
+
+    it('decomposes composite sort keys into base fields, directions, and disabled states correctly', () => {
+      expect(decomposeBookSortKey('recent')).toEqual({
+        baseField: 'recent',
+        direction: 'desc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('recent_asc')).toEqual({
+        baseField: 'recent',
+        direction: 'asc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('downloaded')).toEqual({
+        baseField: 'downloaded',
+        direction: 'desc',
+        isDirectionDisabled: true,
+      });
+      expect(decomposeBookSortKey('downloads_desc')).toEqual({
+        baseField: 'popularity',
+        direction: 'desc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('downloads_asc')).toEqual({
+        baseField: 'popularity',
+        direction: 'asc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('title_asc')).toEqual({
+        baseField: 'title',
+        direction: 'asc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('title_desc')).toEqual({
+        baseField: 'title',
+        direction: 'desc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('author_asc')).toEqual({
+        baseField: 'author',
+        direction: 'asc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('author_desc')).toEqual({
+        baseField: 'author',
+        direction: 'desc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('progress_asc')).toEqual({
+        baseField: 'progress',
+        direction: 'asc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('progress_desc')).toEqual({
+        baseField: 'progress',
+        direction: 'desc',
+        isDirectionDisabled: false,
+      });
+      expect(decomposeBookSortKey('unknown_key')).toEqual({
+        baseField: 'recent',
+        direction: 'desc',
+        isDirectionDisabled: false,
+      });
+    });
+
+    it('sorts by date added ascending (reversal) and popularity ascending', () => {
+      const books = [mockBookA, mockBookB, mockBookC];
+      const reversed = sortBooks(books, 'recent_asc');
+      expect(reversed.map((b) => b.id)).toEqual([3, 2, 1]);
+
+      const leastDownloaded = sortBooks(books, 'downloads_asc');
+      expect(leastDownloaded.map((b) => b.id)).toEqual([1, 3, 2]); // 5000, 12000, 20000
+    });
   });
 });
 

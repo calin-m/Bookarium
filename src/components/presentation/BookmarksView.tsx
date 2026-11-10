@@ -13,7 +13,10 @@ import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedge
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
 import { CollectionToolbar, type SortOption } from './CollectionToolbar';
-import { smartScrollToContent } from '@/lib/scroll-utils';
+import { CollectionBottomDock } from './CollectionBottomDock';
+import { CollectionFloatingSearch } from './CollectionFloatingSearch';
+import { CollectionFilterDrawer } from './CollectionFilterDrawer';
+import { smartScrollToContent, runPreservingScrollPosition } from '@/lib/scroll-utils';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
@@ -27,7 +30,7 @@ export interface BookmarksViewProps {
 }
 
 const BOOKMARK_SORT_FIELD_OPTIONS: SortOption[] = [
-  { value: 'recent', label: 'Recently Read' },
+  { value: 'recent', label: 'Date Read' },
   { value: 'title', label: 'Title' },
   { value: 'author', label: 'Author' },
   { value: 'progress', label: 'Progress' },
@@ -43,6 +46,8 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   const [volumeToDelete, setVolumeToDelete] = useState<ActiveReadingVolume | null>(null);
   const [volumeToFinish, setVolumeToFinish] = useState<ActiveReadingVolume | null>(null);
   const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | Book | null>(null);
+  const [isBottomSearchOpen, setIsBottomSearchOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const {
     filteredVolumes,
@@ -217,7 +222,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     return 'desc';
   }, [sortBy]);
 
-  const isDirectionDisabled = sortField === 'recent';
+  const isDirectionDisabled = sortBy === 'downloaded';
 
   const handleSortFieldChange = (newField: string) => {
     if (newField === 'title') {
@@ -232,17 +237,21 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   };
 
   const handleDirectionToggle = () => {
-    if (sortField === 'title') {
-      setSortBy(sortBy === 'title_asc' ? 'title_desc' : 'title_asc');
-    } else if (sortField === 'author') {
-      setSortBy(sortBy === 'author_asc' ? 'author_desc' : 'author_asc');
-    } else if (sortField === 'progress') {
-      setSortBy(sortBy === 'progress_desc' ? 'progress_asc' : 'progress_desc');
-    }
+    runPreservingScrollPosition(() => {
+      if (sortField === 'title') {
+        setSortBy(sortBy === 'title_asc' ? 'title_desc' : 'title_asc');
+      } else if (sortField === 'author') {
+        setSortBy(sortBy === 'author_asc' ? 'author_desc' : 'author_asc');
+      } else if (sortField === 'progress') {
+        setSortBy(sortBy === 'progress_desc' ? 'progress_asc' : 'progress_desc');
+      } else if (sortField === 'recent') {
+        setSortBy(sortBy === 'recent' ? 'recent_asc' : 'recent');
+      }
+    });
   };
 
   const directionAriaLabel = useMemo(() => {
-    if (isDirectionDisabled) return 'Sorting direction is fixed for Recently Read';
+    if (isDirectionDisabled) return 'Sorting direction is fixed';
     if (sortField === 'title') {
       return sortDirection === 'asc'
         ? 'Title A to Z (click to sort Z to A)'
@@ -257,6 +266,11 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       return sortDirection === 'desc'
         ? 'Progress High to Low (click to sort Low to High)'
         : 'Progress Low to High (click to sort High to Low)';
+    }
+    if (sortField === 'recent') {
+      return sortDirection === 'desc'
+        ? 'Most recently read (click to sort least recently read)'
+        : 'Least recently read (click to sort most recently read)';
     }
     return sortDirection === 'asc'
       ? 'Sort Ascending (click to sort Descending)'
@@ -274,10 +288,29 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
     [counts]
   );
 
+  const drawerStatusOptions = useMemo(
+    () => [
+      { id: 'all', label: 'All Volumes', count: counts.all },
+      { id: 'in_progress', label: 'In Progress', count: counts.in_progress },
+      { id: 'completed', label: 'Completed', count: counts.completed },
+      { id: 'on_hold', label: 'On Hold', count: counts.on_hold },
+      { id: 'downloaded', label: 'Downloaded', count: counts.downloaded },
+    ],
+    [counts]
+  );
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (activeFilter !== 'all') count++;
+    if (sortField !== 'recent') count++;
+    if (searchQuery.trim().length > 0) count++;
+    return count;
+  }, [activeFilter, sortField, searchQuery]);
+
   return (
     <section
       id="bookmarks-ledger-section"
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12"
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12 [overflow-anchor:none]"
       aria-label="Bookmarks and Continue Reading Ledger"
     >
       {/* Centered Editorial Header */}
@@ -324,6 +357,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           onDirectionToggle={handleDirectionToggle}
           isDirectionDisabled={isDirectionDisabled}
           directionAriaLabel={directionAriaLabel}
+          hiddenOnMobile={true}
           className="mb-8"
         />
       )}
@@ -398,7 +432,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           </div>
         ) : (
           <>
-            <div id="bookmarks-grid-content" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div id="bookmarks-grid-content" className="grid grid-cols-1 lg:grid-cols-2 gap-4 [overflow-anchor:none]">
               {paginatedVolumes.map((vol) => (
                 <BookmarkCard
                   key={vol.book.id}
@@ -606,6 +640,71 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
           }
         }}
       />
+
+      {/* Mobile Floating Search */}
+      <CollectionFloatingSearch
+        isOpen={isBottomSearchOpen}
+        onClose={() => setIsBottomSearchOpen(false)}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search bookmarks by title or author..."
+        searchAriaLabel="Search bookmarks"
+        clearAriaLabel="Clear bookmarks search"
+      />
+
+      {/* Mobile Filter & Sort Drawer */}
+      <CollectionFilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        title="Bookmarks Filters & Sort"
+        subtitle={activeFilterCount > 0 ? `${activeFilterCount} active filters` : 'Reading status and sort order'}
+        activeFilterCount={activeFilterCount}
+        shelfOptions={drawerStatusOptions}
+        selectedShelfId={activeFilter}
+        onSelectShelf={(id) => setActiveFilter(id as LedgerFilter)}
+        shelfSectionTitle="Reading Status"
+        sortOptions={BOOKMARK_SORT_FIELD_OPTIONS}
+        selectedSort={sortField}
+        onSortChange={handleSortFieldChange}
+        sortSectionTitle="Sort By"
+        sortDirection={sortDirection}
+        onDirectionToggle={handleDirectionToggle}
+        onDirectionChange={(dir) => {
+          runPreservingScrollPosition(() => {
+            if (sortField === 'title') {
+              setSortBy(dir === 'asc' ? 'title_asc' : 'title_desc');
+            } else if (sortField === 'author') {
+              setSortBy(dir === 'asc' ? 'author_asc' : 'author_desc');
+            } else if (sortField === 'progress') {
+              setSortBy(dir === 'asc' ? 'progress_asc' : 'progress_desc');
+            } else if (sortField === 'recent') {
+              setSortBy(dir === 'asc' ? 'recent_asc' : 'recent');
+            }
+          });
+        }}
+        isDirectionDisabled={isDirectionDisabled}
+        onResetAll={() => {
+          setActiveFilter('all');
+          handleSortFieldChange('recent');
+          setSearchQuery('');
+        }}
+      />
+
+      {/* Mobile Capsule Bottom Dock */}
+      {counts.all > 0 && (
+        <CollectionBottomDock
+          searchQuery={searchQuery}
+          isSearchOpen={isBottomSearchOpen}
+          onSearchToggle={() => setIsBottomSearchOpen((prev) => !prev)}
+          activeFilterCount={activeFilterCount}
+          isFiltersOpen={isFilterDrawerOpen}
+          onOpenFilters={() => setIsFilterDrawerOpen((prev) => !prev)}
+          modeType="direction"
+          sortDirection={sortDirection}
+          onDirectionToggle={handleDirectionToggle}
+          isDirectionDisabled={isDirectionDisabled}
+        />
+      )}
     </section>
   );
 };

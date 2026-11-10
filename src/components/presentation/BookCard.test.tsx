@@ -26,11 +26,13 @@ describe('BookCard component', () => {
     });
   });
 
-  it('should render book title, author, and formats', () => {
+  it('should render book title, author, and formats with invariant title budget', () => {
     const book = mockBooks[0];
     render(<BookCard book={book} />);
 
-    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    const titleEl = screen.getByText('Pride and Prejudice');
+    expect(titleEl).toBeInTheDocument();
+    expect(titleEl).toHaveClass('min-h-[2.1rem]', 'sm:min-h-[2.75rem]');
     expect(screen.getByText('Jane Austen')).toBeInTheDocument();
     expect(screen.getByText(/65\.4k reads/i)).toBeInTheDocument();
   });

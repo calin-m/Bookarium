@@ -29,6 +29,7 @@ const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
 
 export type BookmarksSortOption =
   | 'recent'
+  | 'recent_asc'
   | 'title_asc'
   | 'title_desc'
   | 'author_asc'
@@ -503,6 +504,11 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
           return b.progressPercent - a.progressPercent;
         case 'progress_asc':
           return a.progressPercent - b.progressPercent;
+        case 'recent_asc': {
+          const timeA = new Date(a.lastReadAt).getTime();
+          const timeB = new Date(b.lastReadAt).getTime();
+          return timeA - timeB;
+        }
         case 'recent':
         default: {
           const timeA = new Date(a.lastReadAt).getTime();

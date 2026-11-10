@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 09 Nov 2026 23:10:52 GMT  
+**Last Generated**: Tue, 10 Nov 2026 15:37:16 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 211 passed  
-**Total Verified Tests**: 2324 passed  
+**Total Test Suites**: 216 passed  
+**Total Verified Tests**: 2382 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **211/211 test suites passed** (2324 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **216/216 test suites passed** (2382 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.41%** (13448/13805) — *Target: $\ge$ 95%*
-- **Statements**: **96.08%** (14542/15135) — *Target: $\ge$ 95%*
-- **Functions**: **94.89%** (2990/3151) — *Target: $\ge$ 92%*
-- **Branches**: **88.18%** (13138/14898) — *Target: $\ge$ 85%*
+- **Lines**: **96.91%** (13746/14183) — *Target: $\ge$ 95%*
+- **Statements**: **95.58%** (14865/15551) — *Target: $\ge$ 95%*
+- **Functions**: **94%** (3076/3272) — *Target: $\ge$ 92%*
+- **Branches**: **88.02%** (13635/15490) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (211 Suites / 2324 Tests)
+## 🧪 Comprehensive Test Suite Catalog (216 Suites / 2382 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 291 Tests)
+### 🚀 App Routes & Pages (27 Suites · 295 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -288,7 +288,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (48 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (52 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -317,7 +317,7 @@
 - ✔ `smoothly scrolls to catalog-section when filters are cleared via quick clear button`
 - ✔ `switches views when swiping horizontally across main on mobile`
 - ✔ `switches views when swiping horizontally across main on tactile tablet devices`
-- ✔ `renders sort dropdown and bottom pagination on Bookshelf when books exceed 24 on desktop`
+- ✔ `renders sort dropdown and bottom pagination on Bookshelf when books exceed 2-shelf capacity on desktop`
 - ✔ `sorts saved books on Bookshelf by title ascending and author descending`
 - ✔ `renders sort dropdown and bottom pagination on Favorites when exceeding 24 items`
 - ✔ `resets pagination page to 1 when collection search query changes`
@@ -338,6 +338,10 @@
 - ✔ `serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist`
 - ✔ `filters offline catalog by topic, language, era, and sort order, and supports clearing Downloaded and Custom shelves`
 - ✔ `preserves direct GutendexBook author metadata when reading the offline Hero spotlight book`
+- ✔ `renders mobile capsule dock, handles floating search, filter drawer, and direction toggle on Bookshelf`
+- ✔ `preserves scroll position when toggling 2-state sort on mobile sticky dock`
+- ✔ `eliminates standalone BackToTop button in favor of the universal bottom capsule dock`
+- ✔ `allows searching the catalog mid-scroll via the floating capsule dock search button`
 
 </details>
 
@@ -490,10 +494,10 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (30 Suites · 509 Tests)
+### 🎨 Catalog & Presentation (33 Suites · 547 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
 - ✔ `should stage era selection and commit on Show Results click`
@@ -512,10 +516,9 @@
 - ✔ `should close when pressing the Escape key`
 - ✔ `renders header icon container with theme-aware solid border-border without fractional opacity`
 - ✔ `toggles full 32 Project Gutenberg Bookshelves and 20 Languages lists while keeping selected chips visible when collapsed`
-- ✔ `locks both document.body and document.documentElement overflow on mobile (<1280px) and restores on unmount`
-- ✔ `compensates for scrollbar width using paddingRight and restores on unmount`
-- ✔ `does not lock overflow when on desktop viewports (>= 1280px)`
-- ✔ `renders backdrop with touch-none and prevents default on touchmove to eliminate scroll bleed`
+- ✔ `never locks body or documentElement overflow across mobile, tablet, and desktop viewports for zero CLS`
+- ✔ `renders with overflow-hidden and contain:strict on outer wrapper for GPU compositor isolation`
+- ✔ `renders backdrop with touch-none and prevents default on touchmove and wheel to eliminate scroll bleed`
 - ✔ `renders scrollable filter options container with overscroll-contain`
 - ✔ `synchronizes external props on drawer open rerender, toggles chip deselection / All resets, and invokes individual fallback callbacks on Apply`
 
@@ -524,7 +527,7 @@
 <details>
 <summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (29 tests)</summary>
 
-- ✔ `should render book title, author, and formats`
+- ✔ `should render book title, author, and formats with invariant title budget`
 - ✔ `should render multiple separate subject tag pills in the card body`
 - ✔ `should open unabridged topics popover when clicking +N button`
 - ✔ `should render link to /read/[id] when clicking Read button`
@@ -605,7 +608,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates status filter dropdown`
@@ -619,7 +622,8 @@
 - ✔ `updates status to Finished immediately without modal when volume is already at 100% progress`
 - ✔ `hydrates missing book metadata (e.g. Volume #55179) and displays real title and author`
 - ✔ `provides status filter dropdown with live volume counts and handles downloaded filter`
-- ✔ `supports base sort field changes and direction toggle button with disabled state for recently read`
+- ✔ `supports base sort field changes and direction toggle button across all fields including Date Read`
+- ✔ `preserves scroll position with overflow-anchor:none during sort direction toggles`
 - ✔ `renders completed volume with 100% progress and Read Again action`
 - ✔ `renders sort dropdown and allows changing sort order`
 - ✔ `renders pagination when volumes exceed 12 items and navigates between pages`
@@ -664,12 +668,14 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/presentation/bookshelf/BookshelfManageModals.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `renders create modal and submits new shelf`
 - ✔ `renders rename and delete modals`
 - ✔ `renders clear offline shelf confirmation modal and handles cancel and confirm`
 - ✔ `toggles shelf privacy in create and rename modals`
+- ✔ `supports clear button and smart 2-step Escape key hierarchy on shelf name inputs`
+- ✔ `supports clear button and 2-step Escape key hierarchy on rename shelf input`
 
 </details>
 
@@ -710,7 +716,7 @@
 <details>
 <summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (59 tests)</summary>
 
-- ✔ `renders shelf with books`
+- ✔ `renders shelf with books and invariant minimum shelf height to prevent layout shifts`
 - ✔ `renders empty message when no books are provided`
 - ✔ `triggers onBookClick or openReader when book spine is clicked on desktop`
 - ✔ `supports keyboard navigation via Enter and Space keys`
@@ -746,14 +752,13 @@
 - ✔ `renders Edit and Delete buttons on custom shelves without batch Download Shelf Offline button`
 - ✔ `skips restricted books when clicking Download Shelf Offline and renders Clear Offline Shelf when all available are cached`
 - ✔ `renders All Restricted status notice when all books on shelf are protected in visitor jurisdiction`
-- ✔ `does not render syncing indicator when isSyncing is false`
-- ✔ `renders floating syncing indicator with status role when isSyncing is true`
+- ✔ `operates silently without rendering an intrusive visual syncing badge`
 - ✔ `omits personal shelf management controls when showShelfControls is false`
 - ✔ `does not render syncing indicator when showShelfControls is false even if isSyncing is true`
 - ✔ `displays catalog-appropriate empty state when showShelfControls is false and books array is empty`
 - ✔ `displays totalBooksCount in General shelf badge when provided`
 - ✔ `distributes books evenly across 2 shelves when books exceed shelf capacity`
-- ✔ `enforces uniform 12-book row limit on Bookshelf page, splitting 15 books into 12 on first shelf and 3 on second`
+- ✔ `fills shelves sequentially up to physical capacity on Bookshelf page without artificial row clamping`
 - ✔ `preserves predetermined capacity and balanced distribution in Catalog mode (showShelfControls = false)`
 - ✔ `renders shelf content with tactile animate-page-turn container and updates on shelf change`
 - ✔ `calculates deterministic shelf capacity capped to max-w-7xl (1280px) on wide viewports`
@@ -769,6 +774,7 @@
 - ✔ `opens and confirms RemoveOfflineBookModal when toggling offline for a downloaded book`
 - ✔ `downloads book when toggling offline on a non-downloaded book`
 - ✔ `resets form state when closing Create New Bookshelf modal`
+- ✔ `renders shelves in a kinetic single-row horizontal strip with compact top padding`
 
 </details>
 
@@ -781,7 +787,54 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionBottomDock.test.tsx</code></b> (7 tests)</summary>
+
+- ✔ `renders search, filter, direction toggle, and scroll-to-top buttons`
+- ✔ `displays active filter count badge with invariant button geometry when activeFilterCount > 0`
+- ✔ `renders view mode toggle when modeType is view_mode`
+- ✔ `disables direction toggle when isDirectionDisabled is true`
+- ✔ `scrolls to top when scroll-to-top button is clicked while scrolled, and mutes button when at top`
+- ✔ `renders hardware-accelerated ambient light aura and multi-stop dark/sepia shadows`
+- ✔ `handles idle dimming timeout and wake-up on pointer interactions`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionFilterDrawer.test.tsx</code></b> (15 tests)</summary>
+
+- ✔ `renders nothing when isOpen is false`
+- ✔ `renders title, badge count, and all filter sections when isOpen is true`
+- ✔ `handles shelf selection when an option is clicked`
+- ✔ `handles sort selection when a sort chip is clicked`
+- ✔ `handles direction toggling`
+- ✔ `handles view mode selection when viewMode is provided`
+- ✔ `triggers onResetAll when Reset All button is clicked`
+- ✔ `triggers onApply and closes drawer when Apply button is clicked`
+- ✔ `dismisses when backdrop or close button is clicked`
+- ✔ `dismisses when Escape key is pressed`
+- ✔ `renders strictly agnostic Ascending and Descending direction labels`
+- ✔ `never locks body overflow across mobile, tablet, and desktop viewports for zero CLS`
+- ✔ `intercepts touchmove and wheel on backdrop with preventDefault to eliminate background scroll bleed`
+- ✔ `renders outer drawer wrapper with overflow-hidden and contain:strict for GPU isolation`
+- ✔ `hides sort direction when isDirectionDisabled is true and renders when enabled`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (7 tests)</summary>
+
+- ✔ `renders nothing when isOpen is false`
+- ✔ `renders input, focuses on mount, and handles typing when isOpen is true`
+- ✔ `clears query and re-focuses input when clear button is clicked`
+- ✔ `dismisses when backdrop is clicked`
+- ✔ `dismisses when Escape key is pressed`
+- ✔ `elevates container above software keyboard when keyboardHeight > 0`
+- ✔ `renders with deep elevation drop shadow and dark ambient light glow`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionSortDropdown.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders all options with currently selected value`
 - ✔ `calls onChange with new value when an option is chosen`
@@ -790,11 +843,12 @@
 - ✔ `renders sort direction button and handles toggle clicks when onDirectionToggle is provided`
 - ✔ `disables direction button and sets aria-label when isDirectionDisabled is true`
 - ✔ `supports custom test-ids and leading icon override`
+- ✔ `renders compact mobile trigger, opens inward popover menu, selects option, and dismisses on Escape or outside click`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders search input with placeholder and accessible label`
 - ✔ `calls onSearchChange when user types in search input`
@@ -809,6 +863,9 @@
 - ✔ `passes sort direction props down to sort dropdown`
 - ✔ `applies adaptive single-row layout (sm:flex-row) when only one control is present (Bookshelf/Favorites Option A)`
 - ✔ `applies two-handed tactile layout (justify-between md:justify-end) and md:flex-row when multiple controls are present (Bookmarks/Notebook)`
+- ✔ `enforces single-row mobile layout and propagates compactOnMobile to sort dropdown when singleRowOnMobile is true`
+- ✔ `applies hidden sm:flex to root toolbar when hiddenOnMobile is true`
+- ✔ `keeps toolbar flex visible across all breakpoints when hiddenOnMobile is omitted`
 
 </details>
 
@@ -1146,7 +1203,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (30 tests)</summary>
+<summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (33 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and unified API status badge`
 - ✔ `should handle page size selection and reflect aria-pressed state`
@@ -1167,17 +1224,20 @@
 - ✔ `renders direct page jump input without redundant Pg label`
 - ✔ `renders mobile dock with filter trigger, view mode switch, and scroll-to-top buttons`
 - ✔ `handles mobile filter opening and view mode switching`
-- ✔ `scrolls smoothly to top when mobile dock top button is clicked`
+- ✔ `scrolls smoothly to top when mobile dock top button is clicked while scrolled, and mutes button when at top`
 - ✔ `controls mobile dock visibility with isMobileDockVisible prop`
-- ✔ `dynamically reveals mobile dock when scrolling past threshold and hides when at top`
-- ✔ `fades out to opacity-0 with pointer-events-none after scroll inactivity timeout`
+- ✔ `keeps mobile dock docked at translate-y-0, resting dimmed at top and waking on scroll`
+- ✔ `renders ambient light aura and multi-stop dark/sepia shadows for mobile dock`
+- ✔ `dims to opacity-30 after scroll inactivity timeout`
 - ✔ `does not fade out mobile dock after idle timeout if filter drawer is open`
-- ✔ `cancels idle fade-out while user hovers over dock and resumes timer on pointerleave`
-- ✔ `renders segmented quick clear button on mobile dock when filters are active and clears filters on tap`
+- ✔ `cancels idle dimming while user hovers over dock and resumes timer on pointerleave`
+- ✔ `renders circular filter button with absolute counter badge on mobile dock when filters are active`
+- ✔ `renders search trigger on mobile dock and handles toggle clicks`
 - ✔ `renders segmented quick clear button on desktop toolbar when filters are active and clears filters on click`
 - ✔ `does not render quick clear buttons on desktop or mobile when activeFilterCount is 0`
 - ✔ `enforces mutually exclusive responsive breakpoint isolation and border-y between desktop and mobile bars`
 - ✔ `collapses top border to border-b when isDocked and isHeaderVisible are both true to prevent a 2px double-border seam under Navbar`
+- ✔ `renders mobile dock sort toggle button and invokes onSortToggle on click`
 
 </details>
 
@@ -1791,7 +1851,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (44 Suites · 554 Tests)
+### 📚 Gutenberg Parsers & Metadata (44 Suites · 562 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1889,7 +1949,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-sorting.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/book-sorting.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `exposes defined sort option lists for Bookshelf and Favorites`
 - ✔ `handles empty arrays, undefined inputs, and single-item arrays safely`
@@ -1902,6 +1962,10 @@
 - ✔ `preserves order when sortBy is "recent", "downloaded", or unrecognized`
 - ✔ `merges and deduplicates downloaded shelf books across savedBooks and offlineBooks`
 - ✔ `resolves bookshelf view state across default, downloaded, and custom shelves`
+- ✔ `exposes de-duplicated base sort options without dual directional options`
+- ✔ `resolves composite sort keys from base fields and directions correctly`
+- ✔ `decomposes composite sort keys into base fields, directions, and disabled states correctly`
+- ✔ `sorts by date added ascending (reversal) and popularity ascending`
 
 </details>
 
@@ -2369,7 +2433,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
@@ -2391,6 +2455,10 @@
 - ✔ `calibrates phone (<640px) tactile scrubbing with a 14px activation deadzone, full-tab-width step distance, 0.70x threshold, and 8px directional hysteresis`
 - ✔ `returns inline when totalTabs <= 2 or inactiveLabelClass is explicitly inline`
 - ✔ `returns distance-graded max-width and opacity classes across d = 0, 1, 2, and >= 3 with responsive full-screen overrides`
+- ✔ `preserves and synchronously restores window.scrollY if a DOM mutation shifts the scroll offset immediately`
+- ✔ `restores scroll position on requestAnimationFrame if a shift occurs in the next tick`
+- ✔ `does not invoke window.scrollTo if scroll position remains completely stable`
+- ✔ `safely runs action without error when window is undefined (SSR)`
 
 </details>
 
@@ -2611,7 +2679,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (27 Suites · 294 Tests)
+### 🔄 Hooks & React Query (29 Suites · 302 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2865,6 +2933,17 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useBookshelfCapacity.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `returns default capacity of 18 on wide desktop viewports (>= 1280px)`
+- ✔ `returns calculated capacity of 14 on small desktop / laptop viewports (1024px)`
+- ✔ `returns calculated capacity of 10 on tablet viewports (768px)`
+- ✔ `returns clamped minimum capacity of 6 on mobile viewports (< 640px)`
+- ✔ `updates capacity dynamically when window resize event is triggered`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
@@ -3066,6 +3145,15 @@
 - ✔ `detects touch points even when pointer: coarse is not reported by browser`
 - ✔ `detects pointer: coarse even when maxTouchPoints is 0`
 - ✔ `subscribes to media query changes and unmounts cleanly`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useVisualViewportKeyboard.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `returns zeros when visualViewport is not supported in the environment`
+- ✔ `tracks keyboard height elevation when visual viewport shrinks`
+- ✔ `unsubscribes listeners on unmount`
 
 </details>
 

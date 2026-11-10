@@ -20,7 +20,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           value={value}
           ref={ref}
           className={cn(
-            'flex h-11 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50',
+            'flex h-11 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50',
             icon && 'pl-10',
             onClear && Boolean(value) && 'pr-10',
             className

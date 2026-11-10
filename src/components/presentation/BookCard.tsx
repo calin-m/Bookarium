@@ -370,7 +370,7 @@ export const BookCard: React.FC<BookCardProps> = ({
           aria-label={`Copy link to ${book.title} by ${authorNames}`}
           className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/50 transition-colors"
         >
-          <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 group-hover:text-primary group-hover/copy:text-primary transition-colors text-balance">
+          <h3 className="font-serif font-bold text-foreground text-xs sm:text-base leading-snug line-clamp-2 min-h-[2.1rem] sm:min-h-[2.75rem] group-hover:text-primary group-hover/copy:text-primary transition-colors text-balance">
             {book.title}
           </h3>
           <p className="text-[11px] sm:text-xs text-muted-foreground font-sans flex items-center min-w-0 mt-0.5">

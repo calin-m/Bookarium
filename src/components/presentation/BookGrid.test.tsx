@@ -62,6 +62,7 @@ describe('BookGrid component', () => {
     const content = container.querySelector('#book-grid-content');
     expect(content).toBeInTheDocument();
     expect(content).toHaveClass('animate-page-turn');
+    expect(content).toHaveClass('[overflow-anchor:none]');
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
 
     // Click bookshelf rack view

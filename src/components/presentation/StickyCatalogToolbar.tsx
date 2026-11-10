@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   SlidersHorizontal,
   ChevronLeft,
@@ -10,6 +11,9 @@ import {
   X,
   Sparkles,
   ArrowUp,
+  Flame,
+  Clock,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useHasMounted } from '@/hooks/useHasMounted';
@@ -44,6 +48,11 @@ export interface StickyCatalogToolbarProps {
   isMobileDockVisible?: boolean;
   mobileDockThreshold?: number;
   mobileDockIdleTimeoutMs?: number;
+  currentSort?: 'popular' | 'descending' | 'ascending' | '';
+  onSortToggle?: () => void;
+  isSearchOpen?: boolean;
+  onSearchToggle?: () => void;
+  searchQuery?: string;
 }
 
 export function formatApiLatency(ms?: number): string {
@@ -82,14 +91,20 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   isMobileDockVisible,
   mobileDockThreshold = 300,
   mobileDockIdleTimeoutMs = 1400,
+  currentSort,
+  onSortToggle,
+  isSearchOpen = false,
+  onSearchToggle,
+  searchQuery = '',
 }) => {
   const hasMounted = useHasMounted();
   const activeFetching = hasMounted && isFetching;
   const [isFocused, setIsFocused] = useState(false);
   const [prevPage, setPrevPage] = useState(page);
   const [jumpPageInput, setJumpPageInput] = useState(String(page));
-  const [internalMobileDockVisible, setInternalMobileDockVisible] = useState(false);
-  const [isIdle, setIsIdle] = useState(false);
+  const [internalMobileDockVisible, setInternalMobileDockVisible] = useState(true);
+  const [currentScrollY, setCurrentScrollY] = useState(0);
+  const [isIdle, setIsIdle] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [popoverPlacement, setPopoverPlacement] = useState<'down' | 'up'>('down');
   const [isTappedOpen, setIsTappedOpen] = useState(false);
@@ -139,9 +154,9 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
   useEffect(() => {
     const onScroll = () => {
       const scrollY = window.scrollY || window.pageYOffset || 0;
+      setCurrentScrollY(scrollY);
       if (isMobileDockVisible === undefined) {
-        const shouldShow = scrollY > mobileDockThreshold;
-        setInternalMobileDockVisible((prev) => (prev !== shouldShow ? shouldShow : prev));
+        setInternalMobileDockVisible(true);
       }
 
       // Reset idle state immediately on active scrolling
@@ -170,7 +185,8 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
   const effectiveMobileDockVisible =
     isMobileDockVisible !== undefined ? isMobileDockVisible : internalMobileDockVisible;
-  const isDockDimmed = effectiveMobileDockVisible && isIdle && !isFiltersOpen && !isHovered;
+  const isAtTop = currentScrollY < 60;
+  const isDockDimmed = (isIdle || isAtTop) && !isFiltersOpen && !isHovered && !isSearchOpen;
 
   // Synchronize input with external page changes during render when not actively editing
   if (page !== prevPage) {
@@ -621,11 +637,11 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
 
       {/* Mobile Floating Bottom Capsule Dock */}
       <aside
-        className={`fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] inset-x-0 mx-auto w-fit max-w-[92vw] z-40 sm:hidden transition-all focus-within:opacity-100 focus-within:pointer-events-auto ${
+        className={`fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] inset-x-0 mx-auto w-fit max-w-[92vw] z-40 transition-all focus-within:opacity-100 focus-within:pointer-events-auto ${
           !effectiveMobileDockVisible
             ? 'translate-y-24 opacity-0 pointer-events-none duration-300 ease-in-out'
             : isDockDimmed
-              ? 'translate-y-0 opacity-0 pointer-events-none duration-400 ease-out'
+              ? 'translate-y-0 opacity-30 hover:opacity-100 duration-400 ease-out'
               : 'translate-y-0 opacity-100 duration-150 ease-in'
         }`}
         data-testid="mobile-catalog-dock"
@@ -647,102 +663,167 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
           if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         }}
       >
-        <div className="flex items-center gap-1.5 p-1.5 bg-card border border-border shadow-2xl rounded-full text-foreground">
-          {/* Mobile Filter Trigger / Split Quick-Clear Capsule */}
-          {activeFilterCount > 0 ? (
-            <div className="flex items-center rounded-full bg-primary text-primary-foreground shadow-xs overflow-hidden shrink-0">
+        <div className="relative group/dock-pill">
+          {/* Hardware-Accelerated Ambient Light Aura (Dark & Sepia Modes) */}
+          <div
+            data-testid="mobile-dock-ambient-aura"
+            className={`absolute -inset-1.5 rounded-full pointer-events-none -z-10 blur-md transition-all duration-500
+              opacity-0 dark:opacity-60 sepia:opacity-40
+              ${isDockDimmed ? 'scale-95 dark:opacity-35 sepia:opacity-25' : 'scale-100 dark:opacity-75 sepia:opacity-55'}
+              group-hover/dock-pill:scale-105 group-hover/dock-pill:dark:opacity-90 group-hover/dock-pill:sepia:opacity-70
+              bg-[radial-gradient(ellipse_at_center,rgba(217,119,6,0.32)_0%,rgba(245,158,11,0.16)_50%,transparent_80%)]
+              motion-safe:animate-ambient-breathe`}
+            aria-hidden="true"
+          />
+
+          <div className="flex items-center gap-1.5 p-1.5 bg-card/95 backdrop-blur-md border border-border/80 shadow-[0_12px_36px_-4px_rgba(0,0,0,0.22),0_4px_14px_-2px_rgba(0,0,0,0.10)] dark:shadow-[0_0_28px_rgba(217,119,6,0.18),0_12px_44px_rgba(0,0,0,0.7),0_0_0_1px_rgba(217,119,6,0.22)] sepia:shadow-[0_0_24px_rgba(180,83,9,0.16),0_10px_30px_rgba(67,40,24,0.18)] rounded-full text-foreground ring-1 ring-black/5 dark:ring-white/10">
+          {/* Button 1: Catalog Floating Search Trigger */}
+          {onSearchToggle && (
+            <>
               <button
                 type="button"
-                onClick={onOpenFilters}
-                data-testid="mobile-dock-filters-btn"
-                className="h-9 pl-3.5 pr-2 text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center hover:bg-primary-700 transition-colors"
-                aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
-                aria-expanded={isFiltersOpen}
+                onClick={onSearchToggle}
+                data-testid="mobile-dock-search-btn"
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs transition-all cursor-pointer ${
+                  isSearchOpen || searchQuery
+                    ? 'text-primary bg-primary/10'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+                aria-label={isSearchOpen ? 'Close search' : 'Search catalog'}
+                title={searchQuery ? `Search: "${searchQuery}"` : 'Search catalog'}
+                aria-expanded={isSearchOpen}
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-                <span>Filters</span>
-                <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-mono font-bold bg-primary-foreground/25 text-primary-foreground">
-                  {activeFilterCount}
-                </span>
+                <Search className="w-4 h-4" />
               </button>
-              <div className="h-4 w-[1px] bg-primary-foreground/30" />
+              <div className="h-4 w-[1px] bg-border" />
+            </>
+          )}
+
+          {/* Button 2: Filter Drawer Trigger with Invariant Geometry & Absolute Counter Badge */}
+          <button
+            type="button"
+            onClick={onOpenFilters}
+            data-testid="mobile-dock-filters-btn"
+            className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs transition-all cursor-pointer ${
+              isFiltersOpen || activeFilterCount > 0
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+            aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
+            title={activeFilterCount > 0 ? `Filters (${activeFilterCount} active)` : 'Filters'}
+            aria-expanded={isFiltersOpen}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            {activeFilterCount > 0 && (
+              <span
+                data-testid="mobile-dock-filters-badge"
+                className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[10px] flex items-center justify-center font-mono font-bold bg-primary text-primary-foreground border border-background shadow-xs pointer-events-none"
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <div className="h-4 w-[1px] bg-border" />
+
+          {/* Mobile View Mode Single-Button Toggle */}
+          <button
+            type="button"
+            onClick={() => onViewModeChange(viewMode === 'grid' ? 'shelf' : 'grid')}
+            data-testid="mobile-dock-view-mode-btn"
+            className={`p-2 rounded-full text-xs transition-all cursor-pointer ${
+              viewMode === 'shelf'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+            aria-label={
+              viewMode === 'grid'
+                ? 'Switch to bookshelf rack layout'
+                : 'Switch to cover grid layout'
+            }
+            title={viewMode === 'grid' ? 'Bookshelf Rack' : 'Cover Grid'}
+            aria-pressed={viewMode === 'shelf'}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={viewMode}
+                initial={{ opacity: 0, rotate: -15, scale: 0.85 }}
+                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                exit={{ opacity: 0, rotate: 15, scale: 0.85 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+              >
+                {viewMode === 'grid' ? (
+                  <LayoutGrid className="w-4 h-4" />
+                ) : (
+                  <Library className="w-4 h-4" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </button>
+
+          {/* Mobile Sort Mode 2-State Toggle (Most Recent <-> Popular) */}
+          {onSortToggle && (
+            <>
+              <div className="h-4 w-[1px] bg-border" />
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClearAllFilters();
-                }}
-                data-testid="mobile-dock-clear-all-btn"
-                className="h-9 px-2.5 flex items-center justify-center hover:bg-primary-700 transition-colors cursor-pointer"
-                aria-label={`Clear all ${activeFilterCount} active filters`}
-                title={`Clear all ${activeFilterCount} active filters`}
+                onClick={onSortToggle}
+                data-testid="mobile-dock-sort-toggle-btn"
+                className={`p-2 rounded-full text-xs transition-all cursor-pointer ${
+                  currentSort === 'popular'
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+                aria-label={
+                  currentSort === 'popular'
+                    ? 'Switch to most recent releases'
+                    : 'Switch to most popular books'
+                }
+                title={
+                  currentSort === 'popular'
+                    ? 'Most Popular (Downloads)'
+                    : 'Most Recent (Latest Releases)'
+                }
               >
-                <X className="w-3.5 h-3.5" />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={currentSort === 'popular' ? 'popular' : 'recent'}
+                    initial={{ opacity: 0, rotate: -15, scale: 0.85 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotate: 15, scale: 0.85 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                  >
+                    {currentSort === 'popular' ? (
+                      <Flame className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <Clock className="w-4 h-4" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onOpenFilters}
-              data-testid="mobile-dock-filters-btn"
-              className="h-9 px-3.5 rounded-full text-xs font-mono uppercase tracking-wider font-bold gap-1.5 flex items-center transition-all bg-muted hover:bg-muted/80 text-foreground"
-              aria-label={isFiltersOpen ? 'Close filters' : 'Open filters'}
-              aria-expanded={isFiltersOpen}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-              <span>Filters</span>
-            </button>
+            </>
           )}
 
           <div className="h-4 w-[1px] bg-border" />
 
-          {/* Mobile View Mode Toggle */}
-          <div className="flex items-center bg-muted p-0.5 rounded-full border border-border">
-            <button
-              type="button"
-              onClick={() => onViewModeChange('grid')}
-              data-testid="mobile-dock-grid-btn"
-              className={`p-2 rounded-full text-xs transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-card text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-label="Switch to grid layout"
-              title="Cover Grid"
-              aria-pressed={viewMode === 'grid'}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewModeChange('shelf')}
-              data-testid="mobile-dock-shelf-btn"
-              className={`p-2 rounded-full text-xs transition-all ${
-                viewMode === 'shelf'
-                  ? 'bg-card text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-label="Switch to shelf layout"
-              title="Bookshelf Rack"
-              aria-pressed={viewMode === 'shelf'}
-            >
-              <Library className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="h-4 w-[1px] bg-border" />
-
-          {/* Scroll to Top */}
+          {/* Scroll to Top with context-aware muting when at top */}
           <button
             type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={isAtTop ? undefined : () => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            disabled={isAtTop}
+            aria-disabled={isAtTop}
             data-testid="mobile-dock-top-btn"
-            className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-muted transition-colors cursor-pointer"
+            className={`p-2 rounded-full transition-all ${
+              isAtTop
+                ? 'opacity-25 pointer-events-none text-muted-foreground'
+                : 'text-muted-foreground hover:text-primary hover:bg-muted transition-colors cursor-pointer'
+            }`}
             aria-label="Scroll to top"
-            title="Scroll to top"
+            title={isAtTop ? 'Already at top' : 'Scroll to top'}
           >
             <ArrowUp className="w-4 h-4" />
           </button>
+        </div>
         </div>
       </aside>
     </>

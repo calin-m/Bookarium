@@ -6,6 +6,7 @@ import {
   getAccordionTabLabelClass,
   resolveScrubbedTabId,
   createTabScrubberHandlers,
+  runPreservingScrollPosition,
 } from './scroll-utils';
 
 describe('smartScrollToContent', () => {
@@ -965,6 +966,88 @@ describe('getAccordionTabLabelClass & getAccordionTabFlexClass', () => {
 
     expect(d3).toContain('max-w-0 opacity-0');
     expect(d3).toContain('xl:inline xl:max-w-none xl:opacity-100');
+  });
+});
+
+describe('runPreservingScrollPosition', () => {
+  let scrollToSpy: ReturnType<typeof vi.fn>;
+  let originalScrollY: number;
+
+  beforeEach(() => {
+    scrollToSpy = vi.fn();
+    window.scrollTo = scrollToSpy as unknown as typeof window.scrollTo;
+    originalScrollY = window.scrollY;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'scrollY', { value: originalScrollY, writable: true, configurable: true });
+    vi.restoreAllMocks();
+  });
+
+  it('preserves and synchronously restores window.scrollY if a DOM mutation shifts the scroll offset immediately', () => {
+    Object.defineProperty(window, 'scrollY', { value: 450, writable: true, configurable: true });
+
+    runPreservingScrollPosition(() => {
+      // Simulate browser layout shift jumping to 200 during action
+      Object.defineProperty(window, 'scrollY', { value: 200, writable: true, configurable: true });
+    });
+
+    expect(scrollToSpy).toHaveBeenCalledWith({ top: 450, behavior: 'instant' });
+  });
+
+  it('restores scroll position on requestAnimationFrame if a shift occurs in the next tick', () => {
+    let rafCallback: FrameRequestCallback | null = null;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
+      rafCallback = cb;
+      return 1;
+    });
+
+    Object.defineProperty(window, 'scrollY', { value: 600, writable: true, configurable: true });
+
+    runPreservingScrollPosition(() => {
+      // Action completes without immediate shift
+    });
+
+    // In the next tick / React commit phase, simulate browser layout shift
+    Object.defineProperty(window, 'scrollY', { value: 150, writable: true, configurable: true });
+
+    expect(rafCallback).not.toBeNull();
+    rafCallback!(performance.now());
+
+    expect(scrollToSpy).toHaveBeenCalledWith({ top: 600, behavior: 'instant' });
+  });
+
+  it('does not invoke window.scrollTo if scroll position remains completely stable', () => {
+    let rafCallback: FrameRequestCallback | null = null;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
+      rafCallback = cb;
+      return 1;
+    });
+
+    Object.defineProperty(window, 'scrollY', { value: 350, writable: true, configurable: true });
+
+    runPreservingScrollPosition(() => {
+      // Action runs, scrollY stays at 350
+    });
+
+    expect(scrollToSpy).not.toHaveBeenCalled();
+
+    // Trigger RAF tick where scrollY is still 350
+    rafCallback!(performance.now());
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it('safely runs action without error when window is undefined (SSR)', () => {
+    const originalWindow = global.window;
+    try {
+      // @ts-expect-error simulating SSR
+      delete global.window;
+      const mockAction = vi.fn();
+      expect(() => runPreservingScrollPosition(mockAction)).not.toThrow();
+      expect(mockAction).toHaveBeenCalledTimes(1);
+    } finally {
+      global.window = originalWindow;
+    }
   });
 });
 

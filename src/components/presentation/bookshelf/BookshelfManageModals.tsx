@@ -89,6 +89,14 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
               type="text"
               value={newShelfName}
               onChange={(e) => onNewShelfNameChange(e.target.value)}
+              onClear={() => onNewShelfNameChange('')}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && newShelfName) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onNewShelfNameChange('');
+                }
+              }}
               placeholder="e.g. Philosophy & Logic"
               className="text-xs font-mono"
               autoFocus
@@ -183,6 +191,14 @@ export const BookshelfManageModals: React.FC<BookshelfManageModalsProps> = ({
               type="text"
               value={editingShelfName}
               onChange={(e) => onEditingShelfNameChange(e.target.value)}
+              onClear={() => onEditingShelfNameChange('')}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && editingShelfName) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onEditingShelfNameChange('');
+                }
+              }}
               placeholder="Shelf Name"
               className="text-xs font-mono"
               autoFocus

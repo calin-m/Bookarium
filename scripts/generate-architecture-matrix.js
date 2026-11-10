@@ -638,16 +638,17 @@ function generateMarkdown() {
     '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]',
     '        Hero["HeroSearch.tsx\\n(Precision Viewport Fold Docking, 3D Rotating Spotlight & Search)"]',
     '        Hero3D["HeroFeaturedBook3D.tsx\\n(3D Open-Cover Hinge, Leaf-Flip Engine & Fluid Kinematics)"]',
-    '        Toolbar["StickyCatalogToolbar.tsx\\n(Desktop/Tablet Sticky Sub-Header, Flush Bottom Docking & Mobile Capsule Dock)"]',
-    '        FilterDrawer["AdvancedFilterDrawer.tsx\\n(Staged Filter Execution, Multi-Select Touch Chips: Eras, Topics, Languages, Formats)"]',
+    '        Toolbar["StickyCatalogToolbar.tsx\\n(Desktop/Tablet Sticky Sub-Header, Flush Bottom Docking & Universal Ambient Capsule Dock)"]',
+    '        FilterDrawer["AdvancedFilterDrawer.tsx\\n(Universal Bottom Sliding Panel, Staged Filter Execution, Multi-Select Touch Chips)"]',
     '        EditorialQuote["EditorialQuoteSection.tsx\\n(Classic of the Day & Collision Guard)"]',
     '        LiteraryQuotes["LiteraryQuotes.tsx\\n(Words That Shaped Humanity & Safe Shuffling)"]',
     '        CopyrightBanner["CopyrightNoticeBanner.tsx\\n(Declarative Territorial Restriction & Public Domain Notice)"]',
     '        ContentAdvisory["ContentAdvisoryBanner.tsx\\n(Non-blocking Mature/Historical Context Advisory)"]',
-    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Integrated Search, Sort, Status Filter & View Mode Toggles)"]',
+    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Single-Row Mobile Layout, Search, Compact Icon Sort & View Mode Toggles)"]',
+    '        CollectionBottomDockNode["CollectionBottomDock.tsx • CollectionFloatingSearch.tsx • CollectionFilterDrawer.tsx\\n(Universal Ambient Dock, Animated Light Aura, Floating Search & Bottom Sliding Drawer)"]',
     '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
     '        BookPreviewModalNode["BookPreviewModal.tsx & NotablePassagesSpread.tsx\\n(3D Open-Book Preview Spread, Notable Passages & Jurisdictional Protection)"]',
-    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(3D Hardwood Shelf, Custom Shelves, <1024px Touch Modal & >=1024px Direct Spine Click / Hover Modal)"]',
+    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(Dynamic 2-Shelf Capacity, Sequential Left-to-Right Fill, 3D Hardwood Shelf, Kinetic Strip, <1024px Touch Sheet & >=1024px Spines)"]',
     '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
     '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\\n(Offline Cache & Collection Eviction Confirmations)"]',
     '        CatalogOfflineNode["CatalogOfflineView.tsx\\n(Offline Catalog Notice & Collection Quick-Links)"]',
@@ -657,7 +658,7 @@ function generateMarkdown() {
     '        ',
     '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
     '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]',
-    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Custom Named Shelves, Downloaded (N) Smart Shelf, Active-Shelf Clear & 12-Book Row Cap)"]',
+    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Dynamic 2-Shelf Capacity, Sequential Left-to-Right Shelf Fill, Downloaded (N) Smart Shelf & Active-Shelf Clear)"]',
     '            FavView["Favorites View (/favorites)\\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]',
     '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, 2-Col Archival Grid, Status Filter, Direction-Aware Sort & Dedicated Resume CTA)"]',
     '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections, Tags, 2-Col Archival Grid, Tactile Scroll Focus (<1024px) & View Mode Scrubber)"]',
@@ -1368,6 +1369,8 @@ function generateMarkdown() {
     useReaderHabitTelemetry: 'Reader session lifecycle, book identity self-healing, reading status auto-transitions (`currently_reading` / `finished`), Literary Symposium companion progress sync, and idle-aware habit telemetry coordinator.',
     useAccountSecurityActions: 'Account Hub security, profile display name, email verification resend cooldown, password strength/generation/recovery, and account deletion workflow hook.',
     useOfflineCatalogFallback: 'Local IndexedDB offline catalog filtering, topic/language/author-lifespan matching, sorting, and sub-page slicing hook when offline.',
+    useVisualViewportKeyboard: 'Mobile software virtual keyboard elevation hook leveraging the Visual Viewport API (`window.visualViewport`) to dynamically elevate floating inputs above tactile on-screen keyboards.',
+    useBookshelfCapacity: 'Hydration-safe physical shelf spine capacity hook (`useSyncExternalStore`) dynamically coupling Bookshelf page size (2 shelves x capacity) and row limits across mobile (6), tablet (10), laptop (14), and desktop (18).',
   };
 
   for (const h of hooks) {
@@ -1458,7 +1461,7 @@ function generateMarkdown() {
     'book-tags':
       'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':
-      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`), and live touch-swipe / mouse-drag tab scrubbing (`createTabScrubberHandlers`, `resolveScrubbedTabId`).',
+      'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`), live touch-swipe / mouse-drag tab scrubbing, and zero-drift scroll preservation (`runPreservingScrollPosition`).',
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, and format badges.',
     'metadata-cache':
@@ -2193,7 +2196,7 @@ function generateMarkdown() {
     '| **Virtual Page Density** | `5,600 chars/page` (scaled dynamically by `fontSize` & `lineHeight`) | [`src/lib/gutenberg/pagination.ts`](src/lib/gutenberg/pagination.ts) | Prevents DOM bloat on 1,200-page masterworks by rendering only the active virtual page spread in `Paginated` mode. |',
     '| **Reading Streak & Idle Immersion Guard** | `5 minutes` daily threshold • `120,000ms` (2-min) visual idle cutoff (bypassed during active TTS) | [`src/hooks/useReadingTimer.ts`](src/hooks/useReadingTimer.ts), [`src/hooks/reader/useReaderHabitTelemetry.ts`](src/hooks/reader/useReaderHabitTelemetry.ts), [`src/lib/reading-analytics.ts`](src/lib/reading-analytics.ts) | Ensures reading streaks reflect genuine literary immersion while accurately crediting hands-free Read-Aloud listening. |',
     '| **Tactile Spine Tap Choreography** | `120ms` micro-lead elevation (`translate-y-0 scale-105 origin-bottom`) before modal mount | [`src/components/presentation/BookshelfRack.tsx`](src/components/presentation/BookshelfRack.tsx), [`src/components/presentation/bookshelf/BookshelfSpine.tsx`](src/components/presentation/bookshelf/BookshelfSpine.tsx) | Allows the user to visually witness the volume drawing forward from the wooden shelf rail on touch devices with 1:1 hover parity. |',
-    '| **Mobile Catalog Dock Inactivity Auto-Fade** | `1,400ms` scroll/touch idle timeout -> `opacity-0 pointer-events-none` (<`180ms` wake) | [`src/components/presentation/StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) | Maximizes vertical reading real estate on compact mobile screens while keeping filter/pagination controls 1 tap away. |',
+    '| **Universal Ambient Dock Inactivity Idle Dimming** | `1,600ms` scroll/touch idle timeout -> `opacity-30 hover:opacity-100 focus-within:opacity-100` (<`180ms` wake) | [`src/components/presentation/CollectionBottomDock.tsx`](src/components/presentation/CollectionBottomDock.tsx), [`src/components/presentation/StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) | Keeps navigation controls 1 tap away across all screen sizes and page heights while resting unobtrusively without blocking reading real estate. |',
     '| **Catalog Filter Bar Flush Viewport Docking** | Exact `123px` (`7.6875rem`) clearance: `65px` (Navbar) + `(100dvh - 123px)` (Hero) + `58px` (Toolbar) = `100dvh` | [`src/components/presentation/HeroSearch.tsx`](src/components/presentation/HeroSearch.tsx), [`src/components/presentation/StickyCatalogToolbar.tsx`](src/components/presentation/StickyCatalogToolbar.tsx) | Guarantees the catalog filter bar sits 100% flush on the bottom viewport fold without clipping or detached gaps across desktop and tablet viewports. |',
     '| **Tactile Multi-Touch Zoom Prevention** | Non-passive `{ passive: false }` 2-finger `touchmove` & WebKit `gesturestart` `preventDefault()` | [`src/hooks/reader/useReaderGestures.ts`](src/hooks/reader/useReaderGestures.ts), [`src/components/reader/ReaderSurface.tsx`](src/components/reader/ReaderSurface.tsx) | Disambiguates in-app tactile typography zoom gestures from native browser canvas magnification on tactile screens. |',
     '| **Global Stylized Cursor Tooltip Delay** | `300ms` hover delay (`0ms` instant on Favorite/Bookshelf action buttons) | [`src/hooks/useCursorTooltip.ts`](src/hooks/useCursorTooltip.ts), [`src/components/ui/CursorTooltip.tsx`](src/components/ui/CursorTooltip.tsx) | Eliminates accidental tooltip flicker during normal mouse traversal while providing instant feedback on primary actions. |',

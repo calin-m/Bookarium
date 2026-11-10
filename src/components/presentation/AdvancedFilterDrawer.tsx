@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Filter, RotateCcw, Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import {
@@ -243,20 +244,6 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Lock body and html scrolling on mobile/tablet to prevent background scroll bleed
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevPaddingRight = document.body.style.paddingRight;
-
-    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-      }
-    }
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -266,35 +253,45 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.paddingRight = prevPaddingRight;
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 xl:top-[calc(4rem+env(safe-area-inset-top,0px))] xl:bottom-0 xl:left-0 z-50 xl:z-30 flex flex-col justify-end xl:justify-start pointer-events-none animate-in fade-in duration-200"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="advanced-filter-title"
-      data-testid="advanced-filter-drawer"
-    >
-      {/* Click-outside blurred backdrop on mobile, tablet & laptop (< xl) */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs pointer-events-auto xl:hidden transition-opacity touch-none"
-        onClick={onClose}
-        onTouchMove={(e) => e.preventDefault()}
-        aria-hidden="true"
-        data-testid="filter-backdrop"
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none overflow-hidden [contain:strict]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="advanced-filter-title"
+          data-testid="advanced-filter-drawer"
+        >
+          {/* Click-outside backdrop with 0-raster GPU crossfade & background scroll intercept */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ willChange: 'opacity' }}
+            className="fixed inset-0 bg-black/60 pointer-events-auto touch-none"
+            onClick={onClose}
+            onTouchMove={(e) => e.preventDefault()}
+            onWheel={(e) => e.preventDefault()}
+            aria-hidden="true"
+            data-testid="filter-backdrop"
+          />
 
-      <div className="relative w-full max-h-[88dvh] xl:max-h-none xl:w-96 h-auto xl:h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] rounded-t-2xl xl:rounded-none bg-background text-foreground flex flex-col justify-between shadow-2xl border-t xl:border-t-0 xl:border-r border-border animate-in slide-in-from-bottom xl:slide-in-from-left duration-300 overflow-hidden pointer-events-auto z-10">
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
+            className="relative w-full max-w-4xl mx-auto max-h-[88dvh] rounded-t-2xl bg-background text-foreground flex flex-col justify-between shadow-2xl border-t border-border overflow-hidden pointer-events-auto z-10 [transform:translateZ(0)]"
+          >
         
-        {/* Mobile Grab Handle Bar */}
-        <div className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto mt-2.5 mb-1 shrink-0 xl:hidden" aria-hidden="true" />
+        {/* Grab Handle Bar */}
+        <div className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto mt-2.5 mb-1 shrink-0" aria-hidden="true" />
 
         {/* Drawer Header */}
         <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between bg-background shrink-0">
@@ -323,7 +320,7 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
         </div>
 
         {/* Drawer Scrollable Filter Sections */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] p-4 sm:p-6 space-y-6">
           
           {/* Section 1: Author Lifespan & Literary Era (Multi-Select Touch Chips) */}
           <div className="space-y-2.5">
@@ -545,8 +542,8 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
 
         </div>
 
-        {/* Drawer Bottom Actions (Sticky Footer) */}
-        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-5 border-t border-border bg-card/95 backdrop-blur-xs flex items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
+        {/* Drawer Bottom Actions (Solid Footer) */}
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-5 border-t border-border bg-card flex items-center justify-between gap-3 shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -571,7 +568,9 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
           </Button>
         </div>
 
-      </div>
+      </motion.div>
     </div>
+      )}
+    </AnimatePresence>
   );
 };

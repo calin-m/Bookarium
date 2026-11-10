@@ -826,5 +826,39 @@ export function createTabScrubberHandlers<T extends string>(
   };
 }
 
+/**
+ * Executes a state mutation or DOM update while guaranteeing that the user's
+ * vertical window scroll position remains frozen at its exact pre-mutation pixel offset.
+ *
+ * Why this exists:
+ * When lists or grids reorder upon in-place sort/direction toggles, browser scroll-anchoring
+ * (`overflow-anchor: auto`) or dynamic card height variations can cause the viewport to jump
+ * unpredictably. This helper captures `window.scrollY` prior to mutation and restores it
+ * synchronously and across the subsequent animation frame tick.
+ *
+ * @param action - State updater or DOM mutation callback to execute.
+ */
+export function runPreservingScrollPosition(action: () => void): void {
+  if (typeof window === 'undefined') {
+    action();
+    return;
+  }
+
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  action();
+
+  // Immediate synchronous restoration if layout shifted instantly
+  if (window.scrollY !== scrollY) {
+    window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
+  }
+
+  // Next-frame restoration across React DOM commit and microtask phases
+  requestAnimationFrame(() => {
+    if (typeof window !== 'undefined' && window.scrollY !== scrollY) {
+      window.scrollTo({ top: scrollY, behavior: 'instant' as ScrollBehavior });
+    }
+  });
+}
+
 
 

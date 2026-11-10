@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { CollectionSortDropdown, type SortOption } from './CollectionSortDropdown';
 
@@ -81,6 +81,9 @@ describe('CollectionSortDropdown', () => {
     expect(dirBtn).toBeInTheDocument();
     expect(dirBtn).not.toBeDisabled();
     expect(dirBtn).toHaveAttribute('aria-label', 'Sort Ascending (click to sort Descending)');
+    expect(dirBtn).toHaveClass('group/sortdir');
+    expect(dirBtn.querySelector('svg')).toBeInTheDocument();
+    expect(dirBtn.querySelector('svg')).toHaveClass('pointer-events-none');
 
     fireEvent.click(dirBtn);
     expect(onDirectionToggle).toHaveBeenCalledTimes(1);
@@ -136,6 +139,65 @@ describe('CollectionSortDropdown', () => {
     expect(screen.getByTestId('custom-filter-dropdown')).toBeInTheDocument();
     expect(screen.getByTestId('custom-filter-select')).toBeInTheDocument();
     expect(screen.getByTestId('custom-filter-icon')).toBeInTheDocument();
+  });
+
+  it('renders compact mobile trigger, opens inward popover menu, selects option, and dismisses on Escape or outside click', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <CollectionSortDropdown
+        value="recent"
+        onChange={onChange}
+        options={options}
+        compactOnMobile={true}
+        ariaLabel="Sort bookmarks"
+      />
+    );
+
+    const dropdown = screen.getByTestId('collection-sort-dropdown');
+    expect(dropdown).toHaveClass('w-auto');
+
+    const trigger = screen.getByTestId('compact-sort-trigger');
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveClass('w-8', 'h-8');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveClass('border-border', 'text-muted-foreground');
+
+    // Popover is initially closed
+    expect(screen.queryByTestId('compact-sort-popover')).not.toBeInTheDocument();
+
+    // Click to open popover
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(trigger).toHaveClass('border-primary', 'bg-primary/10', 'text-primary');
+
+    const popover = screen.getByTestId('compact-sort-popover');
+    expect(popover).toBeInTheDocument();
+    expect(popover).toHaveClass('absolute', 'right-0', 'origin-top-right');
+
+    // Select an option from popover
+    const titleOption = within(popover).getByRole('option', { name: 'Title (A → Z)' });
+    fireEvent.click(titleOption);
+    expect(onChange).toHaveBeenCalledWith('title_asc');
+    expect(screen.queryByTestId('compact-sort-popover')).not.toBeInTheDocument();
+
+    // Reopen and test Escape dismissal
+    fireEvent.click(trigger);
+    expect(screen.getByTestId('compact-sort-popover')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('compact-sort-popover')).not.toBeInTheDocument();
+
+    // Rerender with custom sort to check active highlight styling
+    rerender(
+      <CollectionSortDropdown
+        value="title_asc"
+        onChange={onChange}
+        options={options}
+        compactOnMobile={true}
+        ariaLabel="Sort bookmarks"
+      />
+    );
+    const updatedTrigger = screen.getByTestId('compact-sort-trigger');
+    expect(updatedTrigger).toHaveClass('border-primary/40', 'bg-primary/10', 'text-primary');
   });
 });
 

@@ -612,6 +612,12 @@ describe('useContinueReadingLedger', () => {
     // Default: recent (lastReadAt descending: 2 (Sep 3), 3 (Sep 2), 1 (Sep 1))
     expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([2, 3, 1]);
 
+    // Sort: recent_asc (lastReadAt ascending: 1 (Sep 1), 3 (Sep 2), 2 (Sep 3))
+    act(() => {
+      result.current.setSortBy('recent_asc');
+    });
+    expect(result.current.filteredVolumes.map((v) => v.book.id)).toEqual([1, 3, 2]);
+
     // Sort: title_asc (Alice in Wonderland, Middlemarch, Zeno of Elea)
     act(() => {
       result.current.setSortBy('title_asc');

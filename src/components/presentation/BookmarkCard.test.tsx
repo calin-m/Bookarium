@@ -58,6 +58,7 @@ describe('BookmarkCard', () => {
 
     const titleEl = screen.getByText('Pride and Prejudice');
     expect(titleEl).toBeInTheDocument();
+    expect(titleEl.closest('h3')).toHaveClass('min-h-[2.75rem]');
     // 'Austen, Jane' is formatted to 'Jane Austen' via formatAuthorNames
     const authorEl = screen.getByText('Jane Austen');
     expect(authorEl).toBeInTheDocument();

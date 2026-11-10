@@ -304,15 +304,22 @@ describe('NotebookView component', () => {
 
     render(<NotebookView />);
 
-    const chronoBtn = screen.getByRole('button', { name: /Chronological/i });
-    expect(chronoBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
-    fireEvent.click(chronoBtn);
+    const toggleBtn = screen.getByTestId('notebook-view-mode-toggle');
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn.querySelector('svg')).toBeInTheDocument();
+    expect(toggleBtn).toHaveClass('w-8', 'h-8');
+
+    // In volume mode, button offers switching to Chronological
+    const chronoToggle = screen.getByTestId('notebook-view-mode-toggle');
+    expect(chronoToggle).toHaveAttribute('aria-label', expect.stringContaining('Chronological'));
+    fireEvent.click(chronoToggle);
 
     expect(screen.getByText(/Book quote 1/i)).toBeInTheDocument();
 
-    const byBookBtn = screen.getByRole('button', { name: /By Book/i });
-    expect(byBookBtn.querySelector('span')).toHaveClass('hidden', 'lg:inline');
-    fireEvent.click(byBookBtn);
+    // In chronological mode, button offers switching back to Group by Book
+    const byBookToggle = screen.getByTestId('notebook-view-mode-toggle');
+    expect(byBookToggle).toHaveAttribute('aria-label', expect.stringContaining('Grouped by Book'));
+    fireEvent.click(byBookToggle);
     expect(screen.getByText(/Book quote 1/i)).toBeInTheDocument();
   });
 
@@ -1150,16 +1157,16 @@ describe('NotebookView component', () => {
 
       render(<NotebookView />);
 
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
 
       // Default sort is Date Added (Newest) -> ann2 comes first
       const quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
       expect(quoteCards[0]).toHaveTextContent('Second quote chronologically');
       expect(quoteCards[1]).toHaveTextContent('First quote chronologically');
 
-      // Change sort to Date Added (Oldest)
-      const sortSelect = screen.getByLabelText('Sort quotes chronologically');
-      fireEvent.change(sortSelect, { target: { value: 'date_asc' } });
+      // Change sort direction to Ascending (Oldest)
+      const directionBtn = screen.getByTestId('collection-sort-direction-btn');
+      fireEvent.click(directionBtn);
 
       const reorderedCards = screen.getAllByTestId(/notebook-quote-card-/);
       expect(reorderedCards[0]).toHaveTextContent('First quote chronologically');
@@ -1187,18 +1194,18 @@ describe('NotebookView component', () => {
       });
 
       render(<NotebookView />);
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
 
       const sortSelect = screen.getByLabelText('Sort quotes chronologically');
 
       // Sort by Title (A -> Z): Frankenstein first
-      fireEvent.change(sortSelect, { target: { value: 'title_asc' } });
+      fireEvent.change(sortSelect, { target: { value: 'title' } });
       let quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
       expect(quoteCards[0]).toHaveTextContent('Frankenstein quote');
       expect(quoteCards[1]).toHaveTextContent('Pride quote');
 
       // Sort by Author (A -> Z): Jane Austen first
-      fireEvent.change(sortSelect, { target: { value: 'author_asc' } });
+      fireEvent.change(sortSelect, { target: { value: 'author' } });
       quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
       expect(quoteCards[0]).toHaveTextContent('Pride quote');
       expect(quoteCards[1]).toHaveTextContent('Frankenstein quote');
@@ -1236,6 +1243,15 @@ describe('NotebookView component', () => {
         color: 'mint',
       });
 
+      // Ensure distinct timestamps for Date Annotated testing
+      useAnnotationStore.setState((state) => ({
+        annotations: state.annotations.map((a) =>
+          a.bookId === 1342
+            ? { ...a, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }
+            : { ...a, createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z' }
+        ),
+      }));
+
       render(<NotebookView />);
       const getBookHeadings = () =>
         screen.getAllByRole('heading', { level: 2 }).filter((h) => h.textContent !== 'Literary Notebook');
@@ -1246,27 +1262,44 @@ describe('NotebookView component', () => {
       expect(headings[1]).toHaveTextContent('Pride and Prejudice');
 
       const sortSelect = screen.getByLabelText('Sort book groups');
+      const directionBtn = screen.getByTestId('collection-sort-direction-btn');
 
       // Sort Title Z -> A: Pride and Prejudice first
-      fireEvent.change(sortSelect, { target: { value: 'title_desc' } });
+      fireEvent.change(sortSelect, { target: { value: 'title' } });
+      fireEvent.click(directionBtn);
       headings = getBookHeadings();
       expect(headings[0]).toHaveTextContent('Pride and Prejudice');
       expect(headings[1]).toHaveTextContent('Frankenstein');
 
-      // Sort Author A -> Z: Jane Austen first
-      fireEvent.change(sortSelect, { target: { value: 'author_asc' } });
+      // Sort Author A -> Z: Jane Austen first (selecting author defaults to asc)
+      fireEvent.change(sortSelect, { target: { value: 'author' } });
       headings = getBookHeadings();
       expect(headings[0]).toHaveTextContent('Pride and Prejudice');
 
       // Sort Author Z -> A: Mary Shelley first
-      fireEvent.change(sortSelect, { target: { value: 'author_desc' } });
+      fireEvent.click(directionBtn);
       headings = getBookHeadings();
       expect(headings[0]).toHaveTextContent('Frankenstein');
 
-      // Sort Most Quotes First: Frankenstein (2 quotes) before Pride and Prejudice (1 quote)
-      fireEvent.change(sortSelect, { target: { value: 'count_desc' } });
+      // Sort Quote Count (Descending): Frankenstein (2 quotes) before Pride and Prejudice (1 quote)
+      fireEvent.change(sortSelect, { target: { value: 'count' } });
       headings = getBookHeadings();
       expect(headings[0]).toHaveTextContent('Frankenstein');
+
+      // Sort Quote Count (Ascending): Pride and Prejudice (1 quote) before Frankenstein (2 quotes)
+      fireEvent.click(directionBtn);
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Pride and Prejudice');
+
+      // Sort Date Annotated (Descending): Frankenstein was annotated later than Pride
+      fireEvent.change(sortSelect, { target: { value: 'recent' } });
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Frankenstein');
+
+      // Sort Date Annotated (Ascending): Pride and Prejudice was annotated first
+      fireEvent.click(directionBtn);
+      headings = getBookHeadings();
+      expect(headings[0]).toHaveTextContent('Pride and Prejudice');
 
       // Sort Downloaded: only volumes cached offline appear
       mockNotebookOfflineIds = [1342];
@@ -1298,7 +1331,7 @@ describe('NotebookView component', () => {
       });
 
       render(<NotebookView />);
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
 
       const sortSelect = screen.getByLabelText('Sort quotes chronologically');
       expect(screen.getAllByTestId(/notebook-quote-card-/)).toHaveLength(2);
@@ -1335,10 +1368,10 @@ describe('NotebookView component', () => {
 
       expect(screen.queryByText('No passages from downloaded volumes match your current filter.')).not.toBeInTheDocument();
       expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThanOrEqual(1);
-      expect(volumeSortSelect).toHaveValue('title_asc');
+      expect(volumeSortSelect).toHaveValue('title');
 
       // Switch to Chronological mode and select 'downloaded' sort
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
       const chronoSortSelect = screen.getByLabelText('Sort quotes chronologically');
       fireEvent.change(chronoSortSelect, { target: { value: 'downloaded' } });
 
@@ -1348,7 +1381,7 @@ describe('NotebookView component', () => {
       fireEvent.click(chronoResetBtn);
 
       expect(screen.queryByText('No passages from downloaded volumes match your current filter.')).not.toBeInTheDocument();
-      expect(chronoSortSelect).toHaveValue('date_desc');
+      expect(chronoSortSelect).toHaveValue('date');
     });
 
     it('paginates chronological quotes with 12 items per page and scrolls to top on page change', () => {
@@ -1377,7 +1410,7 @@ describe('NotebookView component', () => {
       });
 
       render(<NotebookView />);
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
 
       // Should render exactly 12 quote cards on page 1
       const quoteCards = screen.getAllByTestId(/notebook-quote-card-/);
@@ -1460,7 +1493,7 @@ describe('NotebookView component', () => {
       });
 
       render(<NotebookView />);
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
 
       const getPaginationNav = () => screen.getByRole('navigation', { name: /Pagination navigation/i });
 
@@ -1478,7 +1511,7 @@ describe('NotebookView component', () => {
 
       // Change sort order -> resets to page 1
       const sortSelect = screen.getByLabelText('Sort quotes chronologically');
-      fireEvent.change(sortSelect, { target: { value: 'date_asc' } });
+      fireEvent.change(sortSelect, { target: { value: 'title' } });
       expect(within(getPaginationNav()).getByRole('button', { name: 'Go to page 1' })).toHaveAttribute('aria-current', 'page');
     });
 
@@ -1505,9 +1538,11 @@ describe('NotebookView component', () => {
       const anchor = container.querySelector('#notebook-content-anchor');
       expect(anchor).toBeInTheDocument();
       expect(anchor).toHaveClass('animate-page-turn');
+      expect(anchor).toHaveClass('[overflow-anchor:none]');
+      expect(container.querySelector('#literary-notebook-section')).toHaveClass('[overflow-anchor:none]');
 
       // Switch to chronological
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
       expect(container.querySelector('#notebook-content-anchor')).toHaveClass('animate-page-turn');
 
       // Filter by color
@@ -1816,7 +1851,7 @@ describe('NotebookView component', () => {
       const volumeGrid = container.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2');
       expect(volumeGrid).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Chronological' }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
       const chronoGrid = container.querySelector('.grid.grid-cols-1.lg\\:grid-cols-2');
       expect(chronoGrid).toBeInTheDocument();
     });
@@ -1927,18 +1962,18 @@ describe('NotebookView component', () => {
       expect(screen.getByText(/Own reflection/i)).toBeInTheDocument();
       fireEvent.change(searchInput, { target: { value: '' } });
 
-      // 3. Volume sort options ('recent', 'count_desc', 'author_desc', 'title_desc')
+      // 3. Volume sort options ('recent', 'count', 'author', 'title')
       const sortSelect = screen.getByLabelText('Sort book groups');
       fireEvent.change(sortSelect, { target: { value: 'recent' } });
-      fireEvent.change(sortSelect, { target: { value: 'count_desc' } });
-      fireEvent.change(sortSelect, { target: { value: 'author_desc' } });
+      fireEvent.change(sortSelect, { target: { value: 'count' } });
+      fireEvent.change(sortSelect, { target: { value: 'author' } });
 
-      // 4. Switch to Chronological mode and test chronoSort options ('date_asc', 'title_asc', 'author_asc', 'downloaded')
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      // 4. Switch to Chronological mode and test chronoSort options ('date', 'title', 'author', 'downloaded')
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
       const chronoSortSelect = screen.getByLabelText('Sort quotes chronologically');
-      fireEvent.change(chronoSortSelect, { target: { value: 'date_asc' } });
-      fireEvent.change(chronoSortSelect, { target: { value: 'title_asc' } });
-      fireEvent.change(chronoSortSelect, { target: { value: 'author_asc' } });
+      fireEvent.change(chronoSortSelect, { target: { value: 'date' } });
+      fireEvent.change(chronoSortSelect, { target: { value: 'title' } });
+      fireEvent.change(chronoSortSelect, { target: { value: 'author' } });
       fireEvent.change(chronoSortSelect, { target: { value: 'downloaded' } });
 
       // Since mockNotebookOfflineIds is empty, 'downloaded' sort shows zero-results message and Reset Filters resets chronoSort to 'date_desc'
@@ -1986,7 +2021,7 @@ describe('NotebookView component', () => {
       });
 
       render(<NotebookView />);
-      fireEvent.click(screen.getByRole('button', { name: /Chronological/i }));
+      fireEvent.click(screen.getByTestId('notebook-view-mode-toggle'));
 
       const getPaginationNav = () => screen.getByRole('navigation', { name: /Pagination navigation/i });
       fireEvent.click(within(getPaginationNav()).getByRole('button', { name: 'Go to page 2' }));

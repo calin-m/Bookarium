@@ -28,8 +28,8 @@ describe('AdvancedFilterDrawer component', () => {
     expect(screen.getByText('3 active filters')).toBeInTheDocument();
     expect(screen.getByText(/19th Century Victorian & Romantic/i)).toBeInTheDocument();
     const drawer = screen.getByTestId('advanced-filter-drawer');
-    expect(drawer).toHaveClass('xl:top-[calc(4rem+env(safe-area-inset-top,0px))]');
-    expect(drawer).toHaveClass('xl:bottom-0');
+    expect(drawer).toHaveClass('fixed', 'inset-0', 'justify-end', 'overflow-hidden', '[contain:strict]');
+    expect(screen.getByTestId('filter-backdrop')).toHaveClass('bg-black/60', 'touch-none');
   });
 
   it('should stage era selection and commit on Show Results click', () => {
@@ -493,74 +493,41 @@ describe('AdvancedFilterDrawer component', () => {
       document.body.style.paddingRight = '';
     });
 
-    it('locks both document.body and document.documentElement overflow on mobile (<1280px) and restores on unmount', () => {
-      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
-      document.body.style.overflow = 'auto';
-      document.documentElement.style.overflow = 'scroll';
+    it('never locks body or documentElement overflow across mobile, tablet, and desktop viewports for zero CLS', () => {
+      for (const width of [375, 768, 1024, 1440]) {
+        Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: width });
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
 
-      const { unmount } = render(
-        <AdvancedFilterDrawer
-          isOpen={true}
-          onClose={vi.fn()}
-          selectedEra=""
-          onEraChange={vi.fn()}
-          selectedSort=""
-          onSortChange={vi.fn()}
-          selectedTopic=""
-          onTopicChange={vi.fn()}
-          selectedLanguage=""
-          onLanguageChange={vi.fn()}
-          selectedFormat=""
-          onFormatChange={vi.fn()}
-          onResetAll={vi.fn()}
-          activeFilterCount={0}
-        />
-      );
+        const { unmount } = render(
+          <AdvancedFilterDrawer
+            isOpen={true}
+            onClose={vi.fn()}
+            selectedEra=""
+            onEraChange={vi.fn()}
+            selectedSort=""
+            onSortChange={vi.fn()}
+            selectedTopic=""
+            onTopicChange={vi.fn()}
+            selectedLanguage=""
+            onLanguageChange={vi.fn()}
+            selectedFormat=""
+            onFormatChange={vi.fn()}
+            onResetAll={vi.fn()}
+            activeFilterCount={0}
+          />
+        );
 
-      expect(document.body.style.overflow).toBe('hidden');
-      expect(document.documentElement.style.overflow).toBe('hidden');
+        expect(document.body.style.overflow).toBe('');
+        expect(document.documentElement.style.overflow).toBe('');
 
-      unmount();
-
-      expect(document.body.style.overflow).toBe('auto');
-      expect(document.documentElement.style.overflow).toBe('scroll');
+        unmount();
+        expect(document.body.style.overflow).toBe('');
+        expect(document.documentElement.style.overflow).toBe('');
+      }
     });
 
-    it('compensates for scrollbar width using paddingRight and restores on unmount', () => {
-      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 768 });
-      Object.defineProperty(document.documentElement, 'clientWidth', { writable: true, configurable: true, value: 753 }); // 15px scrollbar
-
-      const { unmount } = render(
-        <AdvancedFilterDrawer
-          isOpen={true}
-          onClose={vi.fn()}
-          selectedEra=""
-          onEraChange={vi.fn()}
-          selectedSort=""
-          onSortChange={vi.fn()}
-          selectedTopic=""
-          onTopicChange={vi.fn()}
-          selectedLanguage=""
-          onLanguageChange={vi.fn()}
-          selectedFormat=""
-          onFormatChange={vi.fn()}
-          onResetAll={vi.fn()}
-          activeFilterCount={0}
-        />
-      );
-
-      expect(document.body.style.paddingRight).toBe('15px');
-
-      unmount();
-
-      expect(document.body.style.paddingRight).toBe('');
-    });
-
-    it('does not lock overflow when on desktop viewports (>= 1280px)', () => {
-      Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1440 });
-      document.body.style.overflow = 'visible';
-      document.documentElement.style.overflow = 'visible';
-
+    it('renders with overflow-hidden and contain:strict on outer wrapper for GPU compositor isolation', () => {
       render(
         <AdvancedFilterDrawer
           isOpen={true}
@@ -580,11 +547,11 @@ describe('AdvancedFilterDrawer component', () => {
         />
       );
 
-      expect(document.body.style.overflow).toBe('visible');
-      expect(document.documentElement.style.overflow).toBe('visible');
+      const drawer = screen.getByTestId('advanced-filter-drawer');
+      expect(drawer).toHaveClass('overflow-hidden', '[contain:strict]');
     });
 
-    it('renders backdrop with touch-none and prevents default on touchmove to eliminate scroll bleed', () => {
+    it('renders backdrop with touch-none and prevents default on touchmove and wheel to eliminate scroll bleed', () => {
       render(
         <AdvancedFilterDrawer
           isOpen={true}
@@ -605,12 +572,17 @@ describe('AdvancedFilterDrawer component', () => {
       );
 
       const backdrop = screen.getByTestId('filter-backdrop');
-      expect(backdrop).toHaveClass('touch-none');
+      expect(backdrop).toHaveClass('touch-none', 'bg-black/60');
 
       const touchMoveEvent = createEvent.touchMove(backdrop);
       const preventDefaultSpy = vi.spyOn(touchMoveEvent, 'preventDefault');
       fireEvent(backdrop, touchMoveEvent);
       expect(preventDefaultSpy).toHaveBeenCalled();
+
+      const wheelEvent = createEvent.wheel(backdrop);
+      const preventWheelSpy = vi.spyOn(wheelEvent, 'preventDefault');
+      fireEvent(backdrop, wheelEvent);
+      expect(preventWheelSpy).toHaveBeenCalled();
     });
 
     it('renders scrollable filter options container with overscroll-contain', () => {

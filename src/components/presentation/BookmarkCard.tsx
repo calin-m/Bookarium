@@ -309,7 +309,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               aria-label={`Copy link to ${book.title} by ${formatAuthorNames(book.authors) || 'Anonymous'}`}
               className="group/copy cursor-pointer rounded-md -mx-1 px-1 py-0.5 pr-4 hover:bg-muted/50 transition-colors"
             >
-              <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 transition-colors">
+              <h3 className="font-serif font-bold text-base text-foreground leading-snug line-clamp-2 min-h-[2.75rem] transition-colors">
                 {isRestricted || isUnavailableOffline ? (
                   <span className="opacity-85 group-hover/copy:text-primary transition-colors">
                     {book.title}
