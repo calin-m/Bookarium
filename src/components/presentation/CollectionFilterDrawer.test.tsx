@@ -187,4 +187,41 @@ describe('CollectionFilterDrawer', () => {
     expect(screen.getByTestId('filter-direction-asc-btn')).toBeInTheDocument();
     expect(screen.getByTestId('filter-direction-desc-btn')).toBeInTheDocument();
   });
+
+  it('renders active shelf, sort, viewmode, and direction chips without checkmark icons while maintaining aria-checked', () => {
+    render(
+      <CollectionFilterDrawer
+        {...defaultProps}
+        selectedShelfId="reading"
+        selectedSort="recent"
+        viewMode="book"
+        onViewModeChange={vi.fn()}
+        sortDirection="asc"
+      />
+    );
+
+    // Shelf chip has no SVG icon
+    const activeShelf = screen.getByTestId('filter-shelf-reading');
+    expect(activeShelf).toHaveAttribute('aria-checked', 'true');
+    expect(activeShelf.className).toContain('bg-foreground text-background');
+    expect(activeShelf.querySelector('svg')).toBeNull();
+
+    // Sort chip has no SVG icon
+    const activeSort = screen.getByTestId('filter-sort-recent');
+    expect(activeSort).toHaveAttribute('aria-checked', 'true');
+    expect(activeSort.className).toContain('bg-foreground text-background');
+    expect(activeSort.querySelector('svg')).toBeNull();
+
+    // Viewmode has only its Layers icon (1 SVG, no checkmark)
+    const activeViewMode = screen.getByTestId('filter-viewmode-book-btn');
+    expect(activeViewMode).toHaveAttribute('aria-checked', 'true');
+    expect(activeViewMode.className).toContain('bg-foreground text-background');
+    expect(activeViewMode.querySelectorAll('svg')).toHaveLength(1);
+
+    // Direction button has only its ArrowUp icon (1 SVG, no checkmark)
+    const activeDirection = screen.getByTestId('filter-direction-asc-btn');
+    expect(activeDirection).toHaveAttribute('aria-checked', 'true');
+    expect(activeDirection.className).toContain('bg-foreground text-background');
+    expect(activeDirection.querySelectorAll('svg')).toHaveLength(1);
+  });
 });

@@ -104,7 +104,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
   return (
     <div
       data-testid="collection-toolbar"
-      className={`${hiddenOnMobile ? 'hidden sm:flex' : 'flex'} ${
+      className={`relative z-10 ${hiddenOnMobile ? 'hidden sm:flex' : 'flex'} ${
         singleRowOnMobile
           ? 'flex-row items-center'
           : isSingleControl
@@ -196,7 +196,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
           <div
             className={`flex items-center ${
               hasFilter ? 'justify-end' : 'justify-start'
-            } gap-1.5 ${isSingleControl && !singleRowOnMobile ? 'w-auto shrink-0' : singleRowOnMobile ? 'w-auto shrink-0' : 'flex-1 sm:flex-none'} min-w-0 relative z-20`}
+            } gap-1.5 ${isSingleControl && !singleRowOnMobile ? 'w-auto shrink-0' : singleRowOnMobile ? 'w-auto shrink-0' : 'flex-1 sm:flex-none'} min-w-0 relative z-20 sm:z-auto`}
           >
             <CollectionSortDropdown
               value={sortValue!}
@@ -215,7 +215,7 @@ export const CollectionToolbar: React.FC<CollectionToolbarProps> = ({
 
         {/* Extra Controls (e.g. Notebook's View Mode Toggle) */}
         {extraControls && (
-          <div className={`flex items-center justify-end shrink-0 relative z-10 ${singleRowOnMobile ? '' : 'ml-auto md:ml-0'}`}>
+          <div className={`flex items-center justify-end shrink-0 relative z-10 sm:z-auto ${singleRowOnMobile ? '' : 'ml-auto md:ml-0'}`}>
             {extraControls}
           </div>
         )}

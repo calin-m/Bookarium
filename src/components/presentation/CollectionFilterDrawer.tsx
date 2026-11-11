@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SlidersHorizontal, Check, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
+import { SlidersHorizontal, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
 import { BottomSheetDrawerShell } from '@/components/ui/BottomSheetDrawerShell';
 import type { SortOption } from './CollectionSortDropdown';
 
@@ -110,7 +110,6 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
             >
               <Layers className="w-3.5 h-3.5" />
               <span>Grouped by Book</span>
-              {viewMode === 'book' && <Check className="w-3.5 h-3.5 ml-0.5" />}
             </button>
             <button
               type="button"
@@ -126,7 +125,6 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
             >
               <Clock className="w-3.5 h-3.5" />
               <span>Chronological Stream</span>
-              {viewMode === 'chronological' && <Check className="w-3.5 h-3.5 ml-0.5" />}
             </button>
           </div>
         </div>
@@ -161,7 +159,6 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
                       ({opt.count})
                     </span>
                   )}
-                  {isSelected && <Check className="w-3.5 h-3.5" />}
                 </button>
               );
             })}
@@ -193,7 +190,6 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
                   data-testid={`filter-sort-${sort.value}`}
                 >
                   <span>{sort.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5" />}
                 </button>
               );
             })}
@@ -240,16 +236,6 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
                   <ArrowUp className="w-3.5 h-3.5" />
                 </motion.span>
                 <span>Ascending</span>
-                {sortDirection === 'asc' && (
-                  <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                    className="inline-flex ml-0.5"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </motion.span>
-                )}
               </button>
               <button
                 type="button"
@@ -276,16 +262,6 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
                   <ArrowDown className="w-3.5 h-3.5" />
                 </motion.span>
                 <span>Descending</span>
-                {sortDirection === 'desc' && (
-                  <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                    className="inline-flex ml-0.5"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </motion.span>
-                )}
               </button>
             </div>
           </motion.div>

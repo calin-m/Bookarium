@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Copy, Trash2, Check, X, Feather } from 'lucide-react';
+import { MessageSquare, Copy, Trash2, Check, X, Feather, Pencil } from 'lucide-react';
 import type { HighlightColor, FellowAnnotation } from '@/stores/useAnnotationStore';
 import { isPlaceholderUsername } from '@/stores/useFellowshipStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
@@ -58,6 +58,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
 }) => {
   const hasMounted = useHasMounted();
   const [isNoteExpanded, setIsNoteExpanded] = useState(Boolean(existingNote));
+  const [isEditingNote, setIsEditingNote] = useState(!existingNote);
   const [noteText, setNoteText] = useState(existingNote);
   const [copied, setCopied] = useState(false);
   const [activeSourceTab, setActiveSourceTab] = useState<'mine' | 'fellow'>(isFellowOnly ? 'fellow' : 'mine');
@@ -72,6 +73,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
     setPrevProps({ existingNote, isOpen, isFellowOnly });
     setNoteText(existingNote);
     setIsNoteExpanded(Boolean(existingNote));
+    setIsEditingNote(!existingNote);
     setActiveSourceTab(isFellowOnly ? 'fellow' : 'mine');
   }
 
@@ -116,7 +118,12 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
     if (onSaveNote) {
       onSaveNote(noteText);
     }
-    setIsNoteExpanded(false);
+    if (noteText.trim()) {
+      setIsEditingNote(false);
+    } else {
+      setIsNoteExpanded(false);
+      setIsEditingNote(true);
+    }
   };
 
   if (!hasMounted || !isOpen || !position) return null;
@@ -293,18 +300,6 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   <Check className="w-3.5 h-3.5" />
                   <span>In My Notes</span>
                 </span>
-                <button
-                  type="button"
-                  data-testid="fellow-popover-add-own-note-btn"
-                  onClick={() => {
-                    setActiveSourceTab('mine');
-                    setIsNoteExpanded(true);
-                  }}
-                  className="inline-flex items-center gap-1 py-1 px-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-primary" />
-                  <span>{existingNote ? 'Edit My Note' : '+ Add My Note'}</span>
-                </button>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -326,6 +321,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   onClick={() => {
                     setActiveSourceTab('mine');
                     setIsNoteExpanded(true);
+                    setIsEditingNote(true);
                   }}
                   className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
                 >
@@ -362,7 +358,16 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   type="button"
                   data-testid="highlight-add-note-btn"
                   aria-label="Add or edit personal note"
-                  onClick={() => setIsNoteExpanded(!isNoteExpanded)}
+                  onClick={() => {
+                    if (isNoteExpanded && !existingNote) {
+                      setIsNoteExpanded(false);
+                    } else if (isNoteExpanded && existingNote) {
+                      setIsEditingNote(!isEditingNote);
+                    } else {
+                      setIsNoteExpanded(true);
+                      setIsEditingNote(!existingNote);
+                    }
+                  }}
                   className={`p-1.5 rounded-lg transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 ${
                     isNoteExpanded || existingNote ? 'text-primary-600 dark:text-primary-400 font-bold' : 'text-stone-500'
                   }`}
@@ -403,35 +408,71 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
               </div>
             </div>
 
-            {/* Expandable Micro-Note Input */}
+            {/* Expandable Micro-Note Container */}
             {isNoteExpanded && (
-              <div data-testid="highlight-note-container" className="pt-1 border-t border-stone-200/50 dark:border-stone-700/50 flex flex-col gap-1.5 w-64 sm:w-72">
-                <textarea
-                  data-testid="highlight-note-textarea"
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Add your note or reflection..."
-                  rows={2}
-                  className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/50 focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none font-sans"
-                  autoFocus
-                />
-                <div className="flex items-center justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsNoteExpanded(false)}
-                    className="px-2 py-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="highlight-save-note-btn"
-                    onClick={handleSaveNote}
-                    className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 hover:bg-primary-700 text-white transition-colors"
-                  >
-                    Save Note
-                  </button>
-                </div>
+              <div
+                data-testid="highlight-note-container"
+                className="pt-1.5 border-t border-stone-200/50 dark:border-stone-700/50 flex flex-col gap-1.5 w-64 sm:w-72"
+              >
+                {isEditingNote ? (
+                  <>
+                    <textarea
+                      data-testid="highlight-note-textarea"
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="Add your note or reflection..."
+                      rows={2}
+                      className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/50 focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none font-sans"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNoteText(existingNote);
+                          if (existingNote) {
+                            setIsEditingNote(false);
+                          } else {
+                            setIsNoteExpanded(false);
+                          }
+                        }}
+                        className="px-2 py-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="highlight-save-note-btn"
+                        onClick={handleSaveNote}
+                        className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 hover:bg-primary-700 text-white transition-colors cursor-pointer"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p
+                      data-testid="highlight-note-display"
+                      onClick={() => setIsEditingNote(true)}
+                      className="text-xs font-serif italic leading-relaxed text-inherit bg-stone-100/80 dark:bg-stone-800/80 border border-stone-200/60 dark:border-stone-700/60 rounded-lg p-2.5 select-text cursor-pointer hover:border-primary-500/40 transition-colors"
+                      title="Click to edit reflection"
+                    >
+                      &ldquo;{existingNote}&rdquo;
+                    </p>
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        data-testid="highlight-edit-note-btn"
+                        onClick={() => setIsEditingNote(true)}
+                        className="inline-flex items-center gap-1 py-1 px-2.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700/80 text-stone-700 dark:text-stone-200 font-mono text-[11px] font-bold border border-stone-200/80 dark:border-stone-700/80 transition-colors cursor-pointer"
+                      >
+                        <Pencil className="w-3 h-3 text-primary" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </>

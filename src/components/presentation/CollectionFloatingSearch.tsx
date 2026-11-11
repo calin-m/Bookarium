@@ -24,6 +24,12 @@ export interface CollectionFloatingSearchProps {
    * Optional DOM element ID to smoothly center into view upon search submission.
    */
   contentAnchorId?: string;
+  /**
+   * Whether to automatically dismiss the floating search bar upon query submission.
+   * Defaults to true to ensure mobile tactile devices reveal results immediately and
+   * collapse the software keyboard.
+   */
+  autoCloseOnSubmit?: boolean;
 }
 
 export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> = ({
@@ -37,6 +43,7 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
   submitOnEnter = false,
   onSubmit,
   contentAnchorId,
+  autoCloseOnSubmit = true,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,13 +60,19 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
 
   const activeValue = submitOnEnter ? localQuery : searchQuery;
 
+  const dismissVirtualKeyboard = () => {
+    inputRef.current?.blur();
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
-    // Focus input on mount to prompt the software keyboard on tactile screens
-    const timer = setTimeout(() => {
-      inputRef.current?.focus();
-    }, 50);
+    // Focus input synchronously on mount to prompt the software keyboard on tactile screens
+    // without dropping WebKit's transient user activation gesture token
+    inputRef.current?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -77,7 +90,6 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('pointerdown', handlePointerDown);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('pointerdown', handlePointerDown);
     };
@@ -110,7 +122,7 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    inputRef.current?.blur();
+    dismissVirtualKeyboard();
 
     if (submitOnEnter) {
       const normalized = localQuery.trim().replace(/\s+/g, ' ');
@@ -126,6 +138,10 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
 
     if (contentAnchorId) {
       smartScrollToContent(contentAnchorId, { offsetTop: 80 });
+    }
+
+    if (autoCloseOnSubmit) {
+      onClose();
     }
   };
 
@@ -175,6 +191,11 @@ export const CollectionFloatingSearch: React.FC<CollectionFloatingSearchProps> =
                 enterKeyHint="search"
                 value={activeValue}
                 onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    dismissVirtualKeyboard();
+                  }
+                }}
                 placeholder={searchPlaceholder}
                 aria-label={searchAriaLabel}
                 data-testid="collection-floating-search-input"

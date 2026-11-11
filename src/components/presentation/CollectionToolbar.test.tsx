@@ -318,5 +318,30 @@ describe('CollectionToolbar', () => {
     const toolbar = screen.getByTestId('collection-toolbar');
     expect(toolbar).toHaveClass('flex');
     expect(toolbar).not.toHaveClass('hidden');
+    expect(toolbar).toHaveClass('relative', 'z-10');
+  });
+
+  it('enforces stacking context boundaries with relative z-10 on root and responsive sm:z-auto on sort and extra controls', () => {
+    render(
+      <CollectionToolbar
+        searchQuery=""
+        onSearchChange={vi.fn()}
+        sortValue="recent"
+        onSortChange={vi.fn()}
+        sortOptions={sortOptions}
+        extraControls={<button type="button">Mode</button>}
+      />
+    );
+
+    const toolbar = screen.getByTestId('collection-toolbar');
+    expect(toolbar).toHaveClass('relative', 'z-10');
+
+    const sortDropdown = screen.getByTestId('collection-sort-dropdown');
+    const sortContainer = sortDropdown.parentElement;
+    expect(sortContainer).toHaveClass('relative', 'z-20', 'sm:z-auto');
+
+    const extraControlBtn = screen.getByRole('button', { name: 'Mode' });
+    const extraControlContainer = extraControlBtn.parentElement;
+    expect(extraControlContainer).toHaveClass('relative', 'z-10', 'sm:z-auto');
   });
 });

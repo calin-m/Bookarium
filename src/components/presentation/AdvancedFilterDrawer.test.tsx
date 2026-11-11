@@ -690,6 +690,45 @@ describe('AdvancedFilterDrawer component', () => {
       expect(onFormatChange).toHaveBeenCalledWith('text/html');
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+
+    it('renders active filter chips without checkmark icons while maintaining aria-checked and active styles', () => {
+      render(
+        <AdvancedFilterDrawer
+          isOpen={true}
+          onClose={vi.fn()}
+          selectedEra="victorian"
+          selectedSort="popular"
+          selectedTopic="fiction"
+          selectedLanguage="en"
+          selectedFormat="application/epub+zip"
+        />
+      );
+
+      const activeEra = screen.getByTestId('era-option-victorian');
+      expect(activeEra).toHaveAttribute('aria-checked', 'true');
+      expect(activeEra.className).toContain('bg-foreground text-background');
+      expect(activeEra.querySelector('svg')).toBeNull();
+
+      const activeSort = screen.getByTestId('sort-option-popular');
+      expect(activeSort).toHaveAttribute('aria-checked', 'true');
+      expect(activeSort.className).toContain('bg-foreground text-background');
+      expect(activeSort.querySelector('svg')).toBeNull();
+
+      const activeTopic = screen.getByTestId('genre-facet-fiction');
+      expect(activeTopic).toHaveAttribute('aria-checked', 'true');
+      expect(activeTopic.className).toContain('bg-foreground text-background');
+      expect(activeTopic.querySelector('svg')).toBeNull();
+
+      const activeLanguage = screen.getByTestId('language-option-en');
+      expect(activeLanguage).toHaveAttribute('aria-checked', 'true');
+      expect(activeLanguage.className).toContain('bg-foreground text-background');
+      expect(activeLanguage.querySelector('svg')).toBeNull();
+
+      const activeFormat = screen.getByTestId('format-option-application-epub-zip');
+      expect(activeFormat).toHaveAttribute('aria-checked', 'true');
+      expect(activeFormat.className).toContain('bg-foreground text-background');
+      expect(activeFormat.querySelector('svg')).toBeNull();
+    });
   });
 });
 

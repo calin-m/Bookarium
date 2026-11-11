@@ -127,7 +127,7 @@ describe('TextHighlightPopover', () => {
     Object.assign(navigator, { clipboard: originalClipboard });
   });
 
-  it('submits note on clicking Save Note button in note textarea', () => {
+  it('renders note in Read Mode by default with Edit button, transitions to Edit Mode with Save button on click, and saves', () => {
     const onSaveNote = vi.fn();
     render(
       <TextHighlightPopover
@@ -137,13 +137,51 @@ describe('TextHighlightPopover', () => {
       />
     );
 
+    // 1. Read Mode by default
+    const noteDisplay = screen.getByTestId('highlight-note-display');
+    expect(noteDisplay).toHaveTextContent('Existing note');
+    expect(screen.queryByTestId('highlight-note-textarea')).not.toBeInTheDocument();
+
+    const editBtn = screen.getByTestId('highlight-edit-note-btn');
+    expect(editBtn).toHaveTextContent('Edit');
+
+    // 2. Click Edit to enter Edit Mode
+    fireEvent.click(editBtn);
+
     const textarea = screen.getByTestId('highlight-note-textarea');
-    fireEvent.change(textarea, { target: { value: 'Updated note' } });
+    expect(textarea).toBeInTheDocument();
+    expect(screen.queryByTestId('highlight-edit-note-btn')).not.toBeInTheDocument();
 
     const saveBtn = screen.getByTestId('highlight-save-note-btn');
+    expect(saveBtn).toHaveTextContent('Save');
+
+    // 3. Edit text and click Save
+    fireEvent.change(textarea, { target: { value: 'Updated note' } });
     fireEvent.click(saveBtn);
 
     expect(onSaveNote).toHaveBeenCalledWith('Updated note');
+  });
+
+  it('allows canceling note edits to revert back to Read Mode', () => {
+    render(
+      <TextHighlightPopover
+        {...defaultProps}
+        existingNote="Unchanged thought"
+      />
+    );
+
+    // Enter edit mode
+    fireEvent.click(screen.getByTestId('highlight-edit-note-btn'));
+    const textarea = screen.getByTestId('highlight-note-textarea');
+    fireEvent.change(textarea, { target: { value: 'Draft with typos' } });
+
+    // Click Cancel
+    fireEvent.click(screen.getByText('Cancel'));
+
+    // Reverts back to Read Mode displaying original text
+    expect(screen.queryByTestId('highlight-note-textarea')).not.toBeInTheDocument();
+    expect(screen.getByTestId('highlight-note-display')).toHaveTextContent('Unchanged thought');
+    expect(screen.getByTestId('highlight-edit-note-btn')).toHaveTextContent('Edit');
   });
 
   it('renders in sepia and dark themes without crashing', () => {
@@ -328,19 +366,29 @@ describe('TextHighlightPopover', () => {
     expect(screen.getByTestId('overlap-tab-mine')).toBeInTheDocument();
     expect(screen.getByTestId('overlap-tab-fellow')).toHaveTextContent("@aristotle's Note");
 
+    // Initially on My Note tab, displays in Read Mode
+    expect(screen.getByTestId('highlight-note-display')).toHaveTextContent('My own Hamlet note');
+    expect(screen.getByTestId('highlight-edit-note-btn')).toHaveTextContent('Edit');
+
     // Switch to fellow note tab
     fireEvent.click(screen.getByTestId('overlap-tab-fellow'));
     expect(screen.getByTestId('popover-fellow-attribution')).toBeInTheDocument();
     expect(screen.getByText(/Fellow scholar note on Hamlet/i)).toBeInTheDocument();
 
-    // When existingAnnotationId is present, In My Notes badge and Edit My Note button are shown
+    // When existingAnnotationId is present, In My Notes badge is shown and redundant edit button is removed
     expect(screen.getByTestId('fellow-popover-saved-badge')).toHaveTextContent('In My Notes');
-    const editBtn = screen.getByTestId('fellow-popover-add-own-note-btn');
-    expect(editBtn).toHaveTextContent('Edit My Note');
+    expect(screen.queryByTestId('fellow-popover-add-own-note-btn')).not.toBeInTheDocument();
 
-    // Clicking Edit My Note switches to My Note tab and expands textarea
+    // Switching back to My Note tab via the overlap switcher displays personal note in Read Mode with Edit button
+    fireEvent.click(screen.getByTestId('overlap-tab-mine'));
+    expect(screen.getByTestId('highlight-note-display')).toHaveTextContent('My own Hamlet note');
+    const editBtn = screen.getByTestId('highlight-edit-note-btn');
+    expect(editBtn).toHaveTextContent('Edit');
+
+    // Clicking Edit switches to Edit Mode with Save button
     fireEvent.click(editBtn);
     expect(screen.getByTestId('highlight-note-textarea')).toBeInTheDocument();
+    expect(screen.getByTestId('highlight-save-note-btn')).toHaveTextContent('Save');
   });
 
   it('renders privacy-aware fallback text when fellow annotation has no note', () => {

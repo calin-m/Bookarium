@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 11 Nov 2026 16:25:40 GMT  
+**Last Generated**: Wed, 11 Nov 2026 19:38:06 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2470 passed  
+**Total Verified Tests**: 2476 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2470 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2476 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.73%** (14089/14564) — *Target: $\ge$ 95%*
-- **Statements**: **95.43%** (15204/15931) — *Target: $\ge$ 95%*
-- **Functions**: **93.96%** (3128/3329) — *Target: $\ge$ 92%*
-- **Branches**: **87.84%** (14058/16003) — *Target: $\ge$ 85%*
+- **Lines**: **96.73%** (14110/14586) — *Target: $\ge$ 95%*
+- **Statements**: **95.43%** (15226/15954) — *Target: $\ge$ 95%*
+- **Functions**: **94.05%** (3134/3332) — *Target: $\ge$ 92%*
+- **Branches**: **87.81%** (14055/16006) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2470 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2476 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 300 Tests)
 
@@ -499,10 +499,10 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (39 Suites · 561 Tests)
+### 🎨 Catalog & Presentation (39 Suites · 566 Tests)
 
 <details>
-<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
+<summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
 
 - ✔ `should render drawer with all filter sections when open`
 - ✔ `should stage era selection and commit on Show Results click`
@@ -526,6 +526,7 @@
 - ✔ `renders backdrop with touch-none and prevents default on touchmove and wheel to eliminate scroll bleed`
 - ✔ `renders scrollable filter options container with overscroll-contain`
 - ✔ `synchronizes external props on drawer open rerender, toggles chip deselection / All resets, and invokes individual fallback callbacks on Apply`
+- ✔ `renders active filter chips without checkmark icons while maintaining aria-checked and active styles`
 
 </details>
 
@@ -828,7 +829,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionFilterDrawer.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionFilterDrawer.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false`
 - ✔ `renders title, badge count, and all filter sections when isOpen is true`
@@ -845,11 +846,12 @@
 - ✔ `intercepts touchmove and wheel on backdrop with preventDefault to eliminate background scroll bleed`
 - ✔ `renders outer drawer wrapper with overflow-hidden and contain:strict for GPU isolation`
 - ✔ `hides sort direction when isDirectionDisabled is true and renders when enabled`
+- ✔ `renders active shelf, sort, viewmode, and direction chips without checkmark icons while maintaining aria-checked`
 
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionFloatingSearch.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false`
 - ✔ `renders input, focuses on mount, and handles typing when isOpen is true`
@@ -860,8 +862,10 @@
 - ✔ `elevates container above software keyboard when keyboardHeight > 0`
 - ✔ `renders with deep elevation drop shadow and dark ambient light glow`
 - ✔ `supports submitOnEnter for Catalog: holds local state and triggers search only on Enter / submit button with 2-char guardrail`
-- ✔ `blurs input and dismisses keyboard on submit, and invokes smartScrollToContent when contentAnchorId is provided`
-- ✔ `submits on form submit for live collections, blurring input and triggering anchor scroll`
+- ✔ `blurs input and dismisses keyboard on submit, auto-closes, and invokes smartScrollToContent when contentAnchorId is provided`
+- ✔ `submits on form submit for live collections, blurring input, auto-closing and triggering anchor scroll`
+- ✔ `preserves open state on submit when autoCloseOnSubmit is explicitly false`
+- ✔ `proactively blurs virtual keyboard on Enter keydown in the input`
 
 </details>
 
@@ -880,7 +884,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionToolbar.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders search input with placeholder and accessible label`
 - ✔ `calls onSearchChange when user types in search input`
@@ -898,6 +902,7 @@
 - ✔ `enforces single-row mobile layout and propagates compactOnMobile to sort dropdown when singleRowOnMobile is true`
 - ✔ `applies hidden sm:flex to root toolbar when hiddenOnMobile is true`
 - ✔ `keeps toolbar flex visible across all breakpoints when hiddenOnMobile is omitted`
+- ✔ `enforces stacking context boundaries with relative z-10 on root and responsive sm:z-auto on sort and extra controls`
 
 </details>
 
@@ -1296,7 +1301,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (22 Suites · 191 Tests)
+### 📖 In-Browser Focus Reader (22 Suites · 192 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1592,7 +1597,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (17 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders all 4 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -1602,7 +1607,8 @@
 - ✔ `calls onClose when escape key is pressed`
 - ✔ `calls onClose when clicking outside the popover`
 - ✔ `calls onCopyQuote when provided, or copies selected text to clipboard`
-- ✔ `submits note on clicking Save Note button in note textarea`
+- ✔ `renders note in Read Mode by default with Edit button, transitions to Edit Mode with Save button on click, and saves`
+- ✔ `allows canceling note edits to revert back to Read Mode`
 - ✔ `renders in sepia and dark themes without crashing`
 - ✔ `calls onClose when touchstart occurs outside the popover`
 - ✔ `positions docked at bottom on touch devices to avoid native mobile context menu collision`

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CollectionFloatingSearch } from './CollectionFloatingSearch';
 
@@ -65,9 +65,7 @@ describe('CollectionFloatingSearch', () => {
     expect(input.value).toBe('Dante');
     expect(input.placeholder).toBe('Filter quotes...');
 
-    act(() => {
-      vi.advanceTimersByTime(100);
-    });
+    // Verifies synchronous focus on mount for mobile WebKit gesture preservation
     expect(document.activeElement).toBe(input);
 
     fireEvent.change(input, { target: { value: 'Shakespeare' } });
@@ -230,14 +228,15 @@ describe('CollectionFloatingSearch', () => {
     expect(input.value).toBe('');
   });
 
-  it('blurs input and dismisses keyboard on submit, and invokes smartScrollToContent when contentAnchorId is provided', () => {
+  it('blurs input and dismisses keyboard on submit, auto-closes, and invokes smartScrollToContent when contentAnchorId is provided', () => {
     const handleSearchChange = vi.fn();
     const handleSubmit = vi.fn();
+    const handleClose = vi.fn();
 
     render(
       <CollectionFloatingSearch
         isOpen={true}
-        onClose={vi.fn()}
+        onClose={handleClose}
         searchQuery="Dostoevsky"
         onSearchChange={handleSearchChange}
         submitOnEnter={false}
@@ -264,15 +263,18 @@ describe('CollectionFloatingSearch', () => {
     expect(handleSubmit).toHaveBeenCalledWith('Dostoevsky');
     // Assert smartScrollToContent called with anchor
     expect(mockSmartScrollToContent).toHaveBeenCalledWith('test-content-anchor', { offsetTop: 80 });
+    // Assert autoCloseOnSubmit closed floating search
+    expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  it('submits on form submit for live collections, blurring input and triggering anchor scroll', () => {
+  it('submits on form submit for live collections, blurring input, auto-closing and triggering anchor scroll', () => {
     const handleSubmit = vi.fn();
+    const handleClose = vi.fn();
 
     render(
       <CollectionFloatingSearch
         isOpen={true}
-        onClose={vi.fn()}
+        onClose={handleClose}
         searchQuery="Austen"
         onSearchChange={vi.fn()}
         onSubmit={handleSubmit}
@@ -288,5 +290,48 @@ describe('CollectionFloatingSearch', () => {
     expect(blurSpy).toHaveBeenCalled();
     expect(handleSubmit).toHaveBeenCalledWith('Austen');
     expect(mockSmartScrollToContent).toHaveBeenCalledWith('shelf-anchor', { offsetTop: 80 });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves open state on submit when autoCloseOnSubmit is explicitly false', () => {
+    const handleSubmit = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <CollectionFloatingSearch
+        isOpen={true}
+        onClose={handleClose}
+        searchQuery="Woolf"
+        onSearchChange={vi.fn()}
+        onSubmit={handleSubmit}
+        autoCloseOnSubmit={false}
+      />
+    );
+
+    const input = screen.getByTestId('collection-floating-search-input') as HTMLInputElement;
+    const blurSpy = vi.spyOn(input, 'blur');
+
+    fireEvent.submit(input.closest('form')!);
+
+    expect(blurSpy).toHaveBeenCalled();
+    expect(handleSubmit).toHaveBeenCalledWith('Woolf');
+    expect(handleClose).not.toHaveBeenCalled();
+  });
+
+  it('proactively blurs virtual keyboard on Enter keydown in the input', () => {
+    render(
+      <CollectionFloatingSearch
+        isOpen={true}
+        onClose={vi.fn()}
+        searchQuery="Dickens"
+        onSearchChange={vi.fn()}
+      />
+    );
+
+    const input = screen.getByTestId('collection-floating-search-input') as HTMLInputElement;
+    const blurSpy = vi.spyOn(input, 'blur');
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(blurSpy).toHaveBeenCalled();
   });
 });

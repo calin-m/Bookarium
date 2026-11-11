@@ -916,6 +916,19 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       fireEvent.click(saveBtn);
     });
 
+    // Popover remains open in Read Mode displaying the saved note
+    await waitFor(() => {
+      expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+      expect(screen.getByTestId('highlight-note-display')).toHaveTextContent('“My perspective alongside Hypatia”');
+      expect(screen.getByTestId('highlight-edit-note-btn')).toHaveTextContent('Edit');
+    });
+
+    // Close popover via explicit close button
+    const closeBtn = screen.getByRole('button', { name: 'Close selection menu' });
+    await act(async () => {
+      fireEvent.click(closeBtn);
+    });
+
     await waitFor(() => {
       expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
     });

@@ -99,7 +99,7 @@ describe('useReaderAnnotationActions', () => {
       'fellow-1'
     );
 
-    // Saving a note updates the existing annotation
+    // Saving a note updates the existing annotation and keeps the popover open
     await act(async () => {
       await result.current.handleSaveNote('Updated scholarly note');
     });
@@ -108,6 +108,10 @@ describe('useReaderAnnotationActions', () => {
       'ann-1',
       'Updated scholarly note',
       'user-1'
+    );
+    expect(result.current.selectionPopover.isOpen).toBe(true);
+    expect(result.current.selectionPopover.activeAnnotation?.note).toBe(
+      'Updated scholarly note'
     );
 
     // Re-open and queue deletion

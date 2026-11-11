@@ -39,7 +39,7 @@ export interface UseReaderAnnotationActionsOptions {
       note?: string;
     },
     userId?: string
-  ) => Promise<unknown> | unknown;
+  ) => Promise<Annotation> | Annotation;
   updateAnnotationColor: (
     id: string,
     color: HighlightColor,
@@ -158,7 +158,7 @@ export function useReaderAnnotationActions({
       color: HighlightColor;
       note?: string;
     }) => {
-      await addAnnotation(
+      return await addAnnotation(
         {
           bookId: numericId,
           bookTitle,
@@ -208,16 +208,28 @@ export function useReaderAnnotationActions({
           note,
           userId
         );
+        setSelectionPopover((prev) => ({
+          ...prev,
+          activeAnnotation: prev.activeAnnotation
+            ? { ...prev.activeAnnotation, note }
+            : prev.activeAnnotation,
+        }));
       } else {
-        await saveNewBookAnnotation({
+        const created = await saveNewBookAnnotation({
           chapterIndex: activeChapterIndex,
           chapterPage: currentChapterPage,
           selectedText: selectionPopover.selectedText,
           color: 'yellow',
           note,
         });
+        if (created) {
+          setSelectionPopover((prev) => ({
+            ...prev,
+            activeAnnotation: created,
+            isFellowOnly: false,
+          }));
+        }
       }
-      setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
     },
     [
       selectionPopover.activeAnnotation,

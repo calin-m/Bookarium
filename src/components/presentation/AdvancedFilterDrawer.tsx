@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Filter, Check, Sparkles } from 'lucide-react';
+import { Filter, Sparkles } from 'lucide-react';
 import {
   BottomSheetDrawerShell,
   splitCsvTokens,
@@ -219,7 +219,6 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 data-testid={`era-option-${era.id || 'all'}`}
               >
                 <span>{era.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
             );
           })}
@@ -249,7 +248,6 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 data-testid={`sort-option-${sort.value || 'descending'}`}
               >
                 <span>{sort.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
             );
           })}
@@ -290,7 +288,6 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 data-testid={`genre-facet-${facet.id || 'all'}`}
               >
                 <span>{facet.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
             );
           })}
@@ -343,7 +340,6 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 data-testid={`language-option-${lang.value || 'all'}`}
               >
                 <span>{lang.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
             );
           })}
@@ -396,7 +392,6 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
                 data-testid={`format-option-${fmt.value ? fmt.value.replace(/[^a-zA-Z0-9]/g, '-') : 'all'}`}
               >
                 <span>{fmt.label}</span>
-                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
             );
           })}
