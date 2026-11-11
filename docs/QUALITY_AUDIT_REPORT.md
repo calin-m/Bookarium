@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 11 Nov 2026 19:38:06 GMT  
+**Last Generated**: Wed, 11 Nov 2026 22:44:47 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2476 passed  
+**Total Verified Tests**: 2477 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2476 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2477 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.73%** (14110/14586) — *Target: $\ge$ 95%*
-- **Statements**: **95.43%** (15226/15954) — *Target: $\ge$ 95%*
-- **Functions**: **94.05%** (3134/3332) — *Target: $\ge$ 92%*
-- **Branches**: **87.81%** (14055/16006) — *Target: $\ge$ 85%*
+- **Lines**: **96.72%** (14115/14593) — *Target: $\ge$ 95%*
+- **Statements**: **95.42%** (15231/15961) — *Target: $\ge$ 95%*
+- **Functions**: **93.99%** (3132/3332) — *Target: $\ge$ 92%*
+- **Branches**: **87.79%** (14058/16012) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2476 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2477 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 300 Tests)
 
@@ -1941,7 +1941,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 581 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 582 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2128,7 +2128,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (32 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2157,6 +2157,7 @@
 - ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
 - ✔ `automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch`
 - ✔ `handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically`
+- ✔ `handles pool === "quotes" with native PostgREST quote0 and quote1 aliased projection`
 - ✔ `returns empty array for invalid bookId`
 - ✔ `returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC`
 - ✔ `gracefully returns empty array on database error`

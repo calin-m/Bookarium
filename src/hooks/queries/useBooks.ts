@@ -21,6 +21,7 @@ import {
   isSupabaseConfigured,
   filterValidBookPassages,
   sortQuoteEnrichedBooksDeterministically,
+  QUOTE_POOL_COLUMNS,
 } from '@/lib/catalog/supabase-provider';
 import { useHasMounted } from '@/hooks/useHasMounted';
 
@@ -527,9 +528,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
 
     const baseSelect = supabase
       .from('books')
-      .select(
-        'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quotes'
-      );
+      .select(QUOTE_POOL_COLUMNS);
     const scopedSelect =
       baseSelect && typeof baseSelect.in === 'function'
         ? baseSelect.in('id', Array.from(candidateIdSet))
@@ -547,7 +546,11 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
     const books: GutendexBook[] = [];
     for (const row of data) {
       if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
-      const validPassages = filterValidBookPassages(row.quotes);
+      const rowWithQuotes = row as { quotes?: unknown; quote0?: unknown; quote1?: unknown };
+      const rawQuotes = Array.isArray(rowWithQuotes.quotes)
+        ? rowWithQuotes.quotes
+        : [rowWithQuotes.quote0, rowWithQuotes.quote1].filter(Boolean);
+      const validPassages = filterValidBookPassages(rawQuotes);
       if (validPassages.length === 0) continue;
 
       books.push({

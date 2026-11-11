@@ -231,7 +231,7 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       expect(res.headers.get('Set-Cookie')).toBeNull();
       expect(res.headers.get('X-Powered-By')).toBeNull();
       expect(res.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
-      expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=86400, stale-while-revalidate=604800');
+      expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800');
     });
 
     it('rejects oversized Content-Length headers exceeding 15MB threshold', async () => {

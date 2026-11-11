@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.21',
+    date: '2026-11-12',
+    title: 'Server-to-Supabase Egress Optimization, Selective Quote Projection & 2-Spread PostgREST Slicing',
+    sections: {
+      Fixed: [
+        'Selective Catalog Projection & Native 2-Spread PostgREST Slicing (`src/lib/catalog/supabase-provider.ts`, `src/lib/catalog/supabase-provider.test.ts`, `src/hooks/queries/useBooks.ts`, `src/hooks/queries/useBooks.test.ts`, `docs/DECISIONS.md`, `ADR-080`): Resolved unnecessary Server-to-Supabase egress overhead and multi-megabyte payload transfers: (1) Omitted `quotes` from default `CATALOG_METADATA_COLUMNS`, introducing `CATALOG_WITH_QUOTES_COLUMNS` strictly selected when `options.hasQuotes` is explicitly requested, ensuring standard 32-card catalog searches and prefetch misses transfer zero quote arrays; (2) Replaced full `quotes` column selection in `fetchQuoteEnrichedPool` and direct Supabase fallback `fetchQuoteEnrichedBooks` (`useBooks.ts`) with native PostgREST array element projections (`quote0:quotes->0, quote1:quotes->1`) across candidate books, reconstructing 2-spread passages via `[row.quote0, row.quote1].filter(Boolean)` with `row.quotes` fallback, eliminating in-memory slicing of 16 full spreads and reducing quote pool transfer by ~87% with zero database migrations.',
+        'Browser-Tier HTTP Cache Hardening & Edge Shielding (`src/app/api/books/route.ts`, `src/app/api/books/route.test.ts`, `src/app/api/books/content/route.ts`, `src/app/api/books/content/route.test.ts`, `src/app/api/books/content/route.security.test.ts`, `docs/DECISIONS.md`, `ADR-080`): Added browser-tier HTTP caching directives to shield Supabase from repetitive serverless cold runs on localhost, non-Edge environments, and user reloads: (1) Added `max-age=300` to `/api/books` (`public, max-age=300, s-maxage=3600, stale-while-revalidate=86400`), allowing client browsers to cache successful catalog search responses locally for 5 minutes; (2) Added `max-age=86400` to `/api/books/content` (`public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800`) across both Tier 1 Supabase and Tier 2 Gutenberg mirrors, enabling 24-hour browser-tier caching for unabridged novel texts so reopening cached books never re-fetches multi-megabyte plain-text over the network.',
+      ],
+    },
+  },
+  {
     version: '2.9.20',
     date: '2026-11-11',
     title: 'Bookshelf Hover Card Stacking Context, Tactile Search Auto-Dismiss, Dual-State Marginalia & Filter De-Cluttering',

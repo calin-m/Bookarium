@@ -211,6 +211,8 @@ describe('GET /api/books/content', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toContain('text/plain');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=86400');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
     const text = await res.text();
     expect(text).toContain('Pride and Prejudice');

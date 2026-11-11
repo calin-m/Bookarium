@@ -4,6 +4,8 @@ import {
   isSupabaseConfigured,
   mapDatabaseBookToGutendexBook,
   CATALOG_METADATA_COLUMNS,
+  CATALOG_WITH_QUOTES_COLUMNS,
+  QUOTE_POOL_COLUMNS,
 } from './supabase-provider';
 import type { DatabaseBook } from '@/types/database.types';
 import type { CatalogQueryOptions } from '@/types/catalog.types';
@@ -315,8 +317,12 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.clientCountry).toBe('US');
       expect(result.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
       expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
-      expect(CATALOG_METADATA_COLUMNS).toContain('quotes');
+      expect(CATALOG_METADATA_COLUMNS).not.toContain('quotes');
       expect(CATALOG_METADATA_COLUMNS).not.toContain('content');
+      expect(CATALOG_WITH_QUOTES_COLUMNS).toContain('quotes');
+      expect(CATALOG_WITH_QUOTES_COLUMNS).not.toContain('content');
+      expect(QUOTE_POOL_COLUMNS).toContain('quote0:quotes->0');
+      expect(QUOTE_POOL_COLUMNS).toContain('quote1:quotes->1');
       expect(builder.eq).toHaveBeenCalledWith('copyright', false);
       expect(builder.textSearch).toHaveBeenCalledWith('search_vector', 'Jane Austen Fiction', {
         type: 'websearch',
@@ -590,6 +596,7 @@ describe('SupabaseCatalogProvider', () => {
         hasQuotes: true,
       });
 
+      expect(client.from().select).toHaveBeenCalledWith(CATALOG_WITH_QUOTES_COLUMNS, { count: 'estimated' });
       expect(builder.neq).toHaveBeenCalledWith('quotes', '[]');
       expect(result.results).toHaveLength(1);
       expect(result.results[0].id).toBe(1342);
@@ -735,6 +742,68 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results[1].quotes).toHaveLength(2);
       expect(result.results[0].quotes![0].chapterLabel).toBe('Passage I');
       expect(result.results[0].quotes![1].chapterLabel).toBe('Passage II');
+    });
+
+    it('handles pool === "quotes" with native PostgREST quote0 and quote1 aliased projection', async () => {
+      const mockAliasedData = [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: ['Romance'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 65000,
+          quote0: { chapterLabel: 'Passage I', openingLine: 'P&P Line 1', quoteExcerpt: 'P&P Quote 1', commentary: 'P&P Com 1' },
+          quote1: { chapterLabel: 'Passage II', openingLine: 'P&P Line 2', quoteExcerpt: 'P&P Quote 2', commentary: 'P&P Com 2' },
+        },
+      ];
+
+      let requestedColumns = '';
+      const client = {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'books') {
+            return {
+              select: vi.fn().mockImplementation((cols: string) => {
+                requestedColumns = cols;
+                if (cols === 'id') {
+                  return {
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockResolvedValue({ data: [{ id: 1342 }] }),
+                    }),
+                  };
+                }
+                return {
+                  in: vi.fn().mockReturnValue({
+                    neq: vi.fn().mockReturnValue({
+                      order: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockResolvedValue({ data: mockAliasedData, error: null }),
+                      }),
+                    }),
+                  }),
+                };
+              }),
+            };
+          }
+          return {};
+        }),
+      };
+
+      const provider = new SupabaseCatalogProvider(client as any);
+      const result = await provider.searchBooks({
+        page: 1,
+        limit: 600,
+        pool: 'quotes',
+        country: 'US',
+      });
+
+      expect(requestedColumns).toBe(QUOTE_POOL_COLUMNS);
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].quotes).toHaveLength(2);
+      expect(result.results[0].quotes![0].quoteExcerpt).toBe('P&P Quote 1');
+      expect(result.results[0].quotes![1].quoteExcerpt).toBe('P&P Quote 2');
     });
   });
 

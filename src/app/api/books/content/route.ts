@@ -509,7 +509,7 @@ export async function GET(request: NextRequest) {
           status: 200,
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
-            'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
             'Vary': 'x-vercel-ip-country, Accept-Encoding',
             'X-Bookarium-Source': 'supabase',
           },
@@ -666,7 +666,7 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
       'Vary': 'x-vercel-ip-country, Accept-Encoding',
     },
   });

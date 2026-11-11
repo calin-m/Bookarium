@@ -17,10 +17,22 @@ import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { LITERARY_QUOTES } from '@/config/literary-quotes';
 
 /**
- * Columns explicitly selected for catalog search to prevent transferring large unabridged text.
+ * Columns explicitly selected for catalog search to prevent transferring large unabridged text or unrendered quote arrays.
  */
 export const CATALOG_METADATA_COLUMNS =
-  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, quotes, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
+
+/**
+ * Extended catalog columns including full quote passages when specifically requested by options.hasQuotes.
+ */
+export const CATALOG_WITH_QUOTES_COLUMNS =
+  `${CATALOG_METADATA_COLUMNS}, quotes` as const;
+
+/**
+ * 2-spread quota-sliced columns for high-efficiency Quote Pool discovery via PostgREST native JSON array element projection.
+ */
+export const QUOTE_POOL_COLUMNS =
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quote0:quotes->0, quote1:quotes->1' as const;
 
 const FEATURED_HERO_ORDER_MAP = new Map<number, number>(
   FEATURED_HERO_BOOKS.map((b, idx) => [b.id, idx])
@@ -231,7 +243,10 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     jurisdictionRule: string,
     currentYear: number
   ) {
-    let query = supabase.from('books').select(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
+    const selectedColumns = options.hasQuotes
+      ? CATALOG_WITH_QUOTES_COLUMNS
+      : CATALOG_METADATA_COLUMNS;
+    let query = supabase.from('books').select(selectedColumns as string, { count: 'estimated' });
 
     // Enforce zero-copyright
     query = query.eq('copyright', false);
@@ -351,9 +366,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
       const baseSelect = supabase
         .from('books')
-        .select(
-          'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quotes'
-        );
+        .select(QUOTE_POOL_COLUMNS);
       const scopedSelect =
         baseSelect && typeof baseSelect.in === 'function'
           ? baseSelect.in('id', Array.from(candidateIdSet))
@@ -375,7 +388,11 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const books: GutendexBook[] = [];
       for (const row of data) {
         if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
-        const validPassages = filterValidBookPassages(row.quotes);
+        const rowWithQuotes = row as { quotes?: unknown; quote0?: unknown; quote1?: unknown };
+        const rawQuotes = Array.isArray(rowWithQuotes.quotes)
+          ? rowWithQuotes.quotes
+          : [rowWithQuotes.quote0, rowWithQuotes.quote1].filter(Boolean);
+        const validPassages = filterValidBookPassages(rawQuotes);
         if (validPassages.length === 0) continue;
 
         books.push({
@@ -454,7 +471,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         );
       }
 
-      const rawRows: DatabaseBook[] = (data || []) as DatabaseBook[];
+      const rawRows: DatabaseBook[] = (data || []) as unknown as DatabaseBook[];
       const initialBatch = this.filterBatch(rawRows, options, country, currentYear);
       const finalResults = [...initialBatch.validBooks];
       let totalFiltered = initialBatch.restrictedCount;
@@ -487,7 +504,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
             break;
           }
 
-          const rawBackfill = backfillData as DatabaseBook[];
+          const rawBackfill = backfillData as unknown as DatabaseBook[];
           const backfillBatch = this.filterBatch(rawBackfill, options, country, currentYear);
           totalFiltered += backfillBatch.restrictedCount;
           totalSentinelFiltered += backfillBatch.sentinelCount;

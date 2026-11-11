@@ -31,6 +31,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
     const json = await res.json();
     expect(json.results).toBeDefined();
     expect(Array.isArray(json.results)).toBe(true);
@@ -182,6 +184,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
     const json = await res.json();
     expect(json.results).toBeDefined();
   });
@@ -309,6 +313,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
     const json = await res.json();
     expect(json.source).toBe('supabase');
     expect(json.results).toHaveLength(1);
@@ -344,6 +350,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
     const json = await res.json();
     expect(json.source).toBe('upstream');
     expect(json.results).toHaveLength(1);
