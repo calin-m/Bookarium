@@ -693,8 +693,7 @@ describe('useAuthStore', () => {
     const resetAccoladesSpy = vi.spyOn(useAccoladesStore.getState(), 'resetAccolades');
     const clearFellowshipStateSpy = vi.spyOn(useFellowshipStore.getState(), 'clearFellowshipState');
     const clearAllVolumesSpy = vi.spyOn(useReaderStore.getState(), 'clearAllVolumes').mockResolvedValue(undefined);
-    const resetSpeechSpy = vi.spyOn(usePreferencesStore.getState(), 'resetSpeechPreferences');
-    const setStickyScrollSpy = vi.spyOn(usePreferencesStore.getState(), 'setStickyScrollEnabled');
+    const resetAllPreferencesSpy = vi.spyOn(usePreferencesStore.getState(), 'resetAllPreferencesStore');
     const clearOfflineSpy = vi.spyOn(offlineStorage, 'clearAllOfflineBooks').mockResolvedValue(undefined);
 
     useReaderStore.setState({
@@ -706,6 +705,8 @@ describe('useAuthStore', () => {
     });
     usePreferencesStore.setState({
       stickyScrollEnabled: false,
+      exitBookmarkReminderEnabled: false,
+      speechRate: 1.5,
       customDefaults: {
         theme: 'sepia',
         stickyScrollEnabled: false,
@@ -760,8 +761,10 @@ describe('useAuthStore', () => {
     expect(resetAccoladesSpy).toHaveBeenCalled();
     expect(clearFellowshipStateSpy).toHaveBeenCalled();
     expect(clearAllVolumesSpy).toHaveBeenCalled();
-    expect(resetSpeechSpy).toHaveBeenCalled();
-    expect(setStickyScrollSpy).toHaveBeenCalledWith(true);
+    expect(resetAllPreferencesSpy).toHaveBeenCalled();
+    expect(usePreferencesStore.getState().stickyScrollEnabled).toBe(true);
+    expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(true);
+    expect(usePreferencesStore.getState().speechRate).toBe(1.0);
     expect(useReaderStore.getState().fontSize).toBe(18);
     expect(useReaderStore.getState().brightness).toBe(100);
     expect(useReaderStore.getState().theme).toBe('light');

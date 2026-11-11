@@ -13,6 +13,28 @@ const DB_NAME = 'BookariumOfflineDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'offline_books';
 
+const coverObjectUrlCache = new Map<number, { size: number; url: string }>();
+
+function revokeCachedCoverObjectUrl(bookId: number): void {
+  const cached = coverObjectUrlCache.get(bookId);
+  if (cached) {
+    if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+      try {
+        URL.revokeObjectURL(cached.url);
+      } catch {
+        // Ignore environment errors
+      }
+    }
+    coverObjectUrlCache.delete(bookId);
+  }
+}
+
+function revokeAllCachedCoverObjectUrls(): void {
+  for (const bookId of Array.from(coverObjectUrlCache.keys())) {
+    revokeCachedCoverObjectUrl(bookId);
+  }
+}
+
 export const OFFLINE_BOOKS_UPDATED_EVENT = 'bookarium:offline-updated';
 
 /**
@@ -292,6 +314,7 @@ export async function isBookOffline(bookId: number): Promise<boolean> {
  * Removes an offline book record from IndexedDB.
  */
 export async function removeOfflineBook(bookId: number): Promise<void> {
+  revokeCachedCoverObjectUrl(bookId);
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -461,10 +484,22 @@ export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
       }
     }
 
-    const coverUrl =
-      rec.coverBlob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
-        ? URL.createObjectURL(rec.coverBlob)
-        : `https://www.gutenberg.org/cache/epub/${rec.bookId}/pg${rec.bookId}.cover.medium.jpg`;
+    let coverUrl = `https://www.gutenberg.org/cache/epub/${rec.bookId}/pg${rec.bookId}.cover.medium.jpg`;
+    if (rec.coverBlob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+      const cached = coverObjectUrlCache.get(rec.bookId);
+      if (cached && cached.size === rec.coverBlob.size) {
+        coverUrl = cached.url;
+      } else {
+        if (cached) {
+          revokeCachedCoverObjectUrl(rec.bookId);
+        }
+        coverUrl = URL.createObjectURL(rec.coverBlob);
+        coverObjectUrlCache.set(rec.bookId, {
+          size: rec.coverBlob.size,
+          url: coverUrl,
+        });
+      }
+    }
 
     metas.push({
       id: rec.bookId,
@@ -494,6 +529,7 @@ export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
  * Purges all offline downloaded books.
  */
 export async function clearAllOfflineBooks(): Promise<void> {
+  revokeAllCachedCoverObjectUrls();
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {

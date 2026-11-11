@@ -46,7 +46,11 @@ export interface UseReaderSessionReturn {
   setCurrentChapterPage: React.Dispatch<React.SetStateAction<number>>;
   bookmarkRow: number;
   bookmarkText?: string;
-  setBookmarkRow: (row: number, bookmarkText?: string) => void;
+  setBookmarkRow: (
+    row: number,
+    bookmarkText?: string,
+    options?: { isLayoutSync?: boolean }
+  ) => void;
   activeChapter: ChapterSection | undefined;
   activeChapterPageCount: number;
   currentPageText: string;
@@ -93,6 +97,7 @@ export function useReaderSession({
   const [resumeNotice, setResumeNotice] = useState<ResumeNotice | null>(null);
   const hasRestoredPositionRef = useRef(false);
   const isRestoringPositionRef = useRef(false);
+  const hasUserModifiedSessionRef = useRef(false);
   const restoredPositionRef = useRef<{
     chapterIndex: number;
     chapterPage: number;
@@ -115,11 +120,36 @@ export function useReaderSession({
     isViewingPinnedPage && pinnedBookmark ? pinnedBookmark.bookmarkText : undefined;
 
   const setBookmarkRow = useCallback(
-    (row: number, nextBookmarkText?: string) => {
+    (
+      row: number,
+      nextBookmarkText?: string,
+      options?: { isLayoutSync?: boolean }
+    ) => {
       const clampedRow = Math.max(0, Math.round(row));
+      if (!options?.isLayoutSync) {
+        hasUserModifiedSessionRef.current = true;
+      }
       if (clampedRow === 0) {
         restoredPositionRef.current = null;
         setPinnedBookmark(null);
+      } else if (options?.isLayoutSync) {
+        const trimmed = nextBookmarkText?.trim();
+        const resolvedText = trimmed && trimmed.length > 0 ? trimmed : undefined;
+        if (restoredPositionRef.current) {
+          restoredPositionRef.current = {
+            ...restoredPositionRef.current,
+            bookmarkRow: clampedRow,
+            bookmarkText: resolvedText ?? restoredPositionRef.current.bookmarkText,
+          };
+        }
+        setPinnedBookmark((prev) => ({
+          chapterIndex: prev?.chapterIndex ?? activeChapterIndex,
+          chapterPage: prev?.chapterPage ?? currentChapterPage,
+          globalPage: prev?.globalPage ?? currentGlobalPage,
+          bookmarkRow: clampedRow,
+          bookmarkText: resolvedText ?? prev?.bookmarkText,
+          lastReadAt: prev?.lastReadAt ?? restoredPositionRef.current?.lastReadAt,
+        }));
       } else if (nextBookmarkText !== undefined) {
         restoredPositionRef.current = null;
         const trimmed = nextBookmarkText.trim();
@@ -373,6 +403,7 @@ export function useReaderSession({
     if (
       !hasRestoredPositionRef.current ||
       isRestoringPositionRef.current ||
+      hasUserModifiedSessionRef.current ||
       !storedPosition ||
       readingStatus === 'finished' ||
       initialPosition ||
@@ -381,18 +412,26 @@ export function useReaderSession({
       return;
     }
     const currentRestored = restoredPositionRef.current;
-    if (!currentRestored) return;
+    const hasMeaningfulStoredPosition =
+      storedPosition.chapterIndex > 0 ||
+      storedPosition.chapterPage > 1 ||
+      (storedPosition.bookmarkRow ?? 0) > 0 ||
+      Boolean(storedPosition.bookmarkText);
+    if (!currentRestored && !hasMeaningfulStoredPosition) return;
 
     const incomingTime = storedPosition.lastReadAt
       ? new Date(storedPosition.lastReadAt).getTime()
       : 0;
-    const currentTime = currentRestored.lastReadAt
+    const currentTime = currentRestored?.lastReadAt
       ? new Date(currentRestored.lastReadAt).getTime()
-      : 0;
-    const isIncomingNewer = incomingTime > currentTime;
+      : pinnedBookmark?.lastReadAt
+        ? new Date(pinnedBookmark.lastReadAt).getTime()
+        : 0;
+    const isIncomingNewer = !currentRestored ? hasMeaningfulStoredPosition : incomingTime > currentTime;
     const isBookmarkTextEnriched =
+      Boolean(currentRestored) &&
       incomingTime >= currentTime &&
-      !currentRestored.bookmarkText &&
+      !currentRestored?.bookmarkText &&
       Boolean(storedPosition.bookmarkText);
 
     if (isIncomingNewer || isBookmarkTextEnriched) {
@@ -452,7 +491,7 @@ export function useReaderSession({
         });
       });
     }
-  }, [storedPosition, readingStatus, initialPosition, chaptersWithPagination]);
+  }, [storedPosition, readingStatus, initialPosition, chaptersWithPagination, pinnedBookmark?.lastReadAt]);
 
   // Retrieve Current Page Text for Paginated Mode
   const currentPageText = useMemo(() => {
@@ -490,6 +529,12 @@ export function useReaderSession({
         const resolvedPage = matchingPageIdx + 1;
         const resolvedGlobal = (activeChapter.startPageNumber || 1) + matchingPageIdx;
         const wasOnPinnedPage = currentChapterPage === pinnedBookmark.chapterPage;
+        if (!hasUserModifiedSessionRef.current && restoredPositionRef.current) {
+          restoredPositionRef.current = {
+            ...restoredPositionRef.current,
+            chapterPage: resolvedPage,
+          };
+        }
         queueMicrotask(() => {
           setPinnedBookmark((prev) =>
             prev
@@ -556,8 +601,26 @@ export function useReaderSession({
                 ) {
                   return;
                 }
+                if (
+                  !hasUserModifiedSessionRef.current &&
+                  existingStored &&
+                  existingStored.chapterIndex === pinnedBookmark.chapterIndex &&
+                  existingStored.chapterPage === pinnedBookmark.chapterPage &&
+                  existingStored.bookmarkText === pinnedBookmark.bookmarkText
+                ) {
+                  return;
+                }
               } else {
                 restored!.bookmarkRow = pinnedBookmark.bookmarkRow;
+                if (
+                  !hasUserModifiedSessionRef.current &&
+                  existingStored &&
+                  existingStored.chapterIndex === pinnedBookmark.chapterIndex &&
+                  existingStored.chapterPage === pinnedBookmark.chapterPage &&
+                  existingStored.bookmarkText === pinnedBookmark.bookmarkText
+                ) {
+                  return;
+                }
               }
             } else {
               restoredPositionRef.current = null;
@@ -646,6 +709,7 @@ export function useReaderSession({
 
   // Navigation Handlers
   const handlePrevPage = useCallback(() => {
+    hasUserModifiedSessionRef.current = true;
     if (currentChapterPage > 1) {
       setCurrentChapterPage((p) => p - 1);
     } else if (activeChapterIndex > 0) {
@@ -657,6 +721,7 @@ export function useReaderSession({
   }, [currentChapterPage, activeChapterIndex, chaptersWithPagination]);
 
   const handleNextPage = useCallback(() => {
+    hasUserModifiedSessionRef.current = true;
     if (currentChapterPage < activeChapterPageCount) {
       setCurrentChapterPage((p) => p + 1);
     } else if (activeChapterIndex < chaptersWithPagination.length - 1) {
@@ -666,11 +731,13 @@ export function useReaderSession({
   }, [currentChapterPage, activeChapterPageCount, activeChapterIndex, chaptersWithPagination.length]);
 
   const handleSelectChapter = useCallback((index: number) => {
+    hasUserModifiedSessionRef.current = true;
     setActiveChapterIndex(index);
     setCurrentChapterPage(1);
   }, []);
 
   const handleRestart = useCallback(() => {
+    hasUserModifiedSessionRef.current = true;
     setActiveChapterIndex(0);
     setCurrentChapterPage(1);
     setPinnedBookmark(null);
@@ -695,6 +762,7 @@ export function useReaderSession({
   }, [numericId, saveReadingPosition, setProgress]);
 
   const handlePageJump = useCallback((targetPage: number) => {
+    hasUserModifiedSessionRef.current = true;
     let accumulatedPages = 0;
     for (let i = 0; i < chaptersWithPagination.length; i++) {
       const chap = chaptersWithPagination[i];

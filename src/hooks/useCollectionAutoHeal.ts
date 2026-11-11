@@ -8,6 +8,7 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { hasAuthorLifespans, featuredHeroToGutendexBook } from '@/lib/book-metadata';
+import { patchOfflineBookAuthors } from '@/lib/offline-storage';
 import { formatAuthorNames } from '@/lib/utils';
 import type { GutendexBook } from '@/types/book.types';
 
@@ -130,6 +131,9 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       for (const book of heroBooksToEnrich) {
         const author = formatAuthorNames(book.authors);
         useAnnotationStore.getState().updateBookMetadata(book.id, book.title, author);
+        if (book.authors?.length) {
+          void patchOfflineBookAuthors(book.id, book.authors);
+        }
       }
     }
   }, [hasMounted, savedBooks, favoriteBooks, readingPositions, annotations, fellowAnnotations, symposiums]);
@@ -262,6 +266,9 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     for (const book of freshResults) {
       const author = book.authors ? formatAuthorNames(book.authors) : undefined;
       useAnnotationStore.getState().updateBookMetadata(book.id, book.title, author);
+      if (book.authors?.length) {
+        void patchOfflineBookAuthors(book.id, book.authors);
+      }
     }
   }, [missingBooksData?.results]);
 

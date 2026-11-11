@@ -133,10 +133,19 @@ export function Providers({
       }
     };
 
+    const handleTokenRefreshed = () => {
+      if (!isLoading && user?.id) {
+        lastSyncTime = Date.now();
+        syncAllStoresWithCloud(user.id);
+      }
+    };
+
     window.addEventListener('online', handleOnline);
+    window.addEventListener('bookarium:auth-token-refreshed', handleTokenRefreshed);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.removeEventListener('online', handleOnline);
+      window.removeEventListener('bookarium:auth-token-refreshed', handleTokenRefreshed);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isLoading, user?.id]);

@@ -47,6 +47,7 @@ export interface AnnotationState {
   spoilerShieldEnabled: boolean;
   outbox: AnnotationOutboxAction[];
   tombstones: string[];
+  lastAnnotationSyncAt: string | null;
   isSyncing: boolean;
 
   setMarginaliaSourceFilter: (filter: MarginaliaSourceFilter) => void;
@@ -115,6 +116,7 @@ export const useAnnotationStore = create<AnnotationState>()(
       spoilerShieldEnabled: true,
       outbox: [],
       tombstones: [],
+      lastAnnotationSyncAt: null,
       isSyncing: false,
 
       setMarginaliaSourceFilter: (filter) => {
@@ -626,7 +628,22 @@ export const useAnnotationStore = create<AnnotationState>()(
 
           if (error) throw error;
 
+          const pendingDeleteIds = new Set(
+            get()
+              .outbox.filter((action) => action.type === 'DELETE_ANNOTATION')
+              .map((action) => String(action.payload.id))
+          );
+          const pendingUpsertIds = new Set(
+            get()
+              .outbox.filter((action) => action.type === 'UPSERT_ANNOTATION')
+              .map((action) => String(action.payload.id))
+          );
           const currentTombstones = get().tombstones;
+          const activeTombstones = currentTombstones.filter((id) => pendingDeleteIds.has(id));
+          const lastSyncTime = get().lastAnnotationSyncAt
+            ? new Date(get().lastAnnotationSyncAt!).getTime()
+            : 0;
+
           const localAnnotations = get().annotations.filter((la) => !currentTombstones.includes(la.id));
           const localMetaMap = new Map<string, { bookTitle?: string; bookAuthor?: string; language?: string }>();
           for (const la of localAnnotations) {
@@ -659,15 +676,23 @@ export const useAnnotationStore = create<AnnotationState>()(
             })
             .filter((r) => !currentTombstones.includes(r.id));
 
-          // Merge: Preserve any local guest annotations that don't exist remotely and apply LWW when local is newer
+          // Merge: Preserve any local guest annotations or pending local edits that don't exist remotely and apply LWW when local is newer
           const merged = [...remoteAnnotations];
           const unSyncedGuestAnnotations: Annotation[] = [];
 
           for (const la of localAnnotations) {
             const remoteIdx = merged.findIndex((r) => r.id === la.id);
             if (remoteIdx === -1) {
-              merged.push(la);
-              unSyncedGuestAnnotations.push(la);
+              const localTime = new Date(la.updatedAt).getTime();
+              const isGuestOrPendingOrNewer =
+                !la.userId ||
+                !lastSyncTime ||
+                pendingUpsertIds.has(la.id) ||
+                localTime > lastSyncTime;
+              if (isGuestOrPendingOrNewer) {
+                merged.push(la);
+                unSyncedGuestAnnotations.push(la);
+              }
             } else {
               const remoteItem = merged[remoteIdx];
               const localTime = new Date(la.updatedAt).getTime();
@@ -679,7 +704,11 @@ export const useAnnotationStore = create<AnnotationState>()(
             }
           }
 
-          set({ annotations: merged });
+          set({
+            annotations: merged,
+            tombstones: activeTombstones,
+            lastAnnotationSyncAt: new Date().toISOString(),
+          });
 
           // Bidirectional sync: upload guest annotations to Supabase
           if (unSyncedGuestAnnotations.length > 0) {
@@ -715,6 +744,7 @@ export const useAnnotationStore = create<AnnotationState>()(
           spoilerShieldEnabled: true,
           outbox: [],
           tombstones: [],
+          lastAnnotationSyncAt: null,
         });
       },
     }),

@@ -66,7 +66,12 @@ export interface ReaderState {
   toggleMobileTray: () => void;
   setProgress: (bookId: number, progress: number) => void;
   getProgress: (bookId: number) => number;
-  saveReadingPosition: (bookId: number, position: BookReadingPosition, userId?: string) => void;
+  saveReadingPosition: (
+    bookId: number,
+    position: BookReadingPosition,
+    userId?: string,
+    options?: { immediateCloudSync?: boolean }
+  ) => void;
   enrichReadingPositions: (freshBooks: GutendexBook[]) => void;
   getReadingPosition: (bookId: number) => BookReadingPosition | null;
   clearReadingPosition: (bookId: number, userId?: string) => Promise<void>;
@@ -205,7 +210,7 @@ export const useReaderStore = create<ReaderState>()(
         return get().readingProgress[bookId] ?? 0;
       },
 
-      saveReadingPosition: (bookId, position, userId) => {
+      saveReadingPosition: (bookId, position, userId, options) => {
         const currentBook = get().currentBook;
         const existingPos = get().readingPositions[bookId];
         let enrichedPosition: BookReadingPosition = position;
@@ -299,6 +304,12 @@ export const useReaderStore = create<ReaderState>()(
         const existingTimer = progressDebounceTimers.get(bookId);
         if (existingTimer) {
           clearTimeout(existingTimer);
+          progressDebounceTimers.delete(bookId);
+        }
+
+        if (options?.immediateCloudSync) {
+          void get().syncReadingPositionToCloud(bookId, enrichedPosition, currentUserId);
+          return;
         }
 
         const timer = setTimeout(() => {
@@ -426,16 +437,34 @@ export const useReaderStore = create<ReaderState>()(
               data,
               existingLocal
             );
-            set((state) => ({
-              readingPositions: {
-                ...state.readingPositions,
-                [bookId]: remotePosition,
-              },
-              readingProgress: {
-                ...state.readingProgress,
-                [bookId]: progress,
-              },
-            }));
+            const remoteTime = remotePosition.lastReadAt
+              ? new Date(remotePosition.lastReadAt).getTime()
+              : 0;
+            const localTime = existingLocal?.lastReadAt
+              ? new Date(existingLocal.lastReadAt).getTime()
+              : 0;
+            const shouldAdoptRemote =
+              !existingLocal ||
+              remoteTime >= localTime ||
+              (!existingLocal.bookmarkText && Boolean(remotePosition.bookmarkText));
+
+            if (shouldAdoptRemote) {
+              const pendingTimer = progressDebounceTimers.get(bookId);
+              if (pendingTimer) {
+                clearTimeout(pendingTimer);
+                progressDebounceTimers.delete(bookId);
+              }
+              set((state) => ({
+                readingPositions: {
+                  ...state.readingPositions,
+                  [bookId]: remotePosition,
+                },
+                readingProgress: {
+                  ...state.readingProgress,
+                  [bookId]: progress,
+                },
+              }));
+            }
             return remotePosition;
           }
         } catch {
@@ -520,6 +549,11 @@ export const useReaderStore = create<ReaderState>()(
 
               // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
               if (!localPos || remoteTime >= localTime) {
+                const pendingTimer = progressDebounceTimers.get(bookId);
+                if (pendingTimer) {
+                  clearTimeout(pendingTimer);
+                  progressDebounceTimers.delete(bookId);
+                }
                 const { position: mergedPosition, progress, shouldKeepLocalAuthors } =
                   decodeRemoteReadingPosition(row, localPos);
                 nextPositions[bookId] = mergedPosition;

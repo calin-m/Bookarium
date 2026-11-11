@@ -231,8 +231,21 @@ export function mergeDownloadedShelfBooks(
     }
   }
   for (const b of offlineBooks) {
-    if (isBookOffline(b.id) && !map.has(b.id)) {
+    if (!isBookOffline(b.id)) continue;
+    const existing = map.get(b.id);
+    if (!existing) {
       map.set(b.id, b);
+      continue;
+    }
+    const offlineCover = b.formats?.['image/jpeg'];
+    if (offlineCover && offlineCover.startsWith('blob:')) {
+      map.set(b.id, {
+        ...existing,
+        formats: {
+          ...existing.formats,
+          'image/jpeg': offlineCover,
+        },
+      });
     }
   }
   return Array.from(map.values());

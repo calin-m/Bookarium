@@ -1046,7 +1046,7 @@ describe('ReaderSurface', () => {
       expect(bookmarkSlider).toHaveStyle({ top: '80px', height: '80px' });
       expect(screen.queryByTestId('reader-bookmark-line-badge')).toBeNull();
       expect(screen.getByTestId('reader-bookmark-tab')).toBeInTheDocument();
-      expect(onBookmarkRowChange).toHaveBeenCalledWith(2);
+      expect(onBookmarkRowChange).toHaveBeenCalledWith(2, expectedRow1Text, { isLayoutSync: true });
     } finally {
       document.createRange = origCreateRange;
       window.requestAnimationFrame = origRaf;

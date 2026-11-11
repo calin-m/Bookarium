@@ -61,6 +61,9 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/3\. Local-First Browser Storage/i)).toBeInTheDocument();
     expect(screen.getByText(/localStorage:/i)).toBeInTheDocument();
     expect(screen.getByText(/IndexedDB:/i)).toBeInTheDocument();
+    expect(screen.getByText(/On-Device Web Speech API Narration:/i)).toBeInTheDocument();
+    expect(screen.getByText(/window\.speechSynthesis/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bookarium never records reader voice input/i)).toBeInTheDocument();
 
     // Section 4: Account Data & Cloud Sync
     expect(screen.getByText(/4\. Cloud Sync & Account Data/i)).toBeInTheDocument();
@@ -69,6 +72,11 @@ describe('PrivacyPage', () => {
     // Section 5: User Rights & Self-Service Erasure
     expect(screen.getByText(/5\. Your Rights & Self-Service Data Erasure/i)).toBeInTheDocument();
     expect(screen.getByText(/GDPR Articles 15–20/i)).toBeInTheDocument();
+    expect(screen.getByText(/Email-Verified 3-Tier Zero-Retention Erasure Protocol/i)).toBeInTheDocument();
+    expect(screen.getByText(/1\. Database Purge/i)).toBeInTheDocument();
+    expect(screen.getByText(/2\. Hardware Teardown/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Zero Soft Deletes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Guest Reader Dominion:/i)).toBeInTheDocument();
 
     // Section 6: US & Global Privacy Frameworks
     expect(screen.getByText(/6\. United States & Global Privacy Frameworks/i)).toBeInTheDocument();
@@ -84,6 +92,8 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/cookie-less aggregate performance telemetry/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Project Gutenberg/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Cloudflare Turnstile/i)).toBeInTheDocument();
+    expect(screen.getByText(/Privacy-preserving, non-tracking bot protection/i)).toBeInTheDocument();
   });
 
   it('provides working navigation links to catalog and account settings', () => {
@@ -92,8 +102,8 @@ describe('PrivacyPage', () => {
     const backLink = screen.getByRole('link', { name: /Back to Catalog/i });
     expect(backLink).toHaveAttribute('href', ROUTES.HOME);
 
-    const accountLink = screen.getByRole('link', { name: /Manage account & self-service data erasure/i });
-    expect(accountLink).toHaveAttribute('href', ROUTES.ACCOUNT);
+    const accountLink = screen.getByRole('link', { name: /Execute Self-Service Deletion in Account Security/i });
+    expect(accountLink).toHaveAttribute('href', ROUTES.ACCOUNT + '?tab=security');
   });
 
   it('handles Navbar view change callback by navigating via router', () => {

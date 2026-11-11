@@ -329,6 +329,32 @@ describe('book-sorting utility', () => {
       const leastDownloaded = sortBooks(books, 'downloads_asc');
       expect(leastDownloaded.map((b) => b.id)).toEqual([1, 3, 2]); // 5000, 12000, 20000
     });
+
+    it('overlays local blob cover URLs from offlineBooks onto savedBooks in mergeDownloadedShelfBooks', () => {
+      const savedWithRemoteCover: GutendexBook = {
+        ...mockBookA,
+        subjects: ['Fantasy', 'Classics'],
+        formats: {
+          'image/jpeg': 'https://www.gutenberg.org/cache/epub/1/pg1.cover.medium.jpg',
+        },
+      };
+      const offlineWithBlobCover: GutendexBook = {
+        ...mockBookA,
+        subjects: [],
+        formats: {
+          'image/jpeg': 'blob:https://bookarium.app/local-cover-1',
+        },
+      };
+
+      const merged = mergeDownloadedShelfBooks(
+        [savedWithRemoteCover],
+        [offlineWithBlobCover],
+        (id) => id === 1
+      );
+      expect(merged).toHaveLength(1);
+      expect(merged[0].subjects).toEqual(['Fantasy', 'Classics']);
+      expect(merged[0].formats['image/jpeg']).toBe('blob:https://bookarium.app/local-cover-1');
+    });
   });
 });
 

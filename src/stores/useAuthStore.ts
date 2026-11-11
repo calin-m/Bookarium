@@ -198,10 +198,7 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
       },
       async () => {
         const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
-        usePreferencesStore.getState().resetSpeechPreferences();
-        usePreferencesStore.getState().setStickyScrollEnabled(true);
-        usePreferencesStore.getState().setCustomDefaults(null);
-        usePreferencesStore.getState().setPreferencesUpdatedAt(null);
+        usePreferencesStore.getState().resetAllPreferencesStore();
       },
       async () => {
         const { useThemeStore } = await import('@/stores/useThemeStore');
@@ -377,6 +374,15 @@ export const useAuthStore = create<AuthState>()(
       }));
       if (user) {
         get().fetchProfile();
+        if (
+          event === 'TOKEN_REFRESHED' &&
+          typeof window !== 'undefined' &&
+          typeof window.dispatchEvent === 'function'
+        ) {
+          window.dispatchEvent(
+            new CustomEvent('bookarium:auth-token-refreshed', { detail: { userId: user.id } })
+          );
+        }
       } else {
         set({ profile: null });
       }

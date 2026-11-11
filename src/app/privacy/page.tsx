@@ -132,7 +132,7 @@ export default function PrivacyPage() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
-              Bookarium prioritizes local-first architecture. Your reading preferences and offline library are preserved
+              Bookarium prioritizes local-first architecture. Your reading preferences, speech narration settings, and offline library are preserved
               directly on your device:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5 font-sans pl-1">
@@ -145,6 +145,9 @@ export default function PrivacyPage() {
                 <strong className="text-foreground font-medium">IndexedDB:</strong> Caches unabridged public domain text
                 and EPUB packages when you click &ldquo;Download for Offline&rdquo;, allowing seamless in-browser reading
                 even without an internet connection.
+              </li>
+              <li>
+                <strong className="text-foreground font-medium">On-Device Web Speech API Narration:</strong> Text-to-speech audio reader functionality runs 100% locally via your browser&apos;s native <code className="font-mono text-primary font-semibold">window.speechSynthesis</code> engine using voices installed in your operating system. Bookarium never records reader voice input, never streams generated audio from remote servers, and never transmits your reading coordinates, notes, or chapter text to external speech intelligence APIs.
               </li>
             </ul>
             <p className="text-xs font-mono text-muted-foreground pt-1">
@@ -177,28 +180,66 @@ export default function PrivacyPage() {
           </section>
 
           {/* 5. User Rights & Self-Service Erasure */}
-          <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
+          <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-4 shadow-xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-border text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                 <UserCheck className="w-5 h-5" />
               </div>
               <div>
                 <h2 className="text-lg font-serif font-semibold text-foreground">
-                  5. Your Rights & Self-Service Data Erasure
+                  5. Your Rights &amp; Self-Service Data Erasure
                 </h2>
-                <p className="text-xs font-mono text-muted-foreground">GDPR Articles 15–20 (Right to Erasure)</p>
+                <p className="text-xs font-mono text-muted-foreground">GDPR Articles 15–20 (Right to Erasure) &amp; CCPA § 1798.105</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
-              You maintain total dominion over your personal data. Under GDPR and global privacy standards, you have the
-              right to access, rectify, and completely delete your account at any moment.
+              You maintain total dominion over your personal data. Under GDPR, CCPA, and global statutory standards, you have the
+              right to access, rectify, and permanently erase your account at any moment.
             </p>
-            <div className="pt-2">
+
+            {/* Email-Verified 3-Tier Zero-Retention Protocol Callout */}
+            <div className="bg-muted/50 border border-border rounded-xl p-4 sm:p-5 space-y-3 text-xs font-sans text-muted-foreground">
+              <div className="space-y-1">
+                <h3 className="font-mono font-bold uppercase tracking-wider text-foreground text-[11px]">
+                  Email-Verified 3-Tier Zero-Retention Erasure Protocol
+                </h3>
+                <p className="leading-relaxed">
+                  To protect your account against unauthorized destruction, session hijacking, or accidental deletion on shared computers, account erasure is exclusively available to registered accounts and strictly requires two-step email link verification. Requesting deletion dispatches a one-time cryptographic confirmation link to your registered email address; your account remains active until you open the link and confirm deletion.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="p-3 rounded-lg bg-card border border-border space-y-1">
+                  <span className="font-mono font-bold text-foreground block text-[11px]">1. Database Purge</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Atomic cascading deletion across all 11 user tables in PostgreSQL plus <code className="font-mono text-primary font-semibold">public.delete_current_user()</code> RPC permanently purging authentication credentials and storage objects.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-card border border-border space-y-1">
+                  <span className="font-mono font-bold text-foreground block text-[11px]">2. Hardware Teardown</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Client execution triggers complete local storage sanitization, purging unabridged offline books from IndexedDB, resetting all 10 persistent Zustand stores, and clearing session cookies.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-card border border-border space-y-1">
+                  <span className="font-mono font-bold text-foreground block text-[11px]">3. Zero Soft Deletes</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Bookarium enforces immediate zero retention. We maintain zero 30-day holding periods, zero recycling bins, and zero shadow archives. Deletion is instantaneous, synchronous, and irreversible.
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground pt-1 border-t border-border">
+                <strong className="text-foreground font-medium">Guest Reader Dominion:</strong> Readers browsing without an account generate zero server-side records. Guest bookmarks, reading positions, and downloaded offline texts reside exclusively on your physical device and can be erased instantly at any time via your browser&apos;s clear storage settings.
+              </p>
+            </div>
+
+            <div className="pt-1">
               <Link
-                href={ROUTES.ACCOUNT}
+                href={ROUTES.ACCOUNT + '?tab=security'}
                 className="inline-flex items-center gap-1.5 text-xs font-mono text-primary hover:underline underline-offset-4"
               >
-                <span>Manage account & self-service data erasure in Account Settings</span>
+                <span>Execute Self-Service Deletion in Account Security</span>
                 <ExternalLink className="w-3 h-3" />
               </Link>
             </div>
@@ -268,7 +309,7 @@ export default function PrivacyPage() {
                 <p className="text-xs font-mono text-muted-foreground">Data Processors &amp; Content Delivery</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Vercel Edge Platform</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
@@ -285,6 +326,12 @@ export default function PrivacyPage() {
                 <span className="text-xs font-mono font-bold text-foreground block">Project Gutenberg</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
                   Open-source archive providing unabridged public domain texts and metadata.
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
+                <span className="text-xs font-mono font-bold text-foreground block">Cloudflare Turnstile</span>
+                <p className="text-[11px] text-muted-foreground font-sans">
+                  Privacy-preserving, non-tracking bot protection for authentication forms with zero tracking cookies or user profiling dossiers.
                 </p>
               </div>
             </div>

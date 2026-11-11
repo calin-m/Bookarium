@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 11 Nov 2026 14:37:41 GMT  
+**Last Generated**: Wed, 11 Nov 2026 16:25:40 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2466 passed  
+**Total Verified Tests**: 2470 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2466 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2470 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.88%** (13966/14415) — *Target: $\ge$ 95%*
-- **Statements**: **95.57%** (15081/15780) — *Target: $\ge$ 95%*
-- **Functions**: **94.12%** (3122/3317) — *Target: $\ge$ 92%*
-- **Branches**: **88.1%** (13923/15803) — *Target: $\ge$ 85%*
+- **Lines**: **96.73%** (14089/14564) — *Target: $\ge$ 95%*
+- **Statements**: **95.43%** (15204/15931) — *Target: $\ge$ 95%*
+- **Functions**: **93.96%** (3128/3329) — *Target: $\ge$ 92%*
+- **Branches**: **87.84%** (14058/16003) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2466 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2470 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 300 Tests)
 
@@ -1663,7 +1663,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 209 Tests)
+### ⚡ Zustand State Stores (10 Suites · 210 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1682,7 +1682,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (36 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (37 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1720,6 +1720,7 @@
 - ✔ `covers setOrUpdateFellowMapEntry placeholder upgrade, enrichFellowAnnotations host matching, cached fellow bookMeta, and addAnnotation expand outbox fallback`
 - ✔ `preserves newer local annotation edits via LWW during syncWithCloud and provides useHydratedAnnotationCount`
 - ✔ `prunes and reconciles fellowAnnotations when fellows or symposiums are removed or deleted`
+- ✔ `prunes flushed tombstones after syncWithCloud and drops remotely deleted user annotations based on lastAnnotationSyncAt`
 
 </details>
 
@@ -1934,7 +1935,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 579 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 581 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2035,7 +2036,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-sorting.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/lib/book-sorting.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `exposes defined sort option lists for Bookshelf and Favorites`
 - ✔ `handles empty arrays, undefined inputs, and single-item arrays safely`
@@ -2052,6 +2053,7 @@
 - ✔ `resolves composite sort keys from base fields and directions correctly`
 - ✔ `decomposes composite sort keys into base fields, directions, and disabled states correctly`
 - ✔ `sorts by date added ascending (reversal) and popularity ascending`
+- ✔ `overlays local blob cover URLs from offlineBooks onto savedBooks in mergeDownloadedShelfBooks`
 
 </details>
 
@@ -2413,7 +2415,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (26 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -2440,6 +2442,7 @@
 - ✔ `filters "mine" and attaches pairedFellowAnnotation when overlapping`
 - ✔ `filters "fellows" and attaches matchingOwnAnnotation when overlapping`
 - ✔ `pairs and deduplicates overlapping items under "all"`
+- ✔ `matches boundary-straddling highlights split across virtual page breaks`
 
 </details>
 
@@ -2791,7 +2794,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (35 Suites · 329 Tests)
+### 🔄 Hooks & React Query (35 Suites · 330 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2943,7 +2946,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderExitBookmark.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderExitBookmark.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `returns false when existingPos is null, undefined, or lacks a placed bookmark`
 - ✔ `returns true when a placed bookmark exists in a later chapter`
@@ -2964,6 +2967,7 @@
 - ✔ `calls custom onExit callback when provided instead of default router navigation`
 - ✔ `falls back to router.push("/") when window.history.length <= 1`
 - ✔ `prioritizes closing open drawers on handleHeaderBack and Escape key before opening the exit modal`
+- ✔ `strips duplicate Page 1 chapter headings and resolves scrolled viewport row with immediateCloudSync on confirm`
 
 </details>
 

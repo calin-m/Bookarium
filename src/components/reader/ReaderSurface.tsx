@@ -14,7 +14,6 @@ import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
 import {
   computeAnnotationSpans,
-  findCanonicalTextSpan,
   type AnyAnnotation,
 } from '@/lib/reader-annotator';
 import {
@@ -38,7 +37,11 @@ export interface ReaderSurfaceProps {
   chapterPage?: number;
   bookmarkRow?: number;
   bookmarkText?: string;
-  onBookmarkRowChange?: (row: number, bookmarkText?: string) => void;
+  onBookmarkRowChange?: (
+    row: number,
+    bookmarkText?: string,
+    options?: { isLayoutSync?: boolean }
+  ) => void;
   activeChapterIndex: number;
   totalChapters: number;
   isLoading: boolean;
@@ -236,7 +239,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       if (!bookmarkText) {
         const healedText = extractRowText(bookmarkRow);
         if (healedText) {
-          onBookmarkRowChange?.(bookmarkRow, healedText);
+          onBookmarkRowChange?.(bookmarkRow, healedText, { isLayoutSync: true });
         }
         return;
       }
@@ -271,7 +274,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
 
       if (span.startRow !== bookmarkRow && lastEmittedReflowRowRef.current !== span.startRow) {
         lastEmittedReflowRowRef.current = span.startRow;
-        onBookmarkRowChange?.(span.startRow);
+        onBookmarkRowChange?.(span.startRow, bookmarkText, { isLayoutSync: true });
       }
     };
 
@@ -749,15 +752,11 @@ function renderContentWithAnnotations(
     );
   };
 
-  const matchingAnnotations = (annotations || []).filter(
-    (a) => a.selectedText && findCanonicalTextSpan(text, a.selectedText) !== null
-  );
+  const cleanSpans = computeAnnotationSpans(text, annotations || []);
 
-  if (matchingAnnotations.length === 0) {
+  if (cleanSpans.length === 0) {
     return renderSliceWithSpeechHighlight(text, 'text-full');
   }
-
-  const cleanSpans = computeAnnotationSpans(text, matchingAnnotations);
 
   const elements: React.ReactNode[] = [];
   let currentIndex = 0;

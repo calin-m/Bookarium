@@ -144,7 +144,8 @@ function buildCanonicalIndexMap(input: string): CanonicalIndexMap {
  */
 export function findAllCanonicalTextSpans(
   haystack: string,
-  needle: string
+  needle: string,
+  options?: { allowBoundaryPartial?: boolean }
 ): Array<{ start: number; end: number }> {
   if (!haystack || !needle) return [];
 
@@ -197,6 +198,53 @@ export function findAllCanonicalTextSpans(
     normSearchPos = normIdx + Math.max(1, cleanNeedle.length);
   }
 
+  // 3. Page-Boundary Straddling Fallback (when a multi-sentence highlight spans across virtual page breaks)
+  const minBoundaryOverlap = 12;
+  if (
+    canonicalSpans.length === 0 &&
+    options?.allowBoundaryPartial &&
+    cleanNeedle.length >= 16
+  ) {
+    const haystackStart = haystackMap.canonical.startsWith(' ') ? 1 : 0;
+    const haystackEnd = haystackMap.canonical.endsWith(' ')
+      ? haystackMap.canonical.length - 1
+      : haystackMap.canonical.length;
+    const haystackTrimmed = haystackMap.canonical.slice(haystackStart, haystackEnd);
+    const maxCheck = Math.min(cleanNeedle.length - 1, haystackTrimmed.length);
+
+    if (maxCheck >= minBoundaryOverlap) {
+      // Check if prefix of needle matches suffix of current page text (highlight starts at bottom of page)
+      for (let len = maxCheck; len >= minBoundaryOverlap; len--) {
+        if (haystackTrimmed.endsWith(cleanNeedle.slice(0, len))) {
+          const normStartIdx = haystackEnd - len;
+          const normEndIdx = haystackEnd - 1;
+          const rawStart = haystackMap.normToRawStart[normStartIdx];
+          const rawEnd = haystackMap.normToRawEnd[normEndIdx];
+          if (rawStart !== undefined && rawEnd !== undefined && rawEnd > rawStart) {
+            canonicalSpans.push({ start: rawStart, end: rawEnd });
+          }
+          break;
+        }
+      }
+
+      // Check if suffix of needle matches prefix of current page text (highlight finishes at top of page)
+      if (canonicalSpans.length === 0) {
+        for (let len = maxCheck; len >= minBoundaryOverlap; len--) {
+          if (haystackTrimmed.startsWith(cleanNeedle.slice(cleanNeedle.length - len))) {
+            const normStartIdx = haystackStart;
+            const normEndIdx = haystackStart + len - 1;
+            const rawStart = haystackMap.normToRawStart[normStartIdx];
+            const rawEnd = haystackMap.normToRawEnd[normEndIdx];
+            if (rawStart !== undefined && rawEnd !== undefined && rawEnd > rawStart) {
+              canonicalSpans.push({ start: rawStart, end: rawEnd });
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
   return canonicalSpans;
 }
 
@@ -205,9 +253,10 @@ export function findAllCanonicalTextSpans(
  */
 export function findCanonicalTextSpan(
   haystack: string,
-  needle: string
+  needle: string,
+  options?: { allowBoundaryPartial?: boolean }
 ): { start: number; end: number } | null {
-  const spans = findAllCanonicalTextSpans(haystack, needle);
+  const spans = findAllCanonicalTextSpans(haystack, needle, options);
   return spans.length > 0 ? spans[0] : null;
 }
 
@@ -420,7 +469,7 @@ export function computeAnnotationSpans(
   const selfAnnotations = annotations.filter((a): a is Annotation => !isFellowAnnotation(a));
   for (const ann of selfAnnotations) {
     if (!ann.selectedText) continue;
-    const matches = findAllCanonicalTextSpans(text, ann.selectedText);
+    const matches = findAllCanonicalTextSpans(text, ann.selectedText, { allowBoundaryPartial: true });
     for (const m of matches) {
       rawSelfSpans.push({
         start: m.start,
@@ -444,7 +493,7 @@ export function computeAnnotationSpans(
   const fellowAnnotations = annotations.filter(isFellowAnnotation);
   for (const ann of fellowAnnotations) {
     if (!ann.selectedText) continue;
-    const matches = findAllCanonicalTextSpans(text, ann.selectedText);
+    const matches = findAllCanonicalTextSpans(text, ann.selectedText, { allowBoundaryPartial: true });
     for (const m of matches) {
       rawFellowSpans.push({
         start: m.start,

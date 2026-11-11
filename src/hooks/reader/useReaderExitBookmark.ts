@@ -4,8 +4,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useReaderStore, type BookReadingPosition } from '@/stores/useReaderStore';
 import type { ReadingStatus } from '@/types/book.types';
-import type { ChapterSection } from '@/lib/gutenberg-parser';
+import {
+  stripDuplicateLeadingChapterHeading,
+  type ChapterSection,
+} from '@/lib/gutenberg-parser';
 import { findCanonicalTextSpan } from '@/lib/reader-annotator';
+import { extractRowTextFromElement } from '@/lib/reader-bookmark-geometry';
 import { ROUTES } from '@/config/routes';
 
 export interface HasBookmarkAheadParams {
@@ -238,15 +242,55 @@ export function useReaderExitBookmark({
   const handleConfirmBookmarkAndExit = useCallback(() => {
     setIsExitModalOpen(false);
     if (numericId > 0) {
-      const targetBookmarkRow = bookmarkRow > 0 ? bookmarkRow : 1;
+      const activeChapter = chaptersWithPagination?.[activeChapterIndex];
+      const cleanedPageText = currentPageText
+        ? currentChapterPage === 1 && activeChapter
+          ? stripDuplicateLeadingChapterHeading(currentPageText, activeChapter)
+          : currentPageText
+        : '';
+
+      let targetBookmarkRow = bookmarkRow > 0 ? bookmarkRow : 1;
       let targetBookmarkText = bookmarkText;
-      if (!targetBookmarkText && currentPageText) {
-        const firstLine = currentPageText
+
+      if (bookmarkRow <= 0 && typeof document !== 'undefined') {
+        const mainEl = document.querySelector<HTMLElement>('main[role="main"]');
+        const contentEl = document.querySelector<HTMLElement>('[data-testid="reader-content-body"]');
+        if (mainEl && contentEl && mainEl.scrollTop > 20) {
+          const fontSize = parseFloat(contentEl.style.fontSize || '18') || 18;
+          const lineHeight = parseFloat(contentEl.style.lineHeight || '1.75') || 1.75;
+          const lineStepPx = Math.max(16, fontSize * lineHeight);
+          const contentRectTop = contentEl.getBoundingClientRect().top;
+          const mainRectTop = mainEl.getBoundingClientRect().top;
+          const computeRow = (clientY: number) =>
+            Math.max(1, Math.round((clientY - contentRectTop - lineStepPx / 2) / lineStepPx));
+          const targetClientY =
+            mainRectTop + Math.min(120, Math.max(40, (mainEl.clientHeight || 400) * 0.2));
+          const scrolledRow = computeRow(targetClientY);
+          if (scrolledRow > 1) {
+            targetBookmarkRow = scrolledRow;
+            if (!targetBookmarkText && cleanedPageText) {
+              targetBookmarkText = extractRowTextFromElement(
+                contentEl,
+                cleanedPageText,
+                scrolledRow,
+                computeRow
+              );
+            }
+          }
+        }
+      }
+
+      if (!targetBookmarkText && cleanedPageText) {
+        const nonEmptyLines = cleanedPageText
           .split('\n')
           .map((l) => l.trim())
-          .filter(Boolean)[0];
-        if (firstLine) {
-          targetBookmarkText = firstLine.slice(0, 100);
+          .filter(Boolean);
+        const selectedLine =
+          targetBookmarkRow > 1 && nonEmptyLines.length > 1
+            ? nonEmptyLines[Math.min(targetBookmarkRow - 1, nonEmptyLines.length - 1)]
+            : nonEmptyLines[0];
+        if (selectedLine) {
+          targetBookmarkText = selectedLine.slice(0, 100);
         }
       }
 
@@ -263,7 +307,8 @@ export function useReaderExitBookmark({
           ...(targetBookmarkText ? { bookmarkText: targetBookmarkText } : {}),
           lastReadAt: new Date().toISOString(),
         },
-        userId
+        userId,
+        { immediateCloudSync: true }
       );
     }
     handlePerformExit();
@@ -278,6 +323,7 @@ export function useReaderExitBookmark({
     bookmarkRow,
     bookmarkText,
     currentPageText,
+    chaptersWithPagination,
     handlePerformExit,
   ]);
 

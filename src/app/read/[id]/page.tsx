@@ -186,6 +186,7 @@ function BookReaderContent() {
   useEffect(() => {
     if (user?.id && !isOffline) {
       syncWithCloud(user.id);
+      void useReaderStore.getState().syncWithCloud(user.id);
       const syncFellowshipAndMarginalia = async () => {
         await fetchFellowshipData(user.id);
         if (numericId > 0) {
@@ -303,7 +304,9 @@ function BookReaderContent() {
     (chapterIndex: number, fallbackPage: number, selectedText: string): number => {
       const chapter = chaptersWithPagination[chapterIndex];
       const foundIdx =
-        chapter?.pages?.findIndex((p) => findCanonicalTextSpan(p, selectedText) !== null) ?? -1;
+        chapter?.pages?.findIndex(
+          (p) => findCanonicalTextSpan(p, selectedText, { allowBoundaryPartial: true }) !== null
+        ) ?? -1;
       return foundIdx !== -1 ? foundIdx + 1 : fallbackPage;
     },
     [chaptersWithPagination]
@@ -711,7 +714,7 @@ function BookReaderContent() {
         isAnnotationsOpen={isAnnotationsOpen}
         isTranslationsOpen={isTranslationsOpen}
         isSelectionPopoverOpen={selectionPopover.isOpen}
-        annotationsCount={bookAnnotations.length + bookFellowAnnotations.length}
+        annotationsCount={totalUnifiedAnnotationsCount}
         isHidden={areBarsHidden}
       />
 

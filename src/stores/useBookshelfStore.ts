@@ -128,23 +128,27 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       toggleSaveBook: async (book, userId) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { savedBooks, cloudBookshelves, activeBookshelfId, cloudBookshelfItems, deletedBookIds } = get();
+        const {
+          savedBooks,
+          cloudBookshelves,
+          activeBookshelfId,
+          cloudBookshelfItems,
+          deletedBookIds,
+          favoriteBookIds,
+        } = get();
         const exists = savedBooks.some((b) => b.id === book.id);
-        const nextSaved = exists ? savedBooks.filter((b) => b.id !== book.id) : [book, ...savedBooks];
         const effectiveActiveId = activeBookshelfId === '__downloaded__' ? null : activeBookshelfId;
-        const targetShelfId = effectiveActiveId || cloudBookshelves.find((s) => s.is_default)?.id || cloudBookshelves[0]?.id;
-
-        const nextDeleted = { ...deletedBookIds };
-        if (exists) {
-          nextDeleted[book.id] = new Date().toISOString();
-        } else {
-          delete nextDeleted[book.id];
-        }
+        const targetShelfId =
+          effectiveActiveId ||
+          cloudBookshelves.find((s) => s.is_default)?.id ||
+          cloudBookshelves[0]?.id;
 
         let nextItems = cloudBookshelfItems;
         if (targetShelfId) {
           if (exists) {
-            nextItems = cloudBookshelfItems.filter((i) => !(i.book_id === book.id && i.bookshelf_id === targetShelfId));
+            nextItems = cloudBookshelfItems.filter(
+              (i) => !(i.book_id === book.id && i.bookshelf_id === targetShelfId)
+            );
           } else {
             const insertPayload = toCloudBookInsert(book, currentUserId || '', targetShelfId);
             nextItems = [
@@ -164,12 +168,30 @@ export const useBookshelfStore = create<BookshelfState>()(
           }
         }
 
+        const remainsOnAnotherShelf = nextItems.some((i) => i.book_id === book.id);
+        const nextSaved = exists
+          ? remainsOnAnotherShelf
+            ? savedBooks
+            : savedBooks.filter((b) => b.id !== book.id)
+          : [book, ...savedBooks];
+
+        const nextDeleted = { ...deletedBookIds };
+        if (exists && !remainsOnAnotherShelf) {
+          nextDeleted[book.id] = new Date().toISOString();
+        } else if (!exists) {
+          delete nextDeleted[book.id];
+        }
+
         set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems, deletedBookIds: nextDeleted });
 
-        if (exists) {
-          Promise.resolve(removeOfflineBook?.(book.id))
-            .then(() => notifyOfflineUpdated())
-            .catch(() => {});
+        if (exists && !remainsOnAnotherShelf) {
+          const isFav = favoriteBookIds.includes(book.id);
+          const hasActiveProgress = (useReaderStore.getState().readingProgress[book.id] ?? 0) > 0;
+          if (!isFav && !hasActiveProgress) {
+            Promise.resolve(removeOfflineBook?.(book.id))
+              .then(() => notifyOfflineUpdated())
+              .catch(() => {});
+          }
         }
 
         // Cloud sync if authenticated
@@ -228,7 +250,7 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       clearCustomShelfBooks: async (shelfId: string, userId?: string) => {
         const currentUserId = userId || useAuthStore.getState().user?.id;
-        const { savedBooks, cloudBookshelfItems, deletedBookIds } = get();
+        const { savedBooks, cloudBookshelfItems, deletedBookIds, favoriteBookIds } = get();
         const shelfBookIds = new Set(
           cloudBookshelfItems
             .filter((item) => item.bookshelf_id === shelfId)
@@ -236,20 +258,32 @@ export const useBookshelfStore = create<BookshelfState>()(
         );
         if (shelfBookIds.size === 0) return;
 
-        const nextSaved = savedBooks.filter((b) => !shelfBookIds.has(b.id));
         const nextItems = cloudBookshelfItems.filter((item) => item.bookshelf_id !== shelfId);
+        const remainingShelfBookIds = new Set(nextItems.map((item) => item.book_id));
+        const nextSaved = savedBooks.filter(
+          (b) => !shelfBookIds.has(b.id) || remainingShelfBookIds.has(b.id)
+        );
         const nextDeleted = { ...deletedBookIds };
         const now = new Date().toISOString();
         shelfBookIds.forEach((id) => {
-          nextDeleted[id] = now;
+          if (!remainingShelfBookIds.has(id)) {
+            nextDeleted[id] = now;
+          }
         });
 
         set({ savedBooks: nextSaved, cloudBookshelfItems: nextItems, deletedBookIds: nextDeleted });
 
+        const readingProgress = useReaderStore.getState().readingProgress;
         shelfBookIds.forEach((id) => {
-          Promise.resolve(removeOfflineBook?.(id))
-            .then(() => notifyOfflineUpdated())
-            .catch(() => {});
+          if (
+            !remainingShelfBookIds.has(id) &&
+            !favoriteBookIds.includes(id) &&
+            !(readingProgress[id] > 0)
+          ) {
+            Promise.resolve(removeOfflineBook?.(id))
+              .then(() => notifyOfflineUpdated())
+              .catch(() => {});
+          }
         });
 
         if (currentUserId) {

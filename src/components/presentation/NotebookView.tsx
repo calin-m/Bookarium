@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -86,11 +86,18 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
     updateAnnotationColor,
     updateAnnotationNote,
     deleteAnnotation,
+    syncWithCloud,
     clearAllAnnotations,
   } = useHydratedAnnotations();
   const user = useAuthStore((s) => s.user);
   const { resolveBookDetails, primeReaderForBook, isBookOffline, isOffline } =
     useNotebookMetadataResolver(annotations, fellowAnnotations, user?.id);
+
+  useEffect(() => {
+    if (user?.id && !isOffline) {
+      void syncWithCloud(user.id);
+    }
+  }, [user?.id, isOffline, syncWithCloud]);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');

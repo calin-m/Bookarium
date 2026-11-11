@@ -744,6 +744,36 @@ describe('useReaderSession', () => {
     expect(result.current.activeChapterIndex).toBe(1);
     expect(result.current.bookmarkRow).toBe(8);
     expect(result.current.bookmarkText).toBe('Chapter 2 page 1 content');
+
+    // Simulating ReaderSurface layout reflow ({ isLayoutSync: true }) preserves restoredPositionRef
+    // and still allows adopting an even newer cloud bookmark when the user has not manually navigated
+    act(() => {
+      result.current.setBookmarkRow(11, 'Chapter 2 page 1 content', { isLayoutSync: true });
+    });
+    expect(result.current.bookmarkRow).toBe(11);
+
+    act(() => {
+      useReaderStore.setState({
+        readingPositions: {
+          600: {
+            chapterIndex: 0,
+            chapterPage: 2,
+            globalPage: 2,
+            bookmarkRow: 19,
+            bookmarkText: 'Page 2 content',
+            lastReadAt: '2026-10-30T16:00:00.000Z',
+          },
+        },
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.activeChapterIndex).toBe(0);
+    expect(result.current.currentChapterPage).toBe(2);
+    expect(result.current.bookmarkRow).toBe(19);
     mockRestore.mockRestore();
   });
 });

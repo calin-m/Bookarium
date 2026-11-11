@@ -1612,6 +1612,58 @@ describe('useAnnotationStore', () => {
     // No-op when fellow-a already removed
     useAnnotationStore.getState().pruneFellowAnnotationsByFellow('fellow-a');
   });
+
+  it('prunes flushed tombstones after syncWithCloud and drops remotely deleted user annotations based on lastAnnotationSyncAt', async () => {
+    useAnnotationStore.setState({
+      annotations: [
+        {
+          id: 'previously-synced-deleted-remotely',
+          userId: 'user-123',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Deleted on another device',
+          color: 'yellow',
+          createdAt: '2026-11-01T10:00:00.000Z',
+          updatedAt: '2026-11-01T10:00:00.000Z',
+        },
+      ],
+      tombstones: ['stale-tombstone-id'],
+      outbox: [],
+      lastAnnotationSyncAt: '2026-11-05T10:00:00.000Z',
+    });
+
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValueOnce({
+          data: [
+            {
+              id: 'cloud-active-1',
+              user_id: 'user-123',
+              book_id: 1342,
+              chapter_index: 0,
+              chapter_page: 1,
+              selected_text: 'Active cloud quote',
+              color: 'mint',
+              note: null,
+              created_at: '2026-11-06T10:00:00.000Z',
+              updated_at: '2026-11-06T10:00:00.000Z',
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    await useAnnotationStore.getState().syncWithCloud('user-123');
+
+    const stateAfterFirstSync = useAnnotationStore.getState();
+    // Stale tombstone without pending outbox DELETE_ANNOTATION is pruned
+    expect(stateAfterFirstSync.tombstones).toEqual([]);
+    // Remotely deleted annotation (updatedAt < lastAnnotationSyncAt) is dropped and not re-uploaded
+    expect(stateAfterFirstSync.annotations.map((a) => a.id)).toEqual(['cloud-active-1']);
+    expect(stateAfterFirstSync.lastAnnotationSyncAt).toBeTruthy();
+  });
 });
 
 

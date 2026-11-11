@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
 import type { GutendexBook, Book, Author } from '@/types/book.types';
 import {
   getOfflineBookIds,
@@ -101,6 +102,7 @@ function areIdArraysEqual(a: number[], b: number[]): boolean {
 }
 
 export function useOfflineBooks() {
+  const queryClient = useContext(QueryClientContext);
   const [offlineBookIds, setOfflineBookIds] = useState<number[]>([]);
   const [offlineBooks, setOfflineBooks] = useState<GutendexBook[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -278,10 +280,15 @@ export function useOfflineBooks() {
       setDownloadingBookId(book.id);
       broadcastDownloadingBookId(book.id);
       try {
-        const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${book.id}`);
-        if (!res.ok) throw new Error('Failed to fetch book content');
-        const text = await res.text();
-        if (!text || text.trim().length === 0) throw new Error('Empty text received');
+        const cachedText = queryClient?.getQueryData<string>(['book-content', undefined, book.id]);
+        let text = cachedText && cachedText.trim().length > 0 ? cachedText : '';
+        if (!text) {
+          const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${book.id}`);
+          if (!res.ok) throw new Error('Failed to fetch book content');
+          text = await res.text();
+          if (!text || text.trim().length === 0) throw new Error('Empty text received');
+          queryClient?.setQueryData(['book-content', undefined, book.id], text);
+        }
         const normalizedAuthors = normalizeOfflineAuthors(book);
 
         let coverBlob: Blob | undefined;
@@ -347,7 +354,7 @@ export function useOfflineBooks() {
         broadcastDownloadingBookId(null);
       }
     },
-    [refreshOfflineIds]
+    [queryClient, refreshOfflineIds]
   );
 
   const removeBook = useCallback(

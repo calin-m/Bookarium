@@ -495,5 +495,75 @@ describe('useReaderExitBookmark', () => {
       });
       expect(result.current.isExitModalOpen).toBe(false);
     });
+
+    it('strips duplicate Page 1 chapter headings and resolves scrolled viewport row with immediateCloudSync on confirm', () => {
+      const setReadingStatus = vi.fn();
+      const setBookmarkRow = vi.fn();
+      const saveSpy = vi.spyOn(useReaderStore.getState(), 'saveReadingPosition');
+
+      // Mount mock main[role="main"] and [data-testid="reader-content-body"] showing scrolled state
+      const mainEl = document.createElement('main');
+      mainEl.setAttribute('role', 'main');
+      Object.defineProperty(mainEl, 'scrollTop', { value: 180, configurable: true });
+      Object.defineProperty(mainEl, 'clientHeight', { value: 400, configurable: true });
+      mainEl.getBoundingClientRect = () =>
+        ({ top: 0, bottom: 400, left: 0, right: 800, width: 800, height: 400, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+
+      const contentEl = document.createElement('div');
+      contentEl.setAttribute('data-testid', 'reader-content-body');
+      contentEl.style.fontSize = '20px';
+      contentEl.style.lineHeight = '2';
+      contentEl.getBoundingClientRect = () =>
+        ({ top: -120, bottom: 800, left: 0, right: 800, width: 800, height: 920, x: 0, y: -120, toJSON: () => ({}) }) as DOMRect;
+
+      mainEl.appendChild(contentEl);
+      document.body.appendChild(mainEl);
+
+      try {
+        const chaptersWithPagination = [
+          {
+            id: 1,
+            title: 'CHAPTER I',
+            displayTitle: 'Chapter I: The Hired Car',
+            content:
+              'CHAPTER I\n\nTHE HIRED CAR\n\nFirst body line.\nSecond body line.\nThird body line.\nFourth body line.\nFifth body line.',
+            pageCount: 1,
+            startPageNumber: 1,
+            pages: [
+              'CHAPTER I\n\nTHE HIRED CAR\n\nFirst body line.\nSecond body line.\nThird body line.\nFourth body line.\nFifth body line.',
+            ],
+          },
+        ];
+
+        const { result } = renderHook(() =>
+          useReaderExitBookmark({
+            ...defaultOptions,
+            currentPageText:
+              'CHAPTER I\n\nTHE HIRED CAR\n\nFirst body line.\nSecond body line.\nThird body line.\nFourth body line.\nFifth body line.',
+            chaptersWithPagination,
+            setReadingStatus,
+            setBookmarkRow,
+          })
+        );
+
+        act(() => {
+          result.current.handleConfirmBookmarkAndExit();
+        });
+
+        expect(setBookmarkRow).toHaveBeenCalledWith(5, 'Fifth body line.');
+        expect(saveSpy).toHaveBeenCalledWith(
+          1342,
+          expect.objectContaining({
+            bookmarkRow: 5,
+            bookmarkText: 'Fifth body line.',
+          }),
+          'user-123',
+          { immediateCloudSync: true }
+        );
+      } finally {
+        document.body.removeChild(mainEl);
+        saveSpy.mockRestore();
+      }
+    });
   });
 });

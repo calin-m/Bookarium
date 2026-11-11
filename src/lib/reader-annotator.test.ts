@@ -511,6 +511,37 @@ describe('filterAndPairAnnotationsBySource', () => {
     expect(res[1].id).toBe('fellow-2');
     expect(res[1].matchingOwnAnnotation).toBeUndefined();
   });
+
+  it('matches boundary-straddling highlights split across virtual page breaks', () => {
+    const straddlingHighlight: Annotation = {
+      id: 'straddle-1',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText:
+        'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\n\nHowever little known the feelings or views of such a man may be on his first entering a neighbourhood',
+      color: 'yellow',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+
+    const page1Text =
+      'Opening intro sentence.\n\nIt is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\n';
+    const page2Text =
+      '\nHowever little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families.';
+
+    const spansPage1 = computeAnnotationSpans(page1Text, [straddlingHighlight]);
+    expect(spansPage1).toHaveLength(1);
+    expect(page1Text.slice(spansPage1[0].start, spansPage1[0].end)).toBe(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.'
+    );
+
+    const spansPage2 = computeAnnotationSpans(page2Text, [straddlingHighlight]);
+    expect(spansPage2).toHaveLength(1);
+    expect(page2Text.slice(spansPage2[0].start, spansPage2[0].end)).toBe(
+      'However little known the feelings or views of such a man may be on his first entering a neighbourhood'
+    );
+  });
 });
 
 
