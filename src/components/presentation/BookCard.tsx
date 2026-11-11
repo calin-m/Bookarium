@@ -28,6 +28,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { ROUTES } from '@/config/routes';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import { useOfflineCoverImage } from '@/hooks/useOfflineCoverImage';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
@@ -57,33 +58,10 @@ export const BookCard: React.FC<BookCardProps> = ({
 }) => {
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
-  const [imageError, setImageError] = React.useState(false);
-  const [offlineCoverUrl, setOfflineCoverUrl] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    return () => {
-      if (offlineCoverUrl && offlineCoverUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(offlineCoverUrl);
-      }
-    };
-  }, [offlineCoverUrl]);
-
-  const handleImageError = React.useCallback(async () => {
-    if (!offlineCoverUrl && isOffline) {
-      try {
-        const { getOfflineBookCover } = await import('@/lib/offline-storage');
-        const blob = await getOfflineBookCover(book.id);
-        if (blob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
-          const blobUrl = URL.createObjectURL(blob);
-          setOfflineCoverUrl(blobUrl);
-          return;
-        }
-      } catch {
-        // Non-blocking fallback to placeholder
-      }
-    }
-    setImageError(true);
-  }, [book.id, isOffline, offlineCoverUrl]);
+  const { imageError, offlineCoverUrl, handleImageError } = useOfflineCoverImage(
+    book.id,
+    isOffline
+  );
   const [pendingRemoval, setPendingRemoval] = React.useState<CollectionRemovalType | null>(null);
   const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
   const { removeBook } = useOfflineBooks();

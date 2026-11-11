@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,18 +17,17 @@ import { CollectionToolbar } from './CollectionToolbar';
 import { CollectionBottomDock } from './CollectionBottomDock';
 import { CollectionFloatingSearch } from './CollectionFloatingSearch';
 import { CollectionFilterDrawer } from './CollectionFilterDrawer';
-import type { SortOption } from './CollectionSortDropdown';
 import { smartScrollToContent, runPreservingScrollPosition } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import {
   useHydratedAnnotations,
   type Annotation,
-  type FellowAnnotation,
   type HighlightColor,
   type MarginaliaSourceFilter,
 } from '@/stores/useAnnotationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNotebookMetadataResolver } from '@/hooks/useNotebookMetadataResolver';
+import { useMobileViewportCardFocus } from '@/hooks/useMobileViewportCardFocus';
 import { Button } from '@/components/ui/Button';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { Pagination } from '@/components/ui/Pagination';
@@ -36,141 +35,41 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import {
   pairOverlappingAnnotations,
   filterAndPairAnnotationsBySource,
-  isFellowAnnotation,
 } from '@/lib/reader-annotator';
+import {
+  type NotebookDisplayItem,
+  type NotebookChronoSortOption,
+  type NotebookVolumeSortOption,
+  type NotebookVolumeBaseSort,
+  type NotebookChronoBaseSort,
+  NOTEBOOK_VOLUME_BASE_SORT_OPTIONS,
+  NOTEBOOK_CHRONO_BASE_SORT_OPTIONS,
+  decomposeVolumeSort,
+  resolveVolumeSort,
+  decomposeChronoSort,
+  resolveChronoSort,
+  filterNotebookAnnotations,
+  groupAnnotationsByVolume,
+  sortNotebookAnnotationsChronologically,
+  sortNotebookVolumeGroups,
+} from '@/lib/notebook-sorting';
 
-export type NotebookDisplayItem = (Annotation | FellowAnnotation) & {
-  pairedFellowAnnotation?: FellowAnnotation;
-  matchingOwnAnnotation?: Annotation;
+export {
+  type NotebookDisplayItem,
+  type NotebookChronoSortOption,
+  type NotebookVolumeSortOption,
+  type NotebookVolumeBaseSort,
+  type NotebookChronoBaseSort,
+  NOTEBOOK_VOLUME_BASE_SORT_OPTIONS,
+  NOTEBOOK_CHRONO_BASE_SORT_OPTIONS,
+  decomposeVolumeSort,
+  resolveVolumeSort,
+  decomposeChronoSort,
+  resolveChronoSort,
 };
 
 export interface NotebookViewProps {
   onBrowseCatalog?: () => void;
-}
-
-export type NotebookChronoSortOption =
-  | 'date_desc'
-  | 'date_asc'
-  | 'title_asc'
-  | 'title_desc'
-  | 'author_asc'
-  | 'author_desc'
-  | 'downloaded';
-export type NotebookVolumeSortOption =
-  | 'title_asc'
-  | 'title_desc'
-  | 'author_asc'
-  | 'author_desc'
-  | 'count_desc'
-  | 'count_asc'
-  | 'recent'
-  | 'recent_asc'
-  | 'downloaded';
-
-export type NotebookVolumeBaseSort = 'title' | 'author' | 'count' | 'recent' | 'downloaded';
-export type NotebookChronoBaseSort = 'date' | 'title' | 'author' | 'downloaded';
-
-export const NOTEBOOK_VOLUME_BASE_SORT_OPTIONS: SortOption[] = [
-  { value: 'title', label: 'Book Title' },
-  { value: 'author', label: 'Author' },
-  { value: 'count', label: 'Quote Count' },
-  { value: 'recent', label: 'Date Annotated' },
-  { value: 'downloaded', label: 'Downloaded' },
-];
-
-export const NOTEBOOK_CHRONO_BASE_SORT_OPTIONS: SortOption[] = [
-  { value: 'date', label: 'Date Added' },
-  { value: 'title', label: 'Book Title' },
-  { value: 'author', label: 'Author' },
-  { value: 'downloaded', label: 'Downloaded' },
-];
-
-export function decomposeVolumeSort(sort: NotebookVolumeSortOption): {
-  base: NotebookVolumeBaseSort;
-  dir: 'asc' | 'desc';
-  isDirectionDisabled: boolean;
-} {
-  switch (sort) {
-    case 'title_desc':
-      return { base: 'title', dir: 'desc', isDirectionDisabled: false };
-    case 'title_asc':
-      return { base: 'title', dir: 'asc', isDirectionDisabled: false };
-    case 'author_desc':
-      return { base: 'author', dir: 'desc', isDirectionDisabled: false };
-    case 'author_asc':
-      return { base: 'author', dir: 'asc', isDirectionDisabled: false };
-    case 'count_desc':
-      return { base: 'count', dir: 'desc', isDirectionDisabled: false };
-    case 'count_asc':
-      return { base: 'count', dir: 'asc', isDirectionDisabled: false };
-    case 'recent_asc':
-      return { base: 'recent', dir: 'asc', isDirectionDisabled: false };
-    case 'recent':
-      return { base: 'recent', dir: 'desc', isDirectionDisabled: false };
-    case 'downloaded':
-      return { base: 'downloaded', dir: 'desc', isDirectionDisabled: true };
-    default:
-      return { base: 'title', dir: 'asc', isDirectionDisabled: false };
-  }
-}
-
-export function resolveVolumeSort(
-  base: NotebookVolumeBaseSort,
-  dir: 'asc' | 'desc'
-): NotebookVolumeSortOption {
-  switch (base) {
-    case 'title':
-      return dir === 'asc' ? 'title_asc' : 'title_desc';
-    case 'author':
-      return dir === 'asc' ? 'author_asc' : 'author_desc';
-    case 'count':
-      return dir === 'asc' ? 'count_asc' : 'count_desc';
-    case 'recent':
-      return dir === 'asc' ? 'recent_asc' : 'recent';
-    case 'downloaded':
-      return 'downloaded';
-  }
-}
-
-export function decomposeChronoSort(sort: NotebookChronoSortOption): {
-  base: NotebookChronoBaseSort;
-  dir: 'asc' | 'desc';
-  isDirectionDisabled: boolean;
-} {
-  switch (sort) {
-    case 'date_asc':
-      return { base: 'date', dir: 'asc', isDirectionDisabled: false };
-    case 'date_desc':
-      return { base: 'date', dir: 'desc', isDirectionDisabled: false };
-    case 'title_asc':
-      return { base: 'title', dir: 'asc', isDirectionDisabled: false };
-    case 'title_desc':
-      return { base: 'title', dir: 'desc', isDirectionDisabled: false };
-    case 'author_asc':
-      return { base: 'author', dir: 'asc', isDirectionDisabled: false };
-    case 'author_desc':
-      return { base: 'author', dir: 'desc', isDirectionDisabled: false };
-    case 'downloaded':
-      return { base: 'downloaded', dir: 'desc', isDirectionDisabled: true };
-    default:
-      return { base: 'date', dir: 'desc', isDirectionDisabled: false };
-  }
-}
-
-export function resolveChronoSort(
-  base: NotebookChronoBaseSort,
-  dir: 'asc' | 'desc'
-): NotebookChronoSortOption {
-  switch (base) {
-    case 'date':
-      return dir === 'asc' ? 'date_asc' : 'date_desc';
-    case 'title':
-      return dir === 'asc' ? 'title_asc' : 'title_desc';
-    case 'author':
-      return dir === 'asc' ? 'author_asc' : 'author_desc';
-    case 'downloaded':
-      return 'downloaded';
-  }
 }
 
 const CHRONO_PAGE_SIZE = 12;
@@ -280,168 +179,33 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   // Filtered list of annotations
   const filteredAnnotations = useMemo(() => {
-    return sourceFilteredAnnotations.filter((ann) => {
-      // 1. Color filter (checks primary annotation color and paired fellow color)
-      if (selectedColor !== 'all') {
-        const matchesPrimary = ann.color === selectedColor;
-        const matchesPaired = ann.pairedFellowAnnotation?.color === selectedColor;
-        if (!matchesPrimary && !matchesPaired) {
-          return false;
-        }
-      }
-      // 2. Search query filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const { title, author } = resolveBookDetails(ann);
-        const matchesQuote = ann.selectedText.toLowerCase().includes(query);
-        const matchesNote = ann.note ? ann.note.toLowerCase().includes(query) : false;
-        const matchesTitle = title.toLowerCase().includes(query);
-        const matchesAuthor = author.toLowerCase().includes(query);
-        const matchesPairedQuote = ann.pairedFellowAnnotation?.selectedText.toLowerCase().includes(query) || false;
-        const matchesPairedNote = ann.pairedFellowAnnotation?.note ? ann.pairedFellowAnnotation.note.toLowerCase().includes(query) : false;
-        const matchesPairedFellow = Boolean(
-          ann.pairedFellowAnnotation &&
-          ((ann.pairedFellowAnnotation.fellowDisplayName && ann.pairedFellowAnnotation.fellowDisplayName.toLowerCase().includes(query)) ||
-            ann.pairedFellowAnnotation.fellowUsername.toLowerCase().includes(query))
-        );
-        const matchesFellowSelf = Boolean(
-          isFellowAnnotation(ann) &&
-          ((ann.fellowDisplayName && ann.fellowDisplayName.toLowerCase().includes(query)) ||
-            ann.fellowUsername.toLowerCase().includes(query))
-        );
-        return (
-          matchesQuote ||
-          matchesNote ||
-          matchesTitle ||
-          matchesAuthor ||
-          matchesPairedQuote ||
-          matchesPairedNote ||
-          matchesPairedFellow ||
-          matchesFellowSelf
-        );
-      }
-      return true;
-    });
+    return filterNotebookAnnotations(
+      sourceFilteredAnnotations,
+      selectedColor,
+      searchQuery,
+      resolveBookDetails
+    );
   }, [sourceFilteredAnnotations, selectedColor, searchQuery, resolveBookDetails]);
 
   // Grouped by Volume mapping
   const groupedByVolume = useMemo(() => {
-    const map = new Map<
-      number,
-      {
-        title: string;
-        author: string;
-        isRestricted?: boolean;
-        country?: string;
-        items: NotebookDisplayItem[];
-      }
-    >();
-
-    filteredAnnotations.forEach((ann) => {
-      if (!map.has(ann.bookId)) {
-        const { title, author, isRestricted, country } = resolveBookDetails(ann);
-        map.set(ann.bookId, { title, author, isRestricted, country, items: [] });
-      }
-      map.get(ann.bookId)!.items.push(ann);
-    });
-
-    return Array.from(map.entries()).map(([bookId, data]) => ({
-      bookId,
-      ...data,
-    }));
+    return groupAnnotationsByVolume(filteredAnnotations, resolveBookDetails);
   }, [filteredAnnotations, resolveBookDetails]);
-
-  const getItemCreatedAt = useCallback((item: NotebookDisplayItem): number => {
-    const tSelf = new Date(item.createdAt).getTime();
-    const tPaired = item.pairedFellowAnnotation
-      ? new Date(item.pairedFellowAnnotation.createdAt).getTime()
-      : 0;
-    return Math.max(tSelf, tPaired);
-  }, []);
-
-  const getItemRecentTimestamp = useCallback((item: NotebookDisplayItem): number => {
-    const tSelf = new Date(item.updatedAt || item.createdAt).getTime();
-    const tPaired = item.pairedFellowAnnotation
-      ? new Date(item.pairedFellowAnnotation.updatedAt || item.pairedFellowAnnotation.createdAt).getTime()
-      : 0;
-    return Math.max(tSelf, tPaired);
-  }, []);
 
   // Sorted list of annotations for Chronological mode
   const sortedAnnotations = useMemo(() => {
-    const list = [...filteredAnnotations];
-    switch (chronoSort) {
-      case 'date_asc':
-        return list.sort((a, b) => getItemCreatedAt(a) - getItemCreatedAt(b));
-      case 'title_asc':
-        return list.sort((a, b) => {
-          const titleA = resolveBookDetails(a).title;
-          const titleB = resolveBookDetails(b).title;
-          return titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
-        });
-      case 'title_desc':
-        return list.sort((a, b) => {
-          const titleA = resolveBookDetails(a).title;
-          const titleB = resolveBookDetails(b).title;
-          return titleB.localeCompare(titleA, undefined, { sensitivity: 'base' });
-        });
-      case 'author_asc':
-        return list.sort((a, b) => {
-          const authorA = resolveBookDetails(a).author;
-          const authorB = resolveBookDetails(b).author;
-          return authorA.localeCompare(authorB, undefined, { sensitivity: 'base' });
-        });
-      case 'author_desc':
-        return list.sort((a, b) => {
-          const authorA = resolveBookDetails(a).author;
-          const authorB = resolveBookDetails(b).author;
-          return authorB.localeCompare(authorA, undefined, { sensitivity: 'base' });
-        });
-      case 'downloaded':
-        return list
-          .filter((a) => isBookOffline(a.bookId))
-          .sort((a, b) => getItemCreatedAt(b) - getItemCreatedAt(a));
-      case 'date_desc':
-      default:
-        return list.sort((a, b) => getItemCreatedAt(b) - getItemCreatedAt(a));
-    }
-  }, [filteredAnnotations, chronoSort, resolveBookDetails, isBookOffline, getItemCreatedAt]);
+    return sortNotebookAnnotationsChronologically(
+      filteredAnnotations,
+      chronoSort,
+      resolveBookDetails,
+      isBookOffline
+    );
+  }, [filteredAnnotations, chronoSort, resolveBookDetails, isBookOffline]);
 
   // Sorted Grouped by Volume mapping
   const sortedGroupedByVolume = useMemo(() => {
-    const list = [...groupedByVolume];
-    switch (volumeSort) {
-      case 'title_desc':
-        return list.sort((a, b) => b.title.localeCompare(a.title, undefined, { sensitivity: 'base' }));
-      case 'author_asc':
-        return list.sort((a, b) => a.author.localeCompare(b.author, undefined, { sensitivity: 'base' }));
-      case 'author_desc':
-        return list.sort((a, b) => b.author.localeCompare(a.author, undefined, { sensitivity: 'base' }));
-      case 'count_desc':
-        return list.sort((a, b) => b.items.length - a.items.length);
-      case 'count_asc':
-        return list.sort((a, b) => a.items.length - b.items.length);
-      case 'recent_asc':
-        return list.sort((a, b) => {
-          const timeA = Math.max(...a.items.map((i) => getItemRecentTimestamp(i)), 0);
-          const timeB = Math.max(...b.items.map((i) => getItemRecentTimestamp(i)), 0);
-          return timeA - timeB;
-        });
-      case 'recent':
-        return list.sort((a, b) => {
-          const timeA = Math.max(...a.items.map((i) => getItemRecentTimestamp(i)), 0);
-          const timeB = Math.max(...b.items.map((i) => getItemRecentTimestamp(i)), 0);
-          return timeB - timeA;
-        });
-      case 'downloaded':
-        return list
-          .filter((v) => isBookOffline(v.bookId))
-          .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
-      case 'title_asc':
-      default:
-        return list.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
-    }
-  }, [groupedByVolume, volumeSort, isBookOffline, getItemRecentTimestamp]);
+    return sortNotebookVolumeGroups(groupedByVolume, volumeSort, isBookOffline);
+  }, [groupedByVolume, volumeSort, isBookOffline]);
 
   // Pagination slicing
   const chronoTotalPages = Math.ceil(sortedAnnotations.length / CHRONO_PAGE_SIZE);
@@ -476,87 +240,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
   };
 
   // Single-column mobile scroll focus zone (< 1024px) and tactile dismissal
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleScrollOrResize = () => {
-      if (window.innerWidth >= 1024) return;
-      const anchor = document.getElementById('notebook-content-anchor');
-      if (!anchor) return;
-      const cardEls = Array.from(anchor.querySelectorAll<HTMLElement>('[data-notebook-quote-id]'));
-      if (cardEls.length === 0) return;
-
-      // Top boundary: near page top
-      if (window.scrollY <= 32) {
-        const firstId = cardEls[0].getAttribute('data-notebook-quote-id');
-        if (firstId) {
-          setActiveAnnotationId(firstId);
-          return;
-        }
-      }
-
-      // Bottom boundary: near page bottom
-      const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 32;
-      if (isAtBottom) {
-        const lastId = cardEls[cardEls.length - 1].getAttribute('data-notebook-quote-id');
-        if (lastId) {
-          setActiveAnnotationId(lastId);
-          return;
-        }
-      }
-
-      // Viewport central focus band: ~46% from top
-      const targetY = window.innerHeight * 0.46;
-      let closestId: string | null = null;
-      let minDistance = Infinity;
-
-      for (const el of cardEls) {
-        const rect = el.getBoundingClientRect();
-        if (rect.bottom >= 0 && rect.top <= window.innerHeight) {
-          const cardCenterY = rect.top + rect.height / 2;
-          const dist = Math.abs(cardCenterY - targetY);
-          if (dist < minDistance) {
-            minDistance = dist;
-            const id = el.getAttribute('data-notebook-quote-id');
-            if (id) {
-              closestId = id;
-            }
-          }
-        }
-      }
-
-      if (closestId !== null) {
-        setActiveAnnotationId(closestId);
-      }
-    };
-
-    let rafId: number | null = null;
-    const onScroll = () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(handleScrollOrResize);
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    handleScrollOrResize();
-
-    // Tap outside cards clears active state
-    const handleDocumentPointerDown = (e: PointerEvent | MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target || typeof target.closest !== 'function' || !target.closest('[data-notebook-quote-id]')) {
-        setActiveAnnotationId(null);
-      }
-    };
-
-    document.addEventListener('pointerdown', handleDocumentPointerDown, { passive: true });
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      document.removeEventListener('pointerdown', handleDocumentPointerDown);
-    };
-  }, [totalItems, groupMode, safeCurrentPage]);
+  useMobileViewportCardFocus<string>({
+    containerId: 'notebook-content-anchor',
+    cardDataAttribute: 'data-notebook-quote-id',
+    parseCardId: (raw) => raw || null,
+    onActiveIdChange: setActiveAnnotationId,
+    focusBandRatio: 0.46,
+    deps: [totalItems, groupMode, safeCurrentPage],
+  });
 
   // Unique volume count across own and fellow annotations
   const uniqueBookCount = useMemo(() => {

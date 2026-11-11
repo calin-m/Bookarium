@@ -5,15 +5,13 @@ import { Sparkles, Quote, RotateCw, BookOpen, X } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
 import { Button } from '@/components/ui/Button';
-import {
-  CopyBookLinkIndicator,
-  handleCopyBookLinkClick,
-} from '@/components/ui/CursorTooltip';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
-import { formatCleanQuote, resolveSpreadQuoteLayout } from '@/lib/gutenberg/passages';
+import { resolveSpreadQuoteLayout } from '@/lib/gutenberg/passages';
+import { HeroFeaturedBook2DCard } from './HeroFeaturedBook2DCard';
+import { OpenBookLeftPageSpread } from './OpenBookLeftPageSpread';
 
 export interface HeroFeaturedBook3DProps {
   featuredBook: FeaturedHeroBook & { rawBook?: GutendexBook };
@@ -190,195 +188,40 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
   // Static 2D Presentation for Low-Tier Hardware or Reduced-Motion Preference
   if (!allowHeavyMotion || tier === 'low') {
     return (
-      <div
-        data-testid="hero-featured-book-2d"
-        className="w-full max-w-sm sm:max-w-md mx-auto p-5 sm:p-6 rounded-2xl bg-card border border-border shadow-md space-y-4 text-foreground transition-colors duration-theme"
-      >
-        <div className="flex items-center justify-between border-b border-border pb-2.5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-mono font-bold uppercase tracking-wider text-primary">
-              Featured Classic
-            </span>
-          </div>
-          <span className="text-[10px] font-mono text-muted-foreground uppercase">
-            {featuredBook.volumeNumber}
-          </span>
-        </div>
-
-        <div
-          data-testid={`hero-2d-copy-meta-${featuredBook.id}`}
-          data-copy-book-id={featuredBook.id}
-          data-tooltip={`${featuredBook.title} — by ${featuredBook.author}`}
-          onClick={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
-          onKeyDown={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
-          role="button"
-          tabIndex={0}
-          aria-label={`Copy link to ${featuredBook.title} by ${featuredBook.author}`}
-          className="group/copy space-y-1.5 cursor-pointer rounded-md -mx-1 px-1 py-0.5 hover:bg-muted/50 transition-colors"
-        >
-          <h3 className="text-xl sm:text-2xl font-serif font-bold text-foreground group-hover/copy:text-primary transition-colors tracking-tight line-clamp-2">
-            {featuredBook.title}
-          </h3>
-          <p className="text-xs sm:text-sm font-sans text-muted-foreground flex items-center min-w-0">
-            <span className="truncate">
-              {featuredBook.author} {featuredBook.year ? `• ${featuredBook.year}` : ''}
-            </span>
-            <CopyBookLinkIndicator bookId={featuredBook.id} />
-          </p>
-        </div>
-
-        <div className={`p-3.5 rounded-xl bg-muted/50 border border-border space-y-1.5 ${quoteRevealClass}`}>
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground uppercase">
-            <Quote className="w-3 h-3 text-primary/70 shrink-0" />
-            <span>Opening Line</span>
-          </div>
-          <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed ${currentLayout.coverLineClampClass}`}>
-            &ldquo;{currentLayout.coverQuote || formatCleanQuote(featuredBook.openingLine)}&rdquo;
-          </p>
-        </div>
-
-        <div className="pt-1 flex items-center justify-between gap-3">
-          <Button
-            data-testid="hero-book-read-btn"
-            onClick={() => onReadFeaturedBook?.(featuredBook.rawBook || featuredBook)}
-            className="flex-1 flex items-center justify-center gap-2 h-10 text-xs font-mono tracking-wider uppercase font-bold"
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Read Volume</span>
-          </Button>
-          <Button
-            data-testid="hero-book-shuffle-btn"
-            variant="outline"
-            disabled={isTurningLeaf || passages.length <= 1}
-            onClick={shuffleNextPassage}
-            title="Next Passage"
-            className="h-10 px-3 shrink-0"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${isTurningLeaf ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
+      <HeroFeaturedBook2DCard
+        featuredBook={featuredBook}
+        coverQuote={currentLayout.coverQuote}
+        coverLineClampClass={currentLayout.coverLineClampClass}
+        quoteRevealClass={quoteRevealClass}
+        isTurningLeaf={isTurningLeaf}
+        canShuffle={passages.length > 1}
+        onReadFeaturedBook={onReadFeaturedBook}
+        onShuffle={shuffleNextPassage}
+      />
     );
   }
 
-  const isVeryLongTitle = featuredBook.title.length > 55;
-  const isLongTitle = featuredBook.title.length > 36;
-
-  const renderLeftPageContent = (passage: typeof currentPassage, maxWidthClass: string) => {
-    const { leftQuotes, leftLineClampClass } = resolveSpreadQuoteLayout(passage, {
-      title: featuredBook.title,
-      hasCommentary: Boolean(passage.commentary),
-    });
-    const cleanOpening = leftQuotes[0] || '';
-    const cleanSecondary = leftQuotes[1];
-    const cleanTertiary = leftQuotes[2];
-    const hasSecondary = Boolean(cleanSecondary);
-
-    return (
-      <>
-        <div
-          data-testid="hero-book-left-page-body"
-          className="flex-1 min-h-0 flex flex-col justify-between overflow-hidden"
-        >
-          <div className="shrink-0">
-            <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold mb-1.5 pb-1 border-b border-border">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Public Domain
-              </span>
-              <span>{passage.chapterLabel || featuredBook.volumeNumber}</span>
-            </div>
-
-            <div
-              data-testid={`hero-3d-copy-meta-${featuredBook.id}`}
-              data-copy-book-id={featuredBook.id}
-              data-tooltip={`${featuredBook.title} — by ${featuredBook.author}`}
-              onClick={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
-              onKeyDown={(e) => handleCopyBookLinkClick(e, featuredBook.id)}
-              role="button"
-              tabIndex={0}
-              aria-label={`Copy link to ${featuredBook.title} by ${featuredBook.author}`}
-              className="group/copy cursor-pointer rounded-md px-1 py-0.5 mb-1.5 hover:bg-muted/40 transition-colors"
-            >
-              <h3
-                className={`font-serif font-bold leading-snug mb-0.5 text-foreground group-hover/copy:text-primary transition-colors text-balance ${
-                  isVeryLongTitle
-                    ? 'text-sm sm:text-base'
-                    : isLongTitle
-                    ? 'text-base sm:text-lg'
-                    : 'text-lg sm:text-xl'
-                }`}
-              >
-                {featuredBook.title}
-              </h3>
-              <p className="text-xs font-mono italic text-muted-foreground flex items-center min-w-0">
-                <span className="truncate">
-                  by {featuredBook.author} ({featuredBook.year})
-                </span>
-                <CopyBookLinkIndicator bookId={featuredBook.id} />
-              </p>
-            </div>
-          </div>
-
-          <div
-            data-testid="hero-book-left-quotes"
-            className={`flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5 overflow-hidden ${quoteRevealClass}`}
-          >
-            <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/40">
-              <p
-                className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
-                  !hasSecondary && !isLongTitle
-                    ? 'text-xs sm:text-sm'
-                    : isVeryLongTitle
-                    ? 'text-xs'
-                    : 'text-xs sm:text-[13px]'
-                } ${leftLineClampClass}`}
-              >
-                &ldquo;{cleanOpening}&rdquo;
-              </p>
-            </div>
-
-            {cleanSecondary && (
-              <div
-                data-testid="hero-book-secondary-quote"
-                className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
-              >
-                <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
-                <p
-                  className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                    isLongTitle ? 'text-xs' : 'text-xs sm:text-[13px]'
-                  } ${leftLineClampClass}`}
-                >
-                  &ldquo;{cleanSecondary}&rdquo;
-                </p>
-              </div>
-            )}
-
-            {cleanTertiary && (
-              <div
-                data-testid="hero-book-tertiary-quote"
-                className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs"
-              >
-                <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-                <p
-                  className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${leftLineClampClass}`}
-                >
-                  &ldquo;{cleanTertiary}&rdquo;
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
-          <span className={`truncate ${maxWidthClass}`} title={featuredBook.primarySubject}>
-            {featuredBook.primarySubject}
-          </span>
-          <span className="opacity-60">p. 1</span>
-        </div>
-      </>
-    );
-  };
+  const renderLeftPageContent = (passage: typeof currentPassage, maxWidthClass: string) => (
+    <OpenBookLeftPageSpread
+      bookId={featuredBook.id}
+      title={featuredBook.title}
+      authorDisplay={`by ${featuredBook.author} (${featuredBook.year})`}
+      rightHeaderLabel={passage.chapterLabel || featuredBook.volumeNumber}
+      passage={passage}
+      hasCommentary={Boolean(passage.commentary)}
+      primarySubject={featuredBook.primarySubject}
+      fullPrimarySubject={featuredBook.primarySubject}
+      subjectMaxWidthClass={maxWidthClass}
+      enableCopyMeta={true}
+      copyMetaTestId={`hero-3d-copy-meta-${featuredBook.id}`}
+      copyTooltipAuthor={featuredBook.author}
+      bodyTestId="hero-book-left-page-body"
+      quotesContainerTestId="hero-book-left-quotes"
+      secondaryQuoteTestId="hero-book-secondary-quote"
+      tertiaryQuoteTestId="hero-book-tertiary-quote"
+      quoteRevealClass={quoteRevealClass}
+    />
+  );
 
   const renderRightPageBody = (passage: typeof currentPassage) => {
     const { rightQuotes, rightLineClampClass } = resolveSpreadQuoteLayout(passage, {

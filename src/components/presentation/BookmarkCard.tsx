@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
@@ -16,6 +16,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore, useIsBookSaved, useIsBookFavorite } from '@/stores/useBookshelfStore';
 import { toGutendexBook } from '@/lib/adapters/book.adapter';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
+import { useOfflineCoverImage } from '@/hooks/useOfflineCoverImage';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { formatAuthorNames, formatRelativeTime } from '@/lib/utils';
 
@@ -51,33 +52,10 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 }) => {
   const router = useRouter();
   const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
-  const [imageError, setImageError] = useState(false);
-  const [offlineCoverUrl, setOfflineCoverUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (offlineCoverUrl && offlineCoverUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(offlineCoverUrl);
-      }
-    };
-  }, [offlineCoverUrl]);
-
-  const handleImageError = React.useCallback(async () => {
-    if (!offlineCoverUrl && isOffline) {
-      try {
-        const { getOfflineBookCover } = await import('@/lib/offline-storage');
-        const blob = await getOfflineBookCover(book.id);
-        if (blob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
-          const blobUrl = URL.createObjectURL(blob);
-          setOfflineCoverUrl(blobUrl);
-          return;
-        }
-      } catch {
-        // Fall back to placeholder
-      }
-    }
-    setImageError(true);
-  }, [book.id, isOffline, offlineCoverUrl]);
+  const { imageError, offlineCoverUrl, handleImageError } = useOfflineCoverImage(
+    book.id,
+    isOffline
+  );
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<CollectionRemovalType | null>(null);
   const roundedProgress = Math.min(100, Math.max(0, Math.round(progressPercent)));

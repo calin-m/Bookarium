@@ -294,6 +294,7 @@ const governanceDocSyncTargets = [
     relFile: 'AGENTS.md',
     replacements: [
       [/with `@testing-library\/react` and MSW v2 \(`\d+` suites\)/g, `with \`@testing-library/react\` and MSW v2 (\`${totalSuitesCount}\` suites)`],
+      [/\b\d+-suite\b/g, `${totalSuitesCount}-suite`],
       [/\b\d+-rule `bookarium-security`/gi, `${securityRuleCount}-rule \`bookarium-security\``],
     ],
   },
@@ -301,6 +302,8 @@ const governanceDocSyncTargets = [
     relFile: '.agents/AGENTS.md',
     replacements: [
       [/across all executable files \(`\d+` suites\)/g, `across all executable files (\`${totalSuitesCount}\` suites)`],
+      [/\b\d+-Suite\b/g, `${totalSuitesCount}-Suite`],
+      [/\b\d+-suite\b/g, `${totalSuitesCount}-suite`],
       [/\b\d+-Rule AST Request-Taint Suite/g, `${securityRuleCount}-Rule AST Request-Taint Suite`],
       [/\b\d+-Rule `bookarium-security`/g, `${securityRuleCount}-Rule \`bookarium-security\``],
     ],

@@ -9,6 +9,20 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.17',
+    date: '2026-11-11',
+    title: 'Dynamic AST/SQL Architecture Extraction, Service Worker Version Sync, Quote Pool Topology & 4-Tier DRY Subcomponentization',
+    sections: {
+      Changed: [
+        '4-Tier DRY Consolidation, Shared UI Primitives, Controller Hooks & Purpose-Driven Subcomponentization (`src/lib/notebook-sorting.ts`, `src/hooks/useAmbientDockScrollState.ts`, `src/hooks/useMobileViewportCardFocus.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/hooks/usePersonalCollectionsController.ts`, `src/hooks/reader/useReaderAnnotationActions.ts`, `src/components/ui/AmbientCapsuleDock.tsx`, `src/components/ui/BottomSheetDrawerShell.tsx`, `src/components/presentation/*`, `src/components/reader/*`, `src/components/account/symposium/*SubTab.tsx`, `docs/DECISIONS.md`, `ADR-080`): Extracted 19 reusable hooks, domain utilities, UI primitives, and subcomponents across 15 parent views (expanding co-located test suites from 217 to 236) to unify dock scroll state, viewport card focus, offline cover Blobs, bottom-sheet drawers, 3D book left spreads, reader floating pods, and symposium sub-tabs.',
+      ],
+      Fixed: [
+        'Dynamic Service Worker Metadata & SQL Function/Trigger Extraction (`scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `scripts/verify-build.js`, `docs/DECISIONS.md`, `ADR-079`): Added `extractServiceWorkerMetadata(rootDir)` in `scripts/lib/ast-parser.js` to dynamically parse `CACHE_NAME` (`bookarium-app-shell-v7`) and its version tag (`v7`) directly from `public/sw.js`, replacing 9 hardcoded `v4`/`v6` references across C4 diagrams, sequence diagrams, worker catalogs, and `README.md` sync blocks. Upgraded `extractDatabaseCatalog()` in `scripts/generate-architecture-matrix.js` to programmatically parse `CREATE OR REPLACE FUNCTION public.<name>`, `CREATE TRIGGER`, `CREATE POLICY`, and `ADD CONSTRAINT chk_*` definitions from `supabase/schema.sql`, dynamically rendering stored procedures/triggers and exact policy, constraint, and CLI script counts.',
+        'Quote Pool Gateway, Client Storage/Cookie Matrix & Stage 4 Co-Evolution Governance (`scripts/generate-architecture-matrix.js`, `scripts/verify-build.js`, `AGENTS.md`, `.agents/AGENTS.md`, `docs/DECISIONS.md`, `ADR-079`, `ADR-080`): Expanded the API Route Matrix (`/api/books` dual search + `?pool=quotes&limit=600` 2-spread gateway with `503 no-store` DB-down anti-poisoning guard), Query-to-Index Execution Plan (`fetchQuoteEnrichedPool` & `< 3` spread deep backfill), Client Storage & SSR Cookie Matrix (`bookarium-quote-enriched-books-v1`, `bookarium-extracted-passages-v1`, `bookarium-theme-preference`, `bookarium-auth-hint`), and Failure Mode Matrix (Scenario 11: Edge Quote Pool 4-tier fallback cascade). Extended `Pass 5` in `scripts/verify-build.js` to enforce live `public/sw.js` cache version parity and 1:1 `supabase/schema.sql` stored function coverage, and strengthened Rule 1 (Stage 4) in `AGENTS.md` and `.agents/AGENTS.md` to require updating architecture generator scripts on behavioral changes to existing modules.',
+      ],
+    },
+  },
+  {
     version: '2.9.16',
     date: '2026-11-10',
     title: 'PostgreSQL Trigger RPC Isolation, Handle-Lookup Input Bounds & Automated Pillar 6 REVOKE Verification',

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, RotateCw, Quote, BookOpen, AlertTriangle, WifiOff } from 'lucide-react';
+import { RotateCw, BookOpen } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
@@ -12,11 +12,10 @@ import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelec
 import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { ContentAdvisoryBanner } from '@/components/presentation/ContentAdvisoryBanner';
 import { evaluateContentAdvisory } from '@/lib/content-advisory';
-import { resolveSpreadQuoteLayout } from '@/lib/gutenberg/passages';
 import { BookCard } from './BookCard';
 import { NotablePassagesSpread } from './NotablePassagesSpread';
+import { OpenBookLeftPageSpread } from './OpenBookLeftPageSpread';
 
 export interface ElementRect {
   top: number;
@@ -37,163 +36,6 @@ export interface BookPreviewModalProps {
   onClose: () => void;
   onReadBook?: (book: GutendexBook) => void;
 }
-
-type LeftPageSpreadParams = {
-  book: GutendexBook;
-  passage: {
-    openingLine: string;
-    secondaryQuote?: string;
-    leftPageQuote2?: string;
-  };
-  cardHeight?: number;
-  authorNames: string;
-  primarySubject: string;
-  fullPrimarySubject: string;
-  isRestricted: boolean;
-  isUnavailableOffline: boolean;
-  country: string;
-  contentAdvisory: {
-    isMature: boolean;
-    matchedSubject?: string;
-  };
-  restrictedBadgeTestId: string;
-  offlineBadgeTestId: string;
-  advisoryTestId: string;
-};
-
-const LeftPageSpread: React.FC<LeftPageSpreadParams> = ({
-  book,
-  passage,
-  cardHeight,
-  authorNames,
-  primarySubject,
-  fullPrimarySubject,
-  isRestricted,
-  isUnavailableOffline,
-  country,
-  contentAdvisory,
-  restrictedBadgeTestId,
-  offlineBadgeTestId,
-  advisoryTestId,
-}) => {
-  const isVeryLongTitle = book.title.length > 55;
-  const isLongTitle = book.title.length > 36;
-  const { leftQuotes, leftLineClampClass } = resolveSpreadQuoteLayout(passage, {
-    title: book.title,
-    hasContentAdvisory: contentAdvisory.isMature,
-    cardHeight,
-  });
-  const cleanOpening = leftQuotes[0] || '';
-  const cleanSecondary = leftQuotes[1];
-  const cleanLeft2 = leftQuotes[2];
-  const hasSecondary = Boolean(cleanSecondary);
-  const hasTertiary = Boolean(cleanLeft2);
-
-  return (
-    <>
-      <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto no-scrollbar">
-        <div className="space-y-1.5 shrink-0">
-          <div className="flex items-center justify-between text-[10px] font-mono tracking-widest uppercase text-primary font-bold pb-1 border-b border-border">
-            {isRestricted ? (
-              <span
-                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
-                data-testid={restrictedBadgeTestId}
-              >
-                <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                <span>Protected ({country})</span>
-              </span>
-            ) : isUnavailableOffline ? (
-              <span
-                className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold"
-                data-testid={offlineBadgeTestId}
-              >
-                <WifiOff className="w-3 h-3 text-amber-500 shrink-0" />
-                <span>Not Downloaded</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Public Domain
-              </span>
-            )}
-            <span>ID #{book.id}</span>
-          </div>
-
-          <div>
-            <h3
-              className={`font-serif font-bold leading-snug mb-0.5 text-foreground text-balance ${
-                isVeryLongTitle
-                  ? 'text-sm sm:text-base'
-                  : isLongTitle
-                  ? 'text-base sm:text-lg'
-                  : 'text-lg sm:text-xl'
-              }`}
-            >
-              {book.title}
-            </h3>
-            <p className="text-xs font-mono italic text-muted-foreground">by {authorNames}</p>
-          </div>
-
-          {contentAdvisory.isMature && (
-            <ContentAdvisoryBanner
-              matchedSubject={contentAdvisory.matchedSubject}
-              compact={true}
-              testId={advisoryTestId}
-              className="my-1"
-            />
-          )}
-        </div>
-
-        <div className="flex-1 min-h-0 flex flex-col justify-around gap-2 py-0.5">
-          {/* Lead Opening Line */}
-          <div className="relative pl-2.5 sm:pl-3 border-l-2 border-primary/50">
-            <p
-              className={`font-serif italic text-foreground/90 leading-relaxed text-pretty ${
-                !hasSecondary && !isLongTitle
-                  ? 'text-xs sm:text-sm'
-                  : isVeryLongTitle
-                  ? 'text-xs'
-                  : 'text-xs sm:text-[13px]'
-              } ${leftLineClampClass}`}
-            >
-              &ldquo;{cleanOpening}&rdquo;
-            </p>
-          </div>
-
-          {/* Secondary Quote Box */}
-          {cleanSecondary && (
-            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-              <Quote className="w-3.5 h-3.5 text-primary/60 mb-1 shrink-0" />
-              <p
-                className={`font-serif italic text-foreground leading-relaxed text-pretty ${
-                  isLongTitle ? 'text-xs' : 'text-xs sm:text-[13px]'
-                } ${leftLineClampClass}`}
-              >
-                &ldquo;{cleanSecondary}&rdquo;
-              </p>
-            </div>
-          )}
-
-          {/* Tertiary Quote Box */}
-          {hasTertiary && (
-            <div className="p-2.5 sm:p-3 rounded-lg bg-card/60 border border-border shadow-xs">
-              <Quote className="w-3.5 h-3.5 text-amber-500/70 mb-1 shrink-0" />
-              <p className={`text-xs sm:text-[13px] font-serif italic text-foreground leading-relaxed text-pretty ${leftLineClampClass}`}>
-                &ldquo;{cleanLeft2}&rdquo;
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="pt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground border-t border-border mt-2 shrink-0">
-        <span className="truncate max-w-[160px]" title={fullPrimarySubject}>
-          {primarySubject}
-        </span>
-        <span className="opacity-60">p. 1</span>
-      </div>
-    </>
-  );
-};
 
 export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
   book,
@@ -549,11 +391,13 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
 
                 {/* Back Face of Turning Leaf: Incoming Left Page title & quotes landing onto left side */}
                 <div className="turning-leaf-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
-                  <LeftPageSpread
-                    book={book}
+                  <OpenBookLeftPageSpread
+                    bookId={book.id}
+                    title={book.title}
+                    authorDisplay={`by ${authorNames}`}
+                    rightHeaderLabel={`ID #${book.id}`}
                     passage={currentPassage}
                     cardHeight={flipData.targetHeight}
-                    authorNames={authorNames}
                     primarySubject={primarySubject}
                     fullPrimarySubject={fullPrimarySubject}
                     isRestricted={isRestricted}
@@ -563,6 +407,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     restrictedBadgeTestId={`preview-restricted-badge-${book.id}`}
                     offlineBadgeTestId={`preview-offline-unavailable-badge-${book.id}`}
                     advisoryTestId={`preview-advisory-base-${book.id}`}
+                    scrollableBody={true}
                   />
                 </div>
               </div>
@@ -603,11 +448,13 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
               {/* BACK FACE OF FRONT COVER: THE LEFT OPEN PAGE (Inside Spread) */}
               <div className="absolute inset-0 book-3d-face-back rounded-l-lg rounded-r-none open-book-page-left border border-border p-4 sm:p-5 flex flex-col justify-between text-foreground overflow-hidden">
                 <div key={`left-page-content-${book.id}-${isTurningLeaf ? prevPassageIndex : activePassageIndex}`} className="flex flex-col justify-between h-full relative">
-                  <LeftPageSpread
-                    book={book}
+                  <OpenBookLeftPageSpread
+                    bookId={book.id}
+                    title={book.title}
+                    authorDisplay={`by ${authorNames}`}
+                    rightHeaderLabel={`ID #${book.id}`}
                     passage={isTurningLeaf ? prevPassage : currentPassage}
                     cardHeight={flipData.targetHeight}
-                    authorNames={authorNames}
                     primarySubject={primarySubject}
                     fullPrimarySubject={fullPrimarySubject}
                     isRestricted={isRestricted}
@@ -617,6 +464,7 @@ export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({
                     restrictedBadgeTestId={`preview-restricted-badge-left-${book.id}`}
                     offlineBadgeTestId={`preview-offline-unavailable-badge-left-${book.id}`}
                     advisoryTestId={`preview-advisory-${book.id}`}
+                    scrollableBody={true}
                   />
                 </div>
               </div>

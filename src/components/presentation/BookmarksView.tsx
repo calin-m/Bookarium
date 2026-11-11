@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bookmark,
@@ -10,6 +10,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedger';
+import { useMobileViewportCardFocus } from '@/hooks/useMobileViewportCardFocus';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
 import { CollectionToolbar, type SortOption } from './CollectionToolbar';
@@ -91,87 +92,17 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
   }, [filteredVolumes, safeCurrentPage]);
 
   // Single-column mobile scroll focus zone (< 1024px) and tactile dismissal
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleScrollOrResize = () => {
-      if (window.innerWidth >= 1024) return;
-      const grid = document.getElementById('bookmarks-grid-content');
-      if (!grid) return;
-      const cardEls = Array.from(grid.querySelectorAll<HTMLElement>('[data-bookmark-card-id]'));
-      if (cardEls.length === 0) return;
-
-      // Top boundary: near page top
-      if (window.scrollY <= 32) {
-        const firstId = Number(cardEls[0].getAttribute('data-bookmark-card-id'));
-        if (firstId) {
-          setActiveBookId(firstId);
-          return;
-        }
-      }
-
-      // Bottom boundary: near page bottom
-      const isAtBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 32;
-      if (isAtBottom) {
-        const lastId = Number(cardEls[cardEls.length - 1].getAttribute('data-bookmark-card-id'));
-        if (lastId) {
-          setActiveBookId(lastId);
-          return;
-        }
-      }
-
-      // Viewport central focus band: ~45% from top
-      const targetY = window.innerHeight * 0.45;
-      let closestId: number | null = null;
-      let minDistance = Infinity;
-
-      for (const el of cardEls) {
-        const rect = el.getBoundingClientRect();
-        if (rect.bottom >= 0 && rect.top <= window.innerHeight) {
-          const cardCenterY = rect.top + rect.height / 2;
-          const dist = Math.abs(cardCenterY - targetY);
-          if (dist < minDistance) {
-            minDistance = dist;
-            const id = Number(el.getAttribute('data-bookmark-card-id'));
-            if (id) {
-              closestId = id;
-            }
-          }
-        }
-      }
-
-      if (closestId !== null) {
-        setActiveBookId(closestId);
-      }
-    };
-
-    let rafId: number | null = null;
-    const onScroll = () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(handleScrollOrResize);
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    handleScrollOrResize();
-
-    // Tap outside cards clears active state
-    const handleDocumentPointerDown = (e: PointerEvent | MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && !target.closest('[data-bookmark-card-id]')) {
-        setActiveBookId(null);
-      }
-    };
-
-    document.addEventListener('pointerdown', handleDocumentPointerDown, { passive: true });
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      document.removeEventListener('pointerdown', handleDocumentPointerDown);
-    };
-  }, [paginatedVolumes]);
+  useMobileViewportCardFocus<number>({
+    containerId: 'bookmarks-grid-content',
+    cardDataAttribute: 'data-bookmark-card-id',
+    parseCardId: (raw) => {
+      const n = Number(raw);
+      return n ? n : null;
+    },
+    onActiveIdChange: setActiveBookId,
+    focusBandRatio: 0.45,
+    deps: [paginatedVolumes],
+  });
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);

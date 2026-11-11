@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/presentation/Navbar';
@@ -28,11 +28,10 @@ const BookReaderPage = React.lazy(loadBookReaderPage);
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';
 import { CatalogOfflineView } from '@/components/presentation/CatalogOfflineView';
-import { DOWNLOADED_SHELF_ID } from '@/components/presentation/BookshelfRack';
 import { CollectionBottomDock } from '@/components/presentation/CollectionBottomDock';
 import { CollectionFloatingSearch } from '@/components/presentation/CollectionFloatingSearch';
 import { CollectionFilterDrawer } from '@/components/presentation/CollectionFilterDrawer';
-import { Modal } from '@/components/ui/Modal';
+import { CollectionClearConfirmModal } from '@/components/presentation/CollectionClearConfirmModal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Footer } from '@/components/presentation/Footer';
@@ -41,31 +40,24 @@ import { useCatalogFilters, type CatalogView, extractReaderBookIdFromPath } from
 import { useMobileViewSwipe } from '@/hooks/useMobileViewSwipe';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
-import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useOfflineCatalogFallback } from '@/hooks/useOfflineCatalogFallback';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useCollectionAutoHeal } from '@/hooks/useCollectionAutoHeal';
-import { useBookshelfCapacity } from '@/hooks/useBookshelfCapacity';
+import { usePersonalCollectionsController } from '@/hooks/usePersonalCollectionsController';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import type { GutendexBook } from '@/types/book.types';
-import { Trash2, AlertTriangle, WifiOff } from 'lucide-react';
+import { Trash2, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CollectionToolbar } from '@/components/presentation/CollectionToolbar';
 import { Pagination } from '@/components/ui/Pagination';
-import { filterBooksSmart } from '@/lib/smart-search';
 import { smartScrollToContent, runPreservingScrollPosition } from '@/lib/scroll-utils';
 import {
-  sortBooks,
-  mergeDownloadedShelfBooks,
-  resolveBookshelfViewState,
-  filterCustomShelfBooks,
   BOOKSHELF_BASE_SORT_OPTIONS,
   FAVORITES_BASE_SORT_OPTIONS,
   resolveBookSortKey,
-  decomposeBookSortKey,
   type BookshelfSortOption,
   type FavoritesSortOption,
 } from '@/lib/book-sorting';
@@ -89,8 +81,7 @@ function HomeContent() {
   const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
   const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [confirmClearType, setConfirmClearType] = useState<'shelf' | 'favorites' | null>(null);
-  const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
+  const [isCatalogSearchOpen, setIsCatalogSearchOpen] = useState(false);
 
   const { isOffline } = useNetworkStatus();
   const {
@@ -136,54 +127,6 @@ function HomeContent() {
     return () => window.removeEventListener('popstate', checkPath);
   }, []);
 
-  // Bookshelf store items (hydrated safely on mount)
-  const rawSavedBooks = useBookshelfStore((s) => s.savedBooks);
-  const rawFavoriteBooks = useBookshelfStore((s) => s.favoriteBooks);
-  const rawFavoriteBookIds = useBookshelfStore((s) => s.favoriteBookIds);
-  const clearSavedBooks = useBookshelfStore((s) => s.clearSavedBooks);
-  const rawActiveBookshelfId = useBookshelfStore((s) => s.activeBookshelfId);
-  const setActiveBookshelfId = useBookshelfStore((s) => s.setActiveBookshelfId);
-  const rawCloudBookshelves = useBookshelfStore((s) => s.cloudBookshelves);
-  const rawCloudBookshelfItems = useBookshelfStore((s) => s.cloudBookshelfItems);
-  const rawReadingProgress = useReaderStore((s) => s.readingProgress);
-
-  const {
-    savedBooks,
-    favoriteBooks,
-    favoriteBookIds,
-    activeBookshelfId,
-    cloudBookshelves,
-    cloudBookshelfItems,
-    readingProgress,
-  } = hasMounted
-    ? {
-        savedBooks: rawSavedBooks,
-        favoriteBooks: rawFavoriteBooks,
-        favoriteBookIds: rawFavoriteBookIds,
-        activeBookshelfId: rawActiveBookshelfId,
-        cloudBookshelves: rawCloudBookshelves,
-        cloudBookshelfItems: rawCloudBookshelfItems,
-        readingProgress: rawReadingProgress,
-      }
-    : {
-        savedBooks: [] as GutendexBook[],
-        favoriteBooks: [] as GutendexBook[],
-        favoriteBookIds: [] as number[],
-        activeBookshelfId: null as string | null,
-        cloudBookshelves: [] as typeof rawCloudBookshelves,
-        cloudBookshelfItems: [] as typeof rawCloudBookshelfItems,
-        readingProgress: {} as Record<number, number>,
-      };
-
-  // Sorting & Pagination State for Bookshelf & Favorites
-  const [shelfSortBy, setShelfSortBy] = useState<BookshelfSortOption>('recent');
-  const [favoritesSortBy, setFavoritesSortBy] = useState<FavoritesSortOption>('recent');
-  const [shelfPage, setShelfPage] = useState(1);
-  const [favoritesPage, setFavoritesPage] = useState(1);
-  const [isCollectionSearchOpen, setIsCollectionSearchOpen] = useState(false);
-  const [isCatalogSearchOpen, setIsCatalogSearchOpen] = useState(false);
-  const [isCollectionFilterDrawerOpen, setIsCollectionFilterDrawerOpen] = useState(false);
-
   // Unified collection auto-healing pipeline (Bookshelf & Favorites metadata enrichment)
   const { isHealing, missingFavoriteIds, incompleteSavedIds } = useCollectionAutoHeal();
 
@@ -218,6 +161,76 @@ function HomeContent() {
     handleResetAllFilters,
     removeFilterChip,
   } = useCatalogFilters();
+
+  // Server Query
+  const {
+    data: booksData,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  } = useBooks(queryParams, {
+    enabled: !isOffline && (activeView === 'catalog' || activeView === 'favorites'),
+  });
+
+  // Personal Collections Controller (Bookshelf & Favorites sorting, filtering, pagination & clear state)
+  const {
+    savedBooks,
+    setActiveBookshelfId,
+    collectionSearchQuery,
+    setCollectionSearchQuery,
+    setShelfSortBy,
+    setFavoritesSortBy,
+    setShelfPage,
+    setFavoritesPage,
+    isCollectionSearchOpen,
+    setIsCollectionSearchOpen,
+    isCollectionFilterDrawerOpen,
+    setIsCollectionFilterDrawerOpen,
+    confirmClearType,
+    setConfirmClearType,
+    activeShelf,
+    isViewingDownloaded,
+    isViewingGeneral,
+    resolvedOfflineBooks,
+    currentDrawerShelfId,
+    bookshelfDrawerShelves,
+    bookshelfActiveFilterCount,
+    favoritesActiveFilterCount,
+    shelfSortBase,
+    shelfSortDir,
+    isShelfDirDisabled,
+    favoritesSortBase,
+    favoritesSortDir,
+    isFavoritesDirDisabled,
+    handleCollectionDirectionToggle,
+    handleDrawerSelectShelf,
+    bookshelfPageSize,
+    favoritesPageSize,
+    totalShelfPages,
+    safeShelfPage,
+    paginatedSavedBooks,
+    totalFavoritesPages,
+    safeFavoritesPage,
+    paginatedFavoriteBooks,
+    isShelf,
+    isFavorites,
+    collectionCount,
+    totalCollectionCount,
+    filteredCollectionBooks,
+    emptyStateCopy,
+    clearModalCopy,
+    handleConfirmClearCollection,
+  } = usePersonalCollectionsController({
+    hasMounted,
+    activeView,
+    isMobile,
+    isOffline,
+    isBookOffline,
+    offlineBooks,
+    catalogResults: booksData?.results,
+    removeAllOfflineBooks: removeAll,
+  });
 
   // Full-page mobile horizontal swipe navigation between header views
   const isAnyModalActive = Boolean(
@@ -263,149 +276,6 @@ function HomeContent() {
     enabled: isSwipeEnabled,
   });
 
-  // Shelf resolution for general vs custom shelves
-  const {
-    currentActiveShelfId,
-    activeShelf,
-    isViewingDownloaded,
-    isViewingGeneral,
-  } = useMemo(
-    () =>
-      resolveBookshelfViewState({
-        cloudBookshelves,
-        activeBookshelfId,
-        downloadedShelfId: DOWNLOADED_SHELF_ID,
-      }),
-    [cloudBookshelves, activeBookshelfId]
-  );
-
-  const resolvedOfflineBooks = useMemo(() => {
-    return mergeDownloadedShelfBooks(savedBooks, offlineBooks, isBookOffline);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedBooks, offlineBooks, isBookOffline, isViewingDownloaded, isOffline]);
-
-  const currentShelfBooks = useMemo(() => {
-    if (isViewingDownloaded) {
-      return resolvedOfflineBooks;
-    }
-    if (cloudBookshelves.length <= 1 || isViewingGeneral) {
-      return savedBooks;
-    }
-    return filterCustomShelfBooks(savedBooks, cloudBookshelfItems, currentActiveShelfId);
-  }, [isViewingDownloaded, resolvedOfflineBooks, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, savedBooks]);
-
-  // Reset collection search query when switching views
-  const [prevActiveView, setPrevActiveView] = useState(activeView);
-  if (prevActiveView !== activeView) {
-    setPrevActiveView(activeView);
-    setCollectionSearchQuery('');
-  }
-
-  // Reset shelf page when view, search, sort, or active shelf changes
-  const effectiveShelfKeyId = isViewingGeneral ? 'general' : (currentActiveShelfId || 'general');
-  const [prevShelfKey, setPrevShelfKey] = useState(
-    `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${effectiveShelfKeyId}`
-  );
-  const currentShelfKey = `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${effectiveShelfKeyId}`;
-  if (currentShelfKey !== prevShelfKey) {
-    setPrevShelfKey(currentShelfKey);
-    setShelfPage(1);
-  }
-
-  // Reset favorites page when view, search, or sort changes
-  const [prevFavoritesKey, setPrevFavoritesKey] = useState(
-    `${activeView}-${collectionSearchQuery}-${favoritesSortBy}`
-  );
-  const currentFavoritesKey = `${activeView}-${collectionSearchQuery}-${favoritesSortBy}`;
-  if (currentFavoritesKey !== prevFavoritesKey) {
-    setPrevFavoritesKey(currentFavoritesKey);
-    setFavoritesPage(1);
-  }
-
-  const currentDrawerShelfId = isViewingDownloaded
-    ? DOWNLOADED_SHELF_ID
-    : isViewingGeneral
-    ? 'all'
-    : (currentActiveShelfId || 'all');
-
-  const bookshelfDrawerShelves = useMemo(() => {
-    const standard = [
-      { id: 'all', label: 'All Books', count: savedBooks.length },
-      { id: DOWNLOADED_SHELF_ID, label: 'Downloaded', count: resolvedOfflineBooks.length },
-    ];
-    const custom = cloudBookshelves.map((shelf) => ({
-      id: shelf.id,
-      label: shelf.name,
-      count: cloudBookshelfItems.filter((item) => item.bookshelf_id === shelf.id).length,
-    }));
-    return [...standard, ...custom];
-  }, [savedBooks.length, resolvedOfflineBooks.length, cloudBookshelves, cloudBookshelfItems]);
-
-  const bookshelfActiveFilterCount = useMemo(() => {
-    let count = 0;
-    if (!isViewingGeneral) count++;
-    if (shelfSortBy !== 'recent') count++;
-    if (collectionSearchQuery.trim().length > 0) count++;
-    return count;
-  }, [isViewingGeneral, shelfSortBy, collectionSearchQuery]);
-
-  const favoritesActiveFilterCount = useMemo(() => {
-    let count = 0;
-    if (favoritesSortBy !== 'recent') count++;
-    if (collectionSearchQuery.trim().length > 0) count++;
-    return count;
-  }, [favoritesSortBy, collectionSearchQuery]);
-
-  const {
-    baseField: shelfSortBase,
-    direction: shelfSortDir,
-    isDirectionDisabled: isShelfDirDisabled,
-  } = decomposeBookSortKey(shelfSortBy);
-
-  const {
-    baseField: favoritesSortBase,
-    direction: favoritesSortDir,
-    isDirectionDisabled: isFavoritesDirDisabled,
-  } = decomposeBookSortKey(favoritesSortBy);
-
-  const handleCollectionDirectionToggle = useCallback(() => {
-    runPreservingScrollPosition(() => {
-      const isCurrentShelf = activeView === 'bookshelf';
-      if (isCurrentShelf) {
-        const { baseField, direction, isDirectionDisabled } = decomposeBookSortKey(shelfSortBy);
-        if (!isDirectionDisabled) {
-          const nextDir = direction === 'asc' ? 'desc' : 'asc';
-          setShelfSortBy(resolveBookSortKey(baseField, nextDir) as BookshelfSortOption);
-        }
-      } else {
-        const { baseField, direction, isDirectionDisabled } = decomposeBookSortKey(favoritesSortBy);
-        if (!isDirectionDisabled) {
-          const nextDir = direction === 'asc' ? 'desc' : 'asc';
-          setFavoritesSortBy(resolveBookSortKey(baseField, nextDir) as FavoritesSortOption);
-        }
-      }
-    });
-  }, [activeView, shelfSortBy, favoritesSortBy]);
-
-  const handleDrawerSelectShelf = useCallback((shelfId: string) => {
-    if (shelfId === 'all') {
-      setActiveBookshelfId(null);
-    } else {
-      setActiveBookshelfId(shelfId);
-    }
-  }, [setActiveBookshelfId]);
-
-  // Server Query
-  const {
-    data: booksData,
-    isLoading,
-    isError,
-    isFetching,
-    refetch,
-  } = useBooks(queryParams, {
-    enabled: !isOffline && (activeView === 'catalog' || activeView === 'favorites'),
-  });
-
   // Local offline catalog filtering & sorting when device is offline and downloaded books exist
   const {
     filteredOfflineCatalogBooks,
@@ -435,8 +305,6 @@ function HomeContent() {
     : hasNextSubPage || Boolean(booksData?.next);
 
   // Predictive Next-Page Prefetching (triggers when approaching next upstream 32-batch)
-  // - At pageSize=8 (4 sub-pages/batch): triggers on subIndex 2 (subPage 3) & 3 (subPage 4), giving ~15-25s lead time on mobile.
-  // - At pageSize=16 (2 sub-pages/batch): triggers on subIndex 1 (subPage 2), giving 16 books of reading lead time.
   const isApproachingBatchEnd = subIndex >= Math.max(1, subPagesPerBatch - 2);
   const prefetchNextPage = usePrefetchNextPage(
     queryParams,
@@ -500,81 +368,6 @@ function HomeContent() {
     },
   }));
 
-  // Dynamic 2-shelf capacity for Bookshelf rack (2 shelves x capacity)
-  const shelfCapacity = useBookshelfCapacity();
-  const bookshelfPageSize = shelfCapacity * 2;
-  // Responsive grid page size for Favorites (2/3/4-column card grid alignment: 12 on mobile, 24 on desktop)
-  const favoritesPageSize = isMobile ? 12 : 24;
-
-  // Smart filtered & sorted collection books (Bookshelf)
-  const baseShelfBooks = useMemo(() => {
-    if (shelfSortBy === 'downloaded') {
-      return currentShelfBooks.filter((b) => isBookOffline(b.id));
-    }
-    return currentShelfBooks;
-  }, [currentShelfBooks, shelfSortBy, isBookOffline]);
-
-  const filteredSavedBooks = useMemo(
-    () => filterBooksSmart(baseShelfBooks, collectionSearchQuery),
-    [baseShelfBooks, collectionSearchQuery]
-  );
-
-  const sortedSavedBooks = useMemo(
-    () => sortBooks(filteredSavedBooks, shelfSortBy, readingProgress),
-    [filteredSavedBooks, shelfSortBy, readingProgress]
-  );
-
-  const totalShelfPages = Math.max(1, Math.ceil(sortedSavedBooks.length / bookshelfPageSize));
-  const safeShelfPage = Math.min(shelfPage, totalShelfPages);
-  if (shelfPage > totalShelfPages) {
-    setShelfPage(totalShelfPages);
-  }
-
-  const paginatedSavedBooks = useMemo(() => {
-    const start = (safeShelfPage - 1) * bookshelfPageSize;
-    return sortedSavedBooks.slice(start, start + bookshelfPageSize);
-  }, [sortedSavedBooks, safeShelfPage, bookshelfPageSize]);
-
-  // Smart filtered & sorted collection books (Favorites)
-  const uniqueKnownFavoriteBooks = useMemo(() => {
-    const allKnown = [
-      ...favoriteBooks,
-      ...offlineBooks,
-      ...(booksData?.results || []),
-      ...savedBooks,
-    ];
-    const uniqueKnown = Array.from(new Map(allKnown.map((b) => [b.id, b])).values());
-    return uniqueKnown.filter((b) => favoriteBookIds.includes(b.id));
-  }, [favoriteBooks, offlineBooks, booksData?.results, savedBooks, favoriteBookIds]);
-
-  const baseFavoriteBooks = useMemo(() => {
-    if (favoritesSortBy === 'downloaded') {
-      return uniqueKnownFavoriteBooks.filter((b) => isBookOffline(b.id));
-    }
-    return uniqueKnownFavoriteBooks;
-  }, [uniqueKnownFavoriteBooks, favoritesSortBy, isBookOffline]);
-
-  const filteredFavoriteBooks = useMemo(
-    () => filterBooksSmart(baseFavoriteBooks, collectionSearchQuery),
-    [baseFavoriteBooks, collectionSearchQuery]
-  );
-
-  const sortedFavoriteBooks = useMemo(
-    () => sortBooks(filteredFavoriteBooks, favoritesSortBy),
-    [filteredFavoriteBooks, favoritesSortBy]
-  );
-
-  const totalFavoritesPages = Math.max(1, Math.ceil(sortedFavoriteBooks.length / favoritesPageSize));
-  const safeFavoritesPage = Math.min(favoritesPage, totalFavoritesPages);
-  if (favoritesPage > totalFavoritesPages) {
-    setFavoritesPage(totalFavoritesPages);
-  }
-
-  const paginatedFavoriteBooks = useMemo(() => {
-    const start = (safeFavoritesPage - 1) * favoritesPageSize;
-    return sortedFavoriteBooks.slice(start, start + favoritesPageSize);
-  }, [sortedFavoriteBooks, safeFavoritesPage, favoritesPageSize]);
-
   // Derive displayed books with windowed sub-page slicing based on active view
   let displayedBooks = isOffline
     ? paginatedOfflineCatalogBooks
@@ -616,65 +409,6 @@ function HomeContent() {
   const viewConfig =
     VIEW_CONTENT_CONFIG[activeView as 'catalog' | 'bookshelf' | 'favorites'] ||
     VIEW_CONTENT_CONFIG.catalog;
-
-  const isShelf = activeView === 'bookshelf';
-  const isFavorites = activeView === 'favorites';
-  const collectionCount = isShelf ? currentShelfBooks.length : isFavorites ? favoriteBookIds.length : 0;
-  const totalCollectionCount = isShelf ? savedBooks.length : isFavorites ? favoriteBookIds.length : 0;
-  const filteredCollectionBooks = isShelf
-    ? sortedSavedBooks
-    : isFavorites
-    ? sortedFavoriteBooks
-    : [];
-
-  const emptyStateCopy = collectionSearchQuery.trim()
-    ? {
-        title: `No volumes found matching "${collectionSearchQuery}"`,
-        description: 'Try adjusting your search terms, author name, or clear the search query.',
-      }
-    : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
-    ? {
-        title: 'No downloaded volumes',
-        description: 'Volumes saved for offline reading will appear here.',
-      }
-    : isFavorites && favoritesSortBy === 'downloaded'
-    ? {
-        title: 'No downloaded favorites',
-        description: 'Favorite volumes saved for offline reading will appear here.',
-      }
-    : {
-        title: viewConfig.emptyTitle,
-        description: viewConfig.emptyDescription,
-      };
-
-  const clearModalCopy =
-    confirmClearType === 'favorites'
-      ? {
-          title: 'Clear Favorite Books',
-          heading: 'Are you sure you want to clear your favorites?',
-          description: `This will remove all ${favoriteBookIds.length} titles from your curated favorites list. This action cannot be undone.`,
-          confirmLabel: 'Yes, Clear Favorites',
-        }
-      : isViewingDownloaded
-      ? {
-          title: 'Clear Downloaded Books',
-          heading: 'Are you sure you want to clear your downloaded shelf?',
-          description: `This will remove the offline copies for all ${currentShelfBooks.length} downloaded titles to free up device storage. Your books will remain preserved on your personal bookshelf.`,
-          confirmLabel: 'Yes, Clear Downloads',
-        }
-      : !isViewingGeneral && activeShelf && !activeShelf.is_default
-      ? {
-          title: `Clear "${activeShelf.name}" Bookshelf`,
-          heading: `Are you sure you want to clear your "${activeShelf.name}" shelf?`,
-          description: `This will remove all ${currentShelfBooks.length} titles currently on "${activeShelf.name}" from your bookshelf. Titles on your other shelves will not be affected. This action cannot be undone.`,
-          confirmLabel: `Yes, Clear "${activeShelf.name}"`,
-        }
-      : {
-          title: 'Clear Personal Bookshelf',
-          heading: 'Are you sure you want to clear your bookshelf?',
-          description: `This will remove all ${savedBooks.length} titles currently preserved across your personal reading shelves. This action cannot be undone.`,
-          confirmLabel: 'Yes, Clear Shelf',
-        };
 
   if (offlineReaderBookId) {
     return (
@@ -1191,62 +925,15 @@ function HomeContent() {
       )}
 
       {/* Clear Shelf / Favorites Confirmation Modal */}
-      <Modal
+      <CollectionClearConfirmModal
         isOpen={confirmClearType !== null}
-        onClose={() => setConfirmClearType(null)}
         title={clearModalCopy.title}
-        maxWidth="md"
-        backdropClassName="bg-transparent backdrop-blur-none"
-      >
-        <div className="p-6 space-y-5" data-testid="clear-confirmation-dialog">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-              <p className="font-semibold text-foreground text-sm sm:text-base">
-                {clearModalCopy.heading}
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {clearModalCopy.description}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfirmClearType(null)}
-              className="text-xs font-mono uppercase"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
-              onClick={async () => {
-                if (confirmClearType === 'shelf') {
-                  if (isViewingDownloaded) {
-                    await removeAll(currentShelfBooks);
-                  } else if (!isViewingGeneral && activeShelf && !activeShelf.is_default) {
-                    await useBookshelfStore.getState().clearCustomShelfBooks(activeShelf.id);
-                  } else {
-                    clearSavedBooks();
-                  }
-                } else if (confirmClearType === 'favorites') {
-                  useBookshelfStore.getState().clearFavoriteBooks();
-                }
-                setConfirmClearType(null);
-              }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              {clearModalCopy.confirmLabel}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        heading={clearModalCopy.heading}
+        description={clearModalCopy.description}
+        confirmLabel={clearModalCopy.confirmLabel}
+        onClose={() => setConfirmClearType(null)}
+        onConfirm={handleConfirmClearCollection}
+      />
 
       <RemoveOfflineBookModal
         isOpen={Boolean(bookToRemoveOffline)}

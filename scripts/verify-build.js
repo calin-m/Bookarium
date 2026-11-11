@@ -1549,6 +1549,7 @@ function pass5AdrValidation() {
       'Development or verification tooling.',
       'Dependency security override.',
       'Database entity with RLS user isolation.',
+      'Stored database function or trigger.',
       'Application custom hook.',
       'Domain utility module.',
     ];
@@ -1557,6 +1558,59 @@ function pass5AdrValidation() {
         docViolations.push(
           `Unmapped generic fallback description "${placeholder}" in docs/ARCHITECTURE.md (update lookup map in scripts/generate-architecture-matrix.js).`
         );
+      }
+    }
+
+    // Verify 1:1 SQL Stored Function Parity against docs/ARCHITECTURE.md
+    if (fs.existsSync(schemaPath)) {
+      const schemaSqlText = fs.readFileSync(schemaPath, 'utf-8');
+      const sqlFnMatches = schemaSqlText.matchAll(
+        /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.([a-z0-9_]+)\s*\(/gi
+      );
+      for (const fnMatch of sqlFnMatches) {
+        const fnName = fnMatch[1];
+        if (!archContent.includes(`public.${fnName}()`)) {
+          docViolations.push(
+            `Database stored function "public.${fnName}()" in supabase/schema.sql is missing from docs/ARCHITECTURE.md (update functionMetaMap in scripts/generate-architecture-matrix.js and run "npm run docs:sync").`
+          );
+        }
+      }
+    }
+
+    // Verify Service Worker CACHE_NAME & Version Tag Parity against public/sw.js
+    const swFilePath = path.join(rootDir, 'public', 'sw.js');
+    if (fs.existsSync(swFilePath)) {
+      const swText = fs.readFileSync(swFilePath, 'utf-8');
+      const swCacheMatch = swText.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+      if (swCacheMatch && swCacheMatch[1]) {
+        const liveCacheName = swCacheMatch[1];
+        const verMatch = liveCacheName.match(/-(v\d+)$/i);
+        const liveSwVer = verMatch ? verMatch[1] : null;
+        if (!archContent.includes(liveCacheName)) {
+          docViolations.push(
+            `Live Service Worker CACHE_NAME "${liveCacheName}" from public/sw.js is missing from docs/ARCHITECTURE.md (run "npm run docs:sync").`
+          );
+        }
+        const staleCacheMatches = archContent.matchAll(/\bbookarium-app-shell-v\d+\b/g);
+        for (const m of staleCacheMatches) {
+          if (m[0] !== liveCacheName) {
+            docViolations.push(
+              `Stale Service Worker cache name "${m[0]}" in docs/ARCHITECTURE.md (expected "${liveCacheName}"; run "npm run docs:sync").`
+            );
+          }
+        }
+        if (liveSwVer) {
+          const staleVerMatches = archContent.matchAll(
+            /(?<!Mock\s)\b(?:App Shell|Service Worker|sw\.js)\s*\(?(v\d+)\)?/g
+          );
+          for (const m of staleVerMatches) {
+            if (m[1] !== liveSwVer) {
+              docViolations.push(
+                `Stale Service Worker version reference "${m[0]}" in docs/ARCHITECTURE.md (expected "${liveSwVer}" from public/sw.js; run "npm run docs:sync").`
+              );
+            }
+          }
+        }
       }
     }
 

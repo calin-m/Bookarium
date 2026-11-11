@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Filter, RotateCcw, Check, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import React, { useState, useMemo } from 'react';
+import { Filter, Check, Sparkles } from 'lucide-react';
+import {
+  BottomSheetDrawerShell,
+  splitCsvTokens,
+  toggleCsvToken,
+} from '@/components/ui/BottomSheetDrawerShell';
 import {
   LITERARY_ERAS,
   SORT_OPTIONS,
@@ -99,29 +102,10 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     }
   }
 
-  const selectedLanguages = useMemo(() => {
-    return draftLanguage
-      ? draftLanguage.split(',').map((l) => l.trim()).filter(Boolean)
-      : [];
-  }, [draftLanguage]);
-
-  const selectedEras = useMemo(() => {
-    return draftEra
-      ? draftEra.split(',').map((e) => e.trim()).filter(Boolean)
-      : [];
-  }, [draftEra]);
-
-  const selectedTopics = useMemo(() => {
-    return draftTopic
-      ? draftTopic.split(',').map((t) => t.trim()).filter(Boolean)
-      : [];
-  }, [draftTopic]);
-
-  const selectedFormats = useMemo(() => {
-    return draftFormat
-      ? draftFormat.split(',').map((f) => f.trim()).filter(Boolean)
-      : [];
-  }, [draftFormat]);
+  const selectedLanguages = useMemo(() => splitCsvTokens(draftLanguage), [draftLanguage]);
+  const selectedEras = useMemo(() => splitCsvTokens(draftEra), [draftEra]);
+  const selectedTopics = useMemo(() => splitCsvTokens(draftTopic), [draftTopic]);
+  const selectedFormats = useMemo(() => splitCsvTokens(draftFormat), [draftFormat]);
 
   const visibleGenreFacets = useMemo(() => {
     if (showAllTopics) return GENRE_FACETS;
@@ -141,78 +125,20 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     return [...initial, ...extraSelected];
   }, [showAllLanguages, selectedLanguages]);
 
-  const handleToggleLanguage = (code: string) => {
-    if (!code) {
-      setDraftLanguage('');
-      return;
-    }
-    const currentCodes = draftLanguage
-      ? draftLanguage.split(',').map((l) => l.trim()).filter(Boolean)
-      : [];
-    if (currentCodes.includes(code)) {
-      const remaining = currentCodes.filter((c) => c !== code);
-      setDraftLanguage(remaining.join(','));
-    } else {
-      setDraftLanguage([...currentCodes, code].join(','));
-    }
-  };
-
-  const handleToggleEra = (eraId: string) => {
-    if (!eraId) {
-      setDraftEra('');
-      return;
-    }
-    const current = draftEra ? draftEra.split(',').map((e) => e.trim()).filter(Boolean) : [];
-    if (current.includes(eraId)) {
-      setDraftEra(current.filter((e) => e !== eraId).join(','));
-    } else {
-      setDraftEra([...current, eraId].join(','));
-    }
-  };
-
-  const handleToggleTopic = (topicId: string) => {
-    if (!topicId) {
-      setDraftTopic('');
-      return;
-    }
-    const current = draftTopic ? draftTopic.split(',').map((t) => t.trim()).filter(Boolean) : [];
-    if (current.includes(topicId)) {
-      setDraftTopic(current.filter((t) => t !== topicId).join(','));
-    } else {
-      setDraftTopic([...current, topicId].join(','));
-    }
-  };
-
-  const handleToggleFormat = (formatVal: string) => {
-    if (!formatVal) {
-      setDraftFormat('');
-      return;
-    }
-    const current = draftFormat ? draftFormat.split(',').map((f) => f.trim()).filter(Boolean) : [];
-    if (current.includes(formatVal)) {
-      setDraftFormat(current.filter((f) => f !== formatVal).join(','));
-    } else {
-      setDraftFormat([...current, formatVal].join(','));
-    }
-  };
+  const handleToggleLanguage = (code: string) => setDraftLanguage(toggleCsvToken(draftLanguage, code));
+  const handleToggleEra = (eraId: string) => setDraftEra(toggleCsvToken(draftEra, eraId));
+  const handleToggleTopic = (topicId: string) => setDraftTopic(toggleCsvToken(draftTopic, topicId));
+  const handleToggleFormat = (formatVal: string) => setDraftFormat(toggleCsvToken(draftFormat, formatVal));
 
   const stagedFilterCount = useMemo(() => {
     let count = 0;
-    if (draftEra) {
-      count += draftEra.split(',').filter(Boolean).length;
-    }
+    count += selectedEras.length;
     if (draftSort && draftSort !== 'descending') count++;
-    if (draftTopic) {
-      count += draftTopic.split(',').filter(Boolean).length;
-    }
-    if (draftLanguage) {
-      count += draftLanguage.split(',').filter(Boolean).length;
-    }
-    if (draftFormat) {
-      count += draftFormat.split(',').filter(Boolean).length;
-    }
+    count += selectedTopics.length;
+    count += selectedLanguages.length;
+    count += selectedFormats.length;
     return count;
-  }, [draftEra, draftSort, draftTopic, draftLanguage, draftFormat]);
+  }, [selectedEras, draftSort, selectedTopics, selectedLanguages, selectedFormats]);
 
   const handleApply = () => {
     if (onApplyFilters) {
@@ -241,336 +167,241 @@ export const AdvancedFilterDrawer: React.FC<AdvancedFilterDrawerProps> = ({
     setDraftFormat('');
     onResetAll?.();
   };
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none overflow-hidden [contain:strict]"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="advanced-filter-title"
-          data-testid="advanced-filter-drawer"
-        >
-          {/* Click-outside backdrop with 0-raster GPU crossfade & background scroll intercept */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{ willChange: 'opacity' }}
-            className="fixed inset-0 bg-black/60 pointer-events-auto touch-none"
-            onClick={onClose}
-            onTouchMove={(e) => e.preventDefault()}
-            onWheel={(e) => e.preventDefault()}
-            aria-hidden="true"
-            data-testid="filter-backdrop"
-          />
+    <BottomSheetDrawerShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gutenberg Catalog Filters"
+      titleId="advanced-filter-title"
+      subtitle={stagedFilterCount > 0 ? `${stagedFilterCount} active ${stagedFilterCount === 1 ? 'filter' : 'filters'}` : 'Customize catalog query'}
+      icon={<Filter className="w-4 h-4" />}
+      dialogTestId="advanced-filter-drawer"
+      backdropTestId="filter-backdrop"
+      resetBtnTestId="reset-filters-btn"
+      applyBtnTestId="apply-filters-btn"
+      headerPaddingClass="p-4 sm:p-6"
+      activeFilterCount={stagedFilterCount}
+      onResetAll={handleReset}
+      onApply={handleApply}
+    >
+      {/* Section 1: Author Lifespan & Literary Era (Multi-Select Touch Chips) */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> Author Lifespan &amp; Literary Era
+          </h4>
+          {selectedEras.length > 0 && (
+            <span className="text-[10px] font-mono text-primary font-bold">
+              {selectedEras.length} selected
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Historical Literary Eras">
+          {LITERARY_ERAS.map((era) => {
+            const isAll = era.id === '';
+            const isSelected = isAll
+              ? selectedEras.length === 0
+              : selectedEras.includes(era.id);
 
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            style={{ willChange: 'transform', backfaceVisibility: 'hidden' }}
-            className="relative w-full max-w-4xl mx-auto max-h-[88dvh] rounded-t-2xl bg-background text-foreground flex flex-col justify-between shadow-2xl border-t border-border overflow-hidden pointer-events-auto z-10 [transform:translateZ(0)]"
-          >
-        
-        {/* Grab Handle Bar */}
-        <div className="w-12 h-1 rounded-full bg-muted-foreground/30 mx-auto mt-2.5 mb-1 shrink-0" aria-hidden="true" />
+            return (
+              <button
+                key={era.id || 'all'}
+                type="button"
+                role="checkbox"
+                aria-checked={isSelected}
+                onClick={() => handleToggleEra(era.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-foreground text-background border-foreground shadow-xs'
+                    : 'bg-card border-border text-foreground hover:border-primary'
+                }`}
+                data-testid={`era-option-${era.id || 'all'}`}
+              >
+                <span>{era.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        {/* Drawer Header */}
-        <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between bg-background shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-border">
-              <Filter className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 id="advanced-filter-title" className="font-serif font-bold text-base sm:text-lg leading-tight text-foreground">
-                Gutenberg Catalog Filters
-              </h3>
-              <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                {stagedFilterCount > 0 ? `${stagedFilterCount} active ${stagedFilterCount === 1 ? 'filter' : 'filters'}` : 'Customize catalog query'}
-              </p>
-            </div>
-          </div>
+      {/* Section 2: Sort Order */}
+      <div className="space-y-2.5">
+        <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
+          Sort Order
+        </h4>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Sort Ordering">
+          {SORT_OPTIONS.map((sort) => {
+            const isSelected = (draftSort || 'descending') === (sort.value || 'descending');
+            return (
+              <button
+                key={sort.value || 'descending'}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                onClick={() => setDraftSort(sort.value as 'popular' | 'descending' | 'ascending' | '')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-foreground text-background border-foreground shadow-xs'
+                    : 'bg-card border-border text-foreground hover:border-primary'
+                }`}
+                data-testid={`sort-option-${sort.value || 'descending'}`}
+              >
+                <span>{sort.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
+      {/* Section 3: Bookshelf & Subject Facet (Multi-Select Touch Chips) */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
+            Bookshelf &amp; Subject
+          </h4>
+          {selectedTopics.length > 0 && (
+            <span className="text-[10px] font-mono text-primary font-bold">
+              {selectedTopics.length} selected
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Subject Categories">
+          {visibleGenreFacets.map((facet) => {
+            const isAll = facet.id === '';
+            const isSelected = isAll
+              ? selectedTopics.length === 0
+              : selectedTopics.includes(facet.id);
+
+            return (
+              <button
+                key={facet.id || 'all'}
+                type="button"
+                role="checkbox"
+                aria-checked={isSelected}
+                onClick={() => handleToggleTopic(facet.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-foreground text-background border-foreground shadow-xs'
+                    : 'bg-card border-border text-foreground hover:border-primary'
+                }`}
+                data-testid={`genre-facet-${facet.id || 'all'}`}
+              >
+                <span>{facet.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5" />}
+              </button>
+            );
+          })}
+        </div>
+        {GENRE_FACETS.length > INITIAL_VISIBLE_FACET_COUNT && (
           <button
             type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            aria-label="Close filters"
+            onClick={() => setShowAllTopics((prev) => !prev)}
+            data-testid="toggle-all-topics-btn"
+            className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer pt-0.5"
           >
-            <X className="w-5 h-5" />
+            {showAllTopics
+              ? 'Show fewer'
+              : `+ Show all ${GENRE_FACETS.length - 1} Bookshelves`}
           </button>
+        )}
+      </div>
+
+      {/* Section 4: Catalog Languages (Responsive Multi-Select Touch Chips) */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
+            Language
+          </h4>
+          {selectedLanguages.length > 0 && (
+            <span className="text-[10px] font-mono text-primary font-bold">
+              {selectedLanguages.length} selected
+            </span>
+          )}
         </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Catalog Languages">
+          {visibleLanguages.map((lang) => {
+            const isAll = lang.value === '';
+            const isSelected = isAll
+              ? selectedLanguages.length === 0
+              : selectedLanguages.includes(lang.value);
 
-        {/* Drawer Scrollable Filter Sections */}
-        <div className="flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] p-4 sm:p-6 space-y-6">
-          
-          {/* Section 1: Author Lifespan & Literary Era (Multi-Select Touch Chips) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Author Lifespan &amp; Literary Era
-              </h4>
-              {selectedEras.length > 0 && (
-                <span className="text-[10px] font-mono text-primary font-bold">
-                  {selectedEras.length} selected
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Historical Literary Eras">
-              {LITERARY_ERAS.map((era) => {
-                const isAll = era.id === '';
-                const isSelected = isAll
-                  ? selectedEras.length === 0
-                  : selectedEras.includes(era.id);
-
-                return (
-                  <button
-                    key={era.id || 'all'}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => handleToggleEra(era.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-foreground text-background border-foreground shadow-xs'
-                        : 'bg-card border-border text-foreground hover:border-primary'
-                    }`}
-                    data-testid={`era-option-${era.id || 'all'}`}
-                  >
-                    <span>{era.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section 2: Sort Order */}
-          <div className="space-y-2.5">
-            <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-              Sort Order
-            </h4>
-            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Sort Ordering">
-              {SORT_OPTIONS.map((sort) => {
-                const isSelected = (draftSort || 'descending') === (sort.value || 'descending');
-                return (
-                  <button
-                    key={sort.value || 'descending'}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => setDraftSort(sort.value as 'popular' | 'descending' | 'ascending' | '')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-foreground text-background border-foreground shadow-xs'
-                        : 'bg-card border-border text-foreground hover:border-primary'
-                    }`}
-                    data-testid={`sort-option-${sort.value || 'descending'}`}
-                  >
-                    <span>{sort.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section 3: Bookshelf & Subject Facet (Multi-Select Touch Chips) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-                Bookshelf &amp; Subject
-              </h4>
-              {selectedTopics.length > 0 && (
-                <span className="text-[10px] font-mono text-primary font-bold">
-                  {selectedTopics.length} selected
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Subject Categories">
-              {visibleGenreFacets.map((facet) => {
-                const isAll = facet.id === '';
-                const isSelected = isAll
-                  ? selectedTopics.length === 0
-                  : selectedTopics.includes(facet.id);
-
-                return (
-                  <button
-                    key={facet.id || 'all'}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => handleToggleTopic(facet.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-foreground text-background border-foreground shadow-xs'
-                        : 'bg-card border-border text-foreground hover:border-primary'
-                    }`}
-                    data-testid={`genre-facet-${facet.id || 'all'}`}
-                  >
-                    <span>{facet.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                );
-              })}
-            </div>
-            {GENRE_FACETS.length > INITIAL_VISIBLE_FACET_COUNT && (
+            return (
               <button
+                key={lang.value || 'all'}
                 type="button"
-                onClick={() => setShowAllTopics((prev) => !prev)}
-                data-testid="toggle-all-topics-btn"
-                className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer pt-0.5"
+                role="checkbox"
+                aria-checked={isSelected}
+                onClick={() => handleToggleLanguage(lang.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-foreground text-background border-foreground shadow-xs'
+                    : 'bg-card border-border text-foreground hover:border-primary'
+                }`}
+                data-testid={`language-option-${lang.value || 'all'}`}
               >
-                {showAllTopics
-                  ? 'Show fewer'
-                  : `+ Show all ${GENRE_FACETS.length - 1} Bookshelves`}
+                <span>{lang.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
-            )}
-          </div>
+            );
+          })}
+        </div>
+        {CATALOG_LANGUAGES.length > INITIAL_VISIBLE_LANGUAGE_COUNT && (
+          <button
+            type="button"
+            onClick={() => setShowAllLanguages((prev) => !prev)}
+            data-testid="toggle-all-languages-btn"
+            className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer pt-0.5"
+          >
+            {showAllLanguages
+              ? 'Show fewer'
+              : `+ Show all ${CATALOG_LANGUAGES.length - 1} Languages`}
+          </button>
+        )}
+      </div>
 
-          {/* Section 4: Catalog Languages (Responsive Multi-Select Touch Chips) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-                Language
-              </h4>
-              {selectedLanguages.length > 0 && (
-                <span className="text-[10px] font-mono text-primary font-bold">
-                  {selectedLanguages.length} selected
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Catalog Languages">
-              {visibleLanguages.map((lang) => {
-                const isAll = lang.value === '';
-                const isSelected = isAll
-                  ? selectedLanguages.length === 0
-                  : selectedLanguages.includes(lang.value);
+      {/* Section 5: Format Availability (Multi-Select Touch Chips) */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
+            E-Book Format
+          </h4>
+          {selectedFormats.length > 0 && (
+            <span className="text-[10px] font-mono text-primary font-bold">
+              {selectedFormats.length} selected
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Format Filters">
+          {FORMAT_FILTERS.map((fmt) => {
+            const isAll = fmt.value === '';
+            const isSelected = isAll
+              ? selectedFormats.length === 0
+              : selectedFormats.includes(fmt.value);
 
-                return (
-                  <button
-                    key={lang.value || 'all'}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => handleToggleLanguage(lang.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-foreground text-background border-foreground shadow-xs'
-                        : 'bg-card border-border text-foreground hover:border-primary'
-                    }`}
-                    data-testid={`language-option-${lang.value || 'all'}`}
-                  >
-                    <span>{lang.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                );
-              })}
-            </div>
-            {CATALOG_LANGUAGES.length > INITIAL_VISIBLE_LANGUAGE_COUNT && (
+            return (
               <button
+                key={fmt.value || 'all'}
                 type="button"
-                onClick={() => setShowAllLanguages((prev) => !prev)}
-                data-testid="toggle-all-languages-btn"
-                className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer pt-0.5"
+                role="checkbox"
+                aria-checked={isSelected}
+                onClick={() => handleToggleFormat(fmt.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-foreground text-background border-foreground shadow-xs'
+                    : 'bg-card border-border text-foreground hover:border-primary'
+                }`}
+                data-testid={`format-option-${fmt.value ? fmt.value.replace(/[^a-zA-Z0-9]/g, '-') : 'all'}`}
               >
-                {showAllLanguages
-                  ? 'Show fewer'
-                  : `+ Show all ${CATALOG_LANGUAGES.length - 1} Languages`}
+                <span>{fmt.label}</span>
+                {isSelected && <Check className="w-3.5 h-3.5" />}
               </button>
-            )}
-          </div>
-
-          {/* Section 5: Format Availability (Multi-Select Touch Chips) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
-                E-Book Format
-              </h4>
-              {selectedFormats.length > 0 && (
-                <span className="text-[10px] font-mono text-primary font-bold">
-                  {selectedFormats.length} selected
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Format Filters">
-              {FORMAT_FILTERS.map((fmt) => {
-                const isAll = fmt.value === '';
-                const isSelected = isAll
-                  ? selectedFormats.length === 0
-                  : selectedFormats.includes(fmt.value);
-
-                return (
-                  <button
-                    key={fmt.value || 'all'}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => handleToggleFormat(fmt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-foreground text-background border-foreground shadow-xs'
-                        : 'bg-card border-border text-foreground hover:border-primary'
-                    }`}
-                    data-testid={`format-option-${fmt.value ? fmt.value.replace(/[^a-zA-Z0-9]/g, '-') : 'all'}`}
-                  >
-                    <span>{fmt.label}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+            );
+          })}
         </div>
-
-        {/* Drawer Bottom Actions (Solid Footer) */}
-        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-5 border-t border-border bg-card flex items-center justify-between gap-3 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            data-testid="reset-filters-btn"
-            className="text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground gap-1.5"
-            aria-label="Reset all filters"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset All</span>
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleApply}
-            data-testid="apply-filters-btn"
-            className="px-6 py-2.5 text-xs font-mono uppercase tracking-wider font-bold rounded-lg bg-primary hover:opacity-90 text-primary-foreground shadow-xs"
-            aria-label="Apply filters"
-          >
-            Show Results {stagedFilterCount > 0 ? `(${stagedFilterCount})` : ''}
-          </Button>
-        </div>
-
-      </motion.div>
-    </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </BottomSheetDrawerShell>
   );
 };

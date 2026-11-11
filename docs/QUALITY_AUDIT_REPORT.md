@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 10 Nov 2026 21:43:45 GMT  
+**Last Generated**: Wed, 11 Nov 2026 11:06:14 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 217 passed  
-**Total Verified Tests**: 2401 passed  
+**Total Test Suites**: 236 passed  
+**Total Verified Tests**: 2425 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **217/217 test suites passed** (2401 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **236/236 test suites passed** (2425 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.84%** (13875/14327) — *Target: $\ge$ 95%*
-- **Statements**: **95.51%** (14997/15701) — *Target: $\ge$ 95%*
-- **Functions**: **93.94%** (3086/3285) — *Target: $\ge$ 92%*
-- **Branches**: **87.89%** (13734/15625) — *Target: $\ge$ 85%*
+- **Lines**: **96.85%** (13817/14265) — *Target: $\ge$ 95%*
+- **Statements**: **95.53%** (14923/15621) — *Target: $\ge$ 95%*
+- **Functions**: **94.06%** (3093/3288) — *Target: $\ge$ 92%*
+- **Branches**: **88.06%** (13709/15567) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (217 Suites / 2401 Tests)
+## 🧪 Comprehensive Test Suite Catalog (236 Suites / 2425 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 296 Tests)
 
@@ -495,7 +495,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (33 Suites · 553 Tests)
+### 🎨 Catalog & Presentation (39 Suites · 561 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (22 tests)</summary>
@@ -781,10 +781,25 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/CatalogMobileBottomDock.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `triggers search toggle, filter drawer, view mode switch, and sort toggle`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/CatalogOfflineView.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `renders offline notice and collection counts accurately`
 - ✔ `invokes onNavigateView when clicking personal collection cards`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CatalogTelemetryBadge.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `formats API latency across millisecond and second thresholds`
+- ✔ `displays fetching, error, and healthy states and toggles the diagnostic popover`
 
 </details>
 
@@ -798,6 +813,13 @@
 - ✔ `scrolls to top when scroll-to-top button is clicked while scrolled, and mutes button when at top`
 - ✔ `renders hardware-accelerated ambient light aura and multi-stop dark/sepia shadows`
 - ✔ `handles idle dimming timeout and wake-up on pointer interactions`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionClearConfirmModal.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `displays clear confirmation copy and executes cancel and confirm callbacks`
 
 </details>
 
@@ -968,6 +990,13 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/HeroFeaturedBook2DCard.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders featured book metadata, opening quote, and invokes read and shuffle callbacks`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (16 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
@@ -1128,6 +1157,13 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/notebook/QuickColorSwatchPopover.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `toggles color picker popover and invokes onSelectColor when a swatch is chosen`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/NotebookQuoteCard.test.tsx</code></b> (18 tests)</summary>
 
 - ✔ `renders book metadata, quote excerpt, and note`
@@ -1210,6 +1246,14 @@
 </details>
 
 <details>
+<summary><b><code>src/components/presentation/OpenBookLeftPageSpread.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders public domain header, book metadata, opening and secondary quotes, and subject footer`
+- ✔ `renders restricted copyright badge and offline unavailable badge when applicable`
+
+</details>
+
+<details>
 <summary><b><code>src/components/presentation/StickyCatalogToolbar.test.tsx</code></b> (33 tests)</summary>
 
 - ✔ `should render filter trigger, active chips, and unified API status badge`
@@ -1248,7 +1292,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (19 Suites · 183 Tests)
+### 📖 In-Browser Focus Reader (21 Suites · 185 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1343,6 +1387,13 @@
 - ✔ `renders legal restriction view for plain object with isLegalRestriction: true`
 - ✔ `renders authentic bookTitle and bookAuthor in legal restriction view when provided`
 - ✔ `renders authentic bookTitle and bookAuthor in generic error view when provided`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderFloatingToolsPod.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `toggles the floating quick tools menu and invokes search, theme, controls, annotations, speech, and translation callbacks`
 
 </details>
 
@@ -1544,6 +1595,13 @@
 - ✔ `allows 1-click saving of fellow highlight via fellow-popover-save-highlight-btn`
 - ✔ `renders 2-pill overlap switcher when both self and fellow annotations exist`
 - ✔ `renders privacy-aware fallback text when fellow annotation has no note`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/VolumeCompletionModal.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders completion celebratory state, star rating controls, and navigation actions`
 
 </details>
 
@@ -1858,7 +1916,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (45 Suites · 574 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 576 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2254,6 +2312,14 @@
 - ✔ `safely skips chapters with null or empty content`
 - ✔ `caps matches to maxResults when using diacritic fallback`
 - ✔ `matches canonical typography variations such as -- vs — and straight vs curly quotes`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/notebook-sorting.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `decomposes and resolves volume and chronological sort options`
+- ✔ `filters, groups by volume, and sorts notebook annotations chronologically and by volume group`
 
 </details>
 
@@ -2704,7 +2770,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (29 Suites · 302 Tests)
+### 🔄 Hooks & React Query (34 Suites · 308 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2837,6 +2903,13 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/reader/useReaderAnnotationActions.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `handles text selection, existing annotation matching, color/note saves, and deletion queueing`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/reader/useReaderDrawers.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `initializes with all drawers closed`
@@ -2933,6 +3006,13 @@
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
 - ✔ `handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions`
 - ✔ `resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useAmbientDockScrollState.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `tracks top-of-page threshold, scroll wake, idle dimming, and pointer wake interactions`
 
 </details>
 
@@ -3051,6 +3131,13 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useMobileViewportCardFocus.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `focuses the first card near the top of the page on mobile and clears on outside pointerdown`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/useMobileViewSwipe.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `advances to next view on valid swipe left`
@@ -3120,10 +3207,25 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `sets imageError when not offline or when no cached cover blob exists`
+- ✔ `loads a blob URL from IndexedDB when offline cover blob is available and revokes it on unmount`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/usePerformanceTier.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `classifies high, medium, and low hardware tiers and caches frozen snapshots`
 - ✔ `should respect reduced motion preference and clean up matchMedia listeners on unmount`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (1 tests)</summary>
+
+- ✔ `filters, sorts, paginates, and clears bookshelf and favorites collections`
 
 </details>
 
@@ -3182,7 +3284,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (52 Suites · 258 Tests)
+### 🧩 UI Primitives & Motion (57 Suites · 264 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3335,6 +3437,27 @@
 </details>
 
 <details>
+<summary><b><code>src/components/account/symposium/FellowshipInvitationsSubTab.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders incoming and outgoing circle and symposium invitations and invokes action handlers`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/symposium/ReaderCircleSubTab.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `submits scholar invitation handle and triggers symposium and circle removal callbacks`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/symposium/SymposiumPactsSubTab.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders symposium creation trigger and active reading pacts with leave confirmation`
+
+</details>
+
+<details>
 <summary><b><code>src/components/bookshelf/ReadingStatusSelector.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders all three reading status options`
@@ -3426,6 +3549,13 @@
 </details>
 
 <details>
+<summary><b><code>src/components/ui/AmbientCapsuleDock.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `renders the floating capsule dock, ambient aura, and pointer interaction handlers`
+
+</details>
+
+<details>
 <summary><b><code>src/components/ui/BackToTop.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `does not render when scrollY is below threshold`
@@ -3442,6 +3572,14 @@
 - ✔ `should render badge content with variant and size classes`
 - ✔ `should render success variant correctly`
 - ✔ `should render default secondary variant and md size`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/BottomSheetDrawerShell.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `splits and toggles CSV filter tokens accurately`
+- ✔ `renders nothing when closed and handles Escape, backdrop click, reset, and apply actions when open`
 
 </details>
 

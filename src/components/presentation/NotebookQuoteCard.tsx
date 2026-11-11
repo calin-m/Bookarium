@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Copy,
   Check,
@@ -8,7 +8,6 @@ import {
   Edit3,
   ExternalLink,
   MessageSquare,
-  Palette,
   Lock,
   Feather,
 } from 'lucide-react';
@@ -24,39 +23,12 @@ import {
   handleCopyBookLinkClick,
 } from '@/components/ui/CursorTooltip';
 import {
-  ANNOTATION_COLOR_CONFIG,
-  ANNOTATION_COLOR_LIST,
-} from '@/config/annotation-tokens';
+  QuickColorSwatchPopover,
+  HIGHLIGHT_COLOR_SWATCHES,
+  HIGHLIGHT_CARD_COLORS,
+} from './notebook/QuickColorSwatchPopover';
 
-export const HIGHLIGHT_COLOR_SWATCHES = ANNOTATION_COLOR_LIST.map((c) => ({
-  id: c.id,
-  label: c.label,
-  pillClass: c.notebookSwatchClass,
-  activeRing: c.notebookActiveRing,
-}));
-
-export const HIGHLIGHT_CARD_COLORS: Record<HighlightColor, { border: string; bg: string; text: string }> = {
-  yellow: {
-    border: ANNOTATION_COLOR_CONFIG.yellow.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.yellow.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.yellow.cardTextClass,
-  },
-  amber: {
-    border: ANNOTATION_COLOR_CONFIG.amber.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.amber.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.amber.cardTextClass,
-  },
-  mint: {
-    border: ANNOTATION_COLOR_CONFIG.mint.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.mint.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.mint.cardTextClass,
-  },
-  rose: {
-    border: ANNOTATION_COLOR_CONFIG.rose.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.rose.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.rose.cardTextClass,
-  },
-};
+export { HIGHLIGHT_COLOR_SWATCHES, HIGHLIGHT_CARD_COLORS, QuickColorSwatchPopover };
 
 export interface NotebookQuoteCardProps {
   annotation: Annotation | FellowAnnotation;
@@ -114,7 +86,6 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   onJumpToReader,
   onSaveFellowAsOwn,
 }) => {
-  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [editNoteText, setEditNoteText] = useState(ann.note || '');
   const [editColor, setEditColor] = useState<HighlightColor>(ann.color);
   const [isCopied, setIsCopied] = useState(false);
@@ -127,33 +98,8 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
     if (isEditing) {
       setEditNoteText(ann.note || '');
       setEditColor(ann.color);
-      setIsColorPickerOpen(false);
     }
   }
-
-  // Dismiss quick color swatch popover when clicking outside or pressing Escape
-  useEffect(() => {
-    if (!isColorPickerOpen) return;
-
-    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest(`[data-testid="color-badge-container-${ann.id}"]`)) return;
-      setIsColorPickerOpen(false);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsColorPickerOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isColorPickerOpen, ann.id]);
 
   const activeColor = isEditing ? editColor : ann.color;
   const colorStyle = HIGHLIGHT_CARD_COLORS[activeColor] || HIGHLIGHT_CARD_COLORS.yellow;
@@ -171,7 +117,6 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
   const handleStartEditInternal = () => {
     setEditNoteText(ann.note || '');
     setEditColor(ann.color);
-    setIsColorPickerOpen(false);
     onStartEdit?.(ann);
   };
 
@@ -265,47 +210,13 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               </span>
             ) : (
               /* Quick Color Swatch Badge & Popover */
-              <div className="relative shrink-0" data-testid={`color-badge-container-${ann.id}`}>
-                <button
-                  type="button"
-                  onClick={() => setIsColorPickerOpen((prev) => !prev)}
-                  data-testid={`color-badge-btn-${ann.id}`}
-                  aria-label={`Highlight color: ${activeColor}. Click to change color.`}
-                  aria-expanded={isColorPickerOpen}
-                  title="Click to change highlight color"
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer select-none border border-transparent hover:border-current/30 ${colorStyle.bg} ${colorStyle.text}`}
-                >
-                  <span>{activeColor}</span>
-                  <Palette className="w-2.5 h-2.5 opacity-70" />
-                </button>
-
-                {isColorPickerOpen && (
-                  <div
-                    data-testid={`quick-color-popover-${ann.id}`}
-                    className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
-                  >
-                    {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
-                      const isSelected = ann.color === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          aria-label={`Change highlight color to ${c.label}`}
-                          title={`Change to ${c.label}`}
-                          onClick={async () => {
-                            await onUpdateColor(ann.id, c.id);
-                            setIsColorPickerOpen(false);
-                          }}
-                          data-testid={`quick-color-btn-${ann.id}-${c.id}`}
-                          className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
-                            isSelected ? c.activeRing : ''
-                          }`}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <QuickColorSwatchPopover
+                annotationId={ann.id}
+                activeColor={activeColor}
+                savedColor={ann.color}
+                isEditing={isEditing}
+                onSelectColor={onUpdateColor}
+              />
             )}
           </div>
         </div>

@@ -776,6 +776,29 @@ function extractTypeCatalog(srcDir) {
 }
 
 /**
+ * Programmatically extracts the live Service Worker CACHE_NAME and version tag from public/sw.js.
+ */
+function extractServiceWorkerMetadata(rootDir) {
+  const swPath = path.join(rootDir, 'public', 'sw.js');
+  let cacheName = 'bookarium-app-shell-v7';
+  let versionLabel = 'v7';
+
+  if (fs.existsSync(swPath)) {
+    const content = fs.readFileSync(swPath, 'utf-8');
+    const match = content.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+    if (match && match[1]) {
+      cacheName = match[1];
+      const verMatch = cacheName.match(/-(v\d+)$/i);
+      if (verMatch && verMatch[1]) {
+        versionLabel = verMatch[1];
+      }
+    }
+  }
+
+  return { cacheName, versionLabel };
+}
+
+/**
  * Extracts Web Worker and PWA Service Worker architecture modules from src/workers/ and public/.
  */
 function extractWorkerCatalog(srcDir) {
@@ -796,12 +819,14 @@ function extractWorkerCatalog(srcDir) {
     }
   }
 
-  const swPath = path.join(srcDir, '..', 'public', 'sw.js');
+  const rootDir = path.resolve(srcDir, '..');
+  const swPath = path.join(rootDir, 'public', 'sw.js');
   if (fs.existsSync(swPath)) {
+    const swMeta = extractServiceWorkerMetadata(rootDir);
     workers.push({
       name: 'sw',
       file: 'public/sw.js',
-      role: 'Progressive Web App (PWA) Service Worker (`bookarium-app-shell-v4`) providing offline App Shell caching (`/` + `/account` + `/read/1342`), HTML-embedded `/_next/static/` chunk extraction, `_rsc` Flight isolation, and `/read/*` navigation fallback for 100% offline reading.',
+      role: `Progressive Web App (PWA) Service Worker (\`${swMeta.cacheName}\`) providing offline App Shell caching (\`/\` + \`/account\` + \`/read/1342\`), HTML-embedded \`/_next/static/\` chunk extraction, \`_rsc\` Flight isolation, cross-origin pass-through, and \`/read/*\` navigation fallback for 100% offline reading.`,
     });
   }
 
@@ -965,9 +990,10 @@ function extractPublicAssetsCatalog(rootDir) {
   const publicDir = path.join(rootDir, 'public');
   if (!fs.existsSync(publicDir)) return [];
 
+  const swMeta = extractServiceWorkerMetadata(rootDir);
   const assets = [];
   const roleMap = {
-    'public/sw.js': 'PWA Service Worker (`bookarium-app-shell-v7`) managing App Shell caching, static asset discovery, and offline route navigation fallback.',
+    'public/sw.js': `PWA Service Worker (\`${swMeta.cacheName}\`) managing App Shell caching, static asset discovery, and offline route navigation fallback.`,
     'public/favicon.ico': 'Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with soaring book brand emblem for browser tabs.',
     'public/icon.svg': 'Scalable vector soaring book brand emblem with 3-tiered page depths, sunlit amber peaks, core terracotta arches, and deep burnt outer wings.',
     'public/icons/apple-touch-icon.png': 'High-DPI iOS / iPadOS Home Screen Web Clip icon (`512×512` PNG).',
@@ -1234,6 +1260,7 @@ module.exports = {
   extractDomainUtilitiesCatalog,
   extractConfigurationCatalog,
   extractTypeCatalog,
+  extractServiceWorkerMetadata,
   extractWorkerCatalog,
   extractTestHarnessCatalog,
   extractPublicAssetsCatalog,

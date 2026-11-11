@@ -18,7 +18,6 @@ import {
   isPlaceholderTitle,
 } from '@/lib/book-metadata';
 import {
-  areAnnotationsOverlapping,
   findCanonicalTextSpan,
   pairOverlappingAnnotations,
 } from '@/lib/reader-annotator';
@@ -34,10 +33,12 @@ import { ReaderLoadingView } from '@/components/reader/ReaderLoadingView';
 import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
 import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
+import { VolumeCompletionModal } from '@/components/reader/VolumeCompletionModal';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { useReaderHabitTelemetry } from '@/hooks/reader/useReaderHabitTelemetry';
+import { useReaderAnnotationActions } from '@/hooks/reader/useReaderAnnotationActions';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
@@ -47,19 +48,10 @@ import {
   resetReaderAppearanceToDefaults,
   schedulePreferencesCloudSync,
 } from '@/lib/preferences-sync';
-import {
-  useHydratedAnnotations,
-  type HighlightColor,
-  type Annotation,
-  type FellowAnnotation,
-} from '@/stores/useAnnotationStore';
+import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
-import { StarRating } from '@/components/ui/StarRating';
-import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
-import { Trophy } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
 function BookReaderContent() {
@@ -221,39 +213,7 @@ function BookReaderContent() {
     }
   }, [isAnnotationsOpen, user?.id, numericId, isOffline, fetchFellowAnnotationsForBook]);
 
-  const [annotationToDelete, setAnnotationToDelete] = useState<Annotation | null>(null);
-  const [selectionPopover, setSelectionPopover] = useState<{
-    isOpen: boolean;
-    selectedText: string;
-    position: { top: number; left: number; bottom?: number } | null;
-    activeAnnotation: Annotation | null;
-    fellowAnnotation: FellowAnnotation | null;
-    isFellowOnly: boolean;
-  }>({
-    isOpen: false,
-    selectedText: '',
-    position: null,
-    activeAnnotation: null,
-    fellowAnnotation: null,
-    isFellowOnly: false,
-  });
-
   const [isImmersiveBarsHidden, setIsImmersiveBarsHidden] = useState(false);
-
-  // Dismiss floating text selection popover whenever a reader drawer is toggled
-  const handleToggleDrawer = useCallback(
-    (drawer: Parameters<typeof toggleDrawer>[0]) => {
-      setIsImmersiveBarsHidden(false);
-      setSelectionPopover((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev));
-      toggleDrawer(drawer);
-    },
-    [toggleDrawer]
-  );
-
-  const handleTapReaderSurface = useCallback(() => {
-    if (activeDrawer || selectionPopover.isOpen) return;
-    setIsImmersiveBarsHidden((prev) => !prev);
-  }, [activeDrawer, selectionPopover.isOpen]);
 
   const bookAnnotations = useMemo(() => {
     return annotations.filter((a) => a.bookId === numericId);
@@ -273,22 +233,6 @@ function BookReaderContent() {
       }
     }
   }, [hasMounted]);
-
-  // Keyboard shortcut: Ctrl+F / Cmd+F or '/' to toggle search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInput = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
-
-      if ((e.key === 'f' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !isInput)) {
-        e.preventDefault();
-        handleToggleDrawer('search');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleToggleDrawer]);
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, error: contentError, refetch } = useBookContent(undefined, numericId);
@@ -444,6 +388,62 @@ function BookReaderContent() {
     return pairOverlappingAnnotations(bookAnnotations, bookFellowAnnotations).length;
   }, [bookAnnotations, bookFellowAnnotations]);
 
+  const {
+    annotationToDelete,
+    setAnnotationToDelete,
+    selectionPopover,
+    dismissSelectionPopover,
+    handleTextSelected,
+    handleSelectAnnotation,
+    saveNewBookAnnotation,
+    handleSelectColor,
+    handleSaveNote,
+    handleDeleteAnnotation,
+  } = useReaderAnnotationActions({
+    numericId,
+    bookTitle: resolvedIdentity.title,
+    bookAuthor: resolvedIdentity.author,
+    userId: user?.id,
+    activeChapterIndex,
+    currentChapterPage,
+    activeChapterAnnotations,
+    activeChapterFellowAnnotations,
+    addAnnotation,
+    updateAnnotationColor,
+    updateAnnotationNote,
+  });
+
+  // Dismiss floating text selection popover whenever a reader drawer is toggled
+  const handleToggleDrawer = useCallback(
+    (drawer: Parameters<typeof toggleDrawer>[0]) => {
+      setIsImmersiveBarsHidden(false);
+      dismissSelectionPopover();
+      toggleDrawer(drawer);
+    },
+    [toggleDrawer, dismissSelectionPopover]
+  );
+
+  const handleTapReaderSurface = useCallback(() => {
+    if (activeDrawer || selectionPopover.isOpen) return;
+    setIsImmersiveBarsHidden((prev) => !prev);
+  }, [activeDrawer, selectionPopover.isOpen]);
+
+  // Keyboard shortcut: Ctrl+F / Cmd+F or '/' to toggle search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+
+      if ((e.key === 'f' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !isInput)) {
+        e.preventDefault();
+        handleToggleDrawer('search');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleDrawer]);
+
   const handleSelectSearchMatch = useCallback((chapterIndex: number, page: number) => {
     jumpTo(chapterIndex, page);
     closeDrawer();
@@ -531,143 +531,6 @@ function BookReaderContent() {
     refetch,
     updateBookMetadata,
   });
-
-  const handleTextSelected = useCallback(
-    (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => {
-      const trimmed = selection.text.trim();
-      const matchesPassage = (a: { selectedText: string }) => {
-        const candidate = a.selectedText.trim();
-        return (
-          candidate.includes(trimmed) ||
-          trimmed.includes(candidate) ||
-          findCanonicalTextSpan(candidate, trimmed) !== null ||
-          findCanonicalTextSpan(trimmed, candidate) !== null
-        );
-      };
-      const ownMatch = activeChapterAnnotations.find(matchesPassage) || null;
-      const fellowMatch = activeChapterFellowAnnotations.find(matchesPassage) || null;
-      setSelectionPopover({
-        isOpen: true,
-        selectedText: selection.text,
-        position: selection.position,
-        activeAnnotation: ownMatch,
-        fellowAnnotation: fellowMatch,
-        isFellowOnly: false,
-      });
-    },
-    [activeChapterAnnotations, activeChapterFellowAnnotations]
-  );
-
-  const handleSelectAnnotation = useCallback(
-    (
-      annotation: Annotation | FellowAnnotation,
-      position?: { top: number; left: number; bottom?: number },
-      overlappingFellow?: FellowAnnotation
-    ) => {
-      if (typeof window === 'undefined') return;
-      const isFellowClicked = 'isFellow' in annotation && annotation.isFellow === true;
-      const ownAnn = isFellowClicked
-        ? activeChapterAnnotations.find((a) => areAnnotationsOverlapping(a, annotation)) || null
-        : (annotation as Annotation);
-      const fellowAnn = isFellowClicked
-        ? (annotation as FellowAnnotation)
-        : overlappingFellow ||
-          activeChapterFellowAnnotations.find((fa) => areAnnotationsOverlapping(annotation, fa)) ||
-          null;
-      setSelectionPopover({
-        isOpen: true,
-        selectedText: annotation.selectedText,
-        position: position || { top: 140, left: window.innerWidth / 2 },
-        activeAnnotation: ownAnn,
-        fellowAnnotation: fellowAnn,
-        isFellowOnly: Boolean(fellowAnn && !ownAnn),
-      });
-    },
-    [activeChapterAnnotations, activeChapterFellowAnnotations]
-  );
-
-  const saveNewBookAnnotation = useCallback(
-    async (params: {
-      chapterIndex: number;
-      chapterPage: number;
-      selectedText: string;
-      color: HighlightColor;
-      note?: string;
-    }) => {
-      await addAnnotation(
-        {
-          bookId: numericId,
-          bookTitle: resolvedIdentity.title,
-          bookAuthor: resolvedIdentity.author,
-          ...params,
-        },
-        user?.id
-      );
-    },
-    [addAnnotation, numericId, resolvedIdentity.title, resolvedIdentity.author, user?.id]
-  );
-
-  const handleSelectColor = useCallback(
-    async (color: HighlightColor) => {
-      if (selectionPopover.activeAnnotation) {
-        await updateAnnotationColor(
-          selectionPopover.activeAnnotation.id,
-          color,
-          user?.id
-        );
-      } else {
-        await saveNewBookAnnotation({
-          chapterIndex: activeChapterIndex,
-          chapterPage: currentChapterPage,
-          selectedText: selectionPopover.selectedText,
-          color,
-        });
-      }
-      setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
-    },
-    [
-      selectionPopover.activeAnnotation,
-      selectionPopover.selectedText,
-      activeChapterIndex,
-      currentChapterPage,
-      updateAnnotationColor,
-      saveNewBookAnnotation,
-      user?.id,
-    ]
-  );
-
-  const handleSaveNote = useCallback(
-    async (note: string) => {
-      if (selectionPopover.activeAnnotation) {
-        await updateAnnotationNote(selectionPopover.activeAnnotation.id, note, user?.id);
-      } else {
-        await saveNewBookAnnotation({
-          chapterIndex: activeChapterIndex,
-          chapterPage: currentChapterPage,
-          selectedText: selectionPopover.selectedText,
-          color: 'yellow',
-          note,
-        });
-      }
-      setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
-    },
-    [
-      selectionPopover.activeAnnotation,
-      selectionPopover.selectedText,
-      updateAnnotationNote,
-      saveNewBookAnnotation,
-      activeChapterIndex,
-      currentChapterPage,
-      user?.id,
-    ]
-  );
-
-  const handleDeleteAnnotation = useCallback(() => {
-    if (selectionPopover.activeAnnotation) {
-      setAnnotationToDelete(selectionPopover.activeAnnotation);
-    }
-    setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
-  }, [selectionPopover.activeAnnotation]);
 
   // Reset any residual outer window scroll when entering the full-viewport reader
   useEffect(() => {
@@ -931,7 +794,7 @@ function BookReaderContent() {
         onSelectColor={handleSelectColor}
         onSaveNote={handleSaveNote}
         onDelete={handleDeleteAnnotation}
-        onClose={() => setSelectionPopover((prev) => ({ ...prev, isOpen: false }))}
+        onClose={dismissSelectionPopover}
         theme={theme}
       />
 
@@ -990,64 +853,19 @@ function BookReaderContent() {
       />
 
       {/* Volume Completion Modal */}
-      <Modal
+      <VolumeCompletionModal
         isOpen={isCompletionModalOpen}
         onClose={dismissCompletionModal}
-        title="Volume Finished!"
-        maxWidth="md"
-      >
-        <div className="p-6 space-y-5 text-center" data-testid="volume-completion-modal">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-            <Trophy className="w-6 h-6" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-serif font-bold text-lg text-foreground">
-              Congratulations!
-            </h3>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-              You have completed reading <span className="font-semibold text-foreground">&ldquo;{bookTitle}&rdquo;</span>.
-              Your reading status has been updated to <span className="font-mono text-emerald-500 font-medium">Finished</span>.
-            </p>
-          </div>
-
-          <div className="pt-2 pb-1 space-y-2 flex flex-col items-center">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
-              Leave a Rating
-            </span>
-            <StarRating
-              value={bookRating}
-              onChange={(newRating) => setBookRating(numericId, newRating, user?.id)}
-              size="lg"
-              showLabel
-              aria-label={`Rate ${bookTitle}`}
-            />
-          </div>
-
-          <div className="flex items-center justify-center gap-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                router.push(ROUTES.BOOKSHELF);
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }
-              }}
-              className="text-xs font-mono uppercase"
-            >
-              My Bookshelf
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={dismissCompletionModal}
-              className="text-xs font-mono uppercase"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        bookTitle={bookTitle}
+        bookRating={bookRating}
+        onRateChange={(newRating) => setBookRating(numericId, newRating, user?.id)}
+        onOpenBookshelf={() => {
+          router.push(ROUTES.BOOKSHELF);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }
+        }}
+      />
 
     </div>
   );

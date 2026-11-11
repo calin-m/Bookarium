@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-217%20Suites%20%7C%202401%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.84%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-236%20Suites%20%7C%202425%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.85%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2401 tests across 217 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2425 tests across 236 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,9 +108,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.16)
+## 🛠️ Latest Improvements (v2.9.17)
 
-- **PostgreSQL Trigger RPC Isolation, Handle-Lookup Bounds Guard & Pillar 6 REVOKE Gate (`ADR-073`)**: Resolved Supabase Security Advisor `0028_anon_security_definer_function_executable` and `0029_authenticated_security_definer_function_executable` warnings on `public.handle_profile_identity_sync()` by explicitly revoking `EXECUTE` from `PUBLIC`, `anon`, and `authenticated` so internal profile-sync table triggers cannot be invoked via PostgREST `/rest/v1/rpc/handle_profile_identity_sync`. Added a `1..64` trimmed-character bounds guard inside `public.lookup_scholar_by_username(TEXT)` to short-circuit empty or oversized handle inputs prior to index lookup, and upgraded `Pass 0.75` Pillar 6 in `scripts/verify-build.js` to statically enforce `REVOKE EXECUTE` across all `RETURNS TRIGGER` (`PUBLIC`, `anon`, `authenticated`) and `SECURITY DEFINER` (`PUBLIC`, `anon`) functions.
+- **4-Tier DRY Consolidation, Shared UI Primitives, Controller Hooks & Purpose-Driven Subcomponentization (`ADR-080`)**: Extracted 19 reusable hooks, domain utilities, UI primitives, and subcomponents across 15 parent views (expanding co-located test suites from 217 to 236) to unify dock scroll state, viewport card focus, offline cover Blobs, bottom-sheet drawers, 3D book left spreads, reader floating pods, and symposium sub-tabs.
+- **Dynamic Service Worker Metadata & SQL Function/Trigger Extraction (`ADR-079`)**: Added `extractServiceWorkerMetadata(rootDir)` in `scripts/lib/ast-parser.js` to dynamically parse `CACHE_NAME` (`bookarium-app-shell-v7`) and its version tag (`v7`) directly from `public/sw.js`, replacing 9 hardcoded `v4`/`v6` references across C4 diagrams, sequence diagrams, worker catalogs, and `README.md` sync blocks. Upgraded `extractDatabaseCatalog()` in `scripts/generate-architecture-matrix.js` to programmatically parse `CREATE OR REPLACE FUNCTION public.<name>`, `CREATE TRIGGER`, `CREATE POLICY`, and `ADD CONSTRAINT chk_*` definitions from `supabase/schema.sql`, dynamically rendering stored procedures/triggers and exact policy, constraint, and CLI script counts.
+- **Quote Pool Gateway, Client Storage/Cookie Matrix & Stage 4 Co-Evolution Governance (`ADR-079`, `ADR-080`)**: Expanded the API Route Matrix (`/api/books` dual search + `?pool=quotes&limit=600` 2-spread gateway with `503 no-store` DB-down anti-poisoning guard), Query-to-Index Execution Plan (`fetchQuoteEnrichedPool` & `< 3` spread deep backfill), Client Storage & SSR Cookie Matrix (`bookarium-quote-enriched-books-v1`, `bookarium-extracted-passages-v1`, `bookarium-theme-preference`, `bookarium-auth-hint`), and Failure Mode Matrix (Scenario 11: Edge Quote Pool 4-tier fallback cascade). Extended `Pass 5` in `scripts/verify-build.js` to enforce live `public/sw.js` cache version parity and 1:1 `supabase/schema.sql` stored function coverage, and strengthened Rule 1 (Stage 4) in `AGENTS.md` and `.agents/AGENTS.md` to require updating architecture generator scripts on behavioral changes to existing modules.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -236,7 +238,7 @@ flowchart TD
     
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
         Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync, GlobalTitleTooltip & Dynamic AuthModal)"]
-        SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v4, Static Asset Warmup & Offline Fallback)"]
+        SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v7, Static Asset Warmup & Offline Fallback)"]
         AuthModalNode["AuthModal.tsx & EmailSentView.tsx\n(Sign-In, Sign-Up, Turnstile CAPTCHA, Honeypot, OAuth, Magic Link & Reset)"]
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]
         Hero["HeroSearch.tsx\n(Precision Viewport Fold Docking, 3D Rotating Spotlight & Search)"]
@@ -482,7 +484,7 @@ flowchart TD
 | **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |
 | **5** | **Cold Launch & 6-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--6-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |
 | **6** | **Focus Reader Launch & Multi-Mirror Stream** | HTTP 451 Gatekeeping, 4 Gutenberg Mirrors & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-multi-mirror-streaming--worker-ast](docs/ARCHITECTURE.md) |
-| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v4, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |
+| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v7, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |
 | **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/ARCHITECTURE.md#1-github-actions--database-ingestion-topology](docs/ARCHITECTURE.md) |
 | **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/ARCHITECTURE.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/ARCHITECTURE.md) |
 | **10** | **External Integration Topology Diagram** | Boundary Contracts, Allowlisted Mirrors & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |
