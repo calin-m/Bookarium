@@ -25,6 +25,10 @@ export interface UseReaderHabitTelemetryParams {
   setReadingStatus: (bookId: number, status: ReadingStatus, userId?: string) => void;
   symposiums: SymposiumSessionRow[];
   activeChapterIndex: number;
+  currentChapterPage?: number;
+  currentGlobalPage?: number;
+  bookmarkRow?: number;
+  bookmarkText?: string;
   volumeProgress: number;
   syncSymposiumProgress: (
     bookId: number,
@@ -49,6 +53,10 @@ export function useReaderHabitTelemetry({
   setReadingStatus,
   symposiums,
   activeChapterIndex,
+  currentChapterPage = 1,
+  currentGlobalPage = 1,
+  bookmarkRow = 0,
+  bookmarkText,
   volumeProgress,
   syncSymposiumProgress,
   booksData,
@@ -197,14 +205,34 @@ export function useReaderHabitTelemetry({
   const [isCompletionDismissed, setIsCompletionDismissed] = useState(false);
   const isCompletionModalOpen = isAtEnd && !isCompletionDismissed;
 
-  // Auto-transition to 'currently_reading' when reader begins a book
+  // Auto-transition to 'currently_reading' when reader genuinely engages (page >= 3, chapter > 0, bookmark placed, or saved position exists)
   useEffect(() => {
     if (numericId > 0 && !isContentLoading && contentText) {
-      if (!readingStatus || readingStatus === 'want_to_read') {
+      const isEngagedReading =
+        currentGlobalPage >= 3 ||
+        currentChapterPage >= 3 ||
+        activeChapterIndex > 0 ||
+        bookmarkRow > 0 ||
+        Boolean(bookmarkText) ||
+        Boolean(useReaderStore.getState().getReadingPosition(numericId));
+
+      if (isEngagedReading && (!readingStatus || readingStatus === 'want_to_read')) {
         setReadingStatus(numericId, 'currently_reading', userId);
       }
     }
-  }, [numericId, isContentLoading, contentText, readingStatus, setReadingStatus, userId]);
+  }, [
+    numericId,
+    isContentLoading,
+    contentText,
+    currentGlobalPage,
+    currentChapterPage,
+    activeChapterIndex,
+    bookmarkRow,
+    bookmarkText,
+    readingStatus,
+    setReadingStatus,
+    userId,
+  ]);
 
   // Auto-update reading status to 'finished' when reaching the final page
   useEffect(() => {

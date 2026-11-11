@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 11 Nov 2026 11:06:14 GMT  
+**Last Generated**: Wed, 11 Nov 2026 14:37:41 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 236 passed  
-**Total Verified Tests**: 2425 passed  
+**Total Test Suites**: 239 passed  
+**Total Verified Tests**: 2466 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **236/236 test suites passed** (2425 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2466 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.85%** (13817/14265) — *Target: $\ge$ 95%*
-- **Statements**: **95.53%** (14923/15621) — *Target: $\ge$ 95%*
-- **Functions**: **94.06%** (3093/3288) — *Target: $\ge$ 92%*
-- **Branches**: **88.06%** (13709/15567) — *Target: $\ge$ 85%*
+- **Lines**: **96.88%** (13966/14415) — *Target: $\ge$ 95%*
+- **Statements**: **95.57%** (15081/15780) — *Target: $\ge$ 95%*
+- **Functions**: **94.12%** (3122/3317) — *Target: $\ge$ 92%*
+- **Branches**: **88.1%** (13923/15803) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (236 Suites / 2425 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2466 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 296 Tests)
+### 🚀 App Routes & Pages (27 Suites · 300 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -395,11 +395,12 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (42 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (46 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
-- ✔ `navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked`
-- ✔ `falls back to router.push("/") when history length is <= 1`
+- ✔ `navigates back to origin page when back button is clicked and exit modal is confirmed`
+- ✔ `falls back to router.push("/") when history length is <= 1 and exit modal is confirmed`
+- ✔ `saves bookmark and sets currently_reading when user chooses Bookmark & Leave in exit modal`
 - ✔ `opens and closes Table of Contents drawer`
 - ✔ `opens and closes appearance controls popover`
 - ✔ `navigates between chapters using footer Next/Prev buttons`
@@ -423,7 +424,7 @@
 - ✔ `displays saved note in notes drawer and closes drawer upon jumping to passage`
 - ✔ `updates highlight color in-place without duplicating annotations in store`
 - ✔ `removes highlight and note upon confirmation in delete modal`
-- ✔ `automatically sets reading status to currently_reading when beginning a volume`
+- ✔ `keeps reading status undefined on Page 1 & 2 and transitions to currently_reading upon active engagement`
 - ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
 - ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
 - ✔ `synchronizes document.title with the authentic resolved book title and author`
@@ -439,6 +440,9 @@
 - ✔ `resets residual outer window scrollY to 0 on mount and anchors the viewport container`
 - ✔ `persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls`
 - ✔ `disables redundant /api/books?ids=<id> query when currentBook in useReaderStore already has complete metadata and verified author lifespans`
+- ✔ `intercepts exit with ReaderExitBookmarkModal when back is clicked without a line bookmark`
+- ✔ `saves reading position with bookmarkRow: 1 and sets status currently_reading when Bookmark is clicked in exit modal`
+- ✔ `bypasses exit modal when a bookmark exists further ahead or when reminder is disabled`
 
 </details>
 
@@ -1292,7 +1296,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (21 Suites · 185 Tests)
+### 📖 In-Browser Focus Reader (22 Suites · 191 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1345,7 +1349,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/components/reader/ReaderControls.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders theme and font selection buttons`
 - ✔ `renders correctly under sepia and dark themes`
@@ -1357,6 +1361,7 @@
 - ✔ `closes controls on Escape key press`
 - ✔ `does not render when isOpen is false`
 - ✔ `renders My Default and Factory Reset footer buttons and triggers callbacks`
+- ✔ `renders Exit Bookmark Prompt toggle and calls onExitBookmarkReminderChange`
 
 </details>
 
@@ -1387,6 +1392,17 @@
 - ✔ `renders legal restriction view for plain object with isLegalRestriction: true`
 - ✔ `renders authentic bookTitle and bookAuthor in legal restriction view when provided`
 - ✔ `renders authentic bookTitle and bookAuthor in generic error view when provided`
+
+</details>
+
+<details>
+<summary><b><code>src/components/reader/ReaderExitBookmarkModal.test.tsx</code></b> (5 tests)</summary>
+
+- ✔ `renders exploratory exit prompt for under-threshold pages with left-side ribbon discovery hint`
+- ✔ `renders in-depth session prompt when isUnderThreshold is false`
+- ✔ `fires callbacks on button clicks`
+- ✔ `handles "Don't ask me again" checkbox toggle`
+- ✔ `does not render dialog content when isOpen is false`
 
 </details>
 
@@ -1647,7 +1663,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 207 Tests)
+### ⚡ Zustand State Stores (10 Suites · 209 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1666,7 +1682,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (35 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (36 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1679,6 +1695,7 @@
 - ✔ `syncs to Supabase when userId is provided`
 - ✔ `queues outbox mutation on Supabase error and flushes on reconnect`
 - ✔ `syncWithCloud merges remote notes and uploads un-synced guest notes`
+- ✔ `queues guest annotations to outbox when upsert fails during syncWithCloud`
 - ✔ `updates annotation note with userId and falls back to outbox on network error`
 - ✔ `deletes annotation with userId and falls back to outbox on network error`
 - ✔ `handles syncWithCloud with empty userId or network error safely`
@@ -1857,11 +1874,12 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/stores/usePreferencesStore.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `initializes with stickyScrollEnabled = true by default`
 - ✔ `sets stickyScrollEnabled to specified boolean value`
 - ✔ `toggles stickyScrollEnabled back and forth`
+- ✔ `initializes with exitBookmarkReminderEnabled = true by default and allows toggling`
 - ✔ `initializes speech preferences with default values`
 - ✔ `updates speech preferences and resets them correctly`
 - ✔ `stores customDefaults, preferencesUpdatedAt, and resets all store state via resetAllPreferencesStore`
@@ -1916,7 +1934,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 576 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 579 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -1969,12 +1987,15 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `retains real scholar handles over placeholder handles in setOrUpdateFellowMapEntry and buildFellowScholarsMap`
 - ✔ `maps database rows to FellowAnnotation and converts Annotation to db row payload`
 - ✔ `dispatches DELETE_ANNOTATION and UPSERT_ANNOTATION with exact Supabase table, column, and conflict arguments`
 - ✔ `resolves missing and placeholder fellow scholar profiles via Supabase while skipping currentUserId and known handles`
+- ✔ `generates valid RFC 4122 v4 UUID with native crypto.randomUUID`
+- ✔ `generates valid RFC 4122 v4 UUID when crypto.randomUUID is unavailable using getRandomValues`
+- ✔ `generates valid RFC 4122 v4 UUID when global crypto is completely unavailable`
 
 </details>
 
@@ -2770,7 +2791,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (34 Suites · 308 Tests)
+### 🔄 Hooks & React Query (35 Suites · 329 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2922,6 +2943,31 @@
 </details>
 
 <details>
+<summary><b><code>src/hooks/reader/useReaderExitBookmark.test.ts</code></b> (19 tests)</summary>
+
+- ✔ `returns false when existingPos is null, undefined, or lacks a placed bookmark`
+- ✔ `returns true when a placed bookmark exists in a later chapter`
+- ✔ `returns true when a placed bookmark exists on a later page within the same chapter`
+- ✔ `returns false when a placed bookmark is on the current page or an earlier page`
+- ✔ `resolves cross-device reflowed page via bookmarkText and chaptersWithPagination before comparing coordinates`
+- ✔ `returns false when volume is finished`
+- ✔ `returns false when exit bookmark reminder is disabled by user preference`
+- ✔ `returns false when a line bookmark is already placed on the current page`
+- ✔ `returns false when a placed bookmark exists further ahead in the volume`
+- ✔ `returns true when all conditions pass and the user should be prompted`
+- ✔ `initializes with modal closed and evaluates isUnderThreshold correctly`
+- ✔ `opens modal on handleHeaderBack when intercept conditions are met`
+- ✔ `performs immediate silent exit on handleHeaderBack when a bookmark is ahead`
+- ✔ `performs immediate silent exit when exitBookmarkReminderEnabled is false or volume is finished`
+- ✔ `handles confirm exit without saving by closing modal and navigating`
+- ✔ `handles confirm bookmark and exit with default row 1 and extracted line text`
+- ✔ `calls custom onExit callback when provided instead of default router navigation`
+- ✔ `falls back to router.push("/") when window.history.length <= 1`
+- ✔ `prioritizes closing open drawers on handleHeaderBack and Escape key before opening the exit modal`
+
+</details>
+
+<details>
 <summary><b><code>src/hooks/reader/useReaderGestures.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `initializes with null zoom feedback`
@@ -2939,15 +2985,16 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `transitions reading status to currently_reading on start and finished at end, and derives symposium companion milestones`
 - ✔ `enriches stores from booksData, auto-retries refetch once on content error when lifespans arrive, updates document.title, and derives fellow-side symposium progress`
+- ✔ `gates currently_reading auto-transition to active engagement (page >= 3, chapter > 0, bookmark placed)`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -2960,8 +3007,9 @@
 - ✔ `jumps directly to a specified chapter and page using jumpTo`
 - ✔ `works with default internalized hasMounted when not explicitly passed`
 - ✔ `does not save reading position or progress on initial load when remaining on Page 1`
-- ✔ `records reading position and progress immediately upon advancing to Page 2`
+- ✔ `keeps reading position null on Page 1 & 2, and records position and progress immediately upon reaching Page 3`
 - ✔ `restores saved bookmarkRow with line resumeNotice, persists setBookmarkRow on Page 1, and resets bookmarkRow on page turn`
+- ✔ `preserves an existing ahead bookmark in the store when opening a volume via initialPosition`
 - ✔ `self-heals chapterPage when bookmarkText shifts to an adjacent page after fontSize re-pagination`
 - ✔ `supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice`
 - ✔ `preserves localPos.lastReadAt on passive restore and adopts a newer cloud bookmark from another device`
@@ -3284,7 +3332,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (57 Suites · 264 Tests)
+### 🧩 UI Primitives & Motion (58 Suites · 269 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3373,7 +3421,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `handles theme switching and sticky scroll toggle`
 - ✔ `renders read-aloud section and handles speed selection`
@@ -3384,6 +3432,7 @@
 - ✔ `switches between Appearance & Scroll and Read-Aloud Studio sub-tabs and enables Smart Auto-Hide`
 - ✔ `uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60`
 - ✔ `handles Save as My Default, Revert to My Default, and Factory Reset confirmation modal`
+- ✔ `passes exit bookmark prompt settings through to typography subpanel`
 
 </details>
 
@@ -3429,10 +3478,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountTypographySubPanel.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/account/AccountTypographySubPanel.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders live editorial specimen preview with active theme, font, size, line height, and brightness`
 - ✔ `invokes typeface, font size, line spacing, brightness, reading mode, column width, and spoiler shield callbacks`
+- ✔ `renders exit bookmark prompt options and invokes onExitBookmarkReminderChange`
 
 </details>
 
@@ -3468,6 +3518,15 @@
 - ✔ `renders clear button immediately following the selected option across all status variants`
 - ✔ `applies theme-aware border and background classes to active and inactive buttons without unsupported opacity variants`
 - ✔ `opens confirmation modal with bookmark reset notice when marking Finished on a book with an active bookmark`
+
+</details>
+
+<details>
+<summary><b><code>src/components/motion/ContentCrossfade.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders children with default page-turn variant and overflow-anchor:none`
+- ✔ `supports custom variants: fade, slide-left, and slide-right`
+- ✔ `merges custom className and passes inline styles`
 
 </details>
 

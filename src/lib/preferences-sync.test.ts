@@ -121,6 +121,7 @@ describe('preferences-sync', () => {
           speechVoiceURI: 'Google UK English Female',
           speechAutoPageAdvance: false,
           speechHighlightEnabled: false,
+          exitBookmarkReminderEnabled: false,
         },
         { syncCloud: false }
       );
@@ -137,6 +138,7 @@ describe('preferences-sync', () => {
       expect(usePreferencesStore.getState().speechRate).toBe(1.25);
       expect(usePreferencesStore.getState().speechVoiceURI).toBe('Google UK English Female');
       expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
+      expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
 
       // Save as custom default preset
       const savedPreset = saveCurrentAsCustomDefaults({ syncCloud: false });
@@ -178,6 +180,7 @@ describe('preferences-sync', () => {
       // Reset all to factory defaults and clear custom preset
       resetAllPreferencesToFactoryDefaults({ clearCustomPreset: true, syncCloud: false });
       expect(getActivePreferencesSnapshot()).toEqual(FACTORY_PREFERENCES);
+      expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(true);
       expect(usePreferencesStore.getState().customDefaults).toBeNull();
       expect(revertToCustomDefaults({ syncCloud: false })).toBeNull();
 

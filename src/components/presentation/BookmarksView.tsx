@@ -18,6 +18,7 @@ import { CollectionBottomDock } from './CollectionBottomDock';
 import { CollectionFloatingSearch } from './CollectionFloatingSearch';
 import { CollectionFilterDrawer } from './CollectionFilterDrawer';
 import { smartScrollToContent, runPreservingScrollPosition } from '@/lib/scroll-utils';
+import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
@@ -294,7 +295,9 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       )}
 
       {/* Main Ledger Content */}
-      <div>
+      <ContentCrossfade
+        transitionKey={`bookmarks-${activeFilter}-${sortBy}-${safeCurrentPage}-${searchQuery.trim()}`}
+      >
         {filteredVolumes.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border p-12 text-center max-w-lg mx-auto shadow-xs">
             <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
@@ -392,7 +395,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
             />
           </>
         )}
-      </div>
+      </ContentCrossfade>
 
     {/* Clear Bookmarks Confirmation Modal */}
       <Modal

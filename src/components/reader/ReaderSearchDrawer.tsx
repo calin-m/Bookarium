@@ -7,6 +7,7 @@ import { searchInBook, type BookSearchMatch } from '@/lib/in-book-search';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_GESTURE_CONFIG } from '@/config/reader-config';
+import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderSearchDrawerProps {
@@ -117,59 +118,70 @@ export const ReaderSearchDrawer: React.FC<ReaderSearchDrawerProps> = ({
 
             {/* Search Match List */}
             <div className={`flex-1 overflow-y-auto space-y-2 pr-1 ${activeTheme.scrollbarClass}`}>
-              {searchQuery.trim().length < 2 ? (
-                <div className={`py-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-                  Type at least 2 characters to search across this volume.
-                </div>
-              ) : searchResults.matches.length === 0 ? (
-                <div className={`py-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-                  No matches found for &ldquo;{searchQuery}&rdquo;.
-                </div>
-              ) : (
-                searchResults.matches.map((match: BookSearchMatch) => (
-                  <button
-                    key={match.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectMatch(match.chapterIndex, match.chapterPage);
-                      onClose();
-                    }}
-                    className={`w-full text-left p-2.5 rounded-lg border ${activeTheme.border} ${
-                      theme === 'sepia' ? 'hover:bg-[#402a1d]' : 'hover:bg-primary/5'
-                    } transition-all group cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary`}
-                    data-testid={`search-match-${match.id}`}
-                  >
-                    {/* Chapter & Page Metadata Header */}
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className={`text-[11px] font-mono font-semibold truncate ${
-                        theme === 'sepia' ? 'text-[#f59e0b]' : 'text-primary'
-                      }`}>
-                        {match.chapterDisplayTitle}
-                      </span>
-                      <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded shrink-0 border ${
-                        theme === 'sepia'
-                          ? 'border-[#462e22] bg-[#402a1d] text-[#cbb39d]'
-                          : `${activeTheme.border} bg-muted ${activeTheme.textMuted}`
-                      }`}>
-                        p. {match.globalPage}
-                      </span>
-                    </div>
+              <ContentCrossfade
+                transitionKey={`in-book-search-${
+                  searchQuery.trim().length < 2
+                    ? 'prompt'
+                    : searchResults.matches.length === 0
+                    ? 'empty'
+                    : 'results'
+                }`}
+                className="space-y-2"
+              >
+                {searchQuery.trim().length < 2 ? (
+                  <div className={`py-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                    Type at least 2 characters to search across this volume.
+                  </div>
+                ) : searchResults.matches.length === 0 ? (
+                  <div className={`py-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                    No matches found for &ldquo;{searchQuery}&rdquo;.
+                  </div>
+                ) : (
+                  searchResults.matches.map((match: BookSearchMatch) => (
+                    <button
+                      key={match.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectMatch(match.chapterIndex, match.chapterPage);
+                        onClose();
+                      }}
+                      className={`w-full text-left p-2.5 rounded-lg border ${activeTheme.border} ${
+                        theme === 'sepia' ? 'hover:bg-[#402a1d]' : 'hover:bg-primary/5'
+                      } transition-all group cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary`}
+                      data-testid={`search-match-${match.id}`}
+                    >
+                      {/* Chapter & Page Metadata Header */}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className={`text-[11px] font-mono font-semibold truncate ${
+                          theme === 'sepia' ? 'text-[#f59e0b]' : 'text-primary'
+                        }`}>
+                          {match.chapterDisplayTitle}
+                        </span>
+                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded shrink-0 border ${
+                          theme === 'sepia'
+                            ? 'border-[#462e22] bg-[#402a1d] text-[#cbb39d]'
+                            : `${activeTheme.border} bg-muted ${activeTheme.textMuted}`
+                        }`}>
+                          p. {match.globalPage}
+                        </span>
+                      </div>
 
-                    {/* Excerpt Snippet with Highlight */}
-                    <p className="text-xs font-serif leading-relaxed text-foreground line-clamp-3">
-                      <span className="opacity-80">{match.snippetBefore}</span>
-                      <mark className={`px-0.5 rounded-xs font-semibold ${
-                        theme === 'sepia'
-                          ? 'bg-amber-500/30 text-[#fef6eb]'
-                          : 'bg-primary/25 dark:bg-primary/40 text-foreground'
-                      }`}>
-                        {match.matchedText}
-                      </mark>
-                      <span className="opacity-80">{match.snippetAfter}</span>
-                    </p>
-                  </button>
-                ))
-              )}
+                      {/* Excerpt Snippet with Highlight */}
+                      <p className="text-xs font-serif leading-relaxed text-foreground line-clamp-3">
+                        <span className="opacity-80">{match.snippetBefore}</span>
+                        <mark className={`px-0.5 rounded-xs font-semibold ${
+                          theme === 'sepia'
+                            ? 'bg-amber-500/30 text-[#fef6eb]'
+                            : 'bg-primary/25 dark:bg-primary/40 text-foreground'
+                        }`}>
+                          {match.matchedText}
+                        </mark>
+                        <span className="opacity-80">{match.snippetAfter}</span>
+                      </p>
+                    </button>
+                  ))
+                )}
+              </ContentCrossfade>
             </div>
     </ReaderDrawerShell>
   );

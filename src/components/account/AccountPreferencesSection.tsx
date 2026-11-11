@@ -45,6 +45,8 @@ export interface AccountPreferencesSectionProps {
   onColumnWidthChange?: (width: ReaderColumnWidth) => void;
   spoilerShieldEnabled?: boolean;
   onSpoilerShieldChange?: (enabled: boolean) => void;
+  exitBookmarkReminderEnabled?: boolean;
+  onExitBookmarkReminderChange?: (enabled: boolean) => void;
 
   // Read-Aloud & Audio Narration Preferences
   speechRate: number;
@@ -87,6 +89,8 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
   onColumnWidthChange = () => {},
   spoilerShieldEnabled = true,
   onSpoilerShieldChange = () => {},
+  exitBookmarkReminderEnabled = true,
+  onExitBookmarkReminderChange,
   speechRate,
   onSpeechRateChange,
   speechVoiceURI,
@@ -328,6 +332,8 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             onColumnWidthChange={onColumnWidthChange}
             spoilerShieldEnabled={spoilerShieldEnabled}
             onSpoilerShieldChange={onSpoilerShieldChange}
+            exitBookmarkReminderEnabled={exitBookmarkReminderEnabled}
+            onExitBookmarkReminderChange={onExitBookmarkReminderChange}
           />
         </div>
 

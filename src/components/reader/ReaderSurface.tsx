@@ -336,6 +336,25 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
           });
           onBookmarkRowChange?.(finalRow, extracted);
         }
+      } else if (bookmarkRow === 0) {
+        const extracted =
+          extractRowText(1) ||
+          contentToDisplay
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)[0]
+            ?.slice(0, 100);
+        if (extracted) {
+          setResolvedBookmarkSpan({
+            text: extracted,
+            pageContent: contentToDisplay,
+            startRow: 1,
+            endRow: 1,
+          });
+          onBookmarkRowChange?.(1, extracted);
+        } else {
+          onBookmarkRowChange?.(1);
+        }
       }
     };
 
@@ -358,7 +377,14 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       window.removeEventListener('touchend', handleEnd);
       window.removeEventListener('touchcancel', handleEnd);
     };
-  }, [isDraggingBookmark, computeRowFromClientY, extractRowText, contentToDisplay, onBookmarkRowChange]);
+  }, [
+    isDraggingBookmark,
+    bookmarkRow,
+    computeRowFromClientY,
+    extractRowText,
+    contentToDisplay,
+    onBookmarkRowChange,
+  ]);
 
   const { zoomFeedback, handleTouchStart, handleTouchMove, handleTouchEnd } = useReaderGestures({
     fontSize,

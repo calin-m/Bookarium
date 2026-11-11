@@ -219,7 +219,7 @@ export const ReaderDrawerShell: React.FC<ReaderDrawerShellProps> = ({
             exit={{ opacity: 0, y: typeof window !== 'undefined' && window.innerWidth < 640 ? 40 : -8, scale: typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 0.98 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'fixed z-[9999] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4.5 flex flex-col min-h-0 overflow-hidden shadow-2xl overscroll-contain',
+              'fixed z-[9999] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4.5 flex flex-col min-h-0 overflow-hidden shadow-2xl overscroll-contain transition-[max-height] duration-200 ease-out',
               // Mobile (< sm): Native Bottom Sheet pinned to bottom edge
               'bottom-0 inset-x-0 w-full max-h-[85dvh] rounded-t-2xl border-t border-x-0 origin-bottom',
               // Desktop (sm+): Floating card pinned below header on right

@@ -341,7 +341,7 @@ describe('useReaderSession', () => {
     expect(useReaderStore.getState().readingProgress[200]).toBeUndefined();
   });
 
-  it('records reading position and progress immediately upon advancing to Page 2', async () => {
+  it('keeps reading position null on Page 1 & 2, and records position and progress immediately upon reaching Page 3', async () => {
     useReaderStore.setState({
       readingPositions: {},
       readingProgress: {},
@@ -362,19 +362,28 @@ describe('useReaderSession', () => {
       await Promise.resolve();
     });
 
-    // Before advancing: no position saved
+    // Before advancing: no position saved on Page 1
     expect(useReaderStore.getState().getReadingPosition(300)).toBeNull();
 
-    // Advance to Page 2
+    // Advance to Page 2 (exploratory turn): remains null
     act(() => {
       result.current.handleNextPage();
     });
 
     expect(result.current.currentChapterPage).toBe(2);
+    expect(useReaderStore.getState().getReadingPosition(300)).toBeNull();
+
+    // Advance to Page 3 / Chapter 2 (active reading engagement threshold): records position
+    act(() => {
+      result.current.handleNextPage();
+    });
+
+    expect(result.current.currentGlobalPage).toBe(3);
     const savedPos = useReaderStore.getState().getReadingPosition(300);
     expect(savedPos).not.toBeNull();
-    expect(savedPos?.chapterPage).toBe(2);
-    expect(savedPos?.globalPage).toBe(2);
+    expect(savedPos?.chapterIndex).toBe(1);
+    expect(savedPos?.chapterPage).toBe(1);
+    expect(savedPos?.globalPage).toBe(3);
     expect(useReaderStore.getState().getProgress(300)).toBeGreaterThan(0);
   });
 
@@ -433,15 +442,79 @@ describe('useReaderSession', () => {
     expect(result.current.bookmarkRow).toBe(14);
     expect(result.current.bookmarkText).toBe('A specific bookmarked line on page one');
 
-    // Turning to next page resets bookmarkRow to 0 and clears bookmarkText
+    // Turning to next page shows resting state (bookmarkRow = 0) on Page 2 while preserving the pinned Page 1 bookmark in the store
     act(() => {
       result.current.handleNextPage();
     });
     expect(result.current.currentChapterPage).toBe(2);
     expect(result.current.bookmarkRow).toBe(0);
     expect(result.current.bookmarkText).toBeUndefined();
+    expect(useReaderStore.getState().getReadingPosition(400)?.chapterPage).toBe(1);
+    expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBe(14);
+    expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkText).toBe(
+      'A specific bookmarked line on page one'
+    );
+
+    // Turning back to Page 1 automatically restores the active ribbon on Row 14
+    act(() => {
+      result.current.handlePrevPage();
+    });
+    expect(result.current.currentChapterPage).toBe(1);
+    expect(result.current.bookmarkRow).toBe(14);
+    expect(result.current.bookmarkText).toBe('A specific bookmarked line on page one');
+
+    // Explicitly clearing bookmark (setBookmarkRow(0)) removes it from both state and store
+    act(() => {
+      result.current.setBookmarkRow(0);
+    });
+    expect(result.current.bookmarkRow).toBe(0);
+    expect(result.current.bookmarkText).toBeUndefined();
     expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkRow).toBeUndefined();
     expect(useReaderStore.getState().getReadingPosition(400)?.bookmarkText).toBeUndefined();
+  });
+
+  it('preserves an existing ahead bookmark in the store when opening a volume via initialPosition', async () => {
+    useReaderStore.setState({
+      readingPositions: {
+        410: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 3,
+          bookmarkRow: 6,
+          bookmarkText: 'Chapter 2 page 1 content',
+          lastReadAt: '2026-10-25T10:00:00.000Z',
+        },
+      },
+      readingProgress: { 410: 100 },
+    });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 410,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+        initialPosition: { chapterIndex: 0, chapterPage: 1 },
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Viewport opens at initialPosition (Chapter 0, Page 1) with resting ribbon
+    expect(result.current.activeChapterIndex).toBe(0);
+    expect(result.current.currentChapterPage).toBe(1);
+    expect(result.current.bookmarkRow).toBe(0);
+
+    // Stored bookmark in Chapter 1 remains intact
+    const stored = useReaderStore.getState().getReadingPosition(410);
+    expect(stored?.chapterIndex).toBe(1);
+    expect(stored?.chapterPage).toBe(1);
+    expect(stored?.bookmarkRow).toBe(6);
+    expect(stored?.bookmarkText).toBe('Chapter 2 page 1 content');
   });
 
   it('self-heals chapterPage when bookmarkText shifts to an adjacent page after fontSize re-pagination', async () => {

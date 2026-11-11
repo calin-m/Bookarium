@@ -7,6 +7,7 @@ import {
   AlignLeft,
   Columns,
   Shield,
+  Bookmark,
   Check,
 } from 'lucide-react';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
@@ -33,6 +34,8 @@ export interface AccountTypographySubPanelProps {
   onColumnWidthChange: (width: ReaderColumnWidth) => void;
   spoilerShieldEnabled: boolean;
   onSpoilerShieldChange: (enabled: boolean) => void;
+  exitBookmarkReminderEnabled?: boolean;
+  onExitBookmarkReminderChange?: (enabled: boolean) => void;
 }
 
 const LINE_HEIGHT_PRESETS = [1.4, 1.75, 2.1] as const;
@@ -53,6 +56,8 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
   onColumnWidthChange,
   spoilerShieldEnabled,
   onSpoilerShieldChange,
+  exitBookmarkReminderEnabled = true,
+  onExitBookmarkReminderChange,
 }) => {
   const fontClass =
     fontFamily === 'sans'
@@ -413,6 +418,67 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
           </button>
         </div>
       </div>
+
+      {/* Exit Bookmark Reminder Prompt */}
+      {onExitBookmarkReminderChange && (
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <label className="text-xs font-mono text-foreground font-bold flex items-center gap-1.5">
+              <Bookmark className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Exit Bookmark Prompt</span>
+            </label>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              {exitBookmarkReminderEnabled ? 'Prompt on Exit Enabled' : 'Silent Immediate Exit'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              aria-pressed={exitBookmarkReminderEnabled}
+              onClick={() => onExitBookmarkReminderChange(true)}
+              data-testid="exit-bookmark-prompt-enabled-btn"
+              className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                exitBookmarkReminderEnabled
+                  ? 'bg-primary/10 border-primary text-foreground shadow-xs'
+                  : 'bg-card border-border hover:bg-muted/60 text-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-xs font-mono font-bold text-foreground">
+                  Ask Before Closing
+                </span>
+                {exitBookmarkReminderEnabled && <Check className="w-4 h-4 text-primary" />}
+              </div>
+              <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+                Reminds you to pin a line ribbon bookmark on the left margin, or choose whether to keep exploratory volumes in your Bookmarks ledger.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={!exitBookmarkReminderEnabled}
+              onClick={() => onExitBookmarkReminderChange(false)}
+              data-testid="exit-bookmark-prompt-disabled-btn"
+              className={`flex flex-col items-start gap-1.5 p-4 rounded-xl border text-left transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                !exitBookmarkReminderEnabled
+                  ? 'bg-primary/10 border-primary text-foreground shadow-xs'
+                  : 'bg-card border-border hover:bg-muted/60 text-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-xs font-mono font-bold text-foreground">
+                  Silent Close
+                </span>
+                {!exitBookmarkReminderEnabled && <Check className="w-4 h-4 text-primary" />}
+              </div>
+              <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+                Closes the reader immediately without prompting. Automatically keeps bookmarks for sessions reading 3 or more pages.
+              </p>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

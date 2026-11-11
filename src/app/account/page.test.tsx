@@ -426,6 +426,13 @@ describe('AccountPage', () => {
     fireEvent.click(within(preferencesPanel).getByText('Show All Marginalia'));
     expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
 
+    // Exit Bookmark Prompt Toggle
+    fireEvent.click(within(preferencesPanel).getByTestId('exit-bookmark-prompt-disabled-btn'));
+    expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
+
+    fireEvent.click(within(preferencesPanel).getByTestId('exit-bookmark-prompt-enabled-btn'));
+    expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(true);
+
     // Switch to Audio & Read Aloud sub-tab inside Preferences and exercise speech callbacks
     act(() => {
       usePreferencesStore.setState({ speechVoiceURI: 'en-GB-voice' });

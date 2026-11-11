@@ -7,6 +7,7 @@ import {
   syncAnnotationMutation,
   ANNOTATION_OUTBOX_DISPATCHERS,
   resolveFellowIdentityMap,
+  generateValidAnnotationUuid,
 } from './annotation-cloud-sync';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import type { createClient } from '@/lib/supabase/client';
@@ -160,6 +161,40 @@ describe('annotation-cloud-sync', () => {
     expect(resolved['u-placeholder']).toEqual({
       username: 'lord_byron',
       display_name: 'Lord Byron',
+    });
+  });
+
+  describe('generateValidAnnotationUuid', () => {
+    const RFC4122_V4_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    it('generates valid RFC 4122 v4 UUID with native crypto.randomUUID', () => {
+      const id = generateValidAnnotationUuid();
+      expect(id).toMatch(RFC4122_V4_REGEX);
+    });
+
+    it('generates valid RFC 4122 v4 UUID when crypto.randomUUID is unavailable using getRandomValues', () => {
+      const originalRandomUUID = crypto.randomUUID;
+      try {
+        // @ts-expect-error test fallback override
+        delete crypto.randomUUID;
+        const fallbackId = generateValidAnnotationUuid();
+        expect(fallbackId).toMatch(RFC4122_V4_REGEX);
+      } finally {
+        crypto.randomUUID = originalRandomUUID;
+      }
+    });
+
+    it('generates valid RFC 4122 v4 UUID when global crypto is completely unavailable', () => {
+      const originalCrypto = globalThis.crypto;
+      try {
+        // @ts-expect-error test pure math PRNG fallback
+        delete globalThis.crypto;
+        const mathFallbackId = generateValidAnnotationUuid();
+        expect(mathFallbackId).toMatch(RFC4122_V4_REGEX);
+      } finally {
+        globalThis.crypto = originalCrypto;
+      }
     });
   });
 });

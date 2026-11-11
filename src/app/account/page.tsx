@@ -253,6 +253,8 @@ function AccountDashboardContent() {
     setSpeechAutoPageAdvance,
     speechHighlightEnabled,
     setSpeechHighlightEnabled,
+    exitBookmarkReminderEnabled,
+    setExitBookmarkReminderEnabled,
     resetSpeechPreferences,
     customDefaults,
   } = usePreferencesStore(
@@ -267,6 +269,8 @@ function AccountDashboardContent() {
       setSpeechAutoPageAdvance: s.setSpeechAutoPageAdvance,
       speechHighlightEnabled: s.speechHighlightEnabled,
       setSpeechHighlightEnabled: s.setSpeechHighlightEnabled,
+      exitBookmarkReminderEnabled: s.exitBookmarkReminderEnabled,
+      setExitBookmarkReminderEnabled: s.setExitBookmarkReminderEnabled,
       resetSpeechPreferences: s.resetSpeechPreferences,
       customDefaults: s.customDefaults,
     }))
@@ -288,6 +292,7 @@ function AccountDashboardContent() {
       speechVoiceURI,
       speechAutoPageAdvance,
       speechHighlightEnabled,
+      exitBookmarkReminderEnabled,
     }),
     [
       theme,
@@ -303,6 +308,7 @@ function AccountDashboardContent() {
       speechVoiceURI,
       speechAutoPageAdvance,
       speechHighlightEnabled,
+      exitBookmarkReminderEnabled,
     ]
   );
 
@@ -511,6 +517,11 @@ function AccountDashboardContent() {
     spoilerShieldEnabled,
     onSpoilerShieldChange: (enabled: boolean) => {
       setSpoilerShieldEnabled(enabled);
+      schedulePreferencesCloudSync();
+    },
+    exitBookmarkReminderEnabled,
+    onExitBookmarkReminderChange: (enabled: boolean) => {
+      setExitBookmarkReminderEnabled(enabled);
       schedulePreferencesCloudSync();
     },
     speechRate,

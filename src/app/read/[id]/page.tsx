@@ -34,11 +34,13 @@ import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
 import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import { VolumeCompletionModal } from '@/components/reader/VolumeCompletionModal';
+import { ReaderExitBookmarkModal } from '@/components/reader/ReaderExitBookmarkModal';
 import { useReaderDrawers } from '@/hooks/reader/useReaderDrawers';
 import { useReaderSpeech } from '@/hooks/reader/useReaderSpeech';
 import { useReaderSession } from '@/hooks/reader/useReaderSession';
 import { useReaderHabitTelemetry } from '@/hooks/reader/useReaderHabitTelemetry';
 import { useReaderAnnotationActions } from '@/hooks/reader/useReaderAnnotationActions';
+import { useReaderExitBookmark } from '@/hooks/reader/useReaderExitBookmark';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useShallow } from 'zustand/react/shallow';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
@@ -102,6 +104,8 @@ function BookReaderContent() {
     speechAutoPageAdvance,
     speechHighlightEnabled,
     customDefaults,
+    exitBookmarkReminderEnabled,
+    setExitBookmarkReminderEnabled,
   } = usePreferencesStore(
     useShallow((s) => ({
       speechRate: s.speechRate,
@@ -111,6 +115,8 @@ function BookReaderContent() {
       speechAutoPageAdvance: s.speechAutoPageAdvance,
       speechHighlightEnabled: s.speechHighlightEnabled,
       customDefaults: s.customDefaults,
+      exitBookmarkReminderEnabled: s.exitBookmarkReminderEnabled,
+      setExitBookmarkReminderEnabled: s.setExitBookmarkReminderEnabled,
     }))
   );
 
@@ -206,12 +212,15 @@ function BookReaderContent() {
     }
   }, [fellowAnnotations.length, symposiums, circles, enrichFellowAnnotations]);
 
-  // Re-fetch fellow annotations when opening annotations drawer to capture any live fellow notes
+  // Re-fetch latest own annotations & fellow annotations when opening annotations drawer
   useEffect(() => {
-    if (isAnnotationsOpen && user?.id && numericId > 0 && !isOffline) {
-      void fetchFellowAnnotationsForBook(numericId, user.id);
+    if (isAnnotationsOpen && user?.id && !isOffline) {
+      void syncWithCloud(user.id);
+      if (numericId > 0) {
+        void fetchFellowAnnotationsForBook(numericId, user.id);
+      }
     }
-  }, [isAnnotationsOpen, user?.id, numericId, isOffline, fetchFellowAnnotationsForBook]);
+  }, [isAnnotationsOpen, user?.id, numericId, isOffline, syncWithCloud, fetchFellowAnnotationsForBook]);
 
   const [isImmersiveBarsHidden, setIsImmersiveBarsHidden] = useState(false);
 
@@ -524,12 +533,46 @@ function BookReaderContent() {
     setReadingStatus,
     symposiums,
     activeChapterIndex,
+    currentChapterPage,
+    currentGlobalPage,
+    bookmarkRow,
+    bookmarkText,
     volumeProgress,
     syncSymposiumProgress,
     booksData,
     resolvedIdentity,
     refetch,
     updateBookMetadata,
+  });
+
+  const handleCloseAllDrawers = useCallback(() => {
+    closeDrawer();
+    dismissSelectionPopover();
+  }, [closeDrawer, dismissSelectionPopover]);
+
+  const {
+    isExitModalOpen,
+    closeExitModal,
+    handleHeaderBack,
+    handleConfirmBookmarkAndExit,
+    handleConfirmExitWithoutSaving,
+    isUnderThreshold,
+  } = useReaderExitBookmark({
+    numericId,
+    activeChapterIndex,
+    currentChapterPage,
+    currentGlobalPage,
+    bookmarkRow,
+    bookmarkText,
+    currentPageText,
+    chaptersWithPagination,
+    readingStatus,
+    exitBookmarkReminderEnabled,
+    userId: user?.id,
+    isAnyDrawerOpen: Boolean(activeDrawer || selectionPopover.isOpen),
+    closeAllDrawers: handleCloseAllDrawers,
+    setReadingStatus,
+    setBookmarkRow,
   });
 
   // Reset any residual outer window scroll when entering the full-viewport reader
@@ -548,16 +591,7 @@ function BookReaderContent() {
         author={bookAuthor}
         bookId={bookId}
         progress={volumeProgress}
-        onBack={() => {
-          if (typeof window !== 'undefined' && window.history.length > 1) {
-            router.back();
-          } else {
-            router.push(ROUTES.HOME);
-          }
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new PopStateEvent('popstate'));
-          }
-        }}
+        onBack={handleHeaderBack}
         isTocOpen={isTocOpen}
         onToggleToc={() => handleToggleDrawer('toc')}
         isSearchOpen={isSearchOpen}
@@ -729,6 +763,8 @@ function BookReaderContent() {
         onResetToFactoryDefaults={() => {
           resetReaderAppearanceToDefaults('factory');
         }}
+        exitBookmarkReminderEnabled={exitBookmarkReminderEnabled}
+        onExitBookmarkReminderChange={setExitBookmarkReminderEnabled}
       />
 
       {/* Slide-out Table of Contents Drawer */}
@@ -865,6 +901,20 @@ function BookReaderContent() {
             window.dispatchEvent(new PopStateEvent('popstate'));
           }
         }}
+      />
+
+      {/* Exit Bookmark Discovery & Reminder Modal */}
+      <ReaderExitBookmarkModal
+        isOpen={isExitModalOpen}
+        onClose={closeExitModal}
+        onConfirmExitWithoutSaving={handleConfirmExitWithoutSaving}
+        onConfirmBookmarkAndExit={handleConfirmBookmarkAndExit}
+        bookTitle={bookTitle}
+        currentPage={currentGlobalPage}
+        isUnderThreshold={isUnderThreshold}
+        theme={theme}
+        initialReminderEnabled={exitBookmarkReminderEnabled}
+        onToggleReminder={setExitBookmarkReminderEnabled}
       />
 
     </div>

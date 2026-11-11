@@ -99,5 +99,44 @@ describe('AccountTypographySubPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Shield Active/i }));
     expect(props.onSpoilerShieldChange).toHaveBeenCalledWith(true);
   });
+
+  it('renders exit bookmark prompt options and invokes onExitBookmarkReminderChange', () => {
+    const onExitBookmarkReminderChange = vi.fn();
+    const { rerender } = renderSubPanel({
+      exitBookmarkReminderEnabled: true,
+      onExitBookmarkReminderChange,
+    });
+
+    expect(screen.getByText('Prompt on Exit Enabled')).toBeInTheDocument();
+    const disabledBtn = screen.getByTestId('exit-bookmark-prompt-disabled-btn');
+    fireEvent.click(disabledBtn);
+    expect(onExitBookmarkReminderChange).toHaveBeenCalledWith(false);
+
+    rerender(
+      <AccountTypographySubPanel
+        theme="light"
+        fontFamily="serif"
+        onFontFamilyChange={vi.fn()}
+        fontSize={18}
+        onFontSizeChange={vi.fn()}
+        lineHeight={1.75}
+        onLineHeightChange={vi.fn()}
+        brightness={100}
+        onBrightnessChange={vi.fn()}
+        readingMode="paginated"
+        onReadingModeChange={vi.fn()}
+        columnWidth="wide"
+        onColumnWidthChange={vi.fn()}
+        spoilerShieldEnabled={true}
+        onSpoilerShieldChange={vi.fn()}
+        exitBookmarkReminderEnabled={false}
+        onExitBookmarkReminderChange={onExitBookmarkReminderChange}
+      />
+    );
+    expect(screen.getByText('Silent Immediate Exit')).toBeInTheDocument();
+    const enabledBtn = screen.getByTestId('exit-bookmark-prompt-enabled-btn');
+    fireEvent.click(enabledBtn);
+    expect(onExitBookmarkReminderChange).toHaveBeenCalledWith(true);
+  });
 });
 

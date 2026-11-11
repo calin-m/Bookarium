@@ -912,6 +912,12 @@ describe('ReaderSurface', () => {
     const guideLine = screen.getByTestId('reader-bookmark-guide-line');
     expect(guideLine).toHaveClass('opacity-0');
 
+    // Tapping the resting Line-1 ribbon without dragging activates a bookmark at row 1 with opening line text
+    fireEvent.mouseDown(bookmarkSlider);
+    fireEvent.mouseUp(window);
+    expect(onBookmarkRowChange).toHaveBeenCalledWith(1, 'Call me Ishmael. Some years ago...');
+    onBookmarkRowChange.mockClear();
+
     // Keyboard navigation: ArrowDown increments row
     fireEvent.keyDown(bookmarkSlider, { key: 'ArrowDown' });
     expect(onBookmarkRowChange).toHaveBeenCalledWith(1);

@@ -6,6 +6,7 @@ import type { ChapterSection } from '@/lib/gutenberg-parser';
 import { calculateReadingTime } from '@/lib/gutenberg-parser';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
+import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
 
 export interface ReaderTocDrawerProps {
@@ -104,61 +105,66 @@ export const ReaderTocDrawer: React.FC<ReaderTocDrawerProps> = ({
 
             {/* Chapter List */}
             <div className={`max-h-[calc(100dvh-16rem)] overflow-y-auto space-y-1.5 pr-1 font-mono text-xs ${activeTheme.scrollbarClass}`}>
-              {filteredChapters.length === 0 ? (
-                <div className={`p-6 text-center text-xs font-mono ${activeTheme.textMuted}`}>
-                  No matching sections found for &quot;{tocSearch}&quot;
-                </div>
-              ) : (
-                filteredChapters.map((ch, idx) => {
-                  const originalIndex = chapters.findIndex((c) => c.id === ch.id);
-                  const isActive = originalIndex === activeChapterIndex;
+              <ContentCrossfade
+                transitionKey={`toc-chapters-${tocSearch.trim() ? 'searching' : 'all'}`}
+                className="space-y-1.5"
+              >
+                {filteredChapters.length === 0 ? (
+                  <div className={`p-6 text-center text-xs font-mono ${activeTheme.textMuted}`}>
+                    No matching sections found for &quot;{tocSearch}&quot;
+                  </div>
+                ) : (
+                  filteredChapters.map((ch, idx) => {
+                    const originalIndex = chapters.findIndex((c) => c.id === ch.id);
+                    const isActive = originalIndex === activeChapterIndex;
 
-                  return (
-                    <button
-                      key={ch.id || idx}
-                      ref={isActive ? activeItemRef : null}
-                      type="button"
-                      onClick={() => {
-                        onSelectChapter(originalIndex >= 0 ? originalIndex : idx);
-                        onClose();
-                      }}
-                      className={`w-full text-left p-2.5 rounded-lg transition-all flex items-center justify-between gap-2.5 border cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
-                        isActive
-                          ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
-                          : `${activeTheme.pill} ${activeTheme.inactivePill} hover:border-primary-600/50`
-                      }`}
-                      data-testid={`chapter-item-${originalIndex >= 0 ? originalIndex : idx}`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span
-                          className="line-clamp-2 font-serif text-sm leading-snug"
-                          title={ch.displayTitle || ch.title}
-                        >
-                          {ch.displayTitle || ch.title}
-                        </span>
-                        <span className={`text-[10px] block font-mono mt-0.5 ${isActive && theme === 'sepia' ? 'text-[#2b1d16]/80' : activeTheme.textMuted}`}>
-                          ~{calculateReadingTime(ch.content)} min read
-                        </span>
-                      </div>
+                    return (
+                      <button
+                        key={ch.id || idx}
+                        ref={isActive ? activeItemRef : null}
+                        type="button"
+                        onClick={() => {
+                          onSelectChapter(originalIndex >= 0 ? originalIndex : idx);
+                          onClose();
+                        }}
+                        className={`w-full text-left p-2.5 rounded-lg transition-all flex items-center justify-between gap-2.5 border cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                          isActive
+                            ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
+                            : `${activeTheme.pill} ${activeTheme.inactivePill} hover:border-primary-600/50`
+                        }`}
+                        data-testid={`chapter-item-${originalIndex >= 0 ? originalIndex : idx}`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className="line-clamp-2 font-serif text-sm leading-snug"
+                            title={ch.displayTitle || ch.title}
+                          >
+                            {ch.displayTitle || ch.title}
+                          </span>
+                          <span className={`text-[10px] block font-mono mt-0.5 ${isActive && theme === 'sepia' ? 'text-[#2b1d16]/80' : activeTheme.textMuted}`}>
+                            ~{calculateReadingTime(ch.content)} min read
+                          </span>
+                        </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-                          isActive && theme === 'sepia'
-                            ? 'border-[#2b1d16]/30 text-[#2b1d16]'
-                            : `${activeTheme.border} ${activeTheme.textMuted}`
-                        }`}>
-                          p. {ch.startPageNumber}
-                        </span>
-                        {isActive && (
-                          <Check className={`w-3.5 h-3.5 shrink-0 ${
-                            theme === 'sepia' ? 'text-[#2b1d16]' : 'text-primary-600 dark:text-primary-400'
-                          }`} />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                            isActive && theme === 'sepia'
+                              ? 'border-[#2b1d16]/30 text-[#2b1d16]'
+                              : `${activeTheme.border} ${activeTheme.textMuted}`
+                          }`}>
+                            p. {ch.startPageNumber}
+                          </span>
+                          {isActive && (
+                            <Check className={`w-3.5 h-3.5 shrink-0 ${
+                              theme === 'sepia' ? 'text-[#2b1d16]' : 'text-primary-600 dark:text-primary-400'
+                            }`} />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </ContentCrossfade>
             </div>
     </ReaderDrawerShell>
   );

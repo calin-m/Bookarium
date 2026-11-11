@@ -119,7 +119,7 @@ export const ReaderRowBookmark: React.FC<ReaderRowBookmarkProps> = ({
               ? 'bg-primary text-primary-foreground border-primary scale-110 opacity-100 shadow-md'
               : isBookmarkActive
                 ? 'bg-primary/25 hover:bg-primary text-primary hover:text-primary-foreground border-primary/40 hover:border-primary opacity-35 hover:opacity-100 group-hover/bookmark:opacity-100 scale-100 hover:scale-105'
-                : 'bg-card/40 text-primary/60 border-primary/20 opacity-25 sm:opacity-0 sm:group-hover/bookmark:opacity-60 hover:!opacity-100 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
+                : 'bg-card/75 text-primary border-primary/30 opacity-60 sm:opacity-50 hover:!opacity-100 group-hover/bookmark:opacity-90 group-focus-visible/bookmark:opacity-100 group-focus-visible/bookmark:ring-2 group-focus-visible/bookmark:ring-primary'
           }`}
         >
           <Bookmark className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current shrink-0" />

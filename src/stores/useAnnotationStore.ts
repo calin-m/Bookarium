@@ -26,6 +26,7 @@ import {
   ANNOTATION_OUTBOX_DISPATCHERS,
   toAnnotationDbRow,
   syncAnnotationMutation,
+  generateValidAnnotationUuid,
 } from '@/lib/annotation-cloud-sync';
 
 export {
@@ -102,10 +103,7 @@ export interface AnnotationState {
 }
 
 function generateId(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `ann-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return generateValidAnnotationUuid();
 }
 
 export const useAnnotationStore = create<AnnotationState>()(
@@ -686,7 +684,18 @@ export const useAnnotationStore = create<AnnotationState>()(
           // Bidirectional sync: upload guest annotations to Supabase
           if (unSyncedGuestAnnotations.length > 0) {
             const inserts = unSyncedGuestAnnotations.map((a) => toAnnotationDbRow(a, userId));
-            await supabase.from('user_annotations').upsert(inserts, { onConflict: 'id' });
+            const { error: upsertError } = await supabase
+              .from('user_annotations')
+              .upsert(inserts, { onConflict: 'id' });
+
+            if (upsertError) {
+              for (const insert of inserts) {
+                get().queueOutboxAction({
+                  type: 'UPSERT_ANNOTATION',
+                  payload: insert as Record<string, unknown>,
+                });
+              }
+            }
           }
 
           // Automatically fetch all Fellow annotations across active symposiums

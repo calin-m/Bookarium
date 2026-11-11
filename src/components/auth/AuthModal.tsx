@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
+import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { EmailSentView } from './EmailSentView';
 
 export interface TurnstileRenderOptions {
@@ -464,46 +465,59 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Verification Email Sent Screen (Sign Up) */}
-        {verificationEmailSent && authModalView === 'sign_up' ? (
-          <EmailSentView
-            email={email}
-            messagePrefix="We sent a verification link to"
-            subtitle="Please click the link in your email to activate your account. Verification links expire in 1 hour."
-            resendSuccess={resendSuccess}
-            onResend={handleResendVerification}
-            isResending={isResending}
-            resendCooldown={resendCooldown}
-            onBackToSignIn={() => {
-              setVerificationEmailSent(false);
-              setAuthModalView('sign_in');
-            }}
-            backButtonLabel="Go to Sign In"
-          />
-        ) : /* Magic Link Sent Success */
-        magicLinkSent && authModalView === 'magic_link' ? (
-          <EmailSentView
-            email={email}
-            messagePrefix="We sent a magic sign-in link to"
-            onBackToSignIn={() => {
-              setMagicLinkSent(false);
-              setAuthModalView('sign_in');
-            }}
-          />
-        ) : /* Password Reset Email Sent Success */
-        resetPasswordSent && authModalView === 'forgot_password' ? (
-          <EmailSentView
-            email={email}
-            messagePrefix="We sent a password reset link to"
-            subtitle="Click the link in your email to set a new password."
-            onBackToSignIn={() => {
-              setResetPasswordSent(false);
-              setAuthModalView('sign_in');
-            }}
-          />
-        ) : (
-          /* Form */
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <ContentCrossfade
+          transitionKey={`auth-modal-content-${
+            verificationEmailSent && authModalView === 'sign_up'
+              ? 'verify-sent'
+              : magicLinkSent && authModalView === 'magic_link'
+              ? 'magic-sent'
+              : resetPasswordSent && authModalView === 'forgot_password'
+              ? 'reset-sent'
+              : authModalView
+          }`}
+          className="space-y-4"
+        >
+          {/* Verification Email Sent Screen (Sign Up) */}
+          {verificationEmailSent && authModalView === 'sign_up' ? (
+            <EmailSentView
+              email={email}
+              messagePrefix="We sent a verification link to"
+              subtitle="Please click the link in your email to activate your account. Verification links expire in 1 hour."
+              resendSuccess={resendSuccess}
+              onResend={handleResendVerification}
+              isResending={isResending}
+              resendCooldown={resendCooldown}
+              onBackToSignIn={() => {
+                setVerificationEmailSent(false);
+                setAuthModalView('sign_in');
+              }}
+              backButtonLabel="Go to Sign In"
+            />
+          ) : /* Magic Link Sent Success */
+          magicLinkSent && authModalView === 'magic_link' ? (
+            <EmailSentView
+              email={email}
+              messagePrefix="We sent a magic sign-in link to"
+              onBackToSignIn={() => {
+                setMagicLinkSent(false);
+                setAuthModalView('sign_in');
+              }}
+            />
+          ) : /* Password Reset Email Sent Success */
+          resetPasswordSent && authModalView === 'forgot_password' ? (
+            <EmailSentView
+              email={email}
+              messagePrefix="We sent a password reset link to"
+              subtitle="Click the link in your email to set a new password."
+              onBackToSignIn={() => {
+                setResetPasswordSent(false);
+                setAuthModalView('sign_in');
+              }}
+            />
+          ) : (
+            <>
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
             {(authModalView === 'sign_in' || authModalView === 'sign_up') && (
               <div className="space-y-4">
                 <Button
@@ -733,10 +747,8 @@ export const AuthModal: React.FC = () => {
               </p>
             )}
           </form>
-        )}
 
-        {/* View Switchers */}
-        {!verificationEmailSent && !magicLinkSent && !resetPasswordSent && (
+          {/* View Switchers */}
           <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-muted-foreground">
             {authModalView === 'sign_in' ? (
               <>
@@ -787,7 +799,9 @@ export const AuthModal: React.FC = () => {
               </button>
             )}
           </div>
-        )}
+        </>
+      )}
+    </ContentCrossfade>
       </div>
     </div>
   );

@@ -121,7 +121,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.getAllByLabelText('Typography & Theme Controls')[0]).toBeInTheDocument();
   });
 
-  it('navigates back to origin page (preserving catalog/bookshelf/favorites state) when back button is clicked', () => {
+  it('navigates back to origin page when back button is clicked and exit modal is confirmed', () => {
     Object.defineProperty(window, 'history', {
       writable: true,
       value: { length: 3 },
@@ -130,10 +130,13 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     render(<BookReaderPage />);
 
     fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('exit-without-bookmarking-btn'));
     expect(mockBack).toHaveBeenCalled();
   });
 
-  it('falls back to router.push("/") when history length is <= 1', () => {
+  it('falls back to router.push("/") when history length is <= 1 and exit modal is confirmed', () => {
     Object.defineProperty(window, 'history', {
       writable: true,
       value: { length: 1 },
@@ -142,7 +145,27 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     render(<BookReaderPage />);
 
     fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('exit-without-bookmarking-btn'));
     expect(mockPush).toHaveBeenCalledWith('/');
+  });
+
+  it('saves bookmark and sets currently_reading when user chooses Bookmark & Leave in exit modal', async () => {
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 2 },
+    });
+
+    render(<BookReaderPage />);
+
+    fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('confirm-bookmark-and-exit-btn'));
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
+    expect(useReaderStore.getState().getReadingPosition(1342)).not.toBeNull();
+    expect(mockBack).toHaveBeenCalled();
   });
 
   it('opens and closes Table of Contents drawer', () => {
@@ -649,10 +672,17 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.queryByTestId('user-annotation-highlight')).not.toBeInTheDocument();
   });
 
-  it('automatically sets reading status to currently_reading when beginning a volume', async () => {
+  it('keeps reading status undefined on Page 1 & 2 and transitions to currently_reading upon active engagement', async () => {
     expect(useBookshelfStore.getState().bookStatuses[1342]).toBeUndefined();
 
     render(<BookReaderPage />);
+
+    // Initially on Chapter 0, Page 1: status remains undefined
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBeUndefined();
+
+    // Advance to next chapter / page 3: triggers currently_reading
+    const nextBtn = screen.getByLabelText('Next Page');
+    fireEvent.click(nextBtn);
 
     await waitFor(() => {
       expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
@@ -1190,6 +1220,102 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       expect.objectContaining({ ids: '1342' }),
       expect.objectContaining({ enabled: true })
     );
+  });
+
+  it('intercepts exit with ReaderExitBookmarkModal when back is clicked without a line bookmark', async () => {
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+    });
+
+    render(<BookReaderPage />);
+
+    // Click back to catalog
+    const backBtn = screen.getByRole('button', { name: 'Back to Catalog' });
+    fireEvent.click(backBtn);
+
+    // Modal appears
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('exit-without-bookmarking-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('confirm-bookmark-and-exit-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('keep-reading-btn')).toBeInTheDocument();
+
+    // Click "Keep Reading" dismisses modal without navigating
+    fireEvent.click(screen.getByTestId('keep-reading-btn'));
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+
+    // Click back again, then click "Leave"
+    fireEvent.click(backBtn);
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('exit-without-bookmarking-btn'));
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('saves reading position with bookmarkRow: 1 and sets status currently_reading when Bookmark is clicked in exit modal', async () => {
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+    });
+
+    render(<BookReaderPage />);
+
+    const backBtn = screen.getByRole('button', { name: 'Back to Catalog' });
+    fireEvent.click(backBtn);
+
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-bookmark-and-exit-btn'));
+
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    const pos = useReaderStore.getState().getReadingPosition(1342);
+    expect(pos?.bookmarkRow).toBe(1);
+    expect(useBookshelfStore.getState().getReadingStatus(1342)).toBe('currently_reading');
+  });
+
+  it('bypasses exit modal when a bookmark exists further ahead or when reminder is disabled', async () => {
+    // 1. Saved bookmark is further ahead (Chapter 0, Page 5) while user is on Page 1
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 0,
+          chapterPage: 5,
+          globalPage: 5,
+          bookmarkRow: 3,
+          bookmarkText: 'Further passage',
+          lastReadAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    const { unmount } = render(<BookReaderPage />);
+    const backBtn = screen.getByRole('button', { name: 'Back to Catalog' });
+    mockBack.mockClear();
+
+    await act(async () => {
+      fireEvent.click(backBtn);
+    });
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    expect(mockBack).toHaveBeenCalled();
+    unmount();
+
+    // 2. User has disabled exit bookmark reminder in preferences
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    usePreferencesStore.setState({ exitBookmarkReminderEnabled: false });
+    useReaderStore.setState({ readingPositions: {} });
+
+    const { unmount: unmount2 } = render(<BookReaderPage />);
+    const backBtn2 = screen.getByRole('button', { name: 'Back to Catalog' });
+    mockBack.mockClear();
+
+    await act(async () => {
+      fireEvent.click(backBtn2);
+    });
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    expect(mockBack).toHaveBeenCalled();
+    unmount2();
+
+    // Restore preference
+    usePreferencesStore.setState({ exitBookmarkReminderEnabled: true });
   });
 });
 

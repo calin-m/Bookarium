@@ -29,6 +29,8 @@ export interface ReaderControlsProps {
   isAtFactoryDefaults?: boolean;
   onRevertToCustomDefaults?: () => void;
   onResetToFactoryDefaults?: () => void;
+  exitBookmarkReminderEnabled?: boolean;
+  onExitBookmarkReminderChange?: (enabled: boolean) => void;
 }
 
 export const ReaderControls: React.FC<ReaderControlsProps> = ({
@@ -53,6 +55,8 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
   isAtFactoryDefaults = false,
   onRevertToCustomDefaults,
   onResetToFactoryDefaults,
+  exitBookmarkReminderEnabled = true,
+  onExitBookmarkReminderChange,
 }) => {
   const activeTheme = getReaderTheme(theme);
 
@@ -339,6 +343,39 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Reading Behavior & Exit Reminder */}
+        {onExitBookmarkReminderChange && (
+          <div className={`pt-3 border-t ${activeTheme.border} flex items-center justify-between gap-3`}>
+            <div>
+              <span className="block font-medium text-[11px] text-foreground">
+                Exit Bookmark Prompt
+              </span>
+              <span className={`block text-[10px] ${activeTheme.textMuted} leading-tight`}>
+                Remind to set line ribbon or keep in Bookmarks when closing
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={exitBookmarkReminderEnabled}
+              aria-label="Toggle Exit Bookmark Prompt"
+              data-testid="reader-toggle-exit-bookmark-prompt"
+              onClick={() => onExitBookmarkReminderChange(!exitBookmarkReminderEnabled)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                exitBookmarkReminderEnabled
+                  ? theme === 'sepia' ? 'bg-[#f59e0b]' : 'bg-primary'
+                  : 'bg-muted-foreground/30'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                  exitBookmarkReminderEnabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         {/* Preset & Factory Reset Footer */}
         {(onRevertToCustomDefaults || onResetToFactoryDefaults) && (

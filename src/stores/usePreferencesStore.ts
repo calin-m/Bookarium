@@ -19,12 +19,18 @@ export interface ScholarPreferencesSnapshot {
   speechVoiceURI: string | null;
   speechAutoPageAdvance: boolean;
   speechHighlightEnabled: boolean;
+  exitBookmarkReminderEnabled?: boolean;
 }
 
 export interface PreferencesState {
   stickyScrollEnabled: boolean;
   setStickyScrollEnabled: (enabled: boolean) => void;
   toggleStickyScroll: () => void;
+
+  // Reader Exit Bookmark Prompt Preference
+  exitBookmarkReminderEnabled: boolean;
+  setExitBookmarkReminderEnabled: (enabled: boolean) => void;
+  toggleExitBookmarkReminder: () => void;
 
   // Read-Aloud & Audio Narration Preferences
   speechRate: number;
@@ -52,6 +58,10 @@ export const usePreferencesStore = create<PreferencesState>()(
       setStickyScrollEnabled: (enabled: boolean) => set({ stickyScrollEnabled: enabled }),
       toggleStickyScroll: () => set({ stickyScrollEnabled: !get().stickyScrollEnabled }),
 
+      exitBookmarkReminderEnabled: true,
+      setExitBookmarkReminderEnabled: (enabled: boolean) => set({ exitBookmarkReminderEnabled: enabled }),
+      toggleExitBookmarkReminder: () => set({ exitBookmarkReminderEnabled: !get().exitBookmarkReminderEnabled }),
+
       speechRate: 1.0,
       speechVoiceURI: null,
       speechAutoPageAdvance: true,
@@ -75,6 +85,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       resetAllPreferencesStore: () =>
         set({
           stickyScrollEnabled: true,
+          exitBookmarkReminderEnabled: true,
           speechRate: 1.0,
           speechVoiceURI: null,
           speechAutoPageAdvance: true,

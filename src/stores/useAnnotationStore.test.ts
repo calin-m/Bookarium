@@ -329,6 +329,38 @@ describe('useAnnotationStore', () => {
     );
   });
 
+  it('queues guest annotations to outbox when upsert fails during syncWithCloud', async () => {
+    const guestNote = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Note requiring outbox queue',
+      color: 'yellow',
+    });
+
+    mockSelect.mockReturnValueOnce({
+      eq: vi.fn().mockReturnValue({
+        order: vi.fn().mockResolvedValue({
+          data: [],
+          error: null,
+        }),
+      }),
+    });
+
+    mockUpsert.mockResolvedValueOnce({ error: new Error('Postgres error: simulated failure') });
+
+    await useAnnotationStore.getState().syncWithCloud('user-123');
+
+    const outbox = useAnnotationStore.getState().outbox;
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0].type).toBe('UPSERT_ANNOTATION');
+    expect(outbox[0].payload).toMatchObject({
+      id: guestNote.id,
+      user_id: 'user-123',
+      selected_text: 'Note requiring outbox queue',
+    });
+  });
+
   it('updates annotation note with userId and falls back to outbox on network error', async () => {
     const ann = await useAnnotationStore.getState().addAnnotation({
       bookId: 1342,

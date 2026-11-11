@@ -334,4 +334,19 @@ describe('AccountPreferencesSection', () => {
       vi.useRealTimers();
     }
   });
+
+  it('passes exit bookmark prompt settings through to typography subpanel', () => {
+    const onExitBookmarkReminderChange = vi.fn();
+    render(
+      <AccountPreferencesSection
+        {...defaultProps}
+        exitBookmarkReminderEnabled={true}
+        onExitBookmarkReminderChange={onExitBookmarkReminderChange}
+      />
+    );
+
+    expect(screen.getByText('Exit Bookmark Prompt')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('exit-bookmark-prompt-disabled-btn'));
+    expect(onExitBookmarkReminderChange).toHaveBeenCalledWith(false);
+  });
 });

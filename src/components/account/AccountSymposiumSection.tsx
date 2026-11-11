@@ -13,6 +13,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
+import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { SymposiumPactsSubTab } from './symposium/SymposiumPactsSubTab';
 import { ReaderCircleSubTab } from './symposium/ReaderCircleSubTab';
 import { FellowshipInvitationsSubTab } from './symposium/FellowshipInvitationsSubTab';
@@ -254,89 +255,92 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
           </div>
         </div>
 
-        {/* Sub-Tab 1: Active & Completed Symposiums */}
-        {activeSubTab === 'symposiums' && (
-          <SymposiumPactsSubTab
-            userId={userId}
-            activeSymposiums={activeSymposiums}
-            isOffline={isOffline}
-            isBookOffline={isBookOffline}
-            onOpenNewSymposiumModal={() => {
-              setModalPreselectedFellow(undefined);
-              setIsSymposiumModalOpen(true);
-            }}
-            onRequestLeaveSymposium={(payload) =>
-              setPendingConfirmAction({
-                type: 'leave-symposium',
-                ...payload,
-              })
-            }
-          />
-        )}
+        {/* Sub-Tabs Animated Container */}
+        <ContentCrossfade transitionKey={`symposium-subtab-${activeSubTab}`}>
+          {/* Sub-Tab 1: Active & Completed Symposiums */}
+          {activeSubTab === 'symposiums' && (
+            <SymposiumPactsSubTab
+              userId={userId}
+              activeSymposiums={activeSymposiums}
+              isOffline={isOffline}
+              isBookOffline={isBookOffline}
+              onOpenNewSymposiumModal={() => {
+                setModalPreselectedFellow(undefined);
+                setIsSymposiumModalOpen(true);
+              }}
+              onRequestLeaveSymposium={(payload) =>
+                setPendingConfirmAction({
+                  type: 'leave-symposium',
+                  ...payload,
+                })
+              }
+            />
+          )}
 
-        {/* Sub-Tab 2: Reader Circle (Fellow Scholars & Handle Invite) */}
-        {activeSubTab === 'circle' && (
-          <ReaderCircleSubTab
-            acceptedFellows={acceptedFellows}
-            inviteHandle={inviteHandle}
-            onInviteHandleChange={setInviteHandle}
-            onInviteSubmit={handleInviteSubmit}
-            isInviting={isInviting}
-            isOffline={isOffline}
-            inviteError={inviteError}
-            inviteSuccess={inviteSuccess}
-            onOpenSymposiumWithFellow={(fellow) => {
-              setModalPreselectedFellow(fellow);
-              setIsSymposiumModalOpen(true);
-            }}
-            onRequestRemoveFellow={(payload) =>
-              setPendingConfirmAction({
-                type: 'remove-fellow',
-                ...payload,
-              })
-            }
-          />
-        )}
+          {/* Sub-Tab 2: Reader Circle (Fellow Scholars & Handle Invite) */}
+          {activeSubTab === 'circle' && (
+            <ReaderCircleSubTab
+              acceptedFellows={acceptedFellows}
+              inviteHandle={inviteHandle}
+              onInviteHandleChange={setInviteHandle}
+              onInviteSubmit={handleInviteSubmit}
+              isInviting={isInviting}
+              isOffline={isOffline}
+              inviteError={inviteError}
+              inviteSuccess={inviteSuccess}
+              onOpenSymposiumWithFellow={(fellow) => {
+                setModalPreselectedFellow(fellow);
+                setIsSymposiumModalOpen(true);
+              }}
+              onRequestRemoveFellow={(payload) =>
+                setPendingConfirmAction({
+                  type: 'remove-fellow',
+                  ...payload,
+                })
+              }
+            />
+          )}
 
-        {/* Sub-Tab 3: Pending Invitations (Reader Circle & Symposiums) */}
-        {activeSubTab === 'invitations' && (
-          <FellowshipInvitationsSubTab
-            userId={userId}
-            pendingCircles={pendingCircles}
-            pendingSymposiums={pendingSymposiums}
-            isOffline={isOffline}
-            onAcceptCircleInvite={(circleId) => {
-              void respondToCircleInvite(circleId, 'accept');
-            }}
-            onDeclineCircleInvite={(payload) =>
-              setPendingConfirmAction({
-                type: 'decline-circle',
-                ...payload,
-              })
-            }
-            onCancelCircleInvite={(payload) =>
-              setPendingConfirmAction({
-                type: 'cancel-circle',
-                ...payload,
-              })
-            }
-            onAcceptSymposiumInvite={(sessionId) => {
-              void respondToSymposiumInvite(sessionId, 'accept');
-            }}
-            onDeclineSymposiumInvite={(payload) =>
-              setPendingConfirmAction({
-                type: 'decline-symposium',
-                ...payload,
-              })
-            }
-            onCancelSymposiumInvite={(payload) =>
-              setPendingConfirmAction({
-                type: 'cancel-symposium',
-                ...payload,
-              })
-            }
-          />
-        )}
+          {/* Sub-Tab 3: Pending Invitations (Reader Circle & Symposiums) */}
+          {activeSubTab === 'invitations' && (
+            <FellowshipInvitationsSubTab
+              userId={userId}
+              pendingCircles={pendingCircles}
+              pendingSymposiums={pendingSymposiums}
+              isOffline={isOffline}
+              onAcceptCircleInvite={(circleId) => {
+                void respondToCircleInvite(circleId, 'accept');
+              }}
+              onDeclineCircleInvite={(payload) =>
+                setPendingConfirmAction({
+                  type: 'decline-circle',
+                  ...payload,
+                })
+              }
+              onCancelCircleInvite={(payload) =>
+                setPendingConfirmAction({
+                  type: 'cancel-circle',
+                  ...payload,
+                })
+              }
+              onAcceptSymposiumInvite={(sessionId) => {
+                void respondToSymposiumInvite(sessionId, 'accept');
+              }}
+              onDeclineSymposiumInvite={(payload) =>
+                setPendingConfirmAction({
+                  type: 'decline-symposium',
+                  ...payload,
+                })
+              }
+              onCancelSymposiumInvite={(payload) =>
+                setPendingConfirmAction({
+                  type: 'cancel-symposium',
+                  ...payload,
+                })
+              }
+            />
+          )}
+        </ContentCrossfade>
       </div>
 
       <SymposiumInviteModal

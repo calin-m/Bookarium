@@ -91,7 +91,7 @@ describe('ReaderRowBookmark', () => {
         onEmitRowChange={onEmitRowChange}
       />
     );
-    expect(screen.getByTestId('reader-bookmark-tab')).toHaveClass('opacity-25', 'sm:opacity-0');
+    expect(screen.getByTestId('reader-bookmark-tab')).toHaveClass('opacity-60', 'sm:opacity-50');
   });
 });
 

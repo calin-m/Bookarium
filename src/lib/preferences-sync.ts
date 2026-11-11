@@ -47,6 +47,7 @@ export const FACTORY_PREFERENCES: Readonly<ScholarPreferencesSnapshot> = Object.
   speechVoiceURI: null,
   speechAutoPageAdvance: true,
   speechHighlightEnabled: true,
+  exitBookmarkReminderEnabled: true,
 });
 
 /**
@@ -137,6 +138,10 @@ export function sanitizePreferencesSnapshot(
       typeof rec.speechHighlightEnabled === 'boolean'
         ? rec.speechHighlightEnabled
         : fallback.speechHighlightEnabled,
+    exitBookmarkReminderEnabled:
+      typeof rec.exitBookmarkReminderEnabled === 'boolean'
+        ? rec.exitBookmarkReminderEnabled
+        : fallback.exitBookmarkReminderEnabled ?? true,
   };
 }
 
@@ -161,7 +166,8 @@ export function arePreferencesEqual(
     Math.abs(a.speechRate - b.speechRate) < 0.005 &&
     (a.speechVoiceURI ?? null) === (b.speechVoiceURI ?? null) &&
     a.speechAutoPageAdvance === b.speechAutoPageAdvance &&
-    a.speechHighlightEnabled === b.speechHighlightEnabled
+    a.speechHighlightEnabled === b.speechHighlightEnabled &&
+    (a.exitBookmarkReminderEnabled ?? true) === (b.exitBookmarkReminderEnabled ?? true)
   );
 }
 
@@ -209,6 +215,7 @@ export function getActivePreferencesSnapshot(): ScholarPreferencesSnapshot {
     speechVoiceURI: prefState.speechVoiceURI,
     speechAutoPageAdvance: prefState.speechAutoPageAdvance,
     speechHighlightEnabled: prefState.speechHighlightEnabled,
+    exitBookmarkReminderEnabled: prefState.exitBookmarkReminderEnabled,
   });
 }
 
@@ -304,6 +311,9 @@ export function applyPreferencesSnapshot(
   prefStore.setSpeechVoiceURI(next.speechVoiceURI);
   prefStore.setSpeechAutoPageAdvance(next.speechAutoPageAdvance);
   prefStore.setSpeechHighlightEnabled(next.speechHighlightEnabled);
+  if (typeof next.exitBookmarkReminderEnabled === 'boolean') {
+    prefStore.setExitBookmarkReminderEnabled(next.exitBookmarkReminderEnabled);
+  }
 
   // 3. Annotation Store (Symposium Spoiler Shield)
   useAnnotationStore.getState().setSpoilerShieldEnabled(next.spoilerShieldEnabled);

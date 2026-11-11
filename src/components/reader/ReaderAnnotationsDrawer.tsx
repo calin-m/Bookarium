@@ -16,6 +16,7 @@ import { getReaderTheme } from '@/config/reader-themes';
 import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
 import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from './DeleteAnnotationModal';
+import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 
 export interface ReaderAnnotationsDrawerProps {
   isOpen: boolean;
@@ -297,280 +298,285 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
             data-testid="annotations-list-container"
             className={`flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 ${activeTheme.scrollbarClass}`}
           >
-          {filteredAnnotations.length === 0 ? (
-            <div
-              data-testid="annotations-empty-state"
-              className={`text-center py-16 px-4 rounded-xl border border-dashed ${activeTheme.border} ${activeTheme.textMuted}`}
+            <ContentCrossfade
+              transitionKey={`annotations-list-${selectedColorFilter}-${effectiveSourceFilter}-${searchQuery.trim().toLowerCase()}`}
+              className="space-y-3"
             >
-              <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-40" />
-              <p className="font-serif text-sm font-semibold text-inherit mb-1">
-                {combinedSourceAnnotations.length === 0 ? 'No Highlights Yet' : 'No Matching Highlights'}
-              </p>
-              <p className="text-xs max-w-xs mx-auto leading-relaxed">
-                {combinedSourceAnnotations.length === 0
-                  ? 'Select any passage of text while reading to highlight quotes, choose colors, or attach personal scholarly notes.'
-                  : 'Try adjusting your color filter or search query.'}
-              </p>
-            </div>
-          ) : (
-            filteredAnnotations.map((item) => {
-              const isFellow = isFellowAnnotation(item);
-              return (
+              {filteredAnnotations.length === 0 ? (
                 <div
-                  key={item.id}
-                  data-testid={`annotation-item-${item.id}`}
-                  className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 p-3.5 flex flex-col gap-2.5 transition-all shadow-xs ${
-                    isFellow
-                      ? 'border-l-amber-600 bg-amber-500/5'
-                      : (ANNOTATION_COLOR_CONFIG[item.color] || ANNOTATION_COLOR_CONFIG.yellow).drawerCardClass
-                  }`}
+                  data-testid="annotations-empty-state"
+                  className={`text-center py-16 px-4 rounded-xl border border-dashed ${activeTheme.border} ${activeTheme.textMuted}`}
                 >
-                  {/* Header: Section/Page Badge + Actions */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2 font-mono text-[11px]">
-                      <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 font-semibold text-stone-700 dark:text-stone-300">
-                        Sec {item.chapterIndex + 1} · Page {item.chapterPage}
-                      </span>
-                      {item.pairedFellowAnnotation && (
-                        <span
-                          data-testid={`drawer-fellow-badge-${item.pairedFellowAnnotation.id}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold"
-                        >
-                          <Feather className="w-2.5 h-2.5" />
-                          <span>
-                            {formatFellowScholarLabel(
-                              item.pairedFellowAnnotation.fellowDisplayName,
-                              item.pairedFellowAnnotation.fellowUsername
-                            )}
-                          </span>
-                        </span>
-                      )}
-                      {isFellow && (
-                        <span
-                          data-testid={`drawer-fellow-badge-${item.id}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold"
-                        >
-                          <Feather className="w-2.5 h-2.5" />
-                          <span>
-                            {formatFellowScholarLabel(item.fellowDisplayName, item.fellowUsername)}
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                    {!isFellow && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          data-testid={`annotation-edit-btn-${item.id}`}
-                          aria-label="Edit note"
-                          onClick={() => handleStartEdit(item as Annotation)}
-                          className="p-1 rounded hover:bg-stone-200/60 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          data-testid={`annotation-delete-btn-${item.id}`}
-                          aria-label="Delete annotation"
-                          onClick={() => setItemToDelete(item as Annotation)}
-                          className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-600 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Highlighted Quote Text */}
-                  {(() => {
-                    const segments = computeSharedQuoteSegments(
-                      item.selectedText,
-                      item.pairedFellowAnnotation?.selectedText
-                    );
-                    return (
-                      <blockquote
-                        data-testid="annotation-quote-text"
-                        onClick={() => handleJump(item)}
-                        className="font-serif italic text-sm text-foreground/90 leading-relaxed cursor-pointer hover:underline decoration-primary/40 underline-offset-2"
-                      >
-                        &ldquo;
-                        {segments.isExact ? (
-                          segments.fullQuote
-                        ) : (
-                          <>
-                            {segments.beforeText}
-                            <mark
-                              data-testid="shared-quote-overlap-span"
-                              className="bg-amber-500/25 border-b-2 border-dashed border-amber-600/75 dark:border-amber-400/75 rounded-xs px-0.5 not-italic"
-                            >
-                              {segments.overlapText}
-                            </mark>
-                            {segments.afterText}
-                          </>
-                        )}
-                        &rdquo;
-                      </blockquote>
-                    );
-                  })()}
-
-                  {/* Note Section */}
-                  {!isFellow && editingNoteId === item.id ? (
-                    <div className="flex flex-col gap-1.5 pt-1">
-                      <textarea
-                        data-testid="annotation-edit-textarea"
-                        value={editingNoteText}
-                        onChange={(e) => setEditingNoteText(e.target.value)}
-                        placeholder="Enter personal note..."
-                        rows={2}
-                        className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
-                        autoFocus
-                      />
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setEditingNoteId(null)}
-                          className="px-2 py-1 text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
-                        >
-                          <X className="w-3.5 h-3.5 inline mr-0.5" /> Cancel
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="annotation-save-edit-btn"
-                          onClick={() => handleSaveEdit(item.id)}
-                          className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 text-white hover:bg-primary-700"
-                        >
-                          <Check className="w-3.5 h-3.5 inline mr-0.5" /> Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : item.note ? (
+                  <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                  <p className="font-serif text-sm font-semibold text-inherit mb-1">
+                    {combinedSourceAnnotations.length === 0 ? 'No Highlights Yet' : 'No Matching Highlights'}
+                  </p>
+                  <p className="text-xs max-w-xs mx-auto leading-relaxed">
+                    {combinedSourceAnnotations.length === 0
+                      ? 'Select any passage of text while reading to highlight quotes, choose colors, or attach personal scholarly notes.'
+                      : 'Try adjusting your color filter or search query.'}
+                  </p>
+                </div>
+              ) : (
+                filteredAnnotations.map((item) => {
+                  const isFellow = isFellowAnnotation(item);
+                  return (
                     <div
-                      data-testid="annotation-note-text"
-                      className={`text-xs text-stone-700 dark:text-stone-300 bg-black/5 dark:bg-white/5 p-2 rounded-lg font-sans border-l-2 ${
-                        isFellow ? 'border-amber-500' : 'border-primary-500'
+                      key={item.id}
+                      data-testid={`annotation-item-${item.id}`}
+                      className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 p-3.5 flex flex-col gap-2.5 transition-all shadow-xs ${
+                        isFellow
+                          ? 'border-l-amber-600 bg-amber-500/5'
+                          : (ANNOTATION_COLOR_CONFIG[item.color] || ANNOTATION_COLOR_CONFIG.yellow).drawerCardClass
                       }`}
                     >
-                      {item.note}
-                    </div>
-                  ) : null}
-
-                  {/* Paired Fellow Note Box */}
-                  {item.pairedFellowAnnotation && (
-                    <div
-                      data-testid={`drawer-paired-fellow-note-${item.pairedFellowAnnotation.id}`}
-                      className="text-xs text-stone-700 dark:text-stone-300 bg-amber-500/10 dark:bg-amber-950/20 p-2.5 rounded-lg font-sans border-l-2 border-amber-500 space-y-1"
-                    >
-                      <div className="text-[10px] font-mono text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1">
-                        <Feather className="w-2.5 h-2.5" />
-                        <span>
-                          {item.pairedFellowAnnotation.fellowDisplayName || `@${item.pairedFellowAnnotation.fellowUsername}`}
-                        </span>
-                      </div>
-                      {item.pairedFellowAnnotation.note ? (
-                        <p className="leading-relaxed whitespace-pre-wrap">{item.pairedFellowAnnotation.note}</p>
-                      ) : (
-                        <p className="leading-relaxed italic text-stone-500 dark:text-stone-400 text-[11px]">
-                          Also saved and highlighted in this Literary Symposium.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Standalone Fellow Action: Save to My Notes or Reply */}
-                  {isFellow && onSaveFellowAnnotation && (
-                    savingFellowId === item.id ? (
-                      <div className="flex flex-col gap-1.5 pt-1">
-                        <textarea
-                          data-testid={`drawer-reply-textarea-${item.id}`}
-                          value={savingFellowText}
-                          onChange={(e) => setSavingFellowText(e.target.value)}
-                          placeholder="Write your personal note to save with this highlight..."
-                          rows={2}
-                          className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
-                          autoFocus
-                        />
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSavingFellowId(null)}
-                            className="px-2 py-1 text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
-                          >
-                            <X className="w-3.5 h-3.5 inline mr-0.5" /> Cancel
-                          </button>
-                          <button
-                            type="button"
-                            data-testid={`drawer-save-fellow-with-note-btn-${item.id}`}
-                            onClick={async () => {
-                              await onSaveFellowAnnotation(
-                                item as FellowAnnotation,
-                                savingFellowText,
-                                item.matchingOwnAnnotation?.color
-                              );
-                              setSavingFellowId(null);
-                            }}
-                            className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 text-white hover:bg-primary-700"
-                          >
-                            <Check className="w-3.5 h-3.5 inline mr-0.5" /> Save Note
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 pt-0.5">
-                        {item.matchingOwnAnnotation ? (
-                          <span
-                            data-testid={`drawer-fellow-saved-badge-${item.id}`}
-                            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 select-none"
-                          >
-                            <Check className="w-3 h-3" />
-                            <span>In My Notes</span>
+                      {/* Header: Section/Page Badge + Actions */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 font-mono text-[11px]">
+                          <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 font-semibold text-stone-700 dark:text-stone-300">
+                            Sec {item.chapterIndex + 1} · Page {item.chapterPage}
                           </span>
-                        ) : (
-                          <button
-                            type="button"
-                            data-testid={`drawer-save-fellow-note-btn-${item.id}`}
-                            onClick={async () => {
-                              await onSaveFellowAnnotation(item as FellowAnnotation);
-                            }}
-                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
-                          >
-                            <Check className="w-3 h-3" />
-                            <span>Save to My Notes</span>
-                          </button>
+                          {item.pairedFellowAnnotation && (
+                            <span
+                              data-testid={`drawer-fellow-badge-${item.pairedFellowAnnotation.id}`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold"
+                            >
+                              <Feather className="w-2.5 h-2.5" />
+                              <span>
+                                {formatFellowScholarLabel(
+                                  item.pairedFellowAnnotation.fellowDisplayName,
+                                  item.pairedFellowAnnotation.fellowUsername
+                                )}
+                              </span>
+                            </span>
+                          )}
+                          {isFellow && (
+                            <span
+                              data-testid={`drawer-fellow-badge-${item.id}`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-bold"
+                            >
+                              <Feather className="w-2.5 h-2.5" />
+                              <span>
+                                {formatFellowScholarLabel(item.fellowDisplayName, item.fellowUsername)}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        {!isFellow && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              data-testid={`annotation-edit-btn-${item.id}`}
+                              aria-label="Edit note"
+                              onClick={() => handleStartEdit(item as Annotation)}
+                              className="p-1 rounded hover:bg-stone-200/60 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              data-testid={`annotation-delete-btn-${item.id}`}
+                              aria-label="Delete annotation"
+                              onClick={() => setItemToDelete(item as Annotation)}
+                              className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-600 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
-                        <span className="text-stone-300 dark:text-stone-700 select-none">•</span>
-                        <button
-                          type="button"
-                          data-testid={`drawer-reply-fellow-note-btn-${item.id}`}
-                          onClick={() => {
-                            setSavingFellowId(item.id);
-                            setSavingFellowText(item.matchingOwnAnnotation?.note || '');
-                          }}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors cursor-pointer"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>{item.matchingOwnAnnotation?.note ? 'Edit My Note' : '+ Add My Note'}</span>
-                        </button>
                       </div>
-                    )
-                  )}
 
-                  {/* Jump to passage button */}
-                  <button
-                    type="button"
-                    data-testid={`annotation-jump-btn-${item.id}`}
-                    onClick={() => handleJump(item)}
-                    className="flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline pt-1 self-start cursor-pointer"
-                  >
-                    <span>Jump to passage</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              );
-            })
-          )}
+                      {/* Highlighted Quote Text */}
+                      {(() => {
+                        const segments = computeSharedQuoteSegments(
+                          item.selectedText,
+                          item.pairedFellowAnnotation?.selectedText
+                        );
+                        return (
+                          <blockquote
+                            data-testid="annotation-quote-text"
+                            onClick={() => handleJump(item)}
+                            className="font-serif italic text-sm text-foreground/90 leading-relaxed cursor-pointer hover:underline decoration-primary/40 underline-offset-2"
+                          >
+                            &ldquo;
+                            {segments.isExact ? (
+                              segments.fullQuote
+                            ) : (
+                              <>
+                                {segments.beforeText}
+                                <mark
+                                  data-testid="shared-quote-overlap-span"
+                                  className="bg-amber-500/25 border-b-2 border-dashed border-amber-600/75 dark:border-amber-400/75 rounded-xs px-0.5 not-italic"
+                                >
+                                  {segments.overlapText}
+                                </mark>
+                                {segments.afterText}
+                              </>
+                            )}
+                            &rdquo;
+                          </blockquote>
+                        );
+                      })()}
+
+                      {/* Note Section */}
+                      {!isFellow && editingNoteId === item.id ? (
+                        <div className="flex flex-col gap-1.5 pt-1">
+                          <textarea
+                            data-testid="annotation-edit-textarea"
+                            value={editingNoteText}
+                            onChange={(e) => setEditingNoteText(e.target.value)}
+                            placeholder="Enter personal note..."
+                            rows={2}
+                            className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
+                            autoFocus
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditingNoteId(null)}
+                              className="px-2 py-1 text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                            >
+                              <X className="w-3.5 h-3.5 inline mr-0.5" /> Cancel
+                            </button>
+                            <button
+                              type="button"
+                              data-testid="annotation-save-edit-btn"
+                              onClick={() => handleSaveEdit(item.id)}
+                              className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 text-white hover:bg-primary-700"
+                            >
+                              <Check className="w-3.5 h-3.5 inline mr-0.5" /> Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : item.note ? (
+                        <div
+                          data-testid="annotation-note-text"
+                          className={`text-xs text-stone-700 dark:text-stone-300 bg-black/5 dark:bg-white/5 p-2 rounded-lg font-sans border-l-2 ${
+                            isFellow ? 'border-amber-500' : 'border-primary-500'
+                          }`}
+                        >
+                          {item.note}
+                        </div>
+                      ) : null}
+
+                      {/* Paired Fellow Note Box */}
+                      {item.pairedFellowAnnotation && (
+                        <div
+                          data-testid={`drawer-paired-fellow-note-${item.pairedFellowAnnotation.id}`}
+                          className="text-xs text-stone-700 dark:text-stone-300 bg-amber-500/10 dark:bg-amber-950/20 p-2.5 rounded-lg font-sans border-l-2 border-amber-500 space-y-1"
+                        >
+                          <div className="text-[10px] font-mono text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1">
+                            <Feather className="w-2.5 h-2.5" />
+                            <span>
+                              {item.pairedFellowAnnotation.fellowDisplayName || `@${item.pairedFellowAnnotation.fellowUsername}`}
+                            </span>
+                          </div>
+                          {item.pairedFellowAnnotation.note ? (
+                            <p className="leading-relaxed whitespace-pre-wrap">{item.pairedFellowAnnotation.note}</p>
+                          ) : (
+                            <p className="leading-relaxed italic text-stone-500 dark:text-stone-400 text-[11px]">
+                              Also saved and highlighted in this Literary Symposium.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Standalone Fellow Action: Save to My Notes or Reply */}
+                      {isFellow && onSaveFellowAnnotation && (
+                        savingFellowId === item.id ? (
+                          <div className="flex flex-col gap-1.5 pt-1">
+                            <textarea
+                              data-testid={`drawer-reply-textarea-${item.id}`}
+                              value={savingFellowText}
+                              onChange={(e) => setSavingFellowText(e.target.value)}
+                              placeholder="Write your personal note to save with this highlight..."
+                              rows={2}
+                              className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
+                              autoFocus
+                            />
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSavingFellowId(null)}
+                                className="px-2 py-1 text-[11px] text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                              >
+                                <X className="w-3.5 h-3.5 inline mr-0.5" /> Cancel
+                              </button>
+                              <button
+                                type="button"
+                                data-testid={`drawer-save-fellow-with-note-btn-${item.id}`}
+                                onClick={async () => {
+                                  await onSaveFellowAnnotation(
+                                    item as FellowAnnotation,
+                                    savingFellowText,
+                                    item.matchingOwnAnnotation?.color
+                                  );
+                                  setSavingFellowId(null);
+                                }}
+                                className="px-2.5 py-1 text-[11px] font-semibold rounded bg-primary-600 text-white hover:bg-primary-700"
+                              >
+                                <Check className="w-3.5 h-3.5 inline mr-0.5" /> Save Note
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            {item.matchingOwnAnnotation ? (
+                              <span
+                                data-testid={`drawer-fellow-saved-badge-${item.id}`}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 select-none"
+                              >
+                                <Check className="w-3 directions-item" />
+                                <span>In My Notes</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                data-testid={`drawer-save-fellow-note-btn-${item.id}`}
+                                onClick={async () => {
+                                  await onSaveFellowAnnotation(item as FellowAnnotation);
+                                }}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Save to My Notes</span>
+                              </button>
+                            )}
+                            <span className="text-stone-300 dark:text-stone-700 select-none">•</span>
+                            <button
+                              type="button"
+                              data-testid={`drawer-reply-fellow-note-btn-${item.id}`}
+                              onClick={() => {
+                                setSavingFellowId(item.id);
+                                setSavingFellowText(item.matchingOwnAnnotation?.note || '');
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>{item.matchingOwnAnnotation?.note ? 'Edit My Note' : '+ Add My Note'}</span>
+                            </button>
+                          </div>
+                        )
+                      )}
+
+                      {/* Jump to passage button */}
+                      <button
+                        type="button"
+                        data-testid={`annotation-jump-btn-${item.id}`}
+                        onClick={() => handleJump(item)}
+                        className="flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-400 hover:underline pt-1 self-start cursor-pointer"
+                      >
+                        <span>Jump to passage</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </ContentCrossfade>
+          </div>
         </div>
-      </div>
-    </ReaderDrawerShell>
+      </ReaderDrawerShell>
 
     {/* Delete Single Annotation Confirmation Modal (Rendered outside drawer transform hierarchy) */}
     <DeleteAnnotationModal

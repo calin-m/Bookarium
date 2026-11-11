@@ -189,4 +189,23 @@ describe('ReaderControls', () => {
     fireEvent.click(factoryBtn);
     expect(onResetToFactoryDefaults).toHaveBeenCalledTimes(1);
   });
+
+  it('renders Exit Bookmark Prompt toggle and calls onExitBookmarkReminderChange', () => {
+    const onExitBookmarkReminderChange = vi.fn();
+
+    render(
+      <ReaderControls
+        {...defaultProps}
+        exitBookmarkReminderEnabled={true}
+        onExitBookmarkReminderChange={onExitBookmarkReminderChange}
+      />
+    );
+
+    expect(screen.getByText('Exit Bookmark Prompt')).toBeInTheDocument();
+    const toggle = screen.getByTestId('reader-toggle-exit-bookmark-prompt');
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(toggle);
+    expect(onExitBookmarkReminderChange).toHaveBeenCalledWith(false);
+  });
 });

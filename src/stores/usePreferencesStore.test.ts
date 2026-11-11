@@ -28,6 +28,17 @@ describe('usePreferencesStore', () => {
     expect(usePreferencesStore.getState().stickyScrollEnabled).toBe(true);
   });
 
+  it('initializes with exitBookmarkReminderEnabled = true by default and allows toggling', () => {
+    const state = usePreferencesStore.getState();
+    expect(state.exitBookmarkReminderEnabled).toBe(true);
+
+    usePreferencesStore.getState().setExitBookmarkReminderEnabled(false);
+    expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
+
+    usePreferencesStore.getState().toggleExitBookmarkReminder();
+    expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(true);
+  });
+
   it('initializes speech preferences with default values', () => {
     const state = usePreferencesStore.getState();
     expect(state.speechRate).toBe(1.0);
@@ -76,6 +87,7 @@ describe('usePreferencesStore', () => {
     usePreferencesStore.getState().setCustomDefaults(samplePreset);
     usePreferencesStore.getState().setPreferencesUpdatedAt('2026-10-31T19:00:00.000Z');
     usePreferencesStore.getState().setStickyScrollEnabled(false);
+    usePreferencesStore.getState().setExitBookmarkReminderEnabled(false);
 
     expect(usePreferencesStore.getState().customDefaults).toEqual(samplePreset);
     expect(usePreferencesStore.getState().preferencesUpdatedAt).toBe(
@@ -86,5 +98,6 @@ describe('usePreferencesStore', () => {
     expect(usePreferencesStore.getState().customDefaults).toBeNull();
     expect(usePreferencesStore.getState().preferencesUpdatedAt).toBeNull();
     expect(usePreferencesStore.getState().stickyScrollEnabled).toBe(true);
+    expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(true);
   });
 });

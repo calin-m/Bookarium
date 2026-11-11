@@ -196,4 +196,74 @@ describe('useReaderHabitTelemetry', () => {
       currentChapterIndex: 4,
     });
   });
+
+  it('gates currently_reading auto-transition to active engagement (page >= 3, chapter > 0, bookmark placed)', () => {
+    const setReadingStatus = vi.fn();
+    const baseParams = {
+      numericId: 1342,
+      userId: 'user-1',
+      isContentLoading: false,
+      isContentError: false,
+      contentText: 'Pride and Prejudice opening text',
+      isPlayingTTS: false,
+      isAtEnd: false,
+      readingStatus: null,
+      setReadingStatus,
+      symposiums: [],
+      activeChapterIndex: 0,
+      currentChapterPage: 1,
+      currentGlobalPage: 1,
+      bookmarkRow: 0,
+      volumeProgress: 0,
+      syncSymposiumProgress: vi.fn(),
+      resolvedIdentity: {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        author: 'Jane Austen',
+        displayAuthor: 'Jane Austen',
+        authors: [{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        primarySubject: 'Fiction',
+        languages: ['en'],
+        isPublicDomain: true,
+      },
+      refetch: vi.fn(),
+      updateBookMetadata: vi.fn(),
+    };
+
+    // 1. Initial render on Chapter 0, Page 1: should NOT call setReadingStatus
+    const { rerender } = renderHook((props: typeof baseParams) => useReaderHabitTelemetry(props), {
+      initialProps: baseParams,
+    });
+    expect(setReadingStatus).not.toHaveBeenCalledWith(1342, 'currently_reading', 'user-1');
+
+    // 2. Turning to Page 2: still below page 3 threshold: should NOT call setReadingStatus
+    rerender({
+      ...baseParams,
+      currentChapterPage: 2,
+      currentGlobalPage: 2,
+    });
+    expect(setReadingStatus).not.toHaveBeenCalledWith(1342, 'currently_reading', 'user-1');
+
+    // 3. Advancing to Page 3: reaches threshold: SHOULD call setReadingStatus
+    rerender({
+      ...baseParams,
+      currentChapterPage: 3,
+      currentGlobalPage: 3,
+    });
+    expect(setReadingStatus).toHaveBeenCalledWith(1342, 'currently_reading', 'user-1');
+
+    // 4. Resetting and setting a line bookmark even on Page 1 should activate currently_reading
+    setReadingStatus.mockClear();
+    renderHook(() =>
+      useReaderHabitTelemetry({
+        ...baseParams,
+        currentChapterPage: 1,
+        currentGlobalPage: 1,
+        bookmarkRow: 4,
+        bookmarkText: 'It is a truth universally acknowledged',
+      })
+    );
+    expect(setReadingStatus).toHaveBeenCalledWith(1342, 'currently_reading', 'user-1');
+  });
 });
