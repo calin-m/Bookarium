@@ -167,6 +167,7 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     mirrorCooldownMs: 30000,
     targetCount: 14,
     ids: null,
+    diffFile: null,
     mirrors: [...GUTENBERG_MIRRORS],
   };
 
@@ -177,6 +178,9 @@ function parseCliArgs(argv = process.argv.slice(2)) {
       options.force = true;
     } else if (arg === '--schedule-gate') {
       options.scheduleGate = true;
+    } else if (arg.startsWith('--diff-file=')) {
+      const val = arg.slice('--diff-file='.length).trim();
+      if (val) options.diffFile = val;
     } else if (arg.startsWith('--limit=')) {
       const val = parseInt(arg.split('=')[1], 10);
       if (Number.isInteger(val) && val > 0) options.limit = val;
@@ -827,18 +831,37 @@ function blendTwoTierCandidates(popularRows = [], recentRows = [], options = {})
     return true;
   };
 
+  const promotedIds =
+    options.promotedIds instanceof Set
+      ? options.promotedIds
+      : options._promotedIds instanceof Set
+        ? options._promotedIds
+        : null;
+
   const unpopulatedPopular = popularRows
     .filter(needsQuotes)
     .sort((a, b) => {
       const aHero = PRIORITY_HERO_BOOK_ID_SET.has(a.id) ? 1 : 0;
       const bHero = PRIORITY_HERO_BOOK_ID_SET.has(b.id) ? 1 : 0;
       if (aHero !== bHero) return bHero - aHero;
+      if (promotedIds && promotedIds.size > 0) {
+        const aProm = promotedIds.has(a.id) ? 1 : 0;
+        const bProm = promotedIds.has(b.id) ? 1 : 0;
+        if (aProm !== bProm) return bProm - aProm;
+      }
       return (b.download_count || 0) - (a.download_count || 0) || a.id - b.id;
     });
   const popularQueueIds = new Set(unpopulatedPopular.map((r) => r.id));
-  const unpopulatedRecent = recentRows.filter(
-    (r) => needsQuotes(r) && !popularQueueIds.has(r.id)
-  );
+  const unpopulatedRecent = recentRows
+    .filter((r) => needsQuotes(r) && !popularQueueIds.has(r.id))
+    .sort((a, b) => {
+      if (promotedIds && promotedIds.size > 0) {
+        const aProm = promotedIds.has(a.id) ? 1 : 0;
+        const bProm = promotedIds.has(b.id) ? 1 : 0;
+        if (aProm !== bProm) return bProm - aProm;
+      }
+      return 0;
+    });
 
   const recentTarget =
     limit <= 1 || unpopulatedRecent.length === 0
@@ -936,11 +959,24 @@ async function pruneOutOfWindowBookQuotes(
         ? options._minRecentHorizonId
         : null;
 
+  const demotedIds =
+    options.demotedIds instanceof Set
+      ? options.demotedIds
+      : options._demotedIds instanceof Set
+        ? options._demotedIds
+        : Array.isArray(options.demotedIds)
+          ? new Set(options.demotedIds)
+          : null;
+
   const stalePopularIds = [];
   const quotedRecentIds = [];
 
   for (const id of currentQuotedIds) {
     if (!Number.isInteger(id) || popularPoolIds.has(id)) continue;
+    if (demotedIds && demotedIds.has(id) && !(recentPoolIds && recentPoolIds.has(id))) {
+      stalePopularIds.push(id);
+      continue;
+    }
     const isRecentCandidate =
       (recentPoolIds && recentPoolIds.has(id)) ||
       minRecentHorizonId === null ||
@@ -1392,6 +1428,34 @@ function writeStepSummary(filePath, markdown, logger = console, fsImpl = fs) {
  * 3. Scans Tier 2 (`Rolling 64 Most Recent`) via Primary Key `books_pkey (id DESC)` without `content`/`quotes`/GIN filters (`<2ms`).
  * 4. Hydrates `quotes` and `content` ONLY for the `<= 50` selected batch IDs via `.in('id', selectedIds)` (`<3ms`).
  */
+function loadQuoteDiffFile(diffFilePath, fsImpl = fs) {
+  if (!diffFilePath || !fsImpl.existsSync(diffFilePath)) {
+    return null;
+  }
+  try {
+    const raw = fsImpl.readFileSync(diffFilePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      popularData: Array.isArray(parsed.popularData) ? parsed.popularData : null,
+      recentData: Array.isArray(parsed.recentData) ? parsed.recentData : null,
+      candidatePoolIds: Array.isArray(parsed.candidatePoolIds)
+        ? parsed.candidatePoolIds.filter((id) => Number.isInteger(id) && id > 0)
+        : [],
+      promotedIds: Array.isArray(parsed.promotedIds)
+        ? parsed.promotedIds.filter((id) => Number.isInteger(id) && id > 0)
+        : [],
+      demotedIds: Array.isArray(parsed.demotedIds)
+        ? parsed.demotedIds.filter((id) => Number.isInteger(id) && id > 0)
+        : [],
+      minRecentHorizonId:
+        typeof parsed.minRecentHorizonId === 'number' ? parsed.minRecentHorizonId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchCandidateBooksFromSupabase(supabase, options) {
   if (!supabase) {
     if (options.ids && options.ids.length > 0) {
@@ -1419,10 +1483,55 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     return requestedIds.filter((id) => byId.has(id)).map((id) => byId.get(id));
   }
 
-  const { popularData, recentData, allScannedIds, minRecentHorizonId } = await scanTwoTierPools(
-    supabase,
-    options
-  );
+  let popularData = null;
+  let recentData = null;
+  let allScannedIds = null;
+  let minRecentHorizonId = null;
+
+  const diffData = options.diffFile
+    ? loadQuoteDiffFile(options.diffFile, options._fsImpl || fs)
+    : null;
+
+  if (diffData) {
+    if (diffData.promotedIds.length > 0) {
+      options._promotedIds = new Set(diffData.promotedIds);
+    }
+    if (diffData.demotedIds.length > 0) {
+      options._demotedIds = new Set(diffData.demotedIds);
+    }
+  }
+
+  if (
+    diffData &&
+    Array.isArray(diffData.popularData) &&
+    diffData.popularData.length > 0 &&
+    Array.isArray(diffData.recentData)
+  ) {
+    const popularPoolLimit = options.popularPool || DEFAULT_POPULAR_POOL_SIZE;
+    const recentPoolLimit =
+      typeof options.recentPool === 'number' ? options.recentPool : DEFAULT_RECENT_POOL_SIZE;
+    popularData = diffData.popularData.slice(0, popularPoolLimit);
+    recentData = diffData.recentData.slice(0, recentPoolLimit);
+    minRecentHorizonId = diffData.minRecentHorizonId;
+    allScannedIds = new Set([
+      ...PRIORITY_HERO_BOOK_IDS,
+      ...diffData.candidatePoolIds,
+      ...diffData.demotedIds,
+      ...popularData.map((r) => r.id),
+      ...recentData.map((r) => r.id),
+    ]);
+  } else {
+    const scanned = await scanTwoTierPools(supabase, options);
+    popularData = scanned.popularData;
+    recentData = scanned.recentData;
+    allScannedIds = scanned.allScannedIds;
+    minRecentHorizonId = scanned.minRecentHorizonId;
+    if (diffData && diffData.demotedIds.length > 0) {
+      for (const demotedId of diffData.demotedIds) {
+        allScannedIds.add(demotedId);
+      }
+    }
+  }
 
   const quotedIds = await fetchQuotedBookIds(supabase, allScannedIds);
 
@@ -1976,6 +2085,7 @@ module.exports = {
   formatRunReport,
   formatConsoleSummary,
   writeStepSummary,
+  loadQuoteDiffFile,
   fetchCandidateBooksFromSupabase,
   runFeaturedQuotesSync,
 };

@@ -50,8 +50,9 @@ export function resolveGoogleSiteVerification(
 
 export const SITE_CONFIG = {
   NAME: 'Bookarium',
+  READER_NAME: 'Reader',
   LOGO_TEXT: 'BOOKARIUM',
-  TITLE: 'Bookarium — Universal Public Domain Library & Reader',
+  TITLE: 'Bookarium',
   DESCRIPTION:
     'Free, open, zero-cost access to 70,000+ public domain literary classics from Project Gutenberg.',
   TAGLINE: 'Crafted with care for book lovers everywhere',

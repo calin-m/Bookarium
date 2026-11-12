@@ -638,7 +638,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 37} RLS policies, ${counts.dbFunctionCount || 7} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 15} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), and scheduled/manual featured quotes ingestion (`quotes-sync.yml`), plus Husky pre-commit quality gates.' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), and on-demand manual maintenance workflows (`translations-sync.yml`, `quotes-sync.yml`), plus Husky pre-commit quality gates.' },
   ];
 
   let auditTotals = { suites: 187, tests: '1,994' };
@@ -943,7 +943,7 @@ function generateMarkdown() {
     '    CatalogSeam --> EngineCore',
     '    CatalogSeam -->|"Primary: Estimated-Count Fast Scan / <50ms Single-Book"| SupabaseCloud',
     '    CatalogSeam -.->|Fallback on unseeded/offline| Gutendex',
-    '    SyncEngine -->|Weekly Cron pg_catalog.csv.gz Stream| SupabaseCloud',
+    '    SyncEngine -->|Weekly Cron Snapshot Diff & pg_catalog.csv.gz Stream| SupabaseCloud',
     '    QueryBooks -.->|Client Failover on 504| Gutendex',
     '    ',
     '    ReaderPage --> QueryContent',
@@ -968,7 +968,7 @@ function generateMarkdown() {
     '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
     '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
-    '    SyncQuotes -->|Every-2h Two-Tier Quotes JSONB Upsert & Prune| SupabaseCloud',
+    '    SyncQuotes -->|Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert| SupabaseCloud',
     '    SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN',
     '    ',
     '    Views --> StateStores',
@@ -1416,15 +1416,15 @@ function generateMarkdown() {
   }
 
   const pageDescriptions = {
-    'src/app/layout.tsx': 'Root HTML shell, font initialization, theme class hydration, and global React Query / Service Worker provider wrapper.',
+    'src/app/layout.tsx': 'Root HTML shell, canonical `SITE_CONFIG.NAME` (`Bookarium`) tab/OpenGraph title, font initialization, theme class hydration, and global React Query / Service Worker provider wrapper.',
     'src/app/providers.tsx': 'Root client provider initializing TanStack `QueryClient`, Supabase authentication listener, `syncAllStoresWithCloud` cloud reconciliation, `online` event outbox flushing, `GlobalTitleTooltip` stylized tooltip delegation, and dynamic `AuthModal` rendering.',
     'src/app/loading.tsx': 'Next.js App Router streaming & pre-hydration loading splash boundary rendering the vector Bookarium crest and animated loading indicator.',
     'src/app/globals.css': 'Tailwind CSS v4 Oxide stylesheet defining Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) theme tokens, 3D hardcover book hinge physics (`.book-center-crease`, `.preserve-3d`), and custom reader scrollbars.',
-    'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites.',
+    'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites and dynamic `NAVBAR_VIEW_CONFIG` tab title synchronization (`Bookarium` / `Bookarium | <View>`).',
     'src/app/error.tsx': 'Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback.',
     'src/app/global-error.tsx': 'Root document-level React Error Boundary catching fatal top-level layout exceptions.',
     'src/app/not-found.tsx': 'Editorial 404 Not Found boundary with direct navigation back to the public domain catalog.',
-    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`), verifying signed `x-bookarium-share-token` (`decodeReadingCardShareToken`) to bind `/api/books/content?id=<id>&type=card&s=<token>` (`1200×630`) as the primary social preview image.',
+    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic `Bookarium | Reader | <Title> — <Author>` (`SITE_CONFIG.READER_NAME`), OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`), verifying signed `x-bookarium-share-token` (`decodeReadingCardShareToken`) to bind `/api/books/content?id=<id>&type=card&s=<token>` (`1200×630`) as the primary social preview image.',
     'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with warm `currentBook` metadata reuse (`hasCompleteCurrentBook`), continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
     'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
     'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and Preferences.',
@@ -1484,7 +1484,7 @@ function generateMarkdown() {
     useNetworkStatus: 'Reactive browser online/offline external store hook (`useSyncExternalStore`) driving red offline Account indicators, adaptive offline Catalog fallback, and network-gated controls.',
     useCopyFeedback: 'Transient clipboard copy state hook with automatic timer cleanup (`copy`, `isCopied`, `copiedKey`) for share URLs and scholar handles.',
     useNotebookMetadataResolver: 'Multi-source volume metadata resolver (`resolveVolumeMeta`, `missingBookIds`, `isMetadataLoading`) healing missing titles, authors, and languages across Personal and Fellow Marginalia.',
-    useReaderHabitTelemetry: 'Reader session lifecycle, book identity self-healing, 3-page reading activation threshold (`currently_reading` / `finished`), Literary Symposium companion progress sync, and idle-aware habit telemetry coordinator.',
+    useReaderHabitTelemetry: 'Reader session lifecycle, book identity self-healing, `Bookarium | Reader | <Title> — <Author>` client tab title synchronization (`SITE_CONFIG.READER_NAME`), 3-page reading activation threshold (`currently_reading` / `finished`), Literary Symposium companion progress sync, and idle-aware habit telemetry coordinator.',
     useAccountSecurityActions: 'Account Hub security, profile display name, email verification resend cooldown, password strength/generation/recovery, and account deletion workflow hook.',
     useOfflineCatalogFallback: 'Local IndexedDB offline catalog filtering, topic/language/author-lifespan matching, sorting, and sub-page slicing hook when offline.',
     useVisualViewportKeyboard: 'Mobile software virtual keyboard elevation hook leveraging the Visual Viewport API (`window.visualViewport`) to dynamically elevate floating inputs above tactile on-screen keyboards.',
@@ -1626,11 +1626,11 @@ function generateMarkdown() {
 
   const workflowResponsibilityMap = {
     'catalog-sync.yml':
-      'Automated weekly CI cron workflow (`concurrency: gutenberg-catalog-sync`) streaming `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across 3 official Gutenberg mirrors into `public.books` via Primary-Key-Scoped exact-diff metadata and 30-day `download_count` updates (`filterChangedOrNewBooks` preserving `quotes`), pruning withdrawn Gutenberg volumes (`reconcileWithdrawnCatalogBooks`), and chaining `ingest-translations.js`.',
+      'Unified weekly Sunday CI cron workflow (`concurrency: gutenberg-catalog-sync`, `permissions: contents: write`) restoring `gutenberg-catalog-cache.json.gz` from the permanent `catalog-cache` GitHub Release, streaming `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across 3 official Gutenberg mirrors into `public.books` via 100% in-RAM diffing (`filterChangedOrNewBooks` & `reconcileWithdrawnCatalogBooks` preserving `quotes`), publishing the updated snapshot (`--clobber`), and sequentially chaining `ingest-translations.js` and `sync-featured-quotes.js --diff-file=quote-diff.json`.',
     'translations-sync.yml':
-      'Automated weekly CI cron workflow (`concurrency: gutenberg-translations-sync`) clustering upstream Wikidata `P2034`/`P407` editions and syncing to `public.book_translations` via `idx_book_translations_cluster`.',
+      'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: gutenberg-translations-sync`) clustering upstream Wikidata `P2034`/`P407` editions and syncing to `public.book_translations` via `idx_book_translations_cluster` (scheduled Sunday execution is unified inside `catalog-sync.yml`).',
     'quotes-sync.yml':
-      'Automated & manual GitHub Actions workflow (`concurrency: featured-quotes-sync`) populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) via Primary-Key-Scoped `books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` & single-column `idx_books_download_count` queries (`<25ms`).',
+      'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: featured-quotes-sync`) populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) or specific `--ids` via selectable PGLAF mirrors (scheduled Sunday execution is unified inside `catalog-sync.yml` via `quote-diff.json`).',
     'ci.yml':
       'Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification on Node 22.',
     'release.yml':
@@ -1672,6 +1672,8 @@ function generateMarkdown() {
         }
       } else if (wfFile === 'release.yml') {
         triggerDesc = '`push` (`tags: v*`) / On-Demand (`workflow_dispatch`)';
+      } else if (wfText.includes('workflow_dispatch')) {
+        triggerDesc = 'On-Demand (`workflow_dispatch`) • Chained in `catalog-sync.yml`';
       }
       const resp =
         workflowResponsibilityMap[wfFile] ||
@@ -1695,23 +1697,24 @@ function generateMarkdown() {
     '```mermaid',
     'flowchart TD',
     '    subgraph Triggers ["GitHub Actions Triggers & Concurrency Locks"]',
-    '        CatTrigger["🕒 catalog-sync.yml\\n• cron: 0 2 * * 0 (Sundays 02:00 UTC) / workflow_dispatch\\n• concurrency: gutenberg-catalog-sync"]',
-    '        TransTrigger["🕒 translations-sync.yml\\n• cron: 0 3 * * 0 (Sundays 03:00 UTC) / workflow_dispatch\\n• concurrency: gutenberg-translations-sync"]',
-    '        QuotesTrigger["🕒 quotes-sync.yml\\n• cron: 37 */2 * * * (Every 2 Hours) / workflow_dispatch\\n• concurrency: featured-quotes-sync"]',
+    '        CatTrigger["🕒 catalog-sync.yml (Unified Sunday Pipeline)\\n• cron: 0 2 * * 0 (Sundays 02:00 UTC) / workflow_dispatch\\n• concurrency: gutenberg-catalog-sync • contents: write"]',
+    '        TransTrigger["🎛️ translations-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: gutenberg-translations-sync"]',
+    '        QuotesTrigger["🎛️ quotes-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: featured-quotes-sync"]',
     '        CITrigger["✅ ci.yml & release.yml\\n• push / pull_request (master) & tags: v*\\n• Node 22 + 7-Gateway Quality Engine"]',
     '    end',
     '',
-    '    subgraph UpstreamFeeds ["External Public Domain Feeds & Authority Sources"]',
+    '    subgraph UpstreamFeeds ["External Public Domain Feeds & Release Snapshot Cache"]',
+    '        ReleaseCache[("📦 GitHub Release Tag: catalog-cache\\ngutenberg-catalog-cache.json.gz (~4.5 MB)\\nPermanent Snapshot (--clobber)")]',
     '        FeedCSV["📦 Project Gutenberg Feeds (3 Mirrors)\\nrdf-files.tar.bz2 (121MB) + pg_catalog.csv.gz (5.3MB)"]',
     '        FeedGutendex["📊 Gutendex Popularity API\\nFallback download_count Hydration (--no-rdf)"]',
     '        FeedWikidata["🌐 Wikidata SPARQL + Offline Cache\\nP2034 Gutenberg ID & P407 Language"]',
     '        FeedMirrors["🏛️ Official PGLAF Mirrors (8.0s–16.0s Float Delay)\\ngutenberg.pglaf.org • aleph.gutenberg.org • gutenberg.readingroo.ms"]',
     '    end',
     '',
-    '    subgraph NodePipelines ["Node.js CLI Engines (scripts/ • SUPABASE_SERVICE_ROLE_KEY)"]',
-    '        ScriptCatalog["⚙️ scripts/sync-gutenberg-catalog.js\\n• Streaming RDF 30-Day Download Counts & RFC 4180 CSV Parser\\n• Exact-Diff Batch Sync (filterChangedOrNewBooks preserving quotes)\\n• Sticky Dynamic Write Pacing ([25, 100]) & Keyset Withdrawn-Book Pruning"]',
-    '        ScriptTrans["⚙️ scripts/ingest-translations.js\\n• 5 Pipeline Blockers & 7 Hardening Defenses\\n• Deterministic FRBR Cluster Upsert"]',
-    '        ScriptQuotes["⚙️ scripts/sync-featured-quotes.js\\n• Step 1: Pure Index Scans (idx_books_download_count LIMIT 1000 + books_pkey LIMIT 320)\\n• Step 2: Primary-Key-Scoped fetchQuotedBookIds (.in(id, chunk).neq(quotes, []))\\n• Step 3: 40 Popular + 10 Recent Blended Batch & 1-for-1 Sliding Window Auto-Prune"]',
+    '    subgraph NodePipelines ["Sequential Node.js CLI Engines (scripts/ • SUPABASE_SERVICE_ROLE_KEY)"]',
+    '        ScriptCatalog["⚙️ Step 1: scripts/sync-gutenberg-catalog.js\\n• Restores gutenberg-catalog-cache.json.gz & Diffs 78k Books 100% in RAM\\n• Upserts Changed/New Books Only & Reconciles Withdrawn IDs in RAM\\n• Writes quote-diff.json & Saves Updated Snapshot (--clobber)"]',
+    '        ScriptTrans["⚙️ Step 2: scripts/ingest-translations.js\\n• 5 Pipeline Blockers & 7 Hardening Defenses\\n• Deterministic FRBR Cluster Upsert"]',
+    '        ScriptQuotes["⚙️ Step 3: scripts/sync-featured-quotes.js\\n• Consumes quote-diff.json (Zero Pool Discovery Scans)\\n• Primary-Key-Scoped fetchQuotedBookIds (~3.5 KB)\\n• Prunes Demoted Books & Quotes Promoted/Unquoted Pool Books"]',
     '    end',
     '',
     '    subgraph SupabaseTables ["Supabase PostgreSQL Catalog Tables (Read-Only for Anon / Written by Service Role)"]',
@@ -1720,26 +1723,29 @@ function generateMarkdown() {
     '    end',
     '',
     '    CatTrigger --> ScriptCatalog',
+    '    ReleaseCache <-->|"gh release download / upload --clobber"| ScriptCatalog',
     '    FeedCSV --> ScriptCatalog',
     '    FeedGutendex --> ScriptCatalog',
-    '    ScriptCatalog -->|"Upsert 78k Metadata & 30-Day Download Counts"| TableBooks',
-    '    ScriptCatalog -->|"Chains Step 2 on Sunday Run"| ScriptTrans',
-    '    TransTrigger --> ScriptTrans',
+    '    ScriptCatalog -->|"Upsert Delta Rows Only (0 Read Egress)"| TableBooks',
+    '    ScriptCatalog -->|"Chains Step 2 on Success"| ScriptTrans',
+    '    ScriptCatalog -->|"Passes quote-diff.json on Disk"| ScriptQuotes',
+    '    TransTrigger -.->|"Manual Dispatch"| ScriptTrans',
     '    FeedWikidata --> ScriptTrans',
     '    ScriptTrans -->|"Upsert FRBR Edition Clusters"| TableTrans',
-    '    QuotesTrigger --> ScriptQuotes',
+    '    ScriptTrans -->|"Chains Step 3 on Success"| ScriptQuotes',
+    '    QuotesTrigger -.->|"Manual Dispatch"| ScriptQuotes',
     '    FeedMirrors --> ScriptQuotes',
-    '    TableBooks -->|"Sub-15ms Index & PK Candidate Discovery"| ScriptQuotes',
-    '    ScriptQuotes -->|"Upsert 10–16 Quotes/Book & Prune Out-of-Window (<=564 Pool)"| TableBooks',
+    '    TableBooks -->|"~3.5 KB PK Quoted-ID Check"| ScriptQuotes',
+    '    ScriptQuotes -->|"Upsert 10–16 Quotes/Book & Prune Demoted IDs"| TableBooks',
     '```',
     '',
     '### 2. CLI Pipelines & GitHub Actions Workflows Inventory',
     '',
     '| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility & Database Index Contract |',
     '| :--- | :--- | :--- | :--- | :--- |',
-    '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Weekly Cron | Streams official Project Gutenberg `rdf-files.tar.bz2` (121MB) and `pg_catalog.csv.gz` (5.3MB) across 3 mirrors, performs Primary-Key-Scoped exact-diff metadata and 30-day `download_count` updates (`filterChangedOrNewBooks` & `hasCatalogMetadataChanged`) via `books_pkey` and `idx_books_download_count` with sticky dynamic write pacing (`[25, 100]`) while keeping `quotes` untouched, and reconciles/prunes withdrawn Gutenberg volumes (`reconcileWithdrawnCatalogBooks`). |',
-    '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Weekly Cron | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting (`idx_book_translations_cluster`). |',
-    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / Every 2h Cron (`37 */2 * * *`) | Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` via Primary-Key-Scoped `books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` and single-column `idx_books_download_count` scans (`<25ms`), `40 Popular + 10 Recent` blended 50-book batch, and post-batch `1-for-1` sliding window auto-pruning across selectable PGLAF mirrors with `8.0s–16.0s` float pacing, single-line per-book console progress (`formatConsoleSummary`), and a zero-query Run Report (`formatRunReport`) written to the GitHub Actions job summary. |',
+    '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Sunday Cron (`0 2 * * 0`) | Restores `gutenberg-catalog-cache.json.gz` (`--cache-file`), streams official Project Gutenberg `rdf-files.tar.bz2` (121MB) and `pg_catalog.csv.gz` (5.3MB) across 3 mirrors, diffs all 78,461 books and withdrawn IDs 100% in RAM (`filterChangedOrNewBooks` & `reconcileWithdrawnCatalogBooks` with cold-start Supabase fallback), upserts only new/changed rows while keeping `quotes` untouched, writes `quote-diff.json` (`--diff-output`), and updates the `catalog-cache` release asset (`>= 50,000` safety floor). |',
+    '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Chained Sunday Step 2 | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting (`idx_book_translations_cluster`). |',
+    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / Chained Sunday Step 3 | Consumes `quote-diff.json` (`--diff-file`) from Step 1 (or falls back to index scans on standalone manual runs) to maintain the Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` via Primary-Key-Scoped `fetchQuotedBookIds` (`~3.5 KB`), prioritizing `promotedIds`, pruning `demotedIds`, and writing a zero-query Run Report (`formatRunReport`) to `$GITHUB_STEP_SUMMARY`. |',
     '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
     ...dynamicWorkflowRows
   );
@@ -1815,8 +1821,8 @@ function generateMarkdown() {
     '| **Catalog Search & Browse** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts)) | `SELECT <CATALOG_METADATA_COLUMNS> ... ORDER BY download_count DESC` (or `id ASC/DESC`) + optional `textSearch(search_vector)`, `overlaps(languages)`, `lte(max_author_death_year)` | `idx_books_download_count`, `idx_books_search_vector` (GIN), `idx_books_languages` (GIN), `idx_books_author_death_year`, `books_pkey` | `range(from, to)` (`<= 100` rows) + `count: "estimated"` | **Never** select `content` or unrequested `quotes` in catalog list queries (`CATALOG_METADATA_COLUMNS` omits `quotes`; only selected via `CATALOG_WITH_QUOTES_COLUMNS` when `hasQuotes=true`); **never** chain `.order(\'id\', { ascending: true })` onto single-column `idx_books_download_count`. |',
     '| **Single-Book & Batch ID Lookup** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts), [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts)) | `SELECT ... FROM public.books WHERE id = $1` or `.in(\'id\', normalizedIds)` via 7-day Edge-cached `/api/books?ids=...&has_quotes=true` (`useFeaturedQuotes` when `cachedSpreads.length < 3` and book is opened/shuffled) | `books_pkey` (`INTEGER PRIMARY KEY`) | `1` to `100` IDs per query | Direct B-Tree Primary Key lookup (`< 2ms`); cached 7d on Vercel Edge (`s-maxage=604800`); backfills all 16 spreads on demand when the 2-spread pool is cached. |',
     '| **Quote-Enriched Books Discovery** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) `fetchQuoteEnrichedPool` via `/api/books?pool=quotes` & [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) `fetchQuoteEnrichedBooks`) | Step 1: `FEATURED_HERO_BOOKS` + `LITERARY_QUOTES` IDs + `select(\'id\').order(\'download_count\', DESC).limit(500)` + `order(\'id\', DESC).limit(64)`; Step 2: `selectRotatingQuotePoolCandidateIds` 12h window slice -> `.in(\'id\', selectedCandidateIds).neq(\'quotes\', \'[]\').order(\'download_count\', DESC).limit(48)` (`<= 600` max) with native PostgREST 2-spread projection (`quote0:quotes->0, quote1:quotes->1`) | `idx_books_download_count` + `books_pkey` (`.in(\'id\', selectedCandidateIds)`) | `~564` candidate IDs -> `limit = 48` default (`<= 600` max, Edge CDN `s-maxage=43200`, browser `max-age=3600`, `~22 KB` wire transfer) | **Never** execute an unbounded `.neq(\'quotes\', \'[]\').order(\'download_count\', DESC)` without `.in(\'id\', ...)` (prevents 78,000-row index walk); 14 weekly 12h batches (`672` slots/week) cycle all 564 books at `~44 KB/day`. |',
-    '| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) & `quotes-sync.yml`) | Step 1: `ORDER BY download_count DESC LIMIT 1000` + `.in(\'id\', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320`; Step 2: `fetchQuotedBookIds` & `evaluateScheduleGate` via `.in(\'id\', chunk).neq(\'quotes\', \'[]\')`; Step 3: `.in(\'id\', selectedIds)` for `content, quotes` | `idx_books_download_count` + `books_pkey` | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 25ms` total)**: `id ASC` tie-breaking is computed in memory in JS; `content` is hydrated only for the `<= 25` selected batch IDs; `fetchQuotedBookIds` and `evaluateScheduleGate` are strictly Primary-Key-Scoped. |',
-    '| **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml`) | Step 1: `.select(CATALOG_DIFF_SELECT_COLUMNS).in(\'id\', batchIds)` (`filterChangedOrNewBooks`); Step 2: `upsert(toUpsert, { onConflict: \'id\', ignoreDuplicates: false })` on new/changed rows only via sticky dynamic write chunks (`[25, 100]`); Step 3: keyset `select(\'id\').gt(\'id\', lastId).order(\'id\', ASC).limit(1000)` (`reconcileWithdrawnCatalogBooks`) | `books_pkey` (`ON CONFLICT (id)` & keyset scan) & `idx_books_download_count` | `200` rows/batch diff (`< 2ms`), sticky dynamic write chunks (`100 -> 50 -> 25` on `57014`); `1,000` IDs/page keyset prune (`50,000` min-catalog & `500` max-prune circuit breakers) | **Zero `quotes` overwrite & zero GIN dirtying on `download_count` updates**: `CATALOG_DIFF_SELECT_COLUMNS` omits `formats`, `quotes`, `content`, and `search_vector`; unchanged rows are skipped, and `trigger_books_search_vector` (`IS DISTINCT FROM`) only recomputes `to_tsvector()` when `title`, `subjects`, or `bookshelves` change. |',
+    '| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js), `catalog-sync.yml` Step 3 & `quotes-sync.yml`) | Step 1: Consumes `quote-diff.json` (`--diff-file`) from `sync-gutenberg-catalog.js` (or `ORDER BY download_count DESC LIMIT 1000` + `.in(\'id\', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320` on standalone manual runs); Step 2: `fetchQuotedBookIds` via `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` (`~3.5 KB`); Step 3: `.in(\'id\', selectedIds)` for `content, quotes` | `books_pkey` (+ `idx_books_download_count` on standalone fallback) | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 15ms` total)**: `quote-diff.json` eliminates pool discovery scans on Sunday runs; `content` is hydrated only for selected unquoted batch IDs; `fetchQuotedBookIds` is strictly Primary-Key-Scoped. |',
+    '| **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml` Step 1) | Step 1: In-RAM diff via `gutenberg-catalog-cache.json.gz` (`--cache-file`) in `filterChangedOrNewBooks` (cold-start fallback: `.select(CATALOG_DIFF_SELECT_COLUMNS).in(\'id\', batchIds)`); Step 2: `upsert(toUpsert, { onConflict: \'id\', ignoreDuplicates: false })` on new/changed rows only via sticky dynamic write chunks (`[25, 100]`); Step 3: In-RAM withdrawn-book detection via `cachedBookIds` in `reconcileWithdrawnCatalogBooks` (cold-start fallback: keyset `select(\'id\').gt(\'id\', lastId).order(\'id\', ASC).limit(1000)`) | `books_pkey` (`ON CONFLICT (id)` & cold-start keyset scan) | `0` DB reads for unchanged rows when snapshot cached (`200` rows/batch on cold start); sticky dynamic write chunks (`100 -> 50 -> 25` on `57014`); `50,000` min-catalog & `500` max-prune circuit breakers | **Zero read egress on unchanged rows, zero `quotes` overwrite & zero GIN dirtying on `download_count` updates**: `gutenberg-catalog-cache.json.gz` (`catalog-cache` GitHub Release) diffs 78,461 books in RAM (~39 MB/week egress saved) and writes `quote-diff.json`. |',
     '| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `book_translations_pkey (work_id, book_id)`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |',
     '| **6-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`) | User-scoped `.eq(\'user_id\', user.id)` / `.or(\'requester_id.eq...,recipient_id.eq...\')` with per-user in-flight Promise coalescing | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on `reading_progress` & `profiles.preferences`) | Every `WHERE user_id = auth.uid()` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID. |'
   );
@@ -2293,9 +2299,9 @@ function generateMarkdown() {
     '    subgraph GitHubOps ["GitHub Actions Autonomous CI/CD & Data Operations"]',
     '        CIWorkflow["✅ .github/workflows/ci.yml\\n(Push / PR -> Node 22 -> 7-Gateway Quality Engine)"]',
     '        ReleaseWorkflow["🏷️ .github/workflows/release.yml\\n(Tag v* -> Verified GitHub Release)"]',
-    '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> sync-gutenberg-catalog.js)"]',
-    '        TransCron["🕒 .github/workflows/translations-sync.yml\\n(Sundays 03:00 UTC / Chained -> ingest-translations.js)"]',
-    '        QuotesCron["🕒 .github/workflows/quotes-sync.yml\\n(Every 2 Hours: 37 */2 * * * -> sync-featured-quotes.js)"]',
+    '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> Catalog + Release Snapshot + Translations + Quotes)"]',
+    '        TransCron["🎛️ .github/workflows/translations-sync.yml\\n(On-Demand workflow_dispatch -> ingest-translations.js)"]',
+    '        QuotesCron["🎛️ .github/workflows/quotes-sync.yml\\n(On-Demand workflow_dispatch -> sync-featured-quotes.js)"]',
     '    end',
     '',
     '    Client --> EdgeProxy',

@@ -672,6 +672,12 @@ const catalogRow = (overrides: Partial<CatalogRow> & { id: number; title: string
 function createCatalogSupabase(allRows: CatalogRow[], popularRows: CatalogRow[], recentRows: CatalogRow[]) {
   const updateEqMock = vi.fn().mockResolvedValue({ error: null });
   const pruneInMock = vi.fn().mockResolvedValue({ error: null });
+  const orderMock = vi.fn((col: string) => ({
+    limit: vi.fn().mockResolvedValue({
+      data: col === 'download_count' ? popularRows : recentRows,
+      error: null,
+    }),
+  }));
   const rowsFor = (ids: number[]) => allRows.filter((r) => ids.includes(r.id));
 
   const client = {
@@ -689,17 +695,12 @@ function createCatalogSupabase(allRows: CatalogRow[], popularRows: CatalogRow[],
             })
           ),
         })),
-        order: vi.fn((col: string) => ({
-          limit: vi.fn().mockResolvedValue({
-            data: col === 'download_count' ? popularRows : recentRows,
-            error: null,
-          }),
-        })),
+        order: orderMock,
       })),
       update: vi.fn(() => ({ eq: updateEqMock, in: pruneInMock })),
     })),
   };
-  return { client, updateEqMock, pruneInMock };
+  return { client, updateEqMock, pruneInMock, orderMock };
 }
 
 describe('sync-featured-quotes run report: tier progress & per-book ledger', () => {
@@ -1140,5 +1141,94 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     );
     expect(summary.books.every((b: LedgerEntry) => b.tier === 'top')).toBe(true);
     expect(summary.report).toContain('Failed: 3');
+  });
+
+  it('consumes --diff-file (quote-diff.json) without scanning the database pool, prioritizes promotedIds, and prunes demotedIds', async () => {
+    const parsedArgs = quotesSync.parseCliArgs(['--diff-file=quote-diff.json', '--limit=25']);
+    expect(parsedArgs.diffFile).toBe('quote-diff.json');
+    expect(quotesSync.loadQuoteDiffFile('/non-existent-quote-diff.json')).toBeNull();
+
+    const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quotes-diff-'));
+    const diffPath = path.join(tmpDir, 'quote-diff.json');
+    try {
+      const pride = catalogRow({
+        id: 1342,
+        title: 'Pride and Prejudice',
+        download_count: 90000,
+        quotes: makeQuotes(14, 'Pride'),
+      });
+      const moby = catalogRow({
+        id: 2001,
+        title: 'Classic Volume A',
+        download_count: 85000,
+        quotes: [],
+        content: SAMPLE_GUTENBERG_BOOK,
+      });
+      const newlyPromoted = catalogRow({
+        id: 2002,
+        title: 'Newly Promoted Volume B',
+        download_count: 70000,
+        quotes: [],
+        content: SAMPLE_GUTENBERG_BOOK,
+      });
+      const recentRelease = catalogRow({
+        id: 79001,
+        title: 'Recent Release',
+        download_count: 10,
+        quotes: makeQuotes(12, 'Recent'),
+      });
+      const demotedVolume = catalogRow({
+        id: 55555,
+        title: 'Demoted Volume',
+        download_count: 100,
+        quotes: makeQuotes(10, 'Demoted'),
+      });
+
+      fs.writeFileSync(
+        diffPath,
+        JSON.stringify({
+          candidatePoolIds: [1342, 2001, 2002, 79001],
+          popularPoolIds: [1342, 2001, 2002],
+          recentPoolIds: [79001],
+          promotedIds: [2002],
+          demotedIds: [55555],
+          minRecentHorizonId: 74000,
+          popularData: [
+            { id: 1342, title: 'Pride and Prejudice', download_count: 90000, languages: ['en'] },
+            { id: 2001, title: 'Classic Volume A', download_count: 85000, languages: ['en'] },
+            { id: 2002, title: 'Newly Promoted Volume B', download_count: 70000, languages: ['en'] },
+          ],
+          recentData: [
+            { id: 79001, title: 'Recent Release', download_count: 10, languages: ['en'] },
+          ],
+        }),
+        'utf8'
+      );
+
+      const allRows = [pride, moby, newlyPromoted, recentRelease, demotedVolume];
+      const { client, orderMock, pruneInMock } = createCatalogSupabase(allRows, [], []);
+      const logger = { log: vi.fn(), error: vi.fn() };
+
+      const summary = await quotesSync.runFeaturedQuotesSync(
+        { diffFile: diffPath, limit: 1, mirrors: ['pglaf'] },
+        {
+          env: {},
+          supabaseClient: client,
+          logger,
+          writeSeedFile: false,
+        }
+      );
+
+      // Zero scanTwoTierPools ORDER BY queries executed!
+      expect(orderMock).not.toHaveBeenCalled();
+      // Newly promoted #2002 was prioritized ahead of #2001 even though #2001 had a higher download_count
+      expect(summary.updated).toBe(1);
+      expect(summary.books[0].id).toBe(2002);
+      // Demoted #55555 was pruned automatically
+      expect(summary.pruned).toBe(1);
+      expect(pruneInMock).toHaveBeenCalledWith('id', [55555]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

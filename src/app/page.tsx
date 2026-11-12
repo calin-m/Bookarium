@@ -63,7 +63,8 @@ import {
 } from '@/lib/book-sorting';
 import { featuredHeroToGutendexBook } from '@/lib/book-metadata';
 import { ROUTES } from '@/config/routes';
-import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
+import { SITE_CONFIG } from '@/config/site-config';
+import { NAVBAR_VIEW_CONFIG, VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
 const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
 
@@ -161,6 +162,17 @@ function HomeContent() {
     handleResetAllFilters,
     removeFilterChip,
   } = useCatalogFilters();
+
+  // Synchronize browser tab title with the active navigation view using centralized config
+  useEffect(() => {
+    if (offlineReaderBookId) return;
+    const viewEntry = NAVBAR_VIEW_CONFIG[activeView];
+    if (activeView === 'catalog' || !viewEntry) {
+      document.title = SITE_CONFIG.NAME;
+    } else {
+      document.title = `${SITE_CONFIG.NAME} | ${viewEntry.label}`;
+    }
+  }, [activeView, offlineReaderBookId]);
 
   // Server Query
   const {

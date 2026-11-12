@@ -25,13 +25,17 @@ describe('BookReaderLayout and generateMetadata', () => {
       params: Promise.resolve({ id: '84' }),
     });
 
-    expect(meta.title).toContain('Frankenstein');
-    expect(meta.title).toContain('Mary Wollstonecraft Shelley');
+    const titleObj = meta.title as { absolute: string };
+    expect(titleObj.absolute).toBe(
+      'Bookarium | Reader | Frankenstein — Mary Wollstonecraft Shelley'
+    );
     expect(meta.description).toContain('Frankenstein');
     const og = meta.openGraph as Record<string, unknown> | undefined;
     const tw = meta.twitter as Record<string, unknown> | undefined;
     expect(og?.type).toBe('book');
+    expect(og?.title).toBe(titleObj.absolute);
     expect(tw?.card).toBe('summary_large_image');
+    expect(tw?.title).toBe(titleObj.absolute);
     expect(meta.alternates?.canonical).toBe('/read/84');
     const ogImages = og?.images as Array<{ url: string }> | undefined;
     expect(ogImages?.[0]?.url).toContain('/api/books/content?id=84&type=card');
@@ -71,7 +75,7 @@ describe('BookReaderLayout and generateMetadata', () => {
       params: Promise.resolve({ id: 'invalid-id' }),
     });
 
-    expect(meta.title).toBe('Book Reader');
+    expect(meta.title).toEqual({ absolute: 'Bookarium | Reader' });
     expect(meta.description).toBeDefined();
   });
 
@@ -84,7 +88,9 @@ describe('BookReaderLayout and generateMetadata', () => {
     });
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(meta.title).toContain('Gutenberg Volume #77777');
+    expect((meta.title as { absolute: string }).absolute).toContain(
+      'Bookarium | Reader | Gutenberg Volume #77777'
+    );
     expect(meta.alternates?.canonical).toBe('/read/77777');
 
     const layoutJsx = await BookReaderLayout({
@@ -136,14 +142,18 @@ describe('BookReaderLayout and generateMetadata', () => {
       params: Promise.resolve({ id: '55555' }),
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(meta1.title).toContain('Cached Wonder');
+    expect((meta1.title as { absolute: string }).absolute).toBe(
+      'Bookarium | Reader | Cached Wonder — Cache Master'
+    );
 
     // Subsequent navigation uses server memory cache even if client navigation flag is absent
     const meta2 = await generateMetadata({
       params: Promise.resolve({ id: '55555' }),
     });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(meta2.title).toContain('Cached Wonder');
+    expect((meta2.title as { absolute: string }).absolute).toBe(
+      'Bookarium | Reader | Cached Wonder — Cache Master'
+    );
   });
 
   it('renders children and Schema.org Book JSON-LD script', async () => {

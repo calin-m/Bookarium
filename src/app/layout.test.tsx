@@ -45,15 +45,18 @@ describe('RootLayout', () => {
 
   it('should expose valid metadata with OpenGraph, Twitter, and canonical alternates', () => {
     const titleObj = metadata.title as { default: string; template: string };
-    expect(titleObj.default).toContain('Bookarium');
+    expect(titleObj.default).toBe('Bookarium');
+    expect(titleObj.template).toBe('%s | Bookarium');
     expect(metadata.description).toBeDefined();
     expect(metadata.metadataBase).toBeDefined();
     expect(metadata.alternates?.canonical).toBe('/');
     const og = metadata.openGraph as Record<string, unknown> | undefined;
     const tw = metadata.twitter as Record<string, unknown> | undefined;
     expect(og?.type).toBe('website');
+    expect(og?.title).toBe('Bookarium');
     expect(og?.images).toBeDefined();
     expect(tw?.card).toBe('summary');
+    expect(tw?.title).toBe('Bookarium');
     expect(metadata.icons).toBeDefined();
     const icons = metadata.icons as { icon: Array<{ url: string }>; apple: string };
     expect(icons.icon).toEqual([

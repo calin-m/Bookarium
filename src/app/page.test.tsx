@@ -403,24 +403,38 @@ describe('Home page integration', () => {
     }
   });
 
-  it('renders Bookshelf and Favorites when views are switched via Navbar', () => {
+  it('renders Bookshelf and Favorites when views are switched via Navbar and synchronizes document.title across all views', () => {
     renderHome();
+    expect(document.title).toBe('Bookarium');
 
     // Switch to Bookshelf
     const bookshelfBtn = screen.getByRole('button', { name: /^Bookshelf$/i });
     fireEvent.click(bookshelfBtn);
+    expect(document.title).toBe('Bookarium | Bookshelf');
     expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
 
     // Switch to Favorites
     const favoritesBtn = screen.getByRole('button', { name: /^Favorites$/i });
     fireEvent.click(favoritesBtn);
+    expect(document.title).toBe('Bookarium | Favorites');
     expect(screen.getByText('Favorite Works')).toBeInTheDocument();
     expect(screen.getByText('No favorite books yet')).toBeInTheDocument();
+
+    // Switch to Notebook
+    const notebookBtn = screen.getByRole('button', { name: /^Notebook/i });
+    fireEvent.click(notebookBtn);
+    expect(document.title).toBe('Bookarium | Notebook');
+
+    // Switch to Bookmarks
+    const bookmarksBtn = screen.getByRole('button', { name: /^Bookmarks/i });
+    fireEvent.click(bookmarksBtn);
+    expect(document.title).toBe('Bookarium | Bookmarks');
 
     // Switch back to Catalog
     const catalogBtn = screen.getByRole('button', { name: /^Catalog$/i });
     fireEvent.click(catalogBtn);
+    expect(document.title).toBe('Bookarium');
     expect(screen.getByTestId(`book-card-${mockBooks[0].id}`)).toBeInTheDocument();
   });
 

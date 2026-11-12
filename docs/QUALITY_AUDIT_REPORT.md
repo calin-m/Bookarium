@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 12 Nov 2026 09:48:42 GMT  
+**Last Generated**: Thu, 12 Nov 2026 13:26:04 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2480 passed  
+**Total Verified Tests**: 2484 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2480 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2484 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.73%** (14170/14648) — *Target: $\ge$ 95%*
-- **Statements**: **95.44%** (15292/16021) — *Target: $\ge$ 95%*
-- **Functions**: **94%** (3137/3337) — *Target: $\ge$ 92%*
-- **Branches**: **87.8%** (14107/16066) — *Target: $\ge$ 85%*
+- **Lines**: **96.76%** (14181/14655) — *Target: $\ge$ 95%*
+- **Statements**: **95.5%** (15308/16029) — *Target: $\ge$ 95%*
+- **Functions**: **94.03%** (3139/3338) — *Target: $\ge$ 92%*
+- **Branches**: **87.76%** (14107/16074) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2480 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2484 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 301 Tests)
 
@@ -301,7 +301,7 @@
 - ✔ `adapts top clear button and confirmation modal to the active custom shelf or downloaded shelf`
 - ✔ `should open download hub and close it`
 - ✔ `should open 3D book preview modal when book cover is clicked and close it on desktop`
-- ✔ `renders Bookshelf and Favorites when views are switched via Navbar`
+- ✔ `renders Bookshelf and Favorites when views are switched via Navbar and synchronizes document.title across all views`
 - ✔ `navigates to /account when swiping left on mobile while on Bookmarks view`
 - ✔ `swipes right on Catalog to wrap around to Account page with backward directional slide parameter`
 - ✔ `mounts with animate-view-slide-right when ?dir=backward is in URL and settles cleanly on animationEnd`
@@ -1943,7 +1943,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 583 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 587 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2740,7 +2740,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -2757,11 +2757,12 @@
 - ✔ `appends the report to the GitHub step summary best-effort without ever throwing`
 - ✔ `reports manual --ids books with real tiers: already-quoted, topped-up, not-found and force-refreshed, without pruning`
 - ✔ `falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt`
+- ✔ `consumes --diff-file (quote-diff.json) without scanning the database pool, prioritizes promotedIds, and prunes demotedIds`
 
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (38 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (41 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -2801,6 +2802,9 @@
 - ✔ `enforces RDF feed mirror allowlist, prioritizes Fastly CDN feed, and fails over to the next official mirror when one fails`
 - ✔ `attaches download_count in normalizeCsvRow when downloadCountsMap is provided and detects download_count diffs`
 - ✔ `supports 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch`
+- ✔ `saves and loads compressed .json.gz snapshot caches and enforces the minCatalogSize safety floor`
+- ✔ `diffs incoming batches and reconciles withdrawn books 100% in RAM without querying Supabase when cachedBooksById is provided`
+- ✔ `computes Two-Tier quote pool promotedIds, demotedIds, and candidatePoolIds and writes quote-diff.json`
 
 </details>
 

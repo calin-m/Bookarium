@@ -1,9 +1,8 @@
 name: Gutenberg Translations Sync
 
 on:
-  schedule:
-    # Run every Sunday at 03:00 UTC (1 hour after catalog sync)
-    - cron: '0 3 * * 0'
+  # Scheduled execution is unified inside catalog-sync.yml (Sundays 02:00 UTC);
+  # this workflow remains available on-demand via workflow_dispatch for manual maintenance.
   workflow_dispatch:
     inputs:
       limit:

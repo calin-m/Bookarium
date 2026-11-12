@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
   CATALOG_DIFF_SELECT_COLUMNS,
@@ -26,6 +28,10 @@ const {
   reconcileWithdrawnCatalogBooks,
   fetchPopularCountsFromGutendex,
   syncPopularDownloadCounts,
+  extractCacheableBookRecord,
+  loadCatalogSnapshotCache,
+  saveCatalogSnapshotCache,
+  computeCatalogQuotePoolDiff,
 } = require('./sync-gutenberg-catalog');
 
 describe('sync-gutenberg-catalog parser', () => {
@@ -1190,6 +1196,194 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(chunkLengths).toEqual([80, 40, 40]);
       expect(getDynamicWriteChunkSize()).toBe(40);
       resetDynamicWriteChunkSize(100);
+    });
+  });
+
+  describe('Permanent Catalog Snapshot Cache & Quote Pool Diff Engine', () => {
+    it('saves and loads compressed .json.gz snapshot caches and enforces the minCatalogSize safety floor', () => {
+      const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-catalog-cache-'));
+      const cacheFile = path.join(tmpDir, 'gutenberg-catalog-cache.json.gz');
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+
+      try {
+        // Missing file returns empty state safely
+        const missing = loadCatalogSnapshotCache(cacheFile, { logger: silentLogger });
+        expect(missing.loaded).toBe(false);
+        expect(missing.booksById.size).toBe(0);
+
+        const booksById = new Map([
+          [
+            1342,
+            extractCacheableBookRecord({
+              id: 1342,
+              title: 'Pride and Prejudice',
+              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+              languages: ['en'],
+              download_count: 90000,
+              copyright: false,
+            }),
+          ],
+          [
+            84,
+            extractCacheableBookRecord({
+              id: 84,
+              title: 'Frankenstein',
+              authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+              languages: ['en'],
+              download_count: 80000,
+              copyright: false,
+            }),
+          ],
+        ]);
+
+        // Below safety floor -> refuses to overwrite cache
+        const blocked = saveCatalogSnapshotCache(cacheFile, booksById, [1342, 84], {
+          minCatalogSize: 50000,
+          logger: silentLogger,
+        });
+        expect(blocked.saved).toBe(false);
+        expect(blocked.skippedReason).toBe('below-min-catalog-floor');
+        expect(fs.existsSync(cacheFile)).toBe(false);
+
+        // Meets safety floor -> writes compressed .json.gz and round-trips via loadCatalogSnapshotCache
+        const saved = saveCatalogSnapshotCache(cacheFile, booksById, [1342, 84], {
+          minCatalogSize: 2,
+          logger: silentLogger,
+        });
+        expect(saved.saved).toBe(true);
+        expect(saved.count).toBe(2);
+        expect(fs.existsSync(cacheFile)).toBe(true);
+
+        const loaded = loadCatalogSnapshotCache(cacheFile, { logger: silentLogger });
+        expect(loaded.loaded).toBe(true);
+        expect(loaded.booksById.size).toBe(2);
+        expect(loaded.booksById.get(1342).title).toBe('Pride and Prejudice');
+        expect(Array.from(loaded.candidatePoolIds)).toEqual([1342, 84]);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('diffs incoming batches and reconciles withdrawn books 100% in RAM without querying Supabase when cachedBooksById is provided', async () => {
+      const selectSpy = vi.fn();
+      const deleteInSpy = vi.fn().mockResolvedValue({ error: null });
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: selectSpy,
+          delete: vi.fn(() => ({
+            in: deleteInSpy,
+          })),
+        })),
+      };
+
+      const base1342 = extractCacheableBookRecord({
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        languages: ['en'],
+        download_count: 90000,
+        copyright: false,
+      });
+      const base84 = extractCacheableBookRecord({
+        id: 84,
+        title: 'Frankenstein',
+        authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+        languages: ['en'],
+        download_count: 80000,
+        copyright: false,
+      });
+
+      const cachedBooksById = new Map([
+        [1342, base1342],
+        [84, base84],
+        [78050, extractCacheableBookRecord({ id: 78050, title: 'Withdrawn Vol' })],
+      ]);
+
+      const incomingBatch = [
+        { ...base1342 }, // unchanged
+        { ...base84, download_count: 82500 }, // updated download_count
+        extractCacheableBookRecord({ id: 2701, title: 'Moby Dick', download_count: 65000 }), // newly inserted
+      ];
+
+      const diffRes = await filterChangedOrNewBooks(mockSupabase, incomingBatch, false, {
+        cachedBooksById,
+      });
+      expect(selectSpy).not.toHaveBeenCalled();
+      expect(diffRes.unchangedCount).toBe(1);
+      expect(diffRes.updatedCount).toBe(1);
+      expect(diffRes.insertedCount).toBe(1);
+      expect(diffRes.toUpsert.map((b: { id: number }) => b.id)).toEqual([84, 2701]);
+
+      const silentLogger = { log: vi.fn(), warn: vi.fn() };
+      const reconcileRes = await reconcileWithdrawnCatalogBooks(
+        mockSupabase,
+        new Set([1342, 84, 2701]),
+        {
+          minCatalogSize: 3,
+          cachedBookIds: new Set(cachedBooksById.keys()),
+          logger: silentLogger,
+        }
+      );
+      expect(selectSpy).not.toHaveBeenCalled();
+      expect(reconcileRes.prunedCount).toBe(1);
+      expect(reconcileRes.prunedIds).toEqual([78050]);
+      expect(deleteInSpy).toHaveBeenCalledWith('id', [78050]);
+    });
+
+    it('computes Two-Tier quote pool promotedIds, demotedIds, and candidatePoolIds and writes quote-diff.json', () => {
+      const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quote-diff-'));
+      const diffFile = path.join(tmpDir, 'quote-diff.json');
+      try {
+        const booksById = new Map([
+          [
+            1342,
+            extractCacheableBookRecord({
+              id: 1342,
+              title: 'Pride and Prejudice',
+              languages: ['en'],
+              download_count: 90000,
+            }),
+          ],
+          [
+            84,
+            extractCacheableBookRecord({
+              id: 84,
+              title: 'Frankenstein',
+              languages: ['en'],
+              download_count: 80000,
+            }),
+          ],
+          [
+            79001,
+            extractCacheableBookRecord({
+              id: 79001,
+              title: 'Brand New Release',
+              languages: ['en'],
+              download_count: 10,
+            }),
+          ],
+        ]);
+
+        const previousPool = new Set([1342, 55555]);
+        const diff = computeCatalogQuotePoolDiff(booksById, previousPool, {
+          popularPool: 2,
+          recentPool: 1,
+          diffOutputPath: diffFile,
+        });
+
+        expect(diff.popularPoolIds).toEqual([1342, 84]);
+        expect(diff.recentPoolIds).toEqual([79001]);
+        expect(diff.candidatePoolIds).toEqual([1342, 84, 79001]);
+        expect(diff.promotedIds).toEqual([84, 79001]);
+        expect(diff.demotedIds).toEqual([55555]);
+        expect(fs.existsSync(diffFile)).toBe(true);
+
+        const parsedOnDisk = JSON.parse(fs.readFileSync(diffFile, 'utf8'));
+        expect(parsedOnDisk.promotedIds).toEqual([84, 79001]);
+        expect(parsedOnDisk.demotedIds).toEqual([55555]);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 });

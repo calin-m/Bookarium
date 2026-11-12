@@ -75,9 +75,9 @@ export function useReaderHabitTelemetry({
   useEffect(() => {
     if (resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
       const authorSuffix = resolvedIdentity.displayAuthor
-        ? ` by ${resolvedIdentity.displayAuthor}`
+        ? ` — ${resolvedIdentity.displayAuthor}`
         : '';
-      document.title = `${resolvedIdentity.title}${authorSuffix} | ${SITE_CONFIG.NAME}`;
+      document.title = `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME} | ${resolvedIdentity.title}${authorSuffix}`;
     }
   }, [resolvedIdentity.title, resolvedIdentity.displayAuthor]);
 

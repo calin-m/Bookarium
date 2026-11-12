@@ -43,8 +43,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_CONFIG.SITE_URL),
   title: {
-    default: 'Bookarium | Zero-Copyright Public Domain Library',
-    template: '%s | Bookarium',
+    default: SITE_CONFIG.NAME,
+    template: `%s | ${SITE_CONFIG.NAME}`,
   },
   description:
     'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: SITE_CONFIG.SITE_URL,
     siteName: SITE_CONFIG.NAME,
-    title: 'Bookarium | Zero-Copyright Public Domain Library',
+    title: SITE_CONFIG.NAME,
     description:
       'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
     images: [
@@ -88,7 +88,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: 'Bookarium | Zero-Copyright Public Domain Library',
+    title: SITE_CONFIG.NAME,
     description:
       'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct EPUB/TXT downloads with zero API keys.',
     images: ['/icons/apple-touch-icon.png?v=4'],

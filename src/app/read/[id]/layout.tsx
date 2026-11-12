@@ -24,7 +24,9 @@ export async function generateMetadata({
 
   if (!bookId || isNaN(bookId)) {
     return {
-      title: 'Book Reader',
+      title: {
+        absolute: `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME}`,
+      },
       description: 'Read unabridged public domain literature freely on Bookarium.',
     };
   }
@@ -40,7 +42,8 @@ export async function generateMetadata({
     booksData: bookData ? { count: 1, next: null, previous: null, results: [bookData] } : null,
   });
 
-  const title = `${meta.title} by ${meta.displayAuthor}`;
+  const authorSuffix = meta.displayAuthor ? ` — ${meta.displayAuthor}` : '';
+  const readerTitle = `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME} | ${meta.title}${authorSuffix}`;
   const description = `Read ${meta.title} by ${meta.displayAuthor} unabridged and 100% legal in the public domain. In-browser focus reader with synchronized voice narration and dynamic translations on Bookarium.`;
   const coverUrl =
     bookData?.formats?.['image/jpeg'] ||
@@ -62,7 +65,9 @@ export async function generateMetadata({
   }`;
 
   return {
-    title,
+    title: {
+      absolute: readerTitle,
+    },
     description,
     alternates: {
       canonical: `/read/${bookId}`,
@@ -72,7 +77,7 @@ export async function generateMetadata({
       locale: 'en_US',
       url: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
       siteName: SITE_CONFIG.NAME,
-      title: `${title} | Bookarium`,
+      title: readerTitle,
       description,
       images: [
         {
@@ -91,7 +96,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${title} | Bookarium`,
+      title: readerTitle,
       description,
       images: [cardImageUrl],
     },

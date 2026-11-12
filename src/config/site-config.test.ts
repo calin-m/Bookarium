@@ -20,6 +20,8 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
 
   it('provides site branding and metadata constants', () => {
     expect(SITE_CONFIG.NAME).toBe('Bookarium');
+    expect(SITE_CONFIG.READER_NAME).toBe('Reader');
+    expect(SITE_CONFIG.TITLE).toBe('Bookarium');
     expect(SITE_CONFIG.LOGO_TEXT).toBe('BOOKARIUM');
     expect(SITE_CONFIG.TAGLINE).toBe('Crafted with care for book lovers everywhere');
     expect(SITE_CONFIG.GITHUB_PROFILE).toBe('https://github.com/calin-m');

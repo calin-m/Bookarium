@@ -868,13 +868,21 @@ async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = f
   }
 
   const batchIds = dedupedBatch.map((b) => b.id);
-  const existingRows = await fetchExistingRowsWithRetry(supabase, batchIds, options);
-
   const existingById = new Map();
-  if (Array.isArray(existingRows)) {
-    for (const row of existingRows) {
-      if (row && Number.isInteger(row.id)) {
-        existingById.set(row.id, row);
+  if (options.cachedBooksById instanceof Map && options.cachedBooksById.size > 0) {
+    for (const id of batchIds) {
+      const cachedRow = options.cachedBooksById.get(id);
+      if (cachedRow) {
+        existingById.set(id, cachedRow);
+      }
+    }
+  } else {
+    const existingRows = await fetchExistingRowsWithRetry(supabase, batchIds, options);
+    if (Array.isArray(existingRows)) {
+      for (const row of existingRows) {
+        if (row && Number.isInteger(row.id)) {
+          existingById.set(row.id, row);
+        }
       }
     }
   }
@@ -1079,57 +1087,75 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
   const reconcileStartMs = Date.now();
   const expectedTotal = Math.max(1, activeCatalogIds.size);
 
-  while (true) {
-    let data = null;
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      const res = await supabase
-        .from('books')
-        .select('id')
-        .gt('id', lastId)
-        .order('id', { ascending: true })
-        .limit(pageSize);
+  const cachedIdSource =
+    options.cachedBookIds instanceof Set
+      ? Array.from(options.cachedBookIds)
+      : Array.isArray(options.cachedBookIds)
+        ? options.cachedBookIds
+        : null;
 
-      if (!res.error) {
-        data = res.data;
-        break;
-      }
-      if (attempt === retries) {
-        throw new Error(`Failed to scan existing catalog IDs for reconciliation: ${res.error.message}`);
-      }
-      if (baseDelayMs > 0) {
-        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
-      }
-    }
-
-    if (!Array.isArray(data) || data.length === 0) {
-      break;
-    }
-
-    for (const row of data) {
-      if (row && Number.isInteger(row.id) && row.id > 0) {
-        lastId = row.id;
+  if (cachedIdSource && cachedIdSource.length >= minCatalogSize) {
+    for (const rawId of cachedIdSource) {
+      if (Number.isInteger(rawId) && rawId > 0) {
         scannedCount++;
-        if (!activeCatalogIds.has(row.id) && !PROTECTED_HERO_BOOK_IDS.has(row.id)) {
-          withdrawnIds.push(row.id);
+        if (!activeCatalogIds.has(rawId) && !PROTECTED_HERO_BOOK_IDS.has(rawId)) {
+          withdrawnIds.push(rawId);
         }
       }
     }
+  } else {
+    while (true) {
+      let data = null;
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        const res = await supabase
+          .from('books')
+          .select('id')
+          .gt('id', lastId)
+          .order('id', { ascending: true })
+          .limit(pageSize);
 
-    if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
-      const elapsedSec = ((Date.now() - reconcileStartMs) / 1000).toFixed(1);
-      const pct = Math.min(100, (scannedCount / expectedTotal) * 100).toFixed(1);
-      process.stdout.write(
-        `\r  ↳ Scanned: ${scannedCount.toLocaleString()} / ${activeCatalogIds.size.toLocaleString()} (${pct}%) | Withdrawn: ${withdrawnIds.length} (${elapsedSec}s)   `
-      );
+        if (!res.error) {
+          data = res.data;
+          break;
+        }
+        if (attempt === retries) {
+          throw new Error(`Failed to scan existing catalog IDs for reconciliation: ${res.error.message}`);
+        }
+        if (baseDelayMs > 0) {
+          await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
+        }
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        break;
+      }
+
+      for (const row of data) {
+        if (row && Number.isInteger(row.id) && row.id > 0) {
+          lastId = row.id;
+          scannedCount++;
+          if (!activeCatalogIds.has(row.id) && !PROTECTED_HERO_BOOK_IDS.has(row.id)) {
+            withdrawnIds.push(row.id);
+          }
+        }
+      }
+
+      if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
+        const elapsedSec = ((Date.now() - reconcileStartMs) / 1000).toFixed(1);
+        const pct = Math.min(100, (scannedCount / expectedTotal) * 100).toFixed(1);
+        process.stdout.write(
+          `\r  ↳ Scanned: ${scannedCount.toLocaleString()} / ${activeCatalogIds.size.toLocaleString()} (${pct}%) | Withdrawn: ${withdrawnIds.length} (${elapsedSec}s)   `
+        );
+      }
+
+      if (data.length < pageSize) {
+        break;
+      }
     }
 
-    if (data.length < pageSize) {
-      break;
+    if (process.stdout && typeof process.stdout.write === 'function' && logger === console && scannedCount > 0) {
+      process.stdout.write('\n');
     }
-  }
-
-  if (process.stdout && typeof process.stdout.write === 'function' && logger === console && scannedCount > 0) {
-    process.stdout.write('\n');
   }
 
   if (withdrawnIds.length === 0) {
@@ -1398,6 +1424,243 @@ async function syncPopularDownloadCounts(supabase, options = {}) {
   return { updatedCount, demotedCount };
 }
 
+// 8B. Permanent Snapshot Cache & Two-Tier Quote Pool Diff Engine
+const DEFAULT_QUOTE_POPULAR_POOL_SIZE = 500;
+const DEFAULT_QUOTE_RECENT_POOL_SIZE = 64;
+
+function extractCacheableBookRecord(book) {
+  if (!book || !Number.isInteger(book.id) || book.id <= 0) return null;
+  return {
+    id: book.id,
+    title: book.title || '',
+    authors: Array.isArray(book.authors) ? book.authors : [],
+    translators: Array.isArray(book.translators) ? book.translators : [],
+    subjects: Array.isArray(book.subjects) ? book.subjects : [],
+    bookshelves: Array.isArray(book.bookshelves) ? book.bookshelves : [],
+    languages: Array.isArray(book.languages) ? book.languages : [],
+    copyright: Boolean(book.copyright),
+    media_type: book.media_type || 'Text',
+    download_count: typeof book.download_count === 'number' ? book.download_count : 0,
+    max_author_death_year: book.max_author_death_year ?? null,
+    min_author_birth_year: book.min_author_birth_year ?? null,
+  };
+}
+
+function loadCatalogSnapshotCache(cacheFilePath, options = {}) {
+  const fsImpl = options.fsImpl || fs;
+  const logger = options.logger || null;
+  const emptyResult = {
+    loaded: false,
+    booksById: new Map(),
+    candidatePoolIds: new Set(),
+  };
+
+  if (!cacheFilePath || !fsImpl.existsSync(cacheFilePath)) {
+    return emptyResult;
+  }
+
+  try {
+    const rawBuf = fsImpl.readFileSync(cacheFilePath);
+    const jsonStr = cacheFilePath.endsWith('.gz')
+      ? zlib.gunzipSync(rawBuf).toString('utf8')
+      : rawBuf.toString('utf8');
+    const parsed = JSON.parse(jsonStr);
+    const rawBooks = Array.isArray(parsed)
+      ? parsed
+      : parsed && Array.isArray(parsed.books)
+        ? parsed.books
+        : [];
+    const booksById = new Map();
+    for (const item of rawBooks) {
+      const normalized = extractCacheableBookRecord(item);
+      if (normalized) {
+        booksById.set(normalized.id, normalized);
+      }
+    }
+    const candidatePoolIds = new Set(
+      parsed && Array.isArray(parsed.candidatePoolIds)
+        ? parsed.candidatePoolIds.filter((id) => Number.isInteger(id) && id > 0)
+        : []
+    );
+
+    if (booksById.size === 0) {
+      return emptyResult;
+    }
+
+    if (logger) {
+      logger.log(
+        `  ✔ Restored catalog snapshot cache (${booksById.size.toLocaleString()} books, ${candidatePoolIds.size} prior quote pool IDs) from ${cacheFilePath}.`
+      );
+    }
+
+    return {
+      loaded: true,
+      booksById,
+      candidatePoolIds,
+    };
+  } catch (err) {
+    if (logger) {
+      logger.warn(
+        `  ⚠ Warning: Could not load catalog snapshot cache from ${cacheFilePath} (${err.message || err}); falling back to live Supabase diff queries.`
+      );
+    }
+    return emptyResult;
+  }
+}
+
+function saveCatalogSnapshotCache(cacheFilePath, booksById, candidatePoolIds = [], options = {}) {
+  const fsImpl = options.fsImpl || fs;
+  const logger = options.logger || null;
+  const minCatalogSize =
+    typeof options.minCatalogSize === 'number' ? options.minCatalogSize : MIN_ACTIVE_CATALOG_FOR_PRUNE;
+
+  if (!cacheFilePath || !(booksById instanceof Map)) {
+    return { saved: false, skippedReason: 'missing-path-or-map', count: 0 };
+  }
+
+  if (booksById.size < minCatalogSize) {
+    if (logger) {
+      logger.warn(
+        `  ⚠ Skipping snapshot cache write: catalog count (${booksById.size.toLocaleString()}) is below safety floor (${minCatalogSize.toLocaleString()}).`
+      );
+    }
+    return { saved: false, skippedReason: 'below-min-catalog-floor', count: booksById.size };
+  }
+
+  const booksArray = [];
+  for (const book of booksById.values()) {
+    const clean = extractCacheableBookRecord(book);
+    if (clean) booksArray.push(clean);
+  }
+  booksArray.sort((a, b) => a.id - b.id);
+
+  const poolArray = Array.from(candidatePoolIds instanceof Set ? candidatePoolIds : candidatePoolIds || [])
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  const payload = JSON.stringify({
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    candidatePoolIds: poolArray,
+    books: booksArray,
+  });
+
+  const outBuffer = cacheFilePath.endsWith('.gz')
+    ? zlib.gzipSync(Buffer.from(payload, 'utf8'))
+    : Buffer.from(payload, 'utf8');
+
+  const tmpPath = `${cacheFilePath}.tmp`;
+  fsImpl.writeFileSync(tmpPath, outBuffer);
+  fsImpl.renameSync(tmpPath, cacheFilePath);
+
+  if (logger) {
+    const sizeMb = (outBuffer.length / (1024 * 1024)).toFixed(2);
+    logger.log(
+      `  ✔ Saved catalog snapshot cache (${booksArray.length.toLocaleString()} books, ${sizeMb} MB) to ${cacheFilePath}.`
+    );
+  }
+
+  return { saved: true, skippedReason: null, count: booksArray.length };
+}
+
+function computeCatalogQuotePoolDiff(booksById, previousCandidatePoolIds = new Set(), options = {}) {
+  const fsImpl = options.fsImpl || fs;
+  const logger = options.logger || null;
+  const popularPoolLimit =
+    typeof options.popularPool === 'number' && options.popularPool > 0
+      ? options.popularPool
+      : DEFAULT_QUOTE_POPULAR_POOL_SIZE;
+  const recentPoolLimit =
+    typeof options.recentPool === 'number' && options.recentPool >= 0
+      ? options.recentPool
+      : DEFAULT_QUOTE_RECENT_POOL_SIZE;
+
+  const isEligibleCatalogBook = (row) =>
+    row &&
+    Number.isInteger(row.id) &&
+    row.copyright !== true &&
+    (!row.media_type || row.media_type === 'Text');
+
+  const isEligibleEnglishBook = (row) =>
+    isEligibleCatalogBook(row) &&
+    (!Array.isArray(row.languages) || row.languages.length === 0 || row.languages.includes('en'));
+
+  const allBooks = booksById instanceof Map ? Array.from(booksById.values()) : Array.isArray(booksById) ? booksById : [];
+
+  const popularData = allBooks
+    .filter(isEligibleEnglishBook)
+    .sort((a, b) => {
+      const aHero = PROTECTED_HERO_BOOK_IDS.has(a.id) ? 1 : 0;
+      const bHero = PROTECTED_HERO_BOOK_IDS.has(b.id) ? 1 : 0;
+      if (aHero !== bHero) return bHero - aHero;
+      return (b.download_count || 0) - (a.download_count || 0) || a.id - b.id;
+    })
+    .slice(0, popularPoolLimit)
+    .map(extractCacheableBookRecord)
+    .filter(Boolean);
+
+  let recentData = [];
+  let minRecentHorizonId = null;
+  if (recentPoolLimit > 0) {
+    const recentScanLimit = Math.max(recentPoolLimit * 5, 320);
+    const sortedByIdDesc = [...allBooks]
+      .filter((r) => r && Number.isInteger(r.id) && r.id > 0)
+      .sort((a, b) => b.id - a.id);
+    const recentScanSlice = sortedByIdDesc.slice(0, recentScanLimit);
+    const validRecentScanIds = recentScanSlice.map((r) => r.id);
+    if (validRecentScanIds.length > 0) {
+      const maxRecentId = Math.max(...validRecentScanIds);
+      minRecentHorizonId = Math.max(1, Math.min(Math.min(...validRecentScanIds), maxRecentId - 5000));
+    }
+    recentData = recentScanSlice
+      .filter(isEligibleCatalogBook)
+      .slice(0, recentPoolLimit)
+      .map(extractCacheableBookRecord)
+      .filter(Boolean);
+  }
+
+  const popularPoolIds = popularData.map((r) => r.id);
+  const recentPoolIds = recentData.map((r) => r.id);
+  const candidatePoolSet = new Set([...popularPoolIds, ...recentPoolIds]);
+  const candidatePoolIds = Array.from(candidatePoolSet);
+
+  const prevSet =
+    previousCandidatePoolIds instanceof Set
+      ? previousCandidatePoolIds
+      : new Set(Array.isArray(previousCandidatePoolIds) ? previousCandidatePoolIds : []);
+
+  const promotedIds =
+    prevSet.size > 0
+      ? candidatePoolIds.filter((id) => !prevSet.has(id))
+      : [...candidatePoolIds];
+  const demotedIds =
+    prevSet.size > 0
+      ? Array.from(prevSet).filter((id) => Number.isInteger(id) && id > 0 && !candidatePoolSet.has(id))
+      : [];
+
+  const diffPayload = {
+    updatedAt: new Date().toISOString(),
+    candidatePoolIds,
+    popularPoolIds,
+    recentPoolIds,
+    promotedIds,
+    demotedIds,
+    minRecentHorizonId,
+    popularData,
+    recentData,
+  };
+
+  if (options.diffOutputPath) {
+    fsImpl.writeFileSync(options.diffOutputPath, JSON.stringify(diffPayload, null, 2), 'utf8');
+    if (logger) {
+      logger.log(
+        `  ✔ Wrote Two-Tier quote pool diff (${candidatePoolIds.length} pool IDs, ${promotedIds.length} promoted, ${demotedIds.length} demoted) to ${options.diffOutputPath}.`
+      );
+    }
+  }
+
+  return diffPayload;
+}
+
 // 9. Main Orchestrator
 async function main() {
   const args = process.argv.slice(2);
@@ -1414,6 +1677,10 @@ async function main() {
   const allowedLanguages = languagesArg ? new Set(languagesArg.split('=')[1].toLowerCase().split(',')) : null;
   const batchSizeArg = args.find((a) => a.startsWith('--batch-size='));
   const batchSize = batchSizeArg ? parseInt(batchSizeArg.split('=')[1], 10) : 200;
+  const cacheFileArg = args.find((a) => a.startsWith('--cache-file='));
+  const cacheFilePath = cacheFileArg ? cacheFileArg.slice('--cache-file='.length).trim() : null;
+  const diffOutputArg = args.find((a) => a.startsWith('--diff-output='));
+  const diffOutputPath = diffOutputArg ? diffOutputArg.slice('--diff-output='.length).trim() : null;
 
   if (isHelp) {
     console.log(`
@@ -1426,6 +1693,8 @@ Options:
   --limit=N             Ingest only the first N valid books (e.g. --limit=100)
   --languages=en,fr     Filter by ISO languages (default: all languages)
   --batch-size=N        Number of books per Supabase upsert (default: 200)
+  --cache-file=PATH     Load/save compressed catalog snapshot cache (.json.gz) for in-RAM diffing
+  --diff-output=PATH    Write Two-Tier quote pool diff JSON (quote-diff.json) for sync-featured-quotes.js
   --update-existing     Force full overwrite of all existing records (default: smart exact-diff update preserving quotes)
   --no-prune            Skip withdrawn-book reconciliation at the end of a full sync
   --force-prune         Override the 500-book per-run safety cap during withdrawn-book pruning
@@ -1447,6 +1716,8 @@ Options:
     `• Strategy:    ${shouldUpdateExisting ? 'FORCE OVERWRITE (Rebuild all records)' : 'SMART EXACT-DIFF (Insert new + update changed metadata & download_count, preserving quotes)'}`
   );
   console.log(`• Batch Size:  ${batchSize} books/request`);
+  if (cacheFilePath) console.log(`• Cache File:  ${cacheFilePath}`);
+  if (diffOutputPath) console.log(`• Diff Output: ${diffOutputPath}`);
   if (limit) console.log(`• Limit:       ${limit} books`);
   if (allowedLanguages) console.log(`• Languages:   ${Array.from(allowedLanguages).join(', ')}`);
 
@@ -1478,6 +1749,11 @@ Options:
     return;
   }
 
+  const cachedSnapshot =
+    cacheFilePath && !shouldUpdateExisting
+      ? loadCatalogSnapshotCache(cacheFilePath, { logger: console })
+      : { loaded: false, booksById: new Map(), candidatePoolIds: new Set() };
+
   let rdfDownloadCounts = new Map();
   if (!noRdf && !limit) {
     rdfDownloadCounts = await streamGutenbergRdfDownloadCounts({ logger: console });
@@ -1496,6 +1772,7 @@ Options:
   let currentBatch = [];
   let isAborted = false;
   const activeCatalogIds = new Set();
+  const nextSnapshotBooksById = new Map();
 
   const flushBatch = async () => {
     if (currentBatch.length === 0) return;
@@ -1512,7 +1789,10 @@ Options:
       const { toUpsert, insertedCount, updatedCount, unchangedCount } = await filterChangedOrNewBooks(
         supabase,
         toSend,
-        shouldUpdateExisting
+        shouldUpdateExisting,
+        {
+          cachedBooksById: cachedSnapshot.loaded ? cachedSnapshot.booksById : null,
+        }
       );
       if (toUpsert.length > 0) {
         wroteRows = toUpsert.length;
@@ -1522,6 +1802,12 @@ Options:
       totalUpdated += updatedCount;
       totalUnchanged += unchangedCount;
     }
+    for (const b of toSend) {
+      const cacheEntry = extractCacheableBookRecord(b);
+      if (cacheEntry) {
+        nextSnapshotBooksById.set(cacheEntry.id, cacheEntry);
+      }
+    }
     totalProcessed += toSend.length;
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -1530,14 +1816,18 @@ Options:
       `\r  ↳ Processed: ${totalProcessed.toLocaleString()} | New: ${totalInserted.toLocaleString()} | Updated: ${totalUpdated.toLocaleString()} | Unchanged: ${totalUnchanged.toLocaleString()} | ${speed} books/s (${elapsed}s)   `
     );
 
-    // Dynamic anti-throttling pause: 50ms when read-only/unchanged, scaled when writing
+    // Dynamic anti-throttling pause: 0ms when diffed purely in RAM with 0 writes, 50ms when DB-queried, scaled when writing
     const pauseMs =
       wroteRows === 0
-        ? 50
+        ? cachedSnapshot.loaded
+          ? 0
+          : 50
         : dynamicWriteChunkSize < MAX_DYNAMIC_WRITE_CHUNK_SIZE
           ? 200
           : 100;
-    await new Promise((r) => setTimeout(r, pauseMs));
+    if (pauseMs > 0) {
+      await new Promise((r) => setTimeout(r, pauseMs));
+    }
   };
 
   try {
@@ -1605,12 +1895,36 @@ Options:
 
     let reconcileResult = null;
     if (!isDryRun && supabase && !limit && !allowedLanguages && !noPrune) {
-      reconcileResult = await reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, { forcePrune });
+      reconcileResult = await reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, {
+        forcePrune,
+        cachedBookIds: cachedSnapshot.loaded ? new Set(cachedSnapshot.booksById.keys()) : null,
+      });
     }
 
     // Only fall back to Gutendex Top Popular hydration if the RDF archive was skipped or unreachable
     if (!isDryRun && supabase && !limit && rdfDownloadCounts.size === 0) {
       await syncPopularDownloadCounts(supabase);
+    }
+
+    let quotePoolDiff = null;
+    if ((diffOutputPath || cacheFilePath) && !limit && !allowedLanguages && nextSnapshotBooksById.size > 0) {
+      quotePoolDiff = computeCatalogQuotePoolDiff(
+        nextSnapshotBooksById,
+        cachedSnapshot.candidatePoolIds,
+        {
+          diffOutputPath,
+          logger: console,
+        }
+      );
+    }
+
+    if (cacheFilePath && !isDryRun && !limit && !allowedLanguages) {
+      saveCatalogSnapshotCache(
+        cacheFilePath,
+        nextSnapshotBooksById,
+        quotePoolDiff ? quotePoolDiff.candidatePoolIds : [],
+        { logger: console }
+      );
     }
 
     if (!isDryRun && supabase) {
@@ -1663,6 +1977,10 @@ module.exports = {
   reconcileWithdrawnCatalogBooks,
   fetchPopularCountsFromGutendex,
   syncPopularDownloadCounts,
+  extractCacheableBookRecord,
+  loadCatalogSnapshotCache,
+  saveCatalogSnapshotCache,
+  computeCatalogQuotePoolDiff,
   loadEnv,
 };
 

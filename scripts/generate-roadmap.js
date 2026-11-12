@@ -393,7 +393,7 @@ const ROADMAP_MILESTONES = [
         targetMinVersion: '2.9.0',
         description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—reserving live Gutenberg mirror pulls strictly for uncached volumes opened by readers.',
         check: () =>
-          fileContains('.github/workflows/quotes-sync.yml', 'schedule:') &&
+          fileContains('.github/workflows/quotes-sync.yml', 'workflow_dispatch:') &&
           fileContains('scripts/sync-featured-quotes.js', 'promoteScholarHighlights'),
       },
       {
