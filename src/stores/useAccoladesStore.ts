@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
+import { shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   AccoladeId,
@@ -211,6 +212,13 @@ export const useAccoladesStore = create<AccoladesState>()(
         set({ isSyncing: true });
         try {
           const supabase = createClient();
+          if (
+            shouldVerifyCloudSession(supabase) &&
+            !(await verifyActiveCloudSession(supabase, userId))
+          ) {
+            set({ isSyncing: false });
+            return;
+          }
 
           const pendingPins = { ...get().pendingPinUpdates };
           const pendingEntries = Object.entries(pendingPins);

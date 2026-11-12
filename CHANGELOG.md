@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.22] - 2026-11-12
+### *Asymmetric Catalog-to-Collection Transitions, Zero-Swap Hero Hydration Guard & Pre-Sync Session Verification*
+
+### Fixed
+- Asymmetric Catalog-to-Collection Directional Transitions & Instant Return Policy (`src/app/page.tsx`, `src/app/page.test.tsx`, `docs/DECISIONS.md`, `ADR-080`): Implemented an asymmetric view navigation policy across Catalog and collections: (1) Added directional slide navigation on header tab taps in `src/app/page.tsx` (`NAVBAR_TRANSITION_ORDER`), calculating relative tab coordinates (`forward` -> `animate-view-slide-left`, `backward` -> `animate-view-slide-right`) with instant top-scroll alignment (`window.scrollTo({ top: 0, behavior: 'instant' })`) when entering Bookshelf or navigating between personal collections (`bookshelf` <-> `favorites` <-> `notebook` <-> `bookmarks`); and (2) Enforced an Asymmetric Zero-Transition Return Policy when navigating back to the Catalog (from any collection view or offline catalog view -> `catalog`), setting `setSwipeDirection(null)` and `setIsTransitioning(false)` so the Catalog homepage loads immediately and crisply with zero animation delay for maximum page speed.
+- Tablet Viewport Breakpoint Parity & Nested Motion Clashing Suppression (`src/app/globals.css`, `src/app/page.test.tsx`, `docs/DECISIONS.md`, `ADR-080`): Resolved transition clashing on tablet viewports by replacing `@media (max-width: 767px)` with `@media (max-width: 1366px), (pointer: coarse)` in `globals.css`. Permanently suppresses nested descendant `.animate-page-turn` containers across iPads, Android tablets, Surface devices, and touch laptops so the outer view transition stage plays smoothly without double-animation artifacts or frame jitter.
+- Zero-Swap Hero & Editorial Pool Boundary Guard Across Sliding 12-Hour Cache Windows (`src/config/featured-books.ts`, `src/config/featured-books.test.ts`, `docs/DECISIONS.md`, `ADR-080`): Eliminated post-hydration Hero Featured Book and Classic of the Day book/quote swaps and cross-device mismatches when a valid 12-hour `localStorage` (`bookarium-quote-enriched-books-v1`) or Vercel Edge CDN (`s-maxage=43200`) quote-pool cache straddles a `00:00 UTC` or `12:00 UTC` rotating pool boundary. Added `FEATURED_HERO_ID_SET` and `toFallbackHeroWithRawBook(fallback)` so `selectHourlyHeroFromPool` and `selectDailyClassicFromPool` preserve the deterministic SSR `fallback` whenever `!ssrMatch` on a rotating pool slice, maintaining 100% of `v2.9.21`'s 48-volume batch size, 12-hour cache TTLs, and zero extra Supabase egress.
+- Pre-Sync Active Session Token Guard, Cookie-Clearance Guest Reconciliation & Batched `reading_progress` Cloud Upsert (`src/stores/useAuthStore.ts`, `src/lib/sync-utils.ts`, `src/lib/sync-utils.test.ts`, `src/stores/useReaderStore.ts`, `src/stores/useReaderStore.test.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useHabitsStore.ts`, `src/stores/useAccoladesStore.ts`, `src/stores/useAnnotationStore.ts`, `docs/DECISIONS.md`, `ADR-080`): Eliminated PostgreSQL `42501` RLS errors and false-empty `SELECT` responses (`data: []`) after browser cookie clearance by adding `verifyActiveCloudSession` (`hasSupabaseAuthCookie` & `shouldVerifyCloudSession`) across `syncAllStoresWithCloud` and all store sync entrypoints, preserving `v2.9.20` wake-up token refresh compatibility while reconciling cleared-cookie tabs to guest mode, and batching multi-book `reading_progress` upserts (`upsertReadingProgressBatch`) into 1 request instead of N parallel requests.
+- Living Architecture Diagram 12 Cron Topology, Dual-Layer Tactile vs. Non-Tactile Transition Parity & ADR Conflict Decommissioning Ledger (`src/app/page.test.tsx`, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`, `AGENTS.md`, `.agents/AGENTS.md`, `ADR-080`): Updated Diagram 12 (`Edge Routing, Regional Compute Pinning & Autonomous Cron Topology`) and 7-store cloud outbox labels in `scripts/generate-architecture-matrix.js` to reflect the unified Sunday `catalog-sync.yml` pipeline, added co-located unit tests in `src/app/page.test.tsx` verifying both tactile (`<= 1366px`, `pointer: coarse`) repeatable `Catalog` <-> `Bookshelf` slide transitions and non-tactile desktop PC (`> 1366px`, `pointer: fine`) inner `.animate-page-turn` fade-up and swipe suppression, reconciled superseded statements across `docs/DECISIONS.md` and `scripts/generate-roadmap.js` with a `Decommissioned & Superseded Decisions Ledger`, and codified in-place ADR pruning in `AGENTS.md` and `.agents/AGENTS.md`.
+
+
 ## [2.9.21] - 2026-11-12
 ### *Supabase Egress Optimization, 48-Volume 12h Rotating Quote Pool & Vercel Edge CDN Offloading*
 
@@ -1014,7 +1025,7 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-020: Unabridged Offline Book Storage via Native IndexedDB Engine & LRU Eviction**
 - **ADR-021: Clean Path URL Architecture via Next.js Edge Rewrites**
 - **ADR-022: API Proxy Hardening, Anti-SSRF Allowlisting & Sliding-Window Rate Limiting**
-- **ADR-023: Library Data Sovereignty, Schema Validation & Headless Backup Engine**
+- **ADR-023: Library Data Sovereignty & Cloud-Synchronized Persistence (Retired Client-Side Backup Engine)**
 - **ADR-024: Zero-Latency Client Navigation Fast-Path & Decoupled Crawler Metadata**
 - **ADR-025: Completed Reading State Latch, Native Inset Search Architecture & Library Navigation Streamlining**
 - **ADR-026: Enterprise Polymorphism, Encapsulation & Code Redundancy Elimination**
@@ -1042,7 +1053,7 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-048: Catalog Filter Bar Top-Margin Scroll Docking, Segmented Split-Button Quick Clear & Show Results Smooth Navigation**
 - **ADR-049: Unified Collection Toolbar, Strict 2-Row Mobile Ergonomics, Multi-Shelf Pagination & Viewport-Aware Scroll Architecture**
 - **ADR-050: Mobile Catalog Dock Inactivity Auto-Fade (1.4s), Biomechanical Touch-Swipe Ergonomics (Zero False Negatives) & Directional View Slide Transitions**
-- **ADR-051: Continuous Circular Carousel Navigation, Scoped Mobile Swipe Media Queries & Cross-Route Directional Slide Handoff**
+- **ADR-051: Continuous Circular Carousel Navigation, Scoped Tactile Media Queries & Cross-Route Directional Slide Handoff**
 - **ADR-052: Full-Surface Tactile Mobile Swiping, Unbiased Button/Link Gesture Tracking & Synthetic Click Cancellation**
 - **ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers**
 - **ADR-054: Root Body Modal Portaling, Clean Transform Keyframes, Transparent Collection Modals & Dual-Surface Speech Bar Isolation**

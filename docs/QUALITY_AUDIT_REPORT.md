@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 12 Nov 2026 13:26:04 GMT  
+**Last Generated**: Thu, 12 Nov 2026 19:10:54 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2484 passed  
+**Total Verified Tests**: 2488 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2484 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2488 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.76%** (14181/14655) — *Target: $\ge$ 95%*
-- **Statements**: **95.5%** (15308/16029) — *Target: $\ge$ 95%*
-- **Functions**: **94.03%** (3139/3338) — *Target: $\ge$ 92%*
-- **Branches**: **87.76%** (14107/16074) — *Target: $\ge$ 85%*
+- **Lines**: **96.61%** (14267/14767) — *Target: $\ge$ 95%*
+- **Statements**: **95.34%** (15397/16149) — *Target: $\ge$ 95%*
+- **Functions**: **94.03%** (3155/3355) — *Target: $\ge$ 92%*
+- **Branches**: **87.72%** (14198/16184) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2484 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2488 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 301 Tests)
+### 🚀 App Routes & Pages (27 Suites · 302 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -290,7 +290,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (52 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (53 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -319,6 +319,7 @@
 - ✔ `smoothly scrolls to catalog-section when filters are cleared via quick clear button`
 - ✔ `switches views when swiping horizontally across main on mobile`
 - ✔ `switches views when swiping horizontally across main on tactile tablet devices`
+- ✔ `ignores horizontal touch swipes on non-tactile desktop PCs (> 1366px, pointer: fine) while executing repeatable directional Navbar tab transitions and preserving inner .animate-page-turn containers`
 - ✔ `renders sort dropdown and bottom pagination on Bookshelf when books exceed 2-shelf capacity on desktop`
 - ✔ `sorts saved books on Bookshelf by title ascending and author descending`
 - ✔ `renders sort dropdown and bottom pagination on Favorites when exceeding 24 items`
@@ -1671,7 +1672,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 210 Tests)
+### ⚡ Zustand State Stores (10 Suites · 211 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
@@ -1896,7 +1897,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (28 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1926,6 +1927,7 @@
 - ✔ `syncWithCloud decodes bookmarkRow from remote row and populates readingPositions`
 - ✔ `records deletedPositionBookIds tombstones when clearing a position offline and flushes deletions + local-only positions on syncWithCloud`
 - ✔ `enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans`
+- ✔ `batches multiple healedInCloud and enrichReadingPositions rows into a single reading_progress upsert with bookmark_text fallback`
 
 </details>
 
@@ -1943,7 +1945,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 587 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 588 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2654,11 +2656,12 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/sync-utils.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/sync-utils.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `triggers syncWithCloud concurrently on Auth, Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration`
 - ✔ `safely exits without calling stores if userId is empty`
 - ✔ `gracefully settles and does not throw if one store encounters a network rejection`
+- ✔ `verifies active cloud session, skips unauthenticated syncs when cookies are cleared, and preserves user on transient wake-up errors`
 
 </details>
 
@@ -3350,7 +3353,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (58 Suites · 269 Tests)
+### 🧩 UI Primitives & Motion (58 Suites · 270 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3845,7 +3848,7 @@
 </details>
 
 <details>
-<summary><b><code>src/config/featured-books.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/config/featured-books.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `exports a curated list of featured hero books with Pride and Prejudice as primary default`
 - ✔ `identifies curated featured classic volumes by id or case-insensitive title`
@@ -3860,6 +3863,7 @@
 - ✔ `maps GutendexBook to FeaturedHeroBook using exclusively database quotes`
 - ✔ `selects Featured Book from the entire quoteEnrichedBooks pool and supports topic/language filters`
 - ✔ `selects Classic of the Day strictly from Classics in quoteEnrichedBooks and avoids heroBookId collision`
+- ✔ `enriches SSR fallback when ssrMatch is present and preserves SSR fallback across 12-hour cache window boundaries without swapping`
 
 </details>
 

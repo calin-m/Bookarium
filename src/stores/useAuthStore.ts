@@ -18,6 +18,81 @@ export function syncAuthCookieHint(isAuthenticated: boolean): void {
   }
 }
 
+export function hasSupabaseAuthCookie(): boolean {
+  if (typeof document === 'undefined' || typeof document.cookie !== 'string') {
+    return false;
+  }
+  return /\bsb-[^=;]+-auth-token/.test(document.cookie);
+}
+
+export interface SessionVerifiableClient {
+  auth?: {
+    getSession?: () => Promise<{
+      data?: {
+        session?: {
+          access_token?: string;
+          user?: { id?: string } | null;
+        } | null;
+      } | null;
+      error?: unknown;
+    }>;
+  };
+}
+
+export function shouldVerifyCloudSession(
+  supabase: SessionVerifiableClient | null | undefined
+): boolean {
+  const getSessionFn = supabase?.auth?.getSession;
+  if (typeof getSessionFn !== 'function') {
+    return false;
+  }
+  if (process.env.NODE_ENV === 'test' && !('mock' in getSessionFn)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Verifies that the browser Supabase client has an active, non-expired JWT session
+ * matching `userId` before executing cloud store SELECT/UPSERT queries.
+ * Prevents unauthenticated requests (`auth.uid() = NULL`) from returning false `data: []`
+ * responses or triggering PostgreSQL `42501` RLS errors after browser cookie clearance.
+ */
+export async function verifyActiveCloudSession(
+  supabase: SessionVerifiableClient | null | undefined,
+  userId: string
+): Promise<boolean> {
+  if (!userId) return false;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return false;
+  }
+  if (!shouldVerifyCloudSession(supabase)) {
+    return true;
+  }
+  const getSessionFn = supabase!.auth!.getSession!;
+  try {
+    const { data, error } = await getSessionFn.call(supabase?.auth);
+    if (error) {
+      return false;
+    }
+    const session = data?.session;
+    if (!session?.access_token || session.user?.id !== userId) {
+      if (
+        !session &&
+        !hasSupabaseAuthCookie() &&
+        useAuthStore.getState().user?.id === userId
+      ) {
+        syncAuthCookieHint(false);
+        useAuthStore.setState({ user: null, profile: null, isLoading: false });
+      }
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const DEFINITIVE_AUTH_ERROR_CODES = new Set([
   'session_not_found',
   'user_not_found',

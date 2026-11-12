@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { GutendexBook } from '@/types/book.types';
 import {
   FEATURED_HERO_BOOKS,
   FEATURED_HERO_BOOK,
@@ -257,6 +258,97 @@ describe('featured-books configuration & passage selectors', () => {
       // Fallback when DB pool is empty
       const fallback = selectDailyClassicFromPool([], 1342, 0, 'US');
       expect(fallback.id).toBe(FEATURED_HERO_BOOKS[1].id);
+    });
+
+    it('enriches SSR fallback when ssrMatch is present and preserves SSR fallback across 12-hour cache window boundaries without swapping', () => {
+      // At timestamp = 12 * 3600 * 1000 (12:00 UTC), getHourlyHeroBook selects FEATURED_HERO_BOOKS[12 % len] (e.g. index 12)
+      const afternoonTimestamp = 12 * 3600 * 1000;
+      const expectedHourlyFallback = getHourlyHeroBook(afternoonTimestamp, 'US');
+      const expectedDailyFallback = getDailyEditorialBook(
+        expectedHourlyFallback.id,
+        afternoonTimestamp,
+        'US'
+      );
+
+      // Morning cache slice contains curated FEATURED_HERO_BOOKS from the prior 12h window, but NOT the 12:00 UTC fallback ID
+      const morningHeroDbBookA: GutendexBook = {
+        ...mockClassicDbBook,
+        id: FEATURED_HERO_BOOKS[2].id,
+        title: FEATURED_HERO_BOOKS[2].title,
+      };
+      const morningHeroDbBookB: GutendexBook = {
+        ...mockClassicDbBook,
+        id: FEATURED_HERO_BOOKS[3].id,
+        title: FEATURED_HERO_BOOKS[3].title,
+      };
+      const straddlingMorningPool = [
+        morningHeroDbBookA,
+        morningHeroDbBookB,
+        mockModernDbBook,
+        mockClassicDbBook,
+      ];
+
+      const preservedHourly = selectHourlyHeroFromPool(
+        straddlingMorningPool,
+        afternoonTimestamp,
+        'US'
+      );
+      expect(preservedHourly.id).toBe(expectedHourlyFallback.id);
+      expect(preservedHourly.title).toBe(expectedHourlyFallback.title);
+      expect(preservedHourly.rawBook?.id).toBe(expectedHourlyFallback.id);
+
+      const preservedDaily = selectDailyClassicFromPool(
+        straddlingMorningPool,
+        expectedHourlyFallback.id,
+        afternoonTimestamp,
+        'US'
+      );
+      expect(preservedDaily.id).toBe(expectedDailyFallback.id);
+      expect(preservedDaily.title).toBe(expectedDailyFallback.title);
+
+      // When the pool includes the exact SSR fallback ID (ssrMatch), it enriches with DB quotes while preserving Spread 0
+      const matchingHourlyDbBook: GutendexBook = {
+        ...mockClassicDbBook,
+        id: expectedHourlyFallback.id,
+        title: expectedHourlyFallback.title,
+        quotes: [
+          {
+            chapterLabel: 'Chapter II • DB Enriched',
+            openingLine: '“Database enriched opening line.”',
+            quoteExcerpt: '“Database enriched quote excerpt.”',
+          },
+        ],
+      };
+      const matchingDailyDbBook: GutendexBook = {
+        ...mockClassicDbBook,
+        id: expectedDailyFallback.id,
+        title: expectedDailyFallback.title,
+        quotes: [
+          {
+            chapterLabel: 'Chapter III • Daily DB Enriched',
+            openingLine: '“Daily database enriched opening line.”',
+            quoteExcerpt: '“Daily database enriched quote excerpt.”',
+          },
+        ],
+      };
+      const alignedPool = [matchingHourlyDbBook, matchingDailyDbBook];
+
+      const enrichedHourly = selectHourlyHeroFromPool(alignedPool, afternoonTimestamp, 'US');
+      expect(enrichedHourly.id).toBe(expectedHourlyFallback.id);
+      expect(enrichedHourly.quoteExcerpt).toBe(expectedHourlyFallback.quoteExcerpt);
+      expect(enrichedHourly.quotes?.[1]?.quoteExcerpt).toBe('“Database enriched quote excerpt.”');
+
+      const enrichedDaily = selectDailyClassicFromPool(
+        alignedPool,
+        expectedHourlyFallback.id,
+        afternoonTimestamp,
+        'US'
+      );
+      expect(enrichedDaily.id).toBe(expectedDailyFallback.id);
+      expect(enrichedDaily.quoteExcerpt).toBe(expectedDailyFallback.quoteExcerpt);
+      expect(enrichedDaily.quotes?.[1]?.quoteExcerpt).toBe(
+        '“Daily database enriched quote excerpt.”'
+      );
     });
   });
 });

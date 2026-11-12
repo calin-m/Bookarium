@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { syncAllStoresWithCloud } from './sync-utils';
+import {
+  syncAllStoresWithCloud,
+  hasSupabaseAuthCookie,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from './sync-utils';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
@@ -7,6 +12,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import * as supabaseClientModule from '@/lib/supabase/client';
 
 describe('syncAllStoresWithCloud', () => {
   beforeEach(() => {
@@ -76,6 +82,75 @@ describe('syncAllStoresWithCloud', () => {
     expect(readerMock).toHaveBeenCalledWith('user-789');
     expect(habitsMock).toHaveBeenCalledWith('user-789');
     expect(accoladesMock).toHaveBeenCalledWith('user-789');
+  });
+
+  it('verifies active cloud session, skips unauthenticated syncs when cookies are cleared, and preserves user on transient wake-up errors', async () => {
+    // 1. Cookie presence helper
+    document.cookie = 'sb-projref-auth-token=; Max-Age=0; path=/';
+    expect(hasSupabaseAuthCookie()).toBe(false);
+    document.cookie = 'sb-projref-auth-token=valid-cookie; path=/';
+    expect(hasSupabaseAuthCookie()).toBe(true);
+    document.cookie = 'sb-projref-auth-token=; Max-Age=0; path=/';
+
+    // 2. shouldVerifyCloudSession and verifyActiveCloudSession edge cases
+    expect(shouldVerifyCloudSession(null)).toBe(false);
+    expect(await verifyActiveCloudSession(null, '')).toBe(false);
+
+    // 3. When cookies are cleared (session: null, error: null, no sb-*-auth-token cookie),
+    // syncAllStoresWithCloud skips all stores and resets stale useAuthStore.user to null
+    const mockGetSession = vi.fn().mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    const createClientSpy = vi
+      .spyOn(supabaseClientModule, 'createClient')
+      .mockReturnValue({
+        auth: { getSession: mockGetSession },
+      } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+    const readerMock = vi.fn().mockResolvedValue(undefined);
+    useReaderStore.setState({ syncWithCloud: readerMock });
+    useAuthStore.setState({
+      user: { id: 'user-cleared-1', email: 'cleared@test.com' } as unknown as ReturnType<
+        typeof useAuthStore.getState
+      >['user'],
+    });
+
+    await syncAllStoresWithCloud('user-cleared-1');
+    expect(readerMock).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().user).toBeNull();
+
+    // 4. When wake-up token refresh encounters a transient error (error != null),
+    // skips unauthenticated sync without logging the user out
+    useAuthStore.setState({
+      user: { id: 'user-wakeup-1', email: 'wakeup@test.com' } as unknown as ReturnType<
+        typeof useAuthStore.getState
+      >['user'],
+    });
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: new Error('AuthRetryableFetchError'),
+    });
+
+    await syncAllStoresWithCloud('user-wakeup-1');
+    expect(readerMock).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().user?.id).toBe('user-wakeup-1');
+
+    // 5. When session is valid and matches userId, proceeds with store synchronization
+    mockGetSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          access_token: 'jwt-token-123',
+          user: { id: 'user-wakeup-1' },
+        },
+      },
+      error: null,
+    });
+    await syncAllStoresWithCloud('user-wakeup-1');
+    expect(readerMock).toHaveBeenCalledWith('user-wakeup-1');
+
+    createClientSpy.mockRestore();
+    useAuthStore.setState({ user: null });
   });
 });
 

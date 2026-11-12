@@ -444,6 +444,36 @@ export const FEATURED_HERO_BOOKS: FeaturedHeroBook[] = [
 
 export const FEATURED_HERO_BOOK: FeaturedHeroBook = FEATURED_HERO_BOOKS[0];
 
+const FEATURED_HERO_ID_SET = new Set<number>(FEATURED_HERO_BOOKS.map((b) => b.id));
+
+function toFallbackHeroWithRawBook(
+  fallback: FeaturedHeroBook
+): FeaturedHeroBook & { rawBook: GutendexBook } {
+  return {
+    ...fallback,
+    rawBook: {
+      id: fallback.id,
+      title: fallback.title,
+      authors: [
+        {
+          name: fallback.author,
+          birth_year: fallback.authorBirthYear ?? null,
+          death_year: fallback.authorDeathYear ?? null,
+        },
+      ],
+      translators: fallback.translators || [],
+      subjects: [fallback.primarySubject],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {},
+      download_count: 50000,
+      quotes: fallback.quotes,
+    },
+  };
+}
+
 export function getBookPassages(book: {
   id: number;
   title: string;
@@ -687,6 +717,9 @@ export function selectHourlyHeroFromPool(
       if (ssrMatch) {
         return gutendexBookToFeaturedHeroBook(ssrMatch);
       }
+      if (safeDbPool.filter((b) => FEATURED_HERO_ID_SET.has(b.id)).length >= 2) {
+        return toFallbackHeroWithRawBook(fallback);
+      }
     }
 
     let filteredPool = safeDbPool;
@@ -710,29 +743,7 @@ export function selectHourlyHeroFromPool(
     return gutendexBookToFeaturedHeroBook(selected);
   }
 
-  return {
-    ...fallback,
-    rawBook: {
-      id: fallback.id,
-      title: fallback.title,
-      authors: [
-        {
-          name: fallback.author,
-          birth_year: fallback.authorBirthYear ?? null,
-          death_year: fallback.authorDeathYear ?? null,
-        },
-      ],
-      translators: fallback.translators || [],
-      subjects: [fallback.primarySubject],
-      bookshelves: [],
-      languages: ['en'],
-      copyright: false,
-      media_type: 'Text',
-      formats: {},
-      download_count: 50000,
-      quotes: fallback.quotes,
-    },
-  };
+  return toFallbackHeroWithRawBook(fallback);
 }
 
 /**
@@ -766,6 +777,9 @@ export function selectDailyClassicFromPool(
     );
     if (ssrMatch) {
       return gutendexBookToFeaturedHeroBook(ssrMatch);
+    }
+    if (activePool.filter((b) => FEATURED_HERO_ID_SET.has(b.id)).length >= 2) {
+      return fallback;
     }
 
     let candidateIndex = dayIndex % activePool.length;

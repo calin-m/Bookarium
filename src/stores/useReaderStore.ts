@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, Book, Author } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
-import { useAuthStore } from './useAuthStore';
+import { useAuthStore, shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
@@ -83,6 +83,87 @@ export interface ReaderState {
 }
 
 const progressDebounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+interface ReadingProgressCloudRowPair {
+  basePayload: {
+    user_id: string;
+    book_id: number;
+    book_title: string | null;
+    book_authors: string[];
+    cover_url: string | null;
+    current_chapter_index: number;
+    progress_percent: number;
+    scroll_offset: number;
+    last_read_at: string;
+  };
+  fullPayload: {
+    user_id: string;
+    book_id: number;
+    book_title: string | null;
+    book_authors: string[];
+    cover_url: string | null;
+    current_chapter_index: number;
+    progress_percent: number;
+    scroll_offset: number;
+    last_read_at: string;
+    bookmark_text: string | null;
+  };
+}
+
+function buildReadingProgressCloudRow(
+  bookId: number,
+  position: BookReadingPosition,
+  progress: number,
+  userId: string
+): ReadingProgressCloudRowPair | null {
+  if (!userId || !bookId || isGhostReadingPosition(position, progress)) {
+    return null;
+  }
+  const encodedScrollOffset =
+    position.chapterPage +
+    (position.bookmarkRow && position.bookmarkRow > 0
+      ? Math.min(Math.round(position.bookmarkRow), 999) / 1000
+      : 0);
+  const basePayload = {
+    user_id: userId,
+    book_id: bookId,
+    book_title: position.bookTitle || null,
+    book_authors: position.bookAuthors || [],
+    cover_url: position.coverUrl || null,
+    current_chapter_index: position.chapterIndex,
+    progress_percent: progress,
+    scroll_offset: encodedScrollOffset,
+    last_read_at: position.lastReadAt,
+  };
+  const resolvedBookmarkText =
+    position.bookmarkRow && position.bookmarkRow > 0 && position.bookmarkText?.trim()
+      ? position.bookmarkText.trim()
+      : null;
+  return {
+    basePayload,
+    fullPayload: {
+      ...basePayload,
+      bookmark_text: resolvedBookmarkText,
+    },
+  };
+}
+
+async function upsertReadingProgressBatch(
+  supabase: ReturnType<typeof createClient>,
+  rows: ReadingProgressCloudRowPair[]
+): Promise<void> {
+  if (rows.length === 0) return;
+  const fullArg = rows.length === 1 ? rows[0].fullPayload : rows.map((r) => r.fullPayload);
+  const upsertResult = await supabase
+    .from('reading_progress')
+    .upsert(fullArg, { onConflict: 'user_id,book_id' });
+  if (upsertResult?.error && /bookmark_text/i.test(String(upsertResult.error.message || ''))) {
+    const baseArg = rows.length === 1 ? rows[0].basePayload : rows.map((r) => r.basePayload);
+    await supabase.from('reading_progress').upsert(baseArg, {
+      onConflict: 'user_id,book_id',
+    });
+  }
+}
 
 export const useReaderStore = create<ReaderState>()(
   persist(
@@ -366,8 +447,37 @@ export const useReaderStore = create<ReaderState>()(
           set({ readingPositions: nextPositions });
           const currentUserId = useAuthStore.getState().user?.id;
           if (currentUserId) {
-            for (const bookId of enrichedBookIds) {
-              void get().syncReadingPositionToCloud(bookId, nextPositions[bookId], currentUserId);
+            if (enrichedBookIds.length === 1) {
+              const bId = enrichedBookIds[0];
+              void get().syncReadingPositionToCloud(bId, nextPositions[bId], currentUserId);
+            } else if (enrichedBookIds.length > 1) {
+              const progressMap = get().readingProgress;
+              const batchRows = enrichedBookIds
+                .map((bId) =>
+                  buildReadingProgressCloudRow(
+                    bId,
+                    nextPositions[bId],
+                    progressMap[bId] ?? 0,
+                    currentUserId
+                  )
+                )
+                .filter((row): row is ReadingProgressCloudRowPair => row !== null);
+              if (batchRows.length > 0) {
+                void (async () => {
+                  try {
+                    const supabase = createClient();
+                    if (
+                      shouldVerifyCloudSession(supabase) &&
+                      !(await verifyActiveCloudSession(supabase, currentUserId))
+                    ) {
+                      return;
+                    }
+                    await upsertReadingProgressBatch(supabase, batchRows);
+                  } catch {
+                    // Silent non-blocking fallback for offline/network loss
+                  }
+                })();
+              }
             }
           }
         }
@@ -376,43 +486,18 @@ export const useReaderStore = create<ReaderState>()(
       syncReadingPositionToCloud: async (bookId, position, userId) => {
         if (!userId || !bookId) return;
         const progress = get().readingProgress[bookId] ?? 0;
-        if (isGhostReadingPosition(position, progress)) return;
-
-        const encodedScrollOffset =
-          position.chapterPage +
-          (position.bookmarkRow && position.bookmarkRow > 0
-            ? Math.min(Math.round(position.bookmarkRow), 999) / 1000
-            : 0);
+        const row = buildReadingProgressCloudRow(bookId, position, progress, userId);
+        if (!row) return;
 
         try {
           const supabase = createClient();
-          const basePayload = {
-            user_id: userId,
-            book_id: bookId,
-            book_title: position.bookTitle || null,
-            book_authors: position.bookAuthors || [],
-            cover_url: position.coverUrl || null,
-            current_chapter_index: position.chapterIndex,
-            progress_percent: progress,
-            scroll_offset: encodedScrollOffset,
-            last_read_at: position.lastReadAt,
-          };
-          const resolvedBookmarkText =
-            position.bookmarkRow && position.bookmarkRow > 0 && position.bookmarkText?.trim()
-              ? position.bookmarkText.trim()
-              : null;
-          const upsertResult = await supabase.from('reading_progress').upsert(
-            {
-              ...basePayload,
-              bookmark_text: resolvedBookmarkText,
-            },
-            { onConflict: 'user_id,book_id' }
-          );
-          if (upsertResult?.error && /bookmark_text/i.test(String(upsertResult.error.message || ''))) {
-            await supabase.from('reading_progress').upsert(basePayload, {
-              onConflict: 'user_id,book_id',
-            });
+          if (
+            shouldVerifyCloudSession(supabase) &&
+            !(await verifyActiveCloudSession(supabase, userId))
+          ) {
+            return;
           }
+          await upsertReadingProgressBatch(supabase, [row]);
         } catch {
           // Silent non-blocking fallback for offline/network loss
         }
@@ -478,6 +563,12 @@ export const useReaderStore = create<ReaderState>()(
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
         try {
           const supabase = createClient();
+          if (
+            shouldVerifyCloudSession(supabase) &&
+            !(await verifyActiveCloudSession(supabase, userId))
+          ) {
+            return;
+          }
 
           const pendingDeletes = [...get().deletedPositionBookIds];
           if (pendingDeletes.length > 0) {
@@ -581,8 +672,22 @@ export const useReaderStore = create<ReaderState>()(
             };
           });
 
-          for (const item of healedInCloud) {
-            void get().syncReadingPositionToCloud(item.bookId, item.position, userId);
+          if (healedInCloud.length === 1) {
+            const single = healedInCloud[0];
+            await get().syncReadingPositionToCloud(single.bookId, single.position, userId);
+          } else if (healedInCloud.length > 1) {
+            const progressMap = get().readingProgress;
+            const batchRows = healedInCloud
+              .map((item) =>
+                buildReadingProgressCloudRow(
+                  item.bookId,
+                  item.position,
+                  progressMap[item.bookId] ?? 0,
+                  userId
+                )
+              )
+              .filter((row): row is ReadingProgressCloudRowPair => row !== null);
+            await upsertReadingProgressBatch(supabase, batchRows);
           }
         } catch {
           // Silent non-blocking fallback for offline/network loss

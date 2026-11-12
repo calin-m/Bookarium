@@ -1210,6 +1210,89 @@ describe('useReaderStore', () => {
         value: originalInnerWidth,
       });
     });
+
+    it('batches multiple healedInCloud and enrichReadingPositions rows into a single reading_progress upsert with bookmark_text fallback', async () => {
+      useAuthStore.setState({ user: { id: 'user-batch-1' } as any });
+      useReaderStore.setState({
+        readingPositions: {
+          1342: {
+            chapterIndex: 2,
+            chapterPage: 3,
+            globalPage: 10,
+            bookmarkRow: 4,
+            bookmarkText: 'It is a truth universally acknowledged',
+            lastReadAt: '2026-11-10T10:00:00.000Z',
+            bookTitle: 'Pride and Prejudice',
+            bookAuthors: ['Jane Austen'],
+          },
+          84: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 5,
+            lastReadAt: '2026-11-10T11:00:00.000Z',
+            bookTitle: 'Frankenstein',
+            bookAuthors: ['Mary Shelley'],
+          },
+        },
+        readingProgress: { 1342: 40, 84: 25 },
+        deletedPositionBookIds: [],
+      });
+
+      const mockUpsert = vi
+        .fn()
+        .mockResolvedValueOnce({
+          error: { message: 'Could not find bookmark_text column in schema cache' },
+        })
+        .mockResolvedValue({ error: null });
+
+      mockFrom.mockReturnValue({
+        delete: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({
+                lte: () => Promise.resolve({ error: null }),
+              }),
+            }),
+          }),
+        }),
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+        upsert: mockUpsert,
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-batch-1');
+
+      // 1st call attempts fullPayload batch of 2 rows; 2nd call falls back to basePayload batch of 2 rows
+      expect(mockUpsert).toHaveBeenCalledTimes(2);
+      const firstBatchArg = mockUpsert.mock.calls[0][0];
+      expect(Array.isArray(firstBatchArg)).toBe(true);
+      expect(firstBatchArg).toHaveLength(2);
+
+      // Also verify multi-book enrichReadingPositions batches into 1 upsert call
+      mockUpsert.mockClear();
+      useReaderStore.getState().enrichReadingPositions([
+        {
+          ...mockBooks[0],
+          id: 1342,
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        },
+        {
+          ...mockBooks[1],
+          id: 84,
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+        },
+      ]);
+
+      await vi.waitFor(() => {
+        expect(mockUpsert).toHaveBeenCalledTimes(1);
+      });
+      expect(Array.isArray(mockUpsert.mock.calls[0][0])).toBe(true);
+      expect(mockUpsert.mock.calls[0][0]).toHaveLength(2);
+      useAuthStore.setState({ user: null });
+    });
   });
 });
 

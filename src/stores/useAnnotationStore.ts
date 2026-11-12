@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
+import { shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
 import type { SymposiumSessionRow } from '@/types/database.types';
 import {
   useFellowshipStore,
@@ -365,6 +366,12 @@ export const useAnnotationStore = create<AnnotationState>()(
         if (snapshot.length === 0 || !userId) return;
 
         const supabase = createClient();
+        if (
+          shouldVerifyCloudSession(supabase) &&
+          !(await verifyActiveCloudSession(supabase, userId))
+        ) {
+          return;
+        }
         const completedActionIds = new Set<string>();
 
         for (const action of snapshot) {
@@ -613,11 +620,18 @@ export const useAnnotationStore = create<AnnotationState>()(
         if (!userId) return;
         set({ isSyncing: true });
 
-        // Flush any pending offline mutations first
-        await get().flushOutbox(userId);
-
         try {
           const supabase = createClient();
+          if (
+            shouldVerifyCloudSession(supabase) &&
+            !(await verifyActiveCloudSession(supabase, userId))
+          ) {
+            set({ isSyncing: false });
+            return;
+          }
+
+          // Flush any pending offline mutations first
+          await get().flushOutbox(userId);
 
           // Fetch cloud annotations
           const { data, error } = await supabase

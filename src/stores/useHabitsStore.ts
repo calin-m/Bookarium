@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
+import { shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   calculateStreak,
@@ -161,6 +162,12 @@ export const useHabitsStore = create<HabitsState>()(
 
         try {
           const supabase = createClient();
+          if (
+            shouldVerifyCloudSession(supabase) &&
+            !(await verifyActiveCloudSession(supabase, userId))
+          ) {
+            return;
+          }
           const { data, error } = await supabase
             .from('user_reading_habits')
             .select('*')

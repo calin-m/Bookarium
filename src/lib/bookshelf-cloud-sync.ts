@@ -7,6 +7,7 @@
 
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
 import { createClient } from '@/lib/supabase/client';
+import { shouldVerifyCloudSession, verifyActiveCloudSession } from '@/stores/useAuthStore';
 import type { Bookshelf, BookshelfItem, Database } from '@/types/database.types';
 import { toGutendexBookFromCloudRow, toCloudBookInsert } from '@/lib/adapters/book.adapter';
 
@@ -299,6 +300,12 @@ export async function executeFlushOutbox(
 
   const flushPromise = (async () => {
     const supabase = createClient();
+    if (
+      shouldVerifyCloudSession(supabase) &&
+      !(await verifyActiveCloudSession(supabase, userId))
+    ) {
+      return;
+    }
     const completedActionIds = new Set<string>();
 
     for (const action of outbox) {
@@ -352,10 +359,17 @@ export async function executeBookshelfCloudSync(
     const nextState: Partial<BookshelfSyncSlice> = { isSyncing: false };
 
     try {
+      const supabase = createClient();
+      if (
+        shouldVerifyCloudSession(supabase) &&
+        !(await verifyActiveCloudSession(supabase, userId))
+      ) {
+        set(nextState);
+        return;
+      }
+
       // Flush any pending offline mutations first
       await get().flushOutbox(userId);
-
-      const supabase = createClient();
 
       // Build lookup map of existing rich local books by id to prevent metadata loss on cloud sync
       const initialState = get();

@@ -66,6 +66,14 @@ import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 import { NAVBAR_VIEW_CONFIG, VIEW_CONTENT_CONFIG } from '@/config/views.config';
 
+const NAVBAR_TRANSITION_ORDER: readonly CatalogView[] = [
+  'catalog',
+  'bookshelf',
+  'favorites',
+  'notebook',
+  'bookmarks',
+] as const;
+
 const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
 
 function HomeContent() {
@@ -260,7 +268,12 @@ function HomeContent() {
 
   if (prevViewForTransition !== activeView) {
     setPrevViewForTransition(activeView);
-    setIsTransitioning(true);
+    if (activeView === 'catalog') {
+      setIsTransitioning(false);
+      setSwipeDirection(null);
+    } else {
+      setIsTransitioning(true);
+    }
   }
 
   if (dirParam !== prevDirParam) {
@@ -280,11 +293,17 @@ function HomeContent() {
       if (view === 'account') {
         const dir = activeView === 'catalog' ? 'backward' : 'forward';
         router.push(`${ROUTES.ACCOUNT}?dir=${dir}`);
+      } else if (view === 'catalog') {
+        setSwipeDirection(null);
+        setIsTransitioning(false);
+        setActiveView('catalog');
       } else {
         setActiveView(view as CatalogView);
       }
     },
-    onSwipeDirection: setSwipeDirection,
+    onSwipeDirection: (dir) => {
+      setSwipeDirection(dir);
+    },
     enabled: isSwipeEnabled,
   });
 
@@ -446,7 +465,6 @@ function HomeContent() {
           setFavoritesPage(1);
         }}
         onViewChange={(view) => {
-          setSwipeDirection(null);
           if (view === activeView) {
             // User clicked the already-active view tab in navbar: reset page to 1 & scroll to top
             if (view === 'catalog') {
@@ -460,6 +478,22 @@ function HomeContent() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }
             return;
+          }
+
+          if (view === 'catalog') {
+            // Asymmetric policy: Returning to catalog is instant with zero animation for maximum speed
+            setSwipeDirection(null);
+            setIsTransitioning(false);
+          } else {
+            // Navigating to Bookshelf or between collections: Directional slide
+            const currentIndex = NAVBAR_TRANSITION_ORDER.indexOf(activeView);
+            const targetIndex = NAVBAR_TRANSITION_ORDER.indexOf(view);
+            const direction = targetIndex >= currentIndex ? 'forward' : 'backward';
+            setSwipeDirection(direction);
+            setIsTransitioning(true);
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            }
           }
           setActiveView(view);
         }}
@@ -587,6 +621,7 @@ function HomeContent() {
             <NotebookView
               onBrowseCatalog={() => {
                 setSwipeDirection(null);
+                setIsTransitioning(false);
                 setActiveView('catalog');
               }}
             />
@@ -594,13 +629,23 @@ function HomeContent() {
             <BookmarksView
               onBrowseCatalog={() => {
                 setSwipeDirection(null);
+                setIsTransitioning(false);
                 setActiveView('catalog');
               }}
             />
           ) : activeView === 'catalog' && isOffline && resolvedOfflineBooks.length === 0 ? (
             <CatalogOfflineView
               onNavigateView={(view) => {
-                setSwipeDirection(null);
+                if (view === 'catalog') {
+                  setSwipeDirection(null);
+                  setIsTransitioning(false);
+                } else {
+                  const currentIndex = NAVBAR_TRANSITION_ORDER.indexOf(activeView);
+                  const targetIndex = NAVBAR_TRANSITION_ORDER.indexOf(view);
+                  const direction = targetIndex >= currentIndex ? 'forward' : 'backward';
+                  setSwipeDirection(direction);
+                  setIsTransitioning(true);
+                }
                 setActiveView(view);
               }}
             />
@@ -714,7 +759,11 @@ function HomeContent() {
                 viewMode={activeView === 'bookshelf' ? 'shelf' : activeView === 'favorites' ? 'grid' : viewMode}
                 onViewModeChange={handleViewModeChange}
                 showViewToggle={false} // Managed by StickyToolbar
-                onBrowseCatalog={() => setActiveView('catalog')}
+                onBrowseCatalog={() => {
+                  setSwipeDirection(null);
+                  setIsTransitioning(false);
+                  setActiveView('catalog');
+                }}
                 searchQuery={collectionSearchQuery}
                 onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
                 activeView={activeView}
@@ -722,6 +771,8 @@ function HomeContent() {
                 onTopicClick={(topicName) => {
                   handleTopicChange(topicName);
                   if (activeView !== 'catalog') {
+                    setSwipeDirection(null);
+                    setIsTransitioning(false);
                     setActiveView('catalog');
                   }
                 }}

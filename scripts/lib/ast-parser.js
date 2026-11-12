@@ -916,7 +916,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Zustand Persistent State Stores',
       scope: '`src/stores/*.test.ts`',
       match: (f) => f.startsWith('src/stores/'),
-      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, and 6-store session teardown.',
+      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, pre-sync active JWT session verification (`verifyActiveCloudSession`), batched multi-book `reading_progress` upserts, and 10-store session teardown.',
     },
     {
       id: 'hooks',
@@ -937,7 +937,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Configuration, Anthologies & Design Tokens',
       scope: '`src/config/*.test.ts`',
       match: (f) => f.startsWith('src/config/'),
-      strategy: 'Schema integrity, curated 27-masterwork anthology lifespan validation, and theme/accolade token invariants.',
+      strategy: 'Schema integrity, curated 27-masterwork anthology lifespan validation, 12-hour sliding-cache hero/editorial boundary guards (`FEATURED_HERO_ID_SET`, `toFallbackHeroWithRawBook`), and theme/accolade token invariants.',
     },
     {
       id: 'worker_proxy',
@@ -951,7 +951,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 

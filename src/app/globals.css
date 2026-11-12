@@ -650,12 +650,12 @@
   will-change: opacity, transform;
 }
 
-/* Mobile Touch-Swipe Viewports: Keep the outer [data-view-transition-stage="true"]
+/* Mobile & Tablet Touch-Swipe Viewports: Keep the outer [data-view-transition-stage="true"]
    as the single animation owner (either .animate-page-turn on header tap or
-   .animate-view-slide-left/right on touch swipe) while permanently suppressing
+   .animate-view-slide-left/right on touch swipe/tab switch) while permanently suppressing
    nested descendant .animate-page-turn containers so they neither double-animate
    nor re-trigger when onAnimationEnd removes the outer animation class. */
-@media (max-width: 767px) {
+@media (max-width: 1366px), (pointer: coarse) {
   [data-view-transition-stage="true"] .animate-page-turn {
     animation: none !important;
     transform: none !important;

@@ -912,13 +912,34 @@ describe('Home page integration', () => {
       expect(returnTransitionContainer).not.toHaveClass('animate-view-slide-right');
       expect(returnTransitionContainer).not.toHaveClass('animate-page-turn');
 
-      // Tapping a header tab (Favorites) applies upward .animate-page-turn on [data-view-transition-stage="true"]
+      // Tapping a header tab (Favorites) from Bookshelf applies forward .animate-view-slide-left on [data-view-transition-stage="true"]
       fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
       expect(screen.getByText('Favorite Works')).toBeInTheDocument();
       const headerTapStage = document.querySelector('[data-view-transition-stage="true"]');
-      expect(headerTapStage).toHaveClass('animate-page-turn');
-      expect(headerTapStage).not.toHaveClass('animate-view-slide-left');
+      expect(headerTapStage).toHaveClass('animate-view-slide-left');
       expect(headerTapStage).not.toHaveClass('animate-view-slide-right');
+      expect(headerTapStage).not.toHaveClass('animate-page-turn');
+
+      // Tapping a header tab backwards (Bookshelf from Favorites) applies backward .animate-view-slide-right
+      fireEvent.click(screen.getByRole('button', { name: 'Bookshelf' }));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const headerTapBackwardStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(headerTapBackwardStage).toHaveClass('animate-view-slide-right');
+      expect(headerTapBackwardStage).not.toHaveClass('animate-view-slide-left');
+      expect(headerTapBackwardStage).not.toHaveClass('animate-page-turn');
+
+      // Tapping Catalog applies asymmetric zero-transition policy (instant return without animation)
+      fireEvent.click(screen.getByRole('button', { name: 'Catalog' }));
+      const catalogReturnStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(catalogReturnStage).not.toHaveClass('animate-view-slide-left');
+      expect(catalogReturnStage).not.toHaveClass('animate-view-slide-right');
+      expect(catalogReturnStage).not.toHaveClass('animate-page-turn');
+
+      // Tapping Bookshelf from Catalog applies forward .animate-view-slide-left
+      fireEvent.click(screen.getByRole('button', { name: 'Bookshelf' }));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const catalogToShelfStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(catalogToShelfStage).toHaveClass('animate-view-slide-left');
     } finally {
       window.matchMedia = originalMatchMedia;
     }
@@ -964,6 +985,115 @@ describe('Home page integration', () => {
       // Successfully switches to Bookshelf view with directional slide-left animation
       expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
       expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
+      const swipeStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(swipeStage).toHaveClass('animate-view-slide-left');
+      if (swipeStage) {
+        fireEvent.animationEnd(swipeStage);
+      }
+      expect(swipeStage).not.toHaveClass('animate-view-slide-left');
+
+      // Tapping Catalog on tactile tablet returns in 0ms without animation, then tapping Bookshelf replays slide-left
+      fireEvent.click(screen.getByRole('button', { name: 'Catalog' }));
+      const returnStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(returnStage).not.toHaveClass('animate-view-slide-left');
+      expect(returnStage).not.toHaveClass('animate-view-slide-right');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Bookshelf' }));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const repeatStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(repeatStage).toHaveClass('animate-view-slide-left');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: originalMaxTouchPoints, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, writable: true, configurable: true });
+    }
+  });
+
+  it('ignores horizontal touch swipes on non-tactile desktop PCs (> 1366px, pointer: fine) while executing repeatable directional Navbar tab transitions and preserving inner .animate-page-turn containers', () => {
+    const originalMatchMedia = window.matchMedia;
+    const originalMaxTouchPoints = navigator.maxTouchPoints;
+    const originalInnerWidth = window.innerWidth;
+
+    Object.defineProperty(window, 'innerWidth', { value: 1920, writable: true, configurable: true });
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, writable: true, configurable: true });
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(pointer: fine)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    try {
+      renderHome();
+
+      const main = screen.getByRole('main');
+      expect(main).toBeInTheDocument();
+
+      // 1. Horizontal touch swipe on a non-tactile > 1366px desktop PC is suppressed (isSwipeEnabled === false)
+      act(() => {
+        fireEvent.touchStart(main, {
+          touches: [{ clientX: 600, clientY: 300 }],
+          changedTouches: [{ clientX: 600, clientY: 300 }],
+        });
+        fireEvent.touchEnd(main, {
+          touches: [],
+          changedTouches: [{ clientX: 350, clientY: 300 }],
+        });
+      });
+
+      expect(screen.queryByText('Reading Shelf')).not.toBeInTheDocument();
+      const initialStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(initialStage).not.toHaveClass('animate-view-slide-left');
+      expect(initialStage).not.toHaveClass('animate-view-slide-right');
+
+      // 2. Clicking Navbar tabs with a cursor executes directional state transitions and settles on animationEnd
+      fireEvent.click(screen.getByRole('button', { name: 'Bookshelf' }));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const shelfStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(shelfStage).toHaveClass('animate-view-slide-left');
+      // Inner .animate-page-turn wrapper remains present inside the stage for desktop in-view transitions
+      expect(shelfStage?.querySelector('.animate-page-turn')).toBeInTheDocument();
+      if (shelfStage) {
+        fireEvent.animationEnd(shelfStage);
+      }
+      expect(shelfStage).not.toHaveClass('animate-view-slide-left');
+
+      // Forward collection switch (Bookshelf -> Favorites)
+      fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
+      expect(screen.getByText('Favorite Works')).toBeInTheDocument();
+      const favStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(favStage).toHaveClass('animate-view-slide-left');
+      if (favStage) {
+        fireEvent.animationEnd(favStage);
+      }
+      expect(favStage).not.toHaveClass('animate-view-slide-left');
+
+      // Backward collection switch (Favorites -> Bookshelf)
+      fireEvent.click(screen.getByRole('button', { name: 'Bookshelf' }));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const backToShelfStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(backToShelfStage).toHaveClass('animate-view-slide-right');
+      if (backToShelfStage) {
+        fireEvent.animationEnd(backToShelfStage);
+      }
+      expect(backToShelfStage).not.toHaveClass('animate-view-slide-right');
+
+      // Return to Catalog executes in 0ms with zero outer animation class
+      fireEvent.click(screen.getByRole('button', { name: 'Catalog' }));
+      const catalogReturnStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(catalogReturnStage).not.toHaveClass('animate-view-slide-left');
+      expect(catalogReturnStage).not.toHaveClass('animate-view-slide-right');
+
+      // Repeating Catalog -> Bookshelf reliably replays .animate-view-slide-left
+      fireEvent.click(screen.getByRole('button', { name: 'Bookshelf' }));
+      expect(screen.getByText('Reading Shelf')).toBeInTheDocument();
+      const repeatDesktopStage = document.querySelector('[data-view-transition-stage="true"]');
+      expect(repeatDesktopStage).toHaveClass('animate-view-slide-left');
     } finally {
       window.matchMedia = originalMatchMedia;
       Object.defineProperty(navigator, 'maxTouchPoints', { value: originalMaxTouchPoints, writable: true, configurable: true });
