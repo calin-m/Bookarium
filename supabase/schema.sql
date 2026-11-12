@@ -61,6 +61,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_profile_username_lower
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone when is_public is true" ON public.profiles;
 DROP POLICY IF EXISTS "Public profiles or connected fellow profiles are viewable" ON public.profiles;
@@ -68,18 +72,18 @@ CREATE POLICY "Public profiles or connected fellow profiles are viewable"
   ON public.profiles FOR SELECT
   USING (
     is_public = true 
-    OR auth.uid() = id
+    OR (select auth.uid()) = id
     OR (
-      auth.uid() IS NOT NULL AND (
+      (select auth.uid()) IS NOT NULL AND (
         EXISTS (
           SELECT 1 FROM public.reader_circles rc
-          WHERE (rc.requester_id = auth.uid() AND rc.recipient_id = profiles.id)
-             OR (rc.recipient_id = auth.uid() AND rc.requester_id = profiles.id)
+          WHERE (rc.requester_id = (select auth.uid()) AND rc.recipient_id = profiles.id)
+             OR (rc.recipient_id = (select auth.uid()) AND rc.requester_id = profiles.id)
         )
         OR EXISTS (
           SELECT 1 FROM public.symposium_sessions ss
-          WHERE (ss.host_id = auth.uid() AND ss.fellow_id = profiles.id)
-             OR (ss.fellow_id = auth.uid() AND ss.host_id = profiles.id)
+          WHERE (ss.host_id = (select auth.uid()) AND ss.fellow_id = profiles.id)
+             OR (ss.fellow_id = (select auth.uid()) AND ss.host_id = profiles.id)
         )
       )
     )
@@ -89,20 +93,20 @@ DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
   ON public.profiles FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = id);
+  WITH CHECK ((select auth.uid()) = id);
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE
   TO authenticated
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
+  USING ((select auth.uid()) = id)
+  WITH CHECK ((select auth.uid()) = id);
 
 DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
 CREATE POLICY "Users can delete their own profile"
   ON public.profiles FOR DELETE
   TO authenticated
-  USING (auth.uid() = id);
+  USING ((select auth.uid()) = id);
 
 -- ============================================================================
 -- 2. Bookshelves Table (Master 'General' + Custom Shelves)
@@ -131,6 +135,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_user_shelf_name
 
 ALTER TABLE public.bookshelves ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own bookshelves" ON public.bookshelves;
 DROP POLICY IF EXISTS "Users can view their own bookshelves" ON public.bookshelves;
 DROP POLICY IF EXISTS "Public bookshelves viewable when owner profile is public" ON public.bookshelves;
 CREATE POLICY "Public bookshelves viewable when owner profile is public"
@@ -149,27 +154,27 @@ CREATE POLICY "Public bookshelves viewable when owner profile is public"
           )
       )
     )
-    OR auth.uid() = user_id
+    OR (select auth.uid()) = user_id
   );
 
 DROP POLICY IF EXISTS "Users can insert their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can insert their own bookshelves"
   ON public.bookshelves FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can update their own bookshelves"
   ON public.bookshelves FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own bookshelves" ON public.bookshelves;
 CREATE POLICY "Users can delete their own bookshelves"
   ON public.bookshelves FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- 3. Bookshelf Items Table
@@ -196,6 +201,7 @@ CREATE INDEX IF NOT EXISTS idx_bookshelf_items_user_id
 
 ALTER TABLE public.bookshelf_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own bookshelf items" ON public.bookshelf_items;
 DROP POLICY IF EXISTS "Users can view their own bookshelf items" ON public.bookshelf_items;
 DROP POLICY IF EXISTS "Public bookshelf items viewable when owner profile is public" ON public.bookshelf_items;
 CREATE POLICY "Public bookshelf items viewable when owner profile is public"
@@ -216,7 +222,7 @@ CREATE POLICY "Public bookshelf items viewable when owner profile is public"
           )
       )
     )
-    OR auth.uid() = user_id
+    OR (select auth.uid()) = user_id
   );
 
 DROP POLICY IF EXISTS "Users can insert their own bookshelf items" ON public.bookshelf_items;
@@ -224,11 +230,11 @@ CREATE POLICY "Users can insert their own bookshelf items"
   ON public.bookshelf_items FOR INSERT
   TO authenticated
   WITH CHECK (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     AND EXISTS (
       SELECT 1 FROM public.bookshelves
       WHERE bookshelves.id = bookshelf_items.bookshelf_id
-        AND bookshelves.user_id = auth.uid()
+        AND bookshelves.user_id = (select auth.uid())
     )
   );
 
@@ -237,19 +243,19 @@ CREATE POLICY "Users can update their own bookshelf items"
   ON public.bookshelf_items FOR UPDATE
   TO authenticated
   USING (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     AND EXISTS (
       SELECT 1 FROM public.bookshelves
       WHERE bookshelves.id = bookshelf_items.bookshelf_id
-        AND bookshelves.user_id = auth.uid()
+        AND bookshelves.user_id = (select auth.uid())
     )
   )
   WITH CHECK (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     AND EXISTS (
       SELECT 1 FROM public.bookshelves
       WHERE bookshelves.id = bookshelf_items.bookshelf_id
-        AND bookshelves.user_id = auth.uid()
+        AND bookshelves.user_id = (select auth.uid())
     )
   );
 
@@ -258,11 +264,11 @@ CREATE POLICY "Users can delete their own bookshelf items"
   ON public.bookshelf_items FOR DELETE
   TO authenticated
   USING (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     OR EXISTS (
       SELECT 1 FROM public.bookshelves
       WHERE bookshelves.id = bookshelf_items.bookshelf_id
-        AND bookshelves.user_id = auth.uid()
+        AND bookshelves.user_id = (select auth.uid())
     )
   );
 
@@ -281,22 +287,23 @@ CREATE TABLE IF NOT EXISTS public.user_favorites (
 
 ALTER TABLE public.user_favorites ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own favorites" ON public.user_favorites;
 DROP POLICY IF EXISTS "Users can view their own favorites" ON public.user_favorites;
 CREATE POLICY "Users can view their own favorites"
   ON public.user_favorites FOR SELECT
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can insert their own favorites" ON public.user_favorites;
 CREATE POLICY "Users can insert their own favorites"
   ON public.user_favorites FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own favorites" ON public.user_favorites;
 CREATE POLICY "Users can delete their own favorites"
   ON public.user_favorites FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- 5. Reading Progress Table
@@ -324,29 +331,30 @@ ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS bookmark_text TEXT;
 
 ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own reading progress" ON public.reading_progress;
 DROP POLICY IF EXISTS "Users can view their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can view their own reading progress"
   ON public.reading_progress FOR SELECT
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can insert their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can insert their own reading progress"
   ON public.reading_progress FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can update their own reading progress"
   ON public.reading_progress FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own reading progress" ON public.reading_progress;
 CREATE POLICY "Users can delete their own reading progress"
   ON public.reading_progress FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- 6. User Annotations Table (Highlights & Scholarly Notes)
@@ -367,29 +375,25 @@ CREATE TABLE IF NOT EXISTS public.user_annotations (
 ALTER TABLE public.user_annotations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own annotations" ON public.user_annotations;
-CREATE POLICY "Users can view their own annotations"
-  ON public.user_annotations FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can insert their own annotations" ON public.user_annotations;
 CREATE POLICY "Users can insert their own annotations"
   ON public.user_annotations FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own annotations" ON public.user_annotations;
 CREATE POLICY "Users can update their own annotations"
   ON public.user_annotations FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own annotations" ON public.user_annotations;
 CREATE POLICY "Users can delete their own annotations"
   ON public.user_annotations FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_annotations_user_book 
   ON public.user_annotations(user_id, book_id);
@@ -414,26 +418,26 @@ DROP POLICY IF EXISTS "Users can view their own book curation" ON public.user_bo
 CREATE POLICY "Users can view their own book curation"
   ON public.user_book_curation FOR SELECT
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can insert their own book curation" ON public.user_book_curation;
 CREATE POLICY "Users can insert their own book curation"
   ON public.user_book_curation FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own book curation" ON public.user_book_curation;
 CREATE POLICY "Users can update their own book curation"
   ON public.user_book_curation FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own book curation" ON public.user_book_curation;
 CREATE POLICY "Users can delete their own book curation"
   ON public.user_book_curation FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_book_curation_user_book 
   ON public.user_book_curation(user_id, book_id);
@@ -587,27 +591,27 @@ CREATE POLICY "Public reading habits viewable when owner profile is public"
           AND (profiles.show_streak = true OR profiles.show_challenge = true)
       )
     )
-    OR auth.uid() = user_id
+    OR (select auth.uid()) = user_id
   );
 
 DROP POLICY IF EXISTS "Users can insert their own reading habits" ON public.user_reading_habits;
 CREATE POLICY "Users can insert their own reading habits"
   ON public.user_reading_habits FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own reading habits" ON public.user_reading_habits;
 CREATE POLICY "Users can update their own reading habits"
   ON public.user_reading_habits FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own reading habits" ON public.user_reading_habits;
 CREATE POLICY "Users can delete their own reading habits"
   ON public.user_reading_habits FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_reading_habits_user 
   ON public.user_reading_habits(user_id);
@@ -635,6 +639,7 @@ CREATE INDEX IF NOT EXISTS idx_user_accolades_user
 ALTER TABLE public.user_accolades ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view their own accolades" ON public.user_accolades;
+DROP POLICY IF EXISTS "Public accolades viewable when owner profile is public" ON public.user_accolades;
 DROP POLICY IF EXISTS "Public pinned accolades viewable when owner profile is public" ON public.user_accolades;
 CREATE POLICY "Public pinned accolades viewable when owner profile is public"
   ON public.user_accolades FOR SELECT
@@ -646,27 +651,27 @@ CREATE POLICY "Public pinned accolades viewable when owner profile is public"
           AND profiles.is_public = true
       )
     )
-    OR auth.uid() = user_id
+    OR (select auth.uid()) = user_id
   );
 
 DROP POLICY IF EXISTS "Users can insert their own accolades" ON public.user_accolades;
 CREATE POLICY "Users can insert their own accolades"
   ON public.user_accolades FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own accolades" ON public.user_accolades;
 CREATE POLICY "Users can update their own accolades"
   ON public.user_accolades FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own accolades" ON public.user_accolades;
 CREATE POLICY "Users can delete their own accolades"
   ON public.user_accolades FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- 9. Books Table (Dedicated Public Domain Catalog)
@@ -734,9 +739,10 @@ CREATE TRIGGER trigger_books_search_vector
   FOR EACH ROW EXECUTE FUNCTION public.books_search_vector_trigger();
 
 -- Full-text search and query performance indexes
+-- Note: idx_books_subjects (0005_unused_index) is dropped because topic/subject searches query search_vector via idx_books_search_vector
+DROP INDEX IF EXISTS public.idx_books_subjects;
 CREATE INDEX IF NOT EXISTS idx_books_search_vector ON public.books USING GIN(search_vector);
 CREATE INDEX IF NOT EXISTS idx_books_languages ON public.books USING GIN(languages);
-CREATE INDEX IF NOT EXISTS idx_books_subjects ON public.books USING GIN(subjects);
 CREATE INDEX IF NOT EXISTS idx_books_download_count ON public.books(download_count DESC);
 CREATE INDEX IF NOT EXISTS idx_books_author_death_year ON public.books(max_author_death_year);
 CREATE INDEX IF NOT EXISTS idx_books_with_quotes_popular ON public.books(download_count DESC) WHERE quotes <> '[]'::jsonb;
@@ -774,8 +780,9 @@ CREATE TABLE IF NOT EXISTS public.book_translations (
   PRIMARY KEY (work_id, book_id)
 );
 
+-- Note: idx_book_translations_work_id (0005_unused_index) is dropped because work_id is the leading column of PRIMARY KEY (work_id, book_id) and idx_book_translations_work_lang
+DROP INDEX IF EXISTS public.idx_book_translations_work_id;
 CREATE INDEX IF NOT EXISTS idx_book_translations_book_id ON public.book_translations (book_id);
-CREATE INDEX IF NOT EXISTS idx_book_translations_work_id ON public.book_translations (work_id);
 CREATE INDEX IF NOT EXISTS idx_book_translations_work_lang ON public.book_translations (work_id, language);
 
 ALTER TABLE public.book_translations ENABLE ROW LEVEL SECURITY;
@@ -824,29 +831,29 @@ DROP POLICY IF EXISTS "Participants can view their reader circle connections" ON
 CREATE POLICY "Participants can view their reader circle connections"
   ON public.reader_circles FOR SELECT
   TO authenticated
-  USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+  USING ((select auth.uid()) = requester_id OR (select auth.uid()) = recipient_id);
 
 DROP POLICY IF EXISTS "Scholars can send reader circle invitations" ON public.reader_circles;
 CREATE POLICY "Scholars can send reader circle invitations"
   ON public.reader_circles FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = requester_id AND requester_id <> recipient_id);
+  WITH CHECK ((select auth.uid()) = requester_id AND requester_id <> recipient_id);
 
 DROP POLICY IF EXISTS "Participants can update their reader circle status" ON public.reader_circles;
 CREATE POLICY "Participants can update their reader circle status"
   ON public.reader_circles FOR UPDATE
   TO authenticated
-  USING (auth.uid() = requester_id OR auth.uid() = recipient_id)
+  USING ((select auth.uid()) = requester_id OR (select auth.uid()) = recipient_id)
   WITH CHECK (
-    (auth.uid() = recipient_id)
-    OR (auth.uid() = requester_id AND status = 'pending')
+    ((select auth.uid()) = recipient_id)
+    OR ((select auth.uid()) = requester_id AND status = 'pending')
   );
 
 DROP POLICY IF EXISTS "Participants can remove reader circle connections" ON public.reader_circles;
 CREATE POLICY "Participants can remove reader circle connections"
   ON public.reader_circles FOR DELETE
   TO authenticated
-  USING (auth.uid() = requester_id OR auth.uid() = recipient_id);
+  USING ((select auth.uid()) = requester_id OR (select auth.uid()) = recipient_id);
 
 -- Literary Symposium Sessions (Per-Volume Shared Reading Pacts)
 CREATE TABLE IF NOT EXISTS public.symposium_sessions (
@@ -890,26 +897,26 @@ DROP POLICY IF EXISTS "Participants can view their symposium sessions" ON public
 CREATE POLICY "Participants can view their symposium sessions"
   ON public.symposium_sessions FOR SELECT
   TO authenticated
-  USING (auth.uid() = host_id OR auth.uid() = fellow_id);
+  USING ((select auth.uid()) = host_id OR (select auth.uid()) = fellow_id);
 
 DROP POLICY IF EXISTS "Hosts can create symposium invitations" ON public.symposium_sessions;
 CREATE POLICY "Hosts can create symposium invitations"
   ON public.symposium_sessions FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = host_id AND host_id <> fellow_id);
+  WITH CHECK ((select auth.uid()) = host_id AND host_id <> fellow_id);
 
 DROP POLICY IF EXISTS "Participants can update their symposium progress and status" ON public.symposium_sessions;
 CREATE POLICY "Participants can update their symposium progress and status"
   ON public.symposium_sessions FOR UPDATE
   TO authenticated
-  USING (auth.uid() = host_id OR auth.uid() = fellow_id)
-  WITH CHECK (auth.uid() = host_id OR auth.uid() = fellow_id);
+  USING ((select auth.uid()) = host_id OR (select auth.uid()) = fellow_id)
+  WITH CHECK ((select auth.uid()) = host_id OR (select auth.uid()) = fellow_id);
 
 DROP POLICY IF EXISTS "Participants can leave or delete symposium sessions" ON public.symposium_sessions;
 CREATE POLICY "Participants can leave or delete symposium sessions"
   ON public.symposium_sessions FOR DELETE
   TO authenticated
-  USING (auth.uid() = host_id OR auth.uid() = fellow_id);
+  USING ((select auth.uid()) = host_id OR (select auth.uid()) = fellow_id);
 
 -- Scoped Marginalia Visibility: Allow Fellow Scholars to read annotations ONLY in shared Symposium volumes
 DROP POLICY IF EXISTS "Fellows can view annotations in active symposiums" ON public.user_annotations;
@@ -917,14 +924,14 @@ CREATE POLICY "Fellows can view annotations in active symposiums"
   ON public.user_annotations FOR SELECT
   TO authenticated
   USING (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     OR EXISTS (
       SELECT 1 FROM public.symposium_sessions s
       WHERE s.book_id = user_annotations.book_id
         AND s.status IN ('active', 'completed')
         AND (
-          (s.host_id = auth.uid() AND s.fellow_id = user_annotations.user_id)
-          OR (s.fellow_id = auth.uid() AND s.host_id = user_annotations.user_id)
+          (s.host_id = (select auth.uid()) AND s.fellow_id = user_annotations.user_id)
+          OR (s.fellow_id = (select auth.uid()) AND s.host_id = user_annotations.user_id)
         )
     )
   );

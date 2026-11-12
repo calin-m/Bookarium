@@ -104,10 +104,10 @@ flowchart TD
 
     subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
         RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]
-        ProxyBooks["GET /api/books\n(SWR 3600s Cache, Latency Tracking, Rate Limit, Seam Controller)"]
+        ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
-        ProxyContent["GET /api/books/content\n(Tier 1 Supabase DB • Tier 2 Gutenberg Multi-Mirror, Anti-SSRF)"]
-        ProxyBookTranslations["GET /api/books/translations\n(Edge SWR Cache, Zero False Positives, FRBR Work Mapping)"]
+        ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]
+        ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]
         LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
     end
@@ -915,7 +915,7 @@ flowchart TD
 
     subgraph SupabaseTables ["Supabase PostgreSQL Catalog Tables (Read-Only for Anon / Written by Service Role)"]
         TableBooks[("🗄️ public.books (78,000+ Rows)\n• books_pkey (id)\n• idx_books_download_count (download_count DESC)\n• idx_books_with_quotes_popular (WHERE quotes <> '[]')\n• idx_books_search_vector (GIN TSVECTOR)")]
-        TableTrans[("🗄️ public.book_translations (4,500+ Rows)\n• idx_book_translations_book_id\n• idx_book_translations_work_id\n• idx_book_translations_work_lang")]
+        TableTrans[("🗄️ public.book_translations (4,500+ Rows)\n• book_translations_pkey (work_id, book_id)\n• idx_book_translations_book_id\n• idx_book_translations_work_lang")]
     end
 
     CatTrigger --> ScriptCatalog
@@ -950,7 +950,7 @@ flowchart TD
 
 ## 🗄️ Database Architecture & Row Level Security (RLS) Policies
 
-Bookarium uses Supabase PostgreSQL for optional cloud synchronization and dedicated database catalog serving, verified across **14 Database Tables** (48 RLS policies & 7 payload ceiling CHECK constraints) with strict Row Level Security (Rule 9):
+Bookarium uses Supabase PostgreSQL for optional cloud synchronization and dedicated database catalog serving, verified across **14 Database Tables** (47 RLS policies & 7 payload ceiling CHECK constraints) with strict Row Level Security (Rule 9):
 
 | Table Name | Read Access / RLS | Write Authority & Mutating Actors | Runtime Consumers (Stores, Providers & CLI) | Domain Role & Security Description |
 | :--- | :--- | :--- | :--- | :--- |
@@ -983,7 +983,7 @@ Programmatically extracted from `CREATE OR REPLACE FUNCTION` and `CREATE TRIGGER
 | **`public.enforce_fellowship_update_guard()`** | Trigger / Function (`trg_reader_circles_update_guard`, `trg_symposium_sessions_update_guard`) | `public.reader_circles`, `public.symposium_sessions` | Locks immutable keys, acceptance authority, and opposite-participant progress/identity columns against unauthorized modification (`SECURITY DEFINER`, `SET search_path = ''`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`). |
 | **`public.rls_auto_enable() (Guard)`** | Conditional Hardening Block | `pg_proc` (`public.rls_auto_enable`) | Idempotent `DO $$` guard revoking RPC execution from `PUBLIC, anon, authenticated` and locking `search_path = ''` if provisioned on the remote Supabase instance. |
 
-### 2. Search, Uniqueness & Foreign-Key Indexes (23 Explicit Indexes)
+### 2. Search, Uniqueness & Foreign-Key Indexes (21 Explicit Indexes)
 
 Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements in [`supabase/schema.sql`](supabase/schema.sql):
 
@@ -998,15 +998,13 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 | **`idx_user_reading_habits_user`** | B-Tree Index | `public.user_reading_habits` | `(user_id)` | B-Tree index on `(user_id)` accelerating streak and dual immersion telemetry queries. |
 | **`unique_user_accolade`** | Unique B-Tree Index | `public.user_accolades` | `(user_id, accolade_id)` | Composite unique index on `(user_id, accolade_id)` ensuring idempotent accolade unlocks per scholar. |
 | **`idx_user_accolades_user`** | B-Tree Index | `public.user_accolades` | `(user_id)` | B-Tree index on `(user_id)` for fast Ex-Libris bookplate and pinned showcase queries. |
-| **`idx_books_search_vector`** | GIN Index | `public.books` | `(search_vector)` | Inverted GIN index on `search_vector` TSVECTOR for sub-second multi-word full-text catalog search. |
+| **`idx_books_search_vector`** | GIN Index | `public.books` | `(search_vector)` | Inverted GIN index on `search_vector` TSVECTOR for sub-second multi-word full-text and subject/bookshelf catalog search. |
 | **`idx_books_languages`** | GIN Index | `public.books` | `(languages)` | Inverted GIN index on `languages` TEXT[] for array-containment language filtering (`languages && ARRAY[...]`). |
-| **`idx_books_subjects`** | GIN Index | `public.books` | `(subjects)` | Inverted GIN index on `subjects` TEXT[] for topic/subject facet containment queries. |
 | **`idx_books_download_count`** | B-Tree Index | `public.books` | `(download_count DESC)` | Descending B-Tree index on `(download_count DESC)` for popularity sorting across 78,000+ volumes. |
 | **`idx_books_author_death_year`** | B-Tree Index | `public.books` | `(max_author_death_year)` | B-Tree index on `(max_author_death_year)` for sub-50ms server-side jurisdictional copyright filtering. |
 | **`idx_books_with_quotes_popular`** | Partial B-Tree Index | `public.books` | `(download_count DESC) WHERE quotes <> '[]'::jsonb` | Partial descending B-Tree index on `(download_count DESC) WHERE quotes <> '[]'::jsonb` for sub-10ms lookups of quote-enriched volumes. |
 | **`idx_book_translations_book_id`** | B-Tree Index | `public.book_translations` | `(book_id)` | B-Tree index on `(book_id)` for instant single-book translation lookups in `ReaderLanguageDrawer`. |
-| **`idx_book_translations_work_id`** | B-Tree Index | `public.book_translations` | `(work_id)` | B-Tree index on `(work_id)` for canonical FRBR literary work cluster traversal. |
-| **`idx_book_translations_work_lang`** | B-Tree Index | `public.book_translations` | `(work_id, language)` | Composite B-Tree index on `(work_id, language)` for fast language-filtered edition resolution. |
+| **`idx_book_translations_work_lang`** | B-Tree Index | `public.book_translations` | `(work_id, language)` | Composite B-Tree index on `(work_id, language)` for canonical FRBR literary work cluster traversal and language-filtered edition resolution (alongside `book_translations_pkey (work_id, book_id)`). |
 | **`idx_reader_circles_requester`** | B-Tree Index | `public.reader_circles` | `(requester_id)` | B-Tree index on `(requester_id)` for outbound Reader Circle fellowship and companion RLS lookups. |
 | **`idx_reader_circles_recipient`** | B-Tree Index | `public.reader_circles` | `(recipient_id)` | B-Tree index on `(recipient_id)` for inbound Reader Circle invitation and companion RLS lookups. |
 | **`idx_symposium_sessions_host`** | B-Tree Index | `public.symposium_sessions` | `(host_id)` | B-Tree index on `(host_id)` for host-side Literary Symposium and fellow marginalia RLS evaluation. |
@@ -1017,7 +1015,7 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 
 | Artifact File | Classification | File Size | Architectural Responsibility |
 | :--- | :--- | :--- | :--- |
-| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `49.4 KB` | Single source of truth defining all 14 database tables, 48 granular RLS policies, 7 stored functions/triggers (5 row triggers), 7 payload ceiling CHECK constraints, and 23 explicit search/uniqueness indexes. |
+| [`supabase/schema.sql`](supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `50.9 KB` | Single source of truth defining all 14 database tables, 47 granular RLS policies (with `(select auth.uid())` `InitPlan` scalar subquery wrapping and single-permissive-policy-per-action consolidation), 7 stored functions/triggers (5 row triggers), 7 payload ceiling CHECK constraints, and 21 explicit search/uniqueness indexes. |
 | [`supabase/seed_books.sql`](supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.4 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
 | [`supabase/seed_translations.sql`](supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
 | [`scripts/data/wikidata-translations-cache.json`](scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |
@@ -1033,7 +1031,7 @@ Because `public.books` stores `78,000+` volumes (with `77,500+` rows having `dow
 | **Quote-Enriched Books Discovery** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) `fetchQuoteEnrichedPool` via `/api/books?pool=quotes` & [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) `fetchQuoteEnrichedBooks`) | Step 1: `FEATURED_HERO_BOOKS` + `LITERARY_QUOTES` IDs + `select('id').order('download_count', DESC).limit(500)` + `order('id', DESC).limit(64)`; Step 2: `selectRotatingQuotePoolCandidateIds` 12h window slice -> `.in('id', selectedCandidateIds).neq('quotes', '[]').order('download_count', DESC).limit(48)` (`<= 600` max) with native PostgREST 2-spread projection (`quote0:quotes->0, quote1:quotes->1`) | `idx_books_download_count` + `books_pkey` (`.in('id', selectedCandidateIds)`) | `~564` candidate IDs -> `limit = 48` default (`<= 600` max, Edge CDN `s-maxage=43200`, browser `max-age=3600`, `~22 KB` wire transfer) | **Never** execute an unbounded `.neq('quotes', '[]').order('download_count', DESC)` without `.in('id', ...)` (prevents 78,000-row index walk); 14 weekly 12h batches (`672` slots/week) cycle all 564 books at `~44 KB/day`. |
 | **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) & `quotes-sync.yml`) | Step 1: `ORDER BY download_count DESC LIMIT 1000` + `.in('id', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320`; Step 2: `fetchQuotedBookIds` & `evaluateScheduleGate` via `.in('id', chunk).neq('quotes', '[]')`; Step 3: `.in('id', selectedIds)` for `content, quotes` | `idx_books_download_count` + `books_pkey` | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 25ms` total)**: `id ASC` tie-breaking is computed in memory in JS; `content` is hydrated only for the `<= 25` selected batch IDs; `fetchQuotedBookIds` and `evaluateScheduleGate` are strictly Primary-Key-Scoped. |
 | **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml`) | Step 1: `.select(CATALOG_DIFF_SELECT_COLUMNS).in('id', batchIds)` (`filterChangedOrNewBooks`); Step 2: `upsert(toUpsert, { onConflict: 'id', ignoreDuplicates: false })` on new/changed rows only via sticky dynamic write chunks (`[25, 100]`); Step 3: keyset `select('id').gt('id', lastId).order('id', ASC).limit(1000)` (`reconcileWithdrawnCatalogBooks`) | `books_pkey` (`ON CONFLICT (id)` & keyset scan) & `idx_books_download_count` | `200` rows/batch diff (`< 2ms`), sticky dynamic write chunks (`100 -> 50 -> 25` on `57014`); `1,000` IDs/page keyset prune (`50,000` min-catalog & `500` max-prune circuit breakers) | **Zero `quotes` overwrite & zero GIN dirtying on `download_count` updates**: `CATALOG_DIFF_SELECT_COLUMNS` omits `formats`, `quotes`, `content`, and `search_vector`; unchanged rows are skipped, and `trigger_books_search_vector` (`IS DISTINCT FROM`) only recomputes `to_tsvector()` when `title`, `subjects`, or `bookshelves` change. |
-| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `idx_book_translations_work_id`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |
+| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `book_translations_pkey (work_id, book_id)`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |
 | **6-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`) | User-scoped `.eq('user_id', user.id)` / `.or('requester_id.eq...,recipient_id.eq...')` with per-user in-flight Promise coalescing | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on `reading_progress` & `profiles.preferences`) | Every `WHERE user_id = auth.uid()` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID. |
 
 ---
@@ -1217,7 +1215,7 @@ flowchart TD
 | **`src/workers/`** | Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations. |
 | **`src/mocks/ & src/test/`** | Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`) and JSDOM test environment bootstrap (`setup.ts`). |
 | **`public/`** | Progressive Web App Service Worker (`public/sw.js` `v7`) and multi-resolution soaring open book brand emblem icons (`favicon.ico`, `icon.svg`, `public/icons/*.png`). |
-| **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 48 RLS policies, 7 functions/triggers, and 23 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
+| **`supabase/`** | Idempotent PostgreSQL schema (`schema.sql`) with 14 tables, 47 RLS policies, 7 functions/triggers, and 21 explicit indexes, plus offline SQL seeds (`seed_books.sql`, `seed_translations.sql`). |
 | **`scripts/`** | 15 Node.js CLI automation, Babel AST documentation compilation (`lib/ast-parser.js`), custom ESLint AST & request-taint security rules (`eslint-rules/bookarium-security.js`), 7-Gateway verification (`verify-build.js`), Gutenberg catalog streaming (`sync-gutenberg-catalog.js`), PGLAF mirror-first featured quotes extraction (`sync-featured-quotes.js`), and Wikidata FRBR translation clustering (`ingest-translations.js`) tools, plus offline authority cache (`scripts/data/`) and CLI test suites. |
 | **`docs/`** | Living architectural reference (`ARCHITECTURE.md`), 80 Architecture Decision Records (`DECISIONS.md`), AST-compiled parser specification (`GUTENBERG_PARSER.md`), CI/CD runbook (`PIPELINE_GUIDE.md`), and live 7-Gateway quality telemetry (`QUALITY_AUDIT_REPORT.md`, `quality-audit-results.json`). |
 | **`.github/workflows/ & .husky/`** | Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), weekly autonomous catalog/translation sync cron workflows (`catalog-sync.yml`, `translations-sync.yml`), and scheduled/manual featured quotes ingestion (`quotes-sync.yml`), plus Husky pre-commit quality gates. |
@@ -1495,7 +1493,7 @@ Every source file is analyzed for upstream imports, downstream consumers, and it
 1. **Dual-Provider Catalog Architecture**: Primary search queries execute against dedicated Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back seamlessly to upstream Gutendex REST API if Supabase is unconfigured, unseeded, or unreachable, unconditionally enforcing `copyright=false`.
 2. **Unified Visible Telemetry & Zero-CLS Radar**: `StickyCatalogToolbar.tsx` renders a unified Zero-CLS API connectivity, latency, and archive query radar pill with locked geometry (`min-w-[72px] sm:min-w-[78px]`) supporting 4 states (Online Idle, Active Querying with micro-spinner and pulse `•••`, Pending Measure, and Offline), paired with a collision-aware diagnostic popover card that automatically flips upwards when docked at the hero fold or downwards when stuck at the top, complete with touch tap-toggle interaction and dual-service diagnostics across Bookarium DB and Gutendex API.
 3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.
-4. **Edge SWR Caching & Geographic Vary Partitioning**: Catalog queries are cached with `s-maxage=3600, stale-while-revalidate=86400` (`/api/books`) and content/translation streams with `s-maxage=86400, stale-while-revalidate=604800`, partitioned across jurisdictions via `Vary: x-vercel-ip-country, Accept-Encoding` to prevent cross-border cache pollution.
+4. **Multi-Tier Vercel Edge CDN Caching, Geographic Vary Partitioning & Gutenberg Cover Proxy**: Public API routes offload >99% of repeat traffic to the Vercel Global Edge CDN with route-specific TTLs and minimal `Vary` keys: `/api/books?pool=quotes` caches the 48-volume 2-spread rotating quote pool for `12h` (`s-maxage=43200, swr=86400, Vary: Accept-Encoding`); `/api/books` caches 11-column catalog searches for `24h` (`s-maxage=86400, swr=604800, Vary: x-vercel-ip-country, Accept-Encoding`); `/api/books?ids=...&has_quotes=true` & `include_restricted_metadata=true` cache explicit quote/metadata batches for `7d` (`s-maxage=604800, swr=2592000, Vary: Accept-Encoding`); `/api/books/translations` caches FRBR work clusters for `7d` (`s-maxage=604800, swr=2592000`); and `/api/books/content` caches plain-text & `type=card` OG PNGs for `24h` (`s-maxage=86400, swr=604800`) and `?type=cover` Project Gutenberg mirror cover images for `7d` (`s-maxage=604800, swr=2592000`).
 5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.
 6. **Multi-Tier Text Streaming, In-Memory LRU & Multi-Mirror Failover**: Plain text is served on-demand from Tier 0 (`bookContentLruCache`: 24h TTL / 20-book in-memory LRU cache preventing cross-jurisdiction upstream re-fetches), Tier 1 (dedicated Supabase plain-text cache if present), or Tier 2 (mirror-first fallback across `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org` with in-flight promise coalescing `inFlightMirrorFetches`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.
 7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.
@@ -1621,7 +1619,7 @@ flowchart TD
 
     subgraph VercelEdgeNetwork ["Vercel Global Edge Network (PoPs Worldwide)"]
         EdgeProxy["🛡️ src/proxy.ts & next.config.ts\n• Geo-IP Extraction (x-vercel-ip-country)\n• Clean Path Rewrites (/bookshelf, /favorites, /notebook, /bookmarks -> /)\n• 7 Mandatory OWASP Security Headers & Production CSP"]
-        EdgeCDN["⚡ Vercel Edge CDN SWR Cache\n• /api/books: s-maxage=3600, swr=86400\n• /api/books/content & translations: s-maxage=86400, swr=604800\n• PartitionKey: Vary: x-vercel-ip-country, Accept-Encoding"]
+        EdgeCDN["⚡ Vercel Edge CDN SWR Cache\n• /api/books?pool=quotes: s-maxage=43200 (12h), swr=86400\n• /api/books & /content (text/card): s-maxage=86400 (24h), swr=604800\n• /api/books (ids), /translations & /content (cover): s-maxage=604800 (7d), swr=2592000"]
     end
 
     subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]
@@ -1649,7 +1647,54 @@ flowchart TD
     QuotesCron -->|"Two-Tier Quotes JSONB Upsert & Prune"| SupabaseUS
 ```
 
-### 2. 5-Layer Caching & TTL Hierarchy Matrix
+### 2. Multi-Tier Caching, Supabase Egress Shielding & Gutenberg Mirror Cover/Text Waterfall
+
+```mermaid
+flowchart TD
+    subgraph L1_L2_Client ["L1 & L2: Browser Memory, LocalStorage & IndexedDB"]
+        L1Query["L1: TanStack Query & Virtual Page LRU\n• Windowed Sub-Pages (8/16 books in 0ms)\n• 500-Entry Paginated Chapter Slice Cache"]
+        L2Local["L2A: localStorage Persistent Caches\n• bookarium-quote-enriched-books-v1 (48-book 2-spread pool • 12h TTL)\n• bookarium-extracted-passages-v1 (100-book dynamic quotes • 30d LRU)"]
+        L2IDB["L2B: IndexedDB (bookarium-offline-db) & SW (bookarium-app-shell-v7)\n• Unabridged Offline Book Texts (0ms offline read)\n• Cover Image Blobs (useOfflineCoverImage -> URL.createObjectURL)"]
+    end
+
+    subgraph L3_VercelEdge ["L3: Vercel Global Edge CDN & Image Optimizer"]
+        EdgeQuotePool["GET /api/books?pool=quotes\n• s-maxage=43200 (12h), swr=86400\n• Vary: Accept-Encoding (Global Shared)\n• ~22 KB/batch -> ~44 KB/day Supabase Egress"]
+        EdgeCatalog["GET /api/books (11-Col Catalog)\n• max-age=3600, s-maxage=86400 (24h), swr=604800\n• Vary: x-vercel-ip-country, Accept-Encoding"]
+        EdgeDeepQuotes["GET /api/books?ids=...&has_quotes=true\n& GET /api/books/translations\n• max-age=86400, s-maxage=604800 (7d), swr=2592000\n• Vary: Accept-Encoding (~99% Edge Hit Rate)"]
+        EdgeTextCard["GET /api/books/content (Text & type=card OG)\n• max-age=86400, s-maxage=86400 (24h), swr=604800\n• Vary: x-vercel-ip-country, Accept-Encoding"]
+        EdgeCoverProxy["GET /api/books/content?type=cover & Next.js <Image>\n• max-age=86400, s-maxage=604800 (7d), swr=2592000\n• WebP/AVIF Optimization + Binary Cover Stream"]
+    end
+
+    subgraph L4_Serverless ["L4: Pinned US-East (iad1) Serverless In-Memory Caches"]
+        MetaLRU["metadata-cache.ts\n• 24h TTL / 1,000-Book Lifespan LRU\n• Jurisdictional HTTP 451 Gatekeeper"]
+        TextLRU["bookContentLruCache & inFlightMirrorFetches\n• 24h TTL / 20-Book Text LRU (<= 1.8M chars)\n• Concurrent Mirror Promise Coalescing"]
+        HealthCache["supabase-provider.ts Healthcheck\n• 60s TTL (Warmed on every query success)\n• HTTP 503 no-store anti-poisoning guard"]
+    end
+
+    subgraph L5_Origins ["L5: Primary Origins (Supabase PostgreSQL & 4 Gutenberg Mirrors)"]
+        SupaOrigin[("🗄️ Supabase PostgreSQL (public.books & book_translations)\n• (select auth.uid()) InitPlan RLS & 23 B-Tree/GIN Indexes\n• PostgREST quote0:quotes->0, quote1:quotes->1 Slicing")]
+        MirrorOrigin["🏛️ 4 Allowlisted Project Gutenberg Mirrors\n1. aleph.gutenberg.org • 2. gutenberg.pglaf.org\n3. gutenberg.readingroo.ms • 4. www.gutenberg.org"]
+    end
+
+    L1Query -->|"Miss"| L2Local
+    L1Query -->|"Offline / Saved"| L2IDB
+    L2Local -->|"12h Expired"| EdgeQuotePool
+    L1Query -->|"Catalog Search"| EdgeCatalog
+    L1Query -->|"Open 3D Book / Preview / Editions"| EdgeDeepQuotes
+    L2IDB -->|"Uncached Text"| EdgeTextCard
+    L2IDB -->|"Uncached Cover"| EdgeCoverProxy
+    EdgeQuotePool -->|"Miss (2x/day Global)"| HealthCache
+    EdgeCatalog -->|"Miss (24h per Query)"| HealthCache
+    EdgeDeepQuotes -->|"Miss (7d per Book)"| HealthCache
+    HealthCache --> SupaOrigin
+    EdgeTextCard -->|"Miss"| MetaLRU
+    MetaLRU --> TextLRU
+    TextLRU -->|"Tier 1: public.books.content"| SupaOrigin
+    TextLRU -->|"Tier 2: 4-Mirror Waterfall"| MirrorOrigin
+    EdgeCoverProxy -->|"Miss (7d per Cover)"| MirrorOrigin
+```
+
+### 3. 5-Layer Caching & TTL Hierarchy Matrix
 
 | Cache Layer | Storage / Execution Location | Cached Artifacts & Scope | TTL & Eviction Policy | Partitioning & Consistency Key |
 | :--- | :--- | :--- | :--- | :--- |
@@ -1657,9 +1702,9 @@ flowchart TD
 | **L2: Browser Persistent** | `localStorage` (10 stores + `bookarium-quote-enriched-books-v1` + `bookarium-extracted-passages-v1`), `IndexedDB` (`bookarium-offline-db`), `CacheStorage` (`bookarium-app-shell-v7`) | User collections/outboxes, 48-volume (`limit <= 600` max) rotating quote pool (`12h` fresh), 30-day LRU extracted book passages (`100` books max), unabridged book texts + cover Blobs (`offline-storage.ts`), and PWA App Shell (`bookarium-app-shell-v7`) | Persistent across restarts; `30d` TTL / `100` LRU entries (`useBookPassageShuffle.ts`); SW `activate` prunes old caches | Origin-locked; IndexedDB texts verified against active jurisdiction on read |
 | **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control`) | `GET /api/books` (`s-maxage=86400, swr=604800` Catalog; `s-maxage=43200` `?pool=quotes`; `s-maxage=604800` `?ids=...&has_quotes=true`); `GET /api/books/content` (`s-maxage=86400, swr=604800`) & `/translations` (`s-maxage=604800, swr=2592000`) | 12h fresh (Quote Pool); 24h fresh / 7d SWR (Catalog & Content); 7d fresh / 30d SWR (Quote IDs & Translations) | `Vary: Accept-Encoding` (Global Quote Pool & Restricted-Metadata Lookups) / `Vary: x-vercel-ip-country, Accept-Encoding` (Catalog) |
 | **L4: Serverless In-Memory LRU** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts)), 20-book text LRU & in-flight mirror coalescing ([`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts)), Supabase healthcheck (`supabase-provider.ts`), `/read/[id]` SSR metadata | `24h` TTL / `1,000` max entries (Metadata LRU); `24h` TTL / `20` max books `<= 1.8M` chars (`bookContentLruCache`); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by Gutenberg `bookId` |
-| **L5: Database & Repo Seeds** | Supabase PostgreSQL & `supabase/seed_*.sql` | `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 564` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by 23 explicit B-Tree & GIN `search_vector` indexes |
+| **L5: Database & Repo Seeds** | Supabase PostgreSQL & `supabase/seed_*.sql` | `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 564` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by 21 explicit B-Tree & GIN `search_vector` indexes |
 
-### 3. Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix
+### 4. Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix
 
 | Subsystem / Parameter | Configured Threshold / Budget | Governing Module | Architectural Rationale |
 | :--- | :--- | :--- | :--- |

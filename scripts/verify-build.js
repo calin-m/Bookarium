@@ -819,11 +819,15 @@ function pass075SecurityAndSastAudit() {
     }
 
     const createPolicyMatches = [
-      ...schemaSql.matchAll(/CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+public\.([a-z0-9_]+)/gi),
+      ...schemaSql.matchAll(
+        /CREATE\s+POLICY\s+"([^"]+)"\s+ON\s+public\.([a-z0-9_]+)([\s\S]*?);/gi
+      ),
     ];
+    const policyRoleCmdMap = new Map();
     for (const m of createPolicyMatches) {
       const policyName = m[1];
       const tblName = m[2];
+      const policyClause = m[3] || '';
       const escapedPolicy = policyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const dropPolicyRegex = new RegExp(
         `DROP\\s+POLICY\\s+IF\\s+EXISTS\\s+"${escapedPolicy}"\\s+ON\\s+public\\.${tblName}\\s*;`,
@@ -833,6 +837,53 @@ function pass075SecurityAndSastAudit() {
         rlsViolations.push(
           `Policy "${policyName}" on public.${tblName} is missing preceding DROP POLICY IF EXISTS "${policyName}" ON public.${tblName};`
         );
+      }
+
+      // Supabase 0003_auth_rls_initplan guard: ensure auth.<fn>() and current_setting() are wrapped in (select ...)
+      if (/(?<!\(\s*select\s+)\b(?:auth\.[a-z0-9_]+|current_setting)\s*\(/i.test(policyClause)) {
+        rlsViolations.push(
+          `RLS Policy "${policyName}" on public.${tblName} invokes bare auth.<fn>() or current_setting() without an InitPlan scalar subquery wrapper — use "(select auth.uid())" (Supabase 0003_auth_rls_initplan).`
+        );
+      }
+
+      // Supabase 0006_multiple_permissive_policies guard: ensure at most 1 permissive policy per (table, clientRole, command)
+      if (!/\bAS\s+RESTRICTIVE\b/i.test(policyClause)) {
+        const forMatch = policyClause.match(/\bFOR\s+(SELECT|INSERT|UPDATE|DELETE|ALL)\b/i);
+        const rawCmd = forMatch ? forMatch[1].toUpperCase() : 'ALL';
+        const commands =
+          rawCmd === 'ALL' ? ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] : [rawCmd];
+
+        const headerBeforeExpr = policyClause.split(/\b(?:USING|WITH\s+CHECK)\b/i)[0] || '';
+        const toMatch = headerBeforeExpr.match(/\bTO\s+([a-z0-9_,\s]+)$/i);
+        const rawRoles = toMatch
+          ? toMatch[1]
+              .split(',')
+              .map((r) => r.trim().toLowerCase())
+              .filter(Boolean)
+          : ['public'];
+        const clientRoles = new Set();
+        for (const r of rawRoles) {
+          if (r === 'public') {
+            clientRoles.add('anon');
+            clientRoles.add('authenticated');
+          } else if (r === 'anon' || r === 'authenticated') {
+            clientRoles.add(r);
+          }
+        }
+
+        for (const role of clientRoles) {
+          for (const cmd of commands) {
+            const key = `${tblName}:${role}:${cmd}`;
+            const existing = policyRoleCmdMap.get(key);
+            if (existing && existing !== policyName) {
+              rlsViolations.push(
+                `Multiple permissive RLS policies on public.${tblName} for role "${role}" and action "${cmd}": "${existing}" and "${policyName}" (Supabase 0006_multiple_permissive_policies).`
+              );
+            } else {
+              policyRoleCmdMap.set(key, policyName);
+            }
+          }
+        }
       }
     }
 
@@ -1006,7 +1057,7 @@ function pass075SecurityAndSastAudit() {
     }
     const publicTableCount = dbTables.filter((t) => t.startsWith('public.')).length;
     const migrationTableCount = dbTables.length - publicTableCount;
-    logPass(`Pillar 6: Verified Row-Level Security across all ${dbTables.length} database tables (${publicTableCount} public tables + ${migrationTableCount} migration ledger), 100% DDL/policy/trigger idempotency, write-policy isolation, account-deletion parity, trigger RPC revocation, and search_path/REVOKE hardening on all SECURITY DEFINER functions.`);
+    logPass(`Pillar 6: Verified Row-Level Security across all ${dbTables.length} database tables (${publicTableCount} public tables + ${migrationTableCount} migration ledger), 100% DDL/policy/trigger idempotency, (select auth.uid()) InitPlan & single-permissive-policy invariants, write-policy isolation, account-deletion parity, trigger RPC revocation, and search_path/REVOKE hardening on all SECURITY DEFINER functions.`);
   }
 
   // Pillar 7: HTTP Security Headers, Production CSP & Service Worker Cache Guard
