@@ -31,8 +31,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     const json = await res.json();
     expect(json.results).toBeDefined();
     expect(Array.isArray(json.results)).toBe(true);
@@ -184,8 +184,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     const json = await res.json();
     expect(json.results).toBeDefined();
   });
@@ -313,8 +313,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     const json = await res.json();
     expect(json.source).toBe('supabase');
     expect(json.results).toHaveLength(1);
@@ -350,8 +350,8 @@ describe('GET /api/books route handler', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=3600');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     const json = await res.json();
     expect(json.source).toBe('upstream');
     expect(json.results).toHaveLength(1);
@@ -376,5 +376,41 @@ describe('GET /api/books route handler', () => {
     expect(json.results).toEqual([]);
 
     isHealthySpy.mockRestore();
+  });
+
+  it('should apply 12h global Edge cache for pool=quotes and 7d global Edge cache for jurisdiction-independent quote/ID lookups', async () => {
+    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
+    const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValue(true);
+    const searchBooksSpy = vi.spyOn(supabaseCatalogProvider, 'searchBooks').mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [],
+      source: 'supabase',
+      latencyMs: 5,
+      clientCountry: 'US',
+      jurisdictionRule: 'US_PUBLIC_DOMAIN',
+    });
+
+    const poolReq = new NextRequest('http://localhost:3000/api/books?pool=quotes');
+    const poolRes = await GET(poolReq);
+    expect(poolRes.status).toBe(200);
+    expect(poolRes.headers.get('Cache-Control')).toBe(
+      'public, max-age=3600, s-maxage=43200, stale-while-revalidate=604800'
+    );
+    expect(poolRes.headers.get('Vary')).toBe('Accept-Encoding');
+
+    const quoteIdReq = new NextRequest(
+      'http://localhost:3000/api/books?ids=1342&has_quotes=true&include_restricted_metadata=true'
+    );
+    const quoteIdRes = await GET(quoteIdReq);
+    expect(quoteIdRes.status).toBe(200);
+    expect(quoteIdRes.headers.get('Cache-Control')).toBe(
+      'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000'
+    );
+    expect(quoteIdRes.headers.get('Vary')).toBe('Accept-Encoding');
+
+    isHealthySpy.mockRestore();
+    searchBooksSpy.mockRestore();
   });
 });

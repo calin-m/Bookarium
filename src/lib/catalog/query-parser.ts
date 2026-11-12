@@ -3,6 +3,13 @@ import type { CatalogQueryOptions } from '@/types/catalog.types';
 import { resolveClientCountry } from '@/lib/country-resolver';
 
 /**
+ * Default volume count for the homepage Quote Pool (`?pool=quotes`), sized to cover
+ * 24-hour deterministic rotation, 3-card Literary Quotes variety, and international copyright buffer
+ * while keeping payload transfer at ~22 KB (~93% smaller than the 600-book ceiling).
+ */
+export const DEFAULT_QUOTE_POOL_LIMIT = 48;
+
+/**
  * Extracts, sanitizes, and normalizes query options from an incoming Next.js request.
  * Enforces security boundaries, single-character search defense, and legal jurisdiction resolution.
  */
@@ -30,11 +37,12 @@ export function parseCatalogQuery(request: NextRequest): CatalogQueryOptions {
   const rawPool = (searchParams.get('pool') || '').trim().toLowerCase();
   const pool = rawPool === 'quotes' ? ('quotes' as const) : undefined;
 
-  // Limit / batch size (default 32, up to 100 for catalog queries, or up to 600 for the quote pool)
+  // Limit / batch size (default 32 for catalog, default 48 / max 600 for the quote pool)
   const rawLimitParam = searchParams.get('limit');
   const rawLimit = rawLimitParam !== null ? parseInt(rawLimitParam, 10) : NaN;
   const maxLimit = pool === 'quotes' ? 600 : 100;
-  const defaultLimit = pool === 'quotes' ? 600 : idCount > 32 ? Math.min(100, idCount) : 32;
+  const defaultLimit =
+    pool === 'quotes' ? DEFAULT_QUOTE_POOL_LIMIT : idCount > 32 ? Math.min(100, idCount) : 32;
   const limit =
     Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= maxLimit ? rawLimit : defaultLimit;
 

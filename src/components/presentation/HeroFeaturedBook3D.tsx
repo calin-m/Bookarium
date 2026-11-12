@@ -70,11 +70,16 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     return () => window.removeEventListener('resize', updateKinematics);
   }, []);
 
+  // The ink-appear transition is reserved for user-initiated page turns; initial paint stays static.
+  const [hasShuffled, setHasShuffled] = useState(false);
+  const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
+
   const existingQuotes = featuredBook.quotes || featuredBook.rawBook?.quotes;
   const rawPoolQuotes = featuredBook.rawBook?.quotes ?? existingQuotes;
   const hasExistingQuotes = Array.isArray(rawPoolQuotes) && rawPoolQuotes.length >= 3;
+  const hasInitialCoverQuote = Array.isArray(existingQuotes) && existingQuotes.length >= 1;
   const { data: featuredQuotesMap } = useFeaturedQuotes([featuredBook.id], {
-    enabled: !hasExistingQuotes,
+    enabled: !hasExistingQuotes && (!hasInitialCoverQuote || isBookOpen || hasShuffled),
   });
   const supabaseBookQuotes = useMemo(() => {
     const dbQuotes = featuredQuotesMap?.[featuredBook.id];
@@ -107,8 +112,6 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     enabled: false,
   });
 
-  // The ink-appear transition is reserved for user-initiated page turns; initial paint stays static.
-  const [hasShuffled, setHasShuffled] = useState(false);
   const shuffleNextPassage = (e?: React.MouseEvent) => {
     setHasShuffled(true);
     hookShuffleNextPassage(e);
@@ -129,8 +132,6 @@ export const HeroFeaturedBook3D: React.FC<HeroFeaturedBook3DProps> = ({
     title: featuredBook.title,
     hasCommentary: Boolean(currentPassage.commentary),
   });
-
-  const isBookOpen = pinState === 'open' || (pinState === 'auto' && isHovered);
 
   // Close open book when clicking or tapping anywhere outside the 3D book stage
   useEffect(() => {

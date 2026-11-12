@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { parseCatalogQuery } from './query-parser';
+import { parseCatalogQuery, DEFAULT_QUOTE_POOL_LIMIT } from './query-parser';
 import { GEO_COOKIE_NAME } from '@/proxy';
 
 describe('parseCatalogQuery', () => {
@@ -84,12 +84,12 @@ describe('parseCatalogQuery', () => {
     expect(options.languages).toEqual(['en', 'fr', 'de']);
   });
 
-  it('parses pool=quotes parameter and supports expanded limit up to 600', () => {
-    // 1. Explicit pool=quotes with omitted limit defaults to 600
+  it('parses pool=quotes parameter with 48 default limit and supports expanded limit up to 600', () => {
+    // 1. Explicit pool=quotes with omitted limit defaults to DEFAULT_QUOTE_POOL_LIMIT (48)
     const req1 = new NextRequest('http://localhost:3000/api/books?pool=quotes');
     const options1 = parseCatalogQuery(req1);
     expect(options1.pool).toBe('quotes');
-    expect(options1.limit).toBe(600);
+    expect(options1.limit).toBe(DEFAULT_QUOTE_POOL_LIMIT);
 
     // 2. Custom valid limit up to 600
     const req2 = new NextRequest('http://localhost:3000/api/books?pool=quotes&limit=250');
@@ -97,11 +97,11 @@ describe('parseCatalogQuery', () => {
     expect(options2.pool).toBe('quotes');
     expect(options2.limit).toBe(250);
 
-    // 3. Excessive limit above 600 defaults to 600
+    // 3. Excessive limit above 600 defaults to DEFAULT_QUOTE_POOL_LIMIT (48)
     const req3 = new NextRequest('http://localhost:3000/api/books?pool=quotes&limit=9999');
     const options3 = parseCatalogQuery(req3);
     expect(options3.pool).toBe('quotes');
-    expect(options3.limit).toBe(600);
+    expect(options3.limit).toBe(DEFAULT_QUOTE_POOL_LIMIT);
 
     // 4. Invalid or unrecognized pool values are ignored
     const req4 = new NextRequest('http://localhost:3000/api/books?pool=invalid&limit=50');

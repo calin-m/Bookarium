@@ -1872,6 +1872,25 @@ function pass5AdrValidation() {
             `Version drift in README.md Latest Improvements: expected "## 🛠️ Latest Improvements (v${pkgVersion})" (run "npm run docs:sync").`
           );
         }
+
+        const cleanDepVer = (raw) => String(raw || '').replace(/^[~^>=<\s]+/, '').trim();
+        const expectedBadgeTokens = [
+          { label: 'Next.js', token: `badge/Next.js-${cleanDepVer(pkgMeta.dependencies?.next)}%20(Turbopack)` },
+          { label: 'React', token: `badge/React-${cleanDepVer(pkgMeta.dependencies?.react)}-blue` },
+          { label: 'TypeScript', token: `badge/TypeScript-${cleanDepVer(pkgMeta.devDependencies?.typescript)}-3178C6` },
+          { label: 'Tailwind CSS', token: `badge/Tailwind%20CSS-${cleanDepVer(pkgMeta.devDependencies?.tailwindcss)}-38B2AC` },
+          {
+            label: 'Node.js',
+            token: `badge/Node.js-%3E%3D${(cleanDepVer(pkgMeta.engines?.node || '22.0.0').split('.')[0] || '22')}%20LTS`,
+          },
+        ];
+        for (const badge of expectedBadgeTokens) {
+          if (!readmeFull.includes(badge.token)) {
+            docViolations.push(
+              `Dependency badge drift in README.md for ${badge.label}: expected "${badge.token}" matching package.json (run "npm run docs:sync").`
+            );
+          }
+        }
       }
 
       const roadmapPath = path.join(rootDir, 'ROADMAP.md');

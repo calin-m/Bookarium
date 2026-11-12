@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 11 Nov 2026 22:44:47 GMT  
+**Last Generated**: Thu, 12 Nov 2026 09:48:42 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2477 passed  
+**Total Verified Tests**: 2480 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2477 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2480 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.72%** (14115/14593) — *Target: $\ge$ 95%*
-- **Statements**: **95.42%** (15231/15961) — *Target: $\ge$ 95%*
-- **Functions**: **93.99%** (3132/3332) — *Target: $\ge$ 92%*
-- **Branches**: **87.79%** (14058/16012) — *Target: $\ge$ 85%*
+- **Lines**: **96.73%** (14170/14648) — *Target: $\ge$ 95%*
+- **Statements**: **95.44%** (15292/16021) — *Target: $\ge$ 95%*
+- **Functions**: **94%** (3137/3337) — *Target: $\ge$ 92%*
+- **Branches**: **87.8%** (14107/16066) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2477 Tests)
+## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2480 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 300 Tests)
+### 🚀 App Routes & Pages (27 Suites · 301 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -165,7 +165,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
@@ -183,6 +183,7 @@
 - ✔ `should query Supabase provider first when healthy and return source supabase`
 - ✔ `should gracefully degrade to upstream Gutendex when Supabase provider throws an error`
 - ✔ `should return 503 with no-store when pool=quotes and Supabase is unavailable`
+- ✔ `should apply 12h global Edge cache for pool=quotes and 7d global Edge cache for jurisdiction-independent quote/ID lookups`
 
 </details>
 
@@ -499,7 +500,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (39 Suites · 566 Tests)
+### 🎨 Catalog & Presentation (39 Suites · 567 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -1006,7 +1007,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/HeroFeaturedBook3D.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders book title, author, and public domain badges`
 - ✔ `triggers shuffle when shuffle button is clicked`
@@ -1024,6 +1025,7 @@
 - ✔ `holds quote areas invisible until the quote pool settles, then reveals them once`
 - ✔ `does not fade the cover or right page on first paint, and only animates the content wrapper after a user shuffle`
 - ✔ `differentiates hero classic incipit from pool spreads using rawBook quote count`
+- ✔ `defers full-quote lookup on passive homepage render when 1-2 pool quotes exist and enables on shuffle or open`
 
 </details>
 
@@ -1941,7 +1943,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 582 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 583 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2122,13 +2124,13 @@
 - ✔ `parses include_restricted_metadata and has_quotes flags`
 - ✔ `automatically expands default limit up to 100 when ids batch exceeds 32 items and limit is omitted`
 - ✔ `parses comma-separated languages into string array`
-- ✔ `parses pool=quotes parameter and supports expanded limit up to 600`
+- ✔ `parses pool=quotes parameter with 48 default limit and supports expanded limit up to 600`
 - ✔ `resolves country code through the priority cascade`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (33 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2163,6 +2165,7 @@
 - ✔ `gracefully returns empty array on database error`
 - ✔ `filters out translation editions that are copyrighted or restricted in the caller jurisdiction`
 - ✔ `maps optional quotes JSONB array in mapDatabaseBookToGutendexBook when present`
+- ✔ `projects only mapped catalog metadata columns and rotates 12-hour quote pool candidate slices deterministically`
 
 </details>
 

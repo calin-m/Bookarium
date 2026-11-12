@@ -21,9 +21,14 @@ import {
   isSupabaseConfigured,
   filterValidBookPassages,
   sortQuoteEnrichedBooksDeterministically,
+  selectRotatingQuotePoolCandidateIds,
   QUOTE_POOL_COLUMNS,
+  DEFAULT_QUOTE_POOL_LIMIT,
+  QUOTE_POOL_CACHE_TTL_MS,
 } from '@/lib/catalog/supabase-provider';
 import { useHasMounted } from '@/hooks/useHasMounted';
+
+export { DEFAULT_QUOTE_POOL_LIMIT, QUOTE_POOL_CACHE_TTL_MS };
 
 export interface UseBooksParams {
   ids?: string | number;
@@ -362,6 +367,37 @@ export async function fetchFeaturedQuotesMap(
     return quotesMap;
   }
 
+  // 1. Primary: Query the 7-day Edge-cached /api/books?ids=...&has_quotes=true endpoint (s-maxage=604800)
+  try {
+    const res = await fetch(
+      `/api/books?ids=${remainingIds.join(',')}&has_quotes=true&include_restricted_metadata=true`,
+      { headers: { Accept: 'application/json' } }
+    );
+    if (res.ok) {
+      const json = (await res.json()) as { results?: unknown; source?: string };
+      if (Array.isArray(json?.results)) {
+        for (const item of json.results) {
+          if (item && typeof item === 'object' && typeof (item as GutendexBook).id === 'number') {
+            const b = item as GutendexBook;
+            const validPassages = filterValidBookPassages(b.quotes);
+            if (validPassages.length > 0) {
+              quotesMap[b.id] = validPassages;
+            }
+          }
+        }
+        if (
+          json.source === 'supabase' ||
+          remainingIds.every((id) => (quotesMap[id]?.length ?? 0) > 0)
+        ) {
+          return quotesMap;
+        }
+      }
+    }
+  } catch {
+    // Edge API unavailable or network glitch; gracefully fall through to direct Supabase client
+  }
+
+  // 2. Secondary: Direct client Supabase fallback if Edge API is unreachable
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -390,7 +426,7 @@ export async function fetchFeaturedQuotesMap(
 export const QUOTE_ENRICHED_BOOKS_CACHE_KEY = 'bookarium-quote-enriched-books-v1' as const;
 
 export function readCachedQuoteEnrichedBooks(
-  limit: number = 600
+  limit: number = DEFAULT_QUOTE_POOL_LIMIT
 ): { books: GutendexBook[]; updatedAt: number; isFresh?: boolean } | undefined {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
     return undefined;
@@ -413,7 +449,9 @@ export function readCachedQuoteEnrichedBooks(
     return {
       books: validBooks,
       updatedAt,
-      isFresh: typeof parsed.updatedAt === 'number' && now - parsed.updatedAt < 60 * 60 * 1000,
+      isFresh:
+        typeof parsed.updatedAt === 'number' &&
+        now - parsed.updatedAt < QUOTE_POOL_CACHE_TTL_MS,
     };
   } catch {
     return undefined;
@@ -444,7 +482,9 @@ export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
  * `/api/books?pool=quotes` endpoint (with graceful fallback to direct client Supabase and localStorage).
  * Trims quote spreads to 2 passages per volume to safely respect the 5 MB browser localStorage quota.
  */
-export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<GutendexBook[]> {
+export async function fetchQuoteEnrichedBooks(
+  limit: number = DEFAULT_QUOTE_POOL_LIMIT
+): Promise<GutendexBook[]> {
   const boundedLimit = Math.max(1, Math.min(600, limit));
 
   if (!isSupabaseConfigured()) {
@@ -455,7 +495,7 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
     return readCachedQuoteEnrichedBooks(boundedLimit)?.books ?? [];
   }
 
-  // 1. Primary: Query the Edge-cached /api/books?pool=quotes endpoint (s-maxage=3600)
+  // 1. Primary: Query the Edge-cached /api/books?pool=quotes endpoint (s-maxage=43200)
   try {
     const res = await fetch(`/api/books?pool=quotes&limit=${boundedLimit}`, {
       headers: { Accept: 'application/json' },
@@ -526,12 +566,17 @@ export async function fetchQuoteEnrichedBooks(limit: number = 600): Promise<Gute
       }
     }
 
+    const selectedCandidateIds = selectRotatingQuotePoolCandidateIds(
+      Array.from(candidateIdSet),
+      boundedLimit
+    );
+
     const baseSelect = supabase
       .from('books')
       .select(QUOTE_POOL_COLUMNS);
     const scopedSelect =
       baseSelect && typeof baseSelect.in === 'function'
-        ? baseSelect.in('id', Array.from(candidateIdSet))
+        ? baseSelect.in('id', selectedCandidateIds)
         : baseSelect;
 
     const { data, error } = await scopedSelect
@@ -625,7 +670,7 @@ export function useFeaturedQuotes(bookIds: number[], options: UseBooksOptions = 
 export const QUOTE_POOL_SETTLE_TIMEOUT_MS = 1500;
 
 /**
- * React Query hook fetching all quote-enriched books (`quotes <> '[]'::jsonb`) from Supabase
+ * React Query hook fetching quote-enriched books (`quotes <> '[]'::jsonb`) from Supabase
  * ordered by popularity (`download_count DESC`) to dynamically expand the Hero, Editorial,
  * and Literary Quotes pools.
  *
@@ -637,7 +682,7 @@ export function useQuoteEnrichedBooks(
   options: UseBooksOptions & { limit?: number } = {}
 ) {
   const contextClient = React.useContext(QueryClientContext);
-  const limit = options.limit ?? 600;
+  const limit = options.limit ?? DEFAULT_QUOTE_POOL_LIMIT;
   const isEnabled = options.enabled ?? true;
   const hasMounted = useHasMounted();
   const cached = React.useMemo(
@@ -657,8 +702,8 @@ export function useQuoteEnrichedBooks(
     {
       queryKey: ['quote-enriched-books', limit],
       queryFn: () => fetchQuoteEnrichedBooks(limit),
-      staleTime: 60 * 60 * 1000, // 1 hour
-      gcTime: 2 * 60 * 60 * 1000, // 2 hours
+      staleTime: QUOTE_POOL_CACHE_TTL_MS, // 12 hours
+      gcTime: QUOTE_POOL_CACHE_TTL_MS, // 12 hours
       enabled: isEnabled && hasMounted && isSupabaseConfigured() && !isCacheFresh,
     },
     contextClient ?? fallbackFeaturedQuotesClient

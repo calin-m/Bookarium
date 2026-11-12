@@ -554,6 +554,36 @@ describe('useBooks hook', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.[84]?.[0].chapterLabel).toBe('Letter I');
 
+    // 6. Resolves directly from 7-day Edge-cached /api/books?ids=...&has_quotes=true without hitting Supabase client
+    server.use(
+      http.get('/api/books', ({ request }) => {
+        const url = new URL(request.url, 'http://localhost:3000');
+        if (url.searchParams.get('has_quotes') === 'true') {
+          return HttpResponse.json({
+            count: 1,
+            source: 'supabase',
+            results: [
+              {
+                id: 2701,
+                title: 'Moby Dick',
+                quotes: [
+                  {
+                    chapterLabel: 'Loomings',
+                    openingLine: 'Call me Ishmael.',
+                    quoteExcerpt: 'Whenever I find myself growing grim about the mouth...',
+                  },
+                ],
+              },
+            ],
+          });
+        }
+        return HttpResponse.json({ results: [], count: 0 });
+      })
+    );
+    const edgeQuotesMap = await fetchFeaturedQuotesMap([2701]);
+    expect(edgeQuotesMap[2701]?.[0].chapterLabel).toBe('Loomings');
+    server.resetHandlers();
+
     clientSpy.mockRestore();
     configSpy.mockRestore();
   });

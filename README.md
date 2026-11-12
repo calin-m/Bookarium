@@ -3,18 +3,18 @@
 > **Pure Literature. Zero Paywalls. Zero API Keys Required.**
 
 [![Developed with Antigravity](https://img.shields.io/badge/Developed%20with-Google%20AI%20%2F%20Antigravity-4285F4?style=flat-square&logo=google)](https://antigravity.google)
-[![Next.js](https://img.shields.io/badge/Next.js-16.4.3%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.5%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.3.1-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.3-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.3.5-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22%20LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![PWA Offline](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=flat-square&logo=pwa)](public/sw.js)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-239%20Suites%20%7C%202477%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.72%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-239%20Suites%20%7C%202480%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.73%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2477 tests across 239 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2480 tests across 239 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,8 +110,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 <!-- BEGIN:latest-release -->
 ## 🛠️ Latest Improvements (v2.9.21)
 
-- **Selective Catalog Projection & Native 2-Spread PostgREST Slicing (`ADR-080`)**: Resolved unnecessary Server-to-Supabase egress overhead and multi-megabyte payload transfers: (1) Omitted `quotes` from default `CATALOG_METADATA_COLUMNS`, introducing `CATALOG_WITH_QUOTES_COLUMNS` strictly selected when `options.hasQuotes` is explicitly requested, ensuring standard 32-card catalog searches and prefetch misses transfer zero quote arrays; (2) Replaced full `quotes` column selection in `fetchQuoteEnrichedPool` and direct Supabase fallback `fetchQuoteEnrichedBooks` (`useBooks.ts`) with native PostgREST array element projections (`quote0:quotes->0, quote1:quotes->1`) across candidate books, reconstructing 2-spread passages via `[row.quote0, row.quote1].filter(Boolean)` with `row.quotes` fallback, eliminating in-memory slicing of 16 full spreads and reducing quote pool transfer by ~87% with zero database migrations.
-- **Browser-Tier HTTP Cache Hardening & Edge Shielding (`ADR-080`)**: Added browser-tier HTTP caching directives to shield Supabase from repetitive serverless cold runs on localhost, non-Edge environments, and user reloads: (1) Added `max-age=300` to `/api/books` (`public, max-age=300, s-maxage=3600, stale-while-revalidate=86400`), allowing client browsers to cache successful catalog search responses locally for 5 minutes; (2) Added `max-age=86400` to `/api/books/content` (`public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800`) across both Tier 1 Supabase and Tier 2 Gutenberg mirrors, enabling 24-hour browser-tier caching for unabridged novel texts so reopening cached books never re-fetches multi-megabyte plain-text over the network.
+- **Selective Catalog Projection, 11-Column Metadata Trimming & Native 2-Spread PostgREST Slicing (`ADR-080`)**: Omitted `quotes` and 4 unmapped columns (`max_author_death_year, min_author_birth_year, created_at, updated_at`) from `CATALOG_METADATA_COLUMNS` (~15% leaner catalog rows), introduced `CATALOG_WITH_QUOTES_COLUMNS` for explicit `hasQuotes` queries, warmed the 60s healthcheck cache on successful queries, and projected 2 spreads via PostgREST `quote0:quotes->0, quote1:quotes->1`.
+- **48-Volume 12-Hour Rotating Quote Pool & Interaction-Gated Hero 3D Book Quotes (`ADR-080`)**: Right-sized `DEFAULT_QUOTE_POOL_LIMIT` from `600` (`~320 KB`) to `48` (`~22 KB`, ~93% smaller payload) with `selectRotatingQuotePoolCandidateIds` on a 12-hour cycle (`QUOTE_POOL_CACHE_TTL_MS = 12h`) so 14 weekly batches (`672` slots/week) cycle 100% of all `~564` weekly quote-enriched books at `~44 KB/day`, and gated `HeroFeaturedBook3D` `useFeaturedQuotes` on `isBookOpen || hasShuffled` when pool quotes exist.
+- **Multi-Tier Vercel Edge CDN Offloading & Automated Package Badge Sync (`ADR-080`)**: Routed `fetchFeaturedQuotesMap` (`useFeaturedQuotes`) through 7-day Edge-cached `/api/books?ids=...&has_quotes=true&include_restricted_metadata=true` (`s-maxage=604800, Vary: Accept-Encoding`), set `s-maxage=43200` on `?pool=quotes`, extended catalog Edge cache to 24h (`s-maxage=86400`), upgraded `/api/books/translations` to `s-maxage=604800`, added `max-age=86400` to `/api/books/content`, and automated `package.json` -> `README.md` dependency badge sync (`Next.js 16.4.5`, `Tailwind CSS 4.3.5`) with Pass 5 verification.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

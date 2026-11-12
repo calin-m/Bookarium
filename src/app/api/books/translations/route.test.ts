@@ -70,7 +70,8 @@ describe('GET /api/books/translations', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=86400');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
     expect(res.headers.get('Vary')).toBe('x-vercel-ip-country');
     expect(supabaseCatalogProvider.getBookTranslations).toHaveBeenCalledWith(1342, 'DE');
     const json = await res.json();

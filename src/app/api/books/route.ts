@@ -69,11 +69,27 @@ export async function GET(request: NextRequest) {
       result = await gutendexProvider.searchBooks(queryOptions);
     }
 
+    const isQuotePool = queryOptions.pool === 'quotes';
+    const isJurisdictionIndependentLookup = Boolean(
+      queryOptions.includeRestrictedMetadata || (queryOptions.ids && queryOptions.hasQuotes)
+    );
+
+    const cacheControl = isQuotePool
+      ? 'public, max-age=3600, s-maxage=43200, stale-while-revalidate=604800'
+      : isJurisdictionIndependentLookup
+      ? 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000'
+      : 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
+
+    const varyHeader =
+      isQuotePool || isJurisdictionIndependentLookup
+        ? 'Accept-Encoding'
+        : 'x-vercel-ip-country, Accept-Encoding';
+
     return NextResponse.json(result, {
       status: 200,
       headers: {
-        'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
-        'Vary': 'x-vercel-ip-country, Accept-Encoding',
+        'Cache-Control': cacheControl,
+        'Vary': varyHeader,
       },
     });
   } catch (err: unknown) {

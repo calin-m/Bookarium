@@ -489,4 +489,20 @@ describe('HeroFeaturedBook3D', () => {
     renderWithClient(<HeroFeaturedBook3D featuredBook={bookWithPoolAndIncipit} />);
     expect(screen.getByTestId('hero-book-cover-quote')).toBeInTheDocument();
   });
+
+  it('defers full-quote lookup on passive homepage render when 1-2 pool quotes exist and enables on shuffle or open', async () => {
+    const booksHooks = await import('@/hooks/queries/useBooks');
+    const featuredQuotesSpy = vi.spyOn(booksHooks, 'useFeaturedQuotes');
+
+    renderWithClient(<HeroFeaturedBook3D featuredBook={mockFeaturedBook} />);
+
+    // Initial closed render with 2 spreads in mockFeaturedBook.quotes does not enable full-quote fetch
+    expect(featuredQuotesSpy).toHaveBeenLastCalledWith([1342], { enabled: false });
+
+    // Clicking shuffle enables full-quote fetch
+    fireEvent.click(screen.getByTestId('hero-book-shuffle-btn'));
+    expect(featuredQuotesSpy).toHaveBeenLastCalledWith([1342], { enabled: true });
+
+    featuredQuotesSpy.mockRestore();
+  });
 });

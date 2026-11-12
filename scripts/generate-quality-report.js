@@ -244,11 +244,61 @@ try {
   securityRuleCount = Object.keys(bookariumSecurityPlugin?.rules || {}).length || 9;
 } catch (_e) {}
 
-// Synchronize README.md and static governance docs with live test/suite/rule metrics (safe: only writes if changed)
+// Synchronize README.md and static governance docs with live package.json versions & test/suite/rule metrics (safe: only writes if changed)
+const pkgJsonPath = path.join(rootDir, 'package.json');
+let pkgVersions = null;
+if (fs.existsSync(pkgJsonPath)) {
+  try {
+    const pkgMeta = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
+    const cleanVer = (raw) => String(raw || '').replace(/^[~^>=<\s]+/, '').trim();
+    const nodeEngineRaw = cleanVer(pkgMeta.engines?.node || '22.0.0');
+    const nodeMajorVer = nodeEngineRaw.split('.')[0] || '22';
+    pkgVersions = {
+      nextVer: cleanVer(pkgMeta.dependencies?.next),
+      reactVer: cleanVer(pkgMeta.dependencies?.react),
+      tsVer: cleanVer(pkgMeta.devDependencies?.typescript),
+      tailwindVer: cleanVer(pkgMeta.devDependencies?.tailwindcss),
+      nodeMajorVer,
+    };
+  } catch (_e) {}
+}
+
 const readmePath = path.join(rootDir, 'README.md');
 if (fs.existsSync(readmePath)) {
   let readme = fs.readFileSync(readmePath, 'utf-8');
   const originalReadme = readme;
+  if (pkgVersions) {
+    if (pkgVersions.nextVer) {
+      readme = readme.replace(
+        /\[!\[Next\.js\]\(https:\/\/img\.shields\.io\/badge\/Next\.js-.*?\)\]\(https:\/\/nextjs\.org\/\)/,
+        `[![Next.js](https://img.shields.io/badge/Next.js-${pkgVersions.nextVer}%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)`
+      );
+    }
+    if (pkgVersions.reactVer) {
+      readme = readme.replace(
+        /\[!\[React\]\(https:\/\/img\.shields\.io\/badge\/React-[^)]+\)\]\(https:\/\/react\.dev\/\)/,
+        `[![React](https://img.shields.io/badge/React-${pkgVersions.reactVer}-blue?style=flat-square&logo=react)](https://react.dev/)`
+      );
+    }
+    if (pkgVersions.tsVer) {
+      readme = readme.replace(
+        /\[!\[TypeScript\]\(https:\/\/img\.shields\.io\/badge\/TypeScript-[^)]+\)\]\(https:\/\/www\.typescriptlang\.org\/\)/,
+        `[![TypeScript](https://img.shields.io/badge/TypeScript-${pkgVersions.tsVer}-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)`
+      );
+    }
+    if (pkgVersions.tailwindVer) {
+      readme = readme.replace(
+        /\[!\[Tailwind CSS\]\(https:\/\/img\.shields\.io\/badge\/Tailwind%20CSS-[^)]+\)\]\(https:\/\/tailwindcss\.com\/\)/,
+        `[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-${pkgVersions.tailwindVer}-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)`
+      );
+    }
+    if (pkgVersions.nodeMajorVer) {
+      readme = readme.replace(
+        /\[!\[Node\.js\]\(https:\/\/img\.shields\.io\/badge\/Node\.js-[^)]+\)\]\(https:\/\/nodejs\.org\/\)/,
+        `[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D${pkgVersions.nodeMajorVer}%20LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)`
+      );
+    }
+  }
   readme = readme.replace(
     /\[!\[Vitest\]\(https:\/\/img\.shields\.io\/badge\/Vitest-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
     `[![Vitest](https://img.shields.io/badge/Vitest-${totalSuitesCount}%20Suites%20%7C%20${totalTestCount}%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)`

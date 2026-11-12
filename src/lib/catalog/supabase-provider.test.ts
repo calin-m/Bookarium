@@ -988,6 +988,52 @@ describe('SupabaseCatalogProvider', () => {
       expect(mappedWithQuotes.quotes).toHaveLength(1);
       expect(mappedWithQuotes.quotes?.[0].chapterLabel).toBe('Chapter I');
     });
+
+    it('projects only mapped catalog metadata columns and rotates 12-hour quote pool candidate slices deterministically', async () => {
+      const {
+        CATALOG_METADATA_COLUMNS,
+        DEFAULT_QUOTE_POOL_LIMIT,
+        QUOTE_POOL_CACHE_TTL_MS,
+        selectRotatingQuotePoolCandidateIds,
+      } = await import('./supabase-provider');
+
+      expect(CATALOG_METADATA_COLUMNS).not.toContain('max_author_death_year');
+      expect(CATALOG_METADATA_COLUMNS).not.toContain('min_author_birth_year');
+      expect(CATALOG_METADATA_COLUMNS).not.toContain('created_at');
+      expect(CATALOG_METADATA_COLUMNS).not.toContain('updated_at');
+
+      // When candidate count <= limit, returns all unique positive IDs unchanged
+      expect(selectRotatingQuotePoolCandidateIds([1342, 84, 1342, -5], 48)).toEqual([1342, 84]);
+
+      // When candidate count > limit, slices hero + dynamic IDs deterministically per 12h window
+      const heroAndDynamicIds = [
+        1342,
+        84,
+        2701,
+        ...Array.from({ length: 120 }, (_, i) => 10000 + i),
+      ];
+      const window0Ids = selectRotatingQuotePoolCandidateIds(
+        heroAndDynamicIds,
+        DEFAULT_QUOTE_POOL_LIMIT,
+        0
+      );
+      const window1Ids = selectRotatingQuotePoolCandidateIds(
+        heroAndDynamicIds,
+        DEFAULT_QUOTE_POOL_LIMIT,
+        QUOTE_POOL_CACHE_TTL_MS
+      );
+      expect(window0Ids).toHaveLength(DEFAULT_QUOTE_POOL_LIMIT);
+      expect(window1Ids).toHaveLength(DEFAULT_QUOTE_POOL_LIMIT);
+      expect(window0Ids).not.toEqual(window1Ids);
+
+      // Exercises top-up loop when dynamicIds are fewer than remaining slots
+      const mostlyHeroIds = [
+        1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35, 2600, 135, 2554, 1400, 1260, 768, 43,
+        1952, 2542, 1232,
+      ];
+      const toppedUp = selectRotatingQuotePoolCandidateIds(mostlyHeroIds, 16, 0);
+      expect(toppedUp).toHaveLength(16);
+    });
   });
 });
 

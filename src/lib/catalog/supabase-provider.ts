@@ -17,10 +17,11 @@ import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { LITERARY_QUOTES } from '@/config/literary-quotes';
 
 /**
- * Columns explicitly selected for catalog search to prevent transferring large unabridged text or unrendered quote arrays.
+ * Columns explicitly selected for catalog search to prevent transferring large unabridged text,
+ * unrendered quote arrays, or unmapped internal indexing/timestamp columns.
  */
 export const CATALOG_METADATA_COLUMNS =
-  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year, created_at, updated_at' as const;
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, formats, download_count' as const;
 
 /**
  * Extended catalog columns including full quote passages when specifically requested by options.hasQuotes.
@@ -34,9 +35,75 @@ export const CATALOG_WITH_QUOTES_COLUMNS =
 export const QUOTE_POOL_COLUMNS =
   'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quote0:quotes->0, quote1:quotes->1' as const;
 
+/**
+ * Default number of quote-enriched books transferred per Quote Pool batch (~22 KB vs ~320 KB for 600).
+ */
+export const DEFAULT_QUOTE_POOL_LIMIT = 48;
+
+/**
+ * 12-hour cache lifetime (ms) for Quote Pool batches. Over 7 days (Sunday -> Sunday = 14 half-day windows),
+ * 14 batches x 48 books = 672 book slots, cycling through all ~564 weekly quote-enriched books.
+ */
+export const QUOTE_POOL_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
 const FEATURED_HERO_ORDER_MAP = new Map<number, number>(
   FEATURED_HERO_BOOKS.map((b, idx) => [b.id, idx])
 );
+
+/**
+ * Deterministically slices a candidate ID pool for a 12-hour cache window when the total candidate
+ * set exceeds `limit`. Preserves a rotating 12-book window of `FEATURED_HERO_BOOKS` for SSR hydration
+ * parity and fills the remaining slots by striding through the dynamic candidate IDs (`500` top + `64` recent)
+ * so 100% of the weekly Sunday-to-Sunday batch is showcased across the 14 weekly 12-hour windows.
+ */
+export function selectRotatingQuotePoolCandidateIds(
+  allCandidateIds: number[],
+  limit: number = DEFAULT_QUOTE_POOL_LIMIT,
+  timestampMs: number = Date.now()
+): number[] {
+  const boundedLimit = Math.max(1, Math.min(600, limit));
+  const uniqueIds = Array.from(
+    new Set(allCandidateIds.filter((id) => Number.isInteger(id) && id > 0))
+  );
+  if (uniqueIds.length <= boundedLimit) {
+    return uniqueIds;
+  }
+
+  const windowIndex = Math.max(0, Math.floor(timestampMs / QUOTE_POOL_CACHE_TTL_MS));
+  const heroIdsInPool = uniqueIds.filter((id) => FEATURED_HERO_ORDER_MAP.has(id));
+  const dynamicIds = uniqueIds.filter((id) => !FEATURED_HERO_ORDER_MAP.has(id));
+
+  const heroQuota = Math.min(heroIdsInPool.length, Math.min(12, Math.ceil(boundedLimit / 4)));
+  const selectedIds: number[] = [];
+
+  if (heroIdsInPool.length > 0 && heroQuota > 0) {
+    const heroStart = (windowIndex * heroQuota) % heroIdsInPool.length;
+    for (let i = 0; i < heroQuota; i++) {
+      selectedIds.push(heroIdsInPool[(heroStart + i) % heroIdsInPool.length]);
+    }
+  }
+
+  const dynamicQuota = Math.min(dynamicIds.length, boundedLimit - selectedIds.length);
+  if (dynamicIds.length > 0 && dynamicQuota > 0) {
+    const dynamicStart = (windowIndex * dynamicQuota) % dynamicIds.length;
+    for (let i = 0; i < dynamicQuota; i++) {
+      selectedIds.push(dynamicIds[(dynamicStart + i) % dynamicIds.length]);
+    }
+  }
+
+  if (selectedIds.length < boundedLimit) {
+    const chosenSet = new Set(selectedIds);
+    for (const id of uniqueIds) {
+      if (selectedIds.length >= boundedLimit) break;
+      if (!chosenSet.has(id)) {
+        selectedIds.push(id);
+        chosenSet.add(id);
+      }
+    }
+  }
+
+  return selectedIds;
+}
 
 export function filterValidBookPassages(rawQuotes: unknown): BookPassage[] {
   if (!Array.isArray(rawQuotes)) return [];
@@ -329,7 +396,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
   ): Promise<CatalogQueryResult> {
     const startTime = Date.now();
     const supabase = this.getSupabase();
-    const limit = Math.max(1, Math.min(600, options.limit || 600));
+    const limit = Math.max(1, Math.min(600, options.limit || DEFAULT_QUOTE_POOL_LIMIT));
 
     try {
       const candidateIdSet = new Set<number>([
@@ -364,12 +431,17 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         }
       }
 
+      const selectedCandidateIds = selectRotatingQuotePoolCandidateIds(
+        Array.from(candidateIdSet),
+        limit
+      );
+
       const baseSelect = supabase
         .from('books')
         .select(QUOTE_POOL_COLUMNS);
       const scopedSelect =
         baseSelect && typeof baseSelect.in === 'function'
-          ? baseSelect.in('id', Array.from(candidateIdSet))
+          ? baseSelect.in('id', selectedCandidateIds)
           : baseSelect;
 
       const { data, error } = await scopedSelect
@@ -384,6 +456,9 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           'supabase'
         );
       }
+
+      this.lastHealthCheckTime = Date.now();
+      this.lastHealthCheckResult = true;
 
       const books: GutendexBook[] = [];
       for (const row of data) {
@@ -470,6 +545,9 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           'supabase'
         );
       }
+
+      this.lastHealthCheckTime = Date.now();
+      this.lastHealthCheckResult = true;
 
       const rawRows: DatabaseBook[] = (data || []) as unknown as DatabaseBook[];
       const initialBatch = this.filterBatch(rawRows, options, country, currentYear);
