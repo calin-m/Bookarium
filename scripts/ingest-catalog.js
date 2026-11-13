@@ -60,13 +60,13 @@ const seedContentSqlPath = path.join(rootDir, 'supabase', 'seed_books_content.sq
 // Parse CLI arguments
 const args = process.argv.slice(2);
 const isHelp = args.includes('--help') || args.includes('-h');
-const isDryRun = args.includes('--dry-run');
+const _isDryRun = args.includes('--dry-run');
 const isCuratedOnly = args.includes('--curated');
 const isWithContent = args.includes('--with-content');
 const pagesArg = args.find((a) => a.startsWith('--pages='));
 const pagesToFetch = pagesArg ? Math.max(1, parseInt(pagesArg.split('=')[1], 10) || 1) : 3;
 
-if (isHelp) {
+if (isHelp && require.main === module) {
   console.log(`
 Bookarium Catalog Ingestion Engine
 ===================================
@@ -587,8 +587,20 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('✖ Ingestion failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('✖ Ingestion failed:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  resolveRepositoryOrSiteUrl,
+  resolveIngestUserAgent,
+  CURATED_CLASSICS,
+  buildStandardFormats,
+  computeLifespanBounds,
+  generateSql,
+  generateContentUpdateSql,
+};
 

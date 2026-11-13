@@ -432,7 +432,7 @@ Options:
   const translationsToInsert = [];
   let singletonsCount = 0;
 
-  for (const [workId, editions] of clusters.entries()) {
+  for (const [_workId, editions] of clusters.entries()) {
     if (editions.length < 2) {
       singletonsCount++;
       continue;

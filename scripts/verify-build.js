@@ -231,6 +231,7 @@ function pass05SecretScanner() {
     'NEXT_PUBLIC_VERCEL_URL',
     'NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL',
     'GITHUB_REPOSITORY',
+    'GITHUB_STEP_SUMMARY',
     'VERCEL_GIT_REPO_OWNER',
     'VERCEL_GIT_REPO_SLUG',
   ]);
@@ -297,8 +298,11 @@ function pass05SecretScanner() {
     }
 
     // Validate process.env.* parity with .env.example and NEXT_PUBLIC_* secret-naming prohibition
+    const isAuditedEnvFile =
+      relPath.startsWith('src/') ||
+      (relPath.startsWith('scripts/') && !relPath.startsWith('scripts/eslint-rules/'));
     if (
-      relPath.startsWith('src/') &&
+      isAuditedEnvFile &&
       /\.(ts|tsx|js|jsx)$/.test(relPath) &&
       !relPath.includes('.test.') &&
       !relPath.includes('.spec.')
@@ -306,6 +310,7 @@ function pass05SecretScanner() {
       const envRefs = content.matchAll(/\bprocess\.env\.([A-Z][A-Z0-9_]+)\b/g);
       for (const ref of envRefs) {
         const varName = ref[1];
+        if (varName.endsWith('_')) continue;
         if (secretNextPublicRegex.test(varName)) {
           violations.push({
             file: relPath,
@@ -1193,9 +1198,17 @@ function pass4DocsSync() {
   try {
     require('./generate-architecture-matrix.js');
     require('./generate-parser-docs.js');
-    require('./generate-changelog.js');
+    const {
+      syncReleaseVersionFiles,
+      generateChangelog,
+      syncReadmeLatestRelease,
+    } = require('./generate-changelog.js');
+    syncReleaseVersionFiles();
+    generateChangelog();
+    syncReadmeLatestRelease();
     require('./generate-quality-report.js');
-    require('./generate-roadmap.js');
+    const { generateRoadmapMarkdown } = require('./generate-roadmap.js');
+    fs.writeFileSync(path.join(rootDir, 'ROADMAP.md'), generateRoadmapMarkdown(), 'utf-8');
     logPass('docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, CHANGELOG.md, docs/QUALITY_AUDIT_REPORT.md, and ROADMAP.md synced successfully from source AST.');
     return true;
   } catch (err) {
@@ -1282,7 +1295,7 @@ function pass5AdrValidation() {
     'src/lib',
     'src/config',
     'src/workers',
-    'src/app/api',
+    'src/app',
   ];
   const exemptCoLocatedFiles = new Set([
     'src/lib/gutenberg/index.ts',
@@ -1335,6 +1348,26 @@ function pass5AdrValidation() {
 
   for (const dir of coLocatedDirs) {
     verifyCoLocatedTests(dir);
+  }
+
+  // Enforce 1:1 co-located *.test.ts coverage for CLI ingestion & security AST pipeline scripts
+  // (Dev/doc/build runners such as verify-build.js & generate-*.js are executed directly in Pass 4/5 to avoid circular Vitest invocation)
+  const requiredPipelineScriptTests = [
+    'scripts/ingest-catalog.js',
+    'scripts/ingest-translations.js',
+    'scripts/sync-featured-quotes.js',
+    'scripts/sync-gutenberg-catalog.js',
+    'scripts/eslint-rules/bookarium-security.js',
+  ];
+  for (const relScript of requiredPipelineScriptTests) {
+    const absScript = path.join(rootDir, relScript);
+    if (!fs.existsSync(absScript)) continue;
+    const expectedTestRel = relScript.replace(/\.js$/, '.test.ts');
+    if (!fs.existsSync(path.join(rootDir, expectedTestRel))) {
+      docViolations.push(
+        `Missing mandatory co-located pipeline test suite for "${relScript}" (expected ${expectedTestRel}).`
+      );
+    }
   }
 
   // 4. SQL Schema <-> TypeScript database.types.ts 1:1 Table & Column Parity Gate (Rule 9)
@@ -1817,6 +1850,7 @@ function pass5AdrValidation() {
 
     const dirtyFiles = new Set();
     let hasNewProductionOrSchemaChange = false;
+    let hasEditedExistingBehavior = false;
     for (const line of statusLines) {
       const statusCode = line.slice(0, 2).trim();
       const rawPath = line.slice(2).trim().replace(/^"|"$/g, '');
@@ -1824,15 +1858,18 @@ function pass5AdrValidation() {
       dirtyFiles.add(cleanPath);
 
       const isNewFile = statusCode === '??' || statusCode.includes('A');
+      const isProductionCode =
+        cleanPath.startsWith('src/') &&
+        !cleanPath.includes('.test.') &&
+        !cleanPath.includes('.spec.');
       if (
-        (isNewFile &&
-          cleanPath.startsWith('src/') &&
-          !cleanPath.includes('.test.') &&
-          !cleanPath.includes('.spec.')) ||
+        (isNewFile && isProductionCode) ||
         (isNewFile && cleanPath.startsWith('scripts/') && cleanPath.endsWith('.js')) ||
         cleanPath === 'supabase/schema.sql'
       ) {
         hasNewProductionOrSchemaChange = true;
+      } else if (!isNewFile && (isProductionCode || /^scripts\/generate-.*\.js$/.test(cleanPath))) {
+        hasEditedExistingBehavior = true;
       }
     }
 
@@ -1842,6 +1879,15 @@ function pass5AdrValidation() {
     ) {
       docViolations.push(
         'Multi-batch drift guard: Working tree contains new production modules/scripts or supabase/schema.sql modifications, but scripts/generate-changelog.js / CHANGELOG.md have not been updated (update release notes and run "npm run docs:sync").'
+      );
+    } else if (
+      hasEditedExistingBehavior &&
+      !dirtyFiles.has('scripts/generate-architecture-matrix.js') &&
+      !dirtyFiles.has('docs/DECISIONS.md') &&
+      !dirtyFiles.has('scripts/generate-changelog.js')
+    ) {
+      console.log(
+        `${colors.yellow}⚠ [ADVISORY] Existing production modules were modified without updating scripts/generate-architecture-matrix.js, docs/DECISIONS.md, or scripts/generate-changelog.js — verify living docs if contracts or behavior changed.${colors.reset}`
       );
     }
   } catch {
@@ -2211,4 +2257,13 @@ async function runAllGateways() {
   process.exit(0);
 }
 
-runAllGateways();
+if (require.main === module) {
+  runAllGateways();
+}
+
+module.exports = {
+  pass05SecretScanner,
+  pass075SecurityAndSastAudit,
+  pass5AdrValidation,
+  runAllGateways,
+};

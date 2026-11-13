@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const ingestTranslations = require('./ingest-translations');
 const {
   normalizeLanguageToCode,
   extractAuthorSurname,
@@ -11,7 +12,7 @@ const {
   loadFallbackSnapshot,
   filterValidCatalogBookIds,
   generateAtomicSeedSql,
-} = require('./ingest-translations');
+} = ingestTranslations;
 
 describe('scripts/ingest-translations Engine', () => {
   describe('normalizeLanguageToCode', () => {

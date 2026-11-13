@@ -12,7 +12,6 @@ const eslintConfig = defineConfig([
     "build/**",
     "coverage/**",
     "public/**",
-    "scripts/**",
     "*.d.ts"
   ]),
   {
@@ -22,7 +21,11 @@ const eslintConfig = defineConfig([
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_"
+        }
       ],
       "@typescript-eslint/no-explicit-any": "error",
       "react/display-name": "off",
@@ -36,6 +39,12 @@ const eslintConfig = defineConfig([
       "bookarium-security/no-secret-env-or-public-route-leak": "error",
       "bookarium-security/no-focused-or-tautological-tests": "error",
       "bookarium-security/enforce-gutenberg-and-copyright-policy": "error"
+    }
+  },
+  {
+    files: ["scripts/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off"
     }
   },
   {

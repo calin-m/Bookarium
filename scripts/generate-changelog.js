@@ -9,6 +9,19 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.24',
+    date: '2026-11-13',
+    title: 'Scripts ESLint Enforcement, Non-Circular Pipeline Tests, Pass 4 Generator Sync & Governance Alignment',
+    sections: {
+      Fixed: [
+        'Script Workspace ESLint Coverage & Unused Binding Remediation (`eslint.config.mjs`, `scripts/eslint-rules/bookarium-security.js`, `scripts/generate-parser-docs.js`, `scripts/ingest-catalog.js`, `scripts/ingest-translations.js`, `scripts/ingest-catalog.test.ts`, `scripts/ingest-translations.test.ts`, `scripts/sync-gutenberg-catalog.test.ts`, `ADR-073`): Removed `scripts/**` from `globalIgnores` in `eslint.config.mjs`, scoped `@typescript-eslint/no-require-imports: "off"` to `scripts/**/*.js` with `caughtErrorsIgnorePattern: "^_"`, and resolved script lint warnings and single-line test `require()` disable placement with zero warnings.',
+        'Non-Circular CLI Catalog Pipeline Testing & Vitest V8 Scope Isolation (`scripts/ingest-catalog.js`, `scripts/ingest-catalog.test.ts`, `scripts/verify-build.js`, `vitest.config.mts`, `ADR-073`): Guarded `scripts/ingest-catalog.js` CLI entrypoints behind `require.main === module`, exported pure SQL and URL helpers tested by co-located `scripts/ingest-catalog.test.ts` (9 tests), and enforced Pass 5 1:1 co-location across all `src/app/**` entrypoints and 5 testable CLI/security scripts (241 Vitest suites) while keeping standalone verify/doc/hook runners outside `src/` V8 coverage.',
+        'Verification Engine Pass 4 Direct Generator Execution & Pass 0.5/Pass 5 Drift Fixes (`scripts/verify-build.js`, `scripts/generate-quality-report.js`, `.husky/pre-commit`, `ADR-073`): Updated `pass4DocsSync()` to invoke exported generators from `generate-changelog.js` and `generate-roadmap.js`, extended Pass 0.5 `.env.example` scanning across `scripts/` (excluding `scripts/eslint-rules/` and trailing-`_` tokens), added non-blocking Pass 5 `[ADVISORY]` architecture-sync drift logging, updated cold-start fallback coverage baselines in `generate-quality-report.js`, and aligned `.husky/pre-commit` staging across all generated outputs.',
+        'Governance, Architecture Matrix & Hook Manifest Terminology Alignment (`AGENTS.md`, `.agents/AGENTS.md`, `docs/DECISIONS.md`, `docs/PIPELINE_GUIDE.md`, `README.md`, `SECURITY.md`, `CONTRIBUTING.md`, `scripts/generate-architecture-matrix.js`, `ADR-073`): Clarified `approval-gate.js` / `.agents/hooks.json` command-manifest binding validation, aligned CI workflow snippets (`npm ci` + `npm run verify:build`) and `241`-suite / `14`-table / `8`-store / `7`-store cloud sync / `limit=48` / RSC bypass descriptions, and registered `ingest-catalog.test.ts` across living architecture diagrams.',
+      ],
+    },
+  },
+  {
     version: '2.9.23',
     date: '2026-11-13',
     title: 'Supabase Auth, Cloud Sync Coalescing, 15s Store Cooldowns, GlobalThis Server Caches, Cover Cache Parity & Fail-Closed MSW Isolation',

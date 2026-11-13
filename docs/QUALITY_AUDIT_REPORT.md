@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 13 Nov 2026 10:21:38 GMT  
+**Last Generated**: Fri, 13 Nov 2026 11:08:43 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 240 passed  
-**Total Verified Tests**: 2513 passed  
+**Total Test Suites**: 241 passed  
+**Total Verified Tests**: 2522 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **240/240 test suites passed** (2513 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **241/241 test suites passed** (2522 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -29,11 +29,11 @@
 - **Lines**: **96.48%** (14514/15043) — *Target: $\ge$ 95%*
 - **Statements**: **95.18%** (15639/16430) — *Target: $\ge$ 95%*
 - **Functions**: **93.99%** (3176/3379) — *Target: $\ge$ 92%*
-- **Branches**: **87.69%** (14469/16499) — *Target: $\ge$ 85%*
+- **Branches**: **87.69%** (14468/16499) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (240 Suites / 2513 Tests)
+## 🧪 Comprehensive Test Suite Catalog (241 Suites / 2522 Tests)
 
 ### 🚀 App Routes & Pages (27 Suites · 306 Tests)
 
@@ -1962,7 +1962,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 591 Tests)
+### 📚 Gutenberg Parsers & Metadata (47 Suites · 600 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2739,6 +2739,21 @@
 - ✔ `permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries`
 - ✔ `flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")`
 - ✔ `verifies zero AST or taint violations across the entire production src/ directory`
+
+</details>
+
+<details>
+<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (9 tests)</summary>
+
+- ✔ `prioritizes explicit NEXT_PUBLIC_GITHUB_REPO and optional contact email`
+- ✔ `falls back through GITHUB_REPOSITORY and VERCEL_GIT_REPO_* cleanly`
+- ✔ `enforces public-domain copyright=false and contributor records across all curated titles`
+- ✔ `constructs standard HTTPS Project Gutenberg format URLs`
+- ✔ `returns null bounds when contributor lists are empty`
+- ✔ `computes max death across authors and translators under Berne Art. 7bis/Art. 2(3)`
+- ✔ `uses birth + 100 heuristic when death_year is missing, and fails closed if any contributor lacks both years`
+- ✔ `emits idempotent ON CONFLICT upsert SQL and escapes single quotes safely`
+- ✔ `emits dollar-quoted idempotent content UPDATE statements only for books with content`
 
 </details>
 

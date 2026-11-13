@@ -3,6 +3,7 @@ import { Readable } from 'stream';
 import fs from 'fs';
 import path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const syncGutenbergCatalog = require('./sync-gutenberg-catalog');
 const {
   CATALOG_DIFF_SELECT_COLUMNS,
   GUTENBERG_RDF_FEED_MIRRORS,
@@ -32,7 +33,7 @@ const {
   loadCatalogSnapshotCache,
   saveCatalogSnapshotCache,
   computeCatalogQuotePoolDiff,
-} = require('./sync-gutenberg-catalog');
+} = syncGutenbergCatalog;
 
 describe('sync-gutenberg-catalog parser', () => {
   describe('parseContributors', () => {

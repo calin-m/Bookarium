@@ -19,10 +19,10 @@ if (fs.existsSync(resultsJsonPath)) {
 }
 
 let coverage = {
-  lines: { pct: 91.59, total: 5562, covered: 5094 },
-  statements: { pct: 89.26, total: 6397, covered: 5710 },
-  functions: { pct: 87.97, total: 1380, covered: 1214 },
-  branches: { pct: 80.58, total: 5253, covered: 4233 },
+  lines: { pct: 96.51, total: 15043, covered: 14519 },
+  statements: { pct: 95.24, total: 16430, covered: 15648 },
+  functions: { pct: 94.02, total: 3379, covered: 3177 },
+  branches: { pct: 87.65, total: 16499, covered: 14462 },
 };
 
 if (existingResults?.gateways?.pass3_coverage?.metrics?.lines >= 80) {

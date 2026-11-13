@@ -59,7 +59,7 @@ function extractConfig() {
 function extractModuleExports(filename) {
   const filePath = path.join(gutenbergDir, filename);
   if (!fs.existsSync(filePath)) return [];
-  const { code, ast } = parseAst(filePath);
+  const { ast } = parseAst(filePath);
   const exportsList = [];
 
   traverse(ast, {

@@ -407,7 +407,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run verify`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env-parity across \`src/\` & \`scripts/\`/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 direct generator docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location across \`src/app/**\` & CLI scripts/advisory-sync/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
     },
     {
       name: 'eslint-rules/bookarium-security.js',
@@ -487,7 +487,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run catalog:ingest`',
       nodeApis: '`fs`, `path`, `readline`',
       responsibility:
-        'Direct CLI tool for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase.',
+        'Direct CLI tool (`require.main === module` guarded) for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase, exporting pure SQL/URL helpers verified by `ingest-catalog.test.ts`.',
     },
     {
       name: 'ingest-translations.js',
@@ -511,7 +511,7 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run gate:approve`',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Pre-commit hook governance verifying mutation approval tokens (.agents/hooks.json).',
+        'Pre-commit governance gate validating `.agents/hooks.json` command definitions against `package.json` scripts prior to commit.',
     },
     {
       name: 'open-browser.js',
@@ -573,7 +573,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: 'eslint.config.mjs',
       layer: `ESLint 10 Flat Config, Zero-Any & ${getSecurityPluginRuleCount()}-Rule AST Security Gate`,
       responsibility:
-        `Enforces \`eslint-config-next/core-web-vitals\`, \`eslint-config-next/typescript\`, strict \`@typescript-eslint/no-explicit-any: "error"\`, and the in-repo \`bookarium-security\` AST & intra-procedural taint plugin (${getSecurityPluginRuleCount()} rules) with \`--max-warnings 0\`.`,
+        `Enforces \`eslint-config-next/core-web-vitals\`, \`eslint-config-next/typescript\`, strict \`@typescript-eslint/no-explicit-any: "error"\`, and the in-repo \`bookarium-security\` AST & intra-procedural taint plugin (${getSecurityPluginRuleCount()} rules) across both \`src/**\` and \`scripts/**\` (\`scripts/**/*.js\` scoped CJS \`require()\` allowance) with \`--max-warnings 0\`.`,
     },
     {
       name: 'knip.json',
@@ -594,7 +594,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: '.husky/pre-commit',
       layer: 'Git Pre-Commit Quality & Approval Gate',
       responsibility:
-        'Executes `npm run gate:approve` (`scripts/approval-gate.js`) and `npm run verify` (`scripts/verify-build.js`) prior to any commit creation.',
+        'Executes `npm run gate:approve` (`scripts/approval-gate.js`) and `npm run verify` (`scripts/verify-build.js`), then stages all synchronized release/doc/governance outputs prior to commit creation.',
     },
     {
       name: 'AGENTS.md & .agents/AGENTS.md',
@@ -606,9 +606,9 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
     {
       name: '.agents/hooks.json',
       file: '.agents/hooks.json',
-      layer: 'Deterministic Mutation Approval Ledger',
+      layer: 'Deterministic Hook Manifest Ledger',
       responsibility:
-        'Machine-verified governance configuration gating file mutations and pre-commit verification.',
+        'Machine-verified governance hook manifest defining `pre_commit` and `post_doc_sync` npm command bindings validated by `scripts/approval-gate.js`.',
     },
   ];
 
@@ -1944,7 +1944,7 @@ function generateMarkdown() {
     '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
     '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, gutendex-provider"]',
     '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
-    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI Pipelines (sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts)"]`,
+    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI & Security Pipelines (ingest-catalog.test.ts, sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts, bookarium-security.test.ts)"]`,
     '    end',
     '',
     '    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]',
@@ -1984,13 +1984,15 @@ function generateMarkdown() {
         ? 'AST & Request-Taint Security Suite'
         : 'CLI Data Pipeline Test Suite';
     const scriptSuiteRole =
-      baseName === 'ingest-translations.test.ts'
-        ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
-        : baseName === 'sync-featured-quotes.test.ts'
-          ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), `--diff-file=quote-diff.json` zero-scan pool consumption, post-batch `1-for-1` sliding window auto-pruning, single-line console progress (`formatConsoleSummary`) and Markdown summary reporting (`formatRunReport`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
-          : baseName === 'bookarium-security.test.ts'
-            ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
-            : 'Hermetic unit & integration tests verifying Project Gutenberg `rdf-files.tar.bz2` and `pg_catalog.csv.gz` streaming decompression across 3 mirrors, CSV RFC 4180 parsing, author lifespan extraction, in-RAM `--cache-file=gutenberg-catalog-cache.json.gz` snapshot diffing and `--diff-output=quote-diff.json` emission (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and sticky dynamic Supabase batch upserts.';
+      baseName === 'ingest-catalog.test.ts'
+        ? 'Hermetic unit tests verifying `ingest-catalog.js` URL/User-Agent resolvers, `CURATED_CLASSICS` SQL seed generation, `computeLifespanBounds`, and incremental content update SQL without running the CLI entrypoint.'
+        : baseName === 'ingest-translations.test.ts'
+          ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
+          : baseName === 'sync-featured-quotes.test.ts'
+            ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), `--diff-file=quote-diff.json` zero-scan pool consumption, post-batch `1-for-1` sliding window auto-pruning, single-line console progress (`formatConsoleSummary`) and Markdown summary reporting (`formatRunReport`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
+            : baseName === 'bookarium-security.test.ts'
+              ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
+              : 'Hermetic unit & integration tests verifying Project Gutenberg `rdf-files.tar.bz2` and `pg_catalog.csv.gz` streaming decompression across 3 mirrors, CSV RFC 4180 parsing, author lifespan extraction, in-RAM `--cache-file=gutenberg-catalog-cache.json.gz` snapshot diffing and `--diff-output=quote-diff.json` emission (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and sticky dynamic Supabase batch upserts.';
     lines.push(
       `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | ${scriptSuiteLayer} | ${scriptSuiteRole} |`
     );
