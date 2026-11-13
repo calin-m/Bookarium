@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useOfflineBooks } from './useOfflineBooks';
 import { mockBooks } from '@/mocks/handlers';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBookIds: vi.fn().mockResolvedValue([11]),
@@ -606,5 +607,135 @@ describe('useOfflineBooks hook', () => {
     expect(result.current.offlineBooks[0].authors[0].name).toBe('Carroll, Lewis');
 
     fetchSpy.mockRestore();
+  });
+
+  it('commits offlineBookIds, offlineBooks, and isLoaded atomically when getAllOfflineBookMetas resolves slower than getOfflineBookIds', async () => {
+    const { getOfflineBookIds, getAllOfflineBookMetas } = await import('@/lib/offline-storage');
+    let resolveMetas!: (books: typeof mockBooks) => void;
+    const deferredMetas = new Promise<typeof mockBooks>((resolve) => {
+      resolveMetas = resolve;
+    });
+
+    vi.mocked(getOfflineBookIds).mockResolvedValueOnce([11, 84]);
+    vi.mocked(getAllOfflineBookMetas).mockReturnValueOnce(deferredMetas);
+
+    const observedStates: Array<{ idsLen: number; booksLen: number; isLoaded: boolean }> = [];
+    const { result } = renderHook(() => {
+      const hook = useOfflineBooks();
+      observedStates.push({
+        idsLen: hook.offlineBookIds.length,
+        booksLen: hook.offlineBooks.length,
+        isLoaded: hook.isLoaded,
+      });
+      return hook;
+    });
+
+    // Allow fast getOfflineBookIds() microtask to settle while metas are still pending
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // Must not expose ids=[11,84] with books=[] before metadata arrives
+    expect(result.current.offlineBookIds).toEqual([]);
+    expect(result.current.offlineBooks).toEqual([]);
+    expect(result.current.isLoaded).toBe(false);
+
+    await act(async () => {
+      resolveMetas([mockBooks[0], { ...mockBooks[0], id: 84, title: 'Frankenstein' }]);
+      await deferredMetas;
+    });
+
+    expect(result.current.offlineBookIds).toEqual([11, 84]);
+    expect(result.current.offlineBooks).toHaveLength(2);
+    expect(result.current.isLoaded).toBe(true);
+    expect(observedStates.some((s) => s.idsLen === 2 && s.booksLen === 0)).toBe(false);
+  });
+
+  it('discards stale slower storage reads when a newer offline-updated event completes first', async () => {
+    const { getOfflineBookIds, getAllOfflineBookMetas } = await import('@/lib/offline-storage');
+    let resolveMountMetas!: (books: typeof mockBooks) => void;
+    const staleMountMetas = new Promise<typeof mockBooks>((resolve) => {
+      resolveMountMetas = resolve;
+    });
+
+    vi.mocked(getOfflineBookIds).mockResolvedValueOnce([11]);
+    vi.mocked(getAllOfflineBookMetas).mockReturnValueOnce(staleMountMetas);
+
+    const { result } = renderHook(() => useOfflineBooks());
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Trigger a newer refresh that settles immediately with [11, 84]
+    vi.mocked(getOfflineBookIds).mockResolvedValueOnce([11, 84]);
+    vi.mocked(getAllOfflineBookMetas).mockResolvedValueOnce([
+      mockBooks[0],
+      { ...mockBooks[0], id: 84, title: 'Frankenstein' },
+    ]);
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('bookarium:offline-updated'));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.offlineBookIds).toEqual([11, 84]);
+      expect(result.current.offlineBooks).toHaveLength(2);
+    });
+
+    // Now settle the older initial read with stale [11]; it must be ignored
+    await act(async () => {
+      resolveMountMetas([mockBooks[0]]);
+      await staleMountMetas;
+    });
+
+    expect(result.current.offlineBookIds).toEqual([11, 84]);
+    expect(result.current.offlineBooks).toHaveLength(2);
+
+    // Subsequent offline-updated with [] clears offlineBooks cleanly
+    vi.mocked(getOfflineBookIds).mockResolvedValueOnce([]);
+    vi.mocked(getAllOfflineBookMetas).mockResolvedValueOnce([]);
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('bookarium:offline-updated'));
+    });
+
+    await waitFor(() => {
+      expect(result.current.offlineBookIds).toEqual([]);
+      expect(result.current.offlineBooks).toEqual([]);
+    });
+
+    // activeBookshelfId === '__downloaded__' marks isLoaded=true even when offlineBookIds is []
+    useBookshelfStore.setState({ activeBookshelfId: '__downloaded__' });
+    vi.mocked(getOfflineBookIds).mockResolvedValueOnce([]);
+    vi.mocked(getAllOfflineBookMetas).mockResolvedValueOnce([]);
+    const downloadedHook = renderHook(() => useOfflineBooks());
+    await waitFor(() => {
+      expect(downloadedHook.result.current.isLoaded).toBe(true);
+    });
+    downloadedHook.unmount();
+    useBookshelfStore.setState({ activeBookshelfId: null });
+
+    // refreshOfflineIds after unmount ignores late resolution cleanly
+    let resolveLateRefresh!: (ids: number[]) => void;
+    vi.mocked(getOfflineBookIds).mockReturnValueOnce(
+      new Promise<number[]>((resolve) => {
+        resolveLateRefresh = resolve;
+      })
+    );
+    const { result: lateResult, unmount: unmountLate } = renderHook(() => useOfflineBooks());
+    // Consume initial mount call
+    await waitFor(() => {
+      expect(getOfflineBookIds).toHaveBeenCalled();
+    });
+    vi.mocked(getOfflineBookIds).mockReturnValueOnce(
+      new Promise<number[]>((resolve) => {
+        resolveLateRefresh = resolve;
+      })
+    );
+    const refreshPromise = lateResult.current.refreshOfflineIds();
+    unmountLate();
+    resolveLateRefresh([99]);
+    await refreshPromise;
   });
 });

@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.27',
+    date: '2026-11-13',
+    title: 'Authoritative Reader Bookmark Deletion Sync & Atomic Offline Shelf Hydration',
+    sections: {
+      Fixed: [
+        'Authoritative Reader Bookmark Deletion Sync, Dirty Position Tracking & Upload-Verified Watermark (`src/stores/useReaderStore.ts`, `src/stores/useReaderStore.test.ts`, `docs/DECISIONS.md`, `ADR-080`): Eliminated cross-tab and cross-device bookmark resurrection when a reading position is deleted in one session while another tab stays open or reconnects. Added persisted `lastReaderSyncAt` and `dirtyPositionBookIds` tracking with snapshot-verified clearing (`clearUploadedDirtyPositions`), `0%` Page-1 ghost dirty-flag scrubbing across save/debounce/sync paths, boolean upload confirmation (`upsertReadingProgressBatch`, `syncReadingPositionToCloud`), monotonic sync anchoring (`Math.max(syncSnapshotStartedAtMs, maxRemoteTimeMs)`), dirty cooldown bypass, standalone `Finished` preservation, and full `resetReaderSession()` teardown parity.',
+        'Atomic IndexedDB Offline Hydration & Downloaded Pill Count Stabilization (`src/hooks/useOfflineBooks.ts`, `src/hooks/useOfflineBooks.test.ts`, `src/components/presentation/BookshelfRack.test.tsx`, `scripts/generate-architecture-matrix.js`, `ADR-080`): Replaced uncoordinated `getOfflineBookIds()` and `getAllOfflineBookMetas()` `.then()` chains in `useOfflineBooks` with shared `readOfflineIdsAndMetas()` (`Promise.allSettled`) + `applyOfflineSnapshot()` coordination gated by a monotonic `syncEpochRef` stale-read guard across mount, `OFFLINE_BOOKS_UPDATED_EVENT`, and `refreshOfflineIds` refreshes while keeping `getStorageQuota` non-blocking, eliminating transient `Downloaded` pill count flickers without breaking partial-rejection resilience.',
+      ],
+    },
+  },
+  {
     version: '2.9.26',
     date: '2026-11-13',
     title: 'Holistic Route Metadata, Reader JSON-LD, Public Scholar SEO & Living Architecture Sync',

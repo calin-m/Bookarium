@@ -49,6 +49,8 @@ export interface ReaderState {
   readingProgress: Record<number, number>;
   readingPositions: Record<number, BookReadingPosition>;
   deletedPositionBookIds: number[];
+  dirtyPositionBookIds: number[];
+  lastReaderSyncAt: string | null;
   isMobileTrayOpen: boolean;
 
   /**
@@ -82,7 +84,7 @@ export interface ReaderState {
   clearReadingPosition: (bookId: number, userId?: string) => Promise<void>;
   clearAllVolumes: (userId?: string) => Promise<void>;
   resetReaderSession: () => void;
-  syncReadingPositionToCloud: (bookId: number, position: BookReadingPosition, userId: string) => Promise<void>;
+  syncReadingPositionToCloud: (bookId: number, position: BookReadingPosition, userId: string) => Promise<boolean>;
   restoreReadingPositionFromCloud: (bookId: number, userId: string) => Promise<BookReadingPosition | null>;
   syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
 }
@@ -164,21 +166,46 @@ function buildReadingProgressCloudRow(
   };
 }
 
+function clearUploadedDirtyPositions(
+  state: Pick<ReaderState, 'dirtyPositionBookIds' | 'readingPositions'>,
+  uploadedSnapshots: ReadonlyArray<{ bookId: number; lastReadAt?: string }>
+): number[] {
+  if (uploadedSnapshots.length === 0 || state.dirtyPositionBookIds.length === 0) {
+    return state.dirtyPositionBookIds;
+  }
+  const snapshotMap = new Map<number, string | undefined>();
+  for (const entry of uploadedSnapshots) {
+    snapshotMap.set(entry.bookId, entry.lastReadAt);
+  }
+  return state.dirtyPositionBookIds.filter((id) => {
+    if (!snapshotMap.has(id)) return true;
+    const currentPos = state.readingPositions[id];
+    const uploadedAt = snapshotMap.get(id);
+    // Keep dirty if a newer local save arrived while the upload was in flight
+    return Boolean(currentPos && uploadedAt && currentPos.lastReadAt !== uploadedAt);
+  });
+}
+
 async function upsertReadingProgressBatch(
   supabase: ReturnType<typeof createClient>,
   rows: ReadingProgressCloudRowPair[]
-): Promise<void> {
-  if (rows.length === 0) return;
+): Promise<boolean> {
+  if (rows.length === 0) return true;
   const fullArg = rows.length === 1 ? rows[0].fullPayload : rows.map((r) => r.fullPayload);
   const upsertResult = await supabase
     .from('reading_progress')
     .upsert(fullArg, { onConflict: 'user_id,book_id' });
-  if (upsertResult?.error && /bookmark_text/i.test(String(upsertResult.error.message || ''))) {
+  if (!upsertResult?.error) {
+    return true;
+  }
+  if (/bookmark_text/i.test(String(upsertResult.error.message || ''))) {
     const baseArg = rows.length === 1 ? rows[0].basePayload : rows.map((r) => r.basePayload);
-    await supabase.from('reading_progress').upsert(baseArg, {
+    const fallbackResult = await supabase.from('reading_progress').upsert(baseArg, {
       onConflict: 'user_id,book_id',
     });
+    return !fallbackResult?.error;
   }
+  return false;
 }
 
 export const useReaderStore = create<ReaderState>()(
@@ -197,6 +224,8 @@ export const useReaderStore = create<ReaderState>()(
       readingProgress: {},
       readingPositions: {},
       deletedPositionBookIds: [],
+      dirtyPositionBookIds: [],
+      lastReaderSyncAt: null,
       isMobileTrayOpen: false,
 
       openReader: (book) => {
@@ -387,15 +416,30 @@ export const useReaderStore = create<ReaderState>()(
           };
         }
 
-        set((state) => ({
-          readingPositions: {
-            ...state.readingPositions,
-            [bookId]: enrichedPosition,
-          },
-          deletedPositionBookIds: state.deletedPositionBookIds.filter((id) => id !== bookId),
-        }));
-
         const currentUserId = userId || useAuthStore.getState().user?.id;
+        set((state) => {
+          const isGhost = isGhostReadingPosition(
+            enrichedPosition,
+            state.readingProgress[bookId] ?? 0
+          );
+          const nextDirty = !currentUserId
+            ? state.dirtyPositionBookIds
+            : isGhost
+              ? state.dirtyPositionBookIds.filter((id) => id !== bookId)
+              : state.dirtyPositionBookIds.includes(bookId)
+                ? state.dirtyPositionBookIds
+                : [...state.dirtyPositionBookIds, bookId];
+
+          return {
+            readingPositions: {
+              ...state.readingPositions,
+              [bookId]: enrichedPosition,
+            },
+            deletedPositionBookIds: state.deletedPositionBookIds.filter((id) => id !== bookId),
+            dirtyPositionBookIds: nextDirty,
+          };
+        });
+
         if (!currentUserId) return;
 
         const existingTimer = progressDebounceTimers.get(bookId);
@@ -460,25 +504,44 @@ export const useReaderStore = create<ReaderState>()(
         }
 
         if (hasChanges) {
-          set({ readingPositions: nextPositions });
           const currentUserId = useAuthStore.getState().user?.id;
+          set({ readingPositions: nextPositions });
           if (currentUserId) {
             if (enrichedBookIds.length === 1) {
               const bId = enrichedBookIds[0];
+              set((state) => ({
+                dirtyPositionBookIds: state.dirtyPositionBookIds.includes(bId)
+                  ? state.dirtyPositionBookIds
+                  : [...state.dirtyPositionBookIds, bId],
+              }));
               void get().syncReadingPositionToCloud(bId, nextPositions[bId], currentUserId);
             } else if (enrichedBookIds.length > 1) {
               const progressMap = get().readingProgress;
+              const uploadedSnapshots: Array<{ bookId: number; lastReadAt?: string }> = [];
               const batchRows = enrichedBookIds
-                .map((bId) =>
-                  buildReadingProgressCloudRow(
+                .map((bId) => {
+                  const built = buildReadingProgressCloudRow(
                     bId,
                     nextPositions[bId],
                     progressMap[bId] ?? 0,
                     currentUserId
-                  )
-                )
+                  );
+                  if (built) {
+                    uploadedSnapshots.push({
+                      bookId: bId,
+                      lastReadAt: nextPositions[bId].lastReadAt,
+                    });
+                  }
+                  return built;
+                })
                 .filter((row): row is ReadingProgressCloudRowPair => row !== null);
               if (batchRows.length > 0) {
+                const batchBookIds = uploadedSnapshots.map((entry) => entry.bookId);
+                set((state) => ({
+                  dirtyPositionBookIds: Array.from(
+                    new Set([...state.dirtyPositionBookIds, ...batchBookIds])
+                  ),
+                }));
                 void (async () => {
                   try {
                     const supabase = createClient();
@@ -488,9 +551,17 @@ export const useReaderStore = create<ReaderState>()(
                     ) {
                       return;
                     }
-                    await upsertReadingProgressBatch(supabase, batchRows);
+                    const uploaded = await upsertReadingProgressBatch(supabase, batchRows);
+                    if (uploaded) {
+                      set((state) => ({
+                        dirtyPositionBookIds: clearUploadedDirtyPositions(
+                          state,
+                          uploadedSnapshots
+                        ),
+                      }));
+                    }
                   } catch {
-                    // Silent non-blocking fallback for offline/network loss
+                    // Silent non-blocking fallback; dirtyPositionBookIds retains enriched IDs for next sync
                   }
                 })();
               }
@@ -500,10 +571,19 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       syncReadingPositionToCloud: async (bookId, position, userId) => {
-        if (!userId || !bookId) return;
+        if (!userId || !bookId) return false;
         const progress = get().readingProgress[bookId] ?? 0;
         const row = buildReadingProgressCloudRow(bookId, position, progress, userId);
-        if (!row) return;
+        if (!row) {
+          if (get().dirtyPositionBookIds.includes(bookId)) {
+            set((state) => ({
+              dirtyPositionBookIds: clearUploadedDirtyPositions(state, [
+                { bookId, lastReadAt: position.lastReadAt },
+              ]),
+            }));
+          }
+          return false;
+        }
 
         try {
           const supabase = createClient();
@@ -511,11 +591,20 @@ export const useReaderStore = create<ReaderState>()(
             shouldVerifyCloudSession(supabase) &&
             !(await verifyActiveCloudSession(supabase, userId))
           ) {
-            return;
+            return false;
           }
-          await upsertReadingProgressBatch(supabase, [row]);
+          const uploaded = await upsertReadingProgressBatch(supabase, [row]);
+          if (uploaded) {
+            set((state) => ({
+              dirtyPositionBookIds: clearUploadedDirtyPositions(state, [
+                { bookId, lastReadAt: position.lastReadAt },
+              ]),
+            }));
+          }
+          return uploaded;
         } catch {
           // Silent non-blocking fallback for offline/network loss
+          return false;
         }
       },
 
@@ -583,7 +672,8 @@ export const useReaderStore = create<ReaderState>()(
           minSyncIntervalMs > 0 &&
           !inFlightReaderSyncs.has(userId) &&
           !dirtyReaderSyncUsers.has(userId) &&
-          get().deletedPositionBookIds.length === 0
+          get().deletedPositionBookIds.length === 0 &&
+          get().dirtyPositionBookIds.length === 0
         ) {
           const lastSyncAt = lastReaderSyncByUser.get(userId);
           if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
@@ -591,7 +681,10 @@ export const useReaderStore = create<ReaderState>()(
           }
         }
 
-        if (inFlightReaderSyncs.has(userId) && get().deletedPositionBookIds.length > 0) {
+        if (
+          inFlightReaderSyncs.has(userId) &&
+          (get().deletedPositionBookIds.length > 0 || get().dirtyPositionBookIds.length > 0)
+        ) {
           dirtyReaderSyncUsers.add(userId);
         }
 
@@ -631,6 +724,7 @@ export const useReaderStore = create<ReaderState>()(
                 }
               }
 
+              const syncSnapshotStartedAtMs = Date.now();
               const { data, error } = await supabase
                 .from('reading_progress')
                 .select('*')
@@ -652,22 +746,38 @@ export const useReaderStore = create<ReaderState>()(
 
               const healedInCloud: Array<{ bookId: number; position: BookReadingPosition }> = [];
               const remoteBookIds = new Set<number>();
+              let maxRemoteTimeMs = 0;
 
               set((state) => {
                 const nextPositions = { ...state.readingPositions };
                 const nextProgress = { ...state.readingProgress };
+
+                const prunedGhostSnapshots: Array<{ bookId: number; lastReadAt?: string }> = [];
 
                 // Prune local ghost entries
                 Object.entries(nextPositions).forEach(([idStr, pos]) => {
                   const id = Number(idStr);
                   const prog = nextProgress[id] ?? 0;
                   if (isGhostReadingPosition(pos, prog)) {
+                    const pendingTimer = progressDebounceTimers.get(id);
+                    if (pendingTimer) {
+                      clearTimeout(pendingTimer);
+                      progressDebounceTimers.delete(id);
+                    }
                     delete nextPositions[id];
                     delete nextProgress[id];
+                    prunedGhostSnapshots.push({ bookId: id, lastReadAt: pos.lastReadAt });
                   }
                 });
 
                 const currentTombstones = new Set(state.deletedPositionBookIds);
+                const dirtySet = new Set(state.dirtyPositionBookIds);
+                const parsedSyncTime = state.lastReaderSyncAt
+                  ? new Date(state.lastReaderSyncAt).getTime()
+                  : 0;
+                const lastSyncTime = Number.isFinite(parsedSyncTime) ? parsedSyncTime : 0;
+                const hasAuthoritativeSync = lastSyncTime > 0;
+                const syncedRemoteSnapshots: Array<{ bookId: number; lastReadAt?: string }> = [];
 
                 data.forEach((row) => {
                   if (isGhostCloudRow(row)) return;
@@ -676,10 +786,15 @@ export const useReaderStore = create<ReaderState>()(
                   if (currentTombstones.has(bookId)) return;
                   remoteBookIds.add(bookId);
                   const localPos = nextPositions[bookId];
-                  const remoteTime = new Date(row.last_read_at).getTime();
-                  const localTime = localPos?.lastReadAt
+                  const rawRemoteTime = row.last_read_at ? new Date(row.last_read_at).getTime() : 0;
+                  const remoteTime = Number.isFinite(rawRemoteTime) ? rawRemoteTime : 0;
+                  if (remoteTime > maxRemoteTimeMs) {
+                    maxRemoteTimeMs = remoteTime;
+                  }
+                  const rawLocalTime = localPos?.lastReadAt
                     ? new Date(localPos.lastReadAt).getTime()
                     : 0;
+                  const localTime = Number.isFinite(rawLocalTime) ? rawLocalTime : 0;
 
                   // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
                   if (!localPos || remoteTime >= localTime) {
@@ -692,6 +807,7 @@ export const useReaderStore = create<ReaderState>()(
                       decodeRemoteReadingPosition(row, localPos);
                     nextPositions[bookId] = mergedPosition;
                     nextProgress[bookId] = progress;
+                    syncedRemoteSnapshots.push({ bookId, lastReadAt: localPos?.lastReadAt });
                     if (shouldKeepLocalAuthors) {
                       healedInCloud.push({ bookId, position: mergedPosition });
                     }
@@ -701,38 +817,88 @@ export const useReaderStore = create<ReaderState>()(
                   }
                 });
 
-                // Push any non-ghost local positions that do not yet exist in cloud
+                // Reconcile local-only positions: upload on initial sync or when unsynced local edits exist,
+                // otherwise prune bookmarks deleted on another device since the last authoritative sync.
                 Object.entries(nextPositions).forEach(([idStr, pos]) => {
                   const id = Number(idStr);
                   if (!remoteBookIds.has(id)) {
-                    healedInCloud.push({ bookId: id, position: pos });
+                    const rawLocalTime = pos.lastReadAt ? new Date(pos.lastReadAt).getTime() : 0;
+                    const localTime = Number.isFinite(rawLocalTime) ? rawLocalTime : 0;
+                    const hasUnsyncedLocalEdit =
+                      !hasAuthoritativeSync ||
+                      dirtySet.has(id) ||
+                      progressDebounceTimers.has(id) ||
+                      localTime > lastSyncTime;
+
+                    if (hasUnsyncedLocalEdit) {
+                      healedInCloud.push({ bookId: id, position: pos });
+                    } else {
+                      delete nextPositions[id];
+                      delete nextProgress[id];
+                    }
                   }
                 });
 
                 return {
                   readingPositions: nextPositions,
                   readingProgress: nextProgress,
+                  dirtyPositionBookIds: clearUploadedDirtyPositions(state, [
+                    ...syncedRemoteSnapshots,
+                    ...prunedGhostSnapshots,
+                  ]),
                 };
               });
 
+              let healedUploadSucceeded = true;
               if (healedInCloud.length === 1) {
                 const single = healedInCloud[0];
-                await get().syncReadingPositionToCloud(single.bookId, single.position, userId);
+                healedUploadSucceeded = await get().syncReadingPositionToCloud(
+                  single.bookId,
+                  single.position,
+                  userId
+                );
               } else if (healedInCloud.length > 1) {
                 const progressMap = get().readingProgress;
+                const uploadedSnapshots: Array<{ bookId: number; lastReadAt?: string }> = [];
                 const batchRows = healedInCloud
-                  .map((item) =>
-                    buildReadingProgressCloudRow(
+                  .map((item) => {
+                    const built = buildReadingProgressCloudRow(
                       item.bookId,
                       item.position,
                       progressMap[item.bookId] ?? 0,
                       userId
-                    )
-                  )
+                    );
+                    if (built) {
+                      uploadedSnapshots.push({
+                        bookId: item.bookId,
+                        lastReadAt: item.position.lastReadAt,
+                      });
+                    }
+                    return built;
+                  })
                   .filter((row): row is ReadingProgressCloudRowPair => row !== null);
-                await upsertReadingProgressBatch(supabase, batchRows);
+                if (batchRows.length > 0) {
+                  healedUploadSucceeded = await upsertReadingProgressBatch(supabase, batchRows);
+                  if (healedUploadSucceeded) {
+                    set((state) => ({
+                      dirtyPositionBookIds: clearUploadedDirtyPositions(state, uploadedSnapshots),
+                    }));
+                  }
+                }
               }
-              lastReaderSyncByUser.set(userId, Date.now());
+
+              if (healedUploadSucceeded) {
+                const syncAnchorIso = new Date(
+                  Math.max(syncSnapshotStartedAtMs, maxRemoteTimeMs)
+                ).toISOString();
+                set((state) => ({
+                  lastReaderSyncAt:
+                    !state.lastReaderSyncAt || syncAnchorIso > state.lastReaderSyncAt
+                      ? syncAnchorIso
+                      : state.lastReaderSyncAt,
+                }));
+                lastReaderSyncByUser.set(userId, Date.now());
+              }
             } catch {
               // Silent non-blocking fallback for offline/network loss
             }
@@ -754,7 +920,10 @@ export const useReaderStore = create<ReaderState>()(
         set((state) => {
           const nextPositions = { ...state.readingPositions };
           delete nextPositions[bookId];
-          return { readingPositions: nextPositions };
+          return {
+            readingPositions: nextPositions,
+            dirtyPositionBookIds: state.dirtyPositionBookIds.filter((id) => id !== bookId),
+          };
         });
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
@@ -799,6 +968,8 @@ export const useReaderStore = create<ReaderState>()(
           readingProgress: {},
           readingPositions: {},
           deletedPositionBookIds: [],
+          dirtyPositionBookIds: [],
+          lastReaderSyncAt: null,
           currentBook: null,
         });
       },

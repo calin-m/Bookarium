@@ -101,6 +101,19 @@ function areIdArraysEqual(a: number[], b: number[]): boolean {
   return true;
 }
 
+async function readOfflineIdsAndMetas(): Promise<{
+  idsResult: PromiseSettledResult<number[]>;
+  metasResult: PromiseSettledResult<GutendexBook[] | null>;
+}> {
+  const [idsResult, metasResult] = await Promise.allSettled([
+    getOfflineBookIds(),
+    typeof getAllOfflineBookMetas === 'function'
+      ? getAllOfflineBookMetas()
+      : Promise.resolve(null),
+  ]);
+  return { idsResult, metasResult };
+}
+
 export function useOfflineBooks() {
   const queryClient = useContext(QueryClientContext);
   const [offlineBookIds, setOfflineBookIds] = useState<number[]>([]);
@@ -112,6 +125,8 @@ export function useOfflineBooks() {
   const offlineIdsRef = useRef<number[]>([]);
   const offlineBooksRef = useRef<GutendexBook[]>([]);
   const storageQuotaRef = useRef<StorageQuotaInfo | null>(null);
+  const isMountedRef = useRef(true);
+  const syncEpochRef = useRef(0);
 
   const updateOfflineIdsState = useCallback((ids: number[]) => {
     if (!areIdArraysEqual(offlineIdsRef.current, ids)) {
@@ -152,75 +167,84 @@ export function useOfflineBooks() {
     }
   }, [updateStorageQuotaState]);
 
-  const refreshOfflineMetas = useCallback(async () => {
-    try {
-      if (typeof getAllOfflineBookMetas === 'function') {
-        const metas = await getAllOfflineBookMetas();
-        if (Array.isArray(metas)) {
-          updateOfflineBooksState(metas);
+  const applyOfflineSnapshot = useCallback(
+    (
+      idsResult: PromiseSettledResult<number[]>,
+      metasResult: PromiseSettledResult<GutendexBook[] | null>,
+      options: { markLoaded: boolean; forceLoaded?: boolean }
+    ) => {
+      if (idsResult.status === 'fulfilled') {
+        updateOfflineIdsState(idsResult.value);
+        if (
+          options.forceLoaded ||
+          (options.markLoaded &&
+            (idsResult.value.length > 0 ||
+              useBookshelfStore.getState().activeBookshelfId === '__downloaded__'))
+        ) {
+          setIsLoaded(true);
         }
       }
-    } catch {
-      // Non-blocking fallback
-    }
-  }, [updateOfflineBooksState]);
+
+      if (
+        metasResult.status === 'fulfilled' &&
+        Array.isArray(metasResult.value) &&
+        (!options.markLoaded || metasResult.value.length > 0)
+      ) {
+        updateOfflineBooksState(metasResult.value);
+      }
+    },
+    [updateOfflineBooksState, updateOfflineIdsState]
+  );
 
   const refreshOfflineIds = useCallback(async () => {
     try {
-      const ids = await getOfflineBookIds();
-      updateOfflineIdsState(ids);
-      setIsLoaded(true);
-      await refreshOfflineMetas();
+      const epoch = ++syncEpochRef.current;
+      const { idsResult, metasResult } = await readOfflineIdsAndMetas();
+      if (!isMountedRef.current || epoch !== syncEpochRef.current) {
+        return;
+      }
+      applyOfflineSnapshot(idsResult, metasResult, { markLoaded: false, forceLoaded: true });
       await refreshStorageQuota();
     } catch {
       // Non-blocking fallback
     }
-  }, [refreshOfflineMetas, refreshStorageQuota, updateOfflineIdsState]);
+  }, [applyOfflineSnapshot, refreshStorageQuota]);
 
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
 
     const syncFromStorage = (markLoaded: boolean) => {
-      getOfflineBookIds()
-        .then((ids) => {
-          if (!isMounted) return;
-          updateOfflineIdsState(ids);
-          if (
-            markLoaded &&
-            (ids.length > 0 || useBookshelfStore.getState().activeBookshelfId === '__downloaded__')
-          ) {
-            setIsLoaded(true);
-          }
-        })
-        .catch(() => {});
-
-      if (typeof getAllOfflineBookMetas === 'function') {
-        getAllOfflineBookMetas()
-          .then((metas) => {
-            if (isMounted && Array.isArray(metas) && (!markLoaded || metas.length > 0)) {
-              updateOfflineBooksState(metas);
-            }
-          })
-          .catch(() => {});
-      }
-
+      const epoch = ++syncEpochRef.current;
       getStorageQuota()
         .then((quota) => {
-          if (isMounted && (!markLoaded || quota !== null)) {
+          if (
+            isMountedRef.current &&
+            epoch === syncEpochRef.current &&
+            (!markLoaded || quota !== null)
+          ) {
             updateStorageQuotaState(quota);
           }
         })
         .catch(() => {});
+
+      void readOfflineIdsAndMetas().then(({ idsResult, metasResult }) => {
+        if (!isMountedRef.current || epoch !== syncEpochRef.current) {
+          return;
+        }
+        applyOfflineSnapshot(idsResult, metasResult, { markLoaded });
+      });
     };
 
     syncFromStorage(true);
 
     const handleOfflineUpdated = () => {
-      if (isMounted) syncFromStorage(false);
+      if (isMountedRef.current) {
+        syncFromStorage(false);
+      }
     };
 
     const handleDownloadingEvent = (event: Event) => {
-      if (!isMounted) return;
+      if (!isMountedRef.current) return;
       const customEvent = event as CustomEvent<{ bookId: number | null }>;
       if (customEvent.detail && 'bookId' in customEvent.detail) {
         setDownloadingBookId(customEvent.detail.bookId);
@@ -233,13 +257,13 @@ export function useOfflineBooks() {
     }
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
       if (typeof window !== 'undefined') {
         window.removeEventListener(OFFLINE_BOOKS_UPDATED_EVENT, handleOfflineUpdated);
         window.removeEventListener(OFFLINE_DOWNLOADING_EVENT, handleDownloadingEvent);
       }
     };
-  }, [updateOfflineIdsState, updateOfflineBooksState, updateStorageQuotaState]);
+  }, [applyOfflineSnapshot, updateStorageQuotaState]);
 
   // Proactive background idle self-healing cover backfill for downloaded offline volumes
   useEffect(() => {

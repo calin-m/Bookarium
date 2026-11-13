@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 13 Nov 2026 16:16:47 GMT  
+**Last Generated**: Fri, 13 Nov 2026 18:27:43 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 246 passed  
-**Total Verified Tests**: 2542 passed  
+**Total Verified Tests**: 2550 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **246/246 test suites passed** (2542 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **246/246 test suites passed** (2550 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.47%** (14696/15233) — *Target: $\ge$ 95%*
-- **Statements**: **95.16%** (15832/16637) — *Target: $\ge$ 95%*
-- **Functions**: **94.05%** (3211/3414) — *Target: $\ge$ 92%*
-- **Branches**: **87.63%** (14618/16681) — *Target: $\ge$ 85%*
+- **Lines**: **96.49%** (14770/15306) — *Target: $\ge$ 95%*
+- **Statements**: **95.2%** (15914/16715) — *Target: $\ge$ 95%*
+- **Functions**: **94.1%** (3222/3424) — *Target: $\ge$ 92%*
+- **Branches**: **87.66%** (14686/16752) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (246 Suites / 2542 Tests)
+## 🧪 Comprehensive Test Suite Catalog (246 Suites / 2550 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 323 Tests)
 
@@ -546,7 +546,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (39 Suites · 568 Tests)
+### 🎨 Catalog & Presentation (39 Suites · 569 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -768,7 +768,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (59 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (60 tests)</summary>
 
 - ✔ `renders shelf with books and invariant minimum shelf height to prevent layout shifts`
 - ✔ `renders empty message when no books are provided`
@@ -829,6 +829,7 @@
 - ✔ `downloads book when toggling offline on a non-downloaded book`
 - ✔ `resets form state when closing Create New Bookshelf modal`
 - ✔ `renders shelves in a kinetic single-row horizontal strip with compact top padding`
+- ✔ `renders Downloaded pill at full merged count without intermediate flicker when IndexedDB metadata resolves slower than IDs`
 
 </details>
 
@@ -1718,7 +1719,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 223 Tests)
+### ⚡ Zustand State Stores (10 Suites · 228 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1954,7 +1955,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (30 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (35 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1986,6 +1987,11 @@
 - ✔ `enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans`
 - ✔ `batches multiple healedInCloud and enrichReadingPositions rows into a single reading_progress upsert with bookmark_text fallback`
 - ✔ `skips passive syncWithCloud within 15s cooldown unless tombstones exist or interval elapsed`
+- ✔ `prunes locally cached bookmarks deleted on another device while preserving standalone Finished curation`
+- ✔ `preserves offline/debounced edits via dirtyPositionBookIds, guards mid-flight saves, and bypasses passive cooldown when dirty`
+- ✔ `handles upsert/fallback failure booleans, retains unsynced items on failed healedInCloud upload, and aborts on SELECT error`
+- ✔ `guards against cross-device clock skew, handles enrichReadingPositions batch dirty recovery, and resets session watermark on resetReaderSession`
+- ✔ `scrubs 0% Page-1 ghost positions from dirtyPositionBookIds across save, restart debounce, and early syncWithCloud while protecting concurrent real edits`
 
 </details>
 
@@ -2896,7 +2902,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (35 Suites · 330 Tests)
+### 🔄 Hooks & React Query (35 Suites · 332 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3333,7 +3339,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/hooks/useOfflineBooks.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `initializes and fetches offline book IDs and metadata on mount`
 - ✔ `downloads a single book and updates offline status`
@@ -3350,6 +3356,8 @@
 - ✔ `handles getAllOfflineBookMetas and getStorageQuota rejection on mount and offline-updated event`
 - ✔ `updates storage quota state across quota change transitions`
 - ✔ `handles edge cases in normalizeOfflineAuthors and downloading events`
+- ✔ `commits offlineBookIds, offlineBooks, and isLoaded atomically when getAllOfflineBookMetas resolves slower than getOfflineBookIds`
+- ✔ `discards stale slower storage reads when a newer offline-updated event completes first`
 
 </details>
 

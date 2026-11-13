@@ -1261,5 +1261,52 @@ describe('BookshelfRack Component', () => {
     const customShelf = screen.getByRole('button', { name: 'Philosophical Classics' });
     expect(customShelf).toHaveClass('shrink-0', 'whitespace-nowrap');
   });
+
+  it('renders Downloaded pill at full merged count without intermediate flicker when IndexedDB metadata resolves slower than IDs', async () => {
+    const { getOfflineBookIds, getAllOfflineBookMetas } = await import('@/lib/offline-storage');
+    useBookshelfStore.setState({ savedBooks: [mockBooks[0]] });
+
+    const extraOfflineBook = {
+      ...mockBooks[0],
+      id: 999001,
+      title: 'Local Only Classic',
+    };
+
+    let resolveMetas!: (books: typeof mockBooks) => void;
+    const deferredMetas = new Promise<typeof mockBooks>((resolve) => {
+      resolveMetas = resolve;
+    });
+
+    vi.mocked(getOfflineBookIds).mockResolvedValue([mockBooks[0].id, extraOfflineBook.id]);
+    vi.mocked(getAllOfflineBookMetas).mockReturnValueOnce(deferredMetas);
+
+    const observedPillLabels: string[] = [];
+    const { container } = render(<BookshelfRack books={[mockBooks[0]]} />);
+    const observer = new MutationObserver(() => {
+      const btn = screen.queryByRole('button', { name: /Downloaded/i });
+      if (btn?.textContent) {
+        observedPillLabels.push(btn.textContent.replace(/\s+/g, ' ').trim());
+      }
+    });
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // While metadata is still pending, the Downloaded pill must not flash partial count "(1)"
+    expect(screen.queryByRole('button', { name: /Downloaded/i })).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveMetas([mockBooks[0], extraOfflineBook]);
+      await deferredMetas;
+    });
+
+    const pill = await screen.findByRole('button', { name: /Downloaded/i });
+    expect(pill).toHaveTextContent('2');
+    observer.disconnect();
+    expect(observedPillLabels.some((label) => /\b1\b/.test(label))).toBe(false);
+  });
 });
 

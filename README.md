@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-246%20Suites%20%7C%202542%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.47%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-246%20Suites%20%7C%202550%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.49%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2542 tests across 246 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2550 tests across 246 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,12 +108,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.26)
+## 🛠️ Latest Improvements (v2.9.27)
 
-- **Holistic Route Metadata Layouts, Filter-Safe Robots & Synchronous Sitemap Expansion (`ADR-016`)**: Added canonical OpenGraph/Twitter metadata layout for `/copyright`, explicit `noindex` layout for `/auth/confirm-deletion`, `SITE_CONFIG.SITE_URL` + Twitter card parity on `/privacy`, expanded synchronous `sitemap.ts` with `/copyright` and deduplicated `FEATURED_HERO_BOOKS` entries without DB egress, and updated `robots.ts` to allow `/copyright` and `/u/` while blocking catalog filter permutations and preserving `?s=` Reading Card share tokens.
-- **Dynamic Public Scholar Profile Metadata & Anti-Enumeration Layout (`ADR-033`)**: Extracted shared server-only `isClientSideNavigation` into `src/lib/server-rsc-nav.ts` and added a cached Zero-PII profile resolver (`500`-entry `5m` LRU cache, SQL `ILIKE` wildcard post-filter) emitting `profile` OpenGraph, Twitter cards, and `ProfilePage` JSON-LD for public handles while collapsing private and nonexistent handles to an identical neutral `noindex` fallback.
-- **Reader Lifespan Schema, Formats, Opening Hooks, Breadcrumbs & Missing-ID Noindex (`src/app/read/[id]/reader-layout-utils.ts`, `src/app/read/[id]/layout.tsx`, `ADR-016`)**: Enriched `buildReaderSeoMetadataPayload` and `/read/[id]` JSON-LD with contributor `birthDate`/`deathDate`, `bookFormat`/`MediaObject` `encoding`, featured `openingLine` description excerpts, a companion `BreadcrumbList` JSON-LD script, and timeout-safe `noindex` only on invalid or confirmed-missing IDs alongside full co-located test coverage.
-- **Living Architecture AST Sync Order, C4 SSR/Crawler Topology, L4/L5 Parity & Test Harness Inventory (`ADR-079`)**: Reordered `docs:sync` and `pass4DocsSync()` so `generate-quality-report.js` refreshes suite/test telemetry before `generate-architecture-matrix.js`, enforced Pass 5 audit-summary and layer-sum parity checks, added the 9th test-harness distribution layer (`src/mocks/*.test.ts`), multi-test `.security.test.ts` linking, and AST test-harness rows, expanded C4 SSR/crawler nodes (`ProfileLayoutServer`, `StaticSeoRoutes`), `L4` `serverProfileCache`/`confirmedNotFoundIds` caches, `public.profiles` SSR consumers, sort-aware Catalog homepage metadata, `LICENSE`/`.github/` manifests, and unified `7-Store` anchors.
+- **Authoritative Reader Bookmark Deletion Sync, Dirty Position Tracking & Upload-Verified Watermark (`ADR-080`)**: Eliminated cross-tab and cross-device bookmark resurrection when a reading position is deleted in one session while another tab stays open or reconnects. Added persisted `lastReaderSyncAt` and `dirtyPositionBookIds` tracking with snapshot-verified clearing (`clearUploadedDirtyPositions`), `0%` Page-1 ghost dirty-flag scrubbing across save/debounce/sync paths, boolean upload confirmation (`upsertReadingProgressBatch`, `syncReadingPositionToCloud`), monotonic sync anchoring (`Math.max(syncSnapshotStartedAtMs, maxRemoteTimeMs)`), dirty cooldown bypass, standalone `Finished` preservation, and full `resetReaderSession()` teardown parity.
+- **Atomic IndexedDB Offline Hydration & Downloaded Pill Count Stabilization (`ADR-080`)**: Replaced uncoordinated `getOfflineBookIds()` and `getAllOfflineBookMetas()` `.then()` chains in `useOfflineBooks` with shared `readOfflineIdsAndMetas()` (`Promise.allSettled`) + `applyOfflineSnapshot()` coordination gated by a monotonic `syncEpochRef` stale-read guard across mount, `OFFLINE_BOOKS_UPDATED_EVENT`, and `refreshOfflineIds` refreshes while keeping `getStorageQuota` non-blocking, eliminating transient `Downloaded` pill count flickers without breaking partial-rejection resilience.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

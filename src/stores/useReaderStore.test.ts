@@ -15,6 +15,7 @@ describe('useReaderStore', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    useReaderStore.getState().resetReaderSession();
     useAuthStore.setState({ user: null, profile: null });
     useReaderStore.setState({
       currentBook: null,
@@ -25,6 +26,9 @@ describe('useReaderStore', () => {
       theme: 'light',
       readingProgress: {},
       readingPositions: {},
+      deletedPositionBookIds: [],
+      dirtyPositionBookIds: [],
+      lastReaderSyncAt: null,
     });
   });
 
@@ -1328,6 +1332,629 @@ describe('useReaderStore', () => {
       vi.advanceTimersByTime(15_001);
       await useReaderStore.getState().syncWithCloud('user-cd', { minSyncIntervalMs: 15_000 });
       expect(selectSpy).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Authoritative Bookmark Deletion Sync & Dirty Protection', () => {
+    type StoreUser = NonNullable<ReturnType<typeof useAuthStore.getState>['user']>;
+    const makeTestUser = (id: string): StoreUser =>
+      ({
+        id,
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: '',
+      }) as StoreUser;
+
+    it('prunes locally cached bookmarks deleted on another device while preserving standalone Finished curation', async () => {
+      useAuthStore.setState({ user: makeTestUser('user-del-sync') });
+      useReaderStore.setState({
+        lastReaderSyncAt: '2026-11-13T18:00:00.000Z',
+        dirtyPositionBookIds: [],
+        readingPositions: {
+          1342: {
+            chapterIndex: 3,
+            chapterPage: 5,
+            globalPage: 42,
+            lastReadAt: '2026-11-13T17:00:00.000Z',
+            bookTitle: 'Pride and Prejudice',
+          },
+          84: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 8,
+            lastReadAt: '2026-11-13T17:30:00.000Z',
+            bookTitle: 'Frankenstein',
+          },
+        },
+        readingProgress: { 1342: 45, 84: 20, 999: 100 },
+      });
+
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        upsert: mockUpsert,
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  book_id: 84,
+                  book_title: 'Frankenstein',
+                  book_authors: ['Shelley, Mary'],
+                  cover_url: null,
+                  current_chapter_index: 1,
+                  progress_percent: 20,
+                  scroll_offset: 2,
+                  last_read_at: '2026-11-13T17:30:00.000Z',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-del-sync');
+
+      // Deleted #1342 must be pruned locally instead of re-uploaded
+      expect(mockUpsert).not.toHaveBeenCalled();
+      expect(useReaderStore.getState().readingPositions[1342]).toBeUndefined();
+      expect(useReaderStore.getState().readingProgress[1342]).toBeUndefined();
+      expect(useReaderStore.getState().readingPositions[84]?.bookTitle).toBe('Frankenstein');
+      // Standalone curation-only Finished progress without a readingPosition must stay intact
+      expect(useReaderStore.getState().readingProgress[999]).toBe(100);
+      expect(useReaderStore.getState().lastReaderSyncAt).not.toBeNull();
+    });
+
+    it('preserves offline/debounced edits via dirtyPositionBookIds, guards mid-flight saves, and bypasses passive cooldown when dirty', async () => {
+      const userId = 'user-dirty-flow';
+      useAuthStore.setState({ user: makeTestUser(userId) });
+      useReaderStore.setState({
+        lastReaderSyncAt: '2026-11-13T18:00:00.000Z',
+        dirtyPositionBookIds: [],
+      });
+
+      // 1. Offline saveReadingPosition marks book dirty without duplicating IDs, and clearReadingPosition clears dirty flag
+      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 2,
+        chapterPage: 1,
+        globalPage: 15,
+        lastReadAt: '2026-11-13T17:50:00.000Z',
+      });
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 2,
+        chapterPage: 2,
+        globalPage: 16,
+        lastReadAt: '2026-11-13T17:51:00.000Z',
+      });
+      useReaderStore.setState((s) => ({
+        readingProgress: { ...s.readingProgress, 1342: 30, 555: 10 },
+        dirtyPositionBookIds: [...s.dirtyPositionBookIds, 555],
+      }));
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342, 555]);
+
+      await useReaderStore.getState().clearReadingPosition(555, userId);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342]);
+
+      // 2. Reconnect before debounce timer fires: syncWithCloud uploads local edit instead of deleting it
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+      const selectSpy = vi.fn().mockReturnValue({
+        eq: () => ({
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      });
+      mockFrom.mockReturnValue({
+        delete: () => ({
+          eq: () => ({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+        upsert: mockUpsert,
+        select: selectSpy,
+      });
+
+      await useReaderStore.getState().syncWithCloud(userId, { minSyncIntervalMs: 15_000 });
+      expect(mockUpsert).toHaveBeenCalledTimes(1);
+      expect(useReaderStore.getState().readingPositions[1342]?.globalPage).toBe(16);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+
+      // 3. Within 15s cooldown: clean sync skips, dirty sync bypasses cooldown
+      await useReaderStore.getState().syncWithCloud(userId, { minSyncIntervalMs: 15_000 });
+      expect(selectSpy).toHaveBeenCalledTimes(1);
+
+      useReaderStore.setState({ dirtyPositionBookIds: [84] });
+      await useReaderStore.getState().syncWithCloud(userId, { minSyncIntervalMs: 15_000 });
+      expect(selectSpy).toHaveBeenCalledTimes(2);
+
+      // 4. Mid-flight newer edit during syncReadingPositionToCloud keeps book dirty
+      let resolveUpsert!: (res: { error: null }) => void;
+      const deferredUpsert = new Promise<{ error: null }>((resolve) => {
+        resolveUpsert = resolve;
+      });
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockReturnValueOnce(deferredUpsert),
+      });
+
+      const posT1 = {
+        chapterIndex: 1,
+        chapterPage: 1,
+        globalPage: 5,
+        lastReadAt: '2026-11-13T18:01:00.000Z',
+      };
+      useReaderStore.setState({
+        readingPositions: { 77: posT1 },
+        readingProgress: { 77: 12 },
+        dirtyPositionBookIds: [77],
+      });
+
+      const uploadPromise = useReaderStore
+        .getState()
+        .syncReadingPositionToCloud(77, posT1, userId);
+
+      // Newer save lands while upload is still in flight
+      useReaderStore.getState().saveReadingPosition(77, {
+        chapterIndex: 1,
+        chapterPage: 2,
+        globalPage: 6,
+        lastReadAt: '2026-11-13T18:02:00.000Z',
+      });
+
+      resolveUpsert({ error: null });
+      const uploadOk = await uploadPromise;
+      expect(uploadOk).toBe(true);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toContain(77);
+
+      // 5. Partial dirty clear: clears uploaded book #12 while preserving unrelated dirty #84,
+      // plus syncReadingPositionToCloud missing params / active session verification failure returning false
+      expect(await useReaderStore.getState().syncReadingPositionToCloud(0, posT1, userId)).toBe(false);
+      mockFrom.mockReturnValueOnce({
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      });
+      useReaderStore.setState({
+        dirtyPositionBookIds: [12, 84],
+        readingPositions: { ...useReaderStore.getState().readingPositions, 12: posT1 },
+        readingProgress: { ...useReaderStore.getState().readingProgress, 12: 20 },
+      });
+      expect(await useReaderStore.getState().syncReadingPositionToCloud(12, posT1, userId)).toBe(true);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([84]);
+    });
+
+    it('handles upsert/fallback failure booleans, retains unsynced items on failed healedInCloud upload, and aborts on SELECT error', async () => {
+      const userId = 'user-failures';
+      useAuthStore.setState({ user: makeTestUser(userId) });
+
+      // 1. Primary non-bookmark_text failure returns false
+      useReaderStore.setState({
+        readingPositions: {
+          1342: {
+            chapterIndex: 2,
+            chapterPage: 1,
+            globalPage: 10,
+            lastReadAt: '2026-11-13T18:00:00.000Z',
+          },
+        },
+        readingProgress: { 1342: 20 },
+        dirtyPositionBookIds: [1342],
+      });
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockResolvedValueOnce({ error: { message: 'RLS violation' } }),
+      });
+
+      const primaryFailed = await useReaderStore
+        .getState()
+        .syncReadingPositionToCloud(1342, useReaderStore.getState().readingPositions[1342], userId);
+      expect(primaryFailed).toBe(false);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342]);
+
+      // 2. bookmark_text fallback failure returns false, then fallback success returns true and clears dirty
+      mockFrom.mockReturnValue({
+        upsert: vi
+          .fn()
+          .mockResolvedValueOnce({ error: { message: 'column "bookmark_text" does not exist' } })
+          .mockResolvedValueOnce({ error: { message: 'timeout' } }),
+      });
+      const fallbackFailed = await useReaderStore
+        .getState()
+        .syncReadingPositionToCloud(1342, useReaderStore.getState().readingPositions[1342], userId);
+      expect(fallbackFailed).toBe(false);
+
+      mockFrom.mockReturnValue({
+        upsert: vi
+          .fn()
+          .mockResolvedValueOnce({ error: { message: 'column "bookmark_text" does not exist' } })
+          .mockResolvedValueOnce({ error: null }),
+      });
+      const fallbackSucceeded = await useReaderStore
+        .getState()
+        .syncReadingPositionToCloud(1342, useReaderStore.getState().readingPositions[1342], userId);
+      expect(fallbackSucceeded).toBe(true);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+
+      // 3. Batch healedInCloud failure must NOT advance lastReaderSyncAt
+      useReaderStore.setState({
+        lastReaderSyncAt: null,
+        dirtyPositionBookIds: [1342, 84],
+        readingPositions: {
+          1342: {
+            chapterIndex: 2,
+            chapterPage: 1,
+            globalPage: 10,
+            lastReadAt: '2026-11-13T18:00:00.000Z',
+          },
+          84: {
+            chapterIndex: 3,
+            chapterPage: 4,
+            globalPage: 22,
+            lastReadAt: '2026-11-13T18:01:00.000Z',
+          },
+        },
+        readingProgress: { 1342: 20, 84: 40 },
+      });
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+        upsert: vi.fn().mockResolvedValue({ error: { message: 'network drop' } }),
+      });
+
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().lastReaderSyncAt).toBeNull();
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342, 84]);
+
+      // Retry succeeds: now both clear dirty and watermark is stamped
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      });
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().lastReaderSyncAt).not.toBeNull();
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+
+      // 4. Failed single-book healedInCloud leaves previous lastReaderSyncAt untouched
+      useReaderStore.setState({
+        lastReaderSyncAt: '2026-11-13T17:00:00.000Z',
+        dirtyPositionBookIds: [1342],
+        readingPositions: {
+          1342: {
+            chapterIndex: 2,
+            chapterPage: 1,
+            globalPage: 10,
+            lastReadAt: '2026-11-13T18:00:00.000Z',
+          },
+        },
+        readingProgress: { 1342: 20 },
+      });
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+        upsert: vi.fn().mockResolvedValue({ error: { message: 'single-book fail' } }),
+      });
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().lastReaderSyncAt).toBe('2026-11-13T17:00:00.000Z');
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342]);
+
+      // 5. SELECT failure and invalid timestamp strings leave state and watermark safe
+      const savedSyncAt = useReaderStore.getState().lastReaderSyncAt;
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({ data: null, error: { message: '503 unavailable' } }),
+          }),
+        }),
+      });
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().lastReaderSyncAt).toBe(savedSyncAt);
+      expect(useReaderStore.getState().readingPositions[1342]).toBeDefined();
+    });
+
+    it('guards against cross-device clock skew, handles enrichReadingPositions batch dirty recovery, and resets session watermark on resetReaderSession', async () => {
+      const userId = 'user-skew';
+      useAuthStore.setState({ user: makeTestUser(userId) });
+
+      // 1. Remote device clock is ahead (+4 years): lastReaderSyncAt anchors to remoteTime so later cloud deletion still prunes cleanly
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  book_id: 84,
+                  book_title: 'Frankenstein',
+                  book_authors: ['Shelley, Mary'],
+                  cover_url: null,
+                  current_chapter_index: 2,
+                  progress_percent: 35,
+                  scroll_offset: 3,
+                  last_read_at: '2030-01-01T00:00:00.000Z',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().lastReaderSyncAt).toBe('2030-01-01T00:00:00.000Z');
+      expect(useReaderStore.getState().readingPositions[84]).toBeDefined();
+
+      // Now even if #84 has that 2030 timestamp locally, deleting #84 on cloud prunes it locally
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      });
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().readingPositions[84]).toBeUndefined();
+      // Monotonic guard preserves 2030 watermark instead of regressing to current local clock
+      expect(useReaderStore.getState().lastReaderSyncAt).toBe('2030-01-01T00:00:00.000Z');
+
+      // 2. Dirty local edit with older clock gets superseded safely when remoteTime >= localTime wins LWW
+      useReaderStore.setState({
+        readingPositions: {
+          11: {
+            chapterIndex: 1,
+            chapterPage: 1,
+            globalPage: 4,
+            lastReadAt: '2026-11-13T10:00:00.000Z',
+          },
+        },
+        readingProgress: { 11: 15 },
+        dirtyPositionBookIds: [11],
+      });
+      mockFrom.mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  book_id: 11,
+                  book_title: "Alice's Adventures in Wonderland",
+                  book_authors: ['Carroll, Lewis (1832-1898)'],
+                  cover_url: null,
+                  current_chapter_index: 4,
+                  progress_percent: 55,
+                  scroll_offset: 2,
+                  last_read_at: '2026-11-13T12:00:00.000Z',
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+      expect(useReaderStore.getState().readingProgress[11]).toBe(55);
+
+      // 3. enrichReadingPositions retains dirty IDs on failure and clears them on batch and single-book success
+      useReaderStore.setState({
+        readingPositions: {
+          1342: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
+          84: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
+        },
+        readingProgress: { 1342: 10, 84: 10 },
+        dirtyPositionBookIds: [],
+      });
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockResolvedValue({ error: { message: 'offline' } }),
+      });
+      useReaderStore.getState().enrichReadingPositions([
+        { ...mockBooks[0], id: 1342, authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }] },
+        { ...mockBooks[1], id: 84, authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] },
+      ]);
+      await vi.waitFor(() => {
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342, 84]);
+      });
+
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+      });
+      useReaderStore.setState({
+        readingPositions: {
+          1342: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
+          84: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
+        },
+      });
+      useReaderStore.getState().enrichReadingPositions([
+        { ...mockBooks[0], id: 1342, authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }] },
+        { ...mockBooks[1], id: 84, authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] },
+      ]);
+      await vi.waitFor(() => {
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+      });
+
+      // Single-book enrichReadingPositions dedupes already-dirty ID and clears on success
+      useReaderStore.setState({
+        readingPositions: {
+          1342: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
+        },
+        dirtyPositionBookIds: [1342],
+      });
+      useReaderStore.getState().enrichReadingPositions([
+        { ...mockBooks[0], id: 1342, authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }] },
+      ]);
+      await vi.waitFor(() => {
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+      });
+
+      // Non-dirty local entry with localTime > lastSyncTime is uploaded instead of pruned
+      useReaderStore.setState({
+        lastReaderSyncAt: '2026-11-13T18:00:00.000Z',
+        dirtyPositionBookIds: [],
+        readingPositions: {
+          1342: { chapterIndex: 5, chapterPage: 1, globalPage: 50, lastReadAt: '2026-11-13T19:00:00.000Z' },
+        },
+        readingProgress: { 1342: 75 },
+      });
+      const newerUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        upsert: newerUpsert,
+        select: () => ({
+          eq: () => ({ order: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+        }),
+      });
+      await useReaderStore.getState().syncWithCloud(userId);
+      expect(newerUpsert).toHaveBeenCalledTimes(1);
+      expect(useReaderStore.getState().readingPositions[1342]).toBeDefined();
+
+      // 4. Overlapping syncWithCloud while dirtyPositionBookIds > 0 triggers dirty follow-up pass
+      let releaseFirstSelect!: (res: { data: unknown[]; error: null }) => void;
+      const deferredSelect = new Promise<{ data: unknown[]; error: null }>((resolve) => {
+        releaseFirstSelect = resolve;
+      });
+      const overlapSelectSpy = vi
+        .fn()
+        .mockReturnValueOnce({ eq: () => ({ order: () => deferredSelect }) })
+        .mockReturnValueOnce({
+          eq: () => ({ order: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+        });
+      mockFrom.mockReturnValue({
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        select: overlapSelectSpy,
+      });
+
+      const firstFlight = useReaderStore.getState().syncWithCloud(userId);
+      useReaderStore.setState({ dirtyPositionBookIds: [1342] });
+      const secondFlight = useReaderStore.getState().syncWithCloud(userId);
+      expect(secondFlight).toBe(firstFlight);
+      releaseFirstSelect({ data: [], error: null });
+      await firstFlight;
+      expect(overlapSelectSpy).toHaveBeenCalledTimes(2);
+
+      // Reset clears watermark and dirty tracking completely (Rule 9 teardown parity)
+      useReaderStore.getState().resetReaderSession();
+      expect(useReaderStore.getState().lastReaderSyncAt).toBeNull();
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+    });
+
+    it('scrubs 0% Page-1 ghost positions from dirtyPositionBookIds across save, restart debounce, and early syncWithCloud while protecting concurrent real edits', async () => {
+      vi.useFakeTimers();
+      try {
+        const userId = 'user-ghost-clean';
+        useAuthStore.setState({ user: makeTestUser(userId) });
+
+        // 1. Saving a 0% Page-1 ghost directly omits and strips that book from dirtyPositionBookIds without affecting other books or guest mode
+        useReaderStore.setState({
+          dirtyPositionBookIds: [1342, 84],
+          readingProgress: { 1342: 0, 84: 25 },
+        });
+        useReaderStore.getState().saveReadingPosition(
+          1342,
+          {
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 1,
+            lastReadAt: '2026-11-13T19:00:00.000Z',
+          },
+          userId
+        );
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([84]);
+
+        // Guest/offline save without userId leaves dirtyPositionBookIds untouched
+        useAuthStore.setState({ user: null });
+        useReaderStore.getState().saveReadingPosition(999, {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          lastReadAt: '2026-11-13T19:00:30.000Z',
+        });
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([84]);
+
+        // 2. Two-step restart sequence: saveReadingPosition(Page 1) while progress > 0 -> setProgress(0) -> debounce flush
+        useAuthStore.setState({ user: makeTestUser(userId) });
+        const restartSelectSpy = vi.fn().mockReturnValue({
+          eq: () => ({ order: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+        });
+        const restartUpsertSpy = vi.fn().mockResolvedValue({ error: null });
+        mockFrom.mockReturnValue({
+          select: restartSelectSpy,
+          upsert: restartUpsertSpy,
+        });
+
+        useReaderStore.setState({
+          dirtyPositionBookIds: [],
+          readingProgress: { 1342: 45 },
+        });
+        const ghostRestartPos = {
+          chapterIndex: 0,
+          chapterPage: 1,
+          globalPage: 1,
+          lastReadAt: '2026-11-13T19:01:00.000Z',
+        };
+        useReaderStore.getState().saveReadingPosition(1342, ghostRestartPos, userId);
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342]);
+        useReaderStore.getState().setProgress(1342, 0);
+
+        // Debounced flush skips Supabase upload (returns false) and scrubs ghost #1342 from dirtyPositionBookIds
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(restartUpsertSpy).not.toHaveBeenCalled();
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+
+        // Subsequent passive syncWithCloud honors 15s cooldown (0 extra Supabase calls after first sync)
+        await useReaderStore.getState().syncWithCloud(userId, { minSyncIntervalMs: 15_000 });
+        await useReaderStore.getState().syncWithCloud(userId, { minSyncIntervalMs: 15_000 });
+        expect(restartSelectSpy).toHaveBeenCalledTimes(1);
+
+        // 3. Direct syncReadingPositionToCloud with ghost preserves dirty flag if a newer real save superseded lastReadAt mid-flight
+        useReaderStore.setState({
+          dirtyPositionBookIds: [77],
+          readingProgress: { 77: 0 },
+          readingPositions: {
+            77: {
+              chapterIndex: 2,
+              chapterPage: 3,
+              globalPage: 12,
+              lastReadAt: '2026-11-13T19:02:00.000Z',
+            },
+          },
+        });
+        expect(await useReaderStore.getState().syncReadingPositionToCloud(77, ghostRestartPos, userId)).toBe(false);
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([77]);
+
+        // 4. Early syncWithCloud before restart timer fires prunes the ghost, cancels its pending timer, and scrubs dirtyPositionBookIds
+        useReaderStore.setState({
+          readingPositions: {},
+          dirtyPositionBookIds: [],
+          readingProgress: { 500: 50 },
+        });
+        useReaderStore.getState().saveReadingPosition(
+          500,
+          {
+            chapterIndex: 0,
+            chapterPage: 1,
+            globalPage: 1,
+            lastReadAt: '2026-11-13T19:03:00.000Z',
+          },
+          userId
+        );
+        useReaderStore.getState().setProgress(500, 0);
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([500]);
+
+        await useReaderStore.getState().syncWithCloud(userId);
+        expect(useReaderStore.getState().readingPositions[500]).toBeUndefined();
+        expect(useReaderStore.getState().readingProgress[500]).toBeUndefined();
+        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+        await vi.advanceTimersByTimeAsync(2500);
+        expect(restartUpsertSpy).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });
