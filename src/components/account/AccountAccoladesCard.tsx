@@ -115,7 +115,7 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
   // Sync with cloud on initial mount for authenticated users
   useEffect(() => {
     if (userId) {
-      syncWithCloud(userId).catch(() => {});
+      syncWithCloud(userId, { minSyncIntervalMs: 15_000 }).catch(() => {});
     }
   }, [userId, syncWithCloud]);
 

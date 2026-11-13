@@ -198,6 +198,9 @@ describe('EditorialQuoteSection component', () => {
       isPoolSettled: false,
       data: undefined,
     } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+    const featuredQuotesSpy = vi.spyOn(useBooksModule, 'useFeaturedQuotes').mockReturnValue({
+      data: undefined,
+    } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
 
     const { rerender } = render(<EditorialQuoteSection />);
 
@@ -205,6 +208,10 @@ describe('EditorialQuoteSection component', () => {
     expect(body).toHaveAttribute('aria-busy', 'true');
     expect(body.className).toContain('opacity-0');
     expect(body.className).not.toContain('animate-ink-appear');
+    expect(featuredQuotesSpy).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ enabled: false })
+    );
 
     enrichedSpy.mockReturnValue({
       isPoolSettled: true,
@@ -216,7 +223,12 @@ describe('EditorialQuoteSection component', () => {
     expect(settledBody).toHaveAttribute('aria-busy', 'false');
     expect(settledBody.className).toContain('animate-ink-appear');
     expect(settledBody.className).not.toContain('opacity-0');
+    expect(featuredQuotesSpy).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ enabled: true })
+    );
 
+    featuredQuotesSpy.mockRestore();
     enrichedSpy.mockRestore();
   });
 

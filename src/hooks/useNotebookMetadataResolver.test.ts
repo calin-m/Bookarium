@@ -188,8 +188,10 @@ describe('useNotebookMetadataResolver', () => {
       expect(enrichSavedSpy).toHaveBeenCalledWith([remoteBook]);
       expect(enrichPositionsSpy).toHaveBeenCalledWith([remoteBook]);
       expect(updateMetadataSpy).toHaveBeenCalledWith(9999, 'The Odyssey', 'Homer');
-      expect(fetchFellowshipSpy).toHaveBeenCalledWith('user-scholar-1');
-      expect(syncCloudSpy).toHaveBeenCalledWith('user-scholar-1');
+      expect(fetchFellowshipSpy).toHaveBeenCalledWith('user-scholar-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(syncCloudSpy).toHaveBeenCalledWith('user-scholar-1', { minSyncIntervalMs: 15_000 });
       expect(enrichFellowSpy).toHaveBeenCalled();
       expect(resolveStaleSpy).toHaveBeenCalled();
     });

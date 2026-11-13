@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useAnnotationStore } from './useAnnotationStore';
+import { useAnnotationStore, invalidateAnnotationSyncCooldown } from './useAnnotationStore';
 import { useFellowshipStore } from './useFellowshipStore';
 
 // Mock Supabase client
@@ -1663,6 +1663,120 @@ describe('useAnnotationStore', () => {
     // Remotely deleted annotation (updatedAt < lastAnnotationSyncAt) is dropped and not re-uploaded
     expect(stateAfterFirstSync.annotations.map((a) => a.id)).toEqual(['cloud-active-1']);
     expect(stateAfterFirstSync.lastAnnotationSyncAt).toBeTruthy();
+  });
+
+  it('respects opt-in minSyncIntervalMs passive cooldown when clean and bypasses on dirty queues, explicit sync, or invalidation', async () => {
+    vi.useFakeTimers();
+    const eqOrderMock = vi.fn().mockResolvedValue({ data: [], error: null });
+    const neqOrderMock = vi.fn().mockResolvedValue({ data: [], error: null });
+    mockSelect.mockImplementation(() => ({
+      eq: vi.fn().mockReturnValue({ order: eqOrderMock }),
+      neq: vi.fn().mockReturnValue({ order: neqOrderMock }),
+    }));
+
+    try {
+      vi.setSystemTime(new Date('2026-11-13T10:00:00.000Z'));
+
+      // 1. First sync records passive timestamp (1 own select + 1 fellow select = 2)
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(mockSelect).toHaveBeenCalledTimes(2);
+
+      // 2. Passive repeat within 15s is skipped when outbox and tombstones are empty
+      vi.advanceTimersByTime(5_000);
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(mockSelect).toHaveBeenCalledTimes(2);
+
+      // 3. Explicit unthrottled syncWithCloud(userId) always runs immediately
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1');
+      expect(mockSelect).toHaveBeenCalledTimes(4);
+
+      // 4. Queued outbox item bypasses passive cooldown immediately
+      useAnnotationStore.setState({
+        outbox: [
+          {
+            id: 'outbox-1',
+            type: 'UPSERT_ANNOTATION',
+            payload: { id: 'ann-pending', user_id: 'user-cooldown-1' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(mockSelect).toHaveBeenCalledTimes(6);
+      useAnnotationStore.setState({ outbox: [] });
+
+      // 5. Pending tombstone bypasses passive cooldown immediately
+      useAnnotationStore.setState({ tombstones: ['tomb-1'] });
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(mockSelect).toHaveBeenCalledTimes(8);
+      useAnnotationStore.setState({ tombstones: [] });
+
+      // 6. invalidateAnnotationSyncCooldown resets passive cooldown without clearing persisted lastAnnotationSyncAt
+      const preservedWatermark = useAnnotationStore.getState().lastAnnotationSyncAt;
+      invalidateAnnotationSyncCooldown('user-cooldown-1');
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(mockSelect).toHaveBeenCalledTimes(10);
+      expect(useAnnotationStore.getState().lastAnnotationSyncAt).toBeTruthy();
+      expect(preservedWatermark).toBeTruthy();
+
+      // 7. Advancing past 15s runs passive sync again
+      vi.advanceTimersByTime(15_001);
+      await useAnnotationStore.getState().syncWithCloud('user-cooldown-1', {
+        minSyncIntervalMs: 15_000,
+      });
+      expect(mockSelect).toHaveBeenCalledTimes(12);
+
+      // 8. fetchFellowAnnotationsForBook shares passive cooldown window cleanly
+      mockSelect.mockClear();
+      mockSelect.mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          neq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      });
+      // Immediately after user sync, passive fellow-book fetch is short-circuited
+      await useAnnotationStore
+        .getState()
+        .fetchFellowAnnotationsForBook(1342, 'user-cooldown-1', undefined, {
+          minSyncIntervalMs: 15_000,
+        });
+      expect(mockSelect).not.toHaveBeenCalled();
+
+      // Explicit invalidation allows book-level fetch and caches per book cooldown
+      invalidateAnnotationSyncCooldown('user-cooldown-1');
+      await useAnnotationStore
+        .getState()
+        .fetchFellowAnnotationsForBook(1342, 'user-cooldown-1', undefined, {
+          minSyncIntervalMs: 15_000,
+        });
+      expect(mockSelect).toHaveBeenCalledTimes(1);
+
+      await useAnnotationStore
+        .getState()
+        .fetchFellowAnnotationsForBook(1342, 'user-cooldown-1', undefined, {
+          minSyncIntervalMs: 15_000,
+        });
+      expect(mockSelect).toHaveBeenCalledTimes(1);
+    } finally {
+      mockSelect.mockReset();
+      mockSelect.mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      });
+      vi.useRealTimers();
+    }
   });
 });
 

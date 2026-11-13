@@ -3,6 +3,7 @@ import {
   useAuthStore,
   validateUsername,
   isDefinitiveAuthInvalidError,
+  coalesceInFlightByUser,
 } from './useAuthStore';
 
 const mockSignInWithPassword = vi.fn();
@@ -1142,6 +1143,188 @@ describe('useAuthStore', () => {
         'cap@bookarium.test',
         expect.objectContaining({ captchaToken: 'cf-token-reset' })
       );
+    });
+  });
+
+  describe('Auth & sync coalescing guarantees', () => {
+    it('coalesces overlapping Strict-Mode initializeAuth calls onto one getUser request and resets on settle', async () => {
+      let resolveUser!: (val: { data: { user: { id: string; email: string } | null }; error: null }) => void;
+      const pendingGetUser = new Promise<{
+        data: { user: { id: string; email: string } | null };
+        error: null;
+      }>((resolve) => {
+        resolveUser = resolve;
+      });
+
+      mockGetUser
+        .mockReturnValueOnce(pendingGetUser)
+        .mockResolvedValueOnce({ data: { user: null }, error: null });
+      mockOnAuthStateChange.mockImplementation(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }));
+      mockFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: 'strict-user', display_name: 'Strict Scholar' },
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      const unsub1 = useAuthStore.getState().initializeAuth();
+      unsub1();
+      useAuthStore.getState().initializeAuth();
+
+      expect(mockGetUser).toHaveBeenCalledTimes(1);
+
+      resolveUser({
+        data: { user: { id: 'strict-user', email: 'strict@bookarium.test' } },
+        error: null,
+      });
+
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().isLoading).toBe(false);
+        expect(useAuthStore.getState().user?.id).toBe('strict-user');
+      });
+
+      // After settlement, a subsequent sequential initializeAuth call runs normally
+      useAuthStore.getState().initializeAuth();
+      await vi.waitFor(() => {
+        expect(mockGetUser).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('skips duplicate INITIAL_SESSION profile fetch while checkInitialUser is still pending', async () => {
+      let resolveUser!: (val: { data: { user: { id: string; email: string } }; error: null }) => void;
+      const pendingUser = new Promise<{
+        data: { user: { id: string; email: string } };
+        error: null;
+      }>((resolve) => {
+        resolveUser = resolve;
+      });
+
+      const profileSingleMock = vi.fn().mockResolvedValue({
+        data: { id: 'init-user', display_name: 'Init Scholar' },
+        error: null,
+      });
+      mockFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: profileSingleMock,
+          }),
+        }),
+      });
+
+      let capturedCallback: ((event: string, session: unknown) => void) | undefined;
+      mockOnAuthStateChange.mockImplementation((cb) => {
+        capturedCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+      mockGetUser.mockReturnValueOnce(pendingUser);
+
+      useAuthStore.getState().initializeAuth();
+
+      // Concurrent INITIAL_SESSION with truthy session while checkInitialUser is pending is suppressed
+      capturedCallback?.('INITIAL_SESSION', {
+        user: { id: 'init-user', email: 'init@bookarium.test' },
+      });
+      expect(profileSingleMock).not.toHaveBeenCalled();
+
+      resolveUser({
+        data: { user: { id: 'init-user', email: 'init@bookarium.test' } },
+        error: null,
+      });
+
+      await vi.waitFor(() => {
+        expect(profileSingleMock).toHaveBeenCalledTimes(1);
+        expect(useAuthStore.getState().profile?.display_name).toBe('Init Scholar');
+      });
+    });
+
+    it('coalesces concurrent fetchProfile calls per user without suppressing subsequent sequential fetches', async () => {
+      let resolveSingle!: (val: { data: { id: string; display_name: string }; error: null }) => void;
+      const singleMock = vi
+        .fn()
+        .mockReturnValueOnce(
+          new Promise<{ data: { id: string; display_name: string }; error: null }>((resolve) => {
+            resolveSingle = resolve;
+          })
+        )
+        .mockResolvedValueOnce({
+          data: { id: 'prof-user', display_name: 'Fresh Refetch' },
+          error: null,
+        });
+
+      mockFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: singleMock,
+          }),
+        }),
+      });
+
+      useAuthStore.setState({
+        user: { id: 'prof-user', email: 'prof@bookarium.test' } as unknown as NonNullable<
+          ReturnType<typeof useAuthStore.getState>['user']
+        >,
+      });
+
+      const p1 = useAuthStore.getState().fetchProfile();
+      const p2 = useAuthStore.getState().fetchProfile();
+      expect(p1).toBe(p2);
+      expect(singleMock).toHaveBeenCalledTimes(1);
+
+      resolveSingle({ data: { id: 'prof-user', display_name: 'Initial Fetch' }, error: null });
+      await p1;
+      expect(useAuthStore.getState().profile?.display_name).toBe('Initial Fetch');
+
+      // Sequential follow-up executes immediately without TTL suppression
+      await useAuthStore.getState().fetchProfile();
+      expect(singleMock).toHaveBeenCalledTimes(2);
+      expect(useAuthStore.getState().profile?.display_name).toBe('Fresh Refetch');
+    });
+
+    it('coalesceInFlightByUser collapses passive callers and executes one trailing pass when marked dirty', async () => {
+      const inFlight = new Map<string, Promise<void>>();
+      const dirtyUsers = new Set<string>();
+      let calls = 0;
+      let releaseFirst!: () => void;
+
+      const runFirst = coalesceInFlightByUser(
+        inFlight,
+        'u-helper',
+        async () => {
+          calls += 1;
+          if (calls === 1) {
+            await new Promise<void>((resolve) => {
+              releaseFirst = resolve;
+            });
+          }
+        },
+        dirtyUsers
+      );
+      const runPassiveJoin = coalesceInFlightByUser(
+        inFlight,
+        'u-helper',
+        async () => {
+          calls += 1;
+        },
+        dirtyUsers
+      );
+
+      expect(runPassiveJoin).toBe(runFirst);
+      expect(calls).toBe(1);
+
+      // Simulate a local write arriving mid-flight
+      dirtyUsers.add('u-helper');
+      releaseFirst();
+      await runFirst;
+
+      expect(calls).toBe(2);
+      expect(inFlight.size).toBe(0);
+      expect(dirtyUsers.size).toBe(0);
     });
   });
 });

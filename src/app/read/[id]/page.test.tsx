@@ -969,9 +969,9 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     render(<BookReaderPage />);
 
     await waitFor(() => {
-      expect(syncSpy).toHaveBeenCalledWith('scholar-1');
-      expect(fetchFellowshipSpy).toHaveBeenCalledWith('scholar-1');
-      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'scholar-1');
+      expect(syncSpy).toHaveBeenCalledWith('scholar-1', { minSyncIntervalMs: 15_000 });
+      expect(fetchFellowshipSpy).toHaveBeenCalledWith('scholar-1', { minSyncIntervalMs: 15_000 });
+      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'scholar-1', undefined, { minSyncIntervalMs: 15_000 });
     });
 
     // Press '/' to open search drawer, then press '/' again to close
@@ -1140,7 +1140,7 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     fetchFellowAnnSpy.mockClear();
     fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
     await waitFor(() => {
-      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'fellow-user');
+      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'fellow-user', undefined, { minSyncIntervalMs: 15_000 });
     });
 
     fetchFellowAnnSpy.mockRestore();

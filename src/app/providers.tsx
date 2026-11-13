@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -64,6 +64,7 @@ export function Providers({
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthModalOpen = useAuthStore((s) => s.isAuthModalOpen);
+  const lastSyncTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const unsubscribe = initializeAuth();
@@ -107,6 +108,7 @@ export function Providers({
 
   useEffect(() => {
     if (!isLoading && user?.id) {
+      lastSyncTimeRef.current = Date.now();
       syncAllStoresWithCloud(user.id);
     }
   }, [isLoading, user?.id]);
@@ -114,11 +116,13 @@ export function Providers({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let lastSyncTime = Date.now();
+    if (lastSyncTimeRef.current === 0) {
+      lastSyncTimeRef.current = Date.now();
+    }
 
     const handleOnline = () => {
       if (!isLoading && user?.id) {
-        lastSyncTime = Date.now();
+        lastSyncTimeRef.current = Date.now();
         syncAllStoresWithCloud(user.id);
       }
     };
@@ -126,8 +130,8 @@ export function Providers({
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isLoading && user?.id) {
         const now = Date.now();
-        if (now - lastSyncTime >= 15000) {
-          lastSyncTime = now;
+        if (now - lastSyncTimeRef.current >= 15000) {
+          lastSyncTimeRef.current = now;
           syncAllStoresWithCloud(user.id);
         }
       }
@@ -135,7 +139,7 @@ export function Providers({
 
     const handleTokenRefreshed = () => {
       if (!isLoading && user?.id) {
-        lastSyncTime = Date.now();
+        lastSyncTimeRef.current = Date.now();
         syncAllStoresWithCloud(user.id);
       }
     };

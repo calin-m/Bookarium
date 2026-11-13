@@ -275,5 +275,35 @@ describe('useAccoladesStore', () => {
     await useAccoladesStore.getState().togglePin('seven-day-sage', 'user-123');
     expect(useAccoladesStore.getState().pendingPinUpdates['seven-day-sage']).toBe(false);
   });
+
+  it('respects minSyncIntervalMs passive cooldown unless pendingPinUpdates exist or pin state changes', async () => {
+    vi.useFakeTimers();
+    try {
+      mockEq.mockResolvedValue({ data: [], error: null });
+
+      await useAccoladesStore.getState().syncWithCloud('user-acc-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockEq).toHaveBeenCalledTimes(1);
+
+      // Immediate passive call within 15s is skipped
+      await useAccoladesStore.getState().syncWithCloud('user-acc-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockEq).toHaveBeenCalledTimes(1);
+
+      // Pending pin update bypasses passive cooldown immediately
+      mockEq
+        .mockReturnValueOnce({ eq: vi.fn().mockResolvedValue({ error: null }) })
+        .mockResolvedValue({ data: [], error: null });
+      useAccoladesStore.setState({ pendingPinUpdates: { 'seven-day-sage': true } });
+      await useAccoladesStore.getState().syncWithCloud('user-acc-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockEq).toHaveBeenCalledTimes(3);
+      expect(useAccoladesStore.getState().pendingPinUpdates).toEqual({});
+
+      // Advancing past 15s allows passive sync again
+      vi.advanceTimersByTime(15_001);
+      await useAccoladesStore.getState().syncWithCloud('user-acc-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockEq).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 

@@ -567,6 +567,9 @@ describe('LiteraryQuotes component', () => {
       isPoolSettled: false,
       data: undefined,
     } as unknown as ReturnType<typeof useBooksModule.useQuoteEnrichedBooks>);
+    const featuredQuotesSpy = vi.spyOn(useBooksModule, 'useFeaturedQuotes').mockReturnValue({
+      data: undefined,
+    } as unknown as ReturnType<typeof useBooksModule.useFeaturedQuotes>);
 
     const { rerender } = render(<LiteraryQuotes />);
 
@@ -576,6 +579,10 @@ describe('LiteraryQuotes component', () => {
     expect(grid.className).toContain('opacity-0');
     expect(grid.className).not.toContain('animate-ink-appear');
     expect(shuffleBtn).toBeDisabled();
+    expect(featuredQuotesSpy).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ enabled: false })
+    );
 
     enrichedSpy.mockReturnValue({
       isPoolSettled: true,
@@ -587,7 +594,12 @@ describe('LiteraryQuotes component', () => {
     expect(screen.getByTestId('literary-quotes-grid').className).toContain('animate-ink-appear');
     expect(screen.getByTestId('literary-quotes-grid').className).not.toContain('opacity-0');
     expect(screen.getByLabelText(/Discover more literary quotes/i)).toBeEnabled();
+    expect(featuredQuotesSpy).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ enabled: true })
+    );
 
+    featuredQuotesSpy.mockRestore();
     enrichedSpy.mockRestore();
   });
 });

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 12 Nov 2026 19:10:54 GMT  
+**Last Generated**: Fri, 13 Nov 2026 10:21:38 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 239 passed  
-**Total Verified Tests**: 2488 passed  
+**Total Test Suites**: 240 passed  
+**Total Verified Tests**: 2513 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **239/239 test suites passed** (2488 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **240/240 test suites passed** (2513 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.61%** (14267/14767) — *Target: $\ge$ 95%*
-- **Statements**: **95.34%** (15397/16149) — *Target: $\ge$ 95%*
-- **Functions**: **94.03%** (3155/3355) — *Target: $\ge$ 92%*
-- **Branches**: **87.72%** (14198/16184) — *Target: $\ge$ 85%*
+- **Lines**: **96.48%** (14514/15043) — *Target: $\ge$ 95%*
+- **Statements**: **95.18%** (15639/16430) — *Target: $\ge$ 95%*
+- **Functions**: **93.99%** (3176/3379) — *Target: $\ge$ 92%*
+- **Branches**: **87.69%** (14469/16499) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (239 Suites / 2488 Tests)
+## 🧪 Comprehensive Test Suite Catalog (240 Suites / 2513 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 302 Tests)
+### 🚀 App Routes & Pages (27 Suites · 306 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -76,7 +76,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `stores and retrieves cached metadata correctly`
 - ✔ `returns cached metadata if not expired without network fetch`
@@ -89,6 +89,7 @@
 - ✔ `enriches missing lifespans and falls back to FEATURED_HERO_BOOKS for curated classics`
 - ✔ `stores, refreshes, expires, and caps bookContentLruCache entries`
 - ✔ `caps bookMetadataCache at MAX_METADATA_CACHE_ENTRIES and evicts expired entries on lookup`
+- ✔ `anchors metadata and content LRU caches on globalThis to survive Next.js HMR reloads`
 
 </details>
 
@@ -112,7 +113,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (32 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -145,6 +146,8 @@
 - ✔ `safely follows trusted redirect hops when fetching cover image`
 - ✔ `returns 502 when all mirrors fail or return error`
 - ✔ `skips oversized cover responses exceeding 2MB threshold`
+- ✔ `skips copyright metadata lookup for type=cover in non-US jurisdictions and emits max-age browser caching headers`
+- ✔ `serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity`
 - ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
 
 </details>
@@ -368,7 +371,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud only after auth initialization finishes (!isLoading)`
@@ -379,6 +382,7 @@
 - ✔ `opens AuthModal with OAuth failure notice when ?auth_error=oauth_failed is present on mount`
 - ✔ `provides initialIsAuthenticated through useAuthHint context`
 - ✔ `initializes theme in store when initialTheme is provided and never reverts client theme changes on rerender`
+- ✔ `suppresses duplicate visibilitychange sync within 15s cooldown but keeps auth-token-refreshed unthrottled`
 
 </details>
 
@@ -501,7 +505,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (39 Suites · 567 Tests)
+### 🎨 Catalog & Presentation (39 Suites · 568 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -1200,7 +1204,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (52 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (53 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -1254,6 +1258,7 @@
 - ✔ `clamps pagination when deleting the last item on the final page and resets page when switching marginalia source filter`
 - ✔ `primes useReaderStore when clicking a volume heading in By-Book mode`
 - ✔ `handles mobile single-column scroll focus zone, boundaries, tap activation, and dismissal`
+- ✔ `invokes passive annotation sync with 15s cooldown on authenticated online mount`
 
 </details>
 
@@ -1672,10 +1677,10 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 211 Tests)
+### ⚡ Zustand State Stores (10 Suites · 223 Tests)
 
 <details>
-<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `initializes with clean default state`
 - ✔ `evaluates and unlocks accolades when context meets criteria`
@@ -1687,11 +1692,12 @@
 - ✔ `syncs with cloud by merging remote accolades and pushing local ones`
 - ✔ `covers authenticated evaluateAndUnlock, authenticated togglePin, dismissCelebration empty guard, syncWithCloud errors, and useHydratedAccolades`
 - ✔ `queues pendingPinUpdates when togglePin is called offline and flushes them on syncWithCloud`
+- ✔ `respects minSyncIntervalMs passive cooldown unless pendingPinUpdates exist or pin state changes`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (37 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (38 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1730,11 +1736,12 @@
 - ✔ `preserves newer local annotation edits via LWW during syncWithCloud and provides useHydratedAnnotationCount`
 - ✔ `prunes and reconciles fellowAnnotations when fellows or symposiums are removed or deleted`
 - ✔ `prunes flushed tombstones after syncWithCloud and drops remotely deleted user annotations based on lastAnnotationSyncAt`
+- ✔ `respects opt-in minSyncIntervalMs passive cooldown when clean and bypasses on dirty queues, explicit sync, or invalidation`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (34 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (38 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1770,6 +1777,10 @@
 - ✔ `preserves session user on transient network/reload errors while online and clears only on definitive 401/session_not_found errors`
 - ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
 - ✔ `forwards optional Cloudflare Turnstile captchaToken across auth actions`
+- ✔ `coalesces overlapping Strict-Mode initializeAuth calls onto one getUser request and resets on settle`
+- ✔ `skips duplicate INITIAL_SESSION profile fetch while checkInitialUser is still pending`
+- ✔ `coalesces concurrent fetchProfile calls per user without suppressing subsequent sequential fetches`
+- ✔ `coalesceInFlightByUser collapses passive callers and executes one trailing pass when marked dirty`
 
 </details>
 
@@ -1830,7 +1841,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
@@ -1845,11 +1856,13 @@
 - ✔ `formats fellow scholar labels cleanly avoiding (@scholar)`
 - ✔ `fetchScholarProfilesMap returns empty map for empty input or failed query`
 - ✔ `prunes orphaned pendingSymposiumProgress and fellowAnnotations on removeFellow, leaveSymposium, and fetchFellowshipData`
+- ✔ `respects minSyncIntervalMs passive cooldown and invalidates on pending progress, explicit refresh, clear, or membership mutations`
+- ✔ `skips fellowship Supabase queries when verifyActiveCloudSession fails under an auth-capable client`
 
 </details>
 
 <details>
-<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `initializes with default values`
 - ✔ `records daily activity without duplicates`
@@ -1865,6 +1878,9 @@
 - ✔ `synchronizes and merges total_listening_seconds with Supabase cloud`
 - ✔ `covers authenticated debounced sync on duration/goal/activity, error handling, getTodayImmersionSeconds, and useHydratedHabits`
 - ✔ `preserves the greater completed_books_count and retries only for missing schema columns`
+- ✔ `skips redundant upsert when remote user_reading_habits already matches converged local state`
+- ✔ `coalesces passive concurrent syncs and executes one trailing pass when setAnnualGoal runs mid-flight`
+- ✔ `respects minSyncIntervalMs passive cooldown and invalidates cooldown after goal mutations`
 
 </details>
 
@@ -1897,7 +1913,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (29 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -1928,6 +1944,7 @@
 - ✔ `records deletedPositionBookIds tombstones when clearing a position offline and flushes deletions + local-only positions on syncWithCloud`
 - ✔ `enriches Anonymous or missing authors in readingPositions when fresh book arrives with authentic authors without lifespans`
 - ✔ `batches multiple healedInCloud and enrichReadingPositions rows into a single reading_progress upsert with bookmark_text fallback`
+- ✔ `skips passive syncWithCloud within 15s cooldown unless tombstones exist or interval elapsed`
 
 </details>
 
@@ -1945,7 +1962,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (46 Suites · 588 Tests)
+### 📚 Gutenberg Parsers & Metadata (46 Suites · 591 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2082,7 +2099,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
@@ -2095,6 +2112,7 @@
 - ✔ `dispatches MOVE_BOOK and UPDATE_SHELF outbox actions and handles offline / error outbox queuing`
 - ✔ `handles subsequent cloud sync (authoritative mode), __downloaded__ active shelf preservation, and query error branches`
 - ✔ `preserves rich local metadata in mergeCloudBookWithLocal, deduplicates multi-shelf books, and coalesces concurrent syncs`
+- ✔ `enforces minSyncIntervalMs cooldown on passive syncs and flushes mid-flight dirty outbox mutations cleanly`
 
 </details>
 
@@ -2132,7 +2150,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (34 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (35 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2159,6 +2177,7 @@
 - ✔ `throws CatalogProviderError when Supabase returns an error`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
 - ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
+- ✔ `caches searchBooks results for 5 minutes and pre-warms globalThis bookMetadataCache`
 - ✔ `automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch`
 - ✔ `handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically`
 - ✔ `handles pool === "quotes" with native PostgREST quote0 and quote1 aliased projection`
@@ -2656,12 +2675,13 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/sync-utils.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/lib/sync-utils.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `triggers syncWithCloud concurrently on Auth, Bookshelf, Annotation, Reader, Habits, and Accolades stores, plus Fellowship hydration`
 - ✔ `safely exits without calling stores if userId is empty`
 - ✔ `gracefully settles and does not throw if one store encounters a network rejection`
 - ✔ `verifies active cloud session, skips unauthenticated syncs when cookies are cleared, and preserves user on transient wake-up errors`
+- ✔ `coalesces overlapping syncAllStoresWithCloud calls per user and allows subsequent sequential runs`
 
 </details>
 
@@ -3353,7 +3373,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (58 Suites · 270 Tests)
+### 🧩 UI Primitives & Motion (59 Suites · 275 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
@@ -3390,7 +3410,7 @@
 - ✔ `filters bookplates when clicking category tabs`
 - ✔ `renders pinned bookplate in showcase when pinned`
 - ✔ `displays warning when trying to pin more than 3 bookplates`
-- ✔ `invokes cloud sync on mount if userId is provided`
+- ✔ `invokes cloud sync on mount with passive cooldown if userId is provided`
 - ✔ `applies theme-aware solid borders without vanishing fractional opacities`
 
 </details>
@@ -3413,7 +3433,7 @@
 - ✔ `renders canonical 4-tier milestone ladder cards with titles, Latin mottos, and paces`
 - ✔ `elevates milestone target dynamically as reader completes books`
 - ✔ `does not expose arbitrary user edit buttons or input fields (anti-tamper integrity)`
-- ✔ `triggers cloud sync on mount when authenticated userId is provided`
+- ✔ `triggers cloud sync on mount once per user without re-syncing on completedBooksCount prop changes`
 - ✔ `applies theme-aware solid borders and static surfaces without false hover affordances or fractional opacity variants`
 
 </details>
@@ -3948,7 +3968,17 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/mocks/handlers.test.ts</code></b> (4 tests)</summary>
+
+- ✔ `intercepts hosted Supabase endpoints across rest, auth, storage, realtime, functions, and graphql with 503 offline fallback`
+- ✔ `intercepts local Supabase CLI :54321 endpoints cleanly without live socket I/O`
+- ✔ `provides deterministic catalog and content mocks via MSW`
+- ✔ `throws fail-closed when handleUnhandledMswRequest sees unmocked Supabase, :54321, or external URLs`
+
+</details>
+
+<details>
+<summary><b><code>src/proxy.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
@@ -3961,6 +3991,7 @@
 - ✔ `skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching`
 - ✔ `forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens`
 - ✔ `skips updateSession for auth callback routes, service worker precache, and background link prefetches`
+- ✔ `skips updateSession on public-route client RSC navigations while preserving full checks on /account and document requests`
 
 </details>
 

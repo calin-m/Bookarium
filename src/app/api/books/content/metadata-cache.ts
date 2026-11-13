@@ -16,8 +16,17 @@ export interface CachedBookContentEntry {
   cachedAt: number;
 }
 
-const bookMetadataCache = new Map<number, CachedMetadata>();
-const bookContentLruCache = new Map<number, CachedBookContentEntry>();
+const globalForBookCache = globalThis as typeof globalThis & {
+  __bookariumMetadataCache?: Map<number, CachedMetadata>;
+  __bookariumContentLruCache?: Map<number, CachedBookContentEntry>;
+};
+
+const bookMetadataCache =
+  globalForBookCache.__bookariumMetadataCache ??
+  (globalForBookCache.__bookariumMetadataCache = new Map<number, CachedMetadata>());
+const bookContentLruCache =
+  globalForBookCache.__bookariumContentLruCache ??
+  (globalForBookCache.__bookariumContentLruCache = new Map<number, CachedBookContentEntry>());
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const MAX_METADATA_CACHE_ENTRIES = 1000;
 const MAX_CACHED_BOOKS = 20;

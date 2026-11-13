@@ -415,10 +415,46 @@ export const handlers = [
     return HttpResponse.json(found);
   }),
 
-  // Default catch-all Supabase PostgREST, Auth & Storage handlers to prevent unmocked network I/O in component tests
+  // Default catch-all Supabase PostgREST, Auth, Storage, Realtime, Functions & GraphQL handlers
+  // Covers both hosted *.supabase.co projects and local Supabase CLI ports (127.0.0.1:54321 / localhost:54321)
   // Returns 503 so offline-first Zustand stores immediately fall back to local test-seeded state in <1ms without DNS/socket waits
-  http.all(/https:\/\/[a-z0-9.-]+\.supabase\.co\/(rest|auth|storage)\/v1\/.*/i, () => {
-    return HttpResponse.json({ message: 'Mock offline fallback' }, { status: 503 });
-  }),
+  http.all(
+    /^https?:\/\/(?:[a-z0-9.-]+\.supabase\.co|(?:127\.0\.0\.1|localhost):54321)\/(?:rest|auth|storage|realtime|functions|graphql)\/v1(?:\/.*)?$/i,
+    () => {
+      return HttpResponse.json({ message: 'Mock offline fallback' }, { status: 503 });
+    }
+  ),
 ];
+
+/**
+ * Fail-closed MSW unhandled-request guard for Vitest.
+ * Prevents tests from accidentally leaking HTTP/HTTPS requests to live Supabase projects,
+ * local Docker Supabase ports, or external hosts when mock handlers are missing.
+ */
+export function handleUnhandledMswRequest(request: Request): void {
+  const url = request.url;
+  const parsed = new URL(url, 'http://localhost');
+  const isLocalSupabasePort =
+    (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
+    parsed.port === '54321';
+  const isHostedSupabase = /\.supabase\.co$/i.test(parsed.hostname);
+  const isExternalNetworkHost =
+    (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+    parsed.hostname !== 'localhost' &&
+    parsed.hostname !== '127.0.0.1';
+  const isUnhandledInternalApi =
+    (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+    parsed.pathname.startsWith('/api/');
+
+  if (
+    isHostedSupabase ||
+    isLocalSupabasePort ||
+    isExternalNetworkHost ||
+    isUnhandledInternalApi
+  ) {
+    throw new Error(
+      `[MSW Fail-Closed] Unhandled network request blocked in tests: ${request.method} ${url}`
+    );
+  }
+}
 

@@ -295,4 +295,20 @@ describe('metadata-cache', () => {
     const resolved = await resolveBookMetadata(7777);
     expect(resolved?.title).toBe('Fresh Volume');
   });
+
+  it('anchors metadata and content LRU caches on globalThis to survive Next.js HMR reloads', () => {
+    const globalState = globalThis as typeof globalThis & {
+      __bookariumMetadataCache?: Map<number, unknown>;
+      __bookariumContentLruCache?: Map<number, unknown>;
+    };
+
+    setBookMetadataCache(4321, {
+      book: { id: 4321, title: 'Global Persistent Title', authors: [] },
+      expiresAt: Date.now() + 60_000,
+    });
+    setCachedBookContent(4321, 'Persistent chapter text', 'supabase');
+
+    expect(globalState.__bookariumMetadataCache?.has(4321)).toBe(true);
+    expect(globalState.__bookariumContentLruCache?.has(4321)).toBe(true);
+  });
 });

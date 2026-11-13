@@ -39,6 +39,16 @@ export function shouldSkipSessionRefresh(request: NextRequest): boolean {
     return true;
   }
 
+  // Client-side App Router RSC navigations outside protected /account routes do not
+  // need server-side session token rotation; browser hydration checks session once on mount.
+  if (
+    request.headers.get('rsc') === '1' &&
+    pathname !== '/account' &&
+    !pathname.startsWith('/account/')
+  ) {
+    return true;
+  }
+
   return false;
 }
 
@@ -58,7 +68,7 @@ export async function proxy(request: NextRequest) {
   let response: NextResponse;
 
   if (shouldSkipSessionRefresh(request)) {
-    response = NextResponse.next({ request });
+    response = validShareToken ? NextResponse.next({ request }) : NextResponse.next();
   } else {
     try {
       response = await updateSession(request);

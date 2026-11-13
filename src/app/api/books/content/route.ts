@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
   const country = resolveClientCountry(request, searchParams);
 
   // Jurisdictional Copyright Gatekeeper:
-  // In international jurisdictions, verify book public domain status before streaming any bytes
-  if (country !== 'US') {
+  // In international jurisdictions, verify book public domain status before streaming text or social cards
+  if (country !== 'US' && typeParam !== 'cover') {
     const metadata = await resolveBookMetadata(bookId);
 
     if (!metadata) {
@@ -456,7 +456,7 @@ export async function GET(request: NextRequest) {
           status: 200,
           headers: {
             'Content-Type': 'image/jpeg',
-            'Cache-Control': 'public, s-maxage=604800, stale-while-revalidate=2592000',
+            'Cache-Control': 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000',
             'Vary': 'x-vercel-ip-country, Accept-Encoding',
           },
         });
@@ -478,7 +478,7 @@ export async function GET(request: NextRequest) {
   if (cachedBook) {
     const responseHeaders: Record<string, string> = {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
       'Vary': 'x-vercel-ip-country, Accept-Encoding',
     };
     if (cachedBook.source === 'supabase') {

@@ -56,7 +56,7 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
   const hasEnrichedPool = Boolean(quoteEnrichedBooks && quoteEnrichedBooks.length > 0);
   const hasExistingQuotes = Array.isArray(book.quotes) && book.quotes.length >= 1;
   const { data: featuredQuotesMap } = useFeaturedQuotes([book.id], {
-    enabled: !hasEnrichedPool && !hasExistingQuotes,
+    enabled: isPoolSettled && !hasEnrichedPool && !hasExistingQuotes,
   });
 
   // Strictly prioritize canonicalSpread / database quotes (public.books.quotes) without post-hydration text shifts

@@ -168,5 +168,44 @@ describe('Root Proxy (Next.js 16)', () => {
 
     expect(updateSessionSpy).not.toHaveBeenCalled();
   });
+
+  it('skips updateSession on public-route client RSC navigations while preserving full checks on /account and document requests', async () => {
+    const updateSessionSpy = vi
+      .spyOn(supabaseMiddleware, 'updateSession')
+      .mockResolvedValue(NextResponse.next());
+    updateSessionSpy.mockClear();
+
+    const homeRscReq = new NextRequest('https://bookarium.vercel.app/', {
+      headers: { rsc: '1' },
+    });
+    expect(shouldSkipSessionRefresh(homeRscReq)).toBe(true);
+    await proxy(homeRscReq);
+
+    const bookRscReq = new NextRequest('https://bookarium.vercel.app/book/1342', {
+      headers: { rsc: '1' },
+    });
+    expect(shouldSkipSessionRefresh(bookRscReq)).toBe(true);
+    await proxy(bookRscReq);
+    expect(updateSessionSpy).not.toHaveBeenCalled();
+
+    const accountRscReq = new NextRequest('https://bookarium.vercel.app/account', {
+      headers: { rsc: '1' },
+    });
+    expect(shouldSkipSessionRefresh(accountRscReq)).toBe(false);
+
+    const accountSubRscReq = new NextRequest('https://bookarium.vercel.app/account/settings', {
+      headers: { rsc: '1' },
+    });
+    expect(shouldSkipSessionRefresh(accountSubRscReq)).toBe(false);
+
+    const homeDocReq = new NextRequest('https://bookarium.vercel.app/');
+    expect(shouldSkipSessionRefresh(homeDocReq)).toBe(false);
+    await proxy(homeDocReq);
+    expect(updateSessionSpy).toHaveBeenCalledTimes(1);
+
+    const apiContentReq = new NextRequest('https://bookarium.vercel.app/api/books/content?id=1342&type=cover');
+    const apiRes = await proxy(apiContentReq);
+    expect(apiRes.headers.get('x-middleware-override-headers')).toBeNull();
+  });
 });
 

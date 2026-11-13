@@ -131,10 +131,10 @@ export default function PublicScholarProfilePage() {
 
         if (isOwnProfile) {
           if (shouldFetchHabits || shouldFetchShelves) {
-            useBookshelfStore.getState().syncWithCloud(authUser.id).catch(() => {});
+            useBookshelfStore.getState().syncWithCloud(authUser.id, { minSyncIntervalMs: 15_000 }).catch(() => {});
           }
           if (shouldFetchHabits) {
-            useReaderStore.getState().syncWithCloud(authUser.id).catch(() => {});
+            useReaderStore.getState().syncWithCloud(authUser.id, { minSyncIntervalMs: 15_000 }).catch(() => {});
           }
         }
 

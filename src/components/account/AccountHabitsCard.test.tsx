@@ -123,13 +123,17 @@ describe('AccountHabitsCard', () => {
     expect(screen.queryByLabelText(/Annual reading target number/i)).not.toBeInTheDocument();
   });
 
-  it('triggers cloud sync on mount when authenticated userId is provided', () => {
+  it('triggers cloud sync on mount once per user without re-syncing on completedBooksCount prop changes', () => {
     const syncMock = vi.fn().mockResolvedValue(undefined);
     useHabitsStore.setState({ syncWithCloud: syncMock });
 
-    render(<AccountHabitsCard userId="user-sync-1" completedBooksCount={3} />);
+    const { rerender } = render(<AccountHabitsCard userId="user-sync-1" completedBooksCount={3} />);
 
-    expect(syncMock).toHaveBeenCalledWith('user-sync-1');
+    expect(syncMock).toHaveBeenCalledTimes(1);
+    expect(syncMock).toHaveBeenCalledWith('user-sync-1', { minSyncIntervalMs: 15_000 });
+
+    rerender(<AccountHabitsCard userId="user-sync-1" completedBooksCount={4} />);
+    expect(syncMock).toHaveBeenCalledTimes(1);
   });
 
   it('applies theme-aware solid borders and static surfaces without false hover affordances or fractional opacity variants', () => {

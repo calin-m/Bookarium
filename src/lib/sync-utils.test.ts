@@ -152,5 +152,71 @@ describe('syncAllStoresWithCloud', () => {
     createClientSpy.mockRestore();
     useAuthStore.setState({ user: null });
   });
+
+  it('coalesces overlapping syncAllStoresWithCloud calls per user and allows subsequent sequential runs', async () => {
+    let resolveSession!: (val: {
+      data: { session: { access_token: string; user: { id: string } } };
+      error: null;
+    }) => void;
+    const mockGetSession = vi
+      .fn()
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSession = resolve;
+        })
+      )
+      .mockResolvedValueOnce({
+        data: { session: { access_token: 'tok-seq', user: { id: 'user-concurrent-1' } } },
+        error: null,
+      });
+
+    const createClientSpy = vi
+      .spyOn(supabaseClientModule, 'createClient')
+      .mockReturnValue({
+        auth: { getSession: mockGetSession },
+      } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+    const authMock = vi.fn().mockResolvedValue(undefined);
+    const bookshelfMock = vi.fn().mockResolvedValue(undefined);
+    const annotationMock = vi.fn().mockResolvedValue(undefined);
+    const readerMock = vi.fn().mockResolvedValue(undefined);
+    const habitsMock = vi.fn().mockResolvedValue(undefined);
+    const accoladesMock = vi.fn().mockResolvedValue(undefined);
+    const fellowshipMock = vi.fn().mockResolvedValue(undefined);
+
+    useAuthStore.setState({ syncWithCloud: authMock });
+    useBookshelfStore.setState({ syncWithCloud: bookshelfMock });
+    useAnnotationStore.setState({ syncWithCloud: annotationMock });
+    useReaderStore.setState({ syncWithCloud: readerMock });
+    useHabitsStore.setState({ syncWithCloud: habitsMock });
+    useAccoladesStore.setState({ syncWithCloud: accoladesMock });
+    useFellowshipStore.setState({ fetchFellowshipData: fellowshipMock });
+
+    const p1 = syncAllStoresWithCloud('user-concurrent-1');
+    const p2 = syncAllStoresWithCloud('user-concurrent-1');
+    expect(p1).toBe(p2);
+
+    resolveSession({
+      data: { session: { access_token: 'tok-1', user: { id: 'user-concurrent-1' } } },
+      error: null,
+    });
+    await p1;
+
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(authMock).toHaveBeenCalledTimes(1);
+    expect(bookshelfMock).toHaveBeenCalledTimes(1);
+    expect(annotationMock).toHaveBeenCalledTimes(1);
+    expect(readerMock).toHaveBeenCalledTimes(1);
+    expect(habitsMock).toHaveBeenCalledTimes(1);
+    expect(accoladesMock).toHaveBeenCalledTimes(1);
+    expect(fellowshipMock).toHaveBeenCalledTimes(1);
+
+    // Subsequent sequential run triggers cleanly
+    await syncAllStoresWithCloud('user-concurrent-1');
+    expect(mockGetSession).toHaveBeenCalledTimes(2);
+    expect(readerMock).toHaveBeenCalledTimes(2);
+
+    createClientSpy.mockRestore();
+  });
 });
 

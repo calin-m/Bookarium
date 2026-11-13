@@ -4,7 +4,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
-import { shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
+import {
+  coalesceInFlightByUser,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from './useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   AccoladeId,
@@ -18,6 +22,18 @@ import { evaluateAccolades } from '@/lib/accolades-engine';
 import type { Json } from '@/types/database.types';
 
 export const MAX_PINNED_ACCOLADES = 3;
+
+const inFlightAccoladesSyncs = new Map<string, Promise<void>>();
+const dirtyAccoladesSyncUsers = new Set<string>();
+const lastAccoladesSyncByUser = new Map<string, number>();
+
+function invalidateAccoladesSyncCooldown(userId?: string): void {
+  if (userId) {
+    lastAccoladesSyncByUser.delete(userId);
+  } else {
+    lastAccoladesSyncByUser.clear();
+  }
+}
 
 export interface AccoladesState {
   unlockedAccolades: Record<AccoladeId, UnlockedAccolade>;
@@ -35,7 +51,7 @@ export interface AccoladesState {
   ) => { newlyUnlocked: AccoladeDefinition[]; progressMap: Record<AccoladeId, AccoladeProgress> };
   dismissCelebration: () => void;
   togglePin: (id: AccoladeId, userId?: string) => Promise<boolean>;
-  syncWithCloud: (userId: string) => Promise<void>;
+  syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   resetAccolades: () => void;
 
   // Selectors
@@ -72,6 +88,7 @@ export const useAccoladesStore = create<AccoladesState>()(
 
           // If authenticated, asynchronously push newly unlocked accolades to Supabase
           if (userId) {
+            invalidateAccoladesSyncCooldown(userId);
             const supabase = createClient();
             const inserts = result.newlyUnlocked.map((def) => ({
               user_id: userId,
@@ -117,6 +134,37 @@ export const useAccoladesStore = create<AccoladesState>()(
 
         const isCurrentlyPinned = state.pinnedAccoladeIds.includes(id);
 
+        const persistPinPreference = async (isPinnedValue: boolean) => {
+          if (!userId) return;
+          invalidateAccoladesSyncCooldown(userId);
+          const recordPendingPin = () => {
+            set((s) => ({
+              pendingPinUpdates: { ...s.pendingPinUpdates, [id]: isPinnedValue },
+            }));
+            if (inFlightAccoladesSyncs.has(userId)) {
+              dirtyAccoladesSyncUsers.add(userId);
+            }
+          };
+
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            recordPendingPin();
+            return;
+          }
+          try {
+            const supabase = createClient();
+            const { error } = await supabase
+              .from('user_accolades')
+              .update({ is_pinned: isPinnedValue, updated_at: new Date().toISOString() })
+              .eq('user_id', userId)
+              .eq('accolade_id', id);
+            if (error) {
+              recordPendingPin();
+            }
+          } catch {
+            recordPendingPin();
+          }
+        };
+
         if (isCurrentlyPinned) {
           // Unpin
           const nextPinned = state.pinnedAccoladeIds.filter((pinnedId) => pinnedId !== id);
@@ -130,32 +178,7 @@ export const useAccoladesStore = create<AccoladesState>()(
             unlockedAccolades: nextUnlocked,
           });
 
-          if (userId) {
-            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-              set((s) => ({
-                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: false },
-              }));
-              return true;
-            }
-            try {
-              const supabase = createClient();
-              const { error } = await supabase
-                .from('user_accolades')
-                .update({ is_pinned: false, updated_at: new Date().toISOString() })
-                .eq('user_id', userId)
-                .eq('accolade_id', id);
-              if (error) {
-                set((s) => ({
-                  pendingPinUpdates: { ...s.pendingPinUpdates, [id]: false },
-                }));
-              }
-            } catch {
-              set((s) => ({
-                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: false },
-              }));
-            }
-          }
-
+          await persistPinPreference(false);
           return true;
         } else {
           // Pin
@@ -175,153 +198,161 @@ export const useAccoladesStore = create<AccoladesState>()(
             unlockedAccolades: nextUnlocked,
           });
 
-          if (userId) {
-            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-              set((s) => ({
-                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: true },
-              }));
-              return true;
-            }
-            try {
-              const supabase = createClient();
-              const { error } = await supabase
-                .from('user_accolades')
-                .update({ is_pinned: true, updated_at: new Date().toISOString() })
-                .eq('user_id', userId)
-                .eq('accolade_id', id);
-              if (error) {
-                set((s) => ({
-                  pendingPinUpdates: { ...s.pendingPinUpdates, [id]: true },
-                }));
-              }
-            } catch {
-              set((s) => ({
-                pendingPinUpdates: { ...s.pendingPinUpdates, [id]: true },
-              }));
-            }
-          }
-
+          await persistPinPreference(true);
           return true;
         }
       },
 
-      syncWithCloud: async (userId: string) => {
-        if (!userId) return;
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => {
+        if (!userId) return Promise.resolve();
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve();
 
-        set({ isSyncing: true });
-        try {
-          const supabase = createClient();
-          if (
-            shouldVerifyCloudSession(supabase) &&
-            !(await verifyActiveCloudSession(supabase, userId))
-          ) {
-            set({ isSyncing: false });
-            return;
+        const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+        if (
+          minSyncIntervalMs > 0 &&
+          !inFlightAccoladesSyncs.has(userId) &&
+          !dirtyAccoladesSyncUsers.has(userId) &&
+          Object.keys(get().pendingPinUpdates).length === 0
+        ) {
+          const lastSyncAt = lastAccoladesSyncByUser.get(userId);
+          if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
+            return Promise.resolve();
           }
-
-          const pendingPins = { ...get().pendingPinUpdates };
-          const pendingEntries = Object.entries(pendingPins);
-          if (pendingEntries.length > 0) {
-            const flushedPins = new Map<string, boolean>();
-            for (const [accId, isPinnedVal] of pendingEntries) {
-              const res = await supabase
-                .from('user_accolades')
-                .update({ is_pinned: isPinnedVal, updated_at: new Date().toISOString() })
-                .eq('user_id', userId)
-                .eq('accolade_id', accId);
-              if (!res?.error) {
-                flushedPins.set(accId, isPinnedVal);
-              }
-            }
-            if (flushedPins.size > 0) {
-              set((state) => {
-                const nextPending = { ...state.pendingPinUpdates };
-                flushedPins.forEach((val, accId) => {
-                  if (nextPending[accId] === val) {
-                    delete nextPending[accId];
-                  }
-                });
-                return { pendingPinUpdates: nextPending };
-              });
-            }
-          }
-
-          const { data, error } = await supabase
-            .from('user_accolades')
-            .select('*')
-            .eq('user_id', userId);
-
-          if (error) {
-            set({ isSyncing: false });
-            return;
-          }
-
-          const currentUnlocked = get().unlockedAccolades;
-          const remoteRows = data || [];
-          const remoteMap = new Map<string, (typeof remoteRows)[number]>();
-          for (const row of remoteRows) {
-            remoteMap.set(row.accolade_id, row);
-          }
-
-          // 1. Identify local accolades that are not in cloud and push them
-          const localOnly = Object.values(currentUnlocked).filter(
-            (local) => !remoteMap.has(local.id)
-          );
-
-          if (localOnly.length > 0) {
-            const inserts = localOnly.map((acc) => ({
-              user_id: userId,
-              accolade_id: acc.id,
-              unlocked_at: acc.unlockedAt,
-              is_pinned: acc.isPinned,
-              metadata: (acc.metadata || {}) as Json,
-            }));
-
-            await supabase
-              .from('user_accolades')
-              .upsert(inserts, { onConflict: 'user_id,accolade_id' });
-          }
-
-          // 2. Merge remote records into local state functionally so concurrent unlocks/pins are preserved
-          set((state) => {
-            const mergedUnlocked: Record<AccoladeId, UnlockedAccolade> = {
-              ...state.unlockedAccolades,
-            };
-            const latestPendingPins = {
-              ...pendingPins,
-              ...state.pendingPinUpdates,
-            };
-            for (const row of remoteRows) {
-              const accId = row.accolade_id as AccoladeId;
-              const hasPendingPin = Object.prototype.hasOwnProperty.call(latestPendingPins, accId);
-              mergedUnlocked[accId] = {
-                id: accId,
-                unlockedAt: row.unlocked_at,
-                isPinned: hasPendingPin ? latestPendingPins[accId] : (row.is_pinned ?? false),
-                metadata: (row.metadata as Record<string, unknown>) || undefined,
-              };
-            }
-
-            // 3. Derive pinned accolade IDs from merged record
-            const derivedPinned = Object.values(mergedUnlocked)
-              .filter((acc) => acc.isPinned)
-              .map((acc) => acc.id)
-              .slice(0, MAX_PINNED_ACCOLADES);
-
-            return {
-              unlockedAccolades: mergedUnlocked,
-              pinnedAccoladeIds: derivedPinned,
-              isSyncing: false,
-              lastSyncAt: new Date().toISOString(),
-            };
-          });
-        } catch {
-          set({ isSyncing: false });
         }
+
+        if (
+          inFlightAccoladesSyncs.has(userId) &&
+          Object.keys(get().pendingPinUpdates).length > 0
+        ) {
+          dirtyAccoladesSyncUsers.add(userId);
+        }
+
+        return coalesceInFlightByUser(
+          inFlightAccoladesSyncs,
+          userId,
+          async () => {
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+            set({ isSyncing: true });
+            try {
+              const supabase = createClient();
+              if (
+                shouldVerifyCloudSession(supabase) &&
+                !(await verifyActiveCloudSession(supabase, userId))
+              ) {
+                return;
+              }
+
+              const pendingPins = { ...get().pendingPinUpdates };
+              const pendingEntries = Object.entries(pendingPins);
+              if (pendingEntries.length > 0) {
+                const flushedPins = new Map<string, boolean>();
+                for (const [accId, isPinnedVal] of pendingEntries) {
+                  const res = await supabase
+                    .from('user_accolades')
+                    .update({ is_pinned: isPinnedVal, updated_at: new Date().toISOString() })
+                    .eq('user_id', userId)
+                    .eq('accolade_id', accId);
+                  if (!res?.error) {
+                    flushedPins.set(accId, isPinnedVal);
+                  }
+                }
+                if (flushedPins.size > 0) {
+                  set((state) => {
+                    const nextPending = { ...state.pendingPinUpdates };
+                    flushedPins.forEach((val, accId) => {
+                      if (nextPending[accId] === val) {
+                        delete nextPending[accId];
+                      }
+                    });
+                    return { pendingPinUpdates: nextPending };
+                  });
+                }
+              }
+
+              const { data, error } = await supabase
+                .from('user_accolades')
+                .select('*')
+                .eq('user_id', userId);
+
+              if (error) {
+                return;
+              }
+
+              const currentUnlocked = get().unlockedAccolades;
+              const remoteRows = data || [];
+              const remoteMap = new Map<string, (typeof remoteRows)[number]>();
+              for (const row of remoteRows) {
+                remoteMap.set(row.accolade_id, row);
+              }
+
+              // 1. Identify local accolades that are not in cloud and push them
+              const localOnly = Object.values(currentUnlocked).filter(
+                (local) => !remoteMap.has(local.id)
+              );
+
+              if (localOnly.length > 0) {
+                const inserts = localOnly.map((acc) => ({
+                  user_id: userId,
+                  accolade_id: acc.id,
+                  unlocked_at: acc.unlockedAt,
+                  is_pinned: acc.isPinned,
+                  metadata: (acc.metadata || {}) as Json,
+                }));
+
+                await supabase
+                  .from('user_accolades')
+                  .upsert(inserts, { onConflict: 'user_id,accolade_id' });
+              }
+
+              // 2. Merge remote records into local state functionally so concurrent unlocks/pins are preserved
+              set((state) => {
+                const mergedUnlocked: Record<AccoladeId, UnlockedAccolade> = {
+                  ...state.unlockedAccolades,
+                };
+                const latestPendingPins = {
+                  ...pendingPins,
+                  ...state.pendingPinUpdates,
+                };
+                for (const row of remoteRows) {
+                  const accId = row.accolade_id as AccoladeId;
+                  const hasPendingPin = Object.prototype.hasOwnProperty.call(
+                    latestPendingPins,
+                    accId
+                  );
+                  mergedUnlocked[accId] = {
+                    id: accId,
+                    unlockedAt: row.unlocked_at,
+                    isPinned: hasPendingPin ? latestPendingPins[accId] : (row.is_pinned ?? false),
+                    metadata: (row.metadata as Record<string, unknown>) || undefined,
+                  };
+                }
+
+                // 3. Derive pinned accolade IDs from merged record
+                const derivedPinned = Object.values(mergedUnlocked)
+                  .filter((acc) => acc.isPinned)
+                  .map((acc) => acc.id)
+                  .slice(0, MAX_PINNED_ACCOLADES);
+
+                return {
+                  unlockedAccolades: mergedUnlocked,
+                  pinnedAccoladeIds: derivedPinned,
+                  lastSyncAt: new Date().toISOString(),
+                };
+              });
+              lastAccoladesSyncByUser.set(userId, Date.now());
+            } catch {
+              // Non-blocking fallback
+            } finally {
+              set({ isSyncing: false });
+            }
+          },
+          dirtyAccoladesSyncUsers
+        );
       },
 
       resetAccolades: () => {
+        invalidateAccoladesSyncCooldown();
         set({
           unlockedAccolades: {} as Record<AccoladeId, UnlockedAccolade>,
           pinnedAccoladeIds: [],

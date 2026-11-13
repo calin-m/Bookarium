@@ -46,6 +46,66 @@ export const DEFAULT_QUOTE_POOL_LIMIT = 48;
  */
 export const QUOTE_POOL_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
+const CATALOG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CATALOG_CACHE_ENTRIES = 64;
+const METADATA_WARM_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_SHARED_METADATA_ENTRIES = 1000;
+
+interface CatalogQueryCacheEntry {
+  result: CatalogQueryResult;
+  expiresAt: number;
+}
+
+interface SharedBookMetadataEntry {
+  book: {
+    id: number;
+    title: string;
+    authors?: Author[];
+    translators?: Author[];
+    copyright?: boolean | null;
+  };
+  expiresAt: number;
+}
+
+const globalForCatalogCache = globalThis as typeof globalThis & {
+  __bookariumCatalogQueryCache?: Map<string, CatalogQueryCacheEntry>;
+  __bookariumMetadataCache?: Map<number, SharedBookMetadataEntry>;
+};
+
+const catalogQueryCache =
+  globalForCatalogCache.__bookariumCatalogQueryCache ??
+  (globalForCatalogCache.__bookariumCatalogQueryCache = new Map<string, CatalogQueryCacheEntry>());
+
+function warmBookMetadataCache(books: GutendexBook[]): void {
+  if (!books || books.length === 0) return;
+  const metadataCache =
+    globalForCatalogCache.__bookariumMetadataCache ??
+    (globalForCatalogCache.__bookariumMetadataCache = new Map<number, SharedBookMetadataEntry>());
+  const expiresAt = Date.now() + METADATA_WARM_TTL_MS;
+
+  for (const book of books) {
+    if (!book || typeof book.id !== 'number') continue;
+    if (metadataCache.has(book.id)) {
+      metadataCache.delete(book.id);
+    } else if (metadataCache.size >= MAX_SHARED_METADATA_ENTRIES) {
+      const oldestKey = metadataCache.keys().next().value;
+      if (typeof oldestKey === 'number') {
+        metadataCache.delete(oldestKey);
+      }
+    }
+    metadataCache.set(book.id, {
+      book: {
+        id: book.id,
+        title: book.title,
+        authors: book.authors,
+        translators: book.translators,
+        copyright: book.copyright,
+      },
+      expiresAt,
+    });
+  }
+}
+
 const FEATURED_HERO_ORDER_MAP = new Map<number, number>(
   FEATURED_HERO_BOOKS.map((b, idx) => [b.id, idx])
 );
@@ -189,6 +249,7 @@ export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
 export class SupabaseCatalogProvider implements ICatalogProvider {
   public readonly name = 'supabase' as const;
   private client: SupabaseClient<Database> | null;
+  private instanceQueryCache = new Map<string, CatalogQueryCacheEntry>();
   private lastHealthCheckTime = 0;
   private lastHealthCheckResult = false;
   public static readonly HEALTH_CACHE_TTL_MS = 60 * 1000; // 60 seconds
@@ -200,6 +261,54 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
   public resetHealthCache(): void {
     this.lastHealthCheckTime = 0;
     this.lastHealthCheckResult = false;
+    this.instanceQueryCache.clear();
+    if (!this.client) {
+      catalogQueryCache.clear();
+    }
+  }
+
+  private getQueryCache(): Map<string, CatalogQueryCacheEntry> {
+    return this.client ? this.instanceQueryCache : catalogQueryCache;
+  }
+
+  private getCachedCatalogResult(
+    cacheKey: string,
+    now: number
+  ): CatalogQueryResult | undefined {
+    const cache = this.getQueryCache();
+    const cached = cache.get(cacheKey);
+    if (!cached) return undefined;
+    if (cached.expiresAt <= now) {
+      cache.delete(cacheKey);
+      return undefined;
+    }
+    cache.delete(cacheKey);
+    cache.set(cacheKey, cached);
+    return {
+      ...cached.result,
+      latencyMs: 0,
+    };
+  }
+
+  private setCachedCatalogResult(
+    cacheKey: string,
+    result: CatalogQueryResult,
+    now: number
+  ): void {
+    const cache = this.getQueryCache();
+    if (cache.has(cacheKey)) {
+      cache.delete(cacheKey);
+    } else if (cache.size >= MAX_CATALOG_CACHE_ENTRIES) {
+      const oldestKey = cache.keys().next().value;
+      if (typeof oldestKey === 'string') {
+        cache.delete(oldestKey);
+      }
+    }
+    cache.set(cacheKey, {
+      result,
+      expiresAt: now + CATALOG_CACHE_TTL_MS,
+    });
+    warmBookMetadataCache(result.results);
   }
 
   private getSupabase(): SupabaseClient<Database> {
@@ -395,8 +504,20 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     jurisdictionRule: JurisdictionRule
   ): Promise<CatalogQueryResult> {
     const startTime = Date.now();
-    const supabase = this.getSupabase();
     const limit = Math.max(1, Math.min(600, options.limit || DEFAULT_QUOTE_POOL_LIMIT));
+    const quoteCacheKey = JSON.stringify({
+      mode: 'quotes',
+      country: options.country,
+      jurisdictionRule,
+      limit,
+      quoteWindow: Math.floor(startTime / QUOTE_POOL_CACHE_TTL_MS),
+    });
+    const cachedQuotePool = this.getCachedCatalogResult(quoteCacheKey, startTime);
+    if (cachedQuotePool) {
+      return cachedQuotePool;
+    }
+
+    const supabase = this.getSupabase();
 
     try {
       const candidateIdSet = new Set<number>([
@@ -494,7 +615,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
       const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
 
-      return {
+      const result: CatalogQueryResult = {
         count: sortedBooks.length,
         next: null,
         previous: null,
@@ -504,6 +625,8 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         clientCountry: options.country,
         jurisdictionRule,
       };
+      this.setCachedCatalogResult(quoteCacheKey, result, Date.now());
+      return result;
     } catch (err: unknown) {
       if (err instanceof CatalogProviderError) throw err;
       throw new CatalogProviderError(
@@ -516,7 +639,6 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
   public async searchBooks(options: CatalogQueryOptions): Promise<CatalogQueryResult> {
     const startTime = Date.now();
-    const supabase = this.getSupabase();
     const country = options.country;
     const jurisdictionRule = getJurisdictionRule(country);
     const currentYear = new Date().getFullYear();
@@ -524,6 +646,31 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     if (options.pool === 'quotes') {
       return this.fetchQuoteEnrichedPool(options, jurisdictionRule);
     }
+
+    const searchCacheKey = JSON.stringify({
+      mode: 'search',
+      search: options.search || '',
+      topic: options.topic || '',
+      languages: Array.isArray(options.languages) ? [...options.languages].sort().join(',') : '',
+      sort: options.sort || 'popular',
+      page: Math.max(1, options.page || 1),
+      limit: Math.max(1, Math.min(100, options.limit || 32)),
+      mimeType: options.mimeType || '',
+      authorYearStart: options.authorYearStart ?? null,
+      authorYearEnd: options.authorYearEnd ?? null,
+      ids: options.ids || '',
+      hasQuotes: Boolean(options.hasQuotes),
+      includeRestrictedMetadata: Boolean(options.includeRestrictedMetadata),
+      country,
+      jurisdictionRule,
+      year: currentYear,
+    });
+    const cachedSearch = this.getCachedCatalogResult(searchCacheKey, startTime);
+    if (cachedSearch) {
+      return cachedSearch;
+    }
+
+    const supabase = this.getSupabase();
 
     try {
       const baseQuery = this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear);
@@ -615,7 +762,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const nextUrl = hasNext ? `/api/books?page=${page + 1}` : null;
       const prevUrl = hasPrev ? `/api/books?page=${page - 1}` : null;
 
-      return {
+      const result: CatalogQueryResult = {
         count: totalCount,
         next: nextUrl,
         previous: prevUrl,
@@ -626,6 +773,8 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         jurisdictionRule,
         totalFiltered,
       };
+      this.setCachedCatalogResult(searchCacheKey, result, Date.now());
+      return result;
     } catch (err: unknown) {
       if (err instanceof CatalogProviderError) {
         throw err;

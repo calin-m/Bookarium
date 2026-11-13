@@ -4,7 +4,9 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NotebookView } from './NotebookView';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
 let mockNotebookOfflineIds: number[] = [];
@@ -2216,6 +2218,50 @@ describe('NotebookView component', () => {
         Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: originalInnerWidth });
         Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: originalInnerHeight });
         Object.defineProperty(window, 'scrollY', { writable: true, configurable: true, value: originalScrollY });
+      }
+    });
+
+    it('invokes passive annotation sync with 15s cooldown on authenticated online mount', async () => {
+      const syncSpy = vi
+        .spyOn(useAnnotationStore.getState(), 'syncWithCloud')
+        .mockResolvedValue(undefined);
+      const fellowshipSpy = vi
+        .spyOn(useFellowshipStore.getState(), 'fetchFellowshipData')
+        .mockResolvedValue(undefined);
+      const resolveStaleSpy = vi
+        .spyOn(useAnnotationStore.getState(), 'resolveStaleFellowProfiles')
+        .mockResolvedValue(undefined);
+      const originalOnline = navigator.onLine;
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+
+      try {
+        act(() => {
+          useAuthStore.setState({
+            user: { id: 'scholar-notebook-1', email: 'notebook@bookarium.test' } as never,
+          });
+        });
+
+        await act(async () => {
+          render(<NotebookView onBrowseCatalog={vi.fn()} />);
+          await Promise.resolve();
+        });
+
+        await waitFor(() => {
+          expect(syncSpy).toHaveBeenCalledWith('scholar-notebook-1', {
+            minSyncIntervalMs: 15_000,
+          });
+          expect(fellowshipSpy).toHaveBeenCalledWith('scholar-notebook-1', {
+            minSyncIntervalMs: 15_000,
+          });
+        });
+      } finally {
+        syncSpy.mockRestore();
+        fellowshipSpy.mockRestore();
+        resolveStaleSpy.mockRestore();
+        act(() => {
+          useAuthStore.setState({ user: null, profile: null });
+        });
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline });
       }
     });
   });

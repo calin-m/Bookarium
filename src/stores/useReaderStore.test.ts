@@ -353,11 +353,7 @@ describe('useReaderStore', () => {
       await useReaderStore.getState().syncWithCloud('test-user-123');
 
       expect(mockFrom).toHaveBeenCalledWith('reading_progress');
-      expect(mockDelete).toHaveBeenCalled();
-      expect(mockEq1).toHaveBeenCalledWith('user_id', 'test-user-123');
-      expect(mockEq2).toHaveBeenCalledWith('progress_percent', 0);
-      expect(mockEq3).toHaveBeenCalledWith('current_chapter_index', 0);
-      expect(mockLte).toHaveBeenCalledWith('scroll_offset', 1);
+      expect(mockDelete).not.toHaveBeenCalled();
       expect(mockSelectEq).toHaveBeenCalledWith('user_id', 'test-user-123');
       expect(mockOrder).toHaveBeenCalledWith('last_read_at', { ascending: false });
       const pos1342 = useReaderStore.getState().getReadingPosition(1342);
@@ -510,6 +506,13 @@ describe('useReaderStore', () => {
       // Real active book 222 should be synced
       expect(useReaderStore.getState().getReadingPosition(222)).not.toBeNull();
       expect(useReaderStore.getState().getProgress(222)).toBe(25);
+
+      // Remote ghost cleanup delete must trigger only when SELECT observed a ghost record
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockEq1).toHaveBeenCalledWith('user_id', 'test-user-123');
+      expect(mockEq2).toHaveBeenCalledWith('progress_percent', 0);
+      expect(mockEq3).toHaveBeenCalledWith('current_chapter_index', 0);
+      expect(mockLte).toHaveBeenCalledWith('scroll_offset', 1);
     });
   });
 
@@ -1292,6 +1295,39 @@ describe('useReaderStore', () => {
       expect(Array.isArray(mockUpsert.mock.calls[0][0])).toBe(true);
       expect(mockUpsert.mock.calls[0][0]).toHaveLength(2);
       useAuthStore.setState({ user: null });
+    });
+
+    it('skips passive syncWithCloud within 15s cooldown unless tombstones exist or interval elapsed', async () => {
+      useReaderStore.getState().resetReaderSession();
+      const selectSpy = vi.fn().mockReturnValue({
+        eq: () => ({
+          order: () => Promise.resolve({ data: [], error: null }),
+        }),
+      });
+      mockFrom.mockReturnValue({
+        select: selectSpy,
+        delete: () => ({
+          eq: () => ({
+            eq: () => Promise.resolve({ error: null }),
+          }),
+        }),
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-cd', { minSyncIntervalMs: 15_000 });
+      expect(selectSpy).toHaveBeenCalledTimes(1);
+
+      await useReaderStore.getState().syncWithCloud('user-cd', { minSyncIntervalMs: 15_000 });
+      expect(selectSpy).toHaveBeenCalledTimes(1);
+
+      // Pending tombstone bypasses passive cooldown
+      useReaderStore.setState({ deletedPositionBookIds: [1342] });
+      await useReaderStore.getState().syncWithCloud('user-cd', { minSyncIntervalMs: 15_000 });
+      expect(selectSpy).toHaveBeenCalledTimes(2);
+
+      // Advancing past 15s allows passive sync again
+      vi.advanceTimersByTime(15_001);
+      await useReaderStore.getState().syncWithCloud('user-cd', { minSyncIntervalMs: 15_000 });
+      expect(selectSpy).toHaveBeenCalledTimes(3);
     });
   });
 });

@@ -8,6 +8,7 @@ import {
   fetchScholarProfilesMap,
 } from './useFellowshipStore';
 import { useAuthStore } from './useAuthStore';
+import { useAnnotationStore } from './useAnnotationStore';
 
 const mockRpc = vi.fn();
 const mockFrom = vi.fn();
@@ -934,6 +935,140 @@ describe('useFellowshipStore', () => {
       });
       await useFellowshipStore.getState().fetchFellowshipData('user-host');
       expect(useAnnotationStore.getState().fellowAnnotations).toHaveLength(0);
+    });
+
+    it('respects minSyncIntervalMs passive cooldown and invalidates on pending progress, explicit refresh, clear, or membership mutations', async () => {
+      vi.useFakeTimers();
+      const annotationSyncSpy = vi
+        .spyOn(useAnnotationStore.getState(), 'syncWithCloud');
+
+      try {
+        vi.setSystemTime(new Date('2026-11-13T10:00:00.000Z'));
+
+        mockFrom.mockReturnValue({
+          select: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        });
+
+        // 1. Initial passive fetch executes both reader_circles & symposium_sessions queries
+        await useFellowshipStore.getState().fetchFellowshipData('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        expect(mockFrom).toHaveBeenCalledTimes(2);
+
+        // 2. Subsequent passive fetch and syncWithCloud within 15s skip redundant queries
+        vi.advanceTimersByTime(4_000);
+        await useFellowshipStore.getState().fetchFellowshipData('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        await useFellowshipStore.getState().syncWithCloud('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        expect(mockFrom).toHaveBeenCalledTimes(2);
+
+        // 3. Explicit unthrottled fetchFellowshipData always executes
+        await useFellowshipStore.getState().fetchFellowshipData('user-host');
+        expect(mockFrom).toHaveBeenCalledTimes(4);
+
+        // 4. Queued pendingSymposiumProgress bypasses cooldown immediately
+        useFellowshipStore.setState({
+          pendingSymposiumProgress: {
+            'sym-q-1': {
+              isHost: true,
+              chapterIndex: 2,
+              progressPct: 35,
+              status: 'active',
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        });
+        await useFellowshipStore.getState().fetchFellowshipData('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        expect(mockFrom.mock.calls.length).toBeGreaterThan(4);
+        const countAfterPendingFlush = mockFrom.mock.calls.length;
+        useFellowshipStore.setState({ pendingSymposiumProgress: {} });
+
+        // 5. Membership mutation (respondToSymposiumInvite) invalidates passive cooldown immediately
+        useFellowshipStore.setState({
+          symposiums: [
+            {
+              id: 'sym-mut-1',
+              book_id: 1342,
+              book_title: 'Pride and Prejudice',
+              host_id: 'user-fellow',
+              host_username: 'fellow',
+              host_display_name: 'Fellow',
+              fellow_id: 'user-host',
+              fellow_username: 'jane_austen',
+              fellow_display_name: 'Jane Austen',
+              status: 'pending',
+              host_chapter: 0,
+              host_progress: 0,
+              fellow_chapter: 0,
+              fellow_progress: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ],
+        });
+        await useFellowshipStore.getState().respondToSymposiumInvite('sym-mut-1', 'accept');
+        const countAfterAccept = mockFrom.mock.calls.length;
+
+        await useFellowshipStore.getState().fetchFellowshipData('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        expect(mockFrom.mock.calls.length).toBe(countAfterAccept + 2);
+
+        // 6. clearFellowshipState clears cooldown immediately
+        useFellowshipStore.getState().clearFellowshipState();
+        useAuthStore.setState({
+          user: {
+            id: 'user-host',
+            email: 'austen@bookarium.test',
+            user_metadata: { display_name: 'Jane Austen' },
+          } as never,
+        });
+        await useFellowshipStore.getState().fetchFellowshipData('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        expect(mockFrom.mock.calls.length).toBe(countAfterAccept + 4);
+
+        // 7. Advancing past 15s allows passive refresh again
+        vi.advanceTimersByTime(15_001);
+        await useFellowshipStore.getState().fetchFellowshipData('user-host', {
+          minSyncIntervalMs: 15_000,
+        });
+        expect(mockFrom.mock.calls.length).toBe(countAfterAccept + 6);
+        expect(countAfterPendingFlush).toBeGreaterThan(4);
+      } finally {
+        annotationSyncSpy.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+
+    it('skips fellowship Supabase queries when verifyActiveCloudSession fails under an auth-capable client', async () => {
+      const authModule = await import('./useAuthStore');
+      const shouldVerifySpy = vi
+        .spyOn(authModule, 'shouldVerifyCloudSession')
+        .mockReturnValueOnce(true);
+      const verifySessionSpy = vi
+        .spyOn(authModule, 'verifyActiveCloudSession')
+        .mockResolvedValueOnce(false);
+
+      mockFrom.mockClear();
+      await useFellowshipStore.getState().fetchFellowshipData('user-host');
+      expect(mockFrom).not.toHaveBeenCalled();
+
+      shouldVerifySpy.mockRestore();
+      verifySessionSpy.mockRestore();
     });
   });
 });

@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/stores/useAuthStore';
+import {
+  useAuthStore,
+  coalesceInFlightByUser,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from '@/stores/useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import type { ReaderCircleRow, SymposiumSessionRow } from '@/types/database.types';
@@ -40,8 +45,8 @@ export interface FellowshipState {
   isLoading: boolean;
   error: string | null;
 
-  fetchFellowshipData: (userId?: string) => Promise<void>;
-  syncWithCloud: (userId?: string) => Promise<void>;
+  fetchFellowshipData: (userId?: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
+  syncWithCloud: (userId?: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   inviteFellowByUsername: (
     username: string
   ) => Promise<{ error: Error | null; circle?: ReaderCircleRow }>;
@@ -90,6 +95,24 @@ function generateId(): string {
   return `fellow-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+const inFlightFellowshipSyncs = new Map<string, Promise<void>>();
+const dirtyFellowshipSyncUsers = new Set<string>();
+const lastFellowshipSyncByUser = new Map<string, number>();
+
+async function invalidateFellowshipAndAnnotationCooldowns(userId?: string): Promise<void> {
+  if (userId) {
+    lastFellowshipSyncByUser.delete(userId);
+  } else {
+    lastFellowshipSyncByUser.clear();
+  }
+  try {
+    const { invalidateAnnotationSyncCooldown } = await import('@/stores/useAnnotationStore');
+    invalidateAnnotationSyncCooldown(userId);
+  } catch {
+    // Non-blocking fallback
+  }
+}
+
 export const useFellowshipStore = create<FellowshipState>()(
   persist(
     (set, get) => ({
@@ -99,174 +122,216 @@ export const useFellowshipStore = create<FellowshipState>()(
       isLoading: false,
       error: null,
 
-      syncWithCloud: async (explicitUserId) => {
-        await get().fetchFellowshipData(explicitUserId);
+      syncWithCloud: async (explicitUserId, options) => {
+        await get().fetchFellowshipData(explicitUserId, options);
       },
 
-      fetchFellowshipData: async (explicitUserId) => {
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      fetchFellowshipData: (explicitUserId, options) => {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve();
 
         const authState = useAuthStore.getState();
         const userId = explicitUserId || authState.user?.id;
-        if (!userId) return;
+        if (!userId) return Promise.resolve();
 
-        const supabase = createClient();
-        if (!supabase) return;
-
-        // Flush any queued offline symposium progress updates before pulling remote rows
-        const pendingEntries = Object.entries(get().pendingSymposiumProgress);
-        if (pendingEntries.length > 0) {
-          const flushedUpdatedAtMap = new Map<string, string>();
-          for (const [sessionId, pending] of pendingEntries) {
-            try {
-              const { error: flushErr } = await supabase
-                .from('symposium_sessions')
-                .update(
-                  pending.isHost
-                    ? {
-                        host_chapter: pending.chapterIndex,
-                        host_progress: pending.progressPct,
-                        status: pending.status,
-                        updated_at: pending.updatedAt,
-                      }
-                    : {
-                        fellow_chapter: pending.chapterIndex,
-                        fellow_progress: pending.progressPct,
-                        status: pending.status,
-                        updated_at: pending.updatedAt,
-                      }
-                )
-                .eq('id', sessionId);
-              if (!flushErr) {
-                flushedUpdatedAtMap.set(sessionId, pending.updatedAt);
-              }
-            } catch {
-              // Keep in pendingSymposiumProgress for next retry
-            }
+        const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+        if (
+          minSyncIntervalMs > 0 &&
+          !inFlightFellowshipSyncs.has(userId) &&
+          !dirtyFellowshipSyncUsers.has(userId) &&
+          Object.keys(get().pendingSymposiumProgress).length === 0
+        ) {
+          const lastSyncAt = lastFellowshipSyncByUser.get(userId);
+          if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
+            return Promise.resolve();
           }
-          if (flushedUpdatedAtMap.size > 0) {
-            set((state) => {
-              const nextPending = { ...state.pendingSymposiumProgress };
-              flushedUpdatedAtMap.forEach((flushedAt, sessionId) => {
-                if (nextPending[sessionId]?.updatedAt === flushedAt) {
-                  delete nextPending[sessionId];
+        }
+
+        if (
+          inFlightFellowshipSyncs.has(userId) &&
+          Object.keys(get().pendingSymposiumProgress).length > 0
+        ) {
+          dirtyFellowshipSyncUsers.add(userId);
+        }
+
+        return coalesceInFlightByUser(
+          inFlightFellowshipSyncs,
+          userId,
+          async () => {
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+            const supabase = createClient();
+            if (!supabase) return;
+            if (
+              shouldVerifyCloudSession(supabase) &&
+              !(await verifyActiveCloudSession(supabase, userId))
+            ) {
+              return;
+            }
+
+            // Flush any queued offline symposium progress updates before pulling remote rows
+            const pendingEntries = Object.entries(get().pendingSymposiumProgress);
+            if (pendingEntries.length > 0) {
+              const flushedUpdatedAtMap = new Map<string, string>();
+              for (const [sessionId, pending] of pendingEntries) {
+                try {
+                  const { error: flushErr } = await supabase
+                    .from('symposium_sessions')
+                    .update(
+                      pending.isHost
+                        ? {
+                            host_chapter: pending.chapterIndex,
+                            host_progress: pending.progressPct,
+                            status: pending.status,
+                            updated_at: pending.updatedAt,
+                          }
+                        : {
+                            fellow_chapter: pending.chapterIndex,
+                            fellow_progress: pending.progressPct,
+                            status: pending.status,
+                            updated_at: pending.updatedAt,
+                          }
+                    )
+                    .eq('id', sessionId);
+                  if (!flushErr) {
+                    flushedUpdatedAtMap.set(sessionId, pending.updatedAt);
+                  }
+                } catch {
+                  // Keep in pendingSymposiumProgress for next retry
                 }
-              });
-              return { pendingSymposiumProgress: nextPending };
-            });
-          }
-        }
-
-        set({ isLoading: true, error: null });
-        try {
-          const [circlesRes, symposiumsRes] = await Promise.all([
-            supabase
-              .from('reader_circles')
-              .select('*')
-              .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-              .order('created_at', { ascending: false }),
-            supabase
-              .from('symposium_sessions')
-              .select('*')
-              .or(`host_id.eq.${userId},fellow_id.eq.${userId}`)
-              .order('updated_at', { ascending: false }),
-          ]);
-
-          const rawCircles = !circlesRes.error && circlesRes.data ? circlesRes.data : get().circles;
-          const rawSymposiums =
-            !symposiumsRes.error && symposiumsRes.data ? symposiumsRes.data : get().symposiums;
-
-          // Find companion IDs across circles and symposiums to heal stale usernames/names
-          const companionIds = new Set<string>();
-          for (const c of rawCircles) {
-            if (c.requester_id && c.requester_id !== userId) companionIds.add(c.requester_id);
-            if (c.recipient_id && c.recipient_id !== userId) companionIds.add(c.recipient_id);
-          }
-          for (const s of rawSymposiums) {
-            if (s.host_id && s.host_id !== userId) companionIds.add(s.host_id);
-            if (s.fellow_id && s.fellow_id !== userId) companionIds.add(s.fellow_id);
-          }
-
-          let healedCircles = rawCircles;
-          let healedSymposiums = rawSymposiums;
-
-          if (companionIds.size > 0) {
-            const profileMap = await fetchScholarProfilesMap(
-              supabase,
-              Array.from(companionIds)
-            );
-
-            if (profileMap.size > 0) {
-              healedCircles = rawCircles.map((c) => {
-                const [reqU, reqD] = healProfileIdentity(
-                  profileMap,
-                  c.requester_id,
-                  c.requester_username,
-                  c.requester_display_name
-                );
-                const [recU, recD] = healProfileIdentity(
-                  profileMap,
-                  c.recipient_id,
-                  c.recipient_username,
-                  c.recipient_display_name
-                );
-
-                return {
-                  ...c,
-                  requester_username: reqU,
-                  requester_display_name: reqD,
-                  recipient_username: recU,
-                  recipient_display_name: recD,
-                };
-              });
-
-              healedSymposiums = rawSymposiums.map((s) => {
-                const [hostU, hostD] = healProfileIdentity(
-                  profileMap,
-                  s.host_id,
-                  s.host_username,
-                  s.host_display_name
-                );
-                const [fellowU, fellowD] = healProfileIdentity(
-                  profileMap,
-                  s.fellow_id,
-                  s.fellow_username,
-                  s.fellow_display_name
-                );
-
-                return {
-                  ...s,
-                  host_username: hostU,
-                  host_display_name: hostD,
-                  fellow_username: fellowU,
-                  fellow_display_name: fellowD,
-                };
-              });
+              }
+              if (flushedUpdatedAtMap.size > 0) {
+                set((state) => {
+                  const nextPending = { ...state.pendingSymposiumProgress };
+                  flushedUpdatedAtMap.forEach((flushedAt, sessionId) => {
+                    if (nextPending[sessionId]?.updatedAt === flushedAt) {
+                      delete nextPending[sessionId];
+                    }
+                  });
+                  return { pendingSymposiumProgress: nextPending };
+                });
+              }
             }
-          }
 
-          set({
-            circles: healedCircles,
-            symposiums: healedSymposiums,
-            isLoading: false,
-          });
-
-          if (!symposiumsRes.error && symposiumsRes.data) {
+            set({ isLoading: true, error: null });
             try {
-              const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
-              useAnnotationStore
-                .getState()
-                .reconcileFellowAnnotationsWithSymposiums(healedSymposiums, userId);
-            } catch {
-              // Non-blocking cache reconciliation
+              const [circlesRes, symposiumsRes] = await Promise.all([
+                supabase
+                  .from('reader_circles')
+                  .select('*')
+                  .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
+                  .order('created_at', { ascending: false }),
+                supabase
+                  .from('symposium_sessions')
+                  .select('*')
+                  .or(`host_id.eq.${userId},fellow_id.eq.${userId}`)
+                  .order('updated_at', { ascending: false }),
+              ]);
+
+              const rawCircles =
+                !circlesRes.error && circlesRes.data ? circlesRes.data : get().circles;
+              const rawSymposiums =
+                !symposiumsRes.error && symposiumsRes.data ? symposiumsRes.data : get().symposiums;
+
+              // Find companion IDs across circles and symposiums to heal stale usernames/names
+              const companionIds = new Set<string>();
+              for (const c of rawCircles) {
+                if (c.requester_id && c.requester_id !== userId) companionIds.add(c.requester_id);
+                if (c.recipient_id && c.recipient_id !== userId) companionIds.add(c.recipient_id);
+              }
+              for (const s of rawSymposiums) {
+                if (s.host_id && s.host_id !== userId) companionIds.add(s.host_id);
+                if (s.fellow_id && s.fellow_id !== userId) companionIds.add(s.fellow_id);
+              }
+
+              let healedCircles = rawCircles;
+              let healedSymposiums = rawSymposiums;
+
+              if (companionIds.size > 0) {
+                const profileMap = await fetchScholarProfilesMap(
+                  supabase,
+                  Array.from(companionIds)
+                );
+
+                if (profileMap.size > 0) {
+                  healedCircles = rawCircles.map((c) => {
+                    const [reqU, reqD] = healProfileIdentity(
+                      profileMap,
+                      c.requester_id,
+                      c.requester_username,
+                      c.requester_display_name
+                    );
+                    const [recU, recD] = healProfileIdentity(
+                      profileMap,
+                      c.recipient_id,
+                      c.recipient_username,
+                      c.recipient_display_name
+                    );
+
+                    return {
+                      ...c,
+                      requester_username: reqU,
+                      requester_display_name: reqD,
+                      recipient_username: recU,
+                      recipient_display_name: recD,
+                    };
+                  });
+
+                  healedSymposiums = rawSymposiums.map((s) => {
+                    const [hostU, hostD] = healProfileIdentity(
+                      profileMap,
+                      s.host_id,
+                      s.host_username,
+                      s.host_display_name
+                    );
+                    const [fellowU, fellowD] = healProfileIdentity(
+                      profileMap,
+                      s.fellow_id,
+                      s.fellow_username,
+                      s.fellow_display_name
+                    );
+
+                    return {
+                      ...s,
+                      host_username: hostU,
+                      host_display_name: hostD,
+                      fellow_username: fellowU,
+                      fellow_display_name: fellowD,
+                    };
+                  });
+                }
+              }
+
+              set({
+                circles: healedCircles,
+                symposiums: healedSymposiums,
+                isLoading: false,
+              });
+
+              if (!circlesRes.error && !symposiumsRes.error) {
+                lastFellowshipSyncByUser.set(userId, Date.now());
+              }
+
+              if (!symposiumsRes.error && symposiumsRes.data) {
+                try {
+                  const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+                  useAnnotationStore
+                    .getState()
+                    .reconcileFellowAnnotationsWithSymposiums(healedSymposiums, userId);
+                } catch {
+                  // Non-blocking cache reconciliation
+                }
+              }
+            } catch (err: unknown) {
+              set({
+                error:
+                  err instanceof Error ? err.message : 'Unable to synchronize Reader Circle data.',
+              });
+            } finally {
+              set({ isLoading: false });
             }
-          }
-        } catch (err: unknown) {
-          set({
-            isLoading: false,
-            error: err instanceof Error ? err.message : 'Unable to synchronize Reader Circle data.',
-          });
-        }
+          },
+          dirtyFellowshipSyncUsers
+        );
       },
 
       inviteFellowByUsername: async (rawUsername) => {
@@ -401,6 +466,7 @@ export const useFellowshipStore = create<FellowshipState>()(
 
             if (!error && data) {
               set((s) => ({ circles: [data, ...s.circles] }));
+              void invalidateFellowshipAndAnnotationCooldowns(currentUser.id);
               return { error: null, circle: data };
             }
           } catch {
@@ -409,6 +475,7 @@ export const useFellowshipStore = create<FellowshipState>()(
         }
 
         set((s) => ({ circles: [optimisticCircle, ...s.circles] }));
+        void invalidateFellowshipAndAnnotationCooldowns(currentUser.id);
         return { error: null, circle: optimisticCircle };
       },
 
@@ -417,12 +484,14 @@ export const useFellowshipStore = create<FellowshipState>()(
           return get().removeFellow(circleId);
         }
 
+        const authUserId = useAuthStore.getState().user?.id;
         const now = new Date().toISOString();
         set((s) => ({
           circles: s.circles.map((c) =>
             c.id === circleId ? { ...c, status: 'accepted', updated_at: now } : c
           ),
         }));
+        void invalidateFellowshipAndAnnotationCooldowns(authUserId);
 
         const supabase = createClient();
         if (supabase) {
@@ -474,6 +543,7 @@ export const useFellowshipStore = create<FellowshipState>()(
             // Non-blocking cache prune
           }
         }
+        await invalidateFellowshipAndAnnotationCooldowns(authUserId);
 
         const supabase = createClient();
         if (supabase) {
@@ -569,6 +639,7 @@ export const useFellowshipStore = create<FellowshipState>()(
 
             if (!error && data) {
               set((s) => ({ symposiums: [data, ...s.symposiums] }));
+              void invalidateFellowshipAndAnnotationCooldowns(currentUser.id);
               return { error: null, session: data };
             }
           } catch {
@@ -577,6 +648,7 @@ export const useFellowshipStore = create<FellowshipState>()(
         }
 
         set((s) => ({ symposiums: [optimisticSession, ...s.symposiums] }));
+        void invalidateFellowshipAndAnnotationCooldowns(currentUser.id);
         return { error: null, session: optimisticSession };
       },
 
@@ -585,12 +657,14 @@ export const useFellowshipStore = create<FellowshipState>()(
           return get().leaveSymposium(sessionId);
         }
 
+        const authUserId = useAuthStore.getState().user?.id;
         const now = new Date().toISOString();
         set((s) => ({
           symposiums: s.symposiums.map((sym) =>
             sym.id === sessionId ? { ...sym, status: 'active', updated_at: now } : sym
           ),
         }));
+        void invalidateFellowshipAndAnnotationCooldowns(authUserId);
 
         const supabase = createClient();
         if (supabase) {
@@ -635,6 +709,7 @@ export const useFellowshipStore = create<FellowshipState>()(
             // Non-blocking cache prune
           }
         }
+        await invalidateFellowshipAndAnnotationCooldowns(authUserId);
 
         const supabase = createClient();
         if (supabase) {
@@ -710,7 +785,7 @@ export const useFellowshipStore = create<FellowshipState>()(
               ? 'completed'
               : sym.status;
 
-          if (isOfflineNow || !supabase) {
+          const queuePendingSymposiumUpdate = () => {
             set((s) => ({
               pendingSymposiumProgress: {
                 ...s.pendingSymposiumProgress,
@@ -723,6 +798,13 @@ export const useFellowshipStore = create<FellowshipState>()(
                 },
               },
             }));
+            if (inFlightFellowshipSyncs.has(currentUserId)) {
+              dirtyFellowshipSyncUsers.add(currentUserId);
+            }
+          };
+
+          if (isOfflineNow || !supabase) {
+            queuePendingSymposiumUpdate();
             continue;
           }
 
@@ -754,18 +836,7 @@ export const useFellowshipStore = create<FellowshipState>()(
               });
             }
           } catch {
-            set((s) => ({
-              pendingSymposiumProgress: {
-                ...s.pendingSymposiumProgress,
-                [sym.id]: {
-                  chapterIndex,
-                  progressPct: clampedProgress,
-                  status: nextStatus,
-                  isHost,
-                  updatedAt: now,
-                },
-              },
-            }));
+            queuePendingSymposiumUpdate();
           }
         }
       },
@@ -814,6 +885,7 @@ export const useFellowshipStore = create<FellowshipState>()(
       },
 
       clearFellowshipState: () => {
+        lastFellowshipSyncByUser.clear();
         set({ circles: [], symposiums: [], pendingSymposiumProgress: {}, isLoading: false, error: null });
       },
     }),

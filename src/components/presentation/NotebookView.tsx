@@ -95,7 +95,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
   useEffect(() => {
     if (user?.id && !isOffline) {
-      void syncWithCloud(user.id);
+      void syncWithCloud(user.id, { minSyncIntervalMs: 15_000 });
     }
   }, [user?.id, isOffline, syncWithCloud]);
 

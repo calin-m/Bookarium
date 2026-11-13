@@ -4,7 +4,11 @@ import { useShallow } from 'zustand/react/shallow';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
-import { shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
+import {
+  coalesceInFlightByUser,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from './useAuthStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import {
   calculateStreak,
@@ -35,7 +39,7 @@ export interface HabitsState {
   addReadingDuration: (seconds: number, userId?: string) => void;
   addListeningDuration: (seconds: number, userId?: string) => void;
   setAnnualGoal: (target: number, year?: number, userId?: string) => void;
-  syncWithCloud: (userId: string) => Promise<void>;
+  syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   resetHabits: () => void;
 
   // Computed Selectors
@@ -61,6 +65,17 @@ export interface HabitsState {
 }
 
 let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const inFlightHabitsSyncs = new Map<string, Promise<void>>();
+const dirtyHabitsSyncUsers = new Set<string>();
+const lastHabitsSyncByUser = new Map<string, number>();
+
+function invalidateHabitsSyncCooldown(userId?: string): void {
+  if (userId) {
+    lastHabitsSyncByUser.delete(userId);
+  } else {
+    lastHabitsSyncByUser.clear();
+  }
+}
 
 export const useHabitsStore = create<HabitsState>()(
   persist(
@@ -83,6 +98,10 @@ export const useHabitsStore = create<HabitsState>()(
           set({ activeDates: nextDates });
 
           if (userId) {
+            invalidateHabitsSyncCooldown(userId);
+            if (inFlightHabitsSyncs.has(userId)) {
+              dirtyHabitsSyncUsers.add(userId);
+            }
             get().syncWithCloud(userId).catch(() => {});
           }
         }
@@ -107,8 +126,16 @@ export const useHabitsStore = create<HabitsState>()(
         }));
 
         if (userId) {
+          invalidateHabitsSyncCooldown(userId);
+          if (inFlightHabitsSyncs.has(userId)) {
+            dirtyHabitsSyncUsers.add(userId);
+          }
           if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
           syncDebounceTimer = setTimeout(() => {
+            syncDebounceTimer = null;
+            if (inFlightHabitsSyncs.has(userId)) {
+              dirtyHabitsSyncUsers.add(userId);
+            }
             get().syncWithCloud(userId).catch(() => {});
           }, 2000);
         }
@@ -133,8 +160,16 @@ export const useHabitsStore = create<HabitsState>()(
         }));
 
         if (userId) {
+          invalidateHabitsSyncCooldown(userId);
+          if (inFlightHabitsSyncs.has(userId)) {
+            dirtyHabitsSyncUsers.add(userId);
+          }
           if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
           syncDebounceTimer = setTimeout(() => {
+            syncDebounceTimer = null;
+            if (inFlightHabitsSyncs.has(userId)) {
+              dirtyHabitsSyncUsers.add(userId);
+            }
             get().syncWithCloud(userId).catch(() => {});
           }, 2000);
         }
@@ -152,112 +187,191 @@ export const useHabitsStore = create<HabitsState>()(
         });
 
         if (userId) {
+          invalidateHabitsSyncCooldown(userId);
+          if (inFlightHabitsSyncs.has(userId)) {
+            dirtyHabitsSyncUsers.add(userId);
+          }
           get().syncWithCloud(userId).catch(() => {});
         }
       },
 
-      syncWithCloud: async (userId: string) => {
-        if (!userId) return;
-        set({ isSyncing: true });
+      syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => {
+        if (!userId) return Promise.resolve();
 
-        try {
-          const supabase = createClient();
-          if (
-            shouldVerifyCloudSession(supabase) &&
-            !(await verifyActiveCloudSession(supabase, userId))
-          ) {
-            return;
+        const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+        if (
+          minSyncIntervalMs > 0 &&
+          !inFlightHabitsSyncs.has(userId) &&
+          !dirtyHabitsSyncUsers.has(userId) &&
+          syncDebounceTimer === null
+        ) {
+          const lastSyncAt = lastHabitsSyncByUser.get(userId);
+          if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
+            return Promise.resolve();
           }
-          const { data, error } = await supabase
-            .from('user_reading_habits')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (error && error.code !== 'PGRST116') {
-            // Network or schema error, fallback silently
-            set({ isSyncing: false });
-            return;
-          }
-
-          const localState = get();
-          let mergedDates = [...localState.activeDates];
-          let mergedReadingSeconds = localState.totalReadingSeconds || 0;
-          let mergedListeningSeconds = localState.totalListeningSeconds || 0;
-          let mergedGoal = localState.annualGoal;
-          const mergedYear = localState.annualGoalYear;
-          let mergedGoalUpdatedAt = localState.goalUpdatedAt;
-
-          if (data) {
-            const remoteDates = Array.isArray(data.active_dates)
-              ? (data.active_dates.filter((d): d is string => typeof d === 'string'))
-              : [];
-            const dateSet = new Set<string>([...mergedDates, ...remoteDates]);
-            mergedDates = Array.from(dateSet).sort();
-            mergedReadingSeconds = Math.max(mergedReadingSeconds, Number(data.total_reading_seconds) || 0);
-            mergedListeningSeconds = Math.max(mergedListeningSeconds, Number(data.total_listening_seconds) || 0);
-
-            if (data.annual_goal_year === mergedYear && data.annual_goal) {
-              const remoteTime = data.updated_at ? new Date(data.updated_at).getTime() : 0;
-              const localTime = localState.goalUpdatedAt ? new Date(localState.goalUpdatedAt).getTime() : 0;
-
-              // Last-Write-Wins: only adopt remote goal if remote is strictly newer than local modification
-              if (!localState.goalUpdatedAt || remoteTime > localTime) {
-                mergedGoal = Number(data.annual_goal);
-                mergedGoalUpdatedAt = data.updated_at || null;
-              }
-            }
-          }
-
-          // Update local state with merged values
-          set({
-            activeDates: mergedDates,
-            totalReadingSeconds: mergedReadingSeconds,
-            totalListeningSeconds: mergedListeningSeconds,
-            annualGoal: mergedGoal,
-            annualGoalYear: mergedYear,
-            goalUpdatedAt: mergedGoalUpdatedAt,
-          });
-
-          const bookStatuses = useBookshelfStore.getState().bookStatuses;
-          const readingProgress = useReaderStore.getState().readingProgress;
-          const localCompletedCount = calculateCompletedBooksCount(bookStatuses, readingProgress);
-          const remoteCompletedCount =
-            data && typeof data.completed_books_count === 'number'
-              ? Math.max(0, data.completed_books_count)
-              : 0;
-          const mergedCompletedBooksCount = Math.max(localCompletedCount, remoteCompletedCount);
-
-          const basePayload = {
-            user_id: userId,
-            annual_goal: mergedGoal,
-            annual_goal_year: mergedYear,
-            active_dates: mergedDates,
-            total_reading_seconds: mergedReadingSeconds,
-            total_listening_seconds: mergedListeningSeconds,
-            updated_at: mergedGoalUpdatedAt || new Date().toISOString(),
-          };
-
-          // Upsert merged state back to Supabase (with schema-cache fallback if column is pre-migration)
-          const upsertRes = await supabase.from('user_reading_habits').upsert(
-            {
-              ...basePayload,
-              completed_books_count: mergedCompletedBooksCount,
-            },
-            { onConflict: 'user_id' }
-          );
-
-          if (upsertRes?.error?.code === 'PGRST204' || upsertRes?.error?.code === '42703') {
-            await supabase.from('user_reading_habits').upsert(basePayload, { onConflict: 'user_id' });
-          }
-        } catch {
-          // Graceful fallback for offline mode
-        } finally {
-          set({ isSyncing: false });
         }
+
+        return coalesceInFlightByUser(
+          inFlightHabitsSyncs,
+          userId,
+          async () => {
+            set({ isSyncing: true });
+
+            try {
+              const supabase = createClient();
+              if (
+                shouldVerifyCloudSession(supabase) &&
+                !(await verifyActiveCloudSession(supabase, userId))
+              ) {
+                return;
+              }
+              const { data, error } = await supabase
+                .from('user_reading_habits')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+              if (error && error.code !== 'PGRST116') {
+                // Network or schema error, fallback silently
+                return;
+              }
+
+              const localState = get();
+              let mergedDates = [...localState.activeDates];
+              let mergedReadingSeconds = localState.totalReadingSeconds || 0;
+              let mergedListeningSeconds = localState.totalListeningSeconds || 0;
+              let mergedGoal = localState.annualGoal;
+              const mergedYear = localState.annualGoalYear;
+              let mergedGoalUpdatedAt = localState.goalUpdatedAt;
+              let remoteDates: string[] = [];
+
+              if (data) {
+                remoteDates = Array.isArray(data.active_dates)
+                  ? data.active_dates.filter((d): d is string => typeof d === 'string')
+                  : [];
+                const dateSet = new Set<string>([...mergedDates, ...remoteDates]);
+                mergedDates = Array.from(dateSet).sort();
+                mergedReadingSeconds = Math.max(
+                  mergedReadingSeconds,
+                  Number(data.total_reading_seconds) || 0
+                );
+                mergedListeningSeconds = Math.max(
+                  mergedListeningSeconds,
+                  Number(data.total_listening_seconds) || 0
+                );
+
+                if (data.annual_goal_year === mergedYear && data.annual_goal) {
+                  const remoteTime = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+                  const localTime = localState.goalUpdatedAt
+                    ? new Date(localState.goalUpdatedAt).getTime()
+                    : 0;
+
+                  // Last-Write-Wins: only adopt remote goal if remote is strictly newer than local modification
+                  if (!localState.goalUpdatedAt || remoteTime > localTime) {
+                    mergedGoal = Number(data.annual_goal);
+                    mergedGoalUpdatedAt = data.updated_at || null;
+                  }
+                }
+              }
+
+              // Update local state with merged values
+              set({
+                activeDates: mergedDates,
+                totalReadingSeconds: mergedReadingSeconds,
+                totalListeningSeconds: mergedListeningSeconds,
+                annualGoal: mergedGoal,
+                annualGoalYear: mergedYear,
+                goalUpdatedAt: mergedGoalUpdatedAt,
+              });
+
+              const bookStatuses = useBookshelfStore.getState().bookStatuses;
+              const readingProgress = useReaderStore.getState().readingProgress;
+              const localCompletedCount = calculateCompletedBooksCount(
+                bookStatuses,
+                readingProgress
+              );
+              const remoteCompletedCount =
+                data && typeof data.completed_books_count === 'number'
+                  ? Math.max(0, data.completed_books_count)
+                  : 0;
+              const mergedCompletedBooksCount = Math.max(localCompletedCount, remoteCompletedCount);
+
+              const remoteUpdatedAt =
+                data && typeof data.updated_at === 'string' ? data.updated_at : null;
+              const hasCompleteRemoteColumns = Boolean(
+                data &&
+                  Array.isArray(data.active_dates) &&
+                  typeof data.total_reading_seconds === 'number' &&
+                  typeof data.total_listening_seconds === 'number' &&
+                  typeof data.annual_goal === 'number' &&
+                  typeof data.annual_goal_year === 'number' &&
+                  typeof data.completed_books_count === 'number' &&
+                  remoteUpdatedAt !== null
+              );
+              const hasExactDatesMatch =
+                hasCompleteRemoteColumns &&
+                Array.isArray(data?.active_dates) &&
+                remoteDates.length === data.active_dates.length &&
+                remoteDates.length === mergedDates.length &&
+                mergedDates.every((dateStr, idx) => remoteDates[idx] === dateStr);
+              const isRemoteAlreadyConverged = Boolean(
+                hasCompleteRemoteColumns &&
+                  hasExactDatesMatch &&
+                  data!.total_reading_seconds === mergedReadingSeconds &&
+                  data!.total_listening_seconds === mergedListeningSeconds &&
+                  data!.annual_goal === mergedGoal &&
+                  data!.annual_goal_year === mergedYear &&
+                  data!.completed_books_count === mergedCompletedBooksCount &&
+                  Boolean(mergedGoalUpdatedAt) &&
+                  mergedGoalUpdatedAt === remoteUpdatedAt
+              );
+
+              if (isRemoteAlreadyConverged) {
+                lastHabitsSyncByUser.set(userId, Date.now());
+                return;
+              }
+
+              const basePayload = {
+                user_id: userId,
+                annual_goal: mergedGoal,
+                annual_goal_year: mergedYear,
+                active_dates: mergedDates,
+                total_reading_seconds: mergedReadingSeconds,
+                total_listening_seconds: mergedListeningSeconds,
+                updated_at: mergedGoalUpdatedAt || new Date().toISOString(),
+              };
+
+              // Upsert merged state back to Supabase (with schema-cache fallback if column is pre-migration)
+              const upsertRes = await supabase.from('user_reading_habits').upsert(
+                {
+                  ...basePayload,
+                  completed_books_count: mergedCompletedBooksCount,
+                },
+                { onConflict: 'user_id' }
+              );
+
+              if (upsertRes?.error?.code === 'PGRST204' || upsertRes?.error?.code === '42703') {
+                const fallbackRes = await supabase
+                  .from('user_reading_habits')
+                  .upsert(basePayload, { onConflict: 'user_id' });
+                if (!fallbackRes?.error) {
+                  lastHabitsSyncByUser.set(userId, Date.now());
+                }
+              } else if (!upsertRes?.error) {
+                lastHabitsSyncByUser.set(userId, Date.now());
+              }
+            } catch {
+              // Graceful fallback for offline mode
+            } finally {
+              set({ isSyncing: false });
+            }
+          },
+          dirtyHabitsSyncUsers
+        );
       },
 
       resetHabits: () => {
+        invalidateHabitsSyncCooldown();
         if (syncDebounceTimer) {
           clearTimeout(syncDebounceTimer);
           syncDebounceTimer = null;

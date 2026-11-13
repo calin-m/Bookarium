@@ -844,13 +844,13 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'setup',
       file: 'src/test/setup.ts',
       layer: 'JSDOM & Browser API Test Bootstrap',
-      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, MSW v2 server lifecycle (`listen`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`).',
+      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v2 server lifecycle (`handleUnhandledMswRequest`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`).',
     },
     {
       name: 'handlers',
       file: 'src/mocks/handlers.ts',
       layer: 'MSW v2 HTTP Interception Handlers',
-      role: 'Canonical Mock Service Worker v2 HTTP request handlers and `mockBooks` public domain fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and allowlisted HTTPS Project Gutenberg mirror streams (`aleph`, `pglaf`, `readingroo.ms`, `www.gutenberg.org`) for zero-network deterministic testing.',
+      role: 'Canonical Mock Service Worker v2 HTTP request handlers, fail-closed `handleUnhandledMswRequest` guard (blocking unmocked external/Supabase URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and allowlisted HTTPS Project Gutenberg mirrors for zero-network deterministic testing.',
     },
     {
       name: 'server',
@@ -916,7 +916,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Zustand Persistent State Stores',
       scope: '`src/stores/*.test.ts`',
       match: (f) => f.startsWith('src/stores/'),
-      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, pre-sync active JWT session verification (`verifyActiveCloudSession`), batched multi-book `reading_progress` upserts, and 10-store session teardown.',
+      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, per-user in-flight coalescing (`coalesceInFlightByUser`), pre-sync active JWT session verification (`verifyActiveCloudSession`), batched multi-book `reading_progress` upserts, and 10-store session teardown.',
     },
     {
       id: 'hooks',

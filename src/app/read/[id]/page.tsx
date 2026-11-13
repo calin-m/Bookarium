@@ -185,12 +185,12 @@ function BookReaderContent() {
   // Sync annotations and fellowship symposium state on load if authenticated and online
   useEffect(() => {
     if (user?.id && !isOffline) {
-      syncWithCloud(user.id);
-      void useReaderStore.getState().syncWithCloud(user.id);
+      syncWithCloud(user.id, { minSyncIntervalMs: 15_000 });
+      void useReaderStore.getState().syncWithCloud(user.id, { minSyncIntervalMs: 15_000 });
       const syncFellowshipAndMarginalia = async () => {
-        await fetchFellowshipData(user.id);
+        await fetchFellowshipData(user.id, { minSyncIntervalMs: 15_000 });
         if (numericId > 0) {
-          await fetchFellowAnnotationsForBook(numericId, user.id);
+          await fetchFellowAnnotationsForBook(numericId, user.id, undefined, { minSyncIntervalMs: 15_000 });
         }
         enrichFellowAnnotations();
       };
@@ -216,9 +216,9 @@ function BookReaderContent() {
   // Re-fetch latest own annotations & fellow annotations when opening annotations drawer
   useEffect(() => {
     if (isAnnotationsOpen && user?.id && !isOffline) {
-      void syncWithCloud(user.id);
+      void syncWithCloud(user.id, { minSyncIntervalMs: 15_000 });
       if (numericId > 0) {
-        void fetchFellowAnnotationsForBook(numericId, user.id);
+        void fetchFellowAnnotationsForBook(numericId, user.id, undefined, { minSyncIntervalMs: 15_000 });
       }
     }
   }, [isAnnotationsOpen, user?.id, numericId, isOffline, syncWithCloud, fetchFellowAnnotationsForBook]);

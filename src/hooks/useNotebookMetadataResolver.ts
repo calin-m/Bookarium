@@ -168,9 +168,9 @@ export function useNotebookMetadataResolver(
     const annotationStore = useAnnotationStore.getState();
 
     fellowshipStore
-      .fetchFellowshipData(userId)
+      .fetchFellowshipData(userId, { minSyncIntervalMs: 15_000 })
       .then(async () => {
-        await annotationStore.syncWithCloud(userId);
+        await annotationStore.syncWithCloud(userId, { minSyncIntervalMs: 15_000 });
         annotationStore.enrichFellowAnnotations();
         return annotationStore.resolveStaleFellowProfiles();
       })

@@ -605,6 +605,29 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.count).toBe(1);
     });
 
+    it('caches searchBooks results for 5 minutes and pre-warms globalThis bookMetadataCache', async () => {
+      const { client } = createMockQueryBuilder([sampleDbRows[0]], 1);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const first = await provider.searchBooks({ page: 1, limit: 32, country: 'US' });
+      const second = await provider.searchBooks({ page: 1, limit: 32, country: 'US' });
+
+      expect(client.from).toHaveBeenCalledTimes(1);
+      expect(first.results.map((b) => b.id)).toEqual([1342]);
+      expect(second.results.map((b) => b.id)).toEqual([1342]);
+
+      const globalMeta = (
+        globalThis as typeof globalThis & {
+          __bookariumMetadataCache?: Map<number, { book: { id: number; title: string } }>;
+        }
+      ).__bookariumMetadataCache;
+      expect(globalMeta?.get(1342)?.book.title).toBe('Pride and Prejudice');
+
+      provider.resetHealthCache();
+      await provider.searchBooks({ page: 1, limit: 32, country: 'US' });
+      expect(client.from).toHaveBeenCalledTimes(2);
+    });
+
     it('automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch', async () => {
       const validRow1: DatabaseBook = { ...sampleDbRows[0], id: 101, title: 'Book 101' };
       const validRow2: DatabaseBook = { ...sampleDbRows[0], id: 102, title: 'Book 102' };

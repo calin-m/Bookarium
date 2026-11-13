@@ -93,6 +93,42 @@ export async function verifyActiveCloudSession(
   }
 }
 
+/**
+ * Coalesces concurrent async operations keyed by `userId` into a single active promise.
+ * When `dirtyRerunUsers` contains `userId` (set when a local mutation arrives mid-flight),
+ * executes one trailing pass after the active run settles instead of dropping the write.
+ */
+export function coalesceInFlightByUser(
+  inFlightMap: Map<string, Promise<void>>,
+  userId: string,
+  task: () => Promise<void>,
+  dirtyRerunUsers?: Set<string>
+): Promise<void> {
+  const existing = inFlightMap.get(userId);
+  if (existing) {
+    return existing;
+  }
+
+  const run = (async () => {
+    try {
+      do {
+        dirtyRerunUsers?.delete(userId);
+        await task();
+      } while (dirtyRerunUsers?.has(userId));
+    } finally {
+      inFlightMap.delete(userId);
+      dirtyRerunUsers?.delete(userId);
+    }
+  })();
+
+  inFlightMap.set(userId, run);
+  return run;
+}
+
+let inFlightInitialUserCheck: Promise<void> | null = null;
+const inFlightProfileFetchByUser = new Map<string, Promise<void>>();
+const dirtyProfileSyncUsers = new Set<string>();
+
 const DEFINITIVE_AUTH_ERROR_CODES = new Set([
   'session_not_found',
   'user_not_found',
@@ -333,61 +369,74 @@ export const useAuthStore = create<AuthState>()(
     };
 
     // Check active session on initialization (short-circuiting network getUser when anonymous)
-    const checkInitialUser = async () => {
-      try {
-        let sessionUser: User | null = null;
-        if (typeof supabase.auth.getSession === 'function') {
-          const { data: sessionData } = await supabase.auth.getSession();
-          sessionUser = sessionData?.session?.user ?? null;
-          const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-          if (!sessionUser && (!get().user || !isOffline)) {
-            await cleanPreviousUserStoresIfSwitched(null);
-            syncAuthCookieHint(false);
-            set({ user: null, profile: null, isLoading: false });
+    if (!inFlightInitialUserCheck) {
+      let checkSettled = false;
+      const checkPromiseRef: { current: Promise<void> | null } = { current: null };
+      const checkInitialUser = async () => {
+        try {
+          let sessionUser: User | null = null;
+          if (typeof supabase.auth.getSession === 'function') {
+            const { data: sessionData } = await supabase.auth.getSession();
+            sessionUser = sessionData?.session?.user ?? null;
+            const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+            if (!sessionUser && (!get().user || !isOffline)) {
+              await cleanPreviousUserStoresIfSwitched(null);
+              syncAuthCookieHint(false);
+              set({ user: null, profile: null, isLoading: false });
+              return;
+            }
+          }
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+          if (
+            (error || !user) &&
+            typeof navigator !== 'undefined' &&
+            navigator.onLine === false &&
+            get().user
+          ) {
+            set({ isLoading: false });
             return;
           }
+          const resolvedUser =
+            user ??
+            (error && !isDefinitiveAuthInvalidError(error)
+              ? (sessionUser ?? get().user)
+              : null);
+          await cleanPreviousUserStoresIfSwitched(resolvedUser);
+          set((state) => ({
+            user: resolvedUser,
+            profile: resolvedUser
+              ? state.profile?.id === resolvedUser.id
+                ? state.profile
+                : null
+              : null,
+            isLoading: false,
+          }));
+          syncAuthCookieHint(Boolean(resolvedUser));
+          if (resolvedUser) {
+            get().fetchProfile();
+          }
+        } catch {
+          if (get().user) {
+            set({ isLoading: false });
+          } else {
+            set({ user: null, profile: null, isLoading: false });
+          }
+        } finally {
+          checkSettled = true;
+          if (inFlightInitialUserCheck === checkPromiseRef.current) {
+            inFlightInitialUserCheck = null;
+          }
         }
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
-        if (
-          (error || !user) &&
-          typeof navigator !== 'undefined' &&
-          navigator.onLine === false &&
-          get().user
-        ) {
-          set({ isLoading: false });
-          return;
-        }
-        const resolvedUser =
-          user ??
-          (error && !isDefinitiveAuthInvalidError(error)
-            ? (sessionUser ?? get().user)
-            : null);
-        await cleanPreviousUserStoresIfSwitched(resolvedUser);
-        set((state) => ({
-          user: resolvedUser,
-          profile: resolvedUser
-            ? state.profile?.id === resolvedUser.id
-              ? state.profile
-              : null
-            : null,
-          isLoading: false,
-        }));
-        syncAuthCookieHint(Boolean(resolvedUser));
-        if (resolvedUser) {
-          get().fetchProfile();
-        }
-      } catch {
-        if (get().user) {
-          set({ isLoading: false });
-        } else {
-          set({ user: null, profile: null, isLoading: false });
-        }
+      };
+      checkPromiseRef.current = checkInitialUser();
+      if (!checkSettled) {
+        inFlightInitialUserCheck = checkPromiseRef.current;
       }
-    };
-    void checkInitialUser();
+    }
+    void inFlightInitialUserCheck;
 
     // Subscribe to auth state transitions
     const {
@@ -405,8 +454,8 @@ export const useAuthStore = create<AuthState>()(
       }
       // Let checkInitialUser() authoritatively resolve the initial session state when online;
       // GoTrueClient._emitInitialSession can emit ('INITIAL_SESSION', null) on transient
-      // network/reload aborts even when a valid session exists in cookies.
-      if (event === 'INITIAL_SESSION' && !session) {
+      // network/reload aborts or duplicate ('INITIAL_SESSION', session) while bootstrap is in flight.
+      if (event === 'INITIAL_SESSION' && (!session || inFlightInitialUserCheck !== null)) {
         return;
       }
       const user = session?.user ?? null;
@@ -721,46 +770,67 @@ export const useAuthStore = create<AuthState>()(
     await clearLocalUserStores({ wipeDeviceStorage: false });
   },
 
-  fetchProfile: async () => {
-    const { user, pendingProfileUpdates } = get();
-    if (!user) return;
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  fetchProfile: () => {
+    const currentUser = get().user;
+    if (!currentUser) return Promise.resolve();
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve();
 
-    try {
-      const supabase = createClient();
+    const targetUserId = currentUser.id;
+    const pendingBeforeJoin = get().pendingProfileUpdates;
+    if (
+      inFlightProfileFetchByUser.has(targetUserId) &&
+      pendingBeforeJoin &&
+      Object.keys(pendingBeforeJoin).length > 0
+    ) {
+      dirtyProfileSyncUsers.add(targetUserId);
+    }
 
-      if (pendingProfileUpdates && Object.keys(pendingProfileUpdates).length > 0) {
-        const { error: flushErr } = await supabase
-          .from('profiles')
-          .update(pendingProfileUpdates)
-          .eq('id', user.id);
-        if (!flushErr) {
-          set((s) =>
-            s.pendingProfileUpdates === pendingProfileUpdates
-              ? { pendingProfileUpdates: null }
-              : {}
-          );
-        }
-      }
+    return coalesceInFlightByUser(
+      inFlightProfileFetchByUser,
+      targetUserId,
+      async () => {
+        const { user, pendingProfileUpdates } = get();
+        if (!user || user.id !== targetUserId) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (!error && data) {
-        set({ profile: data as Profile });
         try {
-          const { reconcileCloudPreferencesWithLocal } = await import('@/lib/preferences-sync');
-          reconcileCloudPreferencesWithLocal(data as Profile);
+          const supabase = createClient();
+
+          if (pendingProfileUpdates && Object.keys(pendingProfileUpdates).length > 0) {
+            const { error: flushErr } = await supabase
+              .from('profiles')
+              .update(pendingProfileUpdates)
+              .eq('id', user.id);
+            if (!flushErr) {
+              set((s) =>
+                s.pendingProfileUpdates === pendingProfileUpdates
+                  ? { pendingProfileUpdates: null }
+                  : {}
+              );
+            }
+          }
+
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (!error && data) {
+            set({ profile: data as Profile });
+            try {
+              const { reconcileCloudPreferencesWithLocal } = await import('@/lib/preferences-sync');
+              reconcileCloudPreferencesWithLocal(data as Profile);
+            } catch {
+              // Non-blocking fallback
+            }
+          }
         } catch {
           // Non-blocking fallback
         }
-      }
-    } catch {
-      // Non-blocking fallback
-    }
+      },
+      dirtyProfileSyncUsers
+    );
   },
 
   syncWithCloud: async (userId?: string) => {
@@ -824,6 +894,9 @@ export const useAuthStore = create<AuthState>()(
         },
         error: null,
       }));
+      if (inFlightProfileFetchByUser.has(user.id)) {
+        dirtyProfileSyncUsers.add(user.id);
+      }
       return { error: null };
     }
 

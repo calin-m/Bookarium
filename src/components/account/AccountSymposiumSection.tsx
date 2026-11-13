@@ -167,7 +167,7 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
   useEffect(() => {
     if (userId && !isOffline) {
-      fetchFellowshipData(userId);
+      fetchFellowshipData(userId, { minSyncIntervalMs: 15_000 });
     }
   }, [userId, isOffline, fetchFellowshipData]);
 

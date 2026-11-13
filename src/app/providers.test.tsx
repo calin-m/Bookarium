@@ -207,5 +207,51 @@ describe('Providers component', () => {
     expect(useThemeStore.getState().theme).toBe('sepia');
     expect(document.documentElement.classList.contains('sepia')).toBe(true);
   });
+
+  it('suppresses duplicate visibilitychange sync within 15s cooldown but keeps auth-token-refreshed unthrottled', () => {
+    vi.useFakeTimers();
+    try {
+      useAuthStore.setState({
+        user: { id: 'user-sleep-1', email: 'sleep@example.com' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['user'],
+        isLoading: false,
+      });
+
+      render(
+        <Providers>
+          <div>Child Content</div>
+        </Providers>
+      );
+
+      expect(syncAllStoresWithCloud).toHaveBeenCalledTimes(1);
+      expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1');
+      vi.mocked(syncAllStoresWithCloud).mockClear();
+
+      // Advance only 5s (< 15s cooldown): visibilitychange should stay suppressed
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible',
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(syncAllStoresWithCloud).not.toHaveBeenCalled();
+
+      // Wake-up TOKEN_REFRESHED immediately after visibilitychange must still bypass visibility cooldown
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('bookarium:auth-token-refreshed', { detail: { userId: 'user-sleep-1' } })
+        );
+      });
+      expect(syncAllStoresWithCloud).toHaveBeenCalledTimes(1);
+      expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 

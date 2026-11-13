@@ -3,7 +3,12 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { createClient } from '@/lib/supabase/client';
-import { shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
+import {
+  useAuthStore,
+  coalesceInFlightByUser,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from './useAuthStore';
 import type { SymposiumSessionRow } from '@/types/database.types';
 import {
   useFellowshipStore,
@@ -60,7 +65,8 @@ export interface AnnotationState {
   fetchFellowAnnotationsForBook: (
     bookId: number,
     currentUserId?: string,
-    fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
+    fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>,
+    options?: { minSyncIntervalMs?: number }
   ) => Promise<FellowAnnotation[]>;
   enrichFellowAnnotations: (
     fellowScholarsMap?: Record<string, { username: string; display_name?: string | null }>
@@ -99,13 +105,68 @@ export interface AnnotationState {
   getAnnotationsForBook: (bookId: number) => Annotation[];
   getAnnotationsForPage: (bookId: number, chapterIndex: number, chapterPage: number) => Annotation[];
 
-  syncWithCloud: (userId: string) => Promise<void>;
+  syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   updateBookMetadata: (bookId: number, title: string, author?: string) => void;
   clearAllAnnotations: () => void;
 }
 
 function generateId(): string {
   return generateValidAnnotationUuid();
+}
+
+const inFlightAnnotationSyncs = new Map<string, Promise<void>>();
+const dirtyAnnotationSyncUsers = new Set<string>();
+const lastPassiveAnnotationSyncByUser = new Map<string, number>();
+const lastFellowBookSyncByKey = new Map<string, number>();
+
+/**
+ * Invalidates the passive mount/drawer sync cooldown for a scholar (or all scholars)
+ * without clearing the persisted `lastAnnotationSyncAt` LWW deletion watermark.
+ */
+export function invalidateAnnotationSyncCooldown(userId?: string): void {
+  if (userId) {
+    lastPassiveAnnotationSyncByUser.delete(userId);
+    const prefix = `${userId}:`;
+    lastFellowBookSyncByKey.forEach((_ts, key) => {
+      if (key.startsWith(prefix)) {
+        lastFellowBookSyncByKey.delete(key);
+      }
+    });
+  } else {
+    lastPassiveAnnotationSyncByUser.clear();
+    lastFellowBookSyncByKey.clear();
+  }
+}
+
+function appendAnnotationOutboxItem(
+  set: (fn: (state: AnnotationState) => Partial<AnnotationState>) => void,
+  action: Omit<AnnotationOutboxAction, 'id' | 'timestamp'>,
+  markDirtyIfSyncing: boolean
+): void {
+  const item: AnnotationOutboxAction = {
+    ...action,
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+  };
+  set((state) => ({ outbox: [...state.outbox, item] }));
+  if (markDirtyIfSyncing) {
+    const activeUserId = useAuthStore.getState().user?.id;
+    if (activeUserId && inFlightAnnotationSyncs.has(activeUserId)) {
+      dirtyAnnotationSyncUsers.add(activeUserId);
+    }
+  }
+}
+
+function withUserOutboxDirty(
+  getState: () => AnnotationState,
+  userId: string
+): (action: Omit<AnnotationOutboxAction, 'id' | 'timestamp'>) => void {
+  return (action) => {
+    getState().queueOutboxAction(action);
+    if (inFlightAnnotationSyncs.has(userId)) {
+      dirtyAnnotationSyncUsers.add(userId);
+    }
+  };
 }
 
 export const useAnnotationStore = create<AnnotationState>()(
@@ -314,8 +375,21 @@ export const useAnnotationStore = create<AnnotationState>()(
         }
       },
 
-      fetchFellowAnnotationsForBook: async (bookId, currentUserId, fellowScholarsMap) => {
+      fetchFellowAnnotationsForBook: async (bookId, currentUserId, fellowScholarsMap, options) => {
         if (!currentUserId || !bookId) return [];
+        const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+        const fellowKey = `${currentUserId}:${bookId}`;
+        if (minSyncIntervalMs > 0) {
+          const now = Date.now();
+          const lastUserSyncAt = lastPassiveAnnotationSyncByUser.get(currentUserId);
+          const lastBookSyncAt = lastFellowBookSyncByKey.get(fellowKey);
+          if (
+            (lastUserSyncAt !== undefined && now - lastUserSyncAt < minSyncIntervalMs) ||
+            (lastBookSyncAt !== undefined && now - lastBookSyncAt < minSyncIntervalMs)
+          ) {
+            return get().fellowAnnotations.filter((fa) => fa.bookId === bookId);
+          }
+        }
         try {
           const supabase = createClient();
           const { data, error } = await supabase
@@ -345,6 +419,7 @@ export const useAnnotationStore = create<AnnotationState>()(
               ...mapped,
             ],
           }));
+          lastFellowBookSyncByKey.set(fellowKey, Date.now());
 
           return mapped;
         } catch {
@@ -353,12 +428,7 @@ export const useAnnotationStore = create<AnnotationState>()(
       },
 
       queueOutboxAction: (action) => {
-        const item: AnnotationOutboxAction = {
-          ...action,
-          id: generateId(),
-          timestamp: new Date().toISOString(),
-        };
-        set((state) => ({ outbox: [...state.outbox, item] }));
+        appendAnnotationOutboxItem(set, action, true);
       },
 
       flushOutbox: async (userId: string) => {
@@ -435,7 +505,7 @@ export const useAnnotationStore = create<AnnotationState>()(
                     .update({ selected_text: trimmedText, updated_at: now })
                     .eq('id', existing.id)
                     .eq('user_id', userId),
-                get().queueOutboxAction
+                withUserOutboxDirty(get, userId)
               );
             }
           }
@@ -470,7 +540,7 @@ export const useAnnotationStore = create<AnnotationState>()(
             newAnnotation,
             userId,
             (sb, dbPayload) => sb.from('user_annotations').insert(dbPayload),
-            get().queueOutboxAction
+            withUserOutboxDirty(get, userId)
           );
         }
 
@@ -499,7 +569,7 @@ export const useAnnotationStore = create<AnnotationState>()(
                 .update({ color, updated_at: now })
                 .eq('id', id)
                 .eq('user_id', userId),
-            get().queueOutboxAction
+            withUserOutboxDirty(get, userId)
           );
         }
 
@@ -529,7 +599,7 @@ export const useAnnotationStore = create<AnnotationState>()(
                 .update({ note: trimmedNote || null, updated_at: now })
                 .eq('id', id)
                 .eq('user_id', userId),
-            get().queueOutboxAction
+            withUserOutboxDirty(get, userId)
           );
         }
 
@@ -543,6 +613,10 @@ export const useAnnotationStore = create<AnnotationState>()(
           tombstones: state.tombstones.includes(id) ? state.tombstones : [...state.tombstones, id],
         }));
 
+        if (userId && inFlightAnnotationSyncs.has(userId)) {
+          dirtyAnnotationSyncUsers.add(userId);
+        }
+
         // 2. Cloud synchronization if logged in
         if (userId) {
           try {
@@ -554,7 +628,7 @@ export const useAnnotationStore = create<AnnotationState>()(
               .eq('user_id', userId);
             if (error) throw error;
           } catch {
-            get().queueOutboxAction({
+            withUserOutboxDirty(get, userId)({
               type: 'DELETE_ANNOTATION',
               payload: { id },
             });
@@ -616,141 +690,184 @@ export const useAnnotationStore = create<AnnotationState>()(
         });
       },
 
-      syncWithCloud: async (userId) => {
-        if (!userId) return;
-        set({ isSyncing: true });
+      syncWithCloud: (userId, options) => {
+        if (!userId) return Promise.resolve();
 
-        try {
-          const supabase = createClient();
+        const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+        if (
+          minSyncIntervalMs > 0 &&
+          !inFlightAnnotationSyncs.has(userId) &&
+          !dirtyAnnotationSyncUsers.has(userId) &&
+          get().outbox.length === 0 &&
+          get().tombstones.length === 0
+        ) {
+          const lastPassiveSyncAt = lastPassiveAnnotationSyncByUser.get(userId);
           if (
-            shouldVerifyCloudSession(supabase) &&
-            !(await verifyActiveCloudSession(supabase, userId))
+            lastPassiveSyncAt !== undefined &&
+            Date.now() - lastPassiveSyncAt < minSyncIntervalMs
           ) {
-            set({ isSyncing: false });
-            return;
+            return Promise.resolve();
           }
+        }
 
-          // Flush any pending offline mutations first
-          await get().flushOutbox(userId);
+        if (
+          inFlightAnnotationSyncs.has(userId) &&
+          (get().outbox.length > 0 || get().tombstones.length > 0)
+        ) {
+          dirtyAnnotationSyncUsers.add(userId);
+        }
 
-          // Fetch cloud annotations
-          const { data, error } = await supabase
-            .from('user_annotations')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
+        return coalesceInFlightByUser(
+          inFlightAnnotationSyncs,
+          userId,
+          async () => {
+            set({ isSyncing: true });
 
-          if (error) throw error;
-
-          const pendingDeleteIds = new Set(
-            get()
-              .outbox.filter((action) => action.type === 'DELETE_ANNOTATION')
-              .map((action) => String(action.payload.id))
-          );
-          const pendingUpsertIds = new Set(
-            get()
-              .outbox.filter((action) => action.type === 'UPSERT_ANNOTATION')
-              .map((action) => String(action.payload.id))
-          );
-          const currentTombstones = get().tombstones;
-          const activeTombstones = currentTombstones.filter((id) => pendingDeleteIds.has(id));
-          const lastSyncTime = get().lastAnnotationSyncAt
-            ? new Date(get().lastAnnotationSyncAt!).getTime()
-            : 0;
-
-          const localAnnotations = get().annotations.filter((la) => !currentTombstones.includes(la.id));
-          const localMetaMap = new Map<string, { bookTitle?: string; bookAuthor?: string; language?: string }>();
-          for (const la of localAnnotations) {
-            localMetaMap.set(la.id, {
-              bookTitle: la.bookTitle,
-              bookAuthor: la.bookAuthor,
-              language: la.language,
-            });
-          }
-
-          const remoteAnnotations: Annotation[] = (data || [])
-            .map((row: Record<string, unknown>) => {
-              const id = String(row.id);
-              const meta = localMetaMap.get(id);
-              return {
-                id,
-                userId: String(row.user_id),
-                bookId: Number(row.book_id),
-                bookTitle: meta?.bookTitle,
-                bookAuthor: meta?.bookAuthor,
-                language: meta?.language,
-                chapterIndex: Number(row.chapter_index),
-                chapterPage: Number(row.chapter_page),
-                selectedText: String(row.selected_text),
-                color: row.color as HighlightColor,
-                note: (row.note as string) || undefined,
-                createdAt: String(row.created_at),
-                updatedAt: String(row.updated_at),
-              };
-            })
-            .filter((r) => !currentTombstones.includes(r.id));
-
-          // Merge: Preserve any local guest annotations or pending local edits that don't exist remotely and apply LWW when local is newer
-          const merged = [...remoteAnnotations];
-          const unSyncedGuestAnnotations: Annotation[] = [];
-
-          for (const la of localAnnotations) {
-            const remoteIdx = merged.findIndex((r) => r.id === la.id);
-            if (remoteIdx === -1) {
-              const localTime = new Date(la.updatedAt).getTime();
-              const isGuestOrPendingOrNewer =
-                !la.userId ||
-                !lastSyncTime ||
-                pendingUpsertIds.has(la.id) ||
-                localTime > lastSyncTime;
-              if (isGuestOrPendingOrNewer) {
-                merged.push(la);
-                unSyncedGuestAnnotations.push(la);
+            try {
+              const supabase = createClient();
+              if (
+                shouldVerifyCloudSession(supabase) &&
+                !(await verifyActiveCloudSession(supabase, userId))
+              ) {
+                return;
               }
-            } else {
-              const remoteItem = merged[remoteIdx];
-              const localTime = new Date(la.updatedAt).getTime();
-              const remoteTime = new Date(remoteItem.updatedAt).getTime();
-              if (localTime > remoteTime) {
-                merged[remoteIdx] = la;
-                unSyncedGuestAnnotations.push(la);
-              }
-            }
-          }
 
-          set({
-            annotations: merged,
-            tombstones: activeTombstones,
-            lastAnnotationSyncAt: new Date().toISOString(),
-          });
+              // Flush any pending offline mutations first
+              await get().flushOutbox(userId);
 
-          // Bidirectional sync: upload guest annotations to Supabase
-          if (unSyncedGuestAnnotations.length > 0) {
-            const inserts = unSyncedGuestAnnotations.map((a) => toAnnotationDbRow(a, userId));
-            const { error: upsertError } = await supabase
-              .from('user_annotations')
-              .upsert(inserts, { onConflict: 'id' });
+              // Fetch cloud annotations
+              const { data, error } = await supabase
+                .from('user_annotations')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
 
-            if (upsertError) {
-              for (const insert of inserts) {
-                get().queueOutboxAction({
-                  type: 'UPSERT_ANNOTATION',
-                  payload: insert as Record<string, unknown>,
+              if (error) throw error;
+
+              const pendingDeleteIds = new Set(
+                get()
+                  .outbox.filter((action) => action.type === 'DELETE_ANNOTATION')
+                  .map((action) => String(action.payload.id))
+              );
+              const pendingUpsertIds = new Set(
+                get()
+                  .outbox.filter((action) => action.type === 'UPSERT_ANNOTATION')
+                  .map((action) => String(action.payload.id))
+              );
+              const currentTombstones = get().tombstones;
+              const activeTombstones = currentTombstones.filter((id) => pendingDeleteIds.has(id));
+              const lastSyncTime = get().lastAnnotationSyncAt
+                ? new Date(get().lastAnnotationSyncAt!).getTime()
+                : 0;
+
+              const localAnnotations = get().annotations.filter(
+                (la) => !currentTombstones.includes(la.id)
+              );
+              const localMetaMap = new Map<
+                string,
+                { bookTitle?: string; bookAuthor?: string; language?: string }
+              >();
+              for (const la of localAnnotations) {
+                localMetaMap.set(la.id, {
+                  bookTitle: la.bookTitle,
+                  bookAuthor: la.bookAuthor,
+                  language: la.language,
                 });
               }
-            }
-          }
 
-          // Automatically fetch all Fellow annotations across active symposiums
-          await get().fetchAllFellowAnnotations(userId);
-        } catch {
-          // Graceful non-blocking fallback for offline or unmigrated instances
-        } finally {
-          set({ isSyncing: false });
-        }
+              const remoteAnnotations: Annotation[] = (data || [])
+                .map((row: Record<string, unknown>) => {
+                  const id = String(row.id);
+                  const meta = localMetaMap.get(id);
+                  return {
+                    id,
+                    userId: String(row.user_id),
+                    bookId: Number(row.book_id),
+                    bookTitle: meta?.bookTitle,
+                    bookAuthor: meta?.bookAuthor,
+                    language: meta?.language,
+                    chapterIndex: Number(row.chapter_index),
+                    chapterPage: Number(row.chapter_page),
+                    selectedText: String(row.selected_text),
+                    color: row.color as HighlightColor,
+                    note: (row.note as string) || undefined,
+                    createdAt: String(row.created_at),
+                    updatedAt: String(row.updated_at),
+                  };
+                })
+                .filter((r) => !currentTombstones.includes(r.id));
+
+              // Merge: Preserve any local guest annotations or pending local edits that don't exist remotely and apply LWW when local is newer
+              const merged = [...remoteAnnotations];
+              const unSyncedGuestAnnotations: Annotation[] = [];
+
+              for (const la of localAnnotations) {
+                const remoteIdx = merged.findIndex((r) => r.id === la.id);
+                if (remoteIdx === -1) {
+                  const localTime = new Date(la.updatedAt).getTime();
+                  const isGuestOrPendingOrNewer =
+                    !la.userId ||
+                    !lastSyncTime ||
+                    pendingUpsertIds.has(la.id) ||
+                    localTime > lastSyncTime;
+                  if (isGuestOrPendingOrNewer) {
+                    merged.push(la);
+                    unSyncedGuestAnnotations.push(la);
+                  }
+                } else {
+                  const remoteItem = merged[remoteIdx];
+                  const localTime = new Date(la.updatedAt).getTime();
+                  const remoteTime = new Date(remoteItem.updatedAt).getTime();
+                  if (localTime > remoteTime) {
+                    merged[remoteIdx] = la;
+                    unSyncedGuestAnnotations.push(la);
+                  }
+                }
+              }
+
+              set({
+                annotations: merged,
+                tombstones: activeTombstones,
+                lastAnnotationSyncAt: new Date().toISOString(),
+              });
+
+              // Bidirectional sync: upload guest annotations to Supabase
+              if (unSyncedGuestAnnotations.length > 0) {
+                const inserts = unSyncedGuestAnnotations.map((a) => toAnnotationDbRow(a, userId));
+                const { error: upsertError } = await supabase
+                  .from('user_annotations')
+                  .upsert(inserts, { onConflict: 'id' });
+
+                if (upsertError) {
+                  for (const insert of inserts) {
+                    appendAnnotationOutboxItem(
+                      set,
+                      {
+                        type: 'UPSERT_ANNOTATION',
+                        payload: insert as Record<string, unknown>,
+                      },
+                      false
+                    );
+                  }
+                }
+              }
+
+              // Automatically fetch all Fellow annotations across active symposiums
+              await get().fetchAllFellowAnnotations(userId);
+              lastPassiveAnnotationSyncByUser.set(userId, Date.now());
+            } catch {
+              // Graceful non-blocking fallback for offline or unmigrated instances
+            } finally {
+              set({ isSyncing: false });
+            }
+          },
+          dirtyAnnotationSyncUsers
+        );
       },
 
       clearAllAnnotations: () => {
+        lastPassiveAnnotationSyncByUser.clear();
+        lastFellowBookSyncByKey.clear();
         set({
           annotations: [],
           fellowAnnotations: [],

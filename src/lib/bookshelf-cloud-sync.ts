@@ -7,7 +7,11 @@
 
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';
 import { createClient } from '@/lib/supabase/client';
-import { shouldVerifyCloudSession, verifyActiveCloudSession } from '@/stores/useAuthStore';
+import {
+  coalesceInFlightByUser,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from '@/stores/useAuthStore';
 import type { Bookshelf, BookshelfItem, Database } from '@/types/database.types';
 import { toGutendexBookFromCloudRow, toCloudBookInsert } from '@/lib/adapters/book.adapter';
 
@@ -248,7 +252,45 @@ export function mergeCloudBookWithLocal(
 }
 
 const inFlightOutboxFlushes = new Map<string, Promise<void>>();
+const dirtyOutboxFlushUsers = new Set<string>();
 const inFlightCloudSyncs = new Map<string, Promise<void>>();
+const dirtyBookshelfSyncUsers = new Set<string>();
+const lastBookshelfSyncByUser = new Map<string, number>();
+
+/**
+ * Invalidates passive bookshelf sync cooldown for a user (or all users) without wiping cloud cursors.
+ */
+export function invalidateBookshelfSyncCooldown(userId?: string): void {
+  if (userId) {
+    lastBookshelfSyncByUser.delete(userId);
+  } else {
+    lastBookshelfSyncByUser.clear();
+  }
+}
+
+/**
+ * Marks active in-flight bookshelf sync/outbox passes dirty and clears passive sync cooldown
+ * when mutations are queued offline or during an active network round-trip.
+ */
+export function markBookshelfOutboxDirty(userId?: string): void {
+  if (userId) {
+    lastBookshelfSyncByUser.delete(userId);
+    if (inFlightOutboxFlushes.has(userId)) {
+      dirtyOutboxFlushUsers.add(userId);
+    }
+    if (inFlightCloudSyncs.has(userId)) {
+      dirtyBookshelfSyncUsers.add(userId);
+    }
+    return;
+  }
+  lastBookshelfSyncByUser.clear();
+  inFlightOutboxFlushes.forEach((_promise, activeUserId) => {
+    dirtyOutboxFlushUsers.add(activeUserId);
+  });
+  inFlightCloudSyncs.forEach((_promise, activeUserId) => {
+    dirtyBookshelfSyncUsers.add(activeUserId);
+  });
+}
 
 async function safeSelectByUser<T>(
   supabase: ReturnType<typeof createClient>,
@@ -292,49 +334,51 @@ export async function executeFlushOutbox(
   get: BookshelfGetState,
   set: BookshelfSetState
 ): Promise<void> {
-  const { outbox } = get();
-  if (outbox.length === 0 || !userId) return;
+  if (!userId) return;
+  if (get().outbox.length === 0 && !inFlightOutboxFlushes.has(userId)) return;
 
-  const existingFlush = inFlightOutboxFlushes.get(userId);
-  if (existingFlush) return existingFlush;
+  return coalesceInFlightByUser(
+    inFlightOutboxFlushes,
+    userId,
+    async () => {
+      const snapshot = [...get().outbox];
+      if (snapshot.length === 0) return;
 
-  const flushPromise = (async () => {
-    const supabase = createClient();
-    if (
-      shouldVerifyCloudSession(supabase) &&
-      !(await verifyActiveCloudSession(supabase, userId))
-    ) {
-      return;
-    }
-    const completedActionIds = new Set<string>();
+      const supabase = createClient();
+      if (
+        shouldVerifyCloudSession(supabase) &&
+        !(await verifyActiveCloudSession(supabase, userId))
+      ) {
+        return;
+      }
+      const completedActionIds = new Set<string>();
 
-    for (const action of outbox) {
-      try {
-        if (
-          'user_id' in action.payload &&
-          action.payload.user_id &&
-          String(action.payload.user_id) !== userId
-        ) {
-          completedActionIds.add(action.id);
+      for (const action of snapshot) {
+        try {
+          if (
+            'user_id' in action.payload &&
+            action.payload.user_id &&
+            String(action.payload.user_id) !== userId
+          ) {
+            completedActionIds.add(action.id);
+            continue;
+          }
+          const dispatcher = OUTBOX_DISPATCHERS[action.type];
+          if (dispatcher) {
+            const { error } = await dispatcher(supabase, action.payload);
+            if (error) throw error;
+            completedActionIds.add(action.id);
+          }
+        } catch {
           continue;
         }
-        const dispatcher = OUTBOX_DISPATCHERS[action.type];
-        if (dispatcher) {
-          const { error } = await dispatcher(supabase, action.payload);
-          if (error) throw error;
-          completedActionIds.add(action.id);
-        }
-      } catch {
-        continue;
       }
-    }
-    set({ outbox: get().outbox.filter((action) => !completedActionIds.has(action.id)) });
-  })().finally(() => {
-    inFlightOutboxFlushes.delete(userId);
-  });
-
-  inFlightOutboxFlushes.set(userId, flushPromise);
-  return flushPromise;
+      if (completedActionIds.size > 0) {
+        set({ outbox: get().outbox.filter((action) => !completedActionIds.has(action.id)) });
+      }
+    },
+    dirtyOutboxFlushUsers
+  );
 }
 
 /**
@@ -345,49 +389,64 @@ export async function executeFlushOutbox(
 export async function executeBookshelfCloudSync(
   userId: string,
   get: BookshelfGetState,
-  set: BookshelfSetState
+  set: BookshelfSetState,
+  options?: { minSyncIntervalMs?: number }
 ): Promise<void> {
   if (!userId) return;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
-  const existingSync = inFlightCloudSyncs.get(userId);
-  if (existingSync) return existingSync;
+  const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+  if (
+    minSyncIntervalMs > 0 &&
+    !inFlightCloudSyncs.has(userId) &&
+    !dirtyBookshelfSyncUsers.has(userId) &&
+    get().outbox.length === 0
+  ) {
+    const lastSyncAt = lastBookshelfSyncByUser.get(userId);
+    if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
+      return;
+    }
+  }
 
-  const syncPromise = (async () => {
-    set({ isSyncing: true });
+  return coalesceInFlightByUser(
+    inFlightCloudSyncs,
+    userId,
+    async () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      set({ isSyncing: true });
 
-    const nextState: Partial<BookshelfSyncSlice> = { isSyncing: false };
+      const nextState: Partial<BookshelfSyncSlice> = { isSyncing: false };
 
-    try {
-      const supabase = createClient();
-      if (
-        shouldVerifyCloudSession(supabase) &&
-        !(await verifyActiveCloudSession(supabase, userId))
-      ) {
-        set(nextState);
-        return;
-      }
+      try {
+        const supabase = createClient();
+        if (
+          shouldVerifyCloudSession(supabase) &&
+          !(await verifyActiveCloudSession(supabase, userId))
+        ) {
+          set(nextState);
+          return;
+        }
 
-      // Flush any pending offline mutations first
-      await get().flushOutbox(userId);
+        // Flush any pending offline mutations first
+        await get().flushOutbox(userId);
 
-      // Build lookup map of existing rich local books by id to prevent metadata loss on cloud sync
-      const initialState = get();
-      const localBookLookup = new Map<number, GutendexBook>();
-      for (const b of initialState.favoriteBooks) {
-        localBookLookup.set(b.id, b);
-      }
-      for (const b of initialState.savedBooks) {
-        localBookLookup.set(b.id, b);
-      }
+        // Build lookup map of existing rich local books by id to prevent metadata loss on cloud sync
+        const initialState = get();
+        const localBookLookup = new Map<number, GutendexBook>();
+        for (const b of initialState.favoriteBooks) {
+          localBookLookup.set(b.id, b);
+        }
+        for (const b of initialState.savedBooks) {
+          localBookLookup.set(b.id, b);
+        }
 
-      // Parallelize initial SELECT queries across all 4 tables
-      const [shelvesRes, itemsRes, favoritesRes, curationsRes] = await Promise.all([
-        safeSelectByUser<Bookshelf>(supabase, 'bookshelves', userId, 'created_asc'),
-        safeSelectByUser<BookshelfItem>(supabase, 'bookshelf_items', userId, 'deterministic_items'),
-        safeSelectByUser<BookshelfItem>(supabase, 'user_favorites', userId, 'deterministic_items'),
-        safeSelectByUser<Database['public']['Tables']['user_book_curation']['Row']>(
-          supabase,
+        // Parallelize initial SELECT queries across all 4 tables
+        const [shelvesRes, itemsRes, favoritesRes, curationsRes] = await Promise.all([
+          safeSelectByUser<Bookshelf>(supabase, 'bookshelves', userId, 'created_asc'),
+          safeSelectByUser<BookshelfItem>(supabase, 'bookshelf_items', userId, 'deterministic_items'),
+          safeSelectByUser<BookshelfItem>(supabase, 'user_favorites', userId, 'deterministic_items'),
+          safeSelectByUser<Database['public']['Tables']['user_book_curation']['Row']>(
+            supabase,
           'user_book_curation',
           userId
         ),
@@ -697,17 +756,27 @@ export async function executeBookshelfCloudSync(
           }
         }
       }
+
+      if (
+        !shelvesRes.error &&
+        !itemsRes.error &&
+        !favoritesRes.error &&
+        !curationsRes.error &&
+        !shelvesRes.unmocked &&
+        !itemsRes.unmocked &&
+        !favoritesRes.unmocked &&
+        !curationsRes.unmocked
+      ) {
+        lastBookshelfSyncByUser.set(userId, Date.now());
+      }
     } catch {
       // Graceful offline fallback
     } finally {
       set(nextState);
     }
-  })().finally(() => {
-    inFlightCloudSyncs.delete(userId);
-  });
-
-  inFlightCloudSyncs.set(userId, syncPromise);
-  return syncPromise;
+    },
+    dirtyBookshelfSyncUsers
+  );
 }
 
 /**

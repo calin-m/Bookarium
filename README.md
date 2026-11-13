@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-239%20Suites%20%7C%202488%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.61%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-240%20Suites%20%7C%202513%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.48%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2488 tests across 239 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2513 tests across 240 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,13 +108,14 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.22)
+## 🛠️ Latest Improvements (v2.9.23)
 
-- **Asymmetric Catalog-to-Collection Directional Transitions & Instant Return Policy (`ADR-080`)**: Implemented an asymmetric view navigation policy across Catalog and collections: (1) Added directional slide navigation on header tab taps in `src/app/page.tsx` (`NAVBAR_TRANSITION_ORDER`), calculating relative tab coordinates (`forward` -> `animate-view-slide-left`, `backward` -> `animate-view-slide-right`) with instant top-scroll alignment (`window.scrollTo({ top: 0, behavior: 'instant' })`) when entering Bookshelf or navigating between personal collections (`bookshelf` <-> `favorites` <-> `notebook` <-> `bookmarks`); and (2) Enforced an Asymmetric Zero-Transition Return Policy when navigating back to the Catalog (from any collection view or offline catalog view -> `catalog`), setting `setSwipeDirection(null)` and `setIsTransitioning(false)` so the Catalog homepage loads immediately and crisply with zero animation delay for maximum page speed.
-- **Tablet Viewport Breakpoint Parity & Nested Motion Clashing Suppression (`ADR-080`)**: Resolved transition clashing on tablet viewports by replacing `@media (max-width: 767px)` with `@media (max-width: 1366px), (pointer: coarse)` in `globals.css`. Permanently suppresses nested descendant `.animate-page-turn` containers across iPads, Android tablets, Surface devices, and touch laptops so the outer view transition stage plays smoothly without double-animation artifacts or frame jitter.
-- **Zero-Swap Hero & Editorial Pool Boundary Guard Across Sliding 12-Hour Cache Windows (`ADR-080`)**: Eliminated post-hydration Hero Featured Book and Classic of the Day book/quote swaps and cross-device mismatches when a valid 12-hour `localStorage` (`bookarium-quote-enriched-books-v1`) or Vercel Edge CDN (`s-maxage=43200`) quote-pool cache straddles a `00:00 UTC` or `12:00 UTC` rotating pool boundary. Added `FEATURED_HERO_ID_SET` and `toFallbackHeroWithRawBook(fallback)` so `selectHourlyHeroFromPool` and `selectDailyClassicFromPool` preserve the deterministic SSR `fallback` whenever `!ssrMatch` on a rotating pool slice, maintaining 100% of `v2.9.21`'s 48-volume batch size, 12-hour cache TTLs, and zero extra Supabase egress.
-- **Pre-Sync Active Session Token Guard, Cookie-Clearance Guest Reconciliation & Batched `reading_progress` Cloud Upsert (`ADR-080`)**: Eliminated PostgreSQL `42501` RLS errors and false-empty `SELECT` responses (`data: []`) after browser cookie clearance by adding `verifyActiveCloudSession` (`hasSupabaseAuthCookie` & `shouldVerifyCloudSession`) across `syncAllStoresWithCloud` and all store sync entrypoints, preserving `v2.9.20` wake-up token refresh compatibility while reconciling cleared-cookie tabs to guest mode, and batching multi-book `reading_progress` upserts (`upsertReadingProgressBatch`) into 1 request instead of N parallel requests.
-- **Living Architecture Diagram 12 Cron Topology, Dual-Layer Tactile vs. Non-Tactile Transition Parity & ADR Conflict Decommissioning Ledger (`ADR-080`)**: Updated Diagram 12 (`Edge Routing, Regional Compute Pinning & Autonomous Cron Topology`) and 7-store cloud outbox labels in `scripts/generate-architecture-matrix.js` to reflect the unified Sunday `catalog-sync.yml` pipeline, added co-located unit tests in `src/app/page.test.tsx` verifying both tactile (`<= 1366px`, `pointer: coarse`) repeatable `Catalog` <-> `Bookshelf` slide transitions and non-tactile desktop PC (`> 1366px`, `pointer: fine`) inner `.animate-page-turn` fade-up and swipe suppression, reconciled superseded statements across `docs/DECISIONS.md` and `scripts/generate-roadmap.js` with a `Decommissioned & Superseded Decisions Ledger`, and codified in-place ADR pruning in `AGENTS.md` and `.agents/AGENTS.md`.
+- **Module-Scoped Auth Init Deduplication & Shared Per-User Cloud Sync Coalescing (`ADR-080`)**: Exported `coalesceInFlightByUser` so `syncAllStoresWithCloud`, `fetchProfile`, `executeFlushOutbox` / `executeBookshelfCloudSync`, and store syncs return active per-user Promises (`p1 === p2`) with dirty-rerun tracking (`dirtyOutboxFlushUsers`), deduplicated `inFlightInitialUserCheck` across Strict-Mode mounts, and gated `useFellowshipStore.fetchFellowshipData` on `verifyActiveCloudSession`.
+- **Render-Pure 15s Visibility/Online Sync Cooldown & Public RSC Edge Bypass (`ADR-080`)**: Moved sync cooldown tracking into a render-pure `useRef<number>(0)` (`lastSyncTimeRef`) in `Providers` enforcing a `15,000ms` guard across duplicate mounts, `online`, and `visibilitychange` triggers while keeping `bookarium:auth-token-refreshed` unthrottled, skipped `updateSession` in `src/proxy.ts` on public client RSC requests (`rsc: 1`), and returned bare `NextResponse.next()` without share tokens to omit `x-middleware-override-headers`.
+- **Converged Habits Upsert Elimination & Select-Gated Reader Ghost Cleanup (`ADR-080`)**: Added `isRemoteAlreadyConverged` in `useHabitsStore.syncWithCloud` (reusing narrowed `remoteDates`) to skip redundant `user_reading_habits` `.upsert()` writes when all required remote fields, sorted dates, goal year, and timestamps already match, and moved legacy orphan `reading_progress` `.delete()` in `useReaderStore.syncWithCloud` behind the `SELECT` query so deletes execute strictly when `isGhostCloudRow(row)` matches.
+- **Quote Pool Settlement Gate, `globalThis` Server Caches & 7-Day Cover Proxy Parity (`ADR-080`)**: Gated fallback `useFeaturedQuotes` queries on `isPoolSettled`, anchored server LRUs (`bookMetadataCache`, `bookContentLruCache`) and a 5m/64-query catalog cache (`__bookariumCatalogQueryCache`, pre-warming `__bookariumMetadataCache`, cleared via `resetHealthCache`) on `globalThis`, skipped non-US `resolveBookMetadata` on `type=cover`, and aligned `type=cover` `max-age=604800, s-maxage=604800` + Tier 0 `max-age=86400`.
+- **Fail-Closed MSW Vitest Isolation & Expanded Supabase/API Interception (`ADR-080`)**: Expanded MSW catch-all handlers across `(rest|auth|storage|realtime|functions|graphql)/v1` on hosted `*.supabase.co` and local `:54321` loopback origins, replaced `onUnhandledRequest: 'bypass'` in `src/test/setup.ts` with `handleUnhandledMswRequest` exported from `src/mocks/handlers.ts` to fail closed on any unmocked external, Supabase, OR same-origin `/api/*` (`localhost`/`127.0.0.1`) requests, and added 1:1 co-located `src/mocks/handlers.test.ts` (240 suites).
+- **Unified 15s Passive Store Sync Cooldowns & Mutation Invalidation (`ADR-080`)**: Enforced opt-in `{ minSyncIntervalMs: 15_000 }` cooldowns (bypassed immediately on dirty outboxes/tombstones/timers and invalidated on store mutations) across all passive mount/drawer/profile callers including `fetchFellowAnnotationsForBook`, and removed `completedBooksCount` from `AccountHabitsCard` deps.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -202,8 +203,8 @@ flowchart TD
         Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge, Leaf-Flip Engine & Fluid Kinematics)"]
         Toolbar["StickyCatalogToolbar.tsx\n(Desktop/Tablet Sticky Sub-Header, Flush Bottom Docking & Universal Ambient Capsule Dock)"]
         FilterDrawer["AdvancedFilterDrawer.tsx\n(Universal Bottom Sliding Panel, Staged Filter Execution, Multi-Select Touch Chips)"]
-        EditorialQuote["EditorialQuoteSection.tsx\n(Classic of the Day & Collision Guard)"]
-        LiteraryQuotes["LiteraryQuotes.tsx\n(Words That Shaped Humanity & Safe Shuffling)"]
+        EditorialQuote["EditorialQuoteSection.tsx\n(Classic of the Day, Collision & isPoolSettled Guard)"]
+        LiteraryQuotes["LiteraryQuotes.tsx\n(Words That Shaped Humanity, Safe Shuffling & isPoolSettled Guard)"]
         CopyrightBanner["CopyrightNoticeBanner.tsx\n(Declarative Territorial Restriction & Public Domain Notice)"]
         ContentAdvisory["ContentAdvisoryBanner.tsx\n(Non-blocking Mature/Historical Context Advisory)"]
         CollectionToolbarNode["CollectionToolbar.tsx\n(Responsive Workbench: Single-Row Mobile Layout, Search, Compact Icon Sort & View Mode Toggles)"]
@@ -280,7 +281,7 @@ flowchart TD
     end
 
     subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
-        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Cookie Stamping)"]
+        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]
         ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
         ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]

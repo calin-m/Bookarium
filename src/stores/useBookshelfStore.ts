@@ -27,6 +27,8 @@ import {
   executeUpdateBookshelfPrivacy,
   executeDeleteCloudBookshelf,
   executeMoveBookToShelf,
+  markBookshelfOutboxDirty,
+  invalidateBookshelfSyncCooldown,
   type OutboxActionInput,
   type OutboxAction,
 } from '@/lib/bookshelf-cloud-sync';
@@ -83,7 +85,7 @@ export interface BookshelfState {
   getBookCuration: (bookId: number) => { rating: number | null; status: ReadingStatus | null };
 
   // Cloud Actions
-  syncWithCloud: (userId: string) => Promise<void>;
+  syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   migrateLocalBooksToCloud: (userId: string) => Promise<void>;
   createCloudBookshelf: (name: string, userId: string, isPublic?: boolean) => Promise<Bookshelf | null>;
   updateCloudBookshelf: (shelfId: string, name: string, userId: string, isPublic?: boolean) => Promise<boolean>;
@@ -122,6 +124,11 @@ export const useBookshelfStore = create<BookshelfState>()(
           timestamp: new Date().toISOString(),
         };
         set((state) => ({ outbox: [...state.outbox, item] }));
+        const payloadUserId =
+          'user_id' in action.payload && typeof action.payload.user_id === 'string'
+            ? action.payload.user_id
+            : undefined;
+        markBookshelfOutboxDirty(payloadUserId || useAuthStore.getState().user?.id);
       },
 
       flushOutbox: async (userId: string) => executeFlushOutbox(userId, get, set),
@@ -566,6 +573,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       clearBookshelf: () => {
+        invalidateBookshelfSyncCooldown();
         set({
           savedBooks: [],
           readingQueue: [],
@@ -742,7 +750,8 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       // Cloud Actions (delegated to bookshelf-cloud-sync engine)
-      syncWithCloud: async (userId: string) => executeBookshelfCloudSync(userId, get, set),
+      syncWithCloud: async (userId: string, options?: { minSyncIntervalMs?: number }) =>
+        executeBookshelfCloudSync(userId, get, set, options),
       migrateLocalBooksToCloud: async (userId: string) => executeMigrateLocalBooksToCloud(userId, get, set),
       createCloudBookshelf: async (name: string, userId: string, isPublic = true) =>
         executeCreateCloudBookshelf(name, userId, isPublic, get, set),

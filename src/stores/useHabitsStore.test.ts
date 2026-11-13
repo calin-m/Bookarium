@@ -344,4 +344,156 @@ describe('useHabitsStore', () => {
     useBookshelfStore.setState({ bookStatuses: {} });
     useReaderStore.setState({ readingProgress: {} });
   });
+
+  it('skips redundant upsert when remote user_reading_habits already matches converged local state', async () => {
+    const syncedAt = '2026-10-15T12:00:00.000Z';
+    useHabitsStore.setState({
+      annualGoal: 24,
+      annualGoalYear: 2026,
+      goalUpdatedAt: syncedAt,
+      activeDates: ['2026-10-14', '2026-10-15'],
+      totalReadingSeconds: 1800,
+      totalListeningSeconds: 600,
+    });
+
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        user_id: 'user-converged',
+        annual_goal: 24,
+        annual_goal_year: 2026,
+        active_dates: ['2026-10-14', '2026-10-15'],
+        total_reading_seconds: 1800,
+        total_listening_seconds: 600,
+        completed_books_count: 0,
+        updated_at: syncedAt,
+      },
+      error: null,
+    });
+
+    await useHabitsStore.getState().syncWithCloud('user-converged');
+
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it('coalesces passive concurrent syncs and executes one trailing pass when setAnnualGoal runs mid-flight', async () => {
+    let resolveSelect!: (val: { data: unknown; error: null }) => void;
+    const delayedSelect = new Promise<{ data: unknown; error: null }>((resolve) => {
+      resolveSelect = resolve;
+    });
+
+    mockMaybeSingle.mockReturnValueOnce(delayedSelect).mockResolvedValueOnce({
+      data: {
+        user_id: 'user-coalesce',
+        annual_goal: 12,
+        annual_goal_year: 2026,
+        active_dates: [],
+        total_reading_seconds: 0,
+        total_listening_seconds: 0,
+        completed_books_count: 0,
+        updated_at: '2026-10-01T00:00:00.000Z',
+      },
+      error: null,
+    });
+
+    // Two concurrent passive syncs collapse into one select
+    const p1 = useHabitsStore.getState().syncWithCloud('user-coalesce');
+    const p2 = useHabitsStore.getState().syncWithCloud('user-coalesce');
+    expect(p1).toBe(p2);
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
+
+    resolveSelect({
+      data: {
+        user_id: 'user-coalesce',
+        annual_goal: 12,
+        annual_goal_year: 2026,
+        active_dates: [],
+        total_reading_seconds: 0,
+        total_listening_seconds: 0,
+        completed_books_count: 0,
+        updated_at: '2026-10-01T00:00:00.000Z',
+      },
+      error: null,
+    });
+    await p1;
+
+    // Now test mid-flight mutation triggering a single trailing sync
+    let resolveMidFlightSelect!: (val: { data: unknown; error: null }) => void;
+    mockMaybeSingle
+      .mockReturnValueOnce(
+        new Promise<{ data: unknown; error: null }>((resolve) => {
+          resolveMidFlightSelect = resolve;
+        })
+      )
+      .mockResolvedValueOnce({ data: null, error: null });
+
+    const flight = useHabitsStore.getState().syncWithCloud('user-coalesce-dirty');
+    await Promise.resolve();
+    useHabitsStore.getState().setAnnualGoal(42, 2026, 'user-coalesce-dirty');
+
+    resolveMidFlightSelect({
+      data: null,
+      error: null,
+    });
+    await flight;
+
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(3);
+    expect(mockUpsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        user_id: 'user-coalesce-dirty',
+        annual_goal: 42,
+      }),
+      { onConflict: 'user_id' }
+    );
+  });
+
+  it('respects minSyncIntervalMs passive cooldown and invalidates cooldown after goal mutations', async () => {
+    vi.useFakeTimers();
+    try {
+      const syncedAt = '2026-10-16T10:00:00.000Z';
+      useHabitsStore.setState({
+        annualGoal: 12,
+        annualGoalYear: 2026,
+        goalUpdatedAt: syncedAt,
+        activeDates: [],
+        totalReadingSeconds: 0,
+        totalListeningSeconds: 0,
+      });
+
+      mockMaybeSingle.mockResolvedValue({
+        data: {
+          user_id: 'user-habits-cd',
+          annual_goal: 12,
+          annual_goal_year: 2026,
+          active_dates: [],
+          total_reading_seconds: 0,
+          total_listening_seconds: 0,
+          completed_books_count: 0,
+          updated_at: syncedAt,
+        },
+        error: null,
+      });
+
+      await useHabitsStore.getState().syncWithCloud('user-habits-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
+
+      // Immediate second passive call within 15s is skipped
+      await useHabitsStore.getState().syncWithCloud('user-habits-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
+
+      // setAnnualGoal invalidates cooldown and pushes goal update
+      useHabitsStore.getState().setAnnualGoal(30, 2026, 'user-habits-cd');
+      await vi.waitFor(() => {
+        expect(mockUpsert).toHaveBeenCalledTimes(1);
+      });
+      expect(mockMaybeSingle).toHaveBeenCalledTimes(2);
+
+      // Advancing past 15s allows passive sync again
+      vi.advanceTimersByTime(15_001);
+      await useHabitsStore.getState().syncWithCloud('user-habits-cd', { minSyncIntervalMs: 15_000 });
+      expect(mockMaybeSingle).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

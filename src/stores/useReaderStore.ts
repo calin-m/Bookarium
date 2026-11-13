@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, Book, Author } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
-import { useAuthStore, shouldVerifyCloudSession, verifyActiveCloudSession } from './useAuthStore';
+import {
+  useAuthStore,
+  coalesceInFlightByUser,
+  shouldVerifyCloudSession,
+  verifyActiveCloudSession,
+} from './useAuthStore';
 import { createClient } from '@/lib/supabase/client';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
@@ -79,10 +84,21 @@ export interface ReaderState {
   resetReaderSession: () => void;
   syncReadingPositionToCloud: (bookId: number, position: BookReadingPosition, userId: string) => Promise<void>;
   restoreReadingPositionFromCloud: (bookId: number, userId: string) => Promise<BookReadingPosition | null>;
-  syncWithCloud: (userId: string) => Promise<void>;
+  syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
 }
 
 const progressDebounceTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const inFlightReaderSyncs = new Map<string, Promise<void>>();
+const dirtyReaderSyncUsers = new Set<string>();
+const lastReaderSyncByUser = new Map<string, number>();
+
+function invalidateReaderSyncCooldown(userId?: string): void {
+  if (userId) {
+    lastReaderSyncByUser.delete(userId);
+  } else {
+    lastReaderSyncByUser.clear();
+  }
+}
 
 interface ReadingProgressCloudRowPair {
   basePayload: {
@@ -558,140 +574,171 @@ export const useReaderStore = create<ReaderState>()(
         return null;
       },
 
-      syncWithCloud: async (userId: string) => {
-        if (!userId) return;
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-        try {
-          const supabase = createClient();
-          if (
-            shouldVerifyCloudSession(supabase) &&
-            !(await verifyActiveCloudSession(supabase, userId))
-          ) {
-            return;
+      syncWithCloud: (userId: string, options?: { minSyncIntervalMs?: number }) => {
+        if (!userId) return Promise.resolve();
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve();
+
+        const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+        if (
+          minSyncIntervalMs > 0 &&
+          !inFlightReaderSyncs.has(userId) &&
+          !dirtyReaderSyncUsers.has(userId) &&
+          get().deletedPositionBookIds.length === 0
+        ) {
+          const lastSyncAt = lastReaderSyncByUser.get(userId);
+          if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
+            return Promise.resolve();
           }
-
-          const pendingDeletes = [...get().deletedPositionBookIds];
-          if (pendingDeletes.length > 0) {
-            const flushedDeleteIds = new Set<number>();
-            for (const delBookId of pendingDeletes) {
-              const delResult = await supabase
-                .from('reading_progress')
-                .delete()
-                .eq('user_id', userId)
-                .eq('book_id', delBookId);
-              if (!delResult?.error) {
-                flushedDeleteIds.add(delBookId);
-              }
-            }
-            if (flushedDeleteIds.size > 0) {
-              set((state) => ({
-                deletedPositionBookIds: state.deletedPositionBookIds.filter(
-                  (id) => !flushedDeleteIds.has(id)
-                ),
-              }));
-            }
-          }
-
-          // Cloud sanitization: purge legacy 0% Page-1 orphaned records
-          await supabase
-            .from('reading_progress')
-            .delete()
-            .eq('user_id', userId)
-            .eq('progress_percent', 0)
-            .eq('current_chapter_index', 0)
-            .lte('scroll_offset', 1);
-
-          const { data, error } = await supabase
-            .from('reading_progress')
-            .select('*')
-            .eq('user_id', userId)
-            .order('last_read_at', { ascending: false });
-
-          if (error || !data) return;
-
-          const healedInCloud: Array<{ bookId: number; position: BookReadingPosition }> = [];
-          const remoteBookIds = new Set<number>();
-
-          set((state) => {
-            const nextPositions = { ...state.readingPositions };
-            const nextProgress = { ...state.readingProgress };
-
-            // Prune local ghost entries
-            Object.entries(nextPositions).forEach(([idStr, pos]) => {
-              const id = Number(idStr);
-              const prog = nextProgress[id] ?? 0;
-              if (isGhostReadingPosition(pos, prog)) {
-                delete nextPositions[id];
-                delete nextProgress[id];
-              }
-            });
-
-            const currentTombstones = new Set(state.deletedPositionBookIds);
-
-            data.forEach((row) => {
-              if (isGhostCloudRow(row)) return;
-
-              const bookId = row.book_id;
-              if (currentTombstones.has(bookId)) return;
-              remoteBookIds.add(bookId);
-              const localPos = nextPositions[bookId];
-              const remoteTime = new Date(row.last_read_at).getTime();
-              const localTime = localPos?.lastReadAt ? new Date(localPos.lastReadAt).getTime() : 0;
-
-              // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
-              if (!localPos || remoteTime >= localTime) {
-                const pendingTimer = progressDebounceTimers.get(bookId);
-                if (pendingTimer) {
-                  clearTimeout(pendingTimer);
-                  progressDebounceTimers.delete(bookId);
-                }
-                const { position: mergedPosition, progress, shouldKeepLocalAuthors } =
-                  decodeRemoteReadingPosition(row, localPos);
-                nextPositions[bookId] = mergedPosition;
-                nextProgress[bookId] = progress;
-                if (shouldKeepLocalAuthors) {
-                  healedInCloud.push({ bookId, position: mergedPosition });
-                }
-              } else {
-                // Local position is newer than remote (e.g. read offline) -> push local to cloud
-                healedInCloud.push({ bookId, position: localPos });
-              }
-            });
-
-            // Push any non-ghost local positions that do not yet exist in cloud
-            Object.entries(nextPositions).forEach(([idStr, pos]) => {
-              const id = Number(idStr);
-              if (!remoteBookIds.has(id)) {
-                healedInCloud.push({ bookId: id, position: pos });
-              }
-            });
-
-            return {
-              readingPositions: nextPositions,
-              readingProgress: nextProgress,
-            };
-          });
-
-          if (healedInCloud.length === 1) {
-            const single = healedInCloud[0];
-            await get().syncReadingPositionToCloud(single.bookId, single.position, userId);
-          } else if (healedInCloud.length > 1) {
-            const progressMap = get().readingProgress;
-            const batchRows = healedInCloud
-              .map((item) =>
-                buildReadingProgressCloudRow(
-                  item.bookId,
-                  item.position,
-                  progressMap[item.bookId] ?? 0,
-                  userId
-                )
-              )
-              .filter((row): row is ReadingProgressCloudRowPair => row !== null);
-            await upsertReadingProgressBatch(supabase, batchRows);
-          }
-        } catch {
-          // Silent non-blocking fallback for offline/network loss
         }
+
+        if (inFlightReaderSyncs.has(userId) && get().deletedPositionBookIds.length > 0) {
+          dirtyReaderSyncUsers.add(userId);
+        }
+
+        return coalesceInFlightByUser(
+          inFlightReaderSyncs,
+          userId,
+          async () => {
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+            try {
+              const supabase = createClient();
+              if (
+                shouldVerifyCloudSession(supabase) &&
+                !(await verifyActiveCloudSession(supabase, userId))
+              ) {
+                return;
+              }
+
+              const pendingDeletes = [...get().deletedPositionBookIds];
+              if (pendingDeletes.length > 0) {
+                const flushedDeleteIds = new Set<number>();
+                for (const delBookId of pendingDeletes) {
+                  const delResult = await supabase
+                    .from('reading_progress')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('book_id', delBookId);
+                  if (!delResult?.error) {
+                    flushedDeleteIds.add(delBookId);
+                  }
+                }
+                if (flushedDeleteIds.size > 0) {
+                  set((state) => ({
+                    deletedPositionBookIds: state.deletedPositionBookIds.filter(
+                      (id) => !flushedDeleteIds.has(id)
+                    ),
+                  }));
+                }
+              }
+
+              const { data, error } = await supabase
+                .from('reading_progress')
+                .select('*')
+                .eq('user_id', userId)
+                .order('last_read_at', { ascending: false });
+
+              if (error || !data) return;
+
+              // Cloud sanitization: purge legacy 0% Page-1 orphaned records only when present
+              if (data.some((row) => isGhostCloudRow(row))) {
+                await supabase
+                  .from('reading_progress')
+                  .delete()
+                  .eq('user_id', userId)
+                  .eq('progress_percent', 0)
+                  .eq('current_chapter_index', 0)
+                  .lte('scroll_offset', 1);
+              }
+
+              const healedInCloud: Array<{ bookId: number; position: BookReadingPosition }> = [];
+              const remoteBookIds = new Set<number>();
+
+              set((state) => {
+                const nextPositions = { ...state.readingPositions };
+                const nextProgress = { ...state.readingProgress };
+
+                // Prune local ghost entries
+                Object.entries(nextPositions).forEach(([idStr, pos]) => {
+                  const id = Number(idStr);
+                  const prog = nextProgress[id] ?? 0;
+                  if (isGhostReadingPosition(pos, prog)) {
+                    delete nextPositions[id];
+                    delete nextProgress[id];
+                  }
+                });
+
+                const currentTombstones = new Set(state.deletedPositionBookIds);
+
+                data.forEach((row) => {
+                  if (isGhostCloudRow(row)) return;
+
+                  const bookId = row.book_id;
+                  if (currentTombstones.has(bookId)) return;
+                  remoteBookIds.add(bookId);
+                  const localPos = nextPositions[bookId];
+                  const remoteTime = new Date(row.last_read_at).getTime();
+                  const localTime = localPos?.lastReadAt
+                    ? new Date(localPos.lastReadAt).getTime()
+                    : 0;
+
+                  // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
+                  if (!localPos || remoteTime >= localTime) {
+                    const pendingTimer = progressDebounceTimers.get(bookId);
+                    if (pendingTimer) {
+                      clearTimeout(pendingTimer);
+                      progressDebounceTimers.delete(bookId);
+                    }
+                    const { position: mergedPosition, progress, shouldKeepLocalAuthors } =
+                      decodeRemoteReadingPosition(row, localPos);
+                    nextPositions[bookId] = mergedPosition;
+                    nextProgress[bookId] = progress;
+                    if (shouldKeepLocalAuthors) {
+                      healedInCloud.push({ bookId, position: mergedPosition });
+                    }
+                  } else {
+                    // Local position is newer than remote (e.g. read offline) -> push local to cloud
+                    healedInCloud.push({ bookId, position: localPos });
+                  }
+                });
+
+                // Push any non-ghost local positions that do not yet exist in cloud
+                Object.entries(nextPositions).forEach(([idStr, pos]) => {
+                  const id = Number(idStr);
+                  if (!remoteBookIds.has(id)) {
+                    healedInCloud.push({ bookId: id, position: pos });
+                  }
+                });
+
+                return {
+                  readingPositions: nextPositions,
+                  readingProgress: nextProgress,
+                };
+              });
+
+              if (healedInCloud.length === 1) {
+                const single = healedInCloud[0];
+                await get().syncReadingPositionToCloud(single.bookId, single.position, userId);
+              } else if (healedInCloud.length > 1) {
+                const progressMap = get().readingProgress;
+                const batchRows = healedInCloud
+                  .map((item) =>
+                    buildReadingProgressCloudRow(
+                      item.bookId,
+                      item.position,
+                      progressMap[item.bookId] ?? 0,
+                      userId
+                    )
+                  )
+                  .filter((row): row is ReadingProgressCloudRowPair => row !== null);
+                await upsertReadingProgressBatch(supabase, batchRows);
+              }
+              lastReaderSyncByUser.set(userId, Date.now());
+            } catch {
+              // Silent non-blocking fallback for offline/network loss
+            }
+          },
+          dirtyReaderSyncUsers
+        );
       },
 
       getReadingPosition: (bookId) => {
@@ -712,12 +759,16 @@ export const useReaderStore = create<ReaderState>()(
 
         const currentUserId = userId || useAuthStore.getState().user?.id;
         if (currentUserId) {
+          invalidateReaderSyncCooldown(currentUserId);
           const recordTombstone = () => {
             set((state) => ({
               deletedPositionBookIds: Array.from(
                 new Set([...state.deletedPositionBookIds, bookId])
               ),
             }));
+            if (inFlightReaderSyncs.has(currentUserId)) {
+              dirtyReaderSyncUsers.add(currentUserId);
+            }
           };
           if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             recordTombstone();
@@ -740,6 +791,7 @@ export const useReaderStore = create<ReaderState>()(
       },
 
       resetReaderSession: () => {
+        invalidateReaderSyncCooldown();
         progressDebounceTimers.forEach((timer) => clearTimeout(timer));
         progressDebounceTimers.clear();
 

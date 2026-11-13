@@ -76,7 +76,7 @@ export const LiteraryQuotes: React.FC = () => {
   }, [baseSafeQuotes, hasEnrichedPool]);
 
   const { data: featuredQuotesMap } = useFeaturedQuotes(quoteBookIds, {
-    enabled: hasMounted && !hasEnrichedPool && quoteBookIds.length > 0,
+    enabled: hasMounted && isPoolSettled && !hasEnrichedPool && quoteBookIds.length > 0,
   });
 
   // Build safeQuotes strictly from database public.books.quotes (useQuoteEnrichedBooks) when available,

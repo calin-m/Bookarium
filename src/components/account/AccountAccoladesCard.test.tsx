@@ -108,12 +108,12 @@ describe('AccountAccoladesCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('invokes cloud sync on mount if userId is provided', async () => {
+  it('invokes cloud sync on mount with passive cooldown if userId is provided', async () => {
     const syncSpy = vi.spyOn(useAccoladesStore.getState(), 'syncWithCloud').mockResolvedValue();
     render(<AccountAccoladesCard userId="user-999" />);
 
     await waitFor(() => {
-      expect(syncSpy).toHaveBeenCalledWith('user-999');
+      expect(syncSpy).toHaveBeenCalledWith('user-999', { minSyncIntervalMs: 15_000 });
     });
   });
 

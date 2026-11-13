@@ -10,6 +10,8 @@ import {
   executeDeleteCloudBookshelf,
   executeMoveBookToShelf,
   executeMigrateLocalBooksToCloud,
+  invalidateBookshelfSyncCooldown,
+  markBookshelfOutboxDirty,
   type BookshelfSyncSlice,
 } from './bookshelf-cloud-sync';
 
@@ -839,5 +841,115 @@ describe('bookshelf-cloud-sync', () => {
     expect(state.savedBooks).toHaveLength(1);
     expect(state.savedBooks[0].subjects).toEqual(['Domestic fiction', 'Courtship -- Fiction']);
     expect(state.savedBooks[0].authors[0].birth_year).toBe(1775);
+  });
+
+  it('enforces minSyncIntervalMs cooldown on passive syncs and flushes mid-flight dirty outbox mutations cleanly', async () => {
+    vi.useFakeTimers();
+    try {
+      invalidateBookshelfSyncCooldown();
+      state.lastBookshelfSyncAt = '2026-10-01T00:00:00Z';
+
+      let selectCalls = 0;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'bookshelves') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => {
+                  selectCalls++;
+                  return Promise.resolve({
+                    data: [{ id: 's-def', user_id: 'u-cd', name: 'General', is_default: true }],
+                    error: null,
+                  });
+                },
+              }),
+            }),
+          };
+        }
+        if (table === 'bookshelf_items' || table === 'user_favorites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => Promise.resolve({ data: [], error: null }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+          }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      });
+
+      await executeBookshelfCloudSync('u-cd', get, set, { minSyncIntervalMs: 15_000 });
+      expect(selectCalls).toBe(1);
+
+      // Immediate second passive sync within 15s is skipped
+      await executeBookshelfCloudSync('u-cd', get, set, { minSyncIntervalMs: 15_000 });
+      expect(selectCalls).toBe(1);
+
+      // Queuing an outbox mutation invalidates cooldown and bypasses it
+      let resolveUpsert!: (v: { error: null }) => void;
+      const upsertSpy = vi
+        .fn()
+        .mockReturnValueOnce(
+          new Promise<{ error: null }>((r) => {
+            resolveUpsert = r;
+          })
+        )
+        .mockResolvedValue({ error: null });
+
+      mockFrom.mockImplementation(() => ({
+        upsert: upsertSpy,
+      }));
+
+      state.outbox = [
+        {
+          id: 'ob-1',
+          type: 'UPSERT_FAVORITE',
+          payload: {
+            user_id: 'u-cd',
+            book_id: 11,
+            book_title: 'Alice',
+            book_authors: ['Carroll'],
+            cover_url: null,
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      markBookshelfOutboxDirty('u-cd');
+
+      const flushPromise = executeFlushOutbox('u-cd', get, set);
+      await Promise.resolve();
+
+      // Queue second outbox action mid-flight and mark dirty -> trailing flush processes it
+      state.outbox = [
+        ...state.outbox,
+        {
+          id: 'ob-2',
+          type: 'UPSERT_FAVORITE',
+          payload: {
+            user_id: 'u-cd',
+            book_id: 84,
+            book_title: 'Frankenstein',
+            book_authors: ['Shelley'],
+            cover_url: null,
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      markBookshelfOutboxDirty('u-cd');
+
+      resolveUpsert({ error: null });
+      await flushPromise;
+
+      expect(upsertSpy).toHaveBeenCalledTimes(2);
+      expect(state.outbox).toHaveLength(0);
+    } finally {
+      invalidateBookshelfSyncCooldown();
+      vi.useRealTimers();
+    }
   });
 });

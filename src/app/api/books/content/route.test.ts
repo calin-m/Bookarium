@@ -681,6 +681,52 @@ describe('GET /api/books/content', () => {
       expect(res.status).toBe(502);
       fetchSpy.mockRestore();
     });
+
+    it('skips copyright metadata lookup for type=cover in non-US jurisdictions and emits max-age browser caching headers', async () => {
+      const tinyJpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(tinyJpeg, {
+          status: 200,
+          headers: { 'Content-Type': 'image/jpeg' },
+        })
+      );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=863&type=cover', {
+        headers: { 'x-vercel-ip-country': 'RO' },
+      });
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Cache-Control')).toBe(
+        'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000'
+      );
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(String(fetchSpy.mock.calls[0][0])).toContain('pg863.cover.medium.jpg');
+
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe('Tier 0 LRU Cache-Control headers', () => {
+    it('serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity', async () => {
+      const { setCachedBookContent } = await import('./metadata-cache');
+      setCachedBookContent(1342, sampleBookText, 'supabase');
+
+      const fetchSpy = vi.spyOn(global, 'fetch');
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+        headers: { 'x-vercel-ip-country': 'US' },
+      });
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Cache-Control')).toBe(
+        'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800'
+      );
+      expect(res.headers.get('X-Bookarium-Source')).toBe('supabase');
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      fetchSpy.mockRestore();
+    });
   });
 
   describe('Stateless OpenGraph Social Reading Card (type=card)', () => {
