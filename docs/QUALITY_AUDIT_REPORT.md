@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 13 Nov 2026 11:08:43 GMT  
+**Last Generated**: Fri, 13 Nov 2026 16:16:47 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 241 passed  
-**Total Verified Tests**: 2522 passed  
+**Total Test Suites**: 246 passed  
+**Total Verified Tests**: 2542 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **241/241 test suites passed** (2522 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **246/246 test suites passed** (2542 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.48%** (14514/15043) — *Target: $\ge$ 95%*
-- **Statements**: **95.18%** (15639/16430) — *Target: $\ge$ 95%*
-- **Functions**: **93.99%** (3176/3379) — *Target: $\ge$ 92%*
-- **Branches**: **87.69%** (14468/16499) — *Target: $\ge$ 85%*
+- **Lines**: **96.47%** (14696/15233) — *Target: $\ge$ 95%*
+- **Statements**: **95.16%** (15832/16637) — *Target: $\ge$ 95%*
+- **Functions**: **94.05%** (3211/3414) — *Target: $\ge$ 92%*
+- **Branches**: **87.63%** (14618/16681) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (241 Suites / 2522 Tests)
+## 🧪 Comprehensive Test Suite Catalog (246 Suites / 2542 Tests)
 
-### 🚀 App Routes & Pages (27 Suites · 306 Tests)
+### 🚀 App Routes & Pages (31 Suites · 323 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -216,12 +216,28 @@
 </details>
 
 <details>
+<summary><b><code>src/app/auth/confirm-deletion/layout.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `exposes account deletion title and blocks search engine indexing`
+- ✔ `renders children transparently without altering DOM tree`
+
+</details>
+
+<details>
 <summary><b><code>src/app/auth/confirm-deletion/page.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `renders loading state when isLoading is true`
 - ✔ `renders expired/invalid link state when unauthenticated`
 - ✔ `renders authenticated confirmation portal and handles successful deletion`
 - ✔ `renders error message if deleteAccount fails`
+
+</details>
+
+<details>
+<summary><b><code>src/app/copyright/layout.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `exposes accurate copyright governance metadata and canonical url`
+- ✔ `renders children transparently without altering DOM tree`
 
 </details>
 
@@ -293,7 +309,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (53 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (54 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -348,13 +364,14 @@
 - ✔ `preserves scroll position when toggling 2-state sort on mobile sticky dock`
 - ✔ `eliminates standalone BackToTop button in favor of the universal bottom capsule dock`
 - ✔ `allows searching the catalog mid-scroll via the floating capsule dock search button`
+- ✔ `updates catalog section heading dynamically across Recent, Popular, Oldest, and Search states`
 
 </details>
 
 <details>
 <summary><b><code>src/app/privacy/layout.test.tsx</code></b> (2 tests)</summary>
 
-- ✔ `exposes accurate privacy metadata and canonical url`
+- ✔ `exposes accurate privacy metadata, canonical url, and Twitter summary card`
 - ✔ `renders children transparently without modifying DOM tree`
 
 </details>
@@ -387,16 +404,18 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (10 tests)</summary>
 
 - ✔ `generates rich metadata for a curated hero classic (Frankenstein #84)`
 - ✔ `attaches verified ?s= share token to OpenGraph and Twitter card image URLs when x-bookarium-share-token is valid`
-- ✔ `provides safe fallback metadata for invalid book ID`
+- ✔ `provides safe noindex fallback metadata for invalid book ID`
 - ✔ `bypasses outbound network calls on client-side router navigation (rsc: 1 fast-path)`
 - ✔ `detects client-side navigation correctly from various Next.js headers`
 - ✔ `serves repeated requests from in-memory server cache without network calls`
-- ✔ `renders children and Schema.org Book JSON-LD script`
-- ✔ `falls back gracefully when upstream fetch times out or fails`
+- ✔ `renders children, Schema.org Book JSON-LD, and BreadcrumbList script`
+- ✔ `enriches OpenGraph tags, meta keywords, translators, lifespan dates, formats, and JSON-LD genre array from catalog metadata`
+- ✔ `marks explicitly confirmed-missing numeric book IDs as noindex while preserving fallback UI`
+- ✔ `falls back gracefully without noindex when upstream fetch times out or fails`
 
 </details>
 
@@ -453,7 +472,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `clears all cached items from serverMetadataCache and enforces LRU eviction at MAX_SERVER_METADATA_CACHE_ENTRIES`
 - ✔ `returns true when rsc header is 1`
@@ -467,8 +486,9 @@
 - ✔ `fetches upstream book and populates serverMetadataCache when Supabase is unconfigured`
 - ✔ `resolves book directly from Supabase catalog when configured`
 - ✔ `degrades gracefully to upstream Gutendex when Supabase query times out or fails`
-- ✔ `returns null on upstream fetch error or 404`
-- ✔ `returns null on network failure / exception`
+- ✔ `records confirmed missing IDs on 404 or empty upstream results but never on network exceptions`
+- ✔ `normalizes tags, lifespan contributors, formats, featured opening hooks, and Gutenberg URL without duplicates`
+- ✔ `falls back safely when subjects, bookshelves, formats, and authentic authors are absent`
 
 </details>
 
@@ -483,9 +503,18 @@
 <details>
 <summary><b><code>src/app/sitemap.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `generates canonical sitemap entries for root and privacy routes`
-- ✔ `indexes featured public domain classic books`
+- ✔ `generates canonical sitemap entries for root, privacy, and copyright routes`
+- ✔ `indexes all curated classics and featured hero books synchronously without duplicates`
 - ✔ `provides valid timestamps across all entries`
+
+</details>
+
+<details>
+<summary><b><code>src/app/u/[username]/layout.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `generates rich profile metadata, canonical URL, Twitter card, and ProfilePage JSON-LD for public scholars`
+- ✔ `emits identical anti-enumeration noindex metadata and omits JSON-LD for private or nonexistent handles`
+- ✔ `bypasses database lookup on uncached client-side RSC navigations without locking noindex`
 
 </details>
 
@@ -502,6 +531,18 @@
 - ✔ `falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly`
 - ✔ `falls back to local auth, accolades, habits, and bookshelf stores when offline query throws or errors`
 - ✔ `rejects wildcard handles (%) without querying Supabase and enforces exact case-insensitive handle equality against SQL _ wildcard matches`
+
+</details>
+
+<details>
+<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `normalizes URL-encoded scholar handles safely`
+- ✔ `collapses malformed handles directly to private_or_missing without querying Supabase`
+- ✔ `returns unavailable when Supabase is not configured`
+- ✔ `resolves public scholar profiles, caches hits, and evicts expired/LRU entries cleanly`
+- ✔ `neutralizes SQL ILIKE underscore wildcard matches and caches hidden accounts uniformly`
+- ✔ `returns unavailable without caching when query errors or throws`
 
 </details>
 
@@ -1962,7 +2003,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (47 Suites · 600 Tests)
+### 📚 Gutenberg Parsers & Metadata (48 Suites · 603 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2041,7 +2082,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
@@ -2056,6 +2097,7 @@
 - ✔ `resolves structured authors with lifespans from featured static fixtures (Tier 1)`
 - ✔ `preserves structured authors and translators from API results (Tier 3)`
 - ✔ `resolves lifespans from canonical Book authorDetails and embedded date strings in storeBook`
+- ✔ `resolves subjects and bookshelves across fixture, store, API, and empty fallbacks`
 - ✔ `evaluates hasAuthenticAuthors across strings, Author objects, and placeholders`
 - ✔ `evaluates hasAuthorLifespans for both numeric fields and embedded name lifespans`
 - ✔ `converts a FeaturedHeroBook into a canonical GutendexBook with default and custom overrides`
@@ -2603,6 +2645,14 @@
 - ✔ `restores scroll position on requestAnimationFrame if a shift occurs in the next tick`
 - ✔ `does not invoke window.scrollTo if scroll position remains completely stable`
 - ✔ `safely runs action without error when window is undefined (SSR)`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/server-rsc-nav.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `returns true when Next.js RSC or prefetch headers are present`
+- ✔ `returns false for standard document HTML requests or outside request scope`
 
 </details>
 

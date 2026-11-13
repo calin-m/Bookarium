@@ -333,6 +333,64 @@ describe('src/lib/book-metadata', () => {
         { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
       ]);
     });
+
+    it('resolves subjects and bookshelves across fixture, store, API, and empty fallbacks', () => {
+      const fixtureMeta = resolveBookMetadata({ id: 84 });
+      expect(fixtureMeta.subjects).toEqual(['Gothic Science Fiction & Horror']);
+      expect(fixtureMeta.bookshelves).toEqual([]);
+
+      const storeMeta = resolveBookMetadata({
+        id: 4001,
+        currentBook: {
+          id: 4001,
+          title: 'Star Archive',
+          authors: [{ name: 'Verne, Jules', birth_year: 1828, death_year: 1905 }],
+          translators: [],
+          subjects: ['Science fiction', 'Voyages, Imaginary'],
+          bookshelves: ['Category: Science-Fiction & Fantasy', 'Best Books Ever Listings'],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 250,
+        },
+      });
+      expect(storeMeta.subjects).toEqual(['Science fiction', 'Voyages, Imaginary']);
+      expect(storeMeta.bookshelves).toEqual([
+        'Category: Science-Fiction & Fantasy',
+        'Best Books Ever Listings',
+      ]);
+
+      const apiMeta = resolveBookMetadata({
+        id: 4002,
+        booksData: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 4002,
+              title: 'Mystery Archive',
+              authors: [{ name: 'Doyle, Arthur Conan', birth_year: 1859, death_year: 1930 }],
+              translators: [],
+              subjects: ['Detective and mystery stories'],
+              bookshelves: ['Category: Crime, Thrillers and Mystery'],
+              languages: ['en'],
+              copyright: false,
+              media_type: 'Text',
+              formats: {},
+              download_count: 300,
+            },
+          ],
+        },
+      });
+      expect(apiMeta.subjects).toEqual(['Detective and mystery stories']);
+      expect(apiMeta.bookshelves).toEqual(['Category: Crime, Thrillers and Mystery']);
+
+      const emptyMeta = resolveBookMetadata({ id: 987654 });
+      expect(emptyMeta.subjects).toEqual([]);
+      expect(emptyMeta.bookshelves).toEqual([]);
+    });
   });
 
   describe('hasAuthenticAuthors, hasAuthorLifespans & featuredHeroToGutendexBook', () => {

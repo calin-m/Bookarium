@@ -13,6 +13,7 @@ const {
   extractServiceWorkerMetadata,
   extractWorkerCatalog,
   extractTestHarnessCatalog,
+  extractTestHarnessAstDependencies,
   extractPublicAssetsCatalog,
   extractEnvironmentDependencyCatalog,
 } = require('./lib/ast-parser');
@@ -50,7 +51,7 @@ function extractDatabaseCatalog(rootDirPath) {
   let match;
 
   const storeMap = {
-    profiles: '`useAuthStore` / `usePreferencesStore`',
+    profiles: '`useAuthStore` / `usePreferencesStore` / `useFellowshipStore` (`fellowship-cloud-sync.ts`) / `/u/[username]` (`page.tsx`, `profile-layout-utils.ts`)',
     bookshelves: '`useBookshelfStore` (`bookshelf-cloud-sync.ts`)',
     bookshelf_items: '`useBookshelfStore` (`bookshelf-cloud-sync.ts`)',
     user_favorites: '`useBookshelfStore` (`bookshelf-cloud-sync.ts`)',
@@ -73,7 +74,7 @@ function extractDatabaseCatalog(rootDirPath) {
   };
 
   const descMap = {
-    profiles: 'User profile display name, `@username` handle, theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with companion identity RLS resolution for Reader Circles & Symposiums).',
+    profiles: 'User profile display name, `@username` handle, theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with opt-in `is_public` anonymous SSR/client reads for `/u/[username]` (`serverProfileCache` 5m LRU + SQL `ILIKE` wildcard post-filter) and companion identity RLS resolution for Reader Circles & Symposiums).',
     bookshelves: 'Default master "General" shelf and custom user-created named shelves.',
     bookshelf_items: 'Books filed in specific shelves with user-scoped uniqueness constraints.',
     user_favorites: 'Cross-device synchronized favorited titles.',
@@ -610,6 +611,69 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       responsibility:
         'Machine-verified governance hook manifest defining `pre_commit` and `post_doc_sync` npm command bindings validated by `scripts/approval-gate.js`.',
     },
+    {
+      name: 'LICENSE',
+      file: 'LICENSE',
+      layer: 'MIT Open-Source Licensing Mandate',
+      responsibility:
+        'Canonical MIT license governing all Bookarium source code and verified continuously by Pass 0.75 (Pillar 5) and Pass 5.',
+    },
+    {
+      name: '.github/pull_request_template.md',
+      file: '.github/pull_request_template.md',
+      layer: 'GitHub Pull Request Verification Checklist',
+      responsibility:
+        'Structured PR review template enforcing architectural summary, co-located Vitest coverage (`>= 95%`), and 7-Gateway Pass verification.',
+    },
+    {
+      name: '.github/dependabot.yml',
+      file: '.github/dependabot.yml',
+      layer: 'Automated Dependency Maintenance Config',
+      responsibility:
+        'Weekly Dependabot configuration monitoring npm packages and GitHub Actions versions for security patches and supply-chain freshness.',
+    },
+    {
+      name: '.github/ISSUE_TEMPLATE/bug_report.yml',
+      file: '.github/ISSUE_TEMPLATE/bug_report.yml',
+      layer: 'Version-Synced Issue Intake Form (Bug Report)',
+      responsibility:
+        'Structured YAML issue form automatically synchronized with `RELEASES[0].version` (`e.g. vX.Y.Z`) during `npm run docs:sync`.',
+    },
+    {
+      name: '.github/ISSUE_TEMPLATE/feature_request.yml',
+      file: '.github/ISSUE_TEMPLATE/feature_request.yml',
+      layer: 'Public-Domain Aligned Feature Intake Form',
+      responsibility:
+        'Structured feature proposal form guarding zero-API-key, offline-first PWA, and Project Gutenberg compliance boundaries.',
+    },
+    {
+      name: '.github/ISSUE_TEMPLATE/good_first_issue.yml',
+      file: '.github/ISSUE_TEMPLATE/good_first_issue.yml',
+      layer: 'Contributor Onboarding Issue Template',
+      responsibility:
+        'Curated starter-task template enforcing `95%` V8 coverage and co-located testing standards for new contributors.',
+    },
+    {
+      name: '.github/ISSUE_TEMPLATE/config.yml',
+      file: '.github/ISSUE_TEMPLATE/config.yml',
+      layer: 'GitHub Issue Chooser Configuration',
+      responsibility:
+        'Enforces structured intake (`blank_issues_enabled: false`) across all repository issue workflows.',
+    },
+    {
+      name: '.github/FUNDING.yml',
+      file: '.github/FUNDING.yml',
+      layer: 'Open-Source Sponsorship Manifest',
+      responsibility:
+        'Declares optional maintainer patronage metadata without affecting Bookarium\'s 100% free, zero-API-key user experience.',
+    },
+    {
+      name: '.github/assets/README.md',
+      file: '.github/assets/README.md',
+      layer: 'Documentation & Showcase Visual Index',
+      responsibility:
+        'Documents static showcase screenshots and brand banners referenced by root GitHub documentation.',
+    },
   ];
 
   return candidates.filter((c) => fs.existsSync(path.join(rootDirPath, c.file)));
@@ -626,10 +690,10 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
 
   const directories = [
     { path: 'src/app/', role: 'Next.js 16 App Router pages, SSR layouts, metadata routes (`manifest.ts`, `robots.ts`, `sitemap.ts`), global providers (`providers.tsx`), and serverless API route handlers (`/api/books/**`, `/auth/callback`).' },
-    { path: 'src/components/', role: `${counts.componentCount || 73} production React 19 UI components organized across \`account/\`, \`accolades/\`, \`auth/\`, \`bookshelf/\`, \`motion/\`, \`presentation/\` (including \`bookshelf/\`), \`profile/\`, \`pwa/\`, \`reader/\`, \`symposium/\`, and \`ui/\`, each paired with co-located \`*.test.tsx\` suites.` },
+    { path: 'src/components/', role: `${counts.componentCount || 73} production React 19 UI components & motion config primitives organized across \`account/\`, \`accolades/\`, \`auth/\`, \`bookshelf/\`, \`motion/\`, \`presentation/\` (including \`bookshelf/\`), \`profile/\`, \`pwa/\`, \`reader/\`, \`symposium/\`, and \`ui/\`, each paired with co-located \`*.test.{ts,tsx}\` suites.` },
     { path: 'src/stores/', role: `${counts.storeCount || 10} Zustand client-side state stores (\`useBookshelfStore\`, \`useReaderStore\`, \`useAuthStore\`, \`useFellowshipStore\`, \`useAnnotationStore\`, \`useAccoladesStore\`, \`useHabitsStore\`, \`useJurisdictionStore\`, \`usePreferencesStore\`, \`useThemeStore\`) with \`localStorage\` persistence and bi-directional Supabase cloud outbox synchronization.` },
     { path: 'src/hooks/', role: `${counts.hookCount || 22} custom React hooks organized into \`queries/\` (TanStack Query v5 data fetching), \`reader/\` (Web Speech TTS, session coordinates, gestures, worker AST, reading ledger), and root UI/network/copyright hooks (\`useNetworkStatus\`, \`useOfflineBooks\`, \`useBookCopyright\`, \`useCatalogFilters\`, \`useCollectionAutoHeal\`).` },
-    { path: 'src/lib/', role: `${counts.utilityCount || 36} pure domain computational engines and adapters covering Gutenberg AST segmentation/pagination/reflow (\`gutenberg/\`), dual-provider catalog resolution (\`catalog/\`), Supabase SSR/browser clients (\`supabase/\`), multi-jurisdictional copyright (\`copyright-engine.ts\`), IndexedDB storage (\`offline-storage.ts\`), interval annotation partitioning (\`reader-annotator.ts\`), and cloud bookshelf sync (\`bookshelf-cloud-sync.ts\`).` },
+    { path: 'src/lib/', role: `${counts.utilityCount || 36} domain computational engines, App Router route helpers, and adapters covering Gutenberg AST segmentation/pagination/reflow (\`gutenberg/\`), dual-provider catalog resolution (\`catalog/\`), Supabase SSR/browser clients (\`supabase/\`), multi-jurisdictional copyright (\`copyright-engine.ts\`), IndexedDB storage (\`offline-storage.ts\`), interval annotation partitioning (\`reader-annotator.ts\`), cloud bookshelf sync (\`bookshelf-cloud-sync.ts\`), and co-located \`src/app/**\` server route utilities (\`metadata-cache.ts\`, \`url-validator.ts\`, \`reader-layout-utils.ts\`, \`profile-layout-utils.ts\`).` },
     { path: 'src/config/', role: `${counts.configCount || 13} centralized design token, routing, theme, language, era, literary quote, and 27-masterwork curated anthology configuration modules.` },
     { path: 'src/types/', role: `${counts.typeCount || 4} canonical TypeScript type contract modules (\`book.types.ts\`, \`database.types.ts\`, \`catalog.types.ts\`, \`accolades.types.ts\`) defining zero-any domain and PostgreSQL row schemas.` },
     { path: 'src/workers/', role: 'Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations.' },
@@ -638,10 +702,10 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 37} RLS policies, ${counts.dbFunctionCount || 7} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 15} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), and on-demand manual maintenance workflows (`translations-sync.yml`, `quotes-sync.yml`), plus Husky pre-commit quality gates.' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance workflows (`translations-sync.yml`, `quotes-sync.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
   ];
 
-  let auditTotals = { suites: 187, tests: '1,994' };
+  let auditTotals = { suites: counts.totalSuites || 246, tests: '2,542' };
   const auditJsonPath = path.join(rootDirPath, 'docs', 'quality-audit-results.json');
   if (fs.existsSync(auditJsonPath)) {
     try {
@@ -702,6 +766,7 @@ function generateMarkdown() {
   const swMeta = extractServiceWorkerMetadata(rootDir);
   const workers = extractWorkerCatalog(srcDir);
   const testHarness = extractTestHarnessCatalog(srcDir, rootDir);
+  const harnessAstDeps = extractTestHarnessAstDependencies(rootDir, graph);
   const publicAssets = extractPublicAssetsCatalog(rootDir);
   const workspaceConfigs = extractWorkspaceConfigAndGovernanceCatalog(rootDir);
   const envCatalog = extractEnvironmentDependencyCatalog(rootDir, srcDir);
@@ -720,6 +785,7 @@ function generateMarkdown() {
     dbFunctionCount: dbCatalog.functions.length,
     dbIndexCount: dbCatalog.indexes.length,
     nodeScriptCount: nodeScripts.length,
+    totalSuites: testHarness.totalSuites,
   });
 
   const timestamp = new Date().toISOString().split('T')[0];
@@ -841,7 +907,9 @@ function generateMarkdown() {
     '        ProxyContent["GET /api/books/content\\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]',
     '        ProxyBookTranslations["GET /api/books/translations\\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]',
     '        AuthCallback["GET /auth/callback\\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]',
-    '        LayoutServer["Server Layout (/read/[id])\\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]',
+    '        LayoutServer["Server Layout (/read/[id])\\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]',
+    '        ProfileLayoutServer["Server Layout (/u/[username])\\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]',
+    '        StaticSeoRoutes["SSR Metadata & Crawler Gateways\\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • sitemap.ts)"]',
     '    end',
     '',
     '    subgraph LegalLayer ["Jurisdictional Copyright & Content Safety Engine"]',
@@ -866,6 +934,15 @@ function generateMarkdown() {
     '    end',
     '',
     '    User --> RootProxy',
+    '    User --> LayoutServer',
+    '    User --> ProfileLayoutServer',
+    '    User -->|"Legal, Privacy & Sitemap"| StaticSeoRoutes',
+    '    LayoutServer -->|"SSR Catalog/Hero Lookup (React.cache)"| SupabaseCloud',
+    '    ProfileLayoutServer -->|"Zero-PII Public Handle Check"| SupabaseCloud',
+    '    ProfileLayoutServer --> ProfilePage',
+    '    ProfilePage -.->|"SSR/Client Public Profile Query"| SupabaseCloud',
+    '    StaticSeoRoutes --> PrivacyView',
+    '    StaticSeoRoutes --> CopyrightView',
     '    RootProxy --> Providers',
     '    Providers --> SWReg',
     '    Providers --> AuthModalNode',
@@ -1421,22 +1498,25 @@ function generateMarkdown() {
     'src/app/providers.tsx': 'Root client provider initializing TanStack `QueryClient`, Strict-Mode-coalesced Supabase authentication (`initializeAuth`, `onAuthStateChange`, unthrottled `bookarium:auth-token-refreshed`), `15,000ms` render-pure `lastSyncTimeRef` cooldown guarding `syncAllStoresWithCloud` reconciliation and `online` / `visibilitychange` flushes, `GlobalTitleTooltip` stylized tooltip delegation, and dynamic `AuthModal` rendering.',
     'src/app/loading.tsx': 'Next.js App Router streaming & pre-hydration loading splash boundary rendering the vector Bookarium crest and animated loading indicator.',
     'src/app/globals.css': 'Tailwind CSS v4 Oxide stylesheet defining Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) theme tokens, 3D hardcover book hinge physics (`.book-center-crease`, `.preserve-3d`), directional view-slide keyframes (`.animate-view-slide-left`, `.animate-view-slide-right` with `360ms` tactile slide & nested `.animate-page-turn` suppression inside `@media (max-width: 1366px), (pointer: coarse)` vs. `0ms` outer switch & preserved `180ms` inner `.animate-page-turn` on `> 1366px` non-tactile PCs), and custom reader scrollbars.',
-    'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites, asymmetric directional collection transitions (`NAVBAR_TRANSITION_ORDER` slide into/between collections on both tactile swipes and `Navbar` tab clicks/taps + instantaneous `0ms` return to `catalog` so repeated `Catalog` -> `Bookshelf` transitions replay reliably), 12-hour sliding-cache hero/editorial boundary guards (`selectHourlyHeroFromPool`, `selectDailyClassicFromPool`), and dynamic `NAVBAR_VIEW_CONFIG` tab title synchronization (`Bookarium` / `Bookarium | <View>`).',
+    'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites, sort-aware unfiltered Catalog headings (`CATALOG_SORT_TITLES` resolving `Recent Books`, `Popular Books`, and `Oldest Books` via `VIEW_CONTENT_CONFIG.catalog.getTitle({ search, topic, era, sort })` while preserving `Search Catalog` precedence when filters or search terms are active), asymmetric directional collection transitions (`NAVBAR_TRANSITION_ORDER` slide into/between collections on both tactile swipes and `Navbar` tab clicks/taps + instantaneous `0ms` return to `catalog` so repeated `Catalog` -> `Bookshelf` transitions replay reliably), 12-hour sliding-cache hero/editorial boundary guards (`selectHourlyHeroFromPool`, `selectDailyClassicFromPool`), and dynamic `NAVBAR_VIEW_CONFIG` tab title synchronization (`Bookarium` / `Bookarium | <View>`).',
     'src/app/error.tsx': 'Route-level React Error Boundary providing graceful recovery UI and diagnostic fallback.',
     'src/app/global-error.tsx': 'Root document-level React Error Boundary catching fatal top-level layout exceptions.',
     'src/app/not-found.tsx': 'Editorial 404 Not Found boundary with direct navigation back to the public domain catalog.',
-    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic `Bookarium | Reader | <Title> — <Author>` (`SITE_CONFIG.READER_NAME`), OpenGraph, Twitter Card, and Schema.org Book JSON-LD metadata (`React.cache`), verifying signed `x-bookarium-share-token` (`decodeReadingCardShareToken`) to bind `/api/books/content?id=<id>&type=card&s=<token>` (`1200×630`) as the primary social preview image.',
+    'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic `Bookarium | Reader | <Title> — <Author>` (`SITE_CONFIG.READER_NAME`), featured `openingLine` + tag/translator-enriched `<meta name="keywords">`, OpenGraph `book:author`/`book:tag`, Twitter Card, Schema.org Book JSON-LD (`identifier`, `bookFormat`, `MediaObject` `encoding`, `birthDate`/`deathDate` contributors, `sameAs`, `genre`, `keywords`), companion `BreadcrumbList` JSON-LD, and timeout-safe invalid/confirmed-missing `noindex` via `React.cache` and `buildReaderSeoMetadataPayload`, verifying signed `x-bookarium-share-token` (`decodeReadingCardShareToken`) to bind `/api/books/content?id=<id>&type=card&s=<token>` (`1200×630`) as the primary social preview image.',
     'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with warm `currentBook` metadata reuse (`hasCompleteCurrentBook`), continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
     'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
     'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and Preferences.',
+    'src/app/u/[username]/layout.tsx': 'Server layout emitting dynamic OpenGraph `profile`, Twitter cards, canonical `/u/<username>`, and `ProfilePage` JSON-LD for opt-in public scholars via `isClientSideNavigation()` fast-path and `fetchPublicScholarProfileSummary`, collapsing private and nonexistent handles to identical `noindex` fallback.',
     'src/app/u/[username]/page.tsx': 'Public Scholar Sanctuary displaying pinned Ex-Libris bookplates, public profile stats, and 1-on-1 Literary Fellowship invitation actions.',
-    'src/app/privacy/layout.tsx': 'Server layout defining canonical SEO and OpenGraph metadata for the Privacy Architecture manifesto.',
+    'src/app/privacy/layout.tsx': 'Server layout defining `SITE_CONFIG.SITE_URL` canonical SEO, OpenGraph, and Twitter summary metadata for the Privacy Architecture manifesto.',
     'src/app/privacy/page.tsx': 'Zero-Tracker Privacy Architecture manifesto, functional geo-cookie disclosure, COPPA / GDPR Art. 8 governance, and 3-Tier Zero-Retention Erasure Protocol.',
+    'src/app/copyright/layout.tsx': 'Server layout defining canonical SEO, OpenGraph, and Twitter summary metadata for Copyright & Public Domain Governance.',
     'src/app/copyright/page.tsx': 'Multi-Jurisdictional Public Domain Copyright Governance manifesto, territory rules table, and takedown notice channel.',
+    'src/app/auth/confirm-deletion/layout.tsx': 'Server layout enforcing `robots: { index: false, follow: false }` metadata on the account deletion confirmation route.',
     'src/app/auth/confirm-deletion/page.tsx': 'Two-step email-verified account deletion confirmation page executing `delete_current_user()` RPC.',
     'src/app/manifest.ts': 'Progressive Web App (PWA) Web App Manifest configuring standalone display, theme colors, and multi-resolution icons.',
-    'src/app/robots.ts': 'Search engine crawler directives permitting public catalog and reader indexing while protecting `/api/` and `/auth/` routes.',
-    'src/app/sitemap.ts': 'Dynamic XML sitemap generator indexing primary views, governance pages, and curated public domain masterworks.',
+    'src/app/robots.ts': 'Search engine crawler directives allowing canonical routes (`/`, `/privacy`, `/copyright`, `/read/`, `/u/`) while blocking catalog filter query permutations (`search`, `topic`, `languages`, `sort`, `era`, `format`, `mime_type`, `page`, `size`, `view`), `/api/*`, `/auth/*`, and `/account` (preserving `?s=` Reading Card share tokens).',
+    'src/app/sitemap.ts': 'Synchronous zero-DB XML sitemap generator indexing primary views, `/privacy`, `/copyright`, and curated classics combining `FEATURED_CLASSIC_BOOK_IDS` and `FEATURED_HERO_BOOKS`.',
   };
 
   lines.push(
@@ -1526,7 +1606,7 @@ function generateMarkdown() {
     'bookshelf-cloud-sync':
       'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, featuring non-regressive local metadata preservation (`mergeCloudBookWithLocal`), per-user in-flight mutex & `coalesceInFlightByUser` outbox flushing (`executeFlushOutbox`, `dirtyOutboxFlushUsers`, `markBookshelfOutboxDirty`), opt-in `15,000ms` passive mount cooldown (`invalidateBookshelfSyncCooldown`), concurrent `Promise.all` table fetching, multi-shelf `book_id` deduplication, outbox mutation replay, tombstone filtering, single-commit atomic state reconciliation, and deterministic ordering.',
     'book-metadata':
-      'Author and title cleaning, placeholder author heuristics (`isPlaceholderAuthor`, `resolvePrimaryAuthorName`), verified lifespan checks (`hasVerifiedLifespans`), dictionary author enrichment (`enrichAuthorMap`), and defensive editorial metadata normalization.',
+      'Author and title cleaning, placeholder author heuristics (`isPlaceholderAuthor`, `resolvePrimaryAuthorName`), verified lifespan checks (`hasVerifiedLifespans`), dictionary author enrichment (`enrichAuthorMap`), and defensive editorial metadata normalization (including `subjects` and `bookshelves` on `ResolvedBookIdentity`).',
     'content-advisory':
       'Autonomous content advisory evaluation engine scanning Library of Congress subject classifications and bookshelves for mature themes, erotic literature, and sensitive historical context with non-blocking user guidance.',
     'copyright-engine':
@@ -1595,8 +1675,12 @@ function generateMarkdown() {
       '3-tier `globalThis`-anchored in-memory LRU author lifespan cache (`__bookariumMetadataCache`, 24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback, paired with a `globalThis`-anchored 20-book plain-text LRU cache (`bookContentLruCache` / `__bookariumContentLruCache`, `getCachedBookContent`, `setCachedBookContent`, `clearBookContentCache`, 24h TTL, <= 1.8M chars) shielding Project Gutenberg mirrors across `Vary: x-vercel-ip-country` edge misses.',
     'url-validator':
       'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS, relative Location redirect resolution, and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`).',
+    'server-rsc-nav':
+      'Server-only Next.js App Router RSC navigation and prefetch header detector (`isClientSideNavigation`) isolated from client bundles.',
+    'profile-layout-utils':
+      'Zero-PII Public Scholar metadata resolver (`fetchPublicScholarProfileSummary`), 5-minute / 500-entry LRU cache (`hasCachedScholarProfile`), SQL `ILIKE` `_`-wildcard neutralization, and anti-enumeration `private_or_missing` collapsing for `/u/[username]`.',
     'reader-layout-utils':
-      'Server-side metadata resolution and Next.js RSC request header detector for `/read/[id]` OpenGraph, Twitter Card, and Schema.org Book JSON-LD generation.',
+      'Server-side metadata resolution (`fetchBookData`), confirmed-missing ID tracking (`isConfirmedMissingBook`), re-exported `isClientSideNavigation`, and non-visual SEO payload builder (`buildReaderSeoMetadataPayload` with featured `openingLine` hooks, lifespan contributors, and encoding MIME formats) for `/read/[id]` OpenGraph, Twitter Card, and Schema.org JSON-LD generation.',
     'reader-bookmark-geometry':
       'DOM text-node walker (`collectContentTextSegments`), character range measurement (`measureCharRect`), ratio-weighted passage matching (`findBestTextMatch`), and binary-searched row text/span resolution (`extractRowTextFromElement`, `resolveTextRowSpanInElement`).',
     'annotation-cloud-sync':
@@ -1825,7 +1909,7 @@ function generateMarkdown() {
     '| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js), `catalog-sync.yml` Step 3 & `quotes-sync.yml`) | Step 1: Consumes `quote-diff.json` (`--diff-file`) from `sync-gutenberg-catalog.js` (or `ORDER BY download_count DESC LIMIT 1000` + `.in(\'id\', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320` on standalone manual runs); Step 2: `fetchQuotedBookIds` via `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` (`~3.5 KB`); Step 3: `.in(\'id\', selectedIds)` for `content, quotes` | `books_pkey` (+ `idx_books_download_count` on standalone fallback) | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 15ms` total)**: `quote-diff.json` eliminates pool discovery scans on Sunday runs; `content` is hydrated only for selected unquoted batch IDs; `fetchQuotedBookIds` is strictly Primary-Key-Scoped. |',
     '| **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml` Step 1) | Step 1: In-RAM diff via `gutenberg-catalog-cache.json.gz` (`--cache-file`) in `filterChangedOrNewBooks` (cold-start fallback: `.select(CATALOG_DIFF_SELECT_COLUMNS).in(\'id\', batchIds)`); Step 2: `upsert(toUpsert, { onConflict: \'id\', ignoreDuplicates: false })` on new/changed rows only via sticky dynamic write chunks (`[25, 100]`); Step 3: In-RAM withdrawn-book detection via `cachedBookIds` in `reconcileWithdrawnCatalogBooks` (cold-start fallback: keyset `select(\'id\').gt(\'id\', lastId).order(\'id\', ASC).limit(1000)`) | `books_pkey` (`ON CONFLICT (id)` & cold-start keyset scan) | `0` DB reads for unchanged rows when snapshot cached (`200` rows/batch on cold start); sticky dynamic write chunks (`100 -> 50 -> 25` on `57014`); `50,000` min-catalog & `500` max-prune circuit breakers | **Zero read egress on unchanged rows, zero `quotes` overwrite & zero GIN dirtying on `download_count` updates**: `gutenberg-catalog-cache.json.gz` (`catalog-cache` GitHub Release) diffs 78,461 books in RAM (~39 MB/week egress saved) and writes `quote-diff.json`. |',
     '| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `book_translations_pkey (work_id, book_id)`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |',
-    '| **6-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`) | Pre-sync active JWT session check (`verifyActiveCloudSession`) + user-scoped `.eq(\'user_id\', user.id)` / `.or(\'requester_id.eq...,recipient_id.eq...\')` with per-user in-flight Promise coalescing & batched multi-book `reading_progress` upsert (`upsertReadingProgressBatch`) | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on single-book `reading_progress` & `profiles.preferences`; single batched array upsert on multi-book healing) | Every `WHERE user_id = (select auth.uid())` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID and guarded against unauthenticated `42501` writes. |'
+    '| **7-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `preferences-sync.ts`) | Pre-sync active JWT session check (`verifyActiveCloudSession`) + user-scoped `.eq(\'user_id\', user.id)` / `.or(\'requester_id.eq...,recipient_id.eq...\')` with per-user in-flight Promise coalescing (`coalesceInFlightByUser`) & batched multi-book `reading_progress` upsert (`upsertReadingProgressBatch`) | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on single-book `reading_progress` & `profiles.preferences`; single batched array upsert on multi-book healing) | Every `WHERE user_id = (select auth.uid())` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID and guarded against unauthenticated `42501` writes. |'
   );
 
   lines.push(
@@ -2074,14 +2158,23 @@ function generateMarkdown() {
 
   const resolveCoLocatedTestLink = (fileRel) => {
     const baseNoExt = fileRel.replace(/\.(ts|tsx|js|jsx)$/, '');
-    const candidates = [`${baseNoExt}.test.ts`, `${baseNoExt}.test.tsx`];
+    const candidates = [
+      `${baseNoExt}.test.ts`,
+      `${baseNoExt}.test.tsx`,
+      `${baseNoExt}.security.test.ts`,
+      `${baseNoExt}.security.test.tsx`,
+    ];
+    const matchedLinks = [];
     for (const cand of candidates) {
       if (testSuiteSet.has(cand)) {
         const label = ambiguousBasenames.has(path.basename(fileRel))
           ? cand.replace(/^src\//, '')
           : path.basename(cand);
-        return `[\`${label}\`](${cand})`;
+        matchedLinks.push(`[\`${label}\`](${cand})`);
       }
+    }
+    if (matchedLinks.length > 0) {
+      return matchedLinks.join(', ');
     }
     if (
       fileRel.startsWith('src/types/') ||
@@ -2152,6 +2245,36 @@ function generateMarkdown() {
 
     lines.push(
       `| [\`${label}\`](${file}) | ${importsStr} | ${consumersStr} | ${coLocatedTestLink} | ${roleTitle} |`
+    );
+  }
+
+  for (const harnessNode of harnessAstDeps) {
+    const hLabel = harnessNode.file.replace(/^src\//, '');
+    const hImports = Array.from(new Set(harnessNode.imports.map((i) => i.replace('@/', ''))));
+    const hImportsStr =
+      hImports.length > 0 ? hImports.map((i) => `\`${i}\``).join(', ') : '_Root MSW Fixtures_';
+    const hConsumers = Array.from(new Set(harnessNode.consumedBy.map((c) => formatModuleLabel(c))));
+    const hConsumersStr =
+      harnessNode.file === 'src/test/setup.ts'
+        ? '_Global Vitest Bootstrap (`vitest.config.mts`)_'
+        : hConsumers.length > 0
+          ? hConsumers.map((c) => `\`${c}\``).join(', ')
+          : '_Test Suite Bootstrap_';
+    const hTestLink =
+      harnessNode.file === 'src/mocks/handlers.ts'
+        ? resolveCoLocatedTestLink(harnessNode.file)
+        : harnessNode.file === 'src/mocks/server.ts' && testSuiteSet.has('src/mocks/handlers.test.ts')
+          ? '[`handlers.test.ts`](src/mocks/handlers.test.ts)'
+          : '_Bootstraps All Vitest Suites_';
+    const hRoleTitle =
+      harnessNode.file === 'src/mocks/handlers.ts'
+        ? 'MSW v2 Mock Handlers & Fixtures'
+        : harnessNode.file === 'src/mocks/server.ts'
+          ? 'MSW v2 Node Server Instance'
+          : 'Vitest JSDOM & MSW Bootstrap';
+
+    lines.push(
+      `| [\`${hLabel}\`](${harnessNode.file}) | ${hImportsStr} | ${hConsumersStr} | ${hTestLink} | ${hRoleTitle} |`
     );
   }
 
@@ -2339,6 +2462,7 @@ function generateMarkdown() {
     '        MetaLRU["metadata-cache.ts (globalThis LRU)\\n• 24h TTL / 1,000-Book Lifespan LRU (pre-warmed on catalog reads)\\n• Jurisdictional HTTP 451 Gatekeeper (text & type=card)"]',
     '        TextLRU["bookContentLruCache & inFlightMirrorFetches (globalThis)\\n• 24h TTL / 20-Book Text LRU (<= 1.8M chars)\\n• Concurrent Mirror Promise Coalescing"]',
     '        HealthCache["supabase-provider.ts (globalThis Query & Health Cache)\\n• 5m / 64-Query Catalog Response Cache + 60s Healthcheck\\n• HTTP 503 no-store anti-poisoning guard"]',
+    '        SsrRouteCaches["SSR Layout Route Caches (reader-layout & profile-layout utils)\\n• confirmedNotFoundIds (500-Entry LRU for safe Reader noindex)\\n• serverProfileCache (5m TTL / 500-Entry Public Handle LRU)"]',
     '    end',
     '',
     '    subgraph L5_Origins ["L5: Primary Origins (Supabase PostgreSQL & 4 Gutenberg Mirrors)"]',
@@ -2351,6 +2475,8 @@ function generateMarkdown() {
     '    L2Local -->|"12h Expired"| EdgeQuotePool',
     '    L1Query -->|"Catalog Search"| EdgeCatalog',
     '    L1Query -->|"Open 3D Book / Preview / Editions"| EdgeDeepQuotes',
+    '    L1Query -.->|"SSR Route Nav (/read/[id], /u/[username])"| SsrRouteCaches',
+    '    SsrRouteCaches -->|"ISR 24h / Profile Cache Miss"| SupaOrigin',
     '    L2IDB -->|"Uncached Text"| EdgeTextCard',
     '    L2IDB -->|"Uncached Cover"| EdgeCoverProxy',
     '    EdgeQuotePool -->|"Miss (2x/day Global)"| HealthCache',
@@ -2371,8 +2497,8 @@ function generateMarkdown() {
     '| **L1: Browser In-Memory** | TanStack React Query v5 (`QueryClient`) & `pagination.ts` | Windowed catalog sub-pages, predictive next-page prefetches, translations, and paginated chapter slices | Session memory (`staleTime` + `clearPaginationCache()`) | Query keys scoped by `[search, topic, language, era, sort, page, country]` |',
     `| **L2: Browser Persistent** | \`localStorage\` (10 stores + \`bookarium-quote-enriched-books-v1\` + \`bookarium-extracted-passages-v1\`), \`IndexedDB\` (\`bookarium-offline-db\`), \`CacheStorage\` (\`${swMeta.cacheName}\`) | User collections/outboxes, 48-volume (\`limit <= 600\` max) rotating quote pool (\`12h\` fresh), 30-day LRU extracted book passages (\`100\` books max), unabridged book texts + cover Blobs (\`offline-storage.ts\`), and PWA App Shell (\`${swMeta.cacheName}\`) | Persistent across restarts; \`30d\` TTL / \`100\` LRU entries (\`useBookPassageShuffle.ts\`); SW \`activate\` prunes old caches | Origin-locked; IndexedDB texts verified against active jurisdiction on read |`,
     '| **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control`) | `GET /api/books` (`s-maxage=86400, swr=604800` Catalog; `s-maxage=43200` `?pool=quotes`; `s-maxage=604800` `?ids=...&has_quotes=true`); `GET /api/books/content` (`max-age=86400, s-maxage=86400` text/`type=card`; `max-age=604800, s-maxage=604800` `type=cover`) & `/translations` (`s-maxage=604800, swr=2592000`) | 12h fresh (Quote Pool); 24h fresh / 7d SWR (Catalog & Content); 7d browser+Edge / 30d SWR (Covers, Quote IDs & Translations) | `Vary: Accept-Encoding` (Global Quote Pool & Restricted-Metadata Lookups) / `Vary: x-vercel-ip-country, Accept-Encoding` (Catalog & Content) |',
-    '| **L4: Serverless & `globalThis` Caches** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts), pre-warmed by `supabase-provider.ts`), 20-book text LRU & in-flight mirror coalescing ([`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts)), 5m / 64-query catalog response cache & 60s healthcheck (`supabase-provider.ts`), `/read/[id]` SSR metadata | `5m` / `64` queries (Catalog Query Cache); `24h` / `1,000` max entries (Metadata LRU); `24h` / `20` max books `<= 1.8M` chars (`bookContentLruCache`); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by normalized query options or Gutenberg `bookId` |',
-    '| **L5: Database & Repo Seeds** | Supabase PostgreSQL & `supabase/seed_*.sql` | `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 564` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by 21 explicit B-Tree & GIN `search_vector` indexes |',
+    '| **L4: Serverless & `globalThis` Caches** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts), pre-warmed by `supabase-provider.ts`), 20-book text LRU & in-flight mirror coalescing ([`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts)), 5m / 64-query catalog response cache & 60s healthcheck (`supabase-provider.ts`), `/read/[id]` ISR metadata & `confirmedNotFoundIds` ([`src/app/read/[id]/reader-layout-utils.ts`](src/app/read/[id]/reader-layout-utils.ts)), and `/u/[username]` public handle `serverProfileCache` ([`src/app/u/[username]/profile-layout-utils.ts`](src/app/u/[username]/profile-layout-utils.ts)) | `5m` / `64` queries (Catalog Query Cache); `5m` / `500` max entries (`serverProfileCache`); `500` max entries LRU (`confirmedNotFoundIds`); `24h` / `1,000` max entries (Metadata LRU); `24h` / `20` max books `<= 1.8M` chars (`bookContentLruCache`); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by normalized query options, Gutenberg `bookId`, or normalized lowercase `@username` |',
+    `| **L5: Database & Repo Seeds** | Supabase PostgreSQL & \`supabase/seed_*.sql\` | \`78,000+\` catalog rows (\`public.books\`), Two-Tier Bounded Quote Pool (\`<= 564\` books in \`public.books.quotes\`), FRBR clusters (\`public.book_translations\`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by ${dbCatalog.indexes.length} explicit B-Tree & GIN \`search_vector\` indexes |`,
     '',
     '### 4. Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix',
     '',
@@ -2518,7 +2644,7 @@ function syncReadmeArchitectureDiagrams(architectureMarkdown) {
     '| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/ARCHITECTURE.md#2-focus-reader-state--typography-engine](docs/ARCHITECTURE.md) |',
     '| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |',
     '| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |',
-    '| **5** | **Cold Launch & 6-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--6-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |',
+    '| **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |',
     '| **6** | **Focus Reader Launch & Multi-Mirror Stream** | HTTP 451 Gatekeeping, 4 Gutenberg Mirrors & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-multi-mirror-streaming--worker-ast](docs/ARCHITECTURE.md) |',
     `| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell ${swMeta.versionLabel}, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |`,
     '| **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/ARCHITECTURE.md#1-github-actions--database-ingestion-topology](docs/ARCHITECTURE.md) |',

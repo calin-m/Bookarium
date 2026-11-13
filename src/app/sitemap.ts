@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE_CONFIG } from '@/config/site-config';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 
 export const FEATURED_CLASSIC_BOOK_IDS = [
   84, // Frankenstein by Mary Wollstonecraft Shelley
@@ -31,9 +32,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    {
+      url: `${baseUrl}/copyright`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
   ];
 
-  for (const bookId of FEATURED_CLASSIC_BOOK_IDS) {
+  const curatedIds = Array.from(
+    new Set<number>([
+      ...FEATURED_CLASSIC_BOOK_IDS,
+      ...FEATURED_HERO_BOOKS.map((book) => book.id),
+    ])
+  );
+
+  for (const bookId of curatedIds) {
     entries.push({
       url: `${baseUrl}/read/${bookId}`,
       lastModified: now,

@@ -1196,6 +1196,7 @@ function pass3ClientUI() {
 function pass4DocsSync() {
   logHeader('Pass 4: Living Documentation Synchronization');
   try {
+    require('./generate-quality-report.js');
     require('./generate-architecture-matrix.js');
     require('./generate-parser-docs.js');
     const {
@@ -1206,10 +1207,9 @@ function pass4DocsSync() {
     syncReleaseVersionFiles();
     generateChangelog();
     syncReadmeLatestRelease();
-    require('./generate-quality-report.js');
     const { generateRoadmapMarkdown } = require('./generate-roadmap.js');
     fs.writeFileSync(path.join(rootDir, 'ROADMAP.md'), generateRoadmapMarkdown(), 'utf-8');
-    logPass('docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, CHANGELOG.md, docs/QUALITY_AUDIT_REPORT.md, and ROADMAP.md synced successfully from source AST.');
+    logPass('docs/QUALITY_AUDIT_REPORT.md, docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, CHANGELOG.md, and ROADMAP.md synced successfully from source AST.');
     return true;
   } catch (err) {
     logFail(`Documentation synchronization failed: ${err.message}`);
@@ -1831,6 +1831,44 @@ function pass5AdrValidation() {
       if (!readmeText.includes(`Living Architecture Directory (${archMermaidCount} Interactive Diagrams)`)) {
         docViolations.push(
           `README.md architecture directory count does not match docs/ARCHITECTURE.md (${archMermaidCount} diagrams; run "npm run docs:sync").`
+        );
+      }
+    }
+
+    // Verify Live Telemetry Parity & Architectural Layer Distribution Suite Sum
+    const resultsJsonPath = path.join(rootDir, 'docs', 'quality-audit-results.json');
+    if (fs.existsSync(resultsJsonPath)) {
+      try {
+        const parsedResults = JSON.parse(fs.readFileSync(resultsJsonPath, 'utf-8'));
+        const rSuites = parsedResults?.testSummary?.totalSuites;
+        const rTests = parsedResults?.testSummary?.totalTests;
+        if (typeof rSuites === 'number' && typeof rTests === 'number') {
+          const expectedSummarySnippet = `all ${rSuites} test suites and ${Number(rTests).toLocaleString('en-US')} tests.`;
+          if (!archContent.includes(expectedSummarySnippet)) {
+            docViolations.push(
+              `Stale audit summary counts in docs/ARCHITECTURE.md (expected "${expectedSummarySnippet}" from docs/quality-audit-results.json; run "npm run docs:sync").`
+            );
+          }
+        }
+      } catch {
+        // Defer malformed telemetry inspection to quality report generation
+      }
+    }
+
+    const layerDistMatch = archContent.match(
+      /### 3\. Architectural Layer Test Suite Distribution \(\d+ Suites\)\r?\n\r?\n\|[^\r\n]+\r?\n\|[^\r\n]+\r?\n([\s\S]*?)(?:\r?\n\r?\n|$)/
+    );
+    if (layerDistMatch && layerDistMatch[1]) {
+      let layerSuiteSum = 0;
+      for (const rowLine of layerDistMatch[1].split(/\r?\n/)) {
+        const cellMatch = rowLine.match(/^\|\s*\*\*[^*]+\*\*\s*\|[^|]+\|\s*`(\d+)`\s*\|\s*`\d+`\s*\|/);
+        if (cellMatch) {
+          layerSuiteSum += parseInt(cellMatch[1], 10);
+        }
+      }
+      if (layerSuiteSum !== actualSuiteCount) {
+        docViolations.push(
+          `Architectural Layer Test Suite Distribution sum (${layerSuiteSum}) in docs/ARCHITECTURE.md does not match total test suites on disk (${actualSuiteCount}; update layerDefs in scripts/lib/ast-parser.js and run "npm run docs:sync").`
         );
       }
     }

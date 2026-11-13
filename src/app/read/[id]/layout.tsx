@@ -6,12 +6,24 @@ import { decodeReadingCardShareToken } from '@/lib/reading-card-export';
 import {
   serverMetadataCache,
   isClientSideNavigation,
+  isConfirmedMissingBook,
   fetchBookData,
+  buildReaderSeoMetadataPayload,
+  type ReaderSeoPerson,
 } from './reader-layout-utils';
 
 interface ReaderLayoutProps {
   children: React.ReactNode;
   params: Promise<{ id: string }>;
+}
+
+function toSchemaPerson(person: ReaderSeoPerson) {
+  return {
+    '@type': 'Person',
+    name: person.name,
+    ...(person.birthDate ? { birthDate: person.birthDate } : {}),
+    ...(person.deathDate ? { deathDate: person.deathDate } : {}),
+  };
 }
 
 export async function generateMetadata({
@@ -22,12 +34,16 @@ export async function generateMetadata({
   const { id } = await params;
   const bookId = parseInt(id, 10);
 
-  if (!bookId || isNaN(bookId)) {
+  if (!bookId || isNaN(bookId) || bookId <= 0) {
     return {
       title: {
         absolute: `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME}`,
       },
       description: 'Read unabridged public domain literature freely on Bookarium.',
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
@@ -44,7 +60,7 @@ export async function generateMetadata({
 
   const authorSuffix = meta.displayAuthor ? ` — ${meta.displayAuthor}` : '';
   const readerTitle = `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME} | ${meta.title}${authorSuffix}`;
-  const description = `Read ${meta.title} by ${meta.displayAuthor} unabridged and 100% legal in the public domain. In-browser focus reader with synchronized voice narration and dynamic translations on Bookarium.`;
+  const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats);
   const coverUrl =
     bookData?.formats?.['image/jpeg'] ||
     `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
@@ -63,22 +79,37 @@ export async function generateMetadata({
   const cardImageUrl = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=card${
     validShareToken ? `&s=${validShareToken}` : ''
   }`;
+  const shouldNoIndex = !isClientTransition && !bookData && isConfirmedMissingBook(bookId);
 
   return {
     title: {
       absolute: readerTitle,
     },
-    description,
+    description: seo.description,
+    keywords: seo.keywords,
+    ...(seo.authorNames.length > 0
+      ? { authors: seo.authorNames.map((name) => ({ name })) }
+      : {}),
     alternates: {
       canonical: `/read/${bookId}`,
     },
+    ...(shouldNoIndex
+      ? {
+          robots: {
+            index: false,
+            follow: true,
+          },
+        }
+      : {}),
     openGraph: {
       type: 'book',
       locale: 'en_US',
       url: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
       siteName: SITE_CONFIG.NAME,
       title: readerTitle,
-      description,
+      description: seo.description,
+      ...(seo.authorNames.length > 0 ? { authors: seo.authorNames } : {}),
+      tags: seo.genres,
       images: [
         {
           url: cardImageUrl,
@@ -97,7 +128,7 @@ export async function generateMetadata({
     twitter: {
       card: 'summary_large_image',
       title: readerTitle,
-      description,
+      description: seo.description,
       images: [cardImageUrl],
     },
   };
@@ -107,8 +138,9 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
   const { id } = await params;
   const bookId = parseInt(id, 10);
   let bookJsonLd: Record<string, unknown> | null = null;
+  let breadcrumbJsonLd: Record<string, unknown> | null = null;
 
-  if (bookId && !isNaN(bookId)) {
+  if (bookId && !isNaN(bookId) && bookId > 0) {
     // For client-side transitions, never block layout rendering on remote Gutendex API
     const isClientTransition = await isClientSideNavigation();
     const bookData = (!isClientTransition || serverMetadataCache.has(bookId))
@@ -123,26 +155,67 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
     const coverUrl =
       bookData?.formats?.['image/jpeg'] ||
       `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
+    const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats);
+    const authorSchema =
+      seo.authorsMeta.length > 1
+        ? seo.authorsMeta.map(toSchemaPerson)
+        : toSchemaPerson(seo.authorsMeta[0] || { name: meta.displayAuthor });
 
     bookJsonLd = {
       '@context': 'https://schema.org',
       '@type': 'Book',
       name: meta.title,
-      author: {
-        '@type': 'Person',
-        name: meta.displayAuthor,
-      },
+      identifier: `gutenberg:${bookId}`,
+      bookFormat: 'https://schema.org/EBook',
+      author: authorSchema,
+      ...(seo.translatorsMeta.length > 0
+        ? {
+            translator:
+              seo.translatorsMeta.length > 1
+                ? seo.translatorsMeta.map(toSchemaPerson)
+                : toSchemaPerson(seo.translatorsMeta[0]),
+          }
+        : {}),
+      ...(seo.availableFormats.length > 0
+        ? {
+            encoding: seo.availableFormats.map((encodingFormat) => ({
+              '@type': 'MediaObject',
+              encodingFormat,
+            })),
+          }
+        : {}),
       inLanguage: meta.languages || ['en'],
       isAccessibleForFree: true,
       license: 'https://creativecommons.org/publicdomain/mark/1.0/',
       url: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
+      sameAs: seo.gutenbergUrl,
       image: coverUrl,
       publisher: {
         '@type': 'Organization',
         name: 'Project Gutenberg',
         url: 'https://www.gutenberg.org',
       },
-      genre: meta.primarySubject,
+      genre: seo.genres,
+      keywords: seo.genres.join(', '),
+    };
+
+    breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: SITE_CONFIG.NAME,
+          item: SITE_CONFIG.SITE_URL,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: meta.title,
+          item: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
+        },
+      ],
     };
   }
 
@@ -155,8 +228,15 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
           {JSON.stringify(bookJsonLd)}
         </script>
       )}
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          id="reader-breadcrumb-jsonld"
+        >
+          {JSON.stringify(breadcrumbJsonLd)}
+        </script>
+      )}
       {children}
     </>
   );
 }
-

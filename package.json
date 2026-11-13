@@ -1,6 +1,6 @@
 {
   "name": "bookarium",
-  "version": "2.9.24",
+  "version": "2.9.26",
   "private": true,
   "description": "High-performance frontend for discovering, reading, and downloading 100% legal, public domain books.",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "test:coverage": "vitest run --coverage",
     "verify": "node scripts/verify-build.js",
     "security:audit": "node scripts/verify-build.js --security-only",
-    "docs:sync": "node scripts/generate-architecture-matrix.js && node scripts/generate-parser-docs.js && node scripts/generate-changelog.js && node scripts/generate-quality-report.js && node scripts/generate-roadmap.js",
+    "docs:sync": "node scripts/generate-quality-report.js && node scripts/generate-architecture-matrix.js && node scripts/generate-parser-docs.js && node scripts/generate-changelog.js && node scripts/generate-roadmap.js",
     "docs:parser": "node scripts/generate-parser-docs.js",
     "report": "node scripts/generate-quality-report.js",
     "audit:quality": "node scripts/generate-quality-report.js",

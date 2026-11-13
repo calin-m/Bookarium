@@ -9,6 +9,37 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.26',
+    date: '2026-11-13',
+    title: 'Holistic Route Metadata, Reader JSON-LD, Public Scholar SEO & Living Architecture Sync',
+    sections: {
+      Added: [
+        'Holistic Route Metadata Layouts, Filter-Safe Robots & Synchronous Sitemap Expansion (`src/app/copyright/layout.tsx`, `src/app/privacy/layout.tsx`, `src/app/auth/confirm-deletion/layout.tsx`, `src/app/robots.ts`, `src/app/sitemap.ts`, `docs/DECISIONS.md`, `ADR-016`): Added canonical OpenGraph/Twitter metadata layout for `/copyright`, explicit `noindex` layout for `/auth/confirm-deletion`, `SITE_CONFIG.SITE_URL` + Twitter card parity on `/privacy`, expanded synchronous `sitemap.ts` with `/copyright` and deduplicated `FEATURED_HERO_BOOKS` entries without DB egress, and updated `robots.ts` to allow `/copyright` and `/u/` while blocking catalog filter permutations and preserving `?s=` Reading Card share tokens.',
+        'Dynamic Public Scholar Profile Metadata & Anti-Enumeration Layout (`src/app/u/[username]/layout.tsx`, `src/app/u/[username]/profile-layout-utils.ts`, `src/lib/server-rsc-nav.ts`, `ADR-033`): Extracted shared server-only `isClientSideNavigation` into `src/lib/server-rsc-nav.ts` and added a cached Zero-PII profile resolver (`500`-entry `5m` LRU cache, SQL `ILIKE` wildcard post-filter) emitting `profile` OpenGraph, Twitter cards, and `ProfilePage` JSON-LD for public handles while collapsing private and nonexistent handles to an identical neutral `noindex` fallback.',
+      ],
+      Changed: [
+        'Reader Lifespan Schema, Formats, Opening Hooks, Breadcrumbs & Missing-ID Noindex (`src/app/read/[id]/reader-layout-utils.ts`, `src/app/read/[id]/layout.tsx`, `ADR-016`): Enriched `buildReaderSeoMetadataPayload` and `/read/[id]` JSON-LD with contributor `birthDate`/`deathDate`, `bookFormat`/`MediaObject` `encoding`, featured `openingLine` description excerpts, a companion `BreadcrumbList` JSON-LD script, and timeout-safe `noindex` only on invalid or confirmed-missing IDs alongside full co-located test coverage.',
+        'Living Architecture AST Sync Order, C4 SSR/Crawler Topology, L4/L5 Parity & Test Harness Inventory (`package.json`, `scripts/verify-build.js`, `scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `ADR-079`): Reordered `docs:sync` and `pass4DocsSync()` so `generate-quality-report.js` refreshes suite/test telemetry before `generate-architecture-matrix.js`, enforced Pass 5 audit-summary and layer-sum parity checks, added the 9th test-harness distribution layer (`src/mocks/*.test.ts`), multi-test `.security.test.ts` linking, and AST test-harness rows, expanded C4 SSR/crawler nodes (`ProfileLayoutServer`, `StaticSeoRoutes`), `L4` `serverProfileCache`/`confirmedNotFoundIds` caches, `public.profiles` SSR consumers, sort-aware Catalog homepage metadata, `LICENSE`/`.github/` manifests, and unified `7-Store` anchors.',
+      ],
+    },
+  },
+  {
+    version: '2.9.25',
+    date: '2026-11-13',
+    title: 'Sort-Aware Catalog Heading, Reader SEO Metadata & Live Commit Protocol',
+    sections: {
+      Added: [
+        'Non-Visual Reader SEO Metadata & Schema.org JSON-LD Enrichment (`src/lib/book-metadata.ts`, `src/app/read/[id]/reader-layout-utils.ts`, `src/app/read/[id]/layout.tsx`, `src/hooks/reader/useReaderHabitTelemetry.test.ts`, `docs/DECISIONS.md`, `ADR-016`): Extended `ResolvedBookIdentity` with `subjects` and `bookshelves`, added `buildReaderSeoMetadataPayload` using `resolveBookTags` (`src/lib/book-tags.ts`), `formatAuthorName`, and `SITE_CONFIG.GUTENBERG_EBOOK` to enrich `/read/[id]` `generateMetadata` (`keywords`, `authors`, `openGraph.authors`, `openGraph.tags`, genre/translator snippet `description`) and native Schema.org `Book` JSON-LD (`identifier`, `sameAs`, multi-author `author`, optional `translator`, `genre`, `keywords`) with zero visible UI changes or extra database queries, and updated co-located layout/telemetry tests.',
+      ],
+      Changed: [
+        'Sort-Aware Catalog Heading Strategy (`src/config/views.config.ts`, `src/config/views.config.test.ts`, `src/app/page.tsx`, `src/app/page.test.tsx`, `docs/DECISIONS.md`, `ADR-080`): Replaced the static unfiltered `Public Domain Books` catalog heading in `VIEW_CONTENT_CONFIG.catalog.getTitle` with `CATALOG_SORT_TITLES` resolving `Recent Books` (`descending`, empty, or default), `Popular Books` (`popular`), and `Oldest Books` (`ascending`), passed `sort` from `useCatalogFilters` into `viewConfig.getTitle({ search, topic, era, sort })` in `src/app/page.tsx` while keeping `Search Catalog` precedence whenever `search`, `topic`, or `era` is active, and expanded `views.config.test.ts` and `page.test.tsx` coverage.',
+      ],
+      Fixed: [
+        'Live Working-Tree Git Commit Anti-Drift Protocol (`AGENTS.md`, `.agents/AGENTS.md`, `ADR-073`): Strengthened Rule 7 (`AGENTS.md`) and Rule 5 (`.agents/AGENTS.md`) to require inspecting `git status --short`, `git diff HEAD`, and all `??` untracked files directly at request time instead of relying on conversation history when formulating Conventional Commit commands.',
+      ],
+    },
+  },
+  {
     version: '2.9.24',
     date: '2026-11-13',
     title: 'Scripts ESLint Enforcement, Non-Circular Pipeline Tests, Pass 4 Generator Sync & Governance Alignment',

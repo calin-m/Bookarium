@@ -22,11 +22,21 @@ describe('robots() route handler', () => {
 
     expect(allowed).toContain('/');
     expect(allowed).toContain('/privacy');
+    expect(allowed).toContain('/copyright');
     expect(allowed).toContain('/read/');
+    expect(allowed).toContain('/u/');
 
     expect(disallowed).toContain('/*?*search=*');
     expect(disallowed).toContain('/*?*topic=*');
     expect(disallowed).toContain('/*?*languages=*');
+    expect(disallowed).toContain('/*?*sort=*');
+    expect(disallowed).toContain('/*?*era=*');
+    expect(disallowed).toContain('/*?*format=*');
+    expect(disallowed).toContain('/*?*mime_type=*');
+    expect(disallowed).toContain('/*?*page=*');
+    expect(disallowed).toContain('/*?*size=*');
+    expect(disallowed).toContain('/*?*view=*');
+    expect(disallowed).not.toContain('/*?*s=*');
     expect(disallowed).toContain('/api/*');
     expect(disallowed).toContain('/auth/*');
     expect(disallowed).toContain('/account');

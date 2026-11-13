@@ -1,5 +1,6 @@
 import { Compass, Library, Heart, Highlighter, Bookmark, type LucideIcon } from 'lucide-react';
 import { LIBRARY_THEMES } from '@/config/library-tokens';
+import type { SortOption } from '@/config/catalog-filters';
 
 export type NavViewId = 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
 export type ViewId = NavViewId | 'account';
@@ -66,7 +67,12 @@ export const NAVBAR_VIEW_CONFIG: Record<ViewId, { label: string; activeColor: st
 
 export interface ViewContentStrategy {
   readonly eyebrow: string;
-  readonly getTitle: (filters?: { search?: string; topic?: string; era?: string }) => string;
+  readonly getTitle: (filters?: {
+    search?: string;
+    topic?: string;
+    era?: string;
+    sort?: SortOption['value'];
+  }) => string;
   readonly getSubtitle: (params: {
     count: number;
     booksData?: { count: number } | null;
@@ -80,13 +86,22 @@ export interface ViewContentStrategy {
   readonly clearButtonText?: string;
 }
 
+const CATALOG_SORT_TITLES: Record<SortOption['value'], string> = {
+  descending: 'Recent Books',
+  popular: 'Popular Books',
+  ascending: 'Oldest Books',
+  '': 'Recent Books',
+};
+
 export const VIEW_CONTENT_CONFIG: Record<'catalog' | 'bookshelf' | 'favorites', ViewContentStrategy> = {
   catalog: {
     eyebrow: 'SOME QUALITY BOOKS • ZERO COPYRIGHT',
-    getTitle: (filters) =>
-      filters?.search || filters?.topic || filters?.era
-        ? 'Search Catalog'
-        : 'Public Domain Books',
+    getTitle: (filters) => {
+      if (filters?.search || filters?.topic || filters?.era) {
+        return 'Search Catalog';
+      }
+      return CATALOG_SORT_TITLES[filters?.sort || 'descending'] ?? 'Recent Books';
+    },
     getSubtitle: ({ booksData, displayedCount = 0 }) => {
       if (!booksData) {
         return 'Searching Project Gutenberg catalog...';

@@ -947,6 +947,13 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       strategy: 'Off-thread Web Worker message lifecycle (`PARSE_BOOK`) and Edge Geo-IP / cookie / Supabase session refresh proxy tests.',
     },
     {
+      id: 'mocks',
+      layer: 'Hermetic Network Mocks & Test Interception',
+      scope: '`src/mocks/*.test.ts`',
+      match: (f) => f.startsWith('src/mocks/'),
+      strategy: 'Fail-closed MSW v2 request/response handler unit contracts, Gutendex/Gutenberg mirror fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
+    },
+    {
       id: 'scripts',
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
@@ -981,6 +988,96 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
     testSuites,
     layerBreakdown,
   };
+}
+
+/**
+ * Extracts AST upstream imports and downstream consumers for non-runtime test harness modules
+ * (`src/mocks/handlers.ts`, `src/mocks/server.ts`, `src/test/setup.ts`) without mutating
+ * the main `src/` runtime graph used for orphan and cycle checks.
+ */
+function extractTestHarnessAstDependencies(rootDir, graph) {
+  const harnessPaths = [
+    ['src', 'mocks', 'handlers.ts'],
+    ['src', 'mocks', 'server.ts'],
+    ['src', 'test', 'setup.ts'],
+  ];
+
+  const harnessRelPaths = harnessPaths.map((segments) => segments.join('/'));
+  const combinedFileSet = new Set([...graph.keys(), ...harnessRelPaths]);
+  const harnessNodes = new Map();
+
+  for (const segments of harnessPaths) {
+    const fileRel = segments.join('/');
+    const absPath = path.join(rootDir, ...segments);
+    if (!fs.existsSync(absPath)) continue;
+
+    const content = fs.readFileSync(absPath, 'utf-8');
+    const internalImports = [];
+
+    try {
+      const ast = parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx'],
+      });
+      traverse(ast, {
+        ImportDeclaration({ node }) {
+          const importSource = node.source.value;
+          if (importSource.startsWith('@/') || importSource.startsWith('.')) {
+            internalImports.push(importSource);
+          }
+        },
+        ExportNamedDeclaration({ node }) {
+          if (node.source && node.source.value) {
+            const importSource = node.source.value;
+            if (importSource.startsWith('@/') || importSource.startsWith('.')) {
+              internalImports.push(importSource);
+            }
+          }
+        },
+      });
+    } catch (_err) {
+      // Fallback: ignore parse failure on non-runtime harness helper
+    }
+
+    harnessNodes.set(fileRel, {
+      file: fileRel,
+      imports: Array.from(new Set(internalImports)),
+      consumedBy: [],
+    });
+  }
+
+  for (const [fileRel, nodeData] of harnessNodes.entries()) {
+    const normalizedImports = [];
+    for (const imp of nodeData.imports) {
+      const resolved = resolveImportPath(imp, fileRel, combinedFileSet);
+      if (resolved) {
+        normalizedImports.push(resolved.replace(/^src\//, ''));
+        if (harnessNodes.has(resolved)) {
+          const target = harnessNodes.get(resolved);
+          if (!target.consumedBy.includes(fileRel)) {
+            target.consumedBy.push(fileRel);
+          }
+        }
+      } else {
+        normalizedImports.push(imp);
+      }
+    }
+    nodeData.imports = Array.from(new Set(normalizedImports));
+  }
+
+  for (const [runtimeFile, runtimeData] of graph.entries()) {
+    for (const imp of runtimeData.imports || []) {
+      const resolved = resolveImportPath(imp, runtimeFile, combinedFileSet);
+      if (resolved && harnessNodes.has(resolved)) {
+        const target = harnessNodes.get(resolved);
+        if (!target.consumedBy.includes(runtimeFile)) {
+          target.consumedBy.push(runtimeFile);
+        }
+      }
+    }
+  }
+
+  return Array.from(harnessNodes.values());
 }
 
 /**
@@ -1083,7 +1180,7 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     NEXT_PUBLIC_SUPABASE_URL: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
       fallback: '100% Zero-API-Key Guest Mode: Catalog fails over to Gutendex REST API; collections persist in `localStorage` & `IndexedDB`.',
-      purpose: 'Supabase project URL for PostgreSQL catalog queries (`public.books`), FRBR translations, SSR auth cookies, and 6-store cloud sync.',
+      purpose: 'Supabase project URL for PostgreSQL catalog queries (`public.books`), FRBR translations, SSR auth cookies, and 7-store cloud sync.',
     },
     NEXT_PUBLIC_SUPABASE_ANON_KEY: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
@@ -1263,6 +1360,7 @@ module.exports = {
   extractServiceWorkerMetadata,
   extractWorkerCatalog,
   extractTestHarnessCatalog,
+  extractTestHarnessAstDependencies,
   extractPublicAssetsCatalog,
   extractEnvironmentDependencyCatalog,
 };

@@ -70,13 +70,14 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(twImages?.[0]).toContain(`/api/books/content?id=84&type=card&s=${signedToken}`);
   });
 
-  it('provides safe fallback metadata for invalid book ID', async () => {
+  it('provides safe noindex fallback metadata for invalid book ID', async () => {
     const meta = await generateMetadata({
       params: Promise.resolve({ id: 'invalid-id' }),
     });
 
     expect(meta.title).toEqual({ absolute: 'Bookarium | Reader' });
     expect(meta.description).toBeDefined();
+    expect(meta.robots).toEqual({ index: false, follow: false });
   });
 
   it('bypasses outbound network calls on client-side router navigation (rsc: 1 fast-path)', async () => {
@@ -156,7 +157,7 @@ describe('BookReaderLayout and generateMetadata', () => {
     );
   });
 
-  it('renders children and Schema.org Book JSON-LD script', async () => {
+  it('renders children, Schema.org Book JSON-LD, and BreadcrumbList script', async () => {
     const layoutJsx = await BookReaderLayout({
       params: Promise.resolve({ id: '84' }),
       children: <div data-testid="reader-child">Reader Content</div>,
@@ -170,11 +171,119 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(script).toBeInTheDocument();
     const parsed = JSON.parse(script!.textContent || '{}');
     expect(parsed['@type']).toBe('Book');
+    expect(parsed.bookFormat).toBe('https://schema.org/EBook');
+    expect(parsed.identifier).toBe('gutenberg:84');
+    expect(parsed.sameAs).toBe('https://www.gutenberg.org/ebooks/84');
     expect(parsed.name).toContain('Frankenstein');
     expect(parsed.author?.name).toContain('Shelley');
+    expect(parsed.author?.birthDate).toBe('1797');
+    expect(parsed.author?.deathDate).toBe('1851');
+    expect(Array.isArray(parsed.genre)).toBe(true);
+    expect(parsed.genre).toContain('Gothic');
+    expect(parsed.keywords).toContain('Gothic');
+
+    const breadcrumbScript = document.getElementById('reader-breadcrumb-jsonld');
+    expect(breadcrumbScript).toBeInTheDocument();
+    const breadcrumb = JSON.parse(breadcrumbScript!.textContent || '{}');
+    expect(breadcrumb['@type']).toBe('BreadcrumbList');
+    expect(breadcrumb.itemListElement).toHaveLength(2);
+    expect(breadcrumb.itemListElement[1].item).toContain('/read/84');
   });
 
-  it('falls back gracefully when upstream fetch times out or fails', async () => {
+  it('enriches OpenGraph tags, meta keywords, translators, lifespan dates, formats, and JSON-LD genre array from catalog metadata', async () => {
+    const mockTranslatedBook = {
+      id: 2600,
+      title: 'War and Peace',
+      authors: [
+        { name: 'Tolstoy, Leo', birth_year: 1828, death_year: 1910 },
+        { name: 'Editor, Companion', birth_year: 1835, death_year: 1905 },
+      ],
+      translators: [{ name: 'Maude, Louise', birth_year: 1855, death_year: 1939 }],
+      subjects: ['Historical fiction', 'War stories'],
+      bookshelves: ['Best Books Ever Listings', 'Category: Russian Literature'],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: {
+        'image/jpeg': 'https://example.com/2600.jpg',
+        'application/epub+zip': 'https://www.gutenberg.org/ebooks/2600.epub3.images',
+        'text/plain; charset=utf-8': 'https://www.gutenberg.org/files/2600/2600-0.txt',
+      },
+      download_count: 5000,
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: [mockTranslatedBook] }),
+    } as Response);
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ id: '2600' }),
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(meta.description).toContain('Genoa and Lucca');
+    expect(meta.description).toContain('translated by Louise Maude');
+    expect(meta.description).toContain('Historical');
+    expect(meta.keywords).toEqual(
+      expect.arrayContaining(['War and Peace', 'Leo Tolstoy', 'Louise Maude', 'Historical', 'War Stories'])
+    );
+    expect(meta.authors).toEqual([{ name: 'Leo Tolstoy' }, { name: 'Companion Editor' }]);
+
+    const og = meta.openGraph as { type?: string; authors?: string[]; tags?: string[] } | undefined;
+    expect(og?.type).toBe('book');
+    expect(og?.authors).toEqual(['Leo Tolstoy', 'Companion Editor']);
+    expect(og?.tags).toEqual(
+      expect.arrayContaining(['Russian Literature', 'Historical Fiction', 'War Stories', 'Historical', 'War'])
+    );
+    expect(og?.tags).not.toContain('Best Books Ever Listings');
+
+    const layoutJsx = await BookReaderLayout({
+      params: Promise.resolve({ id: '2600' }),
+      children: <div data-testid="translated-reader-child">Reader Content</div>,
+    });
+    render(layoutJsx);
+
+    const script = document.querySelector('script[type="application/ld+json"]');
+    expect(script).toBeInTheDocument();
+    const parsed = JSON.parse(script!.textContent || '{}');
+    expect(parsed.identifier).toBe('gutenberg:2600');
+    expect(parsed.bookFormat).toBe('https://schema.org/EBook');
+    expect(parsed.sameAs).toBe('https://www.gutenberg.org/ebooks/2600');
+    expect(parsed.author).toEqual([
+      { '@type': 'Person', name: 'Leo Tolstoy', birthDate: '1828', deathDate: '1910' },
+      { '@type': 'Person', name: 'Companion Editor', birthDate: '1835', deathDate: '1905' },
+    ]);
+    expect(parsed.translator).toEqual({
+      '@type': 'Person',
+      name: 'Louise Maude',
+      birthDate: '1855',
+      deathDate: '1939',
+    });
+    expect(parsed.encoding).toEqual([
+      { '@type': 'MediaObject', encodingFormat: 'application/epub+zip' },
+      { '@type': 'MediaObject', encodingFormat: 'text/plain' },
+    ]);
+    expect(parsed.genre).toEqual(
+      expect.arrayContaining(['Russian Literature', 'Historical Fiction', 'War Stories', 'Historical', 'War'])
+    );
+    expect(parsed.keywords).toContain('Historical');
+  });
+
+  it('marks explicitly confirmed-missing numeric book IDs as noindex while preserving fallback UI', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: [] }),
+    } as Response);
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ id: '999998' }),
+    });
+
+    expect(meta.robots).toEqual({ index: false, follow: true });
+  });
+
+  it('falls back gracefully without noindex when upstream fetch times out or fails', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError'));
 
     const meta = await generateMetadata({
@@ -183,6 +292,7 @@ describe('BookReaderLayout and generateMetadata', () => {
 
     expect(meta.title).toBeDefined();
     expect(meta.description).toBeDefined();
+    expect(meta.robots).toBeUndefined();
 
     const layoutJsx = await BookReaderLayout({
       params: Promise.resolve({ id: '999999' }),

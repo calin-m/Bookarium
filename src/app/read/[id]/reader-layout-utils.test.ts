@@ -5,9 +5,13 @@ import {
   serverMetadataCache,
   setServerMetadataCache,
   clearServerMetadataCache,
+  isConfirmedMissingBook,
+  clearConfirmedNotFoundCache,
   isClientSideNavigation,
   fetchBookData,
+  buildReaderSeoMetadataPayload,
 } from './reader-layout-utils';
+import { resolveBookMetadata } from '@/lib/book-metadata';
 import type { GutendexBook } from '@/types/book.types';
 
 vi.mock('next/headers', () => ({
@@ -195,7 +199,7 @@ describe('reader-layout-utils', () => {
       }
     });
 
-    it('returns null on upstream fetch error or 404', async () => {
+    it('records confirmed missing IDs on 404 or empty upstream results but never on network exceptions', async () => {
       const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -207,23 +211,113 @@ describe('reader-layout-utils', () => {
 
         const result = await fetchBookData(999999);
         expect(result).toBeNull();
+        expect(isConfirmedMissingBook(999999)).toBe(true);
+
+        clearConfirmedNotFoundCache();
+        expect(isConfirmedMissingBook(999999)).toBe(false);
+
+        vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+
+        const offlineResult = await fetchBookData(55555);
+        expect(offlineResult).toBeNull();
+        expect(isConfirmedMissingBook(55555)).toBe(false);
       } finally {
         process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
       }
     });
+  });
 
-    it('returns null on network failure / exception', async () => {
-      const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  describe('buildReaderSeoMetadataPayload', () => {
+    it('normalizes tags, lifespan contributors, formats, featured opening hooks, and Gutenberg URL without duplicates', () => {
+      const meta = resolveBookMetadata({
+        id: 2600,
+        booksData: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 2600,
+              title: 'War and Peace',
+              authors: [
+                { name: 'Tolstoy, Leo, graf', birth_year: 1828, death_year: 1910 },
+                { name: 'Coauthor, Second', birth_year: 1830, death_year: 1900 },
+              ],
+              translators: [
+                { name: 'Maude, Louise', birth_year: 1855, death_year: 1939 },
+                { name: 'Maude, Aylmer', birth_year: 1858, death_year: 1938 },
+              ],
+              subjects: [
+                'Historical fiction',
+                'War stories',
+                'Russia -- History -- Fiction',
+              ],
+              bookshelves: [
+                'Best Books Ever Listings',
+                'Category: Historical Fiction',
+              ],
+              languages: ['en'],
+              copyright: false,
+              media_type: 'Text',
+              formats: {
+                'application/epub+zip': 'https://www.gutenberg.org/ebooks/2600.epub3.images',
+                'text/html; charset=utf-8': 'https://www.gutenberg.org/files/2600/2600-h/2600-h.htm',
+                'text/plain; charset=utf-8': 'https://www.gutenberg.org/files/2600/2600-0.txt',
+              },
+              download_count: 12000,
+            },
+          ],
+        },
+      });
 
-      try {
-        vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+      const seo = buildReaderSeoMetadataPayload(meta, 2600, {
+        'application/epub+zip': 'https://www.gutenberg.org/ebooks/2600.epub3.images',
+        'text/html; charset=utf-8': 'https://www.gutenberg.org/files/2600/2600-h/2600-h.htm',
+        'text/plain; charset=utf-8': 'https://www.gutenberg.org/files/2600/2600-0.txt',
+      });
 
-        const result = await fetchBookData(55555);
-        expect(result).toBeNull();
-      } finally {
-        process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
-      }
+      expect(seo.authorNames).toEqual(['graf Leo Tolstoy', 'Second Coauthor']);
+      expect(seo.authorsMeta).toEqual([
+        { name: 'graf Leo Tolstoy', birthDate: '1828', deathDate: '1910' },
+        { name: 'Second Coauthor', birthDate: '1830', deathDate: '1900' },
+      ]);
+      expect(seo.translatorsMeta).toEqual([
+        { name: 'Louise Maude', birthDate: '1855', deathDate: '1939' },
+        { name: 'Aylmer Maude', birthDate: '1858', deathDate: '1938' },
+      ]);
+      expect(seo.availableFormats).toEqual([
+        'application/epub+zip',
+        'text/html',
+        'text/plain',
+      ]);
+      expect(seo.translatorNames).toEqual(['Louise Maude', 'Aylmer Maude']);
+      expect(seo.genres).toContain('Historical Fiction');
+      expect(seo.genres).toContain('War Stories');
+      expect(seo.genres).toContain('Historical');
+      expect(seo.genres).not.toContain('Best Books Ever Listings');
+      expect(seo.description).toContain('Genoa and Lucca');
+      expect(seo.description).toContain('War and Peace');
+      expect(seo.description).toContain('translated by Louise Maude, Aylmer Maude');
+      expect(seo.description).toContain('Historical Fiction');
+      expect(seo.keywords).toContain('War and Peace');
+      expect(seo.keywords).toContain('Historical Fiction');
+      expect(seo.keywords).toContain('Public Domain Books');
+      expect(seo.gutenbergUrl).toBe('https://www.gutenberg.org/ebooks/2600');
+    });
+
+    it('falls back safely when subjects, bookshelves, formats, and authentic authors are absent', () => {
+      const meta = resolveBookMetadata({ id: 999999 });
+      const seo = buildReaderSeoMetadataPayload(meta, 999999);
+
+      expect(seo.authorNames).toEqual([]);
+      expect(seo.authorsMeta).toEqual([]);
+      expect(seo.translatorNames).toEqual([]);
+      expect(seo.translatorsMeta).toEqual([]);
+      expect(seo.availableFormats).toEqual([]);
+      expect(seo.genres).toEqual(['Classics']);
+      expect(seo.description).toContain('Gutenberg Volume #999999');
+      expect(seo.keywords).toContain('Classics');
+      expect(seo.gutenbergUrl).toBe('https://www.gutenberg.org/ebooks/999999');
     });
   });
 });

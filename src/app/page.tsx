@@ -667,7 +667,7 @@ function HomeContent() {
               {/* Booksaw Centered Section Header */}
               <SectionHeader
                 eyebrow={viewConfig.eyebrow}
-                title={viewConfig.getTitle({ search, topic, era })}
+                title={viewConfig.getTitle({ search, topic, era, sort })}
                 subtitle={
                   activeView === 'bookshelf' && incompleteSavedIds.length > 0 && isHealing
                     ? `You have ${collectionCount} titles preserved on your personal shelf (verifying public domain clearance...)`

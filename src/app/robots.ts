@@ -6,11 +6,18 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/privacy', '/read/'],
+        allow: ['/', '/privacy', '/copyright', '/read/', '/u/'],
         disallow: [
           '/*?*search=*',
           '/*?*topic=*',
           '/*?*languages=*',
+          '/*?*sort=*',
+          '/*?*era=*',
+          '/*?*format=*',
+          '/*?*mime_type=*',
+          '/*?*page=*',
+          '/*?*size=*',
+          '/*?*view=*',
           '/api/*',
           '/auth/*',
           '/account',

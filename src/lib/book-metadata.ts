@@ -9,6 +9,8 @@ export interface ResolvedBookIdentity {
   author: string;
   displayAuthor: string;
   primarySubject: string;
+  subjects: string[];
+  bookshelves: string[];
   languages: string[];
   isPublicDomain: boolean;
   authors: Author[];
@@ -217,11 +219,38 @@ export function resolveBookMetadata({
 
   const resolvedTitle = cleanBookTitle(candidateTitle);
 
-  // Primary Subject
+  // Primary Subject, Subjects & Curated Bookshelves
+  const storeSubjects = Array.isArray(storeBook?.subjects)
+    ? storeBook.subjects.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+    : [];
+  const apiSubjects = Array.isArray(apiBook?.subjects)
+    ? apiBook.subjects.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+    : [];
+  const resolvedSubjects =
+    storeSubjects.length > 0
+      ? storeSubjects
+      : apiSubjects.length > 0
+      ? apiSubjects
+      : featuredFixture?.primarySubject
+      ? [featuredFixture.primarySubject]
+      : [];
+
+  const rawStoreBookshelves =
+    storeBook && 'bookshelves' in storeBook && Array.isArray(storeBook.bookshelves)
+      ? storeBook.bookshelves
+      : [];
+  const storeBookshelves = rawStoreBookshelves.filter(
+    (b): b is string => typeof b === 'string' && b.trim().length > 0
+  );
+  const apiBookshelves = Array.isArray(apiBook?.bookshelves)
+    ? apiBook.bookshelves.filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+    : [];
+  const resolvedBookshelves = storeBookshelves.length > 0 ? storeBookshelves : apiBookshelves;
+
   const primarySubject =
-    (storeBook?.subjects && formatPrimarySubject(storeBook.subjects)) ||
+    (storeSubjects.length > 0 && formatPrimarySubject(storeSubjects)) ||
     featuredFixture?.primarySubject ||
-    (apiBook?.subjects && formatPrimarySubject(apiBook.subjects)) ||
+    (apiSubjects.length > 0 && formatPrimarySubject(apiSubjects)) ||
     'Classic Literature';
 
   // Languages Resolution Priority: Store (matching ID) -> API Result -> Raw Header Extraction -> Fallback ['en']
@@ -313,6 +342,8 @@ export function resolveBookMetadata({
     author: resolvedAuthor,
     displayAuthor: resolvedAuthor || 'Public Domain Classic',
     primarySubject,
+    subjects: resolvedSubjects,
+    bookshelves: resolvedBookshelves,
     languages: resolvedLanguages,
     isPublicDomain: true,
     authors: resolvedAuthors,

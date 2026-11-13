@@ -1791,6 +1791,33 @@ describe('Home page integration', () => {
     fireEvent.click(screen.getByTestId('collection-floating-search-backdrop'));
     expect(screen.queryByTestId('collection-floating-search-wrapper')).not.toBeInTheDocument();
   });
+
+  it('updates catalog section heading dynamically across Recent, Popular, Oldest, and Search states', () => {
+    renderHome();
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Recent Books' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('open-filters-btn'));
+    fireEvent.click(screen.getByTestId('sort-option-popular'));
+    fireEvent.click(screen.getByTestId('apply-filters-btn'));
+    expect(screen.getByRole('heading', { level: 2, name: 'Popular Books' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('open-filters-btn'));
+    fireEvent.click(screen.getByTestId('sort-option-ascending'));
+    fireEvent.click(screen.getByTestId('apply-filters-btn'));
+    expect(screen.getByRole('heading', { level: 2, name: 'Oldest Books' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('open-filters-btn'));
+    fireEvent.click(screen.getByTestId('era-option-victorian'));
+    fireEvent.click(screen.getByTestId('apply-filters-btn'));
+    expect(screen.getByRole('heading', { level: 2, name: 'Search Catalog' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('open-filters-btn'));
+    fireEvent.click(screen.getByTestId('sort-option-descending'));
+    fireEvent.click(screen.getByTestId('era-option-all'));
+    fireEvent.click(screen.getByTestId('apply-filters-btn'));
+    expect(screen.getByRole('heading', { level: 2, name: 'Recent Books' })).toBeInTheDocument();
+  });
 });
 
 

@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-241%20Suites%20%7C%202522%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.48%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-246%20Suites%20%7C%202542%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.47%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2522 tests across 241 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2542 tests across 246 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,12 +108,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.24)
+## 🛠️ Latest Improvements (v2.9.26)
 
-- **Script Workspace ESLint Coverage & Unused Binding Remediation (`ADR-073`)**: Removed `scripts/**` from `globalIgnores` in `eslint.config.mjs`, scoped `@typescript-eslint/no-require-imports: "off"` to `scripts/**/*.js` with `caughtErrorsIgnorePattern: "^_"`, and resolved script lint warnings and single-line test `require()` disable placement with zero warnings.
-- **Non-Circular CLI Catalog Pipeline Testing & Vitest V8 Scope Isolation (`ADR-073`)**: Guarded `scripts/ingest-catalog.js` CLI entrypoints behind `require.main === module`, exported pure SQL and URL helpers tested by co-located `scripts/ingest-catalog.test.ts` (9 tests), and enforced Pass 5 1:1 co-location across all `src/app/**` entrypoints and 5 testable CLI/security scripts (241 Vitest suites) while keeping standalone verify/doc/hook runners outside `src/` V8 coverage.
-- **Verification Engine Pass 4 Direct Generator Execution & Pass 0.5/Pass 5 Drift Fixes (`ADR-073`)**: Updated `pass4DocsSync()` to invoke exported generators from `generate-changelog.js` and `generate-roadmap.js`, extended Pass 0.5 `.env.example` scanning across `scripts/` (excluding `scripts/eslint-rules/` and trailing-`_` tokens), added non-blocking Pass 5 `[ADVISORY]` architecture-sync drift logging, updated cold-start fallback coverage baselines in `generate-quality-report.js`, and aligned `.husky/pre-commit` staging across all generated outputs.
-- **Governance, Architecture Matrix & Hook Manifest Terminology Alignment (`ADR-073`)**: Clarified `approval-gate.js` / `.agents/hooks.json` command-manifest binding validation, aligned CI workflow snippets (`npm ci` + `npm run verify:build`) and `241`-suite / `14`-table / `8`-store / `7`-store cloud sync / `limit=48` / RSC bypass descriptions, and registered `ingest-catalog.test.ts` across living architecture diagrams.
+- **Holistic Route Metadata Layouts, Filter-Safe Robots & Synchronous Sitemap Expansion (`ADR-016`)**: Added canonical OpenGraph/Twitter metadata layout for `/copyright`, explicit `noindex` layout for `/auth/confirm-deletion`, `SITE_CONFIG.SITE_URL` + Twitter card parity on `/privacy`, expanded synchronous `sitemap.ts` with `/copyright` and deduplicated `FEATURED_HERO_BOOKS` entries without DB egress, and updated `robots.ts` to allow `/copyright` and `/u/` while blocking catalog filter permutations and preserving `?s=` Reading Card share tokens.
+- **Dynamic Public Scholar Profile Metadata & Anti-Enumeration Layout (`ADR-033`)**: Extracted shared server-only `isClientSideNavigation` into `src/lib/server-rsc-nav.ts` and added a cached Zero-PII profile resolver (`500`-entry `5m` LRU cache, SQL `ILIKE` wildcard post-filter) emitting `profile` OpenGraph, Twitter cards, and `ProfilePage` JSON-LD for public handles while collapsing private and nonexistent handles to an identical neutral `noindex` fallback.
+- **Reader Lifespan Schema, Formats, Opening Hooks, Breadcrumbs & Missing-ID Noindex (`src/app/read/[id]/reader-layout-utils.ts`, `src/app/read/[id]/layout.tsx`, `ADR-016`)**: Enriched `buildReaderSeoMetadataPayload` and `/read/[id]` JSON-LD with contributor `birthDate`/`deathDate`, `bookFormat`/`MediaObject` `encoding`, featured `openingLine` description excerpts, a companion `BreadcrumbList` JSON-LD script, and timeout-safe `noindex` only on invalid or confirmed-missing IDs alongside full co-located test coverage.
+- **Living Architecture AST Sync Order, C4 SSR/Crawler Topology, L4/L5 Parity & Test Harness Inventory (`ADR-079`)**: Reordered `docs:sync` and `pass4DocsSync()` so `generate-quality-report.js` refreshes suite/test telemetry before `generate-architecture-matrix.js`, enforced Pass 5 audit-summary and layer-sum parity checks, added the 9th test-harness distribution layer (`src/mocks/*.test.ts`), multi-test `.security.test.ts` linking, and AST test-harness rows, expanded C4 SSR/crawler nodes (`ProfileLayoutServer`, `StaticSeoRoutes`), `L4` `serverProfileCache`/`confirmedNotFoundIds` caches, `public.profiles` SSR consumers, sort-aware Catalog homepage metadata, `LICENSE`/`.github/` manifests, and unified `7-Store` anchors.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -285,7 +285,9 @@ flowchart TD
         ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]
         ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]
-        LayoutServer["Server Layout (/read/[id])\n(React.cache, ISR 24h, OpenGraph, JSON-LD)"]
+        LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
+        ProfileLayoutServer["Server Layout (/u/[username])\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]
+        StaticSeoRoutes["SSR Metadata & Crawler Gateways\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • sitemap.ts)"]
     end
 
     subgraph LegalLayer ["Jurisdictional Copyright & Content Safety Engine"]
@@ -310,6 +312,15 @@ flowchart TD
     end
 
     User --> RootProxy
+    User --> LayoutServer
+    User --> ProfileLayoutServer
+    User -->|"Legal, Privacy & Sitemap"| StaticSeoRoutes
+    LayoutServer -->|"SSR Catalog/Hero Lookup (React.cache)"| SupabaseCloud
+    ProfileLayoutServer -->|"Zero-PII Public Handle Check"| SupabaseCloud
+    ProfileLayoutServer --> ProfilePage
+    ProfilePage -.->|"SSR/Client Public Profile Query"| SupabaseCloud
+    StaticSeoRoutes --> PrivacyView
+    StaticSeoRoutes --> CopyrightView
     RootProxy --> Providers
     Providers --> SWReg
     Providers --> AuthModalNode
@@ -438,7 +449,7 @@ flowchart TD
 | **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/ARCHITECTURE.md#2-focus-reader-state--typography-engine](docs/ARCHITECTURE.md) |
 | **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |
 | **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |
-| **5** | **Cold Launch & 6-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--6-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |
+| **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |
 | **6** | **Focus Reader Launch & Multi-Mirror Stream** | HTTP 451 Gatekeeping, 4 Gutenberg Mirrors & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-multi-mirror-streaming--worker-ast](docs/ARCHITECTURE.md) |
 | **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v7, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |
 | **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/ARCHITECTURE.md#1-github-actions--database-ingestion-topology](docs/ARCHITECTURE.md) |

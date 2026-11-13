@@ -57,9 +57,13 @@ describe('views.config', () => {
   describe('VIEW_CONTENT_CONFIG', () => {
     it('correctly calculates catalog titles and subtitles', () => {
       const catalog = VIEW_CONTENT_CONFIG.catalog;
-      expect(catalog.getTitle()).toBe('Public Domain Books');
-      expect(catalog.getTitle({ search: 'dickens' })).toBe('Search Catalog');
-      expect(catalog.getTitle({ topic: 'fiction' })).toBe('Search Catalog');
+      expect(catalog.getTitle()).toBe('Recent Books');
+      expect(catalog.getTitle({ sort: 'descending' })).toBe('Recent Books');
+      expect(catalog.getTitle({ sort: '' })).toBe('Recent Books');
+      expect(catalog.getTitle({ sort: 'popular' })).toBe('Popular Books');
+      expect(catalog.getTitle({ sort: 'ascending' })).toBe('Oldest Books');
+      expect(catalog.getTitle({ search: 'dickens', sort: 'popular' })).toBe('Search Catalog');
+      expect(catalog.getTitle({ topic: 'fiction', sort: 'ascending' })).toBe('Search Catalog');
       expect(catalog.getTitle({ era: 'victorian' })).toBe('Search Catalog');
 
       expect(catalog.getSubtitle({ count: 0, booksData: null })).toBe('Searching Project Gutenberg catalog...');
