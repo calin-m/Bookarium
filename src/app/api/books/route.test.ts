@@ -8,6 +8,23 @@ describe('GET /api/books route handler', () => {
     booksApiRateLimiter.reset();
   });
 
+  it('should reject unsupported query params and production ?country= overrides with 400 no-store and same-origin CORP', async () => {
+    const unknownReq = new NextRequest('http://localhost:3000/api/books?search=Austen&foo=bar');
+    const unknownRes = await GET(unknownReq);
+
+    expect(unknownRes.status).toBe(400);
+    expect(unknownRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(unknownRes.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(unknownRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+
+    vi.stubEnv('NODE_ENV', 'production');
+    const prodCountryReq = new NextRequest('http://localhost:3000/api/books?search=Austen&country=GB');
+    const prodCountryRes = await GET(prodCountryReq);
+    expect(prodCountryRes.status).toBe(400);
+    expect(prodCountryRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    vi.unstubAllEnvs();
+  });
+
   it('should return 429 when client exceeds max request rate limit', async () => {
     vi.spyOn(booksApiRateLimiter, 'check').mockReturnValueOnce({
       success: false,
@@ -19,6 +36,8 @@ describe('GET /api/books route handler', () => {
     const blockedReq = new NextRequest('http://localhost:3000/api/books?search=Jane');
     const blockedRes = await GET(blockedReq);
     expect(blockedRes.status).toBe(429);
+    expect(blockedRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    expect(blockedRes.headers.get('X-Content-Type-Options')).toBe('nosniff');
     const json = await blockedRes.json();
     expect(json.error).toMatch(/too many requests/i);
     expect(blockedRes.headers.get('Retry-After')).toBe('45');
@@ -33,6 +52,8 @@ describe('GET /api/books route handler', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
     expect(json.results).toBeDefined();
     expect(Array.isArray(json.results)).toBe(true);
@@ -186,6 +207,8 @@ describe('GET /api/books route handler', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
     expect(json.results).toBeDefined();
   });
@@ -315,6 +338,8 @@ describe('GET /api/books route handler', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
     expect(json.source).toBe('supabase');
     expect(json.results).toHaveLength(1);
@@ -352,6 +377,8 @@ describe('GET /api/books route handler', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
     expect(json.source).toBe('upstream');
     expect(json.results).toHaveLength(1);

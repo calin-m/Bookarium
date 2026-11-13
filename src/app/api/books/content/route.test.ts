@@ -4,7 +4,11 @@ import { GET } from './route';
 import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { sampleBookText } from '@/mocks/handlers';
-import { bookContentRateLimiter } from '@/lib/rate-limiter';
+import {
+  bookContentRateLimiter,
+  bookCardRateLimiter,
+  bookCoverRateLimiter,
+} from '@/lib/rate-limiter';
 import { encodeReadingCardShareToken } from '@/lib/reading-card-export';
 
 describe('GET /api/books/content', () => {
@@ -13,6 +17,8 @@ describe('GET /api/books/content', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     bookContentRateLimiter.reset();
+    bookCardRateLimiter.reset();
+    bookCoverRateLimiter.reset();
     clearBookMetadataCache();
     clearBookContentCache();
   });
@@ -44,8 +50,69 @@ describe('GET /api/books/content', () => {
     const res = await GET(req);
 
     expect(res.status).toBe(400);
+    expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
     expect(json.error).toMatch(/missing/i);
+  });
+
+  it('should reject unknown query params, unsupported types, stray share tokens, and production ?country= overrides', async () => {
+    const unknownRes = await GET(
+      new NextRequest('http://localhost:3000/api/books/content?id=1342&unexpected=1')
+    );
+    expect(unknownRes.status).toBe(400);
+    expect(unknownRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(unknownRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    expect(unknownRes.headers.get('X-Content-Type-Options')).toBe('nosniff');
+
+    const badTypeRes = await GET(
+      new NextRequest('http://localhost:3000/api/books/content?id=1342&type=pdf')
+    );
+    expect(badTypeRes.status).toBe(400);
+    expect(badTypeRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+
+    const strayShareRes = await GET(
+      new NextRequest('http://localhost:3000/api/books/content?id=1342&s=abc')
+    );
+    expect(strayShareRes.status).toBe(400);
+    expect(strayShareRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+
+    vi.stubEnv('NODE_ENV', 'production');
+    const prodCountryRes = await GET(
+      new NextRequest('http://localhost:3000/api/books/content?id=1342&country=GB')
+    );
+    expect(prodCountryRes.status).toBe(400);
+    expect(prodCountryRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    vi.unstubAllEnvs();
+  });
+
+  it('routes type=card and type=cover requests through dedicated mode-scoped rate limiters', async () => {
+    const cardSpy = vi.spyOn(bookCardRateLimiter, 'check').mockReturnValueOnce({
+      success: false,
+      limit: 20,
+      remaining: 0,
+      resetMs: 30000,
+    });
+    const cardBlocked = await GET(
+      new NextRequest('http://localhost:3000/api/books/content?id=1342&type=card')
+    );
+    expect(cardSpy).toHaveBeenCalledTimes(1);
+    expect(cardBlocked.status).toBe(429);
+    expect(cardBlocked.headers.get('X-RateLimit-Limit')).toBe('20');
+    expect(cardBlocked.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+
+    const coverSpy = vi.spyOn(bookCoverRateLimiter, 'check').mockReturnValueOnce({
+      success: false,
+      limit: 60,
+      remaining: 0,
+      resetMs: 25000,
+    });
+    const coverBlocked = await GET(
+      new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover')
+    );
+    expect(coverSpy).toHaveBeenCalledTimes(1);
+    expect(coverBlocked.status).toBe(429);
+    expect(coverBlocked.headers.get('X-RateLimit-Limit')).toBe('60');
   });
 
   it('should block SSRF attempts targeting cloud metadata or internal network', async () => {
@@ -594,6 +661,8 @@ describe('GET /api/books/content', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('image/jpeg');
       expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
+      expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
       const buffer = await res.arrayBuffer();
       expect(new Uint8Array(buffer)).toEqual(fakeJpegBytes);
 
@@ -723,6 +792,8 @@ describe('GET /api/books/content', () => {
         'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800'
       );
       expect(res.headers.get('X-Bookarium-Source')).toBe('supabase');
+      expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
       expect(fetchSpy).not.toHaveBeenCalled();
 
       fetchSpy.mockRestore();
@@ -750,6 +821,8 @@ describe('GET /api/books/content', () => {
       expect(resWithToken.status).toBe(200);
       expect(resWithToken.headers.get('Content-Type')).toContain('image/png');
       expect(resWithToken.headers.get('Cache-Control')).toContain('s-maxage=86400');
+      expect(resWithToken.headers.get('Cross-Origin-Resource-Policy')).toBe('cross-origin');
+      expect(resWithToken.headers.get('X-Content-Type-Options')).toBe('nosniff');
 
       const reqFallback = new NextRequest(
         'http://localhost:3000/api/books/content?id=1342&type=card&s=tampered_token'

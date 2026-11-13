@@ -650,7 +650,12 @@ function HomeContent() {
               }}
             />
           ) : (
-            <div id="catalog-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-12 pb-8 sm:pb-12 scroll-mt-16 sm:scroll-mt-20 [overflow-anchor:none]">
+            <div
+              id="catalog-section"
+              className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${
+                activeView === 'catalog' ? 'pt-6 sm:pt-12 pb-8 sm:pb-12' : 'py-6 sm:py-12'
+              } scroll-mt-16 sm:scroll-mt-20 [overflow-anchor:none]`}
+            >
               {activeView === 'catalog' && isOffline && (
                 <div
                   data-testid="catalog-offline-downloaded-banner"

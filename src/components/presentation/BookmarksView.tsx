@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   Bookmark,
   CheckCircle2,
-  Compass,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
@@ -13,6 +12,7 @@ import { useContinueReadingLedger } from '@/hooks/reader/useContinueReadingLedge
 import { useMobileViewportCardFocus } from '@/hooks/useMobileViewportCardFocus';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { BookmarkCard } from './BookmarkCard';
+import { CollectionEmptyState, COLLECTION_EMPTY_ACTION_CLASS } from './CollectionEmptyState';
 import { CollectionToolbar, type SortOption } from './CollectionToolbar';
 import { CollectionBottomDock } from './CollectionBottomDock';
 import { CollectionFloatingSearch } from './CollectionFloatingSearch';
@@ -249,7 +249,7 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
       <SectionHeader
         eyebrow="READING LEDGER • PROGRESSIVE RESUME"
         title="Bookmarks"
-        subtitle="Pick up right where you left off across all your volumes."
+        subtitle={`You have ${counts.all} ${counts.all === 1 ? 'volume' : 'volumes'} in your reading ledger`}
       >
         {/* Clear Bookmarks Button */}
         {counts.all > 0 && (
@@ -299,71 +299,65 @@ export const BookmarksView: React.FC<BookmarksViewProps> = ({ onBrowseCatalog })
         transitionKey={`bookmarks-${activeFilter}-${sortBy}-${safeCurrentPage}-${searchQuery.trim()}`}
       >
         {filteredVolumes.length === 0 ? (
-          <div className="bg-card rounded-2xl border border-border p-12 text-center max-w-lg mx-auto shadow-xs">
-            <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-              <Bookmark className="w-8 h-8" />
-            </div>
-
-            <h3 className="font-serif font-bold text-xl text-foreground mb-2">
-              {searchQuery.trim()
+          <CollectionEmptyState
+            icon={<Bookmark className="w-8 h-8" />}
+            iconContainerClassName="bg-primary/10 text-primary"
+            title={
+              searchQuery.trim()
                 ? `No bookmarks matching "${searchQuery}"`
                 : activeFilter === 'downloaded' || sortBy === 'downloaded'
                 ? 'No downloaded volumes'
                 : activeFilter === 'all'
                 ? 'No active reading volumes yet'
-                : `No volumes marked as ${activeFilter.replace('_', ' ')}`}
-            </h3>
-
-            <p className="text-sm text-muted-foreground font-serif leading-relaxed mb-6">
-              {searchQuery.trim()
+                : `No volumes marked as ${activeFilter.replace('_', ' ')}`
+            }
+            description={
+              searchQuery.trim()
                 ? 'Try adjusting your search terms, author name, or clear the search query.'
                 : activeFilter === 'downloaded' || sortBy === 'downloaded'
                 ? 'Volumes saved for offline reading will appear here.'
-                : 'Volumes you begin reading or place bookmarks in will appear in this ledger with exact coordinates, completion percentages, and one-click chapter resume.'}
-            </p>
-
-            {searchQuery.trim() ? (
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => setSearchQuery('')}
-                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
-              >
-                <span>Clear Search</span>
-              </Button>
-            ) : activeFilter !== 'all' ? (
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => {
-                  setActiveFilter('all');
-                  if (sortBy === 'downloaded') setSortBy('recent');
-                }}
-                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
-              >
-                <span>View All Volumes</span>
-              </Button>
-            ) : sortBy === 'downloaded' ? (
-              <Button
-                variant="outline"
-                size="md"
-                onClick={() => setSortBy('recent')}
-                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
-              >
-                <span>View All Volumes</span>
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={onBrowseCatalog}
-                className="gap-2 font-mono text-xs uppercase tracking-wider font-bold mx-auto"
-              >
-                <Compass className="w-4 h-4" />
-                <span>Browse Library Catalog</span>
-              </Button>
-            )}
-          </div>
+                : 'Volumes you begin reading or place bookmarks in will appear in this ledger with exact coordinates, completion percentages, and one-click chapter resume.'
+            }
+            showExploreCatalog={!searchQuery.trim() && activeFilter === 'all' && sortBy !== 'downloaded'}
+            onExploreCatalog={
+              !searchQuery.trim() && activeFilter === 'all' && sortBy !== 'downloaded'
+                ? onBrowseCatalog
+                : undefined
+            }
+            actions={
+              searchQuery.trim() ? (
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => setSearchQuery('')}
+                  className={COLLECTION_EMPTY_ACTION_CLASS}
+                >
+                  <span>Clear Search</span>
+                </Button>
+              ) : activeFilter !== 'all' ? (
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => {
+                    setActiveFilter('all');
+                    if (sortBy === 'downloaded') setSortBy('recent');
+                  }}
+                  className={COLLECTION_EMPTY_ACTION_CLASS}
+                >
+                  <span>View All Volumes</span>
+                </Button>
+              ) : sortBy === 'downloaded' ? (
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => setSortBy('recent')}
+                  className={COLLECTION_EMPTY_ACTION_CLASS}
+                >
+                  <span>View All Volumes</span>
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <div id="bookmarks-grid-content" className="grid grid-cols-1 lg:grid-cols-2 gap-4 [overflow-anchor:none]">

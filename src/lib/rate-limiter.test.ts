@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { InMemoryRateLimiter } from './rate-limiter';
+import {
+  InMemoryRateLimiter,
+  booksApiRateLimiter,
+  bookContentRateLimiter,
+  bookCardRateLimiter,
+  bookCoverRateLimiter,
+} from './rate-limiter';
 
 describe('InMemoryRateLimiter', () => {
   let limiter: InMemoryRateLimiter;
@@ -125,6 +131,25 @@ describe('InMemoryRateLimiter', () => {
 
     // client-a was evicted so its next request succeeds as a fresh key
     expect(boundedLimiter.check('client-a').success).toBe(true);
+  });
+
+  it('exports mode-scoped global singletons with calibrated thresholds', () => {
+    booksApiRateLimiter.reset();
+    bookContentRateLimiter.reset();
+    bookCardRateLimiter.reset();
+    bookCoverRateLimiter.reset();
+
+    expect(booksApiRateLimiter.check('ip-1').limit).toBe(60);
+    expect(bookContentRateLimiter.check('ip-1').limit).toBe(30);
+    expect(bookCardRateLimiter.check('ip-1').limit).toBe(20);
+    expect(bookCoverRateLimiter.check('ip-1').limit).toBe(60);
+
+    // Exhausting bookCardRateLimiter (20/min) does not starve bookCoverRateLimiter
+    for (let i = 1; i < 20; i++) {
+      expect(bookCardRateLimiter.check('ip-1').success).toBe(true);
+    }
+    expect(bookCardRateLimiter.check('ip-1').success).toBe(false);
+    expect(bookCoverRateLimiter.check('ip-1').success).toBe(true);
   });
 });
 

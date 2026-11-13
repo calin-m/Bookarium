@@ -2,8 +2,18 @@ import React from 'react';
 import { NextRequest, NextResponse } from 'next/server';
 import { ImageResponse } from 'next/og';
 import { SITE_CONFIG } from '@/config/site-config';
-import { bookContentRateLimiter } from '@/lib/rate-limiter';
-import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
+import {
+  bookContentRateLimiter,
+  bookCardRateLimiter,
+  bookCoverRateLimiter,
+} from '@/lib/rate-limiter';
+import {
+  getClientIp,
+  createRateLimitErrorResponse,
+  buildApiSecurityHeaders,
+  hasUnexpectedQueryParams,
+  createNoStoreErrorResponse,
+} from '@/lib/api-utils';
 import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { resolveClientCountry } from '@/lib/country-resolver';
 import { formatAuthorName } from '@/lib/utils';
@@ -24,6 +34,9 @@ import { createClient } from '@/lib/supabase/client';
 
 const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
 const MAX_COVER_BYTES = 2 * 1024 * 1024; // 2 MB threshold for Gutenberg cover images
+const ALLOWED_CONTENT_QUERY_KEYS = new Set(['id', 'url', 'type', 's']);
+const DEV_ONLY_CONTENT_QUERY_KEYS = new Set(['country']);
+const SUPPORTED_CONTENT_TYPES = new Set(['', 'cover', 'card']);
 const inFlightMirrorFetches = new Map<
   number,
   Promise<{ textContent: string; fetchSuccess: boolean }>
@@ -31,29 +44,48 @@ const inFlightMirrorFetches = new Map<
 
 export async function GET(request: NextRequest) {
   const clientIp = getClientIp(request);
+  const { searchParams } = new URL(request.url);
+  const typeParam = (searchParams.get('type') || '').trim();
 
-  const rateLimit = bookContentRateLimiter.check(clientIp);
+  const activeRateLimiter =
+    typeParam === 'card'
+      ? bookCardRateLimiter
+      : typeParam === 'cover'
+      ? bookCoverRateLimiter
+      : bookContentRateLimiter;
+
+  const rateLimit = activeRateLimiter.check(clientIp);
   if (!rateLimit.success) {
     return createRateLimitErrorResponse(rateLimit);
   }
 
-  const { searchParams } = new URL(request.url);
+  if (
+    hasUnexpectedQueryParams(
+      searchParams,
+      ALLOWED_CONTENT_QUERY_KEYS,
+      DEV_ONLY_CONTENT_QUERY_KEYS
+    )
+  ) {
+    return createNoStoreErrorResponse('Unsupported or disallowed query parameter.', 400);
+  }
+
+  if (!SUPPORTED_CONTENT_TYPES.has(typeParam)) {
+    return createNoStoreErrorResponse('Unsupported content "type" parameter.', 400);
+  }
+
+  if (searchParams.has('s') && typeParam !== 'card') {
+    return createNoStoreErrorResponse('Share token "s" is only permitted with type=card.', 400);
+  }
+
   const urlParam = searchParams.get('url') || '';
   const idParam = searchParams.get('id') || '';
-  const typeParam = searchParams.get('type') || '';
 
   if (!urlParam && !idParam) {
-    return NextResponse.json(
-      { error: 'Missing "url" or "id" parameter.' },
-      { status: 400 }
-    );
+    return createNoStoreErrorResponse('Missing "url" or "id" parameter.', 400);
   }
 
   if (urlParam && !isSafeUpstreamUrl(urlParam)) {
-    return NextResponse.json(
-      { error: 'Invalid or unauthorized upstream content URL.' },
-      { status: 400 }
-    );
+    return createNoStoreErrorResponse('Invalid or unauthorized upstream content URL.', 400);
   }
 
   // Strictly extract numeric digits, convert to integer primitive to break string taint flow
@@ -65,10 +97,7 @@ export async function GET(request: NextRequest) {
 
   const bookId = parseInt(rawId, 10);
   if (!Number.isInteger(bookId) || bookId <= 0 || bookId > 10000000) {
-    return NextResponse.json(
-      { error: 'Missing or invalid Project Gutenberg book ID.' },
-      { status: 400 }
-    );
+    return createNoStoreErrorResponse('Missing or invalid Project Gutenberg book ID.', 400);
   }
 
   // Extract user jurisdiction through deterministic priority cascade
@@ -81,17 +110,13 @@ export async function GET(request: NextRequest) {
 
     if (!metadata) {
       // Fail-closed: Cannot stream unverified titles to non-US users
-      return NextResponse.json(
+      return createNoStoreErrorResponse(
+        'Unable to verify copyright clearance for your jurisdiction at this time.',
+        503,
         {
-          error: 'Unable to verify copyright clearance for your jurisdiction at this time.',
           country,
-          reason: 'Upstream metadata verification is unavailable. Streaming withheld under international fail-closed protocol.',
-        },
-        {
-          status: 503,
-          headers: {
-            'Vary': 'x-vercel-ip-country, Accept-Encoding',
-          },
+          reason:
+            'Upstream metadata verification is unavailable. Streaming withheld under international fail-closed protocol.',
         }
       );
     }
@@ -115,6 +140,7 @@ export async function GET(request: NextRequest) {
             'Content-Type': 'application/json',
             'Vary': 'x-vercel-ip-country, Accept-Encoding',
             'Cache-Control': 'public, s-maxage=86400',
+            ...buildApiSecurityHeaders('same-origin'),
           },
         }
       );
@@ -374,6 +400,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
         Vary: 'x-vercel-ip-country, Accept-Encoding',
+        ...buildApiSecurityHeaders('cross-origin'),
       },
     });
   }
@@ -458,6 +485,7 @@ export async function GET(request: NextRequest) {
             'Content-Type': 'image/jpeg',
             'Cache-Control': 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000',
             'Vary': 'x-vercel-ip-country, Accept-Encoding',
+            ...buildApiSecurityHeaders('same-origin'),
           },
         });
       } catch {
@@ -465,9 +493,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(
-      { error: 'Failed to fetch cover image from Project Gutenberg mirrors.' },
-      { status: 502 }
+    return createNoStoreErrorResponse(
+      'Failed to fetch cover image from Project Gutenberg mirrors.',
+      502
     );
   }
 
@@ -480,6 +508,7 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
       'Vary': 'x-vercel-ip-country, Accept-Encoding',
+      ...buildApiSecurityHeaders('same-origin'),
     };
     if (cachedBook.source === 'supabase') {
       responseHeaders['X-Bookarium-Source'] = 'supabase';
@@ -512,6 +541,7 @@ export async function GET(request: NextRequest) {
             'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
             'Vary': 'x-vercel-ip-country, Accept-Encoding',
             'X-Bookarium-Source': 'supabase',
+            ...buildApiSecurityHeaders('same-origin'),
           },
         });
       }
@@ -654,9 +684,9 @@ export async function GET(request: NextRequest) {
   const { textContent, fetchSuccess } = await mirrorPromise;
 
   if (!fetchSuccess || !textContent) {
-    return NextResponse.json(
-      { error: 'Failed to fetch unabridged text from Project Gutenberg upstream.' },
-      { status: 502 }
+    return createNoStoreErrorResponse(
+      'Failed to fetch unabridged text from Project Gutenberg upstream.',
+      502
     );
   }
 
@@ -668,6 +698,7 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
       'Vary': 'x-vercel-ip-country, Accept-Encoding',
+      ...buildApiSecurityHeaders('same-origin'),
     },
   });
 }

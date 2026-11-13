@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Highlighter,
-  BookOpen,
   Trash2,
   Layers,
   Clock,
@@ -13,6 +12,7 @@ import {
 import { NotebookQuoteCard } from './NotebookQuoteCard';
 import { NotebookFilterStrip } from './notebook/NotebookFilterStrip';
 import { NotebookVolumeGroup } from './notebook/NotebookVolumeGroup';
+import { CollectionEmptyState } from './CollectionEmptyState';
 import { CollectionToolbar } from './CollectionToolbar';
 import { CollectionBottomDock } from './CollectionBottomDock';
 import { CollectionFloatingSearch } from './CollectionFloatingSearch';
@@ -333,7 +333,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
           subtitle={
             annotations.length > 0
               ? `You have preserved ${annotations.length} passage${annotations.length === 1 ? '' : 's'} across ${uniqueBookCount} literary volume${uniqueBookCount === 1 ? '' : 's'}.`
-              : 'Capture, organize, and revisit prose excerpts, colorful thematic highlights, and personal reflections.'
+              : 'You have 0 passages preserved in your notebook'
           }
         >
           {annotations.length > 0 && (
@@ -353,23 +353,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({ onBrowseCatalog }) =
 
       {annotations.length === 0 && fellowAnnotations.length === 0 ? (
         /* Empty State */
-        <div className="max-w-md mx-auto my-12 p-8 text-center bg-card border border-border rounded-2xl shadow-booksaw space-y-5">
-          <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
-            <Highlighter className="w-8 h-8" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-serif font-bold text-foreground">Your Notebook is Empty</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground font-sans leading-relaxed">
-              When reading any volume in the catalog, select inspiring sentences to highlight them in editorial pastel shades and jot down your personal reflections.
-            </p>
-          </div>
-          {onBrowseCatalog && (
-            <Button onClick={onBrowseCatalog} className="gap-2 text-xs font-mono uppercase">
-              <BookOpen className="w-4 h-4" />
-              Explore Catalog
-            </Button>
-          )}
-        </div>
+        <CollectionEmptyState
+          icon={<Highlighter className="w-8 h-8" />}
+          iconContainerClassName="bg-amber-500/10 text-amber-500"
+          headingAs="h2"
+          title="Your Notebook is Empty"
+          description="When reading any volume in the catalog, select inspiring sentences to highlight them in editorial pastel shades and jot down your personal reflections."
+          onExploreCatalog={onBrowseCatalog}
+        />
       ) : (
         /* Notebook Content */
         <div className="space-y-6">

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Sparkles, Plus, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react';
+import { BookOpen, Library, Plus, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import type { GutendexBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { BookshelfSpine } from './bookshelf/BookshelfSpine';
 import { BookshelfMobileModal } from './bookshelf/BookshelfMobileModal';
 import { BookshelfManageModals } from './bookshelf/BookshelfManageModals';
+import { CollectionEmptyState, COLLECTION_EMPTY_ACTION_CLASS } from './CollectionEmptyState';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { ROUTES } from '@/config/routes';
 
@@ -317,7 +318,11 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     : (activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General'));
 
   return (
-    <div className="relative w-full pt-1 sm:pt-2 pb-6" data-testid="bookshelf-rack" ref={containerRef}>
+    <div
+      className={`relative w-full pt-1 sm:pt-2${effectiveShelfBooks.length > 0 ? ' pb-6' : ''}`}
+      data-testid="bookshelf-rack"
+      ref={containerRef}
+    >
       <div className="w-full space-y-6 sm:space-y-8">
         {/* Cloud Bookshelf Header & Multi-Shelf Switcher */}
         {showShelfControls && (
@@ -428,15 +433,14 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         {/* Guest Mode Sync Prompt */}
         {!user && (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-muted-foreground hidden sm:inline">Guest Mode (Local)</span>
+            <span className="text-xs font-mono text-muted-foreground hidden sm:inline">Guest Mode</span>
             <Button
               variant="primary"
               size="chip"
               onClick={() => openAuthModal('sign_in')}
               className="text-xs font-mono"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Sign in to Sync</span>
+              <span>Sign In</span>
             </Button>
           </div>
         )}
@@ -500,21 +504,20 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
         data-testid="shelf-content-container"
       >
         {effectiveShelfBooks.length === 0 ? (
-          <div className="text-center py-20 px-4 rounded-3xl border border-dashed border-border bg-card/40 backdrop-blur-xs max-w-lg mx-auto">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <h3 className="font-serif font-bold text-lg text-foreground mb-1">
-              {searchQuery?.trim()
+          <CollectionEmptyState
+            icon={showShelfControls ? <Library className="w-8 h-8" /> : <BookOpen className="w-8 h-8" />}
+            iconContainerClassName="bg-primary/10 text-primary"
+            title={
+              searchQuery?.trim()
                 ? !showShelfControls
                   ? `No volumes found matching "${searchQuery}"`
                   : `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
                 : !showShelfControls
                 ? 'No volumes found'
-                : `No books found on "${activeShelfDisplayName}"`}
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
-              {searchQuery?.trim()
+                : `No books found on "${activeShelfDisplayName}"`
+            }
+            description={
+              searchQuery?.trim()
                 ? !showShelfControls
                   ? 'Try searching for different keywords or clear the search filter.'
                   : 'Try searching for different keywords or clear the search query to see all books on this shelf.'
@@ -522,44 +525,46 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                 ? 'Try adjusting your search criteria or explore other categories in the catalog.'
                 : isViewingGeneral
                 ? 'Save your favorite books from the catalog to curate your personal classic library.'
-                : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'}
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              {searchQuery?.trim() && onClearSearch ? (
-                <Button
-                  variant="outline"
-                  size="chip"
-                  onClick={onClearSearch}
-                >
-                  Clear Search
-                </Button>
-              ) : showShelfControls ? (
-                <Button
-                  variant="outline"
-                  size="chip"
-                  onClick={() => {
+                : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'
+            }
+            onExploreCatalog={
+              !(searchQuery?.trim() && onClearSearch) && showShelfControls
+                ? () => {
                     if (onBrowseCatalog) {
                       onBrowseCatalog();
                     } else {
                       router.push(ROUTES.HOME);
                     }
-                  }}
-                >
-                  Browse Catalog
-                </Button>
-              ) : null}
-              {showShelfControls && !user && (
-                <Button
-                  variant="primary"
-                  size="chip"
-                  onClick={() => openAuthModal('sign_in')}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Sign In to Sync</span>
-                </Button>
-              )}
-            </div>
-          </div>
+                  }
+                : undefined
+            }
+            actions={
+              (searchQuery?.trim() && onClearSearch) || (showShelfControls && !user) ? (
+                <>
+                  {searchQuery?.trim() && onClearSearch && (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={onClearSearch}
+                      className={COLLECTION_EMPTY_ACTION_CLASS}
+                    >
+                      <span>Clear Search</span>
+                    </Button>
+                  )}
+                  {showShelfControls && !user && (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={() => openAuthModal('sign_in')}
+                      className={COLLECTION_EMPTY_ACTION_CLASS}
+                    >
+                      <span>Sign In</span>
+                    </Button>
+                  )}
+                </>
+              ) : undefined
+            }
+          />
         ) : (
           shelves.map((shelfBooks, shelfIndex) => (
             <div key={`shelf-${shelfIndex}`} className="relative z-10 hover:z-30 w-full mb-8">

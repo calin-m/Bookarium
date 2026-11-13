@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.28] - 2026-11-13
+### *Public API Anti-Abuse Hardening, CORP Isolation, Mode-Scoped Rate Limiters & Unified Collection Empty States*
+
+### Security
+- Strict API Query Allowlisting, CORP Resource Isolation & Pagination/Pool Bounding (`src/lib/api-utils.ts`, `src/lib/catalog/query-parser.ts`, `src/lib/catalog/supabase-provider.ts`, `src/hooks/queries/useBooks.ts`, `src/app/api/books/route.ts`, `src/app/api/books/content/route.ts`, `src/app/api/books/translations/route.ts`, `ADR-080`): Enforced strict per-route query parameter allowlists (`hasUnexpectedQueryParams`, rejecting unknown keys and production `?country=` with `400 no-store`), `nosniff`, and `Cross-Origin-Resource-Policy` (`cross-origin` on `type=card` OpenGraph PNGs; `same-origin` across `/api/books`, `/api/books/translations`, text streams, covers, and error responses), while hard-capping `DEFAULT_QUOTE_POOL_LIMIT = 48`, `MAX_CATALOG_PAGE = 5000`, `MAX_CATALOG_OFFSET = 160_000`, search/topic/ID/language/MIME/era bounds, and translation IDs (`1..10_000_000`).
+- Mode-Scoped globalThis Rate Limiters & Companion Vercel Firewall Alignment (`src/lib/rate-limiter.ts`, `src/app/api/books/content/route.ts`, `SECURITY.md`, `scripts/generate-architecture-matrix.js`, `ADR-080`): Anchored `booksApiRateLimiter` (`60/min`), `bookContentRateLimiter` (`30/min`), `bookCardRateLimiter` (`20/min` for `type=card` `next/og`), and `bookCoverRateLimiter` (`60/min` for `type=cover` cover proxy) on `globalThis` so warm instances split expensive compute/image rendering from catalog browsing without starving text readers, aligned with manual Vercel Dashboard WAF rules and Attack Challenge Mode exclusion.
+
+### Changed
+- Unified Collection Empty States, Spacing Parity, Clean Guest Labels & Subtitle Counts (`src/components/presentation/CollectionEmptyState.tsx`, `src/components/presentation/BookmarksView.tsx`, `src/components/presentation/NotebookView.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/BookGrid.tsx`, `src/app/page.tsx`, `ADR-080`): Extracted a shared `CollectionEmptyState` card matching Bookmarks geometry (`bg-card rounded-2xl border p-12 max-w-lg shadow-xs`), circular `w-16 h-16` section-tinted icon badges (`Library`, `Heart`, `Highlighter`, `Bookmark`), and `font-serif` copy; normalized `py-6 sm:py-12` collection section padding while preserving `pt-6 sm:pt-12 pb-8 sm:pb-12` on Catalog; unified empty CTAs to `"Explore Catalog"` (`<Compass />`, adding it to empty Favorites); simplified `BookshelfRack` guest controls to `"Guest Mode"` and iconless `"Sign In"`; and aligned `BookmarksView` and empty `NotebookView` header subtitles (`"You have N volume(s) in your reading ledger"`, `"You have 0 passages preserved in your notebook"`).
+
+
 ## [2.9.27] - 2026-11-13
 ### *Authoritative Reader Bookmark Deletion Sync & Atomic Offline Shelf Hydration*
 

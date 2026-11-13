@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 13 Nov 2026 18:27:43 GMT  
+**Last Generated**: Fri, 13 Nov 2026 21:30:28 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 246 passed  
-**Total Verified Tests**: 2550 passed  
+**Total Test Suites**: 247 passed  
+**Total Verified Tests**: 2565 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **246/246 test suites passed** (2550 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **247/247 test suites passed** (2565 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.49%** (14770/15306) — *Target: $\ge$ 95%*
-- **Statements**: **95.2%** (15914/16715) — *Target: $\ge$ 95%*
-- **Functions**: **94.1%** (3222/3424) — *Target: $\ge$ 92%*
-- **Branches**: **87.66%** (14686/16752) — *Target: $\ge$ 85%*
+- **Lines**: **96.53%** (14838/15370) — *Target: $\ge$ 95%*
+- **Statements**: **95.24%** (15981/16778) — *Target: $\ge$ 95%*
+- **Functions**: **94.16%** (3230/3430) — *Target: $\ge$ 92%*
+- **Branches**: **87.71%** (14779/16848) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (246 Suites / 2550 Tests)
+## 🧪 Comprehensive Test Suite Catalog (247 Suites / 2565 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 323 Tests)
+### 🚀 App Routes & Pages (31 Suites · 327 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -94,7 +94,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `blocks AWS and GCP cloud metadata IP endpoints`
 - ✔ `blocks loopback and private RFC 1918 IPv4/IPv6 addresses`
@@ -104,6 +104,7 @@
 - ✔ `ensures global.fetch is never triggered for unauthenticated/malicious inputs`
 - ✔ `strictly confines legitimate outgoing requests to approved Gutenberg CDN endpoints`
 - ✔ `protects backend from request flooding by enforcing 429 response`
+- ✔ `isolates ImageResponse CPU flood protection at 20 req/min/IP and blocks arbitrary query param injection`
 - ✔ `enforces redirect: manual and rejects 301/302 redirects to private link-local endpoints`
 - ✔ `blocks untrusted cross-origin redirect on primary mirror and advances cleanly to the next approved mirror`
 - ✔ `strips all upstream server headers and sets explicit sanitized response headers`
@@ -113,10 +114,12 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (34 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (36 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
+- ✔ `should reject unknown query params, unsupported types, stray share tokens, and production ?country= overrides`
+- ✔ `routes type=card and type=cover requests through dedicated mode-scoped rate limiters`
 - ✔ `should block SSRF attempts targeting cloud metadata or internal network`
 - ✔ `should validate official Gutenberg upstream URLs as safe and sanitize them`
 - ✔ `should reject path traversal attempts in upstream URLs`
@@ -168,8 +171,9 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (18 tests)</summary>
 
+- ✔ `should reject unsupported query params and production ?country= overrides with 400 no-store and same-origin CORP`
 - ✔ `should return 429 when client exceeds max request rate limit`
 - ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
 - ✔ `should forward copyright=false to upstream Gutendex API`
@@ -347,7 +351,7 @@
 - ✔ `handles HeroSearch onReadFeaturedBook, active filter chip removal, and custom shelf filtering`
 - ✔ `handles BookPreviewModal onReadBook and BookshelfMobileModal callbacks`
 - ✔ `opens RemoveOfflineBookModal when removing downloaded book from BookshelfMobileModal`
-- ✔ `returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog`
+- ✔ `returns to Catalog from empty NotebookView, BookmarksView, Bookshelf, and Favorites via Explore Catalog`
 - ✔ `renders Reader view when served as offline App Shell fallback for /read/[id] route`
 - ✔ `filters bookshelf books to offline books when sorting by Downloaded`
 - ✔ `filters bookshelf books to offline books when active shelf is DOWNLOADED_SHELF_ID`
@@ -355,7 +359,7 @@
 - ✔ `shows empty state in Bookshelf when sorting by Downloaded and none are offline`
 - ✔ `resets catalog page and filters when clicking Bookarium brand logo in navbar`
 - ✔ `resets page to 1 and scrolls to top when clicking the already-active Catalog tab`
-- ✔ `applies responsive padding classes to catalog-section to eliminate mobile pagination gap`
+- ✔ `applies responsive padding classes to catalog-section on catalog and py-6 sm:py-12 on collection views`
 - ✔ `renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf`
 - ✔ `serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist`
 - ✔ `filters offline catalog by topic, language, era, and sort order, and supports clearing Downloaded and Custom shelves`
@@ -546,7 +550,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (39 Suites · 569 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 574 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -613,11 +617,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `should render loading skeletons when isLoading is true and match pageSize`
 - ✔ `should render error state with retry button`
 - ✔ `should render empty state when no books exist`
+- ✔ `should render unified editorial empty state with Explore Catalog CTA for empty favorites view`
+- ✔ `should render Clear Search without Explore Catalog on catalog empty search results`
 - ✔ `should render book cards and trigger pagination`
 - ✔ `should switch between editorial grid and bookshelf rack views with tactile page-turn transition`
 - ✔ `should forward onPreviewClick to BookCard`
@@ -778,7 +784,7 @@
 - ✔ `opens mobile/tablet modal when book spine is clicked on mobile, portrait tablet (<1024px), or landscape tablet (touch >=1024px)`
 - ✔ `opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader`
 - ✔ `handles quick action download and bookmark clicks`
-- ✔ `renders guest mode sync prompt and triggers auth modal`
+- ✔ `renders guest mode sync prompt without decorative icon and triggers auth modal`
 - ✔ `displays rounded integer percentage for reading progress`
 - ✔ `displays 0% read for opened books on page 1`
 - ✔ `renders cloud shelves and allows switching active shelf`
@@ -786,8 +792,8 @@
 - ✔ `opens delete shelf modal and confirms custom shelf deletion`
 - ✔ `opens create shelf modal and submits a new custom shelf`
 - ✔ `displays private shelf indicator on shelf pills when is_public is false`
-- ✔ `renders empty shelf state and allows browsing catalog`
-- ✔ `calls onBrowseCatalog callback when clicking Browse Catalog in empty state`
+- ✔ `renders unified empty shelf state without bottom rack padding and allows exploring catalog`
+- ✔ `calls onBrowseCatalog and opens AuthModal via iconless Sign In buttons in guest empty state`
 - ✔ `allows moving a book between shelves when user has multiple shelves`
 - ✔ `triggers onBookClick when Read button is clicked on hover card`
 - ✔ `triggers onDownloadClick when Download button is clicked on hover card`
@@ -873,6 +879,15 @@
 <summary><b><code>src/components/presentation/CollectionClearConfirmModal.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `displays clear confirmation copy and executes cancel and confirm callbacks`
+
+</details>
+
+<details>
+<summary><b><code>src/components/presentation/CollectionEmptyState.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders unified card geometry, icon emblem, and editorial typography`
+- ✔ `supports semantic h2 heading level and triggers primary Explore Catalog CTA`
+- ✔ `renders secondary and custom actions alongside Explore Catalog`
 
 </details>
 
@@ -2009,7 +2024,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (48 Suites · 603 Tests)
+### 📚 Gutenberg Parsers & Metadata (48 Suites · 609 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2075,7 +2090,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/api-utils.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/lib/api-utils.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `prioritizes x-vercel-forwarded-for when present`
 - ✔ `prioritizes cf-connecting-ip when vercel header is missing`
@@ -2084,6 +2099,10 @@
 - ✔ `falls back to 127.0.0.1 when no IP headers are present`
 - ✔ `returns a 429 response with default message and standard headers`
 - ✔ `merges custom message and additional body properties`
+- ✔ `emits same-origin and cross-origin CORP policies paired with nosniff`
+- ✔ `creates a no-store JSON error response with hardened headers`
+- ✔ `accepts allowlisted params and allows dev-only params outside production`
+- ✔ `rejects unknown params and rejects dev-only params in production`
 
 </details>
 
@@ -2182,17 +2201,18 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>src/lib/catalog/query-parser.test.ts</code></b> (11 tests)</summary>
 
 - ✔ `defaults to safe base values when no query parameters are provided`
 - ✔ `normalizes whitespace in search query and trims input`
 - ✔ `drops single-character search queries to protect upstream API`
 - ✔ `parses valid numeric page and limit while defaulting invalid values`
+- ✔ `truncates long search/topic queries, bounds language & id arrays, and validates mime_type and era ranges`
 - ✔ `parses author year bounds, sort directions, and mime_type`
 - ✔ `parses include_restricted_metadata and has_quotes flags`
 - ✔ `automatically expands default limit up to 100 when ids batch exceeds 32 items and limit is omitted`
 - ✔ `parses comma-separated languages into string array`
-- ✔ `parses pool=quotes parameter with 48 default limit and supports expanded limit up to 600`
+- ✔ `parses pool=quotes parameter with 48 default and strict DEFAULT_QUOTE_POOL_LIMIT ceiling`
 - ✔ `resolves country code through the priority cascade`
 
 </details>
@@ -2480,7 +2500,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/rate-limiter.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/rate-limiter.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `allows requests within the configured max limit`
 - ✔ `blocks requests exceeding the max limit within the sliding window`
@@ -2490,6 +2510,7 @@
 - ✔ `allows manual reset of all records`
 - ✔ `supports default options in constructor and global exports`
 - ✔ `evicts the oldest tracked key when maxKeys capacity is exceeded`
+- ✔ `exports mode-scoped global singletons with calibrated thresholds`
 
 </details>
 

@@ -1,7 +1,16 @@
-import { describe, it, expect } from 'vitest';
-import { getClientIp, createRateLimitErrorResponse } from './api-utils';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import {
+  getClientIp,
+  createRateLimitErrorResponse,
+  buildApiSecurityHeaders,
+  hasUnexpectedQueryParams,
+  createNoStoreErrorResponse,
+} from './api-utils';
 
 describe('api-utils', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
   describe('getClientIp', () => {
     it('prioritizes x-vercel-forwarded-for when present', () => {
       const headers = new Headers();
@@ -59,6 +68,9 @@ describe('api-utils', () => {
       expect(res.headers.get('Retry-After')).toBe('5');
       expect(res.headers.get('X-RateLimit-Limit')).toBe('100');
       expect(res.headers.get('X-RateLimit-Remaining')).toBe('0');
+      expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+      expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
 
       const body = await res.json();
       expect(body).toEqual({
@@ -89,6 +101,47 @@ describe('api-utils', () => {
         count: 0,
         latencyMs: 42,
       });
+    });
+  });
+
+  describe('buildApiSecurityHeaders & createNoStoreErrorResponse', () => {
+    it('emits same-origin and cross-origin CORP policies paired with nosniff', () => {
+      expect(buildApiSecurityHeaders()).toEqual({
+        'X-Content-Type-Options': 'nosniff',
+        'Cross-Origin-Resource-Policy': 'same-origin',
+      });
+      expect(buildApiSecurityHeaders('cross-origin')).toEqual({
+        'X-Content-Type-Options': 'nosniff',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+      });
+    });
+
+    it('creates a no-store JSON error response with hardened headers', async () => {
+      const res = createNoStoreErrorResponse('Unsupported parameter', 400, { results: [] });
+      expect(res.status).toBe(400);
+      expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+      expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+      expect(await res.json()).toEqual({ error: 'Unsupported parameter', results: [] });
+    });
+  });
+
+  describe('hasUnexpectedQueryParams', () => {
+    const allowed = new Set(['id', 'type']);
+    const devOnly = new Set(['country']);
+
+    it('accepts allowlisted params and allows dev-only params outside production', () => {
+      vi.stubEnv('NODE_ENV', 'development');
+      expect(hasUnexpectedQueryParams(new URLSearchParams('id=1342&type=card&country=GB'), allowed, devOnly)).toBe(false);
+    });
+
+    it('rejects unknown params and rejects dev-only params in production', () => {
+      vi.stubEnv('NODE_ENV', 'development');
+      expect(hasUnexpectedQueryParams(new URLSearchParams('id=1342&foo=bar'), allowed, devOnly)).toBe(true);
+
+      vi.stubEnv('NODE_ENV', 'production');
+      expect(hasUnexpectedQueryParams(new URLSearchParams('id=1342&country=GB'), allowed, devOnly)).toBe(true);
+      expect(hasUnexpectedQueryParams(new URLSearchParams('id=1342&type=card'), allowed, devOnly)).toBe(false);
     });
   });
 });

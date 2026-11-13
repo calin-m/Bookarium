@@ -55,10 +55,18 @@ describe('NotebookView component', () => {
     const handleBrowse = vi.fn();
     render(<NotebookView onBrowseCatalog={handleBrowse} />);
 
-    expect(screen.getByText('Your Notebook is Empty')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Explore Catalog/i })).toBeInTheDocument();
+    const emptyHeading = screen.getByRole('heading', { name: 'Your Notebook is Empty' });
+    expect(emptyHeading).toBeInTheDocument();
+    expect(screen.getByText('You have 0 passages preserved in your notebook')).toBeInTheDocument();
+    const emptyCard = emptyHeading.closest('div');
+    expect(emptyCard).toHaveClass('bg-card', 'rounded-2xl', 'p-12', 'max-w-lg');
+    expect(emptyCard).not.toHaveClass('my-12');
 
-    fireEvent.click(screen.getByRole('button', { name: /Explore Catalog/i }));
+    const exploreBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    expect(exploreBtn).toBeInTheDocument();
+    expect(exploreBtn.querySelector('svg')).not.toBeNull();
+
+    fireEvent.click(exploreBtn);
     expect(handleBrowse).toHaveBeenCalledTimes(1);
   });
 
@@ -79,6 +87,7 @@ describe('NotebookView component', () => {
     expect(screen.getByRole('region', { name: /Literary Commonplace Notebook/i })).toHaveClass('py-6', 'sm:py-12');
     expect(screen.getByText('MARGINALIA & REFLECTIONS')).toBeInTheDocument();
     expect(screen.getByText('Literary Notebook')).toBeInTheDocument();
+    expect(screen.getByText('You have preserved 1 passage across 1 literary volume.')).toBeInTheDocument();
     expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/by Jane Austen/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/It is a truth universally acknowledged/i)).toBeInTheDocument();

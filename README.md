@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-246%20Suites%20%7C%202550%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.49%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-247%20Suites%20%7C%202565%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.53%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2550 tests across 246 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2565 tests across 247 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,10 +108,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.27)
+## 🛠️ Latest Improvements (v2.9.28)
 
-- **Authoritative Reader Bookmark Deletion Sync, Dirty Position Tracking & Upload-Verified Watermark (`ADR-080`)**: Eliminated cross-tab and cross-device bookmark resurrection when a reading position is deleted in one session while another tab stays open or reconnects. Added persisted `lastReaderSyncAt` and `dirtyPositionBookIds` tracking with snapshot-verified clearing (`clearUploadedDirtyPositions`), `0%` Page-1 ghost dirty-flag scrubbing across save/debounce/sync paths, boolean upload confirmation (`upsertReadingProgressBatch`, `syncReadingPositionToCloud`), monotonic sync anchoring (`Math.max(syncSnapshotStartedAtMs, maxRemoteTimeMs)`), dirty cooldown bypass, standalone `Finished` preservation, and full `resetReaderSession()` teardown parity.
-- **Atomic IndexedDB Offline Hydration & Downloaded Pill Count Stabilization (`ADR-080`)**: Replaced uncoordinated `getOfflineBookIds()` and `getAllOfflineBookMetas()` `.then()` chains in `useOfflineBooks` with shared `readOfflineIdsAndMetas()` (`Promise.allSettled`) + `applyOfflineSnapshot()` coordination gated by a monotonic `syncEpochRef` stale-read guard across mount, `OFFLINE_BOOKS_UPDATED_EVENT`, and `refreshOfflineIds` refreshes while keeping `getStorageQuota` non-blocking, eliminating transient `Downloaded` pill count flickers without breaking partial-rejection resilience.
+- **Unified Collection Empty States, Spacing Parity, Clean Guest Labels & Subtitle Counts (`ADR-080`)**: Extracted a shared `CollectionEmptyState` card matching Bookmarks geometry (`bg-card rounded-2xl border p-12 max-w-lg shadow-xs`), circular `w-16 h-16` section-tinted icon badges (`Library`, `Heart`, `Highlighter`, `Bookmark`), and `font-serif` copy; normalized `py-6 sm:py-12` collection section padding while preserving `pt-6 sm:pt-12 pb-8 sm:pb-12` on Catalog; unified empty CTAs to `"Explore Catalog"` (`<Compass />`, adding it to empty Favorites); simplified `BookshelfRack` guest controls to `"Guest Mode"` and iconless `"Sign In"`; and aligned `BookmarksView` and empty `NotebookView` header subtitles (`"You have N volume(s) in your reading ledger"`, `"You have 0 passages preserved in your notebook"`).
+- **Strict API Query Allowlisting, CORP Resource Isolation & Pagination/Pool Bounding (`ADR-080`)**: Enforced strict per-route query parameter allowlists (`hasUnexpectedQueryParams`, rejecting unknown keys and production `?country=` with `400 no-store`), `nosniff`, and `Cross-Origin-Resource-Policy` (`cross-origin` on `type=card` OpenGraph PNGs; `same-origin` across `/api/books`, `/api/books/translations`, text streams, covers, and error responses), while hard-capping `DEFAULT_QUOTE_POOL_LIMIT = 48`, `MAX_CATALOG_PAGE = 5000`, `MAX_CATALOG_OFFSET = 160_000`, search/topic/ID/language/MIME/era bounds, and translation IDs (`1..10_000_000`).
+- **Mode-Scoped globalThis Rate Limiters & Companion Vercel Firewall Alignment (`ADR-080`)**: Anchored `booksApiRateLimiter` (`60/min`), `bookContentRateLimiter` (`30/min`), `bookCardRateLimiter` (`20/min` for `type=card` `next/og`), and `bookCoverRateLimiter` (`60/min` for `type=cover` cover proxy) on `globalThis` so warm instances split expensive compute/image rendering from catalog browsing without starving text readers, aligned with manual Vercel Dashboard WAF rules and Attack Challenge Mode exclusion.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -205,6 +206,7 @@ flowchart TD
         ContentAdvisory["ContentAdvisoryBanner.tsx\n(Non-blocking Mature/Historical Context Advisory)"]
         CollectionToolbarNode["CollectionToolbar.tsx\n(Responsive Workbench: Single-Row Mobile Layout, Search, Compact Icon Sort & View Mode Toggles)"]
         CollectionBottomDockNode["CollectionBottomDock.tsx • CollectionFloatingSearch.tsx • CollectionFilterDrawer.tsx\n(Universal Ambient Dock, Animated Light Aura, Floating Search & Bottom Sliding Drawer)"]
+        CollectionEmptyStateNode["CollectionEmptyState.tsx\n(Unified Collection Empty State Card: p-12 Editorial Card, Section Icon Badge, Explore Catalog & Iconless Sign-in Actions)"]
         PaginationNode["Pagination.tsx\n(Accessible Numeric Page Navigation)"]
         BookPreviewModalNode["BookPreviewModal.tsx & NotablePassagesSpread.tsx\n(3D Open-Book Preview Spread, Notable Passages & Jurisdictional Protection)"]
         BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\n(Dynamic 2-Shelf Capacity, Sequential Left-to-Right Fill, 3D Hardwood Shelf, Kinetic Strip, <1024px Touch Sheet & >=1024px Spines)"]
@@ -344,6 +346,11 @@ flowchart TD
     Grid --> BookPreviewModalNode
     Grid --> BookshelfRackNode
     ShelfView --> BookshelfRackNode
+    ShelfView --> CollectionEmptyStateNode
+    FavView --> CollectionEmptyStateNode
+    MarksView --> CollectionEmptyStateNode
+    NoteView --> CollectionEmptyStateNode
+    BookshelfRackNode --> CollectionEmptyStateNode
     BookshelfRackNode --> BookshelfMobileModalNode
     BookshelfRackNode --> BookPreviewModalNode
     ShelfView --> RemoveOfflineModalNode

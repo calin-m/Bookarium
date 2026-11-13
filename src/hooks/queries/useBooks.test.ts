@@ -605,9 +605,11 @@ describe('useBooks hook', () => {
     onLineGetter.mockRestore();
 
     // 2.5. Primary Edge API route (/api/books?pool=quotes) succeeds, slices to 2 spreads, and caches
+    let requestedPoolUrl = '';
     server.use(
       http.get('/api/books', ({ request }) => {
         const url = new URL(request.url, 'http://localhost:3000');
+        requestedPoolUrl = request.url;
         if (url.searchParams.get('pool') === 'quotes') {
           return HttpResponse.json({
             count: 1,
@@ -639,7 +641,8 @@ describe('useBooks hook', () => {
       })
     );
     window.localStorage.removeItem('bookarium-quote-enriched-books-v1');
-    const edgeBooks = await fetchQuoteEnrichedBooks(30);
+    const edgeBooks = await fetchQuoteEnrichedBooks(250);
+    expect(requestedPoolUrl).toContain('limit=48');
     expect(edgeBooks.length).toBeGreaterThan(0);
     expect(edgeBooks[0].quotes).toHaveLength(2);
     expect(readCachedQuoteEnrichedBooks(30)?.books.length).toBe(edgeBooks.length);

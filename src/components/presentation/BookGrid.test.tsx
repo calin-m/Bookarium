@@ -30,6 +30,49 @@ describe('BookGrid component', () => {
   it('should render empty state when no books exist', () => {
     render(<BookGrid books={[]} emptyTitle="Custom Empty Message" />);
     expect(screen.getByText('Custom Empty Message')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Explore Catalog/i })).not.toBeInTheDocument();
+  });
+
+  it('should render unified editorial empty state with Explore Catalog CTA for empty favorites view', () => {
+    const handleBrowse = vi.fn();
+    render(
+      <BookGrid
+        books={[]}
+        activeView="favorites"
+        emptyTitle="No Favorites Yet"
+        emptyDescription="Click the heart icon on any classic book card to curate your favorite reading collection."
+        onBrowseCatalog={handleBrowse}
+      />
+    );
+
+    const heading = screen.getByRole('heading', { name: 'No Favorites Yet' });
+    expect(heading).toBeInTheDocument();
+    expect(heading.closest('div')).toHaveClass('bg-card', 'rounded-2xl', 'p-12', 'max-w-lg');
+
+    const exploreBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    expect(exploreBtn.querySelector('svg')).not.toBeNull();
+    fireEvent.click(exploreBtn);
+    expect(handleBrowse).toHaveBeenCalledTimes(1);
+  });
+
+  it('should render Clear Search without Explore Catalog on catalog empty search results', () => {
+    const handleClear = vi.fn();
+    const handleBrowse = vi.fn();
+    render(
+      <BookGrid
+        books={[]}
+        activeView="catalog"
+        emptyTitle="No Matching Books"
+        emptyDescription="Try clearing your search filter."
+        onBrowseCatalog={handleBrowse}
+        onClearSearch={handleClear}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /Explore Catalog/i })).not.toBeInTheDocument();
+    const clearBtn = screen.getByRole('button', { name: /Clear Search/i });
+    fireEvent.click(clearBtn);
+    expect(handleClear).toHaveBeenCalledTimes(1);
   });
 
   it('should render book cards and trigger pagination', () => {
@@ -110,7 +153,7 @@ describe('BookGrid component', () => {
     expect(screen.queryByText('General')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /new shelf/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /download shelf offline/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /sign in to sync/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Sign In$/i })).not.toBeInTheDocument();
   });
 
   it('renders personal shelf management buttons in shelf view when activeView is bookshelf', async () => {
@@ -120,7 +163,7 @@ describe('BookGrid component', () => {
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByText('General')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in to sync/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Sign In$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /download all books on this shelf/i })).not.toBeInTheDocument();
   });
 

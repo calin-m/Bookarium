@@ -1330,8 +1330,9 @@ describe('Home page integration', () => {
     mockIsBookOffline.mockReturnValue(false);
   });
 
-  it('returns to Catalog from empty NotebookView and BookmarksView via onBrowseCatalog', () => {
+  it('returns to Catalog from empty NotebookView, BookmarksView, Bookshelf, and Favorites via Explore Catalog', () => {
     useReaderStore.setState({ readingPositions: {}, readingProgress: {} });
+    useBookshelfStore.getState().clearBookshelf();
     renderHome();
 
     const banner = screen.getByRole('banner');
@@ -1341,8 +1342,18 @@ describe('Home page integration', () => {
     expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
 
     fireEvent.click(within(banner).getByRole('button', { name: /^Bookmarks/i }));
-    const browseFromBookmarksBtn = screen.getByRole('button', { name: /Browse Library Catalog/i });
+    const browseFromBookmarksBtn = screen.getByRole('button', { name: /Explore Catalog/i });
     fireEvent.click(browseFromBookmarksBtn);
+    expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
+
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf/i }));
+    const browseFromBookshelfBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    fireEvent.click(browseFromBookshelfBtn);
+    expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
+
+    fireEvent.click(within(banner).getByRole('button', { name: /^Favorites/i }));
+    const browseFromFavoritesBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    fireEvent.click(browseFromFavoritesBtn);
     expect(screen.getByTestId('sticky-catalog-toolbar')).toBeInTheDocument();
   });
 
@@ -1510,11 +1521,20 @@ describe('Home page integration', () => {
     (window as any).location = new URL('http://localhost:3000/');
   });
 
-  it('applies responsive padding classes to catalog-section to eliminate mobile pagination gap', () => {
+  it('applies responsive padding classes to catalog-section on catalog and py-6 sm:py-12 on collection views', () => {
     const { container } = renderHome();
     const catalogSection = container.querySelector('#catalog-section');
     expect(catalogSection).toBeInTheDocument();
     expect(catalogSection).toHaveClass('pt-6', 'sm:pt-12', 'pb-8', 'sm:pb-12');
+
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf/i }));
+    expect(container.querySelector('#catalog-section')).toHaveClass('py-6', 'sm:py-12');
+    expect(container.querySelector('#catalog-section')).not.toHaveClass('pb-8');
+
+    fireEvent.click(within(banner).getByRole('button', { name: /^Favorites/i }));
+    expect(container.querySelector('#catalog-section')).toHaveClass('py-6', 'sm:py-12');
+    expect(container.querySelector('#catalog-section')).not.toHaveClass('pb-8');
   });
 
   it('renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf', () => {

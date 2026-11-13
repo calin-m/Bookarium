@@ -107,14 +107,40 @@ export class InMemoryRateLimiter {
   }
 }
 
-// Global default limiter instances
-export const booksApiRateLimiter = new InMemoryRateLimiter({
-  windowMs: 60_000,
-  maxRequests: 60, // 60 requests/minute
-});
+// Global singleton rate limiters anchored on globalThis to preserve sliding-window buckets
+// across Next.js hot reloads and warm server worker invocations.
+const globalForRateLimiters = globalThis as typeof globalThis & {
+  __bookariumBooksApiRateLimiter?: InMemoryRateLimiter;
+  __bookariumBookContentRateLimiter?: InMemoryRateLimiter;
+  __bookariumBookCardRateLimiter?: InMemoryRateLimiter;
+  __bookariumBookCoverRateLimiter?: InMemoryRateLimiter;
+};
 
-export const bookContentRateLimiter = new InMemoryRateLimiter({
-  windowMs: 60_000,
-  maxRequests: 30, // 30 full-text requests/minute
-});
+export const booksApiRateLimiter =
+  globalForRateLimiters.__bookariumBooksApiRateLimiter ??
+  (globalForRateLimiters.__bookariumBooksApiRateLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    maxRequests: 60, // 60 catalog / translations requests/minute
+  }));
+
+export const bookContentRateLimiter =
+  globalForRateLimiters.__bookariumBookContentRateLimiter ??
+  (globalForRateLimiters.__bookariumBookContentRateLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    maxRequests: 30, // 30 full-text requests/minute
+  }));
+
+export const bookCardRateLimiter =
+  globalForRateLimiters.__bookariumBookCardRateLimiter ??
+  (globalForRateLimiters.__bookariumBookCardRateLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    maxRequests: 20, // 20 CPU-rendered OpenGraph PNG cards/minute
+  }));
+
+export const bookCoverRateLimiter =
+  globalForRateLimiters.__bookariumBookCoverRateLimiter ??
+  (globalForRateLimiters.__bookariumBookCoverRateLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    maxRequests: 60, // 60 cover thumbnail fetches/minute
+  }));
 

@@ -1,12 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
-import { getClientIp, createRateLimitErrorResponse } from '@/lib/api-utils';
+import {
+  getClientIp,
+  createRateLimitErrorResponse,
+  buildApiSecurityHeaders,
+  hasUnexpectedQueryParams,
+  createNoStoreErrorResponse,
+} from '@/lib/api-utils';
 import { getJurisdictionRule } from '@/lib/copyright-engine';
 import { parseCatalogQuery } from '@/lib/catalog/query-parser';
 import { gutendexProvider } from '@/lib/catalog/gutendex-provider';
 import { supabaseCatalogProvider } from '@/lib/catalog/supabase-provider';
 import { CatalogProviderError } from '@/types/catalog.types';
 import type { CatalogQueryResult } from '@/types/catalog.types';
+
+const ALLOWED_CATALOG_QUERY_KEYS = new Set([
+  'copyright',
+  'include_restricted_metadata',
+  'ids',
+  'search',
+  'topic',
+  'languages',
+  'page',
+  'limit',
+  'author_year_start',
+  'author_year_end',
+  'sort',
+  'mime_type',
+  'has_quotes',
+  'pool',
+]);
+const DEV_ONLY_CATALOG_QUERY_KEYS = new Set(['country']);
 
 // Ensure Vercel runs this serverless function with extended timeout
 export const maxDuration = 30; // seconds
@@ -20,6 +44,20 @@ export async function GET(request: NextRequest) {
     return createRateLimitErrorResponse(
       rateLimit,
       'Too many requests. Please slow down and try again.',
+      {
+        results: [],
+        count: 0,
+        source: 'upstream',
+        latencyMs: Date.now() - startTime,
+      }
+    );
+  }
+
+  const searchParams = request.nextUrl?.searchParams ?? new URL(request.url).searchParams;
+  if (hasUnexpectedQueryParams(searchParams, ALLOWED_CATALOG_QUERY_KEYS, DEV_ONLY_CATALOG_QUERY_KEYS)) {
+    return createNoStoreErrorResponse(
+      'Unsupported or disallowed query parameter.',
+      400,
       {
         results: [],
         count: 0,
@@ -48,23 +86,14 @@ export async function GET(request: NextRequest) {
     // Fall back to upstream Gutendex API if Supabase is unseeded, unhealthy, or throws (quotes pool is Supabase-exclusive)
     if (!result) {
       if (queryOptions.pool === 'quotes') {
-        return NextResponse.json(
-          {
-            error: 'Quote pool unavailable from database',
-            results: [],
-            count: 0,
-            source: 'supabase',
-            latencyMs: Date.now() - startTime,
-            clientCountry: queryOptions.country,
-            jurisdictionRule: getJurisdictionRule(queryOptions.country),
-          },
-          {
-            status: 503,
-            headers: {
-              'Cache-Control': 'no-store, max-age=0',
-            },
-          }
-        );
+        return createNoStoreErrorResponse('Quote pool unavailable from database', 503, {
+          results: [],
+          count: 0,
+          source: 'supabase',
+          latencyMs: Date.now() - startTime,
+          clientCountry: queryOptions.country,
+          jurisdictionRule: getJurisdictionRule(queryOptions.country),
+        });
       }
       result = await gutendexProvider.searchBooks(queryOptions);
     }
@@ -90,6 +119,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Cache-Control': cacheControl,
         'Vary': varyHeader,
+        ...buildApiSecurityHeaders('same-origin'),
       },
     });
   } catch (err: unknown) {
@@ -98,32 +128,24 @@ export async function GET(request: NextRequest) {
     const jurisdictionRule = getJurisdictionRule(country);
 
     if (err instanceof CatalogProviderError) {
-      return NextResponse.json(
-        {
-          error: err.message,
-          status: err.statusCode,
-          latencyMs,
-          results: [],
-          count: 0,
-          source: err.source,
-          clientCountry: country,
-          jurisdictionRule,
-        },
-        { status: err.statusCode }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: 'Unable to connect to Gutenberg API',
+      return createNoStoreErrorResponse(err.message, err.statusCode, {
+        status: err.statusCode,
         latencyMs,
         results: [],
         count: 0,
-        source: 'upstream',
+        source: err.source,
         clientCountry: country,
         jurisdictionRule,
-      },
-      { status: 502 }
-    );
+      });
+    }
+
+    return createNoStoreErrorResponse('Unable to connect to Gutenberg API', 502, {
+      latencyMs,
+      results: [],
+      count: 0,
+      source: 'upstream',
+      clientCountry: country,
+      jurisdictionRule,
+    });
   }
 }

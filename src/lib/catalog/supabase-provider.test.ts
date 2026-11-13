@@ -437,6 +437,20 @@ describe('SupabaseCatalogProvider', () => {
       const providerClamp = new SupabaseCatalogProvider(clientClamp as any);
       await providerClamp.searchBooks({ page: 1, limit: 250, country: 'US' });
       expect(builderClamp.range).toHaveBeenCalledWith(0, 99);
+
+      // Short-circuits high offset pagination >= 160,000 before querying PostgreSQL
+      const { client: clientHighOffset } = createMockQueryBuilder(sampleDbRows, 250);
+      const providerHighOffset = new SupabaseCatalogProvider(clientHighOffset as any);
+      const emptyHighOffset = await providerHighOffset.searchBooks({
+        page: 5000,
+        limit: 100,
+        country: 'US',
+      });
+      expect(emptyHighOffset.results).toEqual([]);
+      expect(emptyHighOffset.count).toBe(0);
+      expect(emptyHighOffset.next).toBeNull();
+      expect(emptyHighOffset.previous).toBe('/api/books?page=4999');
+      expect(clientHighOffset.from).not.toHaveBeenCalled();
     });
 
     it('filters results by mimeType if specified', async () => {
@@ -718,6 +732,7 @@ describe('SupabaseCatalogProvider', () => {
         },
       ];
 
+      const poolLimitSpy = vi.fn().mockResolvedValue({ data: mockQuotesData, error: null });
       const client = {
         from: vi.fn().mockImplementation((table: string) => {
           if (table === 'books') {
@@ -735,7 +750,7 @@ describe('SupabaseCatalogProvider', () => {
                   in: vi.fn().mockReturnValue({
                     neq: vi.fn().mockReturnValue({
                       order: vi.fn().mockReturnValue({
-                        limit: vi.fn().mockResolvedValue({ data: mockQuotesData, error: null }),
+                        limit: poolLimitSpy,
                       }),
                     }),
                   }),
@@ -755,6 +770,7 @@ describe('SupabaseCatalogProvider', () => {
         country: 'US',
       });
 
+      expect(poolLimitSpy).toHaveBeenCalledWith(48);
       expect(result.source).toBe('supabase');
       expect(result.results).toHaveLength(2);
       // Deterministically sorted: Pride and Prejudice (Vol. 1342, first hero book) ahead of Frankenstein (Vol. 84)

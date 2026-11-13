@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import type { GutendexBook } from '@/types/book.types';
 import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
+import { CollectionEmptyState, COLLECTION_EMPTY_ACTION_CLASS } from './CollectionEmptyState';
 import { Button } from '@/components/ui/Button';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
-import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
+import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, Heart, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
 
 export type BookViewMode = 'grid' | 'shelf';
 
@@ -170,23 +171,30 @@ export const BookGrid: React.FC<BookGridProps> = ({
   }
 
   if (activeViewMode !== 'shelf' && books.length === 0) {
+    const isFavoritesEmpty = activeView === 'favorites';
+
     return (
-      <div className="py-20 text-center space-y-3 max-w-md mx-auto">
-        <div className="w-12 h-12 rounded-full bg-muted text-muted-foreground flex items-center justify-center mx-auto">
-          <BookOpen className="w-6 h-6" />
-        </div>
-        <h3 className="text-base font-bold text-foreground font-serif">
-          {emptyTitle}
-        </h3>
-        <p className="text-xs text-muted-foreground font-sans leading-relaxed">{emptyDescription}</p>
-        {onClearSearch && (
-          <div className="pt-2">
-            <Button variant="outline" size="sm" onClick={onClearSearch} className="font-mono text-xs uppercase">
-              Clear Search
+      <CollectionEmptyState
+        icon={isFavoritesEmpty ? <Heart className="w-8 h-8" /> : <BookOpen className="w-8 h-8" />}
+        iconContainerClassName={
+          isFavoritesEmpty ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'
+        }
+        title={emptyTitle}
+        description={emptyDescription}
+        onExploreCatalog={isFavoritesEmpty && !onClearSearch ? onBrowseCatalog : undefined}
+        actions={
+          onClearSearch ? (
+            <Button
+              variant="outline"
+              size="md"
+              onClick={onClearSearch}
+              className={COLLECTION_EMPTY_ACTION_CLASS}
+            >
+              <span>Clear Search</span>
             </Button>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+      />
     );
   }
 

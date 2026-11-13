@@ -36,9 +36,10 @@ export const QUOTE_POOL_COLUMNS =
   'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count, quote0:quotes->0, quote1:quotes->1' as const;
 
 /**
- * Default number of quote-enriched books transferred per Quote Pool batch (~22 KB vs ~320 KB for 600).
+ * Default number of quote-enriched books transferred per Quote Pool batch (~22 KB).
  */
 export const DEFAULT_QUOTE_POOL_LIMIT = 48;
+export const MAX_CATALOG_OFFSET = 160_000;
 
 /**
  * 12-hour cache lifetime (ms) for Quote Pool batches. Over 7 days (Sunday -> Sunday = 14 half-day windows),
@@ -121,7 +122,7 @@ export function selectRotatingQuotePoolCandidateIds(
   limit: number = DEFAULT_QUOTE_POOL_LIMIT,
   timestampMs: number = Date.now()
 ): number[] {
-  const boundedLimit = Math.max(1, Math.min(600, limit));
+  const boundedLimit = Math.max(1, Math.min(DEFAULT_QUOTE_POOL_LIMIT, limit));
   const uniqueIds = Array.from(
     new Set(allCandidateIds.filter((id) => Number.isInteger(id) && id > 0))
   );
@@ -504,7 +505,10 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     jurisdictionRule: JurisdictionRule
   ): Promise<CatalogQueryResult> {
     const startTime = Date.now();
-    const limit = Math.max(1, Math.min(600, options.limit || DEFAULT_QUOTE_POOL_LIMIT));
+    const limit = Math.max(
+      1,
+      Math.min(DEFAULT_QUOTE_POOL_LIMIT, options.limit || DEFAULT_QUOTE_POOL_LIMIT)
+    );
     const quoteCacheKey = JSON.stringify({
       mode: 'quotes',
       country: options.country,
@@ -647,14 +651,33 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       return this.fetchQuoteEnrichedPool(options, jurisdictionRule);
     }
 
+    const page = Math.max(1, options.page || 1);
+    const limit = Math.max(1, Math.min(100, options.limit || 32));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    if (from >= MAX_CATALOG_OFFSET) {
+      return {
+        count: 0,
+        next: null,
+        previous: page > 1 ? `/api/books?page=${page - 1}` : null,
+        results: [],
+        source: 'supabase',
+        latencyMs: Date.now() - startTime,
+        clientCountry: country,
+        jurisdictionRule,
+        totalFiltered: 0,
+      };
+    }
+
     const searchCacheKey = JSON.stringify({
       mode: 'search',
       search: options.search || '',
       topic: options.topic || '',
       languages: Array.isArray(options.languages) ? [...options.languages].sort().join(',') : '',
       sort: options.sort || 'popular',
-      page: Math.max(1, options.page || 1),
-      limit: Math.max(1, Math.min(100, options.limit || 32)),
+      page,
+      limit,
       mimeType: options.mimeType || '',
       authorYearStart: options.authorYearStart ?? null,
       authorYearEnd: options.authorYearEnd ?? null,
@@ -674,12 +697,6 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
     try {
       const baseQuery = this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear);
-
-      // Pagination
-      const page = Math.max(1, options.page || 1);
-      const limit = Math.max(1, Math.min(100, options.limit || 32));
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
 
       const query = baseQuery.range(from, to);
 

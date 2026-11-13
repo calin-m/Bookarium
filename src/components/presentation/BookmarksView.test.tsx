@@ -79,11 +79,18 @@ describe('BookmarksView', () => {
     const handleBrowse = vi.fn();
     renderWithClient(<BookmarksView onBrowseCatalog={handleBrowse} />);
 
+    expect(screen.getByRole('region', { name: /Bookmarks and Continue Reading Ledger/i })).toHaveClass(
+      'py-6',
+      'sm:py-12'
+    );
     expect(screen.getByRole('heading', { name: 'Bookmarks' })).toBeInTheDocument();
-    expect(screen.getByText('Pick up right where you left off across all your volumes.')).toBeInTheDocument();
-    expect(screen.getByText('No active reading volumes yet')).toBeInTheDocument();
+    expect(screen.getByText('You have 0 volumes in your reading ledger')).toBeInTheDocument();
+    const emptyTitle = screen.getByRole('heading', { name: 'No active reading volumes yet' });
+    expect(emptyTitle).toBeInTheDocument();
+    expect(emptyTitle.closest('div')).toHaveClass('bg-card', 'rounded-2xl', 'p-12', 'max-w-lg');
 
-    const browseBtn = screen.getByRole('button', { name: /Browse Library Catalog/i });
+    const browseBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    expect(browseBtn.querySelector('svg')).not.toBeNull();
     fireEvent.click(browseBtn);
     expect(handleBrowse).toHaveBeenCalledTimes(1);
   });
@@ -103,6 +110,7 @@ describe('BookmarksView', () => {
 
     renderWithClient(<BookmarksView />);
 
+    expect(screen.getByText('You have 1 volume in your reading ledger')).toBeInTheDocument();
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
 
@@ -702,6 +710,7 @@ describe('BookmarksView', () => {
 
     renderWithClient(<BookmarksView />);
 
+    expect(screen.getByText('You have 2 volumes in your reading ledger')).toBeInTheDocument();
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('Frankenstein')).toBeInTheDocument();
 

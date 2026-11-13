@@ -341,7 +341,7 @@ export async function fetchFeaturedQuotesMap(
   }
 
   const quotesMap: Record<number, BookPassage[]> = {};
-  const cachedPool = readCachedQuoteEnrichedBooks(600)?.books;
+  const cachedPool = readCachedQuoteEnrichedBooks(DEFAULT_QUOTE_POOL_LIMIT)?.books;
   if (Array.isArray(cachedPool) && cachedPool.length > 0) {
     const cachedById = new Map<number, BookPassage[]>();
     for (const book of cachedPool) {
@@ -442,7 +442,7 @@ export function readCachedQuoteEnrichedBooks(
       (parsed.books as GutendexBook[]).filter(
         (b) => b && typeof b.id === 'number' && typeof b.title === 'string'
       )
-    ).slice(0, Math.max(1, Math.min(600, limit)));
+    ).slice(0, Math.max(1, Math.min(DEFAULT_QUOTE_POOL_LIMIT, limit)));
     if (validBooks.length === 0) return undefined;
     const now = Date.now();
     const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : now;
@@ -485,7 +485,7 @@ export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
 export async function fetchQuoteEnrichedBooks(
   limit: number = DEFAULT_QUOTE_POOL_LIMIT
 ): Promise<GutendexBook[]> {
-  const boundedLimit = Math.max(1, Math.min(600, limit));
+  const boundedLimit = Math.max(1, Math.min(DEFAULT_QUOTE_POOL_LIMIT, limit));
 
   if (!isSupabaseConfigured()) {
     return [];

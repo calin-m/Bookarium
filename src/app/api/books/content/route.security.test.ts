@@ -3,7 +3,11 @@ import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
-import { bookContentRateLimiter } from '@/lib/rate-limiter';
+import {
+  bookContentRateLimiter,
+  bookCardRateLimiter,
+  bookCoverRateLimiter,
+} from '@/lib/rate-limiter';
 import { sampleBookText } from '@/mocks/handlers';
 
 describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
@@ -12,6 +16,8 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
     bookContentRateLimiter.reset();
+    bookCardRateLimiter.reset();
+    bookCoverRateLimiter.reset();
     clearBookMetadataCache();
     clearBookContentCache();
   });
@@ -159,6 +165,29 @@ describe('Security & Vulnerability Abuse Suite: GET /api/books/content', () => {
       expect(blockedRes.status).toBe(429);
       const json = await blockedRes.json();
       expect(json.error).toMatch(/too many requests/i);
+    });
+
+    it('isolates ImageResponse CPU flood protection at 20 req/min/IP and blocks arbitrary query param injection', async () => {
+      for (let i = 0; i < 20; i++) {
+        bookCardRateLimiter.check('198.51.100.77');
+      }
+
+      const cardFloodReq = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=card', {
+        headers: { 'x-forwarded-for': '198.51.100.77' },
+      });
+      const cardFloodRes = await GET(cardFloodReq);
+      expect(cardFloodRes.status).toBe(429);
+      expect(cardFloodRes.headers.get('X-RateLimit-Limit')).toBe('20');
+      expect(cardFloodRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+
+      const paramInjectionReq = new NextRequest(
+        'http://localhost:3000/api/books/content?id=1342&callback=alert(1)'
+      );
+      const paramInjectionRes = await GET(paramInjectionReq);
+      expect(paramInjectionRes.status).toBe(400);
+      expect(paramInjectionRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+      expect(paramInjectionRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+      expect(paramInjectionRes.headers.get('X-Content-Type-Options')).toBe('nosniff');
     });
   });
 

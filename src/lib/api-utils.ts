@@ -6,6 +6,70 @@ export interface RateLimitInfo {
   remaining: number;
 }
 
+export type ApiCorpPolicy = 'same-origin' | 'cross-origin';
+
+/**
+ * Emits hardened response headers protecting Bookarium API payloads from MIME sniffing
+ * and cross-origin hotlinking while explicitly permitting `cross-origin` embeds for
+ * social OpenGraph reading cards (`?type=card`).
+ */
+export function buildApiSecurityHeaders(
+  corpPolicy: ApiCorpPolicy = 'same-origin'
+): Record<string, string> {
+  return {
+    'X-Content-Type-Options': 'nosniff',
+    'Cross-Origin-Resource-Policy': corpPolicy,
+  };
+}
+
+/**
+ * Checks whether incoming URL query parameters include any keys outside the canonical allowlist.
+ * Dev-only diagnostic keys (e.g., `?country=XX`) remain permitted in `development` and `test`
+ * environments, and are rejected when `NODE_ENV === 'production'`.
+ */
+export function hasUnexpectedQueryParams(
+  searchParams: URLSearchParams,
+  allowedKeys: ReadonlySet<string>,
+  devOnlyKeys?: ReadonlySet<string>
+): boolean {
+  const allowDevKeys = process.env.NODE_ENV !== 'production';
+  for (const key of searchParams.keys()) {
+    if (allowedKeys.has(key)) {
+      continue;
+    }
+    if (allowDevKeys && devOnlyKeys?.has(key)) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Builds an uncacheable (`Cache-Control: no-store`) JSON error response with baseline
+ * resource-isolation and MIME-sniffing protection headers.
+ */
+export function createNoStoreErrorResponse(
+  message: string,
+  status: number,
+  extraBody?: Record<string, unknown>,
+  corpPolicy: ApiCorpPolicy = 'same-origin'
+): NextResponse {
+  return NextResponse.json(
+    {
+      error: message,
+      ...extraBody,
+    },
+    {
+      status,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+        ...buildApiSecurityHeaders(corpPolicy),
+      },
+    }
+  );
+}
+
 /**
  * Extracts the client IP address from proxy headers with anti-spoofing precedence:
  * 1. Cloud platform-set headers ('x-vercel-forwarded-for', 'cf-connecting-ip', 'x-real-ip')
@@ -45,7 +109,8 @@ export function getClientIp(request: Request | { headers: Headers }): string {
 export function createRateLimitErrorResponse(
   rateLimit: RateLimitInfo,
   message = 'Too many requests. Please slow down and try again.',
-  extraBody?: Record<string, unknown>
+  extraBody?: Record<string, unknown>,
+  corpPolicy: ApiCorpPolicy = 'same-origin'
 ): NextResponse {
   return NextResponse.json(
     {
@@ -58,6 +123,8 @@ export function createRateLimitErrorResponse(
         'Retry-After': String(Math.max(1, Math.ceil(rateLimit.resetMs / 1000))),
         'X-RateLimit-Limit': String(rateLimit.limit),
         'X-RateLimit-Remaining': String(rateLimit.remaining),
+        'Cache-Control': 'no-store, max-age=0',
+        ...buildApiSecurityHeaders(corpPolicy),
       },
     }
   );

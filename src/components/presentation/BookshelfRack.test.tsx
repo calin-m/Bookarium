@@ -201,10 +201,13 @@ describe('BookshelfRack Component', () => {
     expect(useBookshelfStore.getState().isBookFavorite(mockBooks[0].id)).toBe(true);
   });
 
-  it('renders guest mode sync prompt and triggers auth modal', () => {
+  it('renders guest mode sync prompt without decorative icon and triggers auth modal', () => {
     render(<BookshelfRack books={mockBooks} />);
-    expect(screen.getByText(/Guest Mode \(Local\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sign in to Sync/i)).toBeInTheDocument();
+    expect(screen.getByText('Guest Mode')).toBeInTheDocument();
+    expect(screen.queryByText(/\(Local\)/i)).not.toBeInTheDocument();
+    const syncButton = screen.getByRole('button', { name: /^Sign In$/i });
+    expect(syncButton).toBeInTheDocument();
+    expect(syncButton.querySelector('svg')).toBeNull();
   });
 
   it('displays rounded integer percentage for reading progress', () => {
@@ -360,7 +363,7 @@ describe('BookshelfRack Component', () => {
     expect(screen.getByTestId('private-shelf-badge')).toBeInTheDocument();
   });
 
-  it('renders empty shelf state and allows browsing catalog', () => {
+  it('renders unified empty shelf state without bottom rack padding and allows exploring catalog', () => {
     useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
     useBookshelfStore.setState({
       cloudBookshelves: [
@@ -371,17 +374,33 @@ describe('BookshelfRack Component', () => {
 
     render(<BookshelfRack books={[]} />);
 
-    expect(screen.getByText(/No books found on "General"/i)).toBeInTheDocument();
-    const browseBtn = screen.getByText('Browse Catalog');
+    expect(screen.getByTestId('bookshelf-rack')).not.toHaveClass('pb-6');
+    const heading = screen.getByRole('heading', { name: /No books found on "General"/i });
+    expect(heading).toBeInTheDocument();
+    expect(heading.closest('div')).toHaveClass('bg-card', 'rounded-2xl', 'p-12', 'max-w-lg');
+
+    const browseBtn = screen.getByRole('button', { name: /Explore Catalog/i });
+    expect(browseBtn.querySelector('svg')).not.toBeNull();
     fireEvent.click(browseBtn);
     expect(pushMock).toHaveBeenCalledWith('/');
   });
 
-  it('calls onBrowseCatalog callback when clicking Browse Catalog in empty state', () => {
+  it('calls onBrowseCatalog and opens AuthModal via iconless Sign In buttons in guest empty state', () => {
     const handleBrowse = vi.fn();
     render(<BookshelfRack books={[]} onBrowseCatalog={handleBrowse} />);
 
-    const browseBtn = screen.getByText('Browse Catalog');
+    const syncButtons = screen.getAllByRole('button', { name: /^Sign In$/i });
+    expect(syncButtons).toHaveLength(2);
+    syncButtons.forEach((btn) => {
+      expect(btn.querySelector('svg')).toBeNull();
+    });
+
+    fireEvent.click(syncButtons[1]);
+    expect(useAuthStore.getState().isAuthModalOpen).toBe(true);
+    expect(useAuthStore.getState().authModalView).toBe('sign_in');
+    useAuthStore.getState().closeAuthModal();
+
+    const browseBtn = screen.getByRole('button', { name: /Explore Catalog/i });
     fireEvent.click(browseBtn);
     expect(handleBrowse).toHaveBeenCalledTimes(1);
   });
@@ -856,7 +875,7 @@ describe('BookshelfRack Component', () => {
       expect(screen.queryByText('General')).not.toBeInTheDocument();
       expect(screen.queryByText(/volumes/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Guest Mode/i)).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /sign in to sync/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Sign In$/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /new shelf/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /download shelf offline/i })).not.toBeInTheDocument();
       expect(screen.queryByTestId('shelf-action-controls')).not.toBeInTheDocument();
@@ -880,6 +899,7 @@ describe('BookshelfRack Component', () => {
       expect(screen.getByText(/try adjusting your search criteria/i)).toBeInTheDocument();
       expect(screen.queryByText(/General/i)).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /browse catalog/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /explore catalog/i })).not.toBeInTheDocument();
     });
 
     it('displays totalBooksCount in General shelf badge when provided', () => {
