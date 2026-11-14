@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/types/database.types';
-import { sanitizeSupabaseUrl } from './client';
+import { STORAGE_KEYS } from '@/config/site-config';
+import { sanitizeSupabaseUrl, sanitizeForwardedUserAgent } from './client';
 
 export const SUPABASE_AUTH_COOKIE_PATTERN = /^sb-.*-auth-token(\.\d+)?$/;
 
@@ -25,8 +26,18 @@ export const updateSession = async (request: NextRequest) => {
   }
 
   const supabaseUrl = sanitizeSupabaseUrl(rawUrl);
+  const forwardedUserAgent = sanitizeForwardedUserAgent(request.headers.get('user-agent'));
 
   const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    ...(forwardedUserAgent
+      ? {
+          global: {
+            headers: {
+              'user-agent': forwardedUserAgent,
+            },
+          },
+        }
+      : {}),
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -39,6 +50,9 @@ export const updateSession = async (request: NextRequest) => {
         if (!hasNonEmptyCookieValue) {
           return;
         }
+        const rotatedAuthCookie = cookiesToSet.some(
+          ({ name, value }) => SUPABASE_AUTH_COOKIE_PATTERN.test(name) && Boolean(value)
+        );
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         supabaseResponse = NextResponse.next({
           request,
@@ -46,6 +60,14 @@ export const updateSession = async (request: NextRequest) => {
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         );
+        if (rotatedAuthCookie) {
+          supabaseResponse.cookies.set(STORAGE_KEYS.CLIENT_IP_SYNC, '1', {
+            path: '/',
+            maxAge: 120,
+            sameSite: 'lax',
+            httpOnly: false,
+          });
+        }
       },
     },
   });

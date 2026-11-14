@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   useAuthStore,
   validateUsername,
   isDefinitiveAuthInvalidError,
   coalesceInFlightByUser,
 } from './useAuthStore';
+
+import { clearConsumedRecoveryMarker, readConsumedRecoverySentAt } from '@/lib/auth-recovery';
 
 const mockSignInWithPassword = vi.fn();
 const mockSignUp = vi.fn();
@@ -15,10 +17,15 @@ const mockUnlinkIdentity = vi.fn();
 const mockGetUserIdentities = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetUser = vi.fn();
+const mockRefreshSession = vi.fn();
 const mockOnAuthStateChange = vi.fn();
 const mockResetPasswordForEmail = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockResend = vi.fn();
+const mockGetAuthenticatorAssuranceLevel = vi.fn().mockResolvedValue({
+  data: { currentLevel: null, nextLevel: null, currentAuthenticationMethods: [] },
+  error: null,
+});
 const mockFrom = vi.fn();
 
 const mockRpc = vi.fn().mockResolvedValue({ error: null });
@@ -36,9 +43,13 @@ vi.mock('@/lib/supabase/client', () => ({
       getUserIdentities: mockGetUserIdentities,
       signOut: mockSignOut,
       getUser: mockGetUser,
+      refreshSession: mockRefreshSession,
       onAuthStateChange: mockOnAuthStateChange,
       resetPasswordForEmail: mockResetPasswordForEmail,
       updateUser: mockUpdateUser,
+      mfa: {
+        getAuthenticatorAssuranceLevel: mockGetAuthenticatorAssuranceLevel,
+      },
     },
     from: mockFrom,
     rpc: mockRpc,
@@ -618,6 +629,158 @@ describe('useAuthStore', () => {
     useAuthStore.setState({ isPasswordRecovery: true });
     useAuthStore.getState().clearPasswordRecovery();
     expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
+  });
+
+  describe('verifyPasswordRecoverySession (JWT AMR & single-use recovery verification)', () => {
+    type StoreUser = NonNullable<ReturnType<typeof useAuthStore.getState>['user']>;
+
+    const makeMockUser = (overrides: Partial<StoreUser> = {}): StoreUser =>
+      ({
+        id: 'u-recovery-1',
+        email: 'scholar@bookarium.test',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: '2026-01-01T00:00:00.000Z',
+        ...overrides,
+      }) as StoreUser;
+
+    beforeEach(() => {
+      clearConsumedRecoveryMarker();
+      useAuthStore.setState({ user: null, isPasswordRecovery: false });
+      mockGetAuthenticatorAssuranceLevel.mockReset().mockResolvedValue({
+        data: { currentLevel: null, nextLevel: null, currentAuthenticationMethods: [] },
+        error: null,
+      });
+      mockGetUser.mockReset().mockResolvedValue({ data: { user: null }, error: null });
+    });
+
+    afterEach(() => {
+      clearConsumedRecoveryMarker();
+      useAuthStore.setState({ user: null, isPasswordRecovery: false });
+      mockGetAuthenticatorAssuranceLevel.mockReset().mockResolvedValue({
+        data: { currentLevel: null, nextLevel: null, currentAuthenticationMethods: [] },
+        error: null,
+      });
+      mockGetUser.mockReset();
+    });
+
+    it('returns false when no authenticated user is present', async () => {
+      const verified = await useAuthStore.getState().verifyPasswordRecoverySession();
+      expect(verified).toBe(false);
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
+    });
+
+    it('verifies a fresh otp AMR entry aligned with recovery_sent_at and sets isPasswordRecovery', async () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const sentAt = new Date((nowSec - 120) * 1000).toISOString();
+      useAuthStore.setState({
+        user: makeMockUser({ recovery_sent_at: sentAt }),
+      });
+      mockGetAuthenticatorAssuranceLevel.mockResolvedValueOnce({
+        data: {
+          currentLevel: 'aal1',
+          nextLevel: 'aal1',
+          currentAuthenticationMethods: [{ method: 'otp', timestamp: nowSec - 15 }],
+        },
+        error: null,
+      });
+
+      const verified = await useAuthStore.getState().verifyPasswordRecoverySession();
+
+      expect(verified).toBe(true);
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(true);
+    });
+
+    it('fetches fresh user metadata via getUser() when cached user lacks recovery_sent_at', async () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const freshSentAt = new Date((nowSec - 90) * 1000).toISOString();
+      const cachedUser = makeMockUser({ recovery_sent_at: undefined });
+      const freshUser = makeMockUser({ recovery_sent_at: freshSentAt });
+
+      useAuthStore.setState({ user: cachedUser });
+      mockGetAuthenticatorAssuranceLevel.mockResolvedValueOnce({
+        data: {
+          currentLevel: 'aal1',
+          nextLevel: 'aal1',
+          currentAuthenticationMethods: [{ method: 'otp', timestamp: nowSec - 10 }],
+        },
+        error: null,
+      });
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: freshUser },
+        error: null,
+      });
+
+      const verified = await useAuthStore.getState().verifyPasswordRecoverySession();
+
+      expect(mockGetUser).toHaveBeenCalledTimes(1);
+      expect(verified).toBe(true);
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(true);
+      expect(useAuthStore.getState().user?.recovery_sent_at).toBe(freshSentAt);
+    });
+
+    it('rejects sessions authenticated only via password/oauth or stale otp issued before recovery_sent_at', async () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const sentAt = new Date((nowSec - 30) * 1000).toISOString();
+      useAuthStore.setState({
+        user: makeMockUser({ recovery_sent_at: sentAt }),
+        isPasswordRecovery: true,
+      });
+
+      mockGetAuthenticatorAssuranceLevel.mockResolvedValueOnce({
+        data: {
+          currentLevel: 'aal1',
+          nextLevel: 'aal1',
+          currentAuthenticationMethods: [
+            { method: 'password', timestamp: nowSec - 10 },
+            { method: 'oauth', timestamp: nowSec - 5 },
+            { method: 'otp', timestamp: nowSec - 600 },
+          ],
+        },
+        error: null,
+      });
+
+      const verified = await useAuthStore.getState().verifyPasswordRecoverySession();
+
+      expect(verified).toBe(false);
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
+    });
+
+    it('marks recovery consumed on updatePassword and clears consumed marker after resetPasswordForEmail', async () => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const sentAt = new Date((nowSec - 60) * 1000).toISOString();
+      useAuthStore.setState({
+        user: makeMockUser({ id: 'u-consumed-1', recovery_sent_at: sentAt }),
+        isPasswordRecovery: true,
+      });
+      mockUpdateUser.mockResolvedValueOnce({
+        data: { user: makeMockUser({ id: 'u-consumed-1', recovery_sent_at: sentAt }) },
+        error: null,
+      });
+
+      const updateRes = await useAuthStore.getState().updatePassword('StrongPass!99');
+      expect(updateRes.error).toBeNull();
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
+      expect(readConsumedRecoverySentAt('u-consumed-1')).toBe(sentAt);
+
+      mockGetAuthenticatorAssuranceLevel.mockResolvedValueOnce({
+        data: {
+          currentLevel: 'aal1',
+          nextLevel: 'aal1',
+          currentAuthenticationMethods: [{ method: 'otp', timestamp: nowSec - 5 }],
+        },
+        error: null,
+      });
+
+      const reuseVerified = await useAuthStore.getState().verifyPasswordRecoverySession();
+      expect(reuseVerified).toBe(false);
+
+      mockResetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+      const resetRes = await useAuthStore.getState().resetPasswordForEmail('scholar@bookarium.test');
+      expect(resetRes.error).toBeNull();
+      expect(readConsumedRecoverySentAt('u-consumed-1')).toBeNull();
+    });
   });
 
   it('handles requestAccountDeletion success and failure with PKCE callback redirect', async () => {
@@ -1414,6 +1577,169 @@ describe('useAuthStore', () => {
       expect(calls).toBe(2);
       expect(inFlight.size).toBe(0);
       expect(dirtyUsers.size).toBe(0);
+    });
+  });
+
+  describe('Active Device Session Hardening (verifyActiveSessionValidity & reconcileClientSessionOrigin)', () => {
+    it('enforces 10s cooldown, preserves transient errors offline/5xx, and tears down local state on 403 session_not_found', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-14T12:00:00Z'));
+      const originalOnline = navigator.onLine;
+      mockGetUser.mockReset();
+      mockSignOut.mockReset();
+
+      try {
+        useAuthStore.setState({
+          user: { id: 'u-verify-1', email: 'reader@bookarium.test' } as never,
+          profile: { id: 'u-verify-1', display_name: 'Reader' } as never,
+        });
+
+        // 1. Offline skips network verification and preserves signed-in state
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+        expect(await useAuthStore.getState().verifyActiveSessionValidity({ force: true })).toBe(true);
+        expect(mockGetUser).not.toHaveBeenCalled();
+
+        // 2. Online forced check with valid user triggers getUser and updates cooldown
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: { id: 'u-verify-1', email: 'reader@bookarium.test' } },
+          error: null,
+        });
+        expect(await useAuthStore.getState().verifyActiveSessionValidity({ force: true })).toBe(true);
+        expect(mockGetUser).toHaveBeenCalledTimes(1);
+
+        // 3. Immediate unforced call within 10s cooldown is skipped
+        expect(await useAuthStore.getState().verifyActiveSessionValidity()).toBe(true);
+        expect(mockGetUser).toHaveBeenCalledTimes(1);
+
+        // 4. Advancing > 10s allows unforced check; transient 500 error preserves signed-in state
+        vi.advanceTimersByTime(10_500);
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: null },
+          error: { status: 500, message: 'Upstream timeout' },
+        });
+        expect(await useAuthStore.getState().verifyActiveSessionValidity()).toBe(true);
+        expect(mockGetUser).toHaveBeenCalledTimes(2);
+        expect(useAuthStore.getState().user?.id).toBe('u-verify-1');
+
+        // 5. Definitive 403 session_not_found tears down user/profile and calls local signOut
+        mockSignOut.mockResolvedValueOnce({ error: null });
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: null },
+          error: { status: 403, code: 'session_not_found', message: 'Session not found' },
+        });
+        expect(await useAuthStore.getState().verifyActiveSessionValidity({ force: true })).toBe(false);
+        expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+        expect(useAuthStore.getState().user).toBeNull();
+        expect(useAuthStore.getState().profile).toBeNull();
+      } finally {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline });
+        vi.useRealTimers();
+      }
+    });
+
+    it('reconciles browser IP/UA via bookarium-client-ip-sync cookie while skipping offline or recovery flows', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-14T13:00:00Z'));
+      const originalOnline = navigator.onLine;
+      const originalHref = window.location.href;
+      mockRefreshSession.mockReset();
+
+      try {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+        useAuthStore.setState({
+          user: { id: 'u-ip-1', email: 'ip@bookarium.test' } as never,
+          isPasswordRecovery: false,
+        });
+
+        // Skips refresh when recovery mode is active, while clearing the sync cookie
+        useAuthStore.setState({ isPasswordRecovery: true });
+        document.cookie = 'bookarium-client-ip-sync=1; path=/';
+        await useAuthStore.getState().reconcileClientSessionOrigin();
+        expect(mockRefreshSession).not.toHaveBeenCalled();
+        expect(document.cookie).not.toContain('bookarium-client-ip-sync=1');
+
+        // Normal authenticated hydration clears cookie and invokes non-blocking refreshSession
+        useAuthStore.setState({ isPasswordRecovery: false });
+        vi.advanceTimersByTime(11_000);
+        document.cookie = 'bookarium-client-ip-sync=1; path=/';
+        mockRefreshSession.mockResolvedValueOnce({ data: { session: {} }, error: null });
+        await useAuthStore.getState().reconcileClientSessionOrigin();
+        expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+        expect(document.cookie).not.toContain('bookarium-client-ip-sync=1');
+
+        // Also skips when offline even if cookie is present
+        vi.advanceTimersByTime(11_000);
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+        document.cookie = 'bookarium-client-ip-sync=1; path=/';
+        await useAuthStore.getState().reconcileClientSessionOrigin();
+        expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+      } finally {
+        document.cookie = 'bookarium-client-ip-sync=; max-age=0; path=/';
+        window.history.replaceState({}, '', originalHref);
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline });
+        vi.useRealTimers();
+      }
+    });
+
+    it('rejects revokeSession when RPC returns false and triggers dead-session checks on listActiveSessions / signOutOtherDevices', async () => {
+      const originalOnline = navigator.onLine;
+      mockRpc.mockReset();
+      mockGetUser.mockReset();
+      mockSignOut.mockReset();
+
+      try {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+        useAuthStore.setState({
+          user: { id: 'u-rpc-1', email: 'rpc@bookarium.test' } as never,
+        });
+
+        // 1. revokeSession rejects explicit boolean false cleanly
+        mockRpc.mockResolvedValueOnce({ data: false, error: null });
+        const revokeRes = await useAuthStore.getState().revokeSession('sess-gone');
+        expect(revokeRes.error?.message).toMatch(/already ended/i);
+
+        // 2. listActiveSessions verifies active session when isCurrent is absent and clears on 403
+        mockRpc.mockResolvedValueOnce({
+          data: [
+            {
+              id: 'sess-other',
+              user_agent: 'Mozilla/5.0 Chrome/130',
+              ip_address: '203.0.113.x',
+              created_at: '2026-11-14T10:00:00Z',
+              updated_at: '2026-11-14T10:00:00Z',
+              refreshed_at: null,
+              not_after: null,
+              is_current: false,
+            },
+          ],
+          error: null,
+        });
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: null },
+          error: { status: 403, code: 'session_not_found', message: 'Session not found' },
+        });
+        mockSignOut.mockResolvedValueOnce({ error: null });
+        const listRes = await useAuthStore.getState().listActiveSessions();
+        expect(listRes.error?.message).toMatch(/has ended/i);
+        expect(useAuthStore.getState().user).toBeNull();
+
+        // 3. signOutOtherDevices detects dead current session after scope=others
+        useAuthStore.setState({
+          user: { id: 'u-rpc-2', email: 'rpc2@bookarium.test' } as never,
+        });
+        mockSignOut.mockResolvedValueOnce({ error: null });
+        mockGetUser.mockResolvedValueOnce({
+          data: { user: null },
+          error: { status: 403, code: 'session_not_found', message: 'Session not found' },
+        });
+        mockSignOut.mockResolvedValueOnce({ error: null });
+        const othersRes = await useAuthStore.getState().signOutOtherDevices();
+        expect(othersRes.error?.message).toMatch(/already ended/i);
+        expect(useAuthStore.getState().user).toBeNull();
+      } finally {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline });
+      }
     });
   });
 });

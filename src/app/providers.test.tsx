@@ -126,6 +126,23 @@ describe('Providers component', () => {
     expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 
+  it('opens AuthModal in forgot_password view when ?auth_notice=recovery_cross_device is present on mount', () => {
+    window.location.search = '?auth_notice=recovery_cross_device';
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    const authState = useAuthStore.getState();
+    expect(authState.isAuthModalOpen).toBe(true);
+    expect(authState.authModalView).toBe('forgot_password');
+    expect(authState.error).toContain('same browser where you requested it');
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+  });
+
   it('opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount', () => {
     window.location.search = '?auth_error=verification_failed';
     const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
@@ -250,6 +267,85 @@ describe('Providers component', () => {
       expect(syncAllStoresWithCloud).toHaveBeenCalledTimes(1);
       expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1');
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reconciles server-side session origin on mount and validates active session on online, visibilitychange, and visible 60s polling', () => {
+    vi.useFakeTimers();
+    const origVerify = useAuthStore.getState().verifyActiveSessionValidity;
+    const origReconcile = useAuthStore.getState().reconcileClientSessionOrigin;
+    const verifySpy = vi.fn().mockResolvedValue(true);
+    const reconcileSpy = vi.fn().mockResolvedValue(undefined);
+    const origVisibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+
+    try {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible',
+      });
+      useAuthStore.setState({
+        user: { id: 'user-session-guard-1' } as never,
+        isLoading: false,
+        verifyActiveSessionValidity: verifySpy,
+        reconcileClientSessionOrigin: reconcileSpy,
+      });
+
+      const { unmount } = render(
+        <Providers>
+          <div>Child Content</div>
+        </Providers>
+      );
+
+      expect(reconcileSpy).toHaveBeenCalledTimes(1);
+
+      // Reconnecting triggers forced verification
+      act(() => {
+        window.dispatchEvent(new Event('online'));
+      });
+      expect(verifySpy).toHaveBeenCalledWith({ force: true });
+
+      // Returning to a visible tab triggers coalesced verification
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(verifySpy).toHaveBeenCalledTimes(2);
+
+      // Visible 60s interval polls periodically while tab remains visible
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(verifySpy).toHaveBeenCalledTimes(3);
+
+      // Hidden tab skips 60s interval verification
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'hidden',
+      });
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(verifySpy).toHaveBeenCalledTimes(3);
+
+      // Unmount cleans up interval and listeners
+      unmount();
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible',
+      });
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(verifySpy).toHaveBeenCalledTimes(3);
+    } finally {
+      if (origVisibilityDescriptor) {
+        Object.defineProperty(document, 'visibilityState', origVisibilityDescriptor);
+      }
+      useAuthStore.setState({
+        user: null,
+        verifyActiveSessionValidity: origVerify,
+        reconcileClientSessionOrigin: origReconcile,
+      });
       vi.useRealTimers();
     }
   });

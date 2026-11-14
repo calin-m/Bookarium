@@ -95,6 +95,7 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(STORAGE_KEYS.PREFERENCES).toBe('bookarium-navigation-preferences');
     expect(STORAGE_KEYS.THEME).toBe('bookarium-theme-preference');
     expect(STORAGE_KEYS.AUTH_HINT).toBe('bookarium-auth-hint');
+    expect(STORAGE_KEYS.CLIENT_IP_SYNC).toBe('bookarium-client-ip-sync');
     expect(STORAGE_KEYS.HABITS).toBe('bookarium-habits-storage');
     expect(STORAGE_KEYS.ACCOLADES).toBe('bookarium-accolades-storage');
   });

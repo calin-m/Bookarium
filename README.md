@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-255%20Suites%20%7C%202573%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-256%20Suites%20%7C%202601%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.41%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2573 tests across 255 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2601 tests across 256 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,11 +108,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.31)
+## 🛠️ Latest Improvements (v2.9.33)
 
-- **Confirmation-Guarded Security Actions & Identity Ribbon Sign-Out (`ADR-080`)**: Unified `AccountSecuritySection` session and OAuth unlink actions behind a data-driven `ConfirmActionModal` covering Google login `Disconnect` (showing the linked email), per-device `Revoke` (showing target device label, masked IP, and last-active timestamp), `Sign Out This Browser` (`'local'`, offline-capable), `Sign Out Other Devices` (`'others'`), and `Sign Out All Devices` (`'global'`), and guarded the top `AccountIdentityCard` `Sign Out` ribbon pill (`identity-sign-out-button`) with confirmation while preserving single-click exit on the Navbar avatar hover menu.
-- **Deterministic Catalog Sub-Pagination & Jurisdictional Cache Key Isolation (`ADR-080`)**: Added `effectiveCountry` to TanStack Query keys (`["books", params, effectiveCountry]`), preserved `?page=2` SSR-to-mobile hydration in `useCatalogFilters`, upgraded `SupabaseCatalogProvider` to exact `limit + 1` probing with bounded backfill (`MAX_BACKFILL_ITERATIONS = 5`), and clamped overshoot sub-pages deterministically via `batchStartPage + lastPopulatedOffset`.
-- **Personal `BookshelfRack` Filter Isolation in Catalog Spine Mode (`src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/BookGrid.tsx`, `ADR-080`)**: Scoped `effectiveIsViewingDownloaded` and active custom shelf item filters strictly on `showShelfControls` (`showShelfControls ?? (activeView === "bookshelf")`), preventing active `__downloaded__` or Bookshelf shelf selections from hiding online volumes when browsing the Catalog in 3D Spine mode.
+- **Cross-Tab Security Sync, Browser Classification & Honest Modal Disclosures**: Added sender-filtered `BroadcastChannel('bookarium-sessions-sync')` and `bookarium:auth-token-refreshed` live refresh listeners in `useAccountSecurityActions.ts` (`ADR-080`) without same-tab echo loops, expanded `parseSessionDevice` (`src/lib/session-device-parser.ts`) for `EdgA/`, `Vivaldi/`, and `DuckDuckGo/`, clarified remote logout timing in `AccountSecuritySection` confirmation modals, and displayed contextual duplicate-device hints when multiple sessions share a device label and masked IP.
+- **Living Architecture Diagrams, Governance Metrics & Decision Ledger Restoration (`scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `README.md`, `.agents/AGENTS.md`)**: Synchronized C4/Event-Bus/Failure-Mode/Trust-Zone diagrams and `bookarium-consumed-recovery` storage erasure matrices across `v2.9.32` recovery and `v2.9.33` session workflows, aligned `README.md` (`7-Store`, `47` RLS policies) and `.agents/AGENTS.md` (`9` functions/triggers) metrics, and restored `docs/DECISIONS.md`'s Decommissioned Decisions Ledger (`ADR-080`).
+- **Immediate Vercel Browser IP & Sanitized `User-Agent` Reconciliation**: Exported Edge/client-safe `sanitizeForwardedUserAgent` from `src/lib/supabase/client.ts` (avoiding `next/headers` leaks into `src/proxy.ts` via `middleware.ts`), forwarded sanitized `User-Agent` headers in `src/lib/supabase/server.ts`, `/auth/callback`, and `updateSession` (`src/lib/supabase/middleware.ts`), and stamped ephemeral `bookarium-client-ip-sync` (`STORAGE_KEYS.CLIENT_IP_SYNC`) on non-recovery exchanges and rotated `sb-*-auth-token` SSR refreshes so `reconcileClientSessionOrigin()` updates AWS egress `18.x` IPs and `"Browser session"` UAs to the reader's real browser immediately on mount (skipping offline and recovery flows).
+- **Automatic Remote Session Revocation Enforcement (`verifyActiveSessionValidity`)**: Added coalesced `10,000ms`-throttled session validation (`useAuthStore.ts`) wired into `Providers` (`src/app/providers.tsx`, `ADR-080`, `ADR-005`) on `online`, `visibilitychange` (`visible`), and a visible-only `60,000ms` interval so externally revoked or expired sessions (`400/401/403 session_not_found`) tear down signed-in state cleanly via `resetClientAuthState` across sibling tabs without logging users out on transient offline/`5xx` errors.
+- **Strict Session RPC & Dead-Session Verification (`revokeSession`, `listActiveSessions`, `signOutOtherDevices`)**: Hardened `revokeSession` (`useAuthStore.ts`, `ADR-080`) to reject explicit `false` returns from `revoke_user_session` with an already-ended recovery notice that refreshes Security sessions while preserving the error banner, and updated `listActiveSessions` + `signOutOtherDevices` to invoke `verifyActiveSessionValidity({ force: true })` whenever `isCurrent` is missing or empty so revoked tabs never remain signed in on stale JWTs.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -166,8 +168,8 @@ Bookarium is structured around six core engineering pillars:
 * **Native IndexedDB Offline Storage, Cover Blob Cache & Adaptive Offline Catalog**: Persists unabridged book texts and binary cover `Blob`s (`BookariumOfflineDB`, `useOfflineCoverImage.ts` via `/api/books/content?type=cover`) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: 2-column archival reading ledger with silk ribbon markers, live progress percentages, multi-attribute sorting, status filtering, completed book progress latching (`Read Again` flow), and 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails).
 * **In-Reader Highlighting, Dual-State Marginalia & Commonplace Notebook (`/notebook`)**: 4 pastel highlighters with page-boundary partial span matching, a **Dual-State Read/Edit Marginalia Popover** (`TextHighlightPopover.tsx`), composite union cards for overlapping personal + Fellow Scholar highlights (`pairOverlappingAnnotations`), and 1-click academic citation export.
-* **6-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, and fellowships with `TOKEN_REFRESHED` wake-up re-sync, paired with `{ count: 'estimated' }` planner scans, 11-column selective projection, `(select auth.uid())` RLS `InitPlan` policies (`37` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
-* **Hardened Authentication, Reading Habits & 3-Tier Zero-Retention Erasure (`/account`, `/privacy`)**: Supports Email/Password, Magic Link, and Google OAuth 2.0 PKCE with Cloudflare Turnstile + Honeypot bot protection, Connected Accounts linking, dual Reading/Listening streak & annual challenge telemetry (`useHabitsStore`), Dynamic OpenGraph Reading Quote Cards, and a **Two-Step Email-Verified 3-Tier Zero-Retention Data Erasure Protocol** (`public.delete_current_user()` + device storage wipe).
+* **7-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, fellowships, and unified `profiles.preferences` JSONB (`usePreferencesStore` / `useThemeStore`) with `TOKEN_REFRESHED` wake-up re-sync, paired with `{ count: 'estimated' }` planner scans, 11-column selective projection, `(select auth.uid())` RLS `InitPlan` policies (`47` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
+* **Hardened Authentication, Active Device Sessions & 3-Tier Zero-Retention Erasure (`/account`, `/privacy`)**: Supports Email/Password, Magic Link, and Google OAuth 2.0 PKCE with Cloudflare Turnstile (including `/account` recovery & resend gating) + Honeypot bot protection, fail-closed JWT `amr` password recovery (`auth-recovery.ts`), owner-scoped **Active Device Sessions** inspection & single-device/peer revocation (`public.get_active_sessions()`, `public.revoke_user_session(UUID)`, `verifyActiveSessionValidity`), Connected Accounts linking, dual Reading/Listening streak & annual challenge telemetry (`useHabitsStore`), Dynamic OpenGraph Reading Quote Cards, and a **Two-Step Email-Verified 3-Tier Zero-Retention Data Erasure Protocol** (`public.delete_current_user()` + device storage wipe).
 
 ### 5. 🤝 Reader Circles, Literary Symposiums & Scholarly Honors
 * **Mutual Reader Circle Fellowships (`public.reader_circles`)**: Opt-in two-way fellowship connections (`useFellowshipStore.ts`, `AccountSymposiumSection.tsx`) with zero-PII `@username` lookup (`public.lookup_scholar_by_username`) and automated profile identity sync triggers (`handle_profile_identity_sync`).
@@ -192,7 +194,7 @@ flowchart TD
     User["👤 Reader / Public Domain Scholar"]
     
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
-        Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync, GlobalTitleTooltip & Dynamic AuthModal)"]
+        Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync, verifyActiveSessionValidity, IP/UA Reconciliation, GlobalTitleTooltip & Dynamic AuthModal)"]
         SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v7, Static Asset Warmup & Offline Fallback)"]
         AuthModalNode["AuthModal.tsx, EmailSentView.tsx & TurnstileWidget.tsx\n(Sign-In, Sign-Up, Turnstile CAPTCHA, Honeypot, OAuth, Magic Link & Reset)"]
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]
@@ -229,7 +231,7 @@ flowchart TD
             HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
             AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
             SymposiumCard["AccountSymposiumSection.tsx\n(Reader Circles & Literary Symposiums)"]
-            SecurityCard["AccountSecuritySection.tsx\n(Active Device Sessions, Google Disconnect & Confirm-Guarded Sign-Out)"]
+            SecurityCard["AccountSecuritySection.tsx\n(Active Device Sessions, Duplicate-Origin Hints, Turnstile Recovery, Google Disconnect & Confirm-Guarded Sign-Out)"]
             PrefsCard["AccountPreferencesSection.tsx\n(AccountTypographySubPanel • AccountNarrationSubPanel • Two-Tier Custom Defaults)"]
             ProfilePage["Public Scholar Sanctuary (/u/[username])\n(Public Profile, Pinned Accolades & Fellowship CTA)"]
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
@@ -285,7 +287,7 @@ flowchart TD
         CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\n(supabase-provider.ts • curated-fallback.ts)"]
         ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]
         ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]
-        AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]
+        AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]
         LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
         ProfileLayoutServer["Server Layout (/u/[username])\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]
         StaticSeoRoutes["SSR Metadata & Crawler Gateways\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • sitemap.ts)"]

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -117,6 +117,7 @@ function AccountDashboardContent() {
     updatePassword,
     resetPasswordForEmail,
     clearPasswordRecovery,
+    verifyPasswordRecoverySession,
     requestAccountDeletion,
     signOut,
     signOutOtherDevices,
@@ -136,6 +137,7 @@ function AccountDashboardContent() {
       updatePassword: s.updatePassword,
       resetPasswordForEmail: s.resetPasswordForEmail,
       clearPasswordRecovery: s.clearPasswordRecovery,
+      verifyPasswordRecoverySession: s.verifyPasswordRecoverySession,
       requestAccountDeletion: s.requestAccountDeletion,
       signOut: s.signOut,
       signOutOtherDevices: s.signOutOtherDevices,
@@ -339,8 +341,47 @@ function AccountDashboardContent() {
     setPrevRecoveryParam(recoveryParam);
     setHasClearedRecoveryParam(false);
   }
-  const isRecoveryMode =
-    (recoveryParam && !hasClearedRecoveryParam) || Boolean(isPasswordRecovery);
+  const isRecoveryMode = Boolean(isPasswordRecovery);
+  const clearRecoveryParamInUrl = useCallback(() => {
+    setHasClearedRecoveryParam(true);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('recovery')) {
+        url.searchParams.delete('recovery');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      !authUser ||
+      !recoveryParam ||
+      hasClearedRecoveryParam ||
+      isPasswordRecovery ||
+      typeof verifyPasswordRecoverySession !== 'function'
+    ) {
+      return;
+    }
+    let cancelled = false;
+    void verifyPasswordRecoverySession().then((verified) => {
+      if (!cancelled && !verified) {
+        clearRecoveryParamInUrl();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoading,
+    authUser,
+    recoveryParam,
+    hasClearedRecoveryParam,
+    isPasswordRecovery,
+    verifyPasswordRecoverySession,
+    clearRecoveryParamInUrl,
+  ]);
   const defaultTab: AccountTabId = isOffline
     ? 'preferences'
     : isRecoveryMode
@@ -470,14 +511,7 @@ function AccountDashboardContent() {
     user,
     profile,
     isRecoveryMode,
-    onClearRecoveryParam: () => {
-      setHasClearedRecoveryParam(true);
-      if (typeof window !== 'undefined' && searchParams.has('recovery')) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('recovery');
-        window.history.replaceState(null, '', url.toString());
-      }
-    },
+    onClearRecoveryParam: clearRecoveryParamInUrl,
     clearPasswordRecovery,
     updateProfile,
     updatePassword,

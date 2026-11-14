@@ -41,6 +41,7 @@ describe('AccountPage', () => {
       profile: null,
       isLoading: false,
       isPasswordRecovery: false,
+      verifyPasswordRecoverySession: vi.fn().mockResolvedValue(false),
       listActiveSessions: vi.fn().mockResolvedValue({ sessions: [], error: null }),
       revokeSession: vi.fn().mockResolvedValue({ error: null }),
       signOutOtherDevices: vi.fn().mockResolvedValue({ error: null }),
@@ -1154,19 +1155,112 @@ describe('AccountPage', () => {
       }
     });
 
-    it('automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)', async () => {
+    it('automatically defaults to security tab in recovery mode when session verifies and tabParam is omitted (?recovery=true)', async () => {
+      type StoreState = ReturnType<typeof useAuthStore.getState>;
       mockSearchParams = new URLSearchParams('recovery=true');
-      useAuthStore.setState({
-        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
-        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
-        isLoading: false,
+      const verifyMock = vi.fn(async () => {
+        useAuthStore.setState({ isPasswordRecovery: true });
+        return true;
       });
-      render(<AccountPage />);
+      useAuthStore.setState({
+        user: {
+          id: 'u1',
+          email: 'austen@bookarium.test',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: '2026-01-01T00:00:00.000Z',
+        } as NonNullable<StoreState['user']>,
+        profile: {
+          id: 'u1',
+          display_name: 'Jane Austen',
+        } as NonNullable<StoreState['profile']>,
+        isLoading: false,
+        verifyPasswordRecoverySession: verifyMock,
+      });
+      await act(async () => {
+        render(<AccountPage />);
+      });
+
+      await waitFor(() => {
+        expect(verifyMock).toHaveBeenCalledTimes(1);
+      });
+
       const securityTab = screen.getByRole('tab', { name: /Security/i });
       expect(securityTab).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('password-recovery-banner')).toBeInTheDocument();
       await waitFor(() => {
         expect(useAuthStore.getState().listActiveSessions).toHaveBeenCalled();
       });
+    });
+
+    it('strips spoofed or unverified ?recovery=true from URL and keeps Current Password required', async () => {
+      type StoreState = ReturnType<typeof useAuthStore.getState>;
+      const originalHref = window.location.href;
+      mockSearchParams = new URLSearchParams('tab=security&recovery=true');
+      window.location.href = 'http://localhost:3000/account?tab=security&recovery=true';
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+      const verifyMock = vi.fn().mockResolvedValue(false);
+      const originalUpdatePassword = useAuthStore.getState().updatePassword;
+      const updatePasswordSpy = vi.fn().mockResolvedValue({ error: null });
+
+      useAuthStore.setState({
+        user: {
+          id: 'u1',
+          email: 'austen@bookarium.test',
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: '2026-01-01T00:00:00.000Z',
+        } as NonNullable<StoreState['user']>,
+        profile: {
+          id: 'u1',
+          display_name: 'Jane Austen',
+        } as NonNullable<StoreState['profile']>,
+        isLoading: false,
+        isPasswordRecovery: false,
+        verifyPasswordRecoverySession: verifyMock,
+        updatePassword: updatePasswordSpy,
+      });
+
+      try {
+        await act(async () => {
+          render(<AccountPage />);
+        });
+
+        await waitFor(() => {
+          expect(verifyMock).toHaveBeenCalledTimes(1);
+          expect(useAuthStore.getState().listActiveSessions).toHaveBeenCalled();
+        });
+        await waitFor(() => {
+          expect(replaceStateSpy).toHaveBeenCalledWith(
+            null,
+            '',
+            'http://localhost:3000/account?tab=security'
+          );
+        });
+        expect(screen.queryByTestId('password-recovery-banner')).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/Current Password/i)).toBeInTheDocument();
+
+        fireEvent.change(document.getElementById('new-password') as HTMLInputElement, {
+          target: { value: 'StrongPass!99' },
+        });
+        fireEvent.change(screen.getByLabelText(/Confirm New Password/i), {
+          target: { value: 'StrongPass!99' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Update Password/i }));
+
+        expect(
+          await screen.findByText(
+            'Please enter your current password, or send a reset link to your email.'
+          )
+        ).toBeInTheDocument();
+        expect(updatePasswordSpy).not.toHaveBeenCalled();
+      } finally {
+        useAuthStore.setState({ updatePassword: originalUpdatePassword });
+        window.location.href = originalHref;
+        replaceStateSpy.mockRestore();
+      }
     });
 
     it('suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])', () => {

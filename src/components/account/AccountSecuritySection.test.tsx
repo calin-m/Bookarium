@@ -617,5 +617,91 @@ describe('AccountSecuritySection', () => {
       Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
     }
   });
+
+  it('renders honest session revocation modal copy and displays sessions-duplicate-hint only for duplicate device+IP rows', () => {
+    const distinctSessions: ActiveUserSession[] = [
+      {
+        id: 'sess-win-1',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36',
+        ipAddress: '203.0.113.x',
+        createdAt: '2026-11-14T10:00:00Z',
+        updatedAt: '2026-11-14T10:15:00Z',
+        refreshedAt: '2026-11-14T10:30:00Z',
+        notAfter: null,
+        isCurrent: true,
+      },
+      {
+        id: 'sess-ios-1',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1',
+        ipAddress: '198.51.100.x',
+        createdAt: '2026-11-13T08:00:00Z',
+        updatedAt: '2026-11-13T08:00:00Z',
+        refreshedAt: null,
+        notAfter: null,
+        isCurrent: false,
+      },
+    ];
+
+    const duplicateSessions: ActiveUserSession[] = [
+      distinctSessions[0]!,
+      {
+        id: 'sess-win-2',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36',
+        ipAddress: '203.0.113.x',
+        createdAt: '2026-11-14T09:00:00Z',
+        updatedAt: '2026-11-14T09:05:00Z',
+        refreshedAt: null,
+        notAfter: null,
+        isCurrent: false,
+      },
+    ];
+
+    const baseProps = {
+      newPassword: '',
+      confirmPassword: '',
+      showPassword: false,
+      copiedPassword: false,
+      isUpdatingPassword: false,
+      passwordSuccess: false,
+      passwordError: null,
+      strength: { score: 0, label: 'Weak', color: 'bg-destructive' },
+      onNewPasswordChange: vi.fn(),
+      onConfirmPasswordChange: vi.fn(),
+      onToggleShowPassword: vi.fn(),
+      onGeneratePassword: vi.fn(),
+      onUpdatePassword: vi.fn(),
+      onSignOut: vi.fn().mockResolvedValue(undefined),
+      onOpenDeleteModal: vi.fn(),
+      userEmail: 'scholar@bookarium.test',
+      hasLoadedSessions: true,
+      onRefreshSessions: vi.fn().mockResolvedValue(undefined),
+      onRevokeSession: vi.fn().mockResolvedValue(undefined),
+      onSignOutOtherDevices: vi.fn().mockResolvedValue(undefined),
+      onSignOutAllDevices: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const { rerender } = render(
+      <AccountSecuritySection {...baseProps} sessions={distinctSessions} />
+    );
+
+    // No duplicate device+IP hint when sessions have distinct signatures
+    expect(screen.queryByTestId('sessions-duplicate-hint')).not.toBeInTheDocument();
+
+    // Open single-device revoke confirmation modal and inspect honest copy
+    fireEvent.click(screen.getByRole('button', { name: /Revoke/i }));
+    const revokeDialog = screen.getByRole('dialog');
+    expect(revokeDialog).toHaveTextContent(/within ~1 minute|next focus|refresh|reload/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Open sign-out-other-devices confirmation modal and inspect honest copy
+    fireEvent.click(screen.getByRole('button', { name: /Sign Out Other Devices/i }));
+    const signOutOthersDialog = screen.getByRole('dialog');
+    expect(signOutOthersDialog).toHaveTextContent(/within ~1 minute|next focus|refresh|reload/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Re-render with duplicate Windows Chrome + same IP sessions -> hint renders
+    rerender(<AccountSecuritySection {...baseProps} sessions={duplicateSessions} />);
+    expect(screen.getByTestId('sessions-duplicate-hint')).toBeInTheDocument();
+  });
 });
 

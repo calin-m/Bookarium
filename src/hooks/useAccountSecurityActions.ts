@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';
 import {
@@ -8,6 +8,30 @@ import {
   evaluatePasswordStrength,
 } from '@/lib/password';
 import type { ActiveUserSession } from '@/lib/session-device-parser';
+
+const SESSIONS_BROADCAST_CHANNEL = 'bookarium-sessions-sync';
+
+function broadcastSessionsChanged(
+  activeChannel: BroadcastChannel | null,
+  userId: string | null,
+  senderId: string
+): void {
+  if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
+    return;
+  }
+  const payload = { type: 'sessions-changed', userId, senderId };
+  try {
+    if (activeChannel) {
+      activeChannel.postMessage(payload);
+      return;
+    }
+    const channel = new BroadcastChannel(SESSIONS_BROADCAST_CHANNEL);
+    channel.postMessage(payload);
+    channel.close();
+  } catch {
+    // Non-blocking fallback when BroadcastChannel is restricted
+  }
+}
 
 export interface UseAccountSecurityActionsParams {
   user: User | null;
@@ -392,31 +416,44 @@ export function useAccountSecurityActions({
     setIsSignOutAllModalOpen(false);
   }
 
-  const refreshActiveSessions = useCallback(async () => {
-    if (!currentUserId || isOffline || isPreviewMode || !listActiveSessions) {
-      return;
-    }
-
-    setIsLoadingSessions(true);
-    setSessionsError(null);
-
-    try {
-      const res = await listActiveSessions();
-      setSessions(Array.isArray(res?.sessions) ? res.sessions : []);
-      setHasLoadedSessions(true);
-      setIsSessionsRpcUnavailable(Boolean(res?.isRpcUnavailable));
-      if (res?.error) {
-        setSessionsError(res.error.message || 'Unable to load active device sessions.');
+  const reloadActiveSessions = useCallback(
+    async (preserveError = false) => {
+      if (!currentUserId || isOffline || isPreviewMode || !listActiveSessions) {
+        return;
       }
-    } catch (err: unknown) {
-      setHasLoadedSessions(true);
-      setSessionsError(
-        err instanceof Error ? err.message : 'Unable to load active device sessions.'
-      );
-    } finally {
-      setIsLoadingSessions(false);
-    }
-  }, [currentUserId, isOffline, isPreviewMode, listActiveSessions]);
+
+      setIsLoadingSessions(true);
+      if (!preserveError) {
+        setSessionsError(null);
+      }
+
+      try {
+        const res = await listActiveSessions();
+        setSessions(Array.isArray(res?.sessions) ? res.sessions : []);
+        setHasLoadedSessions(true);
+        setIsSessionsRpcUnavailable(Boolean(res?.isRpcUnavailable));
+        if (res?.error) {
+          setSessionsError(res.error.message || 'Unable to load active device sessions.');
+        }
+      } catch (err: unknown) {
+        setHasLoadedSessions(true);
+        setSessionsError(
+          err instanceof Error ? err.message : 'Unable to load active device sessions.'
+        );
+      } finally {
+        setIsLoadingSessions(false);
+      }
+    },
+    [currentUserId, isOffline, isPreviewMode, listActiveSessions]
+  );
+
+  const refreshActiveSessions = useCallback(
+    () => reloadActiveSessions(false),
+    [reloadActiveSessions]
+  );
+
+  const sessionsSyncSenderId = useId();
+  const sessionsSyncChannelRef = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
     if (
@@ -470,6 +507,70 @@ export function useAccountSecurityActions({
     hasLoadedSessions,
   ]);
 
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      !currentUserId ||
+      activeTab !== 'security' ||
+      isOffline ||
+      isPreviewMode ||
+      !listActiveSessions
+    ) {
+      sessionsSyncChannelRef.current = null;
+      return;
+    }
+
+    const handleTokenRefreshed = () => {
+      void refreshActiveSessions();
+    };
+    window.addEventListener('bookarium:auth-token-refreshed', handleTokenRefreshed);
+
+    let channel: BroadcastChannel | null = null;
+    const handleBroadcastMessage = (event: MessageEvent) => {
+      const payload = event?.data as
+        | { type?: unknown; userId?: unknown; senderId?: unknown }
+        | undefined;
+      if (payload?.type !== 'sessions-changed') return;
+      if (payload.senderId === sessionsSyncSenderId) return;
+      if (typeof payload.userId === 'string' && payload.userId !== currentUserId) return;
+      void refreshActiveSessions();
+    };
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel(SESSIONS_BROADCAST_CHANNEL);
+        sessionsSyncChannelRef.current = channel;
+        channel.addEventListener('message', handleBroadcastMessage);
+      } catch {
+        channel = null;
+        sessionsSyncChannelRef.current = null;
+      }
+    }
+
+    return () => {
+      window.removeEventListener('bookarium:auth-token-refreshed', handleTokenRefreshed);
+      if (channel) {
+        if (sessionsSyncChannelRef.current === channel) {
+          sessionsSyncChannelRef.current = null;
+        }
+        try {
+          channel.removeEventListener('message', handleBroadcastMessage);
+          channel.close();
+        } catch {
+          // Non-blocking cleanup
+        }
+      }
+    };
+  }, [
+    currentUserId,
+    activeTab,
+    isOffline,
+    isPreviewMode,
+    listActiveSessions,
+    refreshActiveSessions,
+    sessionsSyncSenderId,
+  ]);
+
   const handleSignOutThisBrowser = async () => {
     if (!signOut || isSigningOutScope) return;
     setIsSigningOutScope('local');
@@ -502,6 +603,11 @@ export function useAccountSecurityActions({
       }
       setSessions((prev) => prev.filter((item) => item.isCurrent));
       setSessionsSuccess('Signed out from all other devices.');
+      broadcastSessionsChanged(
+        sessionsSyncChannelRef.current,
+        currentUserId,
+        sessionsSyncSenderId
+      );
     } catch (err: unknown) {
       setSessionsError(err instanceof Error ? err.message : 'Failed to sign out other devices.');
     } finally {
@@ -542,10 +648,18 @@ export function useAccountSecurityActions({
       const { error } = await revokeSession(session.id);
       if (error) {
         setSessionsError(error.message || 'Failed to revoke device session.');
+        if (error.message.toLowerCase().includes('already ended')) {
+          void reloadActiveSessions(true);
+        }
         return;
       }
       setSessions((prev) => prev.filter((item) => item.id !== session.id));
       setSessionsSuccess('Device session revoked.');
+      broadcastSessionsChanged(
+        sessionsSyncChannelRef.current,
+        currentUserId,
+        sessionsSyncSenderId
+      );
     } catch (err: unknown) {
       setSessionsError(err instanceof Error ? err.message : 'Failed to revoke device session.');
     } finally {

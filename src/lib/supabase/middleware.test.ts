@@ -127,5 +127,78 @@ describe('src/lib/supabase/middleware', () => {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = origKey;
     }
   });
+
+  it('forwards sanitized User-Agent headers and sets bookarium-client-ip-sync only when auth cookies rotate with non-empty values', async () => {
+    const origUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const origKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://project.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+
+    try {
+      let capturedOptions: Record<string, unknown> | undefined;
+      vi.mocked(createServerClient).mockImplementationOnce((_url, _key, options) => {
+        capturedOptions = options as unknown as Record<string, unknown>;
+        return {
+          auth: {
+            getUser: vi.fn(async () => {
+              const cookiesAdapter = options.cookies as unknown as {
+                setAll: (items: { name: string; value: string; options?: Record<string, unknown> }[]) => void;
+              };
+              cookiesAdapter.setAll([
+                { name: 'sb-project-auth-token', value: 'rotated-jwt', options: { path: '/' } },
+              ]);
+              return { data: { user: { id: 'u1' } }, error: null };
+            }),
+          },
+        } as never;
+      });
+
+      const req = new NextRequest('https://bookarium.app/account', {
+        headers: {
+          cookie: 'sb-project-auth-token=jwt-initial',
+        },
+      });
+      const origHeadersGet = req.headers.get.bind(req.headers);
+      vi.spyOn(req.headers, 'get').mockImplementation((name) =>
+        name.toLowerCase() === 'user-agent'
+          ? 'Mozilla/5.0 Chrome/131.0.0.0\r\nInjected: bad'
+          : origHeadersGet(name)
+      );
+      const res = await updateSession(req);
+
+      expect(res.status).toBe(200);
+      expect(
+        (capturedOptions?.global as { headers?: Record<string, string> })?.headers?.['user-agent']
+      ).toBe('Mozilla/5.0 Chrome/131.0.0.0 Injected: bad');
+      expect(res.cookies.get('bookarium-client-ip-sync')?.value).toBe('1');
+      expect(res.cookies.get('sb-project-auth-token')?.value).toBe('rotated-jwt');
+
+      // Deleting-only setAll must NOT set bookarium-client-ip-sync
+      vi.mocked(createServerClient).mockImplementationOnce((_url, _key, options) => {
+        return {
+          auth: {
+            getUser: vi.fn(async () => {
+              const cookiesAdapter = options.cookies as unknown as {
+                setAll: (items: { name: string; value: string; options?: Record<string, unknown> }[]) => void;
+              };
+              cookiesAdapter.setAll([
+                { name: 'sb-project-auth-token', value: '', options: { path: '/', maxAge: 0 } },
+              ]);
+              return { data: { user: null }, error: { status: 403 } };
+            }),
+          },
+        } as never;
+      });
+
+      const revokedReq = new NextRequest('https://bookarium.app/account', {
+        headers: { cookie: 'sb-project-auth-token=jwt-revoked' },
+      });
+      const revokedRes = await updateSession(revokedReq);
+      expect(revokedRes.cookies.get('bookarium-client-ip-sync')).toBeUndefined();
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = origUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = origKey;
+    }
+  });
 });
 

@@ -58,6 +58,8 @@ export function Providers({
   );
 
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
+  const verifyActiveSessionValidity = useAuthStore((s) => s.verifyActiveSessionValidity);
+  const reconcileClientSessionOrigin = useAuthStore((s) => s.reconcileClientSessionOrigin);
   const openAuthModal = useAuthStore((s) => s.openAuthModal);
   const setError = useAuthStore((s) => s.setError);
   const setStatusMessage = useAuthStore((s) => s.setStatusMessage);
@@ -87,6 +89,12 @@ export function Providers({
         'Email verified! Please sign in to access your bookshelf on this device.'
       );
       params.delete('auth_notice');
+    } else if (authNotice === 'recovery_cross_device') {
+      openAuthModal('forgot_password');
+      setError(
+        'This password reset link must be opened in the same browser where you requested it. Please request a new reset link on this device.'
+      );
+      params.delete('auth_notice');
     } else if (authError === 'verification_failed') {
       openAuthModal('sign_in');
       setError(
@@ -109,9 +117,10 @@ export function Providers({
   useEffect(() => {
     if (!isLoading && user?.id) {
       lastSyncTimeRef.current = Date.now();
+      void reconcileClientSessionOrigin?.();
       syncAllStoresWithCloud(user.id);
     }
-  }, [isLoading, user?.id]);
+  }, [isLoading, user?.id, reconcileClientSessionOrigin]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -123,12 +132,14 @@ export function Providers({
     const handleOnline = () => {
       if (!isLoading && user?.id) {
         lastSyncTimeRef.current = Date.now();
+        void verifyActiveSessionValidity?.({ force: true });
         syncAllStoresWithCloud(user.id);
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isLoading && user?.id) {
+        void verifyActiveSessionValidity?.();
         const now = Date.now();
         if (now - lastSyncTimeRef.current >= 15000) {
           lastSyncTimeRef.current = now;
@@ -144,15 +155,27 @@ export function Providers({
       }
     };
 
+    const visibilityCheckInterval =
+      !isLoading && user?.id
+        ? setInterval(() => {
+            if (document.visibilityState === 'visible') {
+              void verifyActiveSessionValidity?.();
+            }
+          }, 60_000)
+        : null;
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('bookarium:auth-token-refreshed', handleTokenRefreshed);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
+      if (visibilityCheckInterval !== null) {
+        clearInterval(visibilityCheckInterval);
+      }
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('bookarium:auth-token-refreshed', handleTokenRefreshed);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLoading, user?.id]);
+  }, [isLoading, user?.id, verifyActiveSessionValidity]);
 
   return (
     <AuthHintContext.Provider value={initialIsAuthenticated}>

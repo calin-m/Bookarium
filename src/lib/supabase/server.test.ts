@@ -68,6 +68,25 @@ describe('src/lib/supabase/server', () => {
     expect(() =>
       capturedCookiesAdapter!.setAll([{ name: 'sb-token', value: 'val', options: {} }])
     ).not.toThrow();
+    const firstCallOptions = vi.mocked(createServerClient).mock.calls.at(-1)?.[2] as Record<
+      string,
+      unknown
+    >;
+    expect(firstCallOptions).not.toHaveProperty('global');
+  });
+
+  it('forwards sanitized User-Agent headers when server client options specify userAgent', async () => {
+    vi.mocked(createServerClient).mockClear();
+    await createClient({ userAgent: 'Mozilla/5.0\r\nTestAgent' });
+
+    const callOptions = vi.mocked(createServerClient).mock.calls[0]?.[2] as {
+      global?: { headers?: Record<string, string> };
+    };
+    const forwardedUa = callOptions?.global?.headers?.['user-agent'];
+    expect(forwardedUa).toBeTruthy();
+    expect(forwardedUa).not.toMatch(/[\r\n]/);
+    expect(forwardedUa).toContain('Mozilla/5.0');
+    expect(forwardedUa).toContain('TestAgent');
   });
 });
 

@@ -19,11 +19,22 @@ export interface ParsedSessionDevice {
 }
 
 function detectBrowserName(uaLower: string): string {
-  if (uaLower.includes('edg/') || uaLower.includes('edge/') || uaLower.includes('edgios/')) {
+  if (
+    uaLower.includes('edg/') ||
+    uaLower.includes('edge/') ||
+    uaLower.includes('edgios/') ||
+    uaLower.includes('edga/')
+  ) {
     return 'Edge';
   }
   if (uaLower.includes('opr/') || uaLower.includes('opera')) {
     return 'Opera';
+  }
+  if (uaLower.includes('vivaldi/')) {
+    return 'Vivaldi';
+  }
+  if (uaLower.includes('duckduckgo/')) {
+    return 'DuckDuckGo';
   }
   if (uaLower.includes('brave')) {
     return 'Brave';

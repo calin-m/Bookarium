@@ -16,6 +16,39 @@ export function sanitizeRedirectPath(path: string | null): string {
 }
 
 /**
+ * Returns true only when a sanitized relative redirect path points to `/account`
+ * with the `recovery=true` query flag.
+ */
+export function isRecoveryRedirectPath(path: string | null): boolean {
+  const safePath = sanitizeRedirectPath(path);
+  try {
+    const parsed = new URL(safePath, 'https://bookarium.local');
+    return parsed.pathname === '/account' && parsed.searchParams.get('recovery') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Strips the `recovery` query parameter from a sanitized internal redirect path
+ * while preserving all other query parameters and hash fragments.
+ */
+export function stripRecoveryFromRedirectPath(path: string | null): string {
+  const safePath = sanitizeRedirectPath(path);
+  try {
+    const parsed = new URL(safePath, 'https://bookarium.local');
+    if (!parsed.searchParams.has('recovery')) {
+      return safePath;
+    }
+    parsed.searchParams.delete('recovery');
+    const query = parsed.searchParams.toString();
+    return sanitizeRedirectPath(`${parsed.pathname}${query ? `?${query}` : ''}${parsed.hash}`);
+  } catch {
+    return '/';
+  }
+}
+
+/**
  * Resolves the canonical public authentication origin so preview deployment domains
  * (e.g. `https://bookarium-git-*.vercel.app` or `https://bookarium-<hash>.vercel.app`,
  * which are gated behind Vercel Deployment Protection) never leak into Supabase

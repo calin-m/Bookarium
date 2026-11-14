@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   sanitizeRedirectPath,
+  isRecoveryRedirectPath,
+  stripRecoveryFromRedirectPath,
   resolveCanonicalAuthOrigin,
   buildAuthRedirectUrl,
   resolveCanonicalShareOrigin,
@@ -127,6 +129,28 @@ describe('resolveCanonicalShareOrigin and buildBookShareUrl', () => {
     expect(
       buildBookShareUrl('invalid-id', 'https://bookarium.vercel.app', 'https://bookarium.vercel.app')
     ).toBe('https://bookarium.vercel.app/');
+  });
+});
+
+describe('isRecoveryRedirectPath and stripRecoveryFromRedirectPath', () => {
+  it('identifies /account paths containing recovery=true while rejecting non-account or external paths', () => {
+    expect(isRecoveryRedirectPath('/account?tab=security&recovery=true')).toBe(true);
+    expect(isRecoveryRedirectPath('/account?recovery=true')).toBe(true);
+    expect(isRecoveryRedirectPath('/account?tab=security')).toBe(false);
+    expect(isRecoveryRedirectPath('/bookshelf?recovery=true')).toBe(false);
+    expect(isRecoveryRedirectPath('//evil.com/account?recovery=true')).toBe(false);
+    expect(isRecoveryRedirectPath(null)).toBe(false);
+  });
+
+  it('strips recovery query param while preserving remaining query parameters and hash fragments', () => {
+    expect(stripRecoveryFromRedirectPath('/account?tab=security&recovery=true')).toBe(
+      '/account?tab=security'
+    );
+    expect(stripRecoveryFromRedirectPath('/account?recovery=true')).toBe('/account');
+    expect(stripRecoveryFromRedirectPath('/account?tab=security#password')).toBe(
+      '/account?tab=security#password'
+    );
+    expect(stripRecoveryFromRedirectPath('//evil.com?recovery=true')).toBe('/');
   });
 });
 

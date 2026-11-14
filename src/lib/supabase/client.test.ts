@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createBrowserClient } from '@supabase/ssr';
-import { createClient, sanitizeSupabaseUrl } from './client';
+import { createClient, sanitizeSupabaseUrl, sanitizeForwardedUserAgent } from './client';
 
 vi.mock('@supabase/ssr', () => ({
   createBrowserClient: vi.fn(() => ({
@@ -61,6 +61,20 @@ describe('src/lib/supabase/client', () => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = origUrl;
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = origKey;
       }
+    });
+  });
+
+  describe('sanitizeForwardedUserAgent', () => {
+    it('strips CR/LF/tab characters, clamps to 512 chars, and rejects blanks or non-strings', () => {
+      expect(sanitizeForwardedUserAgent(null)).toBeUndefined();
+      expect(sanitizeForwardedUserAgent(undefined)).toBeUndefined();
+      expect(sanitizeForwardedUserAgent('   \r\n\t  ')).toBeUndefined();
+
+      const multiline = sanitizeForwardedUserAgent('  BookariumAgent/1.0\r\nX-Injected: bad  ');
+      expect(multiline).toBe('BookariumAgent/1.0 X-Injected: bad');
+
+      const oversized = sanitizeForwardedUserAgent('A'.repeat(600));
+      expect(oversized).toHaveLength(512);
     });
   });
 });

@@ -610,5 +610,163 @@ describe('useAccountSecurityActions', () => {
     expect(result.current.sessions).toEqual([]);
     expect(result.current.hasLoadedSessions).toBe(false);
   });
+
+  it('syncs sessions across tabs via BroadcastChannel, token refresh events, and already-ended revocations', async () => {
+    const channelInstances: Array<{
+      name: string;
+      onmessage: ((event: MessageEvent) => void) | null;
+      emitMessage: (data: unknown) => void;
+      postMessage: ReturnType<typeof vi.fn>;
+      close: ReturnType<typeof vi.fn>;
+    }> = [];
+    const OriginalBroadcastChannel = globalThis.BroadcastChannel;
+
+    class MockBroadcastChannel {
+      name: string;
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      private listeners = new Set<(event: MessageEvent) => void>();
+      postMessage = vi.fn();
+      close = vi.fn();
+      constructor(name: string) {
+        this.name = name;
+        channelInstances.push(this);
+      }
+      addEventListener(type: string, listener: (event: MessageEvent) => void) {
+        if (type === 'message') {
+          this.listeners.add(listener);
+        }
+      }
+      removeEventListener(type: string, listener: (event: MessageEvent) => void) {
+        if (type === 'message') {
+          this.listeners.delete(listener);
+        }
+      }
+      emitMessage(data: unknown) {
+        const event = { data } as MessageEvent;
+        this.onmessage?.(event);
+        for (const listener of this.listeners) {
+          listener(event);
+        }
+      }
+    }
+
+    globalThis.BroadcastChannel = MockBroadcastChannel as unknown as typeof BroadcastChannel;
+
+    try {
+      const sampleSessions: ActiveUserSession[] = [
+        {
+          id: 'sess-current',
+          userAgent: 'Mozilla/5.0 Chrome/130',
+          ipAddress: '203.0.113.x',
+          createdAt: '2026-11-14T10:00:00Z',
+          updatedAt: '2026-11-14T10:20:00Z',
+          refreshedAt: '2026-11-14T10:30:00Z',
+          notAfter: null,
+          isCurrent: true,
+        },
+        {
+          id: 'sess-phone',
+          userAgent: 'Mozilla/5.0 (iPhone) Safari/604.1',
+          ipAddress: '198.51.100.x',
+          createdAt: '2026-11-13T09:00:00Z',
+          updatedAt: '2026-11-13T11:00:00Z',
+          refreshedAt: null,
+          notAfter: null,
+          isCurrent: false,
+        },
+      ];
+
+      const listActiveSessions = vi.fn().mockResolvedValue({
+        sessions: sampleSessions,
+        error: null,
+      });
+      const revokeSession = vi
+        .fn()
+        .mockResolvedValueOnce({
+          error: new Error('This device session had already ended. Refreshing your device list.'),
+        })
+        .mockResolvedValueOnce({ error: null });
+      const signOutOtherDevices = vi.fn().mockResolvedValue({ error: null });
+
+      const { result, rerender, unmount } = renderHook(
+        ({ activeUser, tab }: { activeUser: User | null; tab: string }) =>
+          useAccountSecurityActions({
+            user: activeUser,
+            profile: mockProfile,
+            isRecoveryMode: false,
+            onClearRecoveryParam: vi.fn(),
+            updateProfile: vi.fn().mockResolvedValue({ error: null }),
+            updatePassword: vi.fn().mockResolvedValue({ error: null }),
+            resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+            requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+            resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+            activeTab: tab,
+            listActiveSessions,
+            revokeSession,
+            signOutOtherDevices,
+          }),
+        { initialProps: { activeUser: mockUser as User | null, tab: 'security' } }
+      );
+
+      await waitFor(() => {
+        expect(listActiveSessions).toHaveBeenCalledTimes(1);
+      });
+      expect(channelInstances.some((ch) => ch.name === 'bookarium-sessions-sync')).toBe(true);
+
+      // Token refresh event refreshes active sessions when on Security tab
+      act(() => {
+        window.dispatchEvent(new CustomEvent('bookarium:auth-token-refreshed'));
+      });
+      await waitFor(() => {
+        expect(listActiveSessions).toHaveBeenCalledTimes(2);
+      });
+
+      // BroadcastChannel message from another tab refreshes Security sessions list
+      const syncListener = channelInstances.find((ch) => ch.name === 'bookarium-sessions-sync');
+      act(() => {
+        syncListener?.emitMessage({
+          type: 'sessions-changed',
+          userId: 'user-1',
+          senderId: 'peer-tab-2',
+        });
+      });
+      await waitFor(() => {
+        expect(listActiveSessions).toHaveBeenCalledTimes(3);
+      });
+
+      // Revoking an already-ended session sets error and forces a session list refresh
+      await act(async () => {
+        await result.current.handleRevokeSession(sampleSessions[1]!);
+      });
+      expect(result.current.sessionsError).toMatch(/already ended/i);
+      await waitFor(() => {
+        expect(listActiveSessions).toHaveBeenCalledTimes(4);
+      });
+
+      // Successful revoke and sign-out-others broadcast to peer tabs
+      await act(async () => {
+        await result.current.handleRevokeSession(sampleSessions[1]!);
+        await result.current.handleSignOutOtherDevices();
+      });
+      const postCalls = channelInstances.flatMap((ch) => ch.postMessage.mock.calls);
+      expect(postCalls.length).toBeGreaterThanOrEqual(2);
+      expect(postCalls[0]?.[0]).toEqual(
+        expect.objectContaining({ type: 'sessions-changed', userId: 'user-1' })
+      );
+
+      // Leaving Security tab ignores token-refresh events
+      rerender({ activeUser: mockUser, tab: 'habits' });
+      const countBeforeHidden = listActiveSessions.mock.calls.length;
+      act(() => {
+        window.dispatchEvent(new CustomEvent('bookarium:auth-token-refreshed'));
+      });
+      expect(listActiveSessions).toHaveBeenCalledTimes(countBeforeHidden);
+
+      unmount();
+      expect(syncListener?.close).toHaveBeenCalled();
+    } finally {
+      globalThis.BroadcastChannel = OriginalBroadcastChannel;
+    }
+  });
 });
 

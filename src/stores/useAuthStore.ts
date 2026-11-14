@@ -7,6 +7,12 @@ import { ROUTES } from '@/config/routes';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { buildAuthRedirectUrl, sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
+import {
+  isRecoverySessionAmrVerified,
+  readConsumedRecoverySentAt,
+  markRecoveryConsumed,
+  clearConsumedRecoveryMarker,
+} from '@/lib/auth-recovery';
 import type { ActiveUserSession } from '@/lib/session-device-parser';
 
 function isSessionRpcUnavailableError(
@@ -40,6 +46,24 @@ export function hasSupabaseAuthCookie(): boolean {
     return false;
   }
   return /\bsb-[^=;]+-auth-token/.test(document.cookie);
+}
+
+function hasClientIpSyncCookie(): boolean {
+  if (typeof document === 'undefined' || typeof document.cookie !== 'string') {
+    return false;
+  }
+  return document.cookie
+    .split(';')
+    .some((part) => part.trim() === `${STORAGE_KEYS.CLIENT_IP_SYNC}=1`);
+}
+
+function clearClientIpSyncCookie(): void {
+  if (typeof document === 'undefined') return;
+  try {
+    document.cookie = `${STORAGE_KEYS.CLIENT_IP_SYNC}=; path=/; max-age=0; SameSite=Lax`;
+  } catch {
+    // Non-blocking
+  }
 }
 
 export interface SessionVerifiableClient {
@@ -142,7 +166,14 @@ export function coalesceInFlightByUser(
   return run;
 }
 
+const SESSION_VALIDITY_CHECK_COOLDOWN_MS = 10_000;
+const CLIENT_IP_SYNC_COOLDOWN_MS = 10_000;
+
 let inFlightInitialUserCheck: Promise<void> | null = null;
+let inFlightSessionCheck: Promise<boolean> | null = null;
+let lastSessionCheckAtMs = 0;
+let inFlightClientIpSync: Promise<void> | null = null;
+let lastClientIpSyncAtMs = 0;
 const inFlightProfileFetchByUser = new Map<string, Promise<void>>();
 const dirtyProfileSyncUsers = new Set<string>();
 
@@ -217,10 +248,13 @@ export interface AuthState {
 
   // Actions
   initializeAuth: () => () => void;
+  verifyActiveSessionValidity: (options?: { force?: boolean }) => Promise<boolean>;
+  reconcileClientSessionOrigin: () => Promise<void>;
   openAuthModal: (view?: AuthModalView) => void;
   closeAuthModal: () => void;
   setAuthModalView: (view: AuthModalView) => void;
   clearPasswordRecovery: () => void;
+  verifyPasswordRecoverySession: () => Promise<boolean>;
   setError: (error: string | null) => void;
   setStatusMessage: (statusMessage: string | null) => void;
   signInWithPassword: (email: string, password: string, captchaToken?: string) => Promise<{ user?: User | null; error: AuthError | null }>;
@@ -274,6 +308,19 @@ const SIGNED_OUT_AUTH_STATE = {
   error: null,
   statusMessage: null,
 } as const;
+
+async function resetClientAuthState(
+  set: (partial: Partial<AuthState>) => void,
+  options: { userId?: string | null; wipeDeviceStorage: boolean }
+): Promise<void> {
+  lastSessionCheckAtMs = 0;
+  lastClientIpSyncAtMs = 0;
+  clearConsumedRecoveryMarker(options.userId ?? undefined);
+  set(SIGNED_OUT_AUTH_STATE);
+  syncAuthCookieHint(false);
+  clearClientIpSyncCookie();
+  await clearLocalUserStores({ wipeDeviceStorage: options.wipeDeviceStorage });
+}
 
 async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Promise<void> {
   const localCleanupTasks: Array<() => Promise<unknown>> = [
@@ -486,6 +533,10 @@ export const useAuthStore = create<AuthState>()(
       const currentCachedId = get().user?.id ?? lastKnownUserId;
       const needsStoreCleanup = Boolean(currentCachedId && currentCachedId !== (user?.id ?? null));
 
+      if (event === 'SIGNED_OUT') {
+        clearConsumedRecoveryMarker(currentCachedId);
+      }
+
       syncAuthCookieHint(Boolean(user));
 
       if (needsStoreCleanup) {
@@ -541,6 +592,118 @@ export const useAuthStore = create<AuthState>()(
     };
   },
 
+  verifyActiveSessionValidity: async (options) => {
+    const currentUser = get().user;
+    if (!currentUser?.id) return false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return true;
+    }
+
+    const supabase = createClient();
+    const getUserFn = supabase.auth?.getUser;
+    if (
+      typeof getUserFn !== 'function' ||
+      (process.env.NODE_ENV === 'test' && !('mock' in getUserFn))
+    ) {
+      return true;
+    }
+
+    const now = Date.now();
+    if (
+      !options?.force &&
+      !inFlightSessionCheck &&
+      lastSessionCheckAtMs > 0 &&
+      now - lastSessionCheckAtMs < SESSION_VALIDITY_CHECK_COOLDOWN_MS
+    ) {
+      return true;
+    }
+
+    if (inFlightSessionCheck) {
+      return inFlightSessionCheck;
+    }
+
+    lastSessionCheckAtMs = now;
+    inFlightSessionCheck = (async () => {
+      try {
+        const result = await getUserFn.call(supabase.auth);
+        const error = result?.error;
+        if (error && isDefinitiveAuthInvalidError(error)) {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          await resetClientAuthState(set, {
+            userId: currentUser.id,
+            wipeDeviceStorage: false,
+          });
+          return false;
+        }
+        return true;
+      } catch (err: unknown) {
+        if (isDefinitiveAuthInvalidError(err)) {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          await resetClientAuthState(set, {
+            userId: currentUser.id,
+            wipeDeviceStorage: false,
+          });
+          return false;
+        }
+        return true;
+      } finally {
+        inFlightSessionCheck = null;
+      }
+    })();
+
+    return inFlightSessionCheck;
+  },
+
+  reconcileClientSessionOrigin: async () => {
+    if (!hasClientIpSyncCookie()) return;
+    clearClientIpSyncCookie();
+
+    const state = get();
+    if (!state.user?.id || state.isPasswordRecovery) return;
+    if (
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).has('recovery')
+    ) {
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+    const supabase = createClient();
+    const refreshFn = supabase.auth?.refreshSession;
+    if (
+      typeof refreshFn !== 'function' ||
+      (process.env.NODE_ENV === 'test' && !('mock' in refreshFn))
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      !inFlightClientIpSync &&
+      lastClientIpSyncAtMs > 0 &&
+      now - lastClientIpSyncAtMs < CLIENT_IP_SYNC_COOLDOWN_MS
+    ) {
+      return;
+    }
+    if (inFlightClientIpSync) {
+      await inFlightClientIpSync;
+      return;
+    }
+
+    lastClientIpSyncAtMs = now;
+    inFlightClientIpSync = (async () => {
+      try {
+        await refreshFn.call(supabase.auth);
+      } catch {
+        // Best-effort browser IP/User-Agent reconciliation; never disrupt an active login
+      } finally {
+        inFlightClientIpSync = null;
+      }
+    })();
+
+    await inFlightClientIpSync;
+  },
+
   openAuthModal: (view = 'sign_in') => {
     set({ isAuthModalOpen: true, authModalView: view, error: null, statusMessage: null });
   },
@@ -555,6 +718,54 @@ export const useAuthStore = create<AuthState>()(
 
   clearPasswordRecovery: () => {
     set({ isPasswordRecovery: false });
+  },
+
+  verifyPasswordRecoverySession: async () => {
+    try {
+      const supabase = createClient();
+      const aalApi = supabase.auth.mfa?.getAuthenticatorAssuranceLevel;
+      const aalResult =
+        typeof aalApi === 'function' ? await aalApi() : null;
+      const authMethods = aalResult?.data?.currentAuthenticationMethods;
+
+      let resolvedUser = get().user;
+      if (!resolvedUser?.recovery_sent_at && typeof supabase.auth.getUser === 'function') {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          resolvedUser = data.user;
+          set({ user: data.user });
+        }
+      }
+
+      if (!resolvedUser) {
+        if (get().isPasswordRecovery) {
+          set({ isPasswordRecovery: false });
+        }
+        return false;
+      }
+
+      const consumedSentAt = readConsumedRecoverySentAt(resolvedUser.id);
+      const isVerified = isRecoverySessionAmrVerified({
+        authMethods,
+        recoverySentAt: resolvedUser.recovery_sent_at,
+        consumedRecoverySentAt: consumedSentAt,
+      });
+
+      if (isVerified) {
+        set({ isPasswordRecovery: true });
+        return true;
+      }
+
+      if (get().isPasswordRecovery) {
+        set({ isPasswordRecovery: false });
+      }
+      return false;
+    } catch {
+      if (get().isPasswordRecovery) {
+        set({ isPasswordRecovery: false });
+      }
+      return false;
+    }
   },
 
   setError: (error) => {
@@ -789,9 +1000,10 @@ export const useAuthStore = create<AuthState>()(
 
     const supabase = createClient();
     await supabase.auth.signOut({ scope });
-    set(SIGNED_OUT_AUTH_STATE);
-    syncAuthCookieHint(false);
-    await clearLocalUserStores({ wipeDeviceStorage: false });
+    await resetClientAuthState(set, {
+      userId: user?.id,
+      wipeDeviceStorage: false,
+    });
   },
 
   signOutOtherDevices: async () => {
@@ -805,6 +1017,12 @@ export const useAuthStore = create<AuthState>()(
       const { error } = await supabase.auth.signOut({ scope: 'others' });
       if (error) {
         return { error };
+      }
+      const isStillValid = await get().verifyActiveSessionValidity({ force: true });
+      if (!isStillValid) {
+        return {
+          error: new Error('Your session on this device has already ended. Please sign in again.'),
+        };
       }
       return { error: null };
     } catch (err: unknown) {
@@ -844,6 +1062,16 @@ export const useAuthStore = create<AuthState>()(
           }))
         : [];
 
+      if (sessions.length === 0 || !sessions.some((s) => s.isCurrent)) {
+        const isStillValid = await get().verifyActiveSessionValidity({ force: true });
+        if (!isStillValid) {
+          return {
+            sessions: [],
+            error: new Error('Your session on this device has ended. Please sign in again.'),
+          };
+        }
+      }
+
       return { sessions, error: null };
     } catch (err: unknown) {
       return {
@@ -864,11 +1092,16 @@ export const useAuthStore = create<AuthState>()(
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.rpc('revoke_user_session', {
+      const { data, error } = await supabase.rpc('revoke_user_session', {
         target_session_id: sessionId,
       });
       if (error) {
         return { error: new Error(error.message || 'Failed to revoke device session.') };
+      }
+      if (data === false) {
+        return {
+          error: new Error('This device session had already ended. Refreshing your device list.'),
+        };
       }
       return { error: null };
     } catch (err: unknown) {
@@ -1053,12 +1286,14 @@ export const useAuthStore = create<AuthState>()(
       set({ error: error.message });
       return { error };
     }
+    clearConsumedRecoveryMarker(get().user?.id);
     return { error: null };
   },
 
   updatePassword: async (newPassword, currentPassword) => {
     set({ error: null });
     const supabase = createClient();
+    const wasPasswordRecovery = get().isPasswordRecovery;
 
     if (currentPassword !== undefined) {
       const email = get().user?.email;
@@ -1094,6 +1329,10 @@ export const useAuthStore = create<AuthState>()(
     if (error) {
       set({ error: error.message });
       return { error };
+    }
+    if (currentPassword === undefined && wasPasswordRecovery) {
+      const targetUser = data?.user ?? get().user;
+      markRecoveryConsumed(targetUser?.id, targetUser?.recovery_sent_at);
     }
     set((state) => {
       const baseUser = data?.user ?? state.user;
@@ -1176,9 +1415,10 @@ export const useAuthStore = create<AuthState>()(
       }
       // 4. Terminate all auth sessions globally and clear all local persisted user stores
       await supabase.auth.signOut({ scope: 'global' });
-      set(SIGNED_OUT_AUTH_STATE);
-      syncAuthCookieHint(false);
-      await clearLocalUserStores({ wipeDeviceStorage: true });
+      await resetClientAuthState(set, {
+        userId: user.id,
+        wipeDeviceStorage: true,
+      });
       return { error: null };
     } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 14 Nov 2026 13:22:17 GMT  
+**Last Generated**: Sat, 14 Nov 2026 15:01:46 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 255 passed  
-**Total Verified Tests**: 2573 passed  
+**Total Test Suites**: 256 passed  
+**Total Verified Tests**: 2601 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **255/255 test suites passed** (2573 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **256/256 test suites passed** (2601 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.51%** (15189/15738) — *Target: $\ge$ 95%*
-- **Statements**: **95.17%** (16355/17184) — *Target: $\ge$ 95%*
-- **Functions**: **94.28%** (3300/3500) — *Target: $\ge$ 92%*
-- **Branches**: **87.57%** (15180/17333) — *Target: $\ge$ 85%*
+- **Lines**: **96.41%** (15477/16052) — *Target: $\ge$ 95%*
+- **Statements**: **95.09%** (16659/17519) — *Target: $\ge$ 95%*
+- **Functions**: **94.28%** (3335/3537) — *Target: $\ge$ 92%*
+- **Branches**: **87.59%** (15440/17627) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (255 Suites / 2573 Tests)
+## 🧪 Comprehensive Test Suite Catalog (256 Suites / 2601 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 317 Tests)
+### 🚀 App Routes & Pages (31 Suites · 323 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,7 +46,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (25 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -70,7 +70,8 @@
 - ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
 - ✔ `manages Active Device Sessions revocation, Sign Out Other Devices, and confirmed Sign Out All Devices on Security tab`
 - ✔ `renders offline banner and guest local workspace when offline as a guest, and authenticated offline banner when signed in`
-- ✔ `automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)`
+- ✔ `automatically defaults to security tab in recovery mode when session verifies and tabParam is omitted (?recovery=true)`
+- ✔ `strips spoofed or unverified ?recovery=true from URL and keeps Current Password required`
 - ✔ `suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])`
 - ✔ `handles generic collection view swipe navigation fallback from Account view`
 
@@ -194,7 +195,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `exchanges PKCE code for session and redirects to sanitized next path on localhost`
 - ✔ `normalizes Vercel preview deployment origins to the canonical production domain`
@@ -205,6 +206,9 @@
 - ✔ `redirects to /?auth_error=verification_failed when verifyOtp fails or parameters are missing`
 - ✔ `redirects to /?auth_error=verification_failed when exchangeCodeForSession fails with a generic error`
 - ✔ `redirects to /?auth_error=oauth_failed when OAuth callback contains access_denied without OTP parameters`
+- ✔ `redirects cross-device PKCE password recovery failures to /?auth_notice=recovery_cross_device`
+- ✔ `preserves ?recovery=true only for verified recovery OTP or recovery PKCE exchanges and strips it otherwise`
+- ✔ `forwards sanitized User-Agent and stamps bookarium-client-ip-sync on non-recovery exchanges only`
 
 </details>
 
@@ -382,18 +386,20 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud only after auth initialization finishes (!isLoading)`
 - ✔ `should trigger syncAllStoresWithCloud on window online event when user is logged in`
 - ✔ `should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed`
 - ✔ `opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount`
+- ✔ `opens AuthModal in forgot_password view when ?auth_notice=recovery_cross_device is present on mount`
 - ✔ `opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount`
 - ✔ `opens AuthModal with OAuth failure notice when ?auth_error=oauth_failed is present on mount`
 - ✔ `provides initialIsAuthenticated through useAuthHint context`
 - ✔ `initializes theme in store when initialTheme is provided and never reverts client theme changes on rerender`
 - ✔ `suppresses duplicate visibilitychange sync within 15s cooldown but keeps auth-token-refreshed unthrottled`
+- ✔ `reconciles server-side session origin on mount and validates active session on online, visibilitychange, and visible 60s polling`
 
 </details>
 
@@ -1737,7 +1743,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 229 Tests)
+### ⚡ Zustand State Stores (10 Suites · 237 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1801,7 +1807,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (39 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (47 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1822,6 +1828,11 @@
 - ✔ `handles updateProfile database failure and records error`
 - ✔ `handles resetPasswordForEmail success and failure with PKCE callback redirect`
 - ✔ `handles updatePassword in recovery mode and with currentPassword re-authentication`
+- ✔ `returns false when no authenticated user is present`
+- ✔ `verifies a fresh otp AMR entry aligned with recovery_sent_at and sets isPasswordRecovery`
+- ✔ `fetches fresh user metadata via getUser() when cached user lacks recovery_sent_at`
+- ✔ `rejects sessions authenticated only via password/oauth or stale otp issued before recovery_sent_at`
+- ✔ `marks recovery consumed on updatePassword and clears consumed marker after resetPasswordForEmail`
 - ✔ `handles requestAccountDeletion success and failure with PKCE callback redirect`
 - ✔ `handles deleteAccount success, 11-table database purge, IndexedDB offline purge, and local state reset`
 - ✔ `rejects empty or whitespace-only username`
@@ -1842,6 +1853,9 @@
 - ✔ `skips duplicate INITIAL_SESSION profile fetch while checkInitialUser is still pending`
 - ✔ `coalesces concurrent fetchProfile calls per user without suppressing subsequent sequential fetches`
 - ✔ `coalesceInFlightByUser collapses passive callers and executes one trailing pass when marked dirty`
+- ✔ `enforces 10s cooldown, preserves transient errors offline/5xx, and tears down local state on 403 session_not_found`
+- ✔ `reconciles browser IP/UA via bookarium-client-ip-sync cookie while skipping offline or recovery flows`
+- ✔ `rejects revokeSession when RPC returns false and triggers dead-session checks on listActiveSessions / signOutOtherDevices`
 
 </details>
 
@@ -2028,7 +2042,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (49 Suites · 603 Tests)
+### 📚 Gutenberg Parsers & Metadata (50 Suites · 615 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2107,6 +2121,19 @@
 - ✔ `creates a no-store JSON error response with hardened headers`
 - ✔ `accepts allowlisted params and allows dev-only params outside production`
 - ✔ `rejects unknown params and rejects dev-only params in production`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/auth-recovery.test.ts</code></b> (7 tests)</summary>
+
+- ✔ `returns false when authMethods are empty or missing`
+- ✔ `rejects password and oauth sessions even when a recent recovery_sent_at exists`
+- ✔ `accepts otp AMR entry only when issued after a fresh recovery_sent_at within TTL`
+- ✔ `supports explicit recovery string and object AMR entries within TTL`
+- ✔ `rejects malformed entries and already-consumed recovery_sent_at markers`
+- ✔ `marks, reads, and selectively clears consumed recovery timestamps per user`
+- ✔ `handles corrupted sessionStorage payloads and storage errors gracefully`
 
 </details>
 
@@ -2612,7 +2639,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `returns default root slash for null, undefined, or empty path`
 - ✔ `allows safe absolute paths starting with a single slash`
@@ -2625,6 +2652,8 @@
 - ✔ `dynamically preserves production https origins and localhost origins`
 - ✔ `normalizes ephemeral Vercel preview URLs and rejects untrusted protocols`
 - ✔ `builds a valid book share URL and falls back to root on invalid book IDs`
+- ✔ `identifies /account paths containing recovery=true while rejecting non-account or external paths`
+- ✔ `strips recovery query param while preserving remaining query parameters and hash fragments`
 
 </details>
 
@@ -2733,29 +2762,32 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/supabase/client.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/supabase/client.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `returns placeholder URL when input is undefined, empty, or only slashes`
 - ✔ `strips trailing /rest/v1 suffixes and trailing slashes`
 - ✔ `initializes createBrowserClient with sanitized URL and anon key fallback`
+- ✔ `strips CR/LF/tab characters, clamps to 512 chars, and rejects blanks or non-strings`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/supabase/middleware.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/lib/supabase/middleware.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `bypasses Supabase client creation when environment variables are missing`
 - ✔ `propagates request and response cookies and refreshes auth user session`
 - ✔ `bypasses Supabase client creation for anonymous requests or PKCE code-verifier-only cookies`
 - ✔ `suppresses auth.getUser rejections without failing route navigation`
+- ✔ `forwards sanitized User-Agent headers and sets bookarium-client-ip-sync only when auth cookies rotate with non-empty values`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/supabase/server.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/lib/supabase/server.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `wires Next.js cookieStore getAll and setAll into createServerClient`
 - ✔ `gracefully ignores cookieStore.set errors when called from a Server Component`
+- ✔ `forwards sanitized User-Agent headers when server client options specify userAgent`
 
 </details>
 
@@ -2927,7 +2959,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 333 Tests)
+### 🔄 Hooks & React Query (36 Suites · 334 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3180,7 +3212,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
@@ -3188,6 +3220,7 @@
 - ✔ `resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions`
 - ✔ `forwards optional Turnstile captchaToken on password reset and verification resend while ignoring invalid tokens`
 - ✔ `loads active sessions on Security tab, resets on user change, and handles revocation and sign-out scopes`
+- ✔ `syncs sessions across tabs via BroadcastChannel, token refresh events, and already-ended revocations`
 
 </details>
 
@@ -3478,7 +3511,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (64 Suites · 290 Tests)
+### 🧩 UI Primitives & Motion (64 Suites · 291 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3603,7 +3636,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
 - ✔ `renders forgot-password email trigger, confirmation banner, and recovery mode state`
@@ -3612,6 +3645,7 @@
 - ✔ `reveals inline Turnstile challenge before requesting password reset when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set`
 - ✔ `renders active device sessions with masked IP, Revoke controls, and confirmed Sign Out All Devices dialog`
 - ✔ `allows confirmed local sign-out offline while disabling remote session and Google disconnect actions`
+- ✔ `renders honest session revocation modal copy and displays sessions-duplicate-hint only for duplicate device+IP rows`
 
 </details>
 

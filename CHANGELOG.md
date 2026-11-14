@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.33] - 2026-11-14
+### *Remote Session Revocation Enforcement, Browser IP/UA Reconciliation & Cross-Tab Security Sync*
+
+### Security
+- **Automatic Remote Session Revocation Enforcement (`verifyActiveSessionValidity`)**: Added coalesced `10,000ms`-throttled session validation (`useAuthStore.ts`) wired into `Providers` (`src/app/providers.tsx`, `ADR-080`, `ADR-005`) on `online`, `visibilitychange` (`visible`), and a visible-only `60,000ms` interval so externally revoked or expired sessions (`400/401/403 session_not_found`) tear down signed-in state cleanly via `resetClientAuthState` across sibling tabs without logging users out on transient offline/`5xx` errors.
+- **Strict Session RPC & Dead-Session Verification (`revokeSession`, `listActiveSessions`, `signOutOtherDevices`)**: Hardened `revokeSession` (`useAuthStore.ts`, `ADR-080`) to reject explicit `false` returns from `revoke_user_session` with an already-ended recovery notice that refreshes Security sessions while preserving the error banner, and updated `listActiveSessions` + `signOutOtherDevices` to invoke `verifyActiveSessionValidity({ force: true })` whenever `isCurrent` is missing or empty so revoked tabs never remain signed in on stale JWTs.
+
+### Fixed
+- **Immediate Vercel Browser IP & Sanitized `User-Agent` Reconciliation**: Exported Edge/client-safe `sanitizeForwardedUserAgent` from `src/lib/supabase/client.ts` (avoiding `next/headers` leaks into `src/proxy.ts` via `middleware.ts`), forwarded sanitized `User-Agent` headers in `src/lib/supabase/server.ts`, `/auth/callback`, and `updateSession` (`src/lib/supabase/middleware.ts`), and stamped ephemeral `bookarium-client-ip-sync` (`STORAGE_KEYS.CLIENT_IP_SYNC`) on non-recovery exchanges and rotated `sb-*-auth-token` SSR refreshes so `reconcileClientSessionOrigin()` updates AWS egress `18.x` IPs and `"Browser session"` UAs to the reader's real browser immediately on mount (skipping offline and recovery flows).
+
+### Changed
+- **Cross-Tab Security Sync, Browser Classification & Honest Modal Disclosures**: Added sender-filtered `BroadcastChannel('bookarium-sessions-sync')` and `bookarium:auth-token-refreshed` live refresh listeners in `useAccountSecurityActions.ts` (`ADR-080`) without same-tab echo loops, expanded `parseSessionDevice` (`src/lib/session-device-parser.ts`) for `EdgA/`, `Vivaldi/`, and `DuckDuckGo/`, clarified remote logout timing in `AccountSecuritySection` confirmation modals, and displayed contextual duplicate-device hints when multiple sessions share a device label and masked IP.
+- **Living Architecture Diagrams, Governance Metrics & Decision Ledger Restoration (`scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `README.md`, `.agents/AGENTS.md`)**: Synchronized C4/Event-Bus/Failure-Mode/Trust-Zone diagrams and `bookarium-consumed-recovery` storage erasure matrices across `v2.9.32` recovery and `v2.9.33` session workflows, aligned `README.md` (`7-Store`, `47` RLS policies) and `.agents/AGENTS.md` (`9` functions/triggers) metrics, and restored `docs/DECISIONS.md`'s Decommissioned Decisions Ledger (`ADR-080`).
+
+
+## [2.9.32] - 2026-11-14
+### *Fail-Closed Password Recovery Verification & Cross-Device PKCE Recovery Feedback*
+
+### Security
+- **Fail-Closed Account Recovery Mode Verification (JWT AMR & Single-Use Consumption)**: Hardened `/account?recovery=true` handling so bare URL query strings never bypass `Current Password` re-authentication alone (`src/lib/auth-recovery.ts`, `src/stores/useAuthStore.ts`, `src/app/account/page.tsx`, `ADR-080`). Added `verifyPasswordRecoverySession` to validate Supabase signed JWT `amr` claims (`recovery` or post-`recovery_sent_at` `otp` within the `3600s` recovery TTL), refresh `recovery_sent_at` via `supabase.auth.getUser()` when absent, track consumed recovery timestamps per user in `sessionStorage`/memory, and strip spoofed or expired `?recovery=true` parameters.
+- **Strict Recovery Query Scoping on Auth Callback**: Added `stripRecoveryFromRedirectPath` and `isRecoveryRedirectPath` (`src/lib/redirect-sanitizer.ts`) and updated `/auth/callback` (`src/app/auth/callback/route.ts`, `ADR-080`) so `?recovery=true` is forwarded solely when `verifyOtp` executes `type=recovery` or PKCE `exchangeCodeForSession` returns `data.redirectType === 'recovery'`, stripping `recovery` from non-recovery logins and signups while preserving intentional `localhost` development redirects in `resolveCanonicalAuthOrigin`.
+
+### Fixed
+- **Cross-Device PKCE Password Recovery Guidance & Development Setup Notes**: Updated `/auth/callback` (`src/app/auth/callback/route.ts`) and root `Providers` (`src/app/providers.tsx`, `ADR-080`) so PKCE verifier mismatches originating from password resets (`isRecoveryRedirectPath(next)`) route to `/?auth_notice=recovery_cross_device` and open `AuthModal` directly in `forgot_password` mode with device-continuity instructions instead of a misleading `email_verified` banner, alongside optional `token_hash` template guidance in `DEVELOPMENT.md`.
+
+
 ## [2.9.31] - 2026-11-14
 ### *Deterministic Catalog Pagination, Bookshelf Spine Isolation & Complete Gutendex Decommission*
 

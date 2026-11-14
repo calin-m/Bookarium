@@ -107,7 +107,7 @@ function buildSecurityConfirmConfig(
         title: 'Revoke Device Session',
         heading: `Revoke access on ${action.deviceLabel}?`,
         description:
-          'This browser or device will be signed out immediately and will need to sign in again to access your cloud library.',
+          'This device session credential will be revoked immediately. Any open tab on that device will sign out automatically within about a minute or on its next focus, refresh, or reload.',
         confirmLabel: 'Revoke Session',
         modalTestId: 'revoke-session-modal',
         dialogTestId: 'revoke-session-dialog',
@@ -142,8 +142,8 @@ function buildSecurityConfirmConfig(
         heading: 'Sign out from all other devices?',
         description:
           options.otherSessionsCount > 0
-            ? `Every other active device (${options.otherSessionsCount} remote ${options.otherSessionsCount === 1 ? 'session' : 'sessions'}) will be signed out immediately while this browser stays signed in.`
-            : 'Every other browser and device currently signed into your account will be signed out immediately while this browser stays signed in.',
+            ? `Every other active session (${options.otherSessionsCount} remote ${options.otherSessionsCount === 1 ? 'session' : 'sessions'}) will be revoked while this browser stays signed in. Open tabs on those devices sign out automatically within about a minute or on next focus or reload.`
+            : 'Every other browser and device currently signed into your account will have its session revoked while this browser stays signed in.',
         confirmLabel:
           options.isSigningOutScope === 'others'
             ? 'Signing out others...'
@@ -282,6 +282,29 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
     React.useState<PendingSecurityConfirmAction | null>(null);
   const turnstileRef = React.useRef<TurnstileWidgetHandle>(null);
   const isSubmittingResetRef = React.useRef(false);
+
+  const parsedSessions = React.useMemo(() => {
+    return sessions.map((session) => ({
+      session,
+      device: parseSessionDevice(session.userAgent),
+      maskedIp: formatSessionIpAddress(session.ipAddress),
+      lastActive: formatSessionTimestamp(
+        session.refreshedAt ?? session.updatedAt ?? session.createdAt
+      ),
+      signedIn: formatSessionTimestamp(session.createdAt),
+    }));
+  }, [sessions]);
+
+  const hasDuplicateDeviceFingerprint = React.useMemo(() => {
+    if (parsedSessions.length < 2) return false;
+    const seen = new Set<string>();
+    for (const entry of parsedSessions) {
+      const key = `${entry.device.label}::${entry.maskedIp ?? ''}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+    }
+    return false;
+  }, [parsedSessions]);
 
   const otherSessionsCount = sessions.filter((session) => !session.isCurrent).length;
   const activeConfirmAction: PendingSecurityConfirmAction | null =
@@ -821,77 +844,81 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
               )}
 
             {!isOffline && !isSessionsRpcUnavailable && sessions.length > 0 && (
-              <ul className="space-y-2" aria-label="Active device sessions">
-                {sessions.map((session) => {
-                  const device = parseSessionDevice(session.userAgent);
-                  const maskedIp = formatSessionIpAddress(session.ipAddress);
-                  const lastActive = formatSessionTimestamp(
-                    session.refreshedAt ?? session.updatedAt ?? session.createdAt
-                  );
-                  const signedIn = formatSessionTimestamp(session.createdAt);
-                  const isRevokingThis = revokingSessionId === session.id;
+              <>
+                <ul className="space-y-2" aria-label="Active device sessions">
+                  {parsedSessions.map(({ session, device, maskedIp, lastActive, signedIn }) => {
+                    const isRevokingThis = revokingSessionId === session.id;
 
-                  return (
-                    <li
-                      key={session.id}
-                      data-testid={`active-session-row-${session.id}`}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border bg-background/70"
-                    >
-                      <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="p-1.5 rounded-lg bg-muted/70 border border-border mt-0.5 shrink-0">
-                          {renderDeviceIcon(device.deviceType)}
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-xs font-medium text-foreground truncate">
-                              {device.label}
-                            </span>
-                            {session.isCurrent && (
-                              <span
-                                data-testid="current-session-badge"
-                                className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-                              >
-                                This device
+                    return (
+                      <li
+                        key={session.id}
+                        data-testid={`active-session-row-${session.id}`}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border bg-background/70"
+                      >
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <div className="p-1.5 rounded-lg bg-muted/70 border border-border mt-0.5 shrink-0">
+                            {renderDeviceIcon(device.deviceType)}
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-xs font-medium text-foreground truncate">
+                                {device.label}
                               </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-mono text-muted-foreground">
-                            {maskedIp && (
-                              <span data-testid={`session-ip-${session.id}`}>IP: {maskedIp}</span>
-                            )}
-                            <span>Last active: {lastActive}</span>
-                            <span>Signed in: {signedIn}</span>
+                              {session.isCurrent && (
+                                <span
+                                  data-testid="current-session-badge"
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                                >
+                                  This device
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-mono text-muted-foreground">
+                              {maskedIp && (
+                                <span data-testid={`session-ip-${session.id}`}>IP: {maskedIp}</span>
+                              )}
+                              <span>Last active: {lastActive}</span>
+                              <span>Signed in: {signedIn}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {!session.isCurrent && onRevokeSession && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setPendingConfirmAction({
-                              type: 'revoke-session',
-                              session,
-                              deviceLabel: device.label,
-                              maskedIp,
-                              lastActive,
-                            })
-                          }
-                          disabled={
-                            isOffline || isRevokingThis || Boolean(isSigningOutScope)
-                          }
-                          aria-label={`Revoke session on ${device.label}`}
-                          className="shrink-0 font-mono text-[11px] text-muted-foreground hover:text-destructive hover:border-destructive/50 cursor-pointer"
-                        >
-                          {isRevokingThis ? 'Revoking...' : 'Revoke'}
-                        </Button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+                        {!session.isCurrent && onRevokeSession && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setPendingConfirmAction({
+                                type: 'revoke-session',
+                                session,
+                                deviceLabel: device.label,
+                                maskedIp,
+                                lastActive,
+                              })
+                            }
+                            disabled={
+                              isOffline || isRevokingThis || Boolean(isSigningOutScope)
+                            }
+                            aria-label={`Revoke session on ${device.label}`}
+                            className="shrink-0 font-mono text-[11px] text-muted-foreground hover:text-destructive hover:border-destructive/50 cursor-pointer"
+                          >
+                            {isRevokingThis ? 'Revoking...' : 'Revoke'}
+                          </Button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {hasDuplicateDeviceFingerprint && (
+                  <p
+                    className="text-[11px] text-muted-foreground font-sans leading-relaxed"
+                    data-testid="sessions-duplicate-hint"
+                  >
+                    Similar sessions with matching labels and IPs can come from separate browser profiles, incognito windows, different origins, or multiple devices sharing the same network. Check timestamps and the &quot;This device&quot; badge before revoking.
+                  </p>
+                )}
+              </>
             )}
 
             <div className="pt-1 space-y-2">

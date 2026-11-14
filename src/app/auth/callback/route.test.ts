@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './route';
+import { createClient } from '@/lib/supabase/server';
 
 const mockExchangeCodeForSession = vi.fn();
 const mockVerifyOtp = vi.fn();
@@ -157,5 +158,125 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/?auth_error=oauth_failed'
     );
+  });
+
+  it('redirects cross-device PKCE password recovery failures to /?auth_notice=recovery_cross_device', async () => {
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      error: {
+        name: 'AuthPKCECodeVerifierMissingError',
+        message: 'PKCE code verifier not found in storage.',
+      },
+    });
+
+    const request = new Request(
+      'https://bookarium.vercel.app/auth/callback?code=recovery-code&next=%2Faccount%3Ftab%3Dsecurity%26recovery%3Dtrue'
+    );
+    const response = await GET(request);
+
+    expect(response.headers.get('location')).toBe(
+      'https://bookarium.vercel.app/?auth_notice=recovery_cross_device'
+    );
+  });
+
+  it('preserves ?recovery=true only for verified recovery OTP or recovery PKCE exchanges and strips it otherwise', async () => {
+    // 1. Valid recovery OTP keeps ?recovery=true
+    mockVerifyOtp.mockResolvedValueOnce({ error: null });
+    const recoveryOtpReq = new Request(
+      'https://bookarium.vercel.app/auth/callback?token_hash=rec-hash&type=recovery&next=%2Faccount%3Ftab%3Dsecurity%26recovery%3Dtrue'
+    );
+    const recoveryOtpRes = await GET(recoveryOtpReq);
+    expect(recoveryOtpRes.headers.get('location')).toBe(
+      'https://bookarium.vercel.app/account?tab=security&recovery=true'
+    );
+
+    // 2. Non-recovery OTP (signup) strips tampered ?recovery=true
+    mockVerifyOtp.mockResolvedValueOnce({ error: null });
+    const tamperedOtpReq = new Request(
+      'https://bookarium.vercel.app/auth/callback?token_hash=signup-hash&type=signup&next=%2Faccount%3Ftab%3Dsecurity%26recovery%3Dtrue'
+    );
+    const tamperedOtpRes = await GET(tamperedOtpReq);
+    expect(tamperedOtpRes.headers.get('location')).toBe(
+      'https://bookarium.vercel.app/account?tab=security'
+    );
+
+    // 3. Verified PKCE recovery exchange (redirectType: 'recovery') keeps ?recovery=true
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {}, redirectType: 'recovery' },
+      error: null,
+    });
+    const pkceRecoveryReq = new Request(
+      'http://localhost:3000/auth/callback?code=pkce-rec&next=%2Faccount%3Ftab%3Dsecurity%26recovery%3Dtrue'
+    );
+    const pkceRecoveryRes = await GET(pkceRecoveryReq);
+    expect(pkceRecoveryRes.headers.get('location')).toBe(
+      'http://localhost:3000/account?tab=security&recovery=true'
+    );
+
+    // 4. Non-recovery PKCE exchange (OAuth / signup) strips tampered ?recovery=true
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {}, redirectType: null },
+      error: null,
+    });
+    const tamperedPkceReq = new Request(
+      'http://localhost:3000/auth/callback?code=oauth-code&next=%2Faccount%3Ftab%3Dsecurity%26recovery%3Dtrue'
+    );
+    const tamperedPkceRes = await GET(tamperedPkceReq);
+    expect(tamperedPkceRes.headers.get('location')).toBe(
+      'http://localhost:3000/account?tab=security'
+    );
+  });
+
+  it('forwards sanitized User-Agent and stamps bookarium-client-ip-sync on non-recovery exchanges only', async () => {
+    vi.mocked(createClient).mockClear();
+
+    // Non-recovery PKCE login
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {}, redirectType: null },
+      error: null,
+    });
+    const pkceLoginRes = await GET(
+      new Request('http://localhost:3000/auth/callback?code=pkce-login', {
+        headers: { 'user-agent': 'BookariumBrowser/2.0' },
+      })
+    );
+    expect(createClient).toHaveBeenCalledWith({ userAgent: 'BookariumBrowser/2.0' });
+    expect(pkceLoginRes.cookies.get('bookarium-client-ip-sync')?.value).toBe('1');
+
+    // Non-recovery OTP verification
+    mockVerifyOtp.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {} },
+      error: null,
+    });
+    const otpLoginRes = await GET(
+      new Request('http://localhost:3000/auth/callback?token_hash=signup-hash&type=signup', {
+        headers: { 'user-agent': 'BookariumSignup/1.0' },
+      })
+    );
+    expect(createClient).toHaveBeenCalledWith({ userAgent: 'BookariumSignup/1.0' });
+    expect(otpLoginRes.cookies.get('bookarium-client-ip-sync')?.value).toBe('1');
+
+    // Recovery OTP flow must omit client-ip-sync cookie
+    mockVerifyOtp.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {} },
+      error: null,
+    });
+    const recoveryOtpRes = await GET(
+      new Request('http://localhost:3000/auth/callback?token_hash=rec-hash&type=recovery', {
+        headers: { 'user-agent': 'BookariumRecovery/1.0' },
+      })
+    );
+    expect(recoveryOtpRes.cookies.get('bookarium-client-ip-sync')).toBeUndefined();
+
+    // Recovery PKCE flow must omit client-ip-sync cookie
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      data: { user: { id: 'u1' }, session: {}, redirectType: 'recovery' },
+      error: null,
+    });
+    const recoveryPkceRes = await GET(
+      new Request('http://localhost:3000/auth/callback?code=pkce-recovery', {
+        headers: { 'user-agent': 'BookariumRecovery/1.0' },
+      })
+    );
+    expect(recoveryPkceRes.cookies.get('bookarium-client-ip-sync')).toBeUndefined();
   });
 });
