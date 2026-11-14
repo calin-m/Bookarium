@@ -48,5 +48,18 @@ describe('CatalogTelemetryBadge', () => {
 
     fireEvent.keyDown(badge, { key: 'Escape' });
     expect(badge).toHaveAttribute('data-expanded', 'false');
+
+    rerender(
+      <CatalogTelemetryBadge
+        page={1}
+        activeFetching={false}
+        latencyMs={85}
+        catalogSource="cache"
+        isError={false}
+      />
+    );
+    expect(screen.getByTestId('catalog-telemetry-popover')).toHaveTextContent('Curated Archive Cache');
+    expect(screen.getByTestId('catalog-telemetry-popover')).toHaveTextContent('Active · 85ms');
+    expect(screen.getByTestId('catalog-telemetry-popover')).toHaveTextContent('Standby / Unseeded');
   });
 });

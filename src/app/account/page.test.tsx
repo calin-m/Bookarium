@@ -41,6 +41,9 @@ describe('AccountPage', () => {
       profile: null,
       isLoading: false,
       isPasswordRecovery: false,
+      listActiveSessions: vi.fn().mockResolvedValue({ sessions: [], error: null }),
+      revokeSession: vi.fn().mockResolvedValue({ error: null }),
+      signOutOtherDevices: vi.fn().mockResolvedValue({ error: null }),
     });
     useFellowshipStore.setState({ fetchFellowshipData: vi.fn().mockResolvedValue(undefined) });
   });
@@ -155,7 +158,7 @@ describe('AccountPage', () => {
     });
   }, 15000);
 
-  it('renders segmented sub-tabs navigation and switches active tabs', () => {
+  it('renders segmented sub-tabs navigation and switches active tabs', async () => {
     useAuthStore.setState({
       user: { id: 'u1', email: 'austen@bookarium.test' } as any,
       profile: { id: 'u1', display_name: 'Jane' } as any,
@@ -281,6 +284,9 @@ describe('AccountPage', () => {
     expect(preferencesTab).toHaveClass('flex-[1.15]', 'justify-center');
     expect(document.getElementById('account-tabpanel-security')).not.toHaveClass('hidden');
     expect(document.getElementById('account-tabpanel-security')).not.toHaveAttribute('hidden');
+    await waitFor(() => {
+      expect(useAuthStore.getState().listActiveSessions).toHaveBeenCalled();
+    });
   });
 
   it('supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft', () => {
@@ -980,16 +986,127 @@ describe('AccountPage', () => {
       ).toBeInTheDocument();
       fireEvent.click(within(modal).getByRole('button', { name: /Cancel/i }));
 
-      // Sign Out button in security panel and top-level identity ribbon
-      fireEvent.click(within(securityPanel).getByRole('button', { name: /Sign Out/i }));
+      // Sign Out button in security panel and top-level identity ribbon require confirmation
+      fireEvent.click(
+        within(securityPanel).getByRole('button', { name: /Sign Out This Browser/i })
+      );
+      expect(signOutMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('confirm-sign-out-local-button'));
       await waitFor(() => {
         expect(signOutMock).toHaveBeenCalledTimes(1);
+        expect(signOutMock).toHaveBeenCalledWith('local');
         expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
       });
 
       fireEvent.click(screen.getByTestId('identity-sign-out-button'));
+      expect(signOutMock).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByTestId('confirm-identity-sign-out-button'));
       await waitFor(() => {
         expect(signOutMock).toHaveBeenCalledTimes(2);
+      });
+    }, 15000);
+
+    it('manages Active Device Sessions revocation, Sign Out Other Devices, and confirmed Sign Out All Devices on Security tab', async () => {
+      const listActiveSessionsMock = vi.fn().mockResolvedValue({
+        sessions: [
+          {
+            id: 'sess-cur',
+            userAgent:
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36',
+            ipAddress: '203.0.113.x',
+            createdAt: '2026-11-14T09:00:00Z',
+            updatedAt: '2026-11-14T10:00:00Z',
+            refreshedAt: '2026-11-14T10:30:00Z',
+            notAfter: null,
+            isCurrent: true,
+          },
+          {
+            id: 'sess-ipad',
+            userAgent:
+              'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
+            ipAddress: '198.51.100.x',
+            createdAt: '2026-11-13T08:00:00Z',
+            updatedAt: '2026-11-13T08:00:00Z',
+            refreshedAt: null,
+            notAfter: null,
+            isCurrent: false,
+          },
+        ],
+        error: null,
+      });
+      const revokeSessionMock = vi.fn().mockResolvedValue({ error: null });
+      const signOutOtherDevicesMock = vi.fn().mockResolvedValue({ error: null });
+      const signOutMock = vi.fn().mockResolvedValue(undefined);
+
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+        listActiveSessions: listActiveSessionsMock,
+        revokeSession: revokeSessionMock,
+        signOutOtherDevices: signOutOtherDevicesMock,
+        signOut: signOutMock,
+      });
+
+      render(<AccountPage />);
+
+      fireEvent.click(screen.getByRole('tab', { name: /Security/i }));
+      const securityPanel = document.getElementById('account-tabpanel-security')!;
+
+      expect(await within(securityPanel).findByText('Chrome on Windows')).toBeInTheDocument();
+      expect(within(securityPanel).getByText('Safari on iPadOS')).toBeInTheDocument();
+      expect(within(securityPanel).getByTestId('session-ip-sess-cur')).toHaveTextContent(
+        'IP: 203.0.113.x'
+      );
+
+      // Revoke individual remote device (requires confirmation)
+      fireEvent.click(
+        within(securityPanel).getByRole('button', { name: /Revoke session on Safari on iPadOS/i })
+      );
+      expect(revokeSessionMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('confirm-revoke-session-button'));
+      await waitFor(() => {
+        expect(revokeSessionMock).toHaveBeenCalledWith('sess-ipad');
+        expect(within(securityPanel).queryByText('Safari on iPadOS')).not.toBeInTheDocument();
+      });
+
+      // Refresh & test confirmed Sign Out Other Devices
+      fireEvent.click(
+        within(securityPanel).getByRole('button', { name: /Refresh active device sessions/i })
+      );
+      await waitFor(() => {
+        expect(listActiveSessionsMock).toHaveBeenCalledTimes(2);
+        expect(within(securityPanel).getByText('Safari on iPadOS')).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        within(securityPanel).getByRole('button', { name: /Sign Out Other Devices/i })
+      );
+      expect(signOutOtherDevicesMock).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByTestId('confirm-sign-out-others-button'));
+      await waitFor(() => {
+        expect(signOutOtherDevicesMock).toHaveBeenCalledTimes(1);
+        expect(within(securityPanel).getByTestId('sessions-success-banner')).toHaveTextContent(
+          'Signed out from all other devices.'
+        );
+      });
+
+      // Sign Out All Devices asks for confirmation before executing global sign-out
+      fireEvent.click(
+        within(securityPanel).getByRole('button', { name: /Sign Out All Devices/i })
+      );
+      const cancelDialog = screen.getByRole('dialog');
+      fireEvent.click(within(cancelDialog).getByTestId('cancel-sign-out-all-button'));
+      expect(signOutMock).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        within(securityPanel).getByRole('button', { name: /Sign Out All Devices/i })
+      );
+      const confirmDialog = screen.getByRole('dialog');
+      fireEvent.click(within(confirmDialog).getByTestId('confirm-sign-out-all-button'));
+      await waitFor(() => {
+        expect(signOutMock).toHaveBeenCalledWith('global');
+        expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
       });
     }, 15000);
 
@@ -1037,7 +1154,7 @@ describe('AccountPage', () => {
       }
     });
 
-    it('automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)', () => {
+    it('automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)', async () => {
       mockSearchParams = new URLSearchParams('recovery=true');
       useAuthStore.setState({
         user: { id: 'u1', email: 'austen@bookarium.test' } as any,
@@ -1047,6 +1164,9 @@ describe('AccountPage', () => {
       render(<AccountPage />);
       const securityTab = screen.getByRole('tab', { name: /Security/i });
       expect(securityTab).toHaveAttribute('aria-selected', 'true');
+      await waitFor(() => {
+        expect(useAuthStore.getState().listActiveSessions).toHaveBeenCalled();
+      });
     });
 
     it('suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])', () => {

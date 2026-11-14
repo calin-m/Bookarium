@@ -54,12 +54,18 @@ export function shouldSkipSessionRefresh(request: NextRequest): boolean {
 
 export async function proxy(request: NextRequest) {
   const isPublicBookApi = request.nextUrl.pathname.startsWith('/api/books');
+  const isContentAssetApi = isPublicBookApi && request.nextUrl.pathname.includes('/content');
   const isSwPrecache = request.headers.get('x-bookarium-sw-precache') === '1';
   const rawShareToken = request.nextUrl.searchParams.get('s');
   const validShareToken =
     rawShareToken && /^[A-Za-z0-9_-]{8,64}$/.test(rawShareToken)
       ? rawShareToken
       : null;
+
+  const detectedCountry = resolveClientCountry(request);
+  if (validShareToken || !isContentAssetApi) {
+    request.headers.set('x-bookarium-country', detectedCountry);
+  }
 
   if (validShareToken) {
     request.headers.set('x-bookarium-share-token', validShareToken);
@@ -68,7 +74,10 @@ export async function proxy(request: NextRequest) {
   let response: NextResponse;
 
   if (shouldSkipSessionRefresh(request)) {
-    response = validShareToken ? NextResponse.next({ request }) : NextResponse.next();
+    response =
+      validShareToken || !isContentAssetApi
+        ? NextResponse.next({ request })
+        : NextResponse.next();
   } else {
     try {
       response = await updateSession(request);
@@ -76,8 +85,6 @@ export async function proxy(request: NextRequest) {
       response = NextResponse.next({ request });
     }
   }
-
-  const detectedCountry = resolveClientCountry(request);
 
   if (!isPublicBookApi && !isSwPrecache) {
     // If in development and the user passed ?country=XX, persist it to dev override cookie

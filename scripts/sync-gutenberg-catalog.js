@@ -522,7 +522,7 @@ async function streamGutenbergRdfDownloadCounts(options = {}) {
   }
 
   logger.warn(
-    '  ⚠ Warning: All RDF feed mirrors failed; will fall back to Gutendex Top Popular hydration.'
+    '  ⚠ Warning: All RDF feed mirrors failed; skipping RDF download_count hydration and preserving existing counts.'
   );
   return new Map();
 }
@@ -1210,220 +1210,6 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
   };
 }
 
-// 8. Popularity Download Count Hydration from Gutendex (Top 500+ Public Domain Titles)
-async function fetchPopularCountsFromGutendex(pages = 21, fetchFn = globalThis.fetch, options = {}) {
-  const popularEntries = [];
-  const seenIds = new Set();
-  const maxRetries = typeof options.retries === 'number' && options.retries >= 0 ? options.retries : 4;
-  const baseDelayMs =
-    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1200;
-  const timeoutMs =
-    typeof options.timeoutMs === 'number' && options.timeoutMs > 0 ? options.timeoutMs : 25000;
-  const logger = options.logger || null;
-
-  for (let page = 1; page <= pages; page++) {
-    // Query index-backed /books/?page=N (avoiding unindexed WHERE copyright=false full-table scans on Gutendex)
-    // and enforce public-domain copyright filtering in memory below.
-    const url = `https://gutendex.com/books/?page=${page}`;
-    let pageData = null;
-
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      try {
-        const res = await fetchFn(url, {
-          headers: {
-            'User-Agent': resolveCatalogUserAgent(),
-            Accept: 'application/json',
-          },
-          signal: AbortSignal.timeout(timeoutMs),
-        });
-        if (!res || !res.ok) {
-          const status = res ? res.status : 'NO_RESPONSE';
-          throw new Error(`Gutendex HTTP ${status} on page ${page}`);
-        }
-        const data = await res.json();
-        if (!data || !Array.isArray(data.results) || data.results.length === 0) {
-          break;
-        }
-        pageData = data;
-        break;
-      } catch (err) {
-        if (attempt <= maxRetries) {
-          if (logger && typeof logger.warn === 'function') {
-            logger.warn(
-              `  ⚠ Warning: Popularity page ${page}/${pages} attempt ${attempt}/${maxRetries} failed (${err.message || err}); retrying...`
-            );
-          }
-          if (baseDelayMs > 0) {
-            await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
-          }
-        }
-      }
-    }
-
-    if (!pageData || !Array.isArray(pageData.results) || pageData.results.length === 0) {
-      break;
-    }
-
-    for (const item of pageData.results) {
-      if (
-        item &&
-        item.copyright !== true &&
-        item.copyright !== null &&
-        Number.isInteger(item.id) &&
-        item.id > 0 &&
-        typeof item.download_count === 'number' &&
-        item.download_count > 0 &&
-        !seenIds.has(item.id)
-      ) {
-        seenIds.add(item.id);
-        popularEntries.push({
-          id: item.id,
-          download_count: item.download_count,
-        });
-      }
-    }
-
-    if (logger && typeof logger.log === 'function') {
-      logger.log(
-        `  ↳ Fetched popularity page ${page}/${pages} (${popularEntries.length.toLocaleString()} public-domain books)...`
-      );
-    }
-
-    if (!pageData.next) break;
-  }
-
-  return popularEntries;
-}
-
-async function syncPopularDownloadCounts(supabase, options = {}) {
-  if (!supabase) return { updatedCount: 0, demotedCount: 0 };
-  const pages = typeof options.pages === 'number' && options.pages > 0 ? options.pages : 21;
-  const fetchFn = options.fetchFn || globalThis.fetch;
-  const logger = options.logger || console;
-  const minEntriesForDemote =
-    typeof options.minEntriesForDemote === 'number' ? options.minEntriesForDemote : 500;
-  const maxRetries = typeof options.retries === 'number' && options.retries >= 0 ? options.retries : 3;
-  const baseDelayMs =
-    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 1000;
-
-  logger.log(`\n🔥 Hydrating download_count for Top Popular Gutenberg titles (${pages} pages)...`);
-  const entries = await fetchPopularCountsFromGutendex(pages, fetchFn, {
-    retries: options.pageRetries,
-    baseDelayMs: options.pageBaseDelayMs,
-    timeoutMs: options.pageTimeoutMs,
-    logger,
-  });
-  if (entries.length === 0) {
-    logger.warn('  ⚠ Warning: Could not retrieve popular download counts from Gutendex; keeping existing counts.');
-    return { updatedCount: 0, demotedCount: 0 };
-  }
-
-  let updatedCount = 0;
-  const CHUNK_SIZE = 25;
-  const pauseMs = typeof options.pauseMs === 'number' && options.pauseMs >= 0 ? options.pauseMs : 50;
-  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
-    const chunk = entries.slice(i, i + CHUNK_SIZE);
-    await Promise.all(
-      chunk.map(async (entry) => {
-        for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-          const { error } = await supabase
-            .from('books')
-            .update({ download_count: entry.download_count })
-            .eq('id', entry.id);
-          if (!error) {
-            updatedCount++;
-            break;
-          }
-          if (attempt <= maxRetries && baseDelayMs > 0) {
-            await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
-          }
-        }
-      })
-    );
-    if (pauseMs > 0 && i + CHUNK_SIZE < entries.length) {
-      await new Promise((r) => setTimeout(r, pauseMs));
-    }
-  }
-
-  logger.log(`  ✔ Hydrated download_count on ${updatedCount.toLocaleString()} popular volumes.`);
-
-  // Step down (demote) cooled-off books in Supabase that dropped out of the fetched popular pages
-  let demotedCount = 0;
-  if (entries.length >= minEntriesForDemote) {
-    const minFetchedCount = Math.min(...entries.map((e) => e.download_count));
-    const demotedCountValue = Math.max(0, minFetchedCount - 1);
-    const fetchedIdSet = new Set(entries.map((e) => e.id));
-
-    // Single-column index alignment: idx_books_download_count across top candidate pool
-    let topRows = null;
-    let scanErr = null;
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      const res = await supabase
-        .from('books')
-        .select('id, download_count')
-        .order('download_count', { ascending: false })
-        .limit(1000);
-      if (!res.error) {
-        topRows = res.data;
-        scanErr = null;
-        break;
-      }
-      scanErr = res.error;
-      if (attempt <= maxRetries && baseDelayMs > 0) {
-        await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
-      }
-    }
-
-    if (scanErr) {
-      logger.warn(`  ⚠ Warning: Failed to scan top books for popularity demotion: ${scanErr.message}`);
-    } else if (Array.isArray(topRows)) {
-      const demoteCandidateIds = [];
-      for (const row of topRows) {
-        if (
-          row &&
-          Number.isInteger(row.id) &&
-          !fetchedIdSet.has(row.id) &&
-          !PROTECTED_HERO_BOOK_IDS.has(row.id) &&
-          (row.download_count || 0) >= minFetchedCount
-        ) {
-          demoteCandidateIds.push(row.id);
-        }
-      }
-
-      if (demoteCandidateIds.length > 0) {
-        for (let i = 0; i < demoteCandidateIds.length; i += CHUNK_SIZE) {
-          const chunk = demoteCandidateIds.slice(i, i + CHUNK_SIZE);
-          let demoteErr = null;
-          for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-            const res = await supabase
-              .from('books')
-              .update({ download_count: demotedCountValue })
-              .in('id', chunk);
-            if (!res.error) {
-              demoteErr = null;
-              break;
-            }
-            demoteErr = res.error;
-            if (attempt <= maxRetries && baseDelayMs > 0) {
-              await new Promise((r) => setTimeout(r, attempt * baseDelayMs));
-            }
-          }
-          if (!demoteErr) {
-            demotedCount += chunk.length;
-          } else {
-            logger.warn(`  ⚠ Warning: Failed to demote cooled-off chunk: ${demoteErr.message}`);
-          }
-        }
-        logger.log(
-          `  ✔ Stepped down download_count to ${demotedCountValue.toLocaleString()} for ${demotedCount.toLocaleString()} cooled-off volume(s).`
-        );
-      }
-    }
-  }
-
-  return { updatedCount, demotedCount };
-}
-
 // 8B. Permanent Snapshot Cache & Two-Tier Quote Pool Diff Engine
 const DEFAULT_QUOTE_POPULAR_POOL_SIZE = 500;
 const DEFAULT_QUOTE_RECENT_POOL_SIZE = 64;
@@ -1669,7 +1455,6 @@ async function main() {
   const shouldUpdateExisting = args.includes('--update-existing');
   const noPrune = args.includes('--no-prune');
   const forcePrune = args.includes('--force-prune');
-  const popularOnly = args.includes('--popular-only');
   const noRdf = args.includes('--no-rdf');
   const limitArg = args.find((a) => a.startsWith('--limit='));
   const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : null;
@@ -1698,8 +1483,7 @@ Options:
   --update-existing     Force full overwrite of all existing records (default: smart exact-diff update preserving quotes)
   --no-prune            Skip withdrawn-book reconciliation at the end of a full sync
   --force-prune         Override the 500-book per-run safety cap during withdrawn-book pruning
-  --no-rdf              Skip streaming rdf-files.tar.bz2 full-catalog download counts (falls back to Gutendex Top Popular)
-  --popular-only        Refresh Top-500 popular download_count and cooled-off demotion only
+  --no-rdf              Skip streaming rdf-files.tar.bz2 full-catalog download counts
   --help, -h            Show this help guide
 `);
     process.exit(0);
@@ -1711,7 +1495,7 @@ Options:
 
   console.log('📚 Bookarium Gutenberg Catalog Sync');
   console.log('====================================');
-  console.log(`• Mode:        ${isDryRun ? 'DRY-RUN (No database writes)' : popularOnly ? 'POPULARITY HYDRATION ONLY' : 'LIVE UPSERT'}`);
+  console.log(`• Mode:        ${isDryRun ? 'DRY-RUN (No database writes)' : 'LIVE UPSERT'}`);
   console.log(
     `• Strategy:    ${shouldUpdateExisting ? 'FORCE OVERWRITE (Rebuild all records)' : 'SMART EXACT-DIFF (Insert new + update changed metadata & download_count, preserving quotes)'}`
   );
@@ -1740,13 +1524,6 @@ Options:
     supabase = createClient(supabaseUrl, supabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-  }
-
-  if (popularOnly) {
-    if (!isDryRun && supabase) {
-      await syncPopularDownloadCounts(supabase);
-    }
-    return;
   }
 
   const cachedSnapshot =
@@ -1901,11 +1678,6 @@ Options:
       });
     }
 
-    // Only fall back to Gutendex Top Popular hydration if the RDF archive was skipped or unreachable
-    if (!isDryRun && supabase && !limit && rdfDownloadCounts.size === 0) {
-      await syncPopularDownloadCounts(supabase);
-    }
-
     let quotePoolDiff = null;
     if ((diffOutputPath || cacheFilePath) && !limit && !allowedLanguages && nextSnapshotBooksById.size > 0) {
       quotePoolDiff = computeCatalogQuotePoolDiff(
@@ -1975,8 +1747,6 @@ module.exports = {
   resetDynamicWriteChunkSize,
   upsertBatch,
   reconcileWithdrawnCatalogBooks,
-  fetchPopularCountsFromGutendex,
-  syncPopularDownloadCounts,
   extractCacheableBookRecord,
   loadCatalogSnapshotCache,
   saveCatalogSnapshotCache,

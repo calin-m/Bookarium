@@ -39,7 +39,7 @@ export interface BookFormatInfo {
 }
 
 /**
- * Normalizes Gutendex format dictionaries to canonical format URLs.
+ * Normalizes catalog format dictionaries to canonical format URLs.
  */
 export function extractBookFormats(
   formats: Record<string, string> = {},
@@ -162,7 +162,7 @@ export function formatAuthorName(rawName?: string): string {
 }
 
 /**
- * Formats an array of authors (strings or Gutendex author objects) or raw author string
+ * Formats an array of authors (strings or author metadata objects) or raw author string
  * into a natural comma-separated string.
  */
 export function formatAuthorNames(

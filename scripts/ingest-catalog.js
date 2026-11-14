@@ -4,9 +4,10 @@
  * 
  * Usage:
  *   node scripts/ingest-catalog.js --dry-run              # Generate supabase/seed_books.sql
- *   node scripts/ingest-catalog.js --curated              # Ingest/generate top curated classics
- *   node scripts/ingest-catalog.js --pages=5              # Fetch top 5 pages from Gutenberg feed
+ *   node scripts/ingest-catalog.js --curated              # Ingest/generate curated hero classics
  *   node scripts/ingest-catalog.js --help                 # View help
+ *
+ * Note: For full 78,000+ catalog ingestion, run `npm run catalog:sync` (pg_catalog.csv.gz + rdf-files.tar.bz2).
  */
 
 const fs = require('fs');
@@ -61,20 +62,20 @@ const seedContentSqlPath = path.join(rootDir, 'supabase', 'seed_books_content.sq
 const args = process.argv.slice(2);
 const isHelp = args.includes('--help') || args.includes('-h');
 const _isDryRun = args.includes('--dry-run');
-const isCuratedOnly = args.includes('--curated');
 const isWithContent = args.includes('--with-content');
-const pagesArg = args.find((a) => a.startsWith('--pages='));
-const pagesToFetch = pagesArg ? Math.max(1, parseInt(pagesArg.split('=')[1], 10) || 1) : 3;
+const hasPagesFlag = args.some((a) => a.startsWith('--pages='));
 
 if (isHelp && require.main === module) {
   console.log(`
 Bookarium Catalog Ingestion Engine
 ===================================
+Generates idempotent SQL seed files from Bookarium's curated masterworks dataset.
+For full 78,000+ catalog synchronization, run: npm run catalog:sync
+
 Options:
   --dry-run        Do not connect to remote Supabase; write SQL to supabase/seed_books.sql
-  --curated        Ingest curated hero classic masterpieces (Frankenstein, Austen, etc.)
-  --with-content   Download unabridged plain text and bundle into SQL (default for --curated)
-  --pages=N        Fetch N pages (32 books/page) of top public domain titles (default: 3)
+  --curated        Ingest curated hero classic masterpieces (default)
+  --with-content   Download unabridged plain text from official Project Gutenberg mirrors
   --help           Show this help guide
 `);
   process.exit(0);
@@ -277,37 +278,6 @@ function computeLifespanBounds(authors = [], translators = []) {
   return { maxDeath, minBirth };
 }
 
-// Helper: fetch JSON from URL
-function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(
-        url,
-        {
-          headers: {
-            'User-Agent': INGEST_USER_AGENT,
-            Accept: 'application/json',
-          },
-        },
-        (res) => {
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            return reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
-          }
-          let rawData = '';
-          res.on('data', (chunk) => (rawData += chunk));
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(rawData));
-            } catch (err) {
-              reject(err);
-            }
-          });
-        }
-      )
-      .on('error', reject);
-  });
-}
-
 // Helper: fetch plain text from Gutenberg mirrors with redirect following
 function fetchBookText(bookId) {
   const mirrors = [
@@ -492,59 +462,17 @@ async function main() {
   console.log('📚 Bookarium Catalog Ingestion Engine');
   console.log('====================================');
 
-  let books = [];
-
-  if (isCuratedOnly) {
-    console.log(`📦 Preparing ${CURATED_CLASSICS.length} curated masterworks...`);
-    books = CURATED_CLASSICS.map((b) => ({
-      ...b,
-      formats: buildStandardFormats(b.id),
-    }));
-  } else {
-    console.log(`🌐 Fetching ${pagesToFetch} pages of popular public domain titles from Gutendex...`);
-    const seenIds = new Set();
-
-    // Start with curated classics to ensure iconic titles are always included
-    for (const c of CURATED_CLASSICS) {
-      books.push({ ...c, formats: buildStandardFormats(c.id) });
-      seenIds.add(c.id);
-    }
-
-    for (let page = 1; page <= pagesToFetch; page++) {
-      try {
-        console.log(`  ↳ Fetching page ${page}/${pagesToFetch}...`);
-        const url = `https://gutendex.com/books/?page=${page}&copyright=false`;
-        const data = await fetchJson(url);
-
-        if (Array.isArray(data.results)) {
-          for (const item of data.results) {
-            if (!seenIds.has(item.id)) {
-              seenIds.add(item.id);
-              const { maxDeath, minBirth } = computeLifespanBounds(item.authors, item.translators);
-              books.push({
-                id: item.id,
-                title: item.title,
-                authors: item.authors || [],
-                translators: item.translators || [],
-                subjects: item.subjects || [],
-                bookshelves: item.bookshelves || [],
-                languages: item.languages || ['en'],
-                copyright: false,
-                media_type: item.media_type || 'Text',
-                formats: item.formats || buildStandardFormats(item.id),
-                download_count: item.download_count || 0,
-                max_author_death_year: maxDeath,
-                min_author_birth_year: minBirth,
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.warn(`  ⚠ Warning: Failed to fetch page ${page}: ${err.message}. Continuing with accumulated titles.`);
-        break;
-      }
-    }
+  if (hasPagesFlag) {
+    console.log(
+      'ℹ Note: --pages=N (Gutendex REST pagination) has been retired; seeding CURATED_CLASSICS instead. Run `npm run catalog:sync` for the full 78k+ Project Gutenberg catalog.'
+    );
   }
+
+  console.log(`📦 Preparing ${CURATED_CLASSICS.length} curated masterworks...`);
+  const books = CURATED_CLASSICS.map((b) => ({
+    ...b,
+    formats: buildStandardFormats(b.id),
+  }));
 
   console.log(`✔ Successfully compiled metadata for ${books.length} volumes.`);
 

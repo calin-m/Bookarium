@@ -35,6 +35,11 @@ function createWrapper() {
   return { queryClient, TestWrapper };
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+  useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
+});
+
 describe('useBooks hook', () => {
   it('should fetch public domain books list successfully', async () => {
     const { TestWrapper } = createWrapper();
@@ -109,62 +114,51 @@ describe('useBooks hook', () => {
     prefetchSpy.mockRestore();
   });
 
-  it('should fallback to direct upstream when internal proxy fails', async () => {
-    let callCount = 0;
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
-      callCount++;
-      if (String(url).includes('/api/books')) {
-        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
-      }
-      return new Response(
-        JSON.stringify({
-          count: 1,
-          next: null,
-          previous: null,
-          results: [{ id: 1342, title: 'Direct Gutenberg Pride', copyright: false, authors: [] }],
-        }),
-        { status: 200 }
-      );
-    });
+  it('propagates HTTP error status from internal /api/books without direct external fallback', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Database offline' }), {
+        status: 503,
+        statusText: 'Service Unavailable',
+      })
+    );
 
-    const data = await fetchBooks({ search: 'Pride' });
-    expect(data).toBeDefined();
-    expect(data.results[0].title).toBe('Direct Gutenberg Pride');
-    expect(data.source).toBe('upstream');
-    expect(typeof data.latencyMs).toBe('number');
-    expect(data.latencyMs).toBeGreaterThanOrEqual(1);
-    expect(callCount).toBeGreaterThanOrEqual(2);
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books: Service Unavailable');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('/api/books?');
     fetchSpy.mockRestore();
   });
 
-  it('should throw error when both internal proxy and direct API fail', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network connection failed'));
+  it('throws on network error and unexpected non-JSON or malformed payloads', async () => {
+    const netSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network connection failed'));
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books: Network connection failed');
+    netSpy.mockRestore();
 
-    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books:');
-    fetchSpy.mockRestore();
+    const htmlSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('<html>502 Bad Gateway</html>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      })
+    );
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Invalid JSON response');
+    htmlSpy.mockRestore();
+
+    const badPayloadSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ unexpected: true }), { status: 200 })
+    );
+    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Unexpected catalog payload');
+    badPayloadSpy.mockRestore();
   });
 
-  it('should throw when direct upstream returns non-ok status', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/books')) {
-        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
-      }
-      return new Response('Upstream error', { status: 500, statusText: 'Internal Server Error' });
-    });
-
-    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books:');
-    fetchSpy.mockRestore();
-  });
-
-  it('should fetch in server environment when window is undefined', async () => {
+  it('fetches from SITE_URL in server environment when window is undefined and throws on failure', async () => {
     const originalWindow = global.window;
-    delete (global as any).window;
+    delete (global as unknown as Record<string, unknown>).window;
 
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           count: 1,
           results: [{ id: 1342, title: 'Server Gutenberg Pride', copyright: false, authors: [] }],
+          source: 'supabase',
         }),
         { status: 200 }
       )
@@ -172,22 +166,16 @@ describe('useBooks hook', () => {
 
     const data = await fetchBooks({ search: 'Pride' });
     expect(data.results[0].title).toBe('Server Gutenberg Pride');
+    expect(String(fetchSpy.mock.calls[0][0])).toMatch(/^https?:\/\/.+\/api\/books\?/);
     fetchSpy.mockRestore();
-    (global as any).window = originalWindow;
-  });
 
-  it('should throw in server environment when server fetch fails', async () => {
-    const originalWindow = global.window;
-    delete (global as any).window;
-
-    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Server socket error'));
-
+    const failSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Server socket error'));
     await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Failed to fetch books:');
-    fetchSpy.mockRestore();
-    (global as any).window = originalWindow;
+    failSpy.mockRestore();
+    (global as unknown as Record<string, unknown>).window = originalWindow;
   });
 
-  it('should handle simulated offline network drop in useBooks hook', async () => {
+  it('handles simulated offline network drop in useBooks hook', async () => {
     const { TestWrapper } = createWrapper();
     const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new TypeError('NetworkError: Failed to fetch'));
 
@@ -200,141 +188,91 @@ describe('useBooks hook', () => {
     fetchSpy.mockRestore();
   });
 
-  it('should respect enabled: false and not fetch books', () => {
-    const { TestWrapper } = createWrapper();
+  it('respects enabled: false and includes effectiveCountry in React Query key to isolate jurisdictions', async () => {
+    const { queryClient, TestWrapper } = createWrapper();
     const fetchSpy = vi.spyOn(global, 'fetch');
 
-    const { result } = renderHook(() => useBooks({ ids: '9999' }, { enabled: false }), {
-      wrapper: TestWrapper,
-    });
+    const { result: disabled, unmount: unmountDisabled } = renderHook(
+      () => useBooks({ ids: '9999' }, { enabled: false }),
+      { wrapper: TestWrapper }
+    );
 
-    expect(result.current.isFetching).toBe(false);
-    expect(result.current.data).toBeUndefined();
+    expect(disabled.current.isFetching).toBe(false);
+    expect(disabled.current.data).toBeUndefined();
     expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
-  });
+    unmountDisabled();
 
-  it('should throw when upstream returns invalid non-JSON body', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/books')) {
-        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
-      }
-      return new Response('<html>502 Bad Gateway</html>', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' },
-      });
+    act(() => {
+      useJurisdictionStore.getState().setCountry('GB');
     });
+    const { result: gbHook, unmount: unmountGb } = renderHook(
+      () => useBooks({ search: 'Pride' }),
+      { wrapper: TestWrapper }
+    );
+    await waitFor(() => expect(gbHook.current.isSuccess).toBe(true));
 
-    await expect(fetchBooks({ search: 'Pride' })).rejects.toThrow('Invalid JSON response');
+    const cachedGbQuery = queryClient.getQueryCache().find({
+      queryKey: ['books', { search: 'Pride' }, 'GB'],
+    });
+    expect(cachedGbQuery).toBeDefined();
+    unmountGb();
+
+    act(() => {
+      useJurisdictionStore.getState().setCountry('MX');
+    });
+    const { result: mxHook, unmount: unmountMx } = renderHook(
+      () => useBooks({ search: 'Pride' }),
+      { wrapper: TestWrapper }
+    );
+    await waitFor(() => expect(mxHook.current.isSuccess).toBe(true));
+
+    const cachedMxQuery = queryClient.getQueryCache().find({
+      queryKey: ['books', { search: 'Pride' }, 'MX'],
+    });
+    expect(cachedMxQuery).toBeDefined();
+    unmountMx();
+
     fetchSpy.mockRestore();
+    act(() => {
+      useJurisdictionStore.getState().resetOverride();
+    });
   });
 
-  it('should filter protected books during Strategy 2 fallback for international users', async () => {
+  it('filters protected books client-side for international users unless includeRestrictedMetadata is true', async () => {
     useJurisdictionStore.getState().setCountry('GB');
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/books')) {
-        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
-      }
-      return new Response(
-        JSON.stringify({
-          count: 2,
-          results: [
-            {
-              id: 1342,
-              title: 'Pride and Prejudice',
-              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-              translators: [],
-              copyright: false,
-            },
-            {
-              id: 863,
-              title: 'The Mysterious Affair at Styles',
-              authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
-              translators: [],
-              copyright: false,
-            },
-          ],
-        }),
-        { status: 200 }
-      );
-    });
+    const payload = {
+      count: 2,
+      results: [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          copyright: false,
+        },
+        {
+          id: 863,
+          title: 'The Mysterious Affair at Styles',
+          authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
+          translators: [],
+          copyright: false,
+        },
+      ],
+    };
 
-    const data = await fetchBooks({ search: 'detective' });
-    expect(data.results).toHaveLength(1);
-    expect(data.results[0].title).toBe('Pride and Prejudice');
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200 }));
 
-    fetchSpy.mockRestore();
-    useJurisdictionStore.getState().resetOverride();
-  });
+    const filtered = await fetchBooks({ search: 'detective' });
+    expect(filtered.results).toHaveLength(1);
+    expect(filtered.results[0].title).toBe('Pride and Prejudice');
 
-  it('should retain protected books during Strategy 2 fallback when includeRestrictedMetadata is true', async () => {
-    useJurisdictionStore.getState().setCountry('GB');
-
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/books')) {
-        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
-      }
-      return new Response(
-        JSON.stringify({
-          count: 2,
-          results: [
-            {
-              id: 1342,
-              title: 'Pride and Prejudice',
-              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-              translators: [],
-              copyright: false,
-            },
-            {
-              id: 863,
-              title: 'The Mysterious Affair at Styles',
-              authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
-              translators: [],
-              copyright: false,
-            },
-          ],
-        }),
-        { status: 200 }
-      );
-    });
-
-    const data = await fetchBooks({ search: 'detective', includeRestrictedMetadata: true });
-    expect(data.results).toHaveLength(2);
-    expect(data.results.some((b) => b.title.includes('Mysterious Affair'))).toBe(true);
-
-    fetchSpy.mockRestore();
-    useJurisdictionStore.getState().resetOverride();
-  });
-
-  it('should use calibrated baseline count during Strategy 2 fallback for unfiltered catalog queries in RO', async () => {
-    useJurisdictionStore.getState().setCountry('RO');
-
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
-      if (String(url).includes('/api/books')) {
-        return new Response(JSON.stringify({ error: 'Proxy timeout' }), { status: 504 });
-      }
-      return new Response(
-        JSON.stringify({
-          count: 78500,
-          results: [
-            {
-              id: 1342,
-              title: 'Pride and Prejudice',
-              authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-              translators: [],
-              copyright: false,
-            },
-          ],
-        }),
-        { status: 200 }
-      );
-    });
-
-    const data = await fetchBooks();
-    expect(data.clientCountry).toBe('RO');
-    expect(data.jurisdictionRule).toBe('LIFE_70');
-    expect(data.count).toBe(55754);
+    const unrestricted = await fetchBooks({ search: 'detective', includeRestrictedMetadata: true });
+    expect(unrestricted.results).toHaveLength(2);
+    expect(unrestricted.results.some((b) => b.title.includes('Mysterious Affair'))).toBe(true);
 
     fetchSpy.mockRestore();
     useJurisdictionStore.getState().resetOverride();
@@ -363,7 +301,7 @@ describe('useBooks hook', () => {
     });
     expect(prefetchSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ['books', { search: 'Dickens', page: 3 }],
+        queryKey: ['books', { search: 'Dickens', page: 3 }, 'US'],
       })
     );
 
@@ -399,7 +337,7 @@ describe('useBooks hook', () => {
     });
     expect(prefetchSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ['books', { search: 'Austen', page: 2 }],
+        queryKey: ['books', { search: 'Austen', page: 2 }, 'US'],
       })
     );
 
@@ -956,6 +894,7 @@ describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
             includeRestrictedMetadata: true,
             page: 2,
           },
+          'US',
         ],
       })
     );

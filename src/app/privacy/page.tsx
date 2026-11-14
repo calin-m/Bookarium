@@ -176,6 +176,9 @@ export default function PrivacyPage() {
               <li>Your email address and cryptographically salted password hash (handled by Supabase Auth).</li>
               <li>Optional public display name and preferred reading atmosphere.</li>
               <li>The IDs of books you have saved to your personal custom shelves or favorites list.</li>
+              <li>
+                Active session metadata maintained natively by Supabase Auth (browser user-agent, session timestamps, and network IP) solely to secure your login state and let you inspect masked network IP and device labels or revoke active sessions from Account Security.
+              </li>
             </ul>
           </section>
 

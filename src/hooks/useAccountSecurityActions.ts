@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';
 import {
   generateStrongPassword as generatePasswordUtil,
   evaluatePasswordStrength,
 } from '@/lib/password';
+import type { ActiveUserSession } from '@/lib/session-device-parser';
 
 export interface UseAccountSecurityActionsParams {
   user: User | null;
@@ -24,6 +25,18 @@ export interface UseAccountSecurityActionsParams {
   resendVerificationEmail: (email: string, captchaToken?: string) => Promise<{ error: Error | null }>;
   linkOAuthIdentity?: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
   unlinkOAuthIdentity?: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
+  activeTab?: string;
+  isOffline?: boolean;
+  isPreviewMode?: boolean;
+  signOut?: (scope?: 'local' | 'global') => Promise<void>;
+  signOutOtherDevices?: () => Promise<{ error: Error | null }>;
+  listActiveSessions?: () => Promise<{
+    sessions: ActiveUserSession[];
+    error: Error | null;
+    isRpcUnavailable?: boolean;
+  }>;
+  revokeSession?: (sessionId: string) => Promise<{ error: Error | null }>;
+  onAfterSignOut?: () => void;
 }
 
 export function useAccountSecurityActions({
@@ -39,6 +52,14 @@ export function useAccountSecurityActions({
   resendVerificationEmail,
   linkOAuthIdentity,
   unlinkOAuthIdentity,
+  activeTab = 'habits',
+  isOffline = false,
+  isPreviewMode = false,
+  signOut,
+  signOutOtherDevices,
+  listActiveSessions,
+  revokeSession,
+  onAfterSignOut,
 }: UseAccountSecurityActionsParams) {
   const identities = user?.identities ?? [];
   const providers = Array.isArray(user?.app_metadata?.providers)
@@ -343,6 +364,195 @@ export function useAccountSecurityActions({
     setDeleteError(null);
   };
 
+  // Active Device Sessions state
+  const currentUserId = user?.id ?? null;
+  const [prevSessionUserId, setPrevSessionUserId] = useState<string | null>(currentUserId);
+  const [sessions, setSessions] = useState<ActiveUserSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [hasLoadedSessions, setHasLoadedSessions] = useState(false);
+  const [isSessionsRpcUnavailable, setIsSessionsRpcUnavailable] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [sessionsSuccess, setSessionsSuccess] = useState<string | null>(null);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [isSigningOutScope, setIsSigningOutScope] = useState<'local' | 'others' | 'global' | null>(
+    null
+  );
+  const [isSignOutAllModalOpen, setIsSignOutAllModalOpen] = useState(false);
+
+  if (currentUserId !== prevSessionUserId) {
+    setPrevSessionUserId(currentUserId);
+    setSessions([]);
+    setIsLoadingSessions(false);
+    setHasLoadedSessions(false);
+    setIsSessionsRpcUnavailable(false);
+    setSessionsError(null);
+    setSessionsSuccess(null);
+    setRevokingSessionId(null);
+    setIsSigningOutScope(null);
+    setIsSignOutAllModalOpen(false);
+  }
+
+  const refreshActiveSessions = useCallback(async () => {
+    if (!currentUserId || isOffline || isPreviewMode || !listActiveSessions) {
+      return;
+    }
+
+    setIsLoadingSessions(true);
+    setSessionsError(null);
+
+    try {
+      const res = await listActiveSessions();
+      setSessions(Array.isArray(res?.sessions) ? res.sessions : []);
+      setHasLoadedSessions(true);
+      setIsSessionsRpcUnavailable(Boolean(res?.isRpcUnavailable));
+      if (res?.error) {
+        setSessionsError(res.error.message || 'Unable to load active device sessions.');
+      }
+    } catch (err: unknown) {
+      setHasLoadedSessions(true);
+      setSessionsError(
+        err instanceof Error ? err.message : 'Unable to load active device sessions.'
+      );
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [currentUserId, isOffline, isPreviewMode, listActiveSessions]);
+
+  useEffect(() => {
+    if (
+      !currentUserId ||
+      activeTab !== 'security' ||
+      isOffline ||
+      isPreviewMode ||
+      !listActiveSessions ||
+      hasLoadedSessions
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    Promise.resolve()
+      .then(async () => {
+        if (cancelled) return;
+        setIsLoadingSessions(true);
+        setSessionsError(null);
+        const res = await listActiveSessions();
+        if (cancelled) return;
+        setSessions(Array.isArray(res?.sessions) ? res.sessions : []);
+        setHasLoadedSessions(true);
+        setIsSessionsRpcUnavailable(Boolean(res?.isRpcUnavailable));
+        if (res?.error) {
+          setSessionsError(res.error.message || 'Unable to load active device sessions.');
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setHasLoadedSessions(true);
+        setSessionsError(
+          err instanceof Error ? err.message : 'Unable to load active device sessions.'
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingSessions(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentUserId,
+    activeTab,
+    isOffline,
+    isPreviewMode,
+    listActiveSessions,
+    hasLoadedSessions,
+  ]);
+
+  const handleSignOutThisBrowser = async () => {
+    if (!signOut || isSigningOutScope) return;
+    setIsSigningOutScope('local');
+    setSessionsError(null);
+    setSessionsSuccess(null);
+
+    try {
+      await signOut('local');
+      onAfterSignOut?.();
+    } catch (err: unknown) {
+      setSessionsError(
+        err instanceof Error ? err.message : 'Failed to sign out from this browser.'
+      );
+    } finally {
+      setIsSigningOutScope(null);
+    }
+  };
+
+  const handleSignOutOtherDevices = async () => {
+    if (!signOutOtherDevices || isSigningOutScope || isOffline) return;
+    setIsSigningOutScope('others');
+    setSessionsError(null);
+    setSessionsSuccess(null);
+
+    try {
+      const { error } = await signOutOtherDevices();
+      if (error) {
+        setSessionsError(error.message || 'Failed to sign out other devices.');
+        return;
+      }
+      setSessions((prev) => prev.filter((item) => item.isCurrent));
+      setSessionsSuccess('Signed out from all other devices.');
+    } catch (err: unknown) {
+      setSessionsError(err instanceof Error ? err.message : 'Failed to sign out other devices.');
+    } finally {
+      setIsSigningOutScope(null);
+    }
+  };
+
+  const handleSignOutAllDevices = async () => {
+    if (!signOut || isSigningOutScope || isOffline) return;
+    setIsSignOutAllModalOpen(false);
+    setIsSigningOutScope('global');
+    setSessionsError(null);
+    setSessionsSuccess(null);
+
+    try {
+      await signOut('global');
+      onAfterSignOut?.();
+    } catch (err: unknown) {
+      setSessionsError(err instanceof Error ? err.message : 'Failed to sign out all devices.');
+    } finally {
+      setIsSigningOutScope(null);
+    }
+  };
+
+  const handleRevokeSession = async (session: ActiveUserSession) => {
+    if (revokingSessionId || isSigningOutScope) return;
+    if (session.isCurrent) {
+      await handleSignOutThisBrowser();
+      return;
+    }
+    if (!revokeSession || isOffline) return;
+
+    setRevokingSessionId(session.id);
+    setSessionsError(null);
+    setSessionsSuccess(null);
+
+    try {
+      const { error } = await revokeSession(session.id);
+      if (error) {
+        setSessionsError(error.message || 'Failed to revoke device session.');
+        return;
+      }
+      setSessions((prev) => prev.filter((item) => item.id !== session.id));
+      setSessionsSuccess('Device session revoked.');
+    } catch (err: unknown) {
+      setSessionsError(err instanceof Error ? err.message : 'Failed to revoke device session.');
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
   return {
     displayName,
     setCustomName,
@@ -392,5 +602,20 @@ export function useAccountSecurityActions({
     deletionEmailSent,
     deleteError,
     handleRequestDeletion,
+    sessions,
+    isLoadingSessions,
+    hasLoadedSessions,
+    isSessionsRpcUnavailable,
+    sessionsError,
+    sessionsSuccess,
+    revokingSessionId,
+    isSigningOutScope,
+    isSignOutAllModalOpen,
+    setIsSignOutAllModalOpen,
+    refreshActiveSessions,
+    handleRevokeSession,
+    handleSignOutThisBrowser,
+    handleSignOutOtherDevices,
+    handleSignOutAllDevices,
   };
 }

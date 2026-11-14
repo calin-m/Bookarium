@@ -34,10 +34,10 @@ vi.mock('@/hooks/queries/useBooks', () => ({
   useBooks: () => ({
     data: {
       count: pageMockBooks.length,
-      next: 'https://gutendex.com/books/?page=2',
+      next: '/api/books?page=2',
       previous: null,
       results: pageMockBooks,
-      source: 'upstream',
+      source: 'supabase',
       latencyMs: 140,
       clientCountry: 'RO',
       jurisdictionRule: 'LIFE_70',
@@ -1837,6 +1837,22 @@ describe('Home page integration', () => {
     fireEvent.click(screen.getByTestId('era-option-all'));
     fireEvent.click(screen.getByTestId('apply-filters-btn'));
     expect(screen.getByRole('heading', { level: 2, name: 'Recent Books' })).toBeInTheDocument();
+  });
+
+  it('skips phantom empty trailing sub-pages when advancing from a partial catalog batch and auto-clamps deep-linked empty sub-pages', () => {
+    // 1. Desktop (pageSize = 16) with 6 results and booksData.next truthy: Next page skips sub-page 2 -> Page 3 (batch 2 start)
+    renderHome();
+    const paginationBar = screen.getByTestId('catalog-pagination-bar');
+    expect(within(paginationBar).getByText('Page 1')).toBeInTheDocument();
+
+    fireEvent.click(within(paginationBar).getByLabelText('Next page'));
+    expect(within(screen.getByTestId('catalog-pagination-bar')).getByText('Page 3')).toBeInTheDocument();
+
+    // 2. Deep-linked onto ?page=2 (sliceStart = 16 >= 6 results) auto-clamps back to Page 1
+    mockSearchParams = new URLSearchParams('page=2');
+    renderHome();
+    const clampedBars = screen.getAllByTestId('catalog-pagination-bar');
+    expect(within(clampedBars[clampedBars.length - 1]).getByText('Page 1')).toBeInTheDocument();
   });
 });
 

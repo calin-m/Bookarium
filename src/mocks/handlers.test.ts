@@ -30,20 +30,22 @@ describe('MSW test isolation handlers & fail-closed guard', () => {
     expect(sampleBookText).toContain('Pride and Prejudice');
 
     server.use(
-      http.get('https://gutendex.com/books', () => {
+      http.get('/api/books', () => {
         return HttpResponse.json({
           count: 1,
           next: null,
           previous: null,
           results: [mockBooks[0]],
+          source: 'supabase',
         });
       })
     );
 
-    const res = await fetch('https://gutendex.com/books?search=Pride');
+    const res = await fetch(new URL('/api/books?search=Pride', window.location.origin).toString());
     expect(res.ok).toBe(true);
-    const data = (await res.json()) as { results: Array<{ id: number }> };
+    const data = (await res.json()) as { results: Array<{ id: number }>; source: string };
     expect(data.results.map((b) => b.id)).toEqual([1342]);
+    expect(data.source).toBe('supabase');
   });
 
   it('throws fail-closed when handleUnhandledMswRequest sees unmocked Supabase, :54321, or external URLs', () => {

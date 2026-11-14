@@ -409,7 +409,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         `export async function badCatalogFetch(url: string, ver: string) {
           const params = new URLSearchParams();
           params.set('copyright', 'true');
-          await fetch('https://gutendex.com/books?copyright=true');
+          await fetch('https://aleph.gutenberg.org/books?copyright=true');
           await fetch('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
           const badEscaped = ver.replace(/\\./g, '\\\\.');
           const badUnderscoreEscaped = ver.replace(/_/g, '\\\\_');
@@ -417,7 +417,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
             return null;
           }
         }`,
-        'src/lib/catalog/gutendex-provider.ts'
+        'src/lib/catalog/supabase-provider.ts'
       );
       expect(violations).toHaveLength(6);
       expect(violations[0].message).toContain('setting "copyright" parameter to "true" is forbidden');
@@ -438,7 +438,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
           await supabase.from('books').select('*').order('download_count', { ascending: false });
           await supabase.from('books').select('id').in('id', ids).neq('quotes', '[]').order('download_count', { ascending: false });
         }`,
-        'src/lib/catalog/gutendex-provider.ts'
+        'src/lib/catalog/supabase-provider.ts'
       );
       expect(clean).toHaveLength(0);
     });
@@ -455,6 +455,29 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(violations).toHaveLength(2);
       expect(violations[0].message).toContain('Chaining .order("id") onto .order("download_count")');
       expect(violations[1].message).toContain('Combining .neq("quotes", ...) with .order("download_count")');
+    });
+
+    it('flags external gutendex.com runtime URLs in production code while permitting DTO types and test fixtures (ADR-080)', () => {
+      const prodViolations = runRuleOnCode(
+        'enforce-gutenberg-and-copyright-policy',
+        `export interface GutendexBook { id: number; }
+        export function toGutendexBook(book: GutendexBook) { return book; }
+        export async function retiredFetch(id: number) {
+          const direct = 'https://gutendex.com/books';
+          return fetch(\`https://api.gutendex.com/books/\${id}\` + direct);
+        }`,
+        'src/lib/catalog/supabase-provider.ts'
+      );
+      expect(prodViolations).toHaveLength(2);
+      expect(prodViolations[0].message).toContain('Retired external dependency (ADR-080)');
+      expect(prodViolations[1].message).toContain('Retired external dependency (ADR-080)');
+
+      const testViolations = runRuleOnCode(
+        'enforce-gutenberg-and-copyright-policy',
+        `export const fixture = 'https://gutendex.com/books/1342';`,
+        'src/lib/catalog/supabase-provider.test.ts'
+      );
+      expect(testViolations).toHaveLength(0);
     });
   });
 

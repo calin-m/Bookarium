@@ -230,14 +230,14 @@ describe('StickyCatalogToolbar component', () => {
           activeFilterChips={[]}
           onClearAllFilters={vi.fn()}
           latencyMs={310}
-          catalogSource="upstream"
+          catalogSource="cache"
         />
       );
 
       expect(screen.getByTestId('api-latency-badge')).toHaveTextContent('310ms');
       expect(screen.getByTestId('api-status-badge')).toHaveAttribute(
         'aria-label',
-        'Project Gutenberg Mirror status: Online, response time 310ms'
+        'Curated Archive Cache status: Online, response time 310ms'
       );
       expect(screen.getByTestId('api-status-badge')).not.toHaveAttribute('title');
     });
@@ -372,7 +372,7 @@ describe('StickyCatalogToolbar component', () => {
     expect(screen.getByTestId('api-status-badge')).toHaveTextContent('85ms');
   });
 
-  it('renders dual-service diagnostics in popover card across Supabase, Gutendex fallback, and offline states', () => {
+  it('renders dual-service diagnostics in popover card across Supabase, curated archive cache, and offline states', () => {
     // 1. Supabase primary online
     const { rerender } = render(
       <StickyCatalogToolbar
@@ -389,12 +389,12 @@ describe('StickyCatalogToolbar component', () => {
     );
 
     expect(screen.getByText('Bookarium DB')).toBeInTheDocument();
-    expect(screen.getByText('Gutendex API')).toBeInTheDocument();
+    expect(screen.getByText('Curated Archive Cache')).toBeInTheDocument();
     expect(screen.getByText('Online · 42ms')).toBeInTheDocument();
     expect(screen.getByText('Standby')).toBeInTheDocument();
     expect(screen.getByText(/Connected to dedicated Supabase PostgreSQL database/i)).toBeInTheDocument();
 
-    // 2. Gutendex API active
+    // 2. Curated archive cache active
     rerender(
       <StickyCatalogToolbar
         page={1}
@@ -405,13 +405,13 @@ describe('StickyCatalogToolbar component', () => {
         activeFilterChips={[]}
         onClearAllFilters={vi.fn()}
         latencyMs={240}
-        catalogSource="upstream"
+        catalogSource="cache"
       />
     );
 
     expect(screen.getByText('Active · 240ms')).toBeInTheDocument();
     expect(screen.getByText('Standby / Unseeded')).toBeInTheDocument();
-    expect(screen.getByText(/Serving public domain volumes via the upstream Gutendex REST mirror/i)).toBeInTheDocument();
+    expect(screen.getByText(/Serving curated public domain classics from the offline archive cache/i)).toBeInTheDocument();
 
     // 3. Offline / Error state
     rerender(

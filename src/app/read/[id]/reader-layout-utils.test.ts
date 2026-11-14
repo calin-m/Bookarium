@@ -92,22 +92,21 @@ describe('reader-layout-utils', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it('fetches upstream book and populates serverMetadataCache when Supabase is unconfigured', async () => {
+    it('resolves bundled featured book and populates serverMetadataCache without HTTP requests when Supabase is unconfigured', async () => {
       const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-      try {
-        const mockBook = { id: 84, title: 'Frankenstein' } as GutendexBook;
-        vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ results: [mockBook] }),
-        } as Response);
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
+      try {
         const result = await fetchBookData(84);
-        expect(result).toEqual(mockBook);
-        expect(serverMetadataCache.get(84)).toEqual(mockBook);
+        expect(result?.id).toBe(84);
+        expect(result?.title).toBe('Frankenstein');
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(serverMetadataCache.get(84)).toEqual(result);
       } finally {
         process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+        fetchSpy.mockRestore();
       }
     });
 
@@ -162,7 +161,7 @@ describe('reader-layout-utils', () => {
       }
     });
 
-    it('degrades gracefully to upstream Gutendex when Supabase query times out or fails', async () => {
+    it('degrades gracefully to bundled FEATURED_HERO_BOOKS when Supabase query times out or fails', async () => {
       const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
@@ -180,18 +179,15 @@ describe('reader-layout-utils', () => {
         from: mockFrom,
       } as any);
 
-      const mockUpstreamBook = { id: 2600, title: 'War and Peace' } as GutendexBook;
-      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ results: [mockUpstreamBook] }),
-      } as Response);
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
       try {
         const result = await fetchBookData(2600);
         expect(result).not.toBeNull();
         expect(result?.title).toBe('War and Peace');
-        expect(fetchSpy).toHaveBeenCalled();
+        expect(fetchSpy).not.toHaveBeenCalled();
         expect(serverMetadataCache.get(2600)?.title).toBe('War and Peace');
+        expect(isConfirmedMissingBook(2600)).toBe(false);
       } finally {
         process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
@@ -199,16 +195,42 @@ describe('reader-layout-utils', () => {
       }
     });
 
-    it('records confirmed missing IDs on 404 or empty upstream results but never on network exceptions', async () => {
+    it('records confirmed missing IDs only when configured Supabase cleanly returns not-found (not on timeouts or unconfigured env)', async () => {
       const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      // 1. Unconfigured Supabase returns null without marking confirmed-missing
       delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      expect(await fetchBookData(888888)).toBeNull();
+      expect(isConfirmedMissingBook(888888)).toBe(false);
+
+      // 2. Configured Supabase returning { data: null, error: null } marks confirmed missing
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-anon-key-12345';
+
+      const mockSuccessMissing = vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      });
+      const mockErrorLookup = vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: { message: 'Transient read error' } }),
+      });
+
+      const supabaseClientModule = await import('@/lib/supabase/client');
+      const clientSpy = vi
+        .spyOn(supabaseClientModule, 'createClient')
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ abortSignal: mockSuccessMissing }) }),
+          }),
+        } as any)
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ abortSignal: mockErrorLookup }) }),
+          }),
+        } as any);
 
       try {
-        vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-        } as Response);
-
         const result = await fetchBookData(999999);
         expect(result).toBeNull();
         expect(isConfirmedMissingBook(999999)).toBe(true);
@@ -216,13 +238,13 @@ describe('reader-layout-utils', () => {
         clearConfirmedNotFoundCache();
         expect(isConfirmedMissingBook(999999)).toBe(false);
 
-        vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
-
-        const offlineResult = await fetchBookData(55555);
-        expect(offlineResult).toBeNull();
+        const erroredResult = await fetchBookData(55555);
+        expect(erroredResult).toBeNull();
         expect(isConfirmedMissingBook(55555)).toBe(false);
       } finally {
         process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
+        clientSpy.mockRestore();
       }
     });
   });

@@ -184,5 +184,42 @@ describe('BookGrid component', () => {
     const paginationBar = screen.getByTestId('catalog-pagination-bar');
     expect(paginationBar).toHaveClass('pt-5', 'sm:pt-6');
   });
+
+  it('keeps pagination controls accessible on empty pages beyond page 1 so users can navigate back', () => {
+    const handlePageChange = vi.fn();
+    const { rerender } = render(
+      <BookGrid
+        books={[]}
+        activeView="catalog"
+        emptyTitle="No Matching Books"
+        page={2}
+        hasNextPage={false}
+        onPageChange={handlePageChange}
+      />
+    );
+
+    expect(screen.getByText('No Matching Books')).toBeInTheDocument();
+    const paginationBar = screen.getByTestId('catalog-pagination-bar');
+    expect(paginationBar).toBeInTheDocument();
+    expect(screen.getByText('Page 2')).toBeInTheDocument();
+
+    const prevBtn = screen.getByLabelText('Previous page');
+    expect(prevBtn).not.toBeDisabled();
+    fireEvent.click(prevBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(1);
+
+    // On page 1 empty state, pagination bar is omitted
+    rerender(
+      <BookGrid
+        books={[]}
+        activeView="catalog"
+        emptyTitle="No Matching Books"
+        page={1}
+        hasNextPage={false}
+        onPageChange={handlePageChange}
+      />
+    );
+    expect(screen.queryByTestId('catalog-pagination-bar')).not.toBeInTheDocument();
+  });
 });
 

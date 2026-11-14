@@ -43,6 +43,7 @@ describe('Root Proxy (Next.js 16)', () => {
     const geoCookie = res.cookies.get(GEO_COOKIE_NAME);
     expect(geoCookie?.value).toBe('FR');
     expect(res.headers.get('x-bookarium-country')).toBe('FR');
+    expect(req.headers.get('x-bookarium-country')).toBe('FR');
   });
 
   it('respects development query parameter override ?country=DE', async () => {

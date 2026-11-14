@@ -850,7 +850,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'handlers',
       file: 'src/mocks/handlers.ts',
       layer: 'MSW v2 HTTP Interception Handlers',
-      role: 'Canonical Mock Service Worker v2 HTTP request handlers, fail-closed `handleUnhandledMswRequest` guard (blocking unmocked external/Supabase URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, Gutendex API, and allowlisted HTTPS Project Gutenberg mirrors for zero-network deterministic testing.',
+      role: 'Canonical Mock Service Worker v2 HTTP request handlers, fail-closed `handleUnhandledMswRequest` guard (blocking unmocked external/Supabase URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, and allowlisted HTTPS Project Gutenberg mirrors for zero-network deterministic testing.',
     },
     {
       name: 'server',
@@ -951,7 +951,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Hermetic Network Mocks & Test Interception',
       scope: '`src/mocks/*.test.ts`',
       match: (f) => f.startsWith('src/mocks/'),
-      strategy: 'Fail-closed MSW v2 request/response handler unit contracts, Gutendex/Gutenberg mirror fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
+      strategy: 'Fail-closed MSW v2 request/response handler unit contracts, Project Gutenberg mirror fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
     },
     {
       id: 'scripts',
@@ -1179,7 +1179,7 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     },
     NEXT_PUBLIC_SUPABASE_URL: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
-      fallback: '100% Zero-API-Key Guest Mode: Catalog fails over to Gutendex REST API; collections persist in `localStorage` & `IndexedDB`.',
+      fallback: '100% Zero-API-Key Guest Mode: Catalog degrades safely to the bundled Curated Archive fallback (`curated-fallback.ts`); collections persist in `localStorage` & `IndexedDB`.',
       purpose: 'Supabase project URL for PostgreSQL catalog queries (`public.books`), FRBR translations, SSR auth cookies, and 7-store cloud sync.',
     },
     NEXT_PUBLIC_SUPABASE_ANON_KEY: {
@@ -1206,11 +1206,6 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       scope: 'CLI & CI Secret Only (`Client-Forbidden` via Pass 0.5 & AST Rule)',
       fallback: 'CLI ingestion scripts fall back to `NEXT_PUBLIC_SUPABASE_ANON_KEY` or emit offline SQL seed artifacts (`supabase/seed_*.sql`).',
       purpose: 'Privileged service-role credential used exclusively by offline Node.js CLI pipelines (`catalog:sync`, `translations:sync`, `quotes:sync`, `catalog:ingest`) for bulk upserts.',
-    },
-    GUTENDEX_API_URL: {
-      scope: 'Edge / Server Route & Config Override',
-      fallback: 'Defaults to `https://gutendex.com/books` (`API_ENDPOINTS.GUTENDEX_BASE`).',
-      purpose: 'Upstream Gutendex public domain catalog endpoint for failover search and metadata resolution.',
     },
     DEV_COUNTRY: {
       scope: 'Edge Proxy & Server Route Development Override',

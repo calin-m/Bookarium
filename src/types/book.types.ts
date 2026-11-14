@@ -39,7 +39,7 @@ export interface GutendexResponse {
   next: string | null;
   previous: string | null;
   results: GutendexBook[];
-  source?: 'upstream' | 'cache' | 'supabase';
+  source?: 'cache' | 'supabase';
   latencyMs?: number;
   clientCountry?: string;
   jurisdictionRule?: string;

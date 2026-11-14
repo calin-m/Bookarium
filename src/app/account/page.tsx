@@ -119,6 +119,9 @@ function AccountDashboardContent() {
     clearPasswordRecovery,
     requestAccountDeletion,
     signOut,
+    signOutOtherDevices,
+    listActiveSessions,
+    revokeSession,
     openAuthModal,
     resendVerificationEmail,
     linkOAuthIdentity,
@@ -135,6 +138,9 @@ function AccountDashboardContent() {
       clearPasswordRecovery: s.clearPasswordRecovery,
       requestAccountDeletion: s.requestAccountDeletion,
       signOut: s.signOut,
+      signOutOtherDevices: s.signOutOtherDevices,
+      listActiveSessions: s.listActiveSessions,
+      revokeSession: s.revokeSession,
       openAuthModal: s.openAuthModal,
       resendVerificationEmail: s.resendVerificationEmail,
       linkOAuthIdentity: s.linkOAuthIdentity,
@@ -445,6 +451,21 @@ function AccountDashboardContent() {
     deletionEmailSent,
     deleteError,
     handleRequestDeletion,
+    sessions,
+    isLoadingSessions,
+    hasLoadedSessions,
+    isSessionsRpcUnavailable,
+    sessionsError,
+    sessionsSuccess,
+    revokingSessionId,
+    isSigningOutScope,
+    isSignOutAllModalOpen,
+    setIsSignOutAllModalOpen,
+    refreshActiveSessions,
+    handleRevokeSession,
+    handleSignOutThisBrowser,
+    handleSignOutOtherDevices,
+    handleSignOutAllDevices,
   } = useAccountSecurityActions({
     user,
     profile,
@@ -465,6 +486,14 @@ function AccountDashboardContent() {
     resendVerificationEmail,
     linkOAuthIdentity,
     unlinkOAuthIdentity,
+    activeTab,
+    isOffline,
+    isPreviewMode,
+    signOut,
+    signOutOtherDevices,
+    listActiveSessions,
+    revokeSession,
+    onAfterSignOut: () => router.push(ROUTES.HOME),
   });
 
   const handleThemeChange = (newTheme: AppTheme) => {
@@ -941,10 +970,7 @@ function AccountDashboardContent() {
                 onGeneratePassword={generateStrongPassword}
                 onUpdatePassword={handleUpdatePassword}
                 onRequestPasswordReset={handleRequestPasswordReset}
-                onSignOut={async () => {
-                  await signOut();
-                  router.push(ROUTES.HOME);
-                }}
+                onSignOut={handleSignOutThisBrowser}
                 onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
                 userEmail={user.email ?? ''}
                 hasGoogleIdentity={hasGoogleIdentity}
@@ -957,6 +983,21 @@ function AccountDashboardContent() {
                 identityError={identityError}
                 onLinkGoogle={handleLinkGoogle}
                 onUnlinkGoogle={handleUnlinkGoogle}
+                sessions={sessions}
+                isLoadingSessions={isLoadingSessions}
+                hasLoadedSessions={hasLoadedSessions}
+                isSessionsRpcUnavailable={isSessionsRpcUnavailable}
+                sessionsError={sessionsError}
+                sessionsSuccess={sessionsSuccess}
+                revokingSessionId={revokingSessionId}
+                isSigningOutScope={isSigningOutScope}
+                isSignOutAllModalOpen={isSignOutAllModalOpen}
+                onOpenSignOutAllModal={() => setIsSignOutAllModalOpen(true)}
+                onCloseSignOutAllModal={() => setIsSignOutAllModalOpen(false)}
+                onRefreshSessions={refreshActiveSessions}
+                onRevokeSession={handleRevokeSession}
+                onSignOutOtherDevices={handleSignOutOtherDevices}
+                onSignOutAllDevices={handleSignOutAllDevices}
               />
             </section>
 

@@ -8,13 +8,13 @@ import {
 import React, { useEffect } from 'react';
 import type { GutendexBook, GutendexResponse, BookPassage } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { SITE_CONFIG } from '@/config/site-config';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { LITERARY_QUOTES } from '@/config/literary-quotes';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 import {
   isBookPublicDomainInJurisdiction,
   getJurisdictionRule,
-  JURISDICTION_BASELINE_COUNTS,
 } from '@/lib/copyright-engine';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -86,150 +86,74 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   }
 
   const isBrowser = typeof window !== 'undefined';
+  const targetUrl = isBrowser
+    ? `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`
+    : `${SITE_CONFIG.SITE_URL}${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`;
 
-  // Strategy 1: Browser runtime - try internal Next.js API proxy with quick failover
-  if (isBrowser) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const requestStartMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const requestStartMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
-      const internalUrl = `${API_ENDPOINTS.INTERNAL_API_BOOKS}?${searchParams.toString()}`;
-      const res = await fetch(internalUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (Array.isArray(data.results) || data.count !== undefined)) {
-          const elapsedMs =
-            (typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartMs;
-          return {
-            ...data,
-            latencyMs: Math.max(1, Math.round(elapsedMs)),
-          };
-        }
-      }
-    } catch {
-      // Fall through to Strategy 2 (Direct client-side API fetch)
-    }
-
-    // Strategy 2: Direct Client Upstream Fetch (bypasses serverless datacenter IP blocks)
-    const directUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${searchParams.toString()}`;
-    const directStartMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    let directRes: Response;
-    try {
-      directRes = await fetch(directUrl, {
-        headers: { Accept: 'application/json' },
-      });
-    } catch (netErr: unknown) {
-      const msg = netErr instanceof Error ? netErr.message : 'Network error';
-      throw new Error(`Failed to fetch books: ${msg}`);
-    }
-
-    if (!directRes.ok) {
-      throw new Error(`Failed to fetch books: ${directRes.statusText || directRes.status}`);
-    }
-
-    let data: GutendexResponse;
-    try {
-      data = await directRes.json();
-    } catch {
-      throw new Error('Failed to fetch books: Invalid JSON response from server');
-    }
-    const directElapsedMs =
-      (typeof performance !== 'undefined' ? performance.now() : Date.now()) - directStartMs;
-
-    const clientCountry = useJurisdictionStore.getState().getEffectiveCountry() || 'US';
-    const jurisdictionRule = getJurisdictionRule(clientCountry);
-    const originalResults = data.results || [];
-    const filteredResults = params.includeRestrictedMetadata
-      ? originalResults
-      : originalResults.filter((b: GutendexBook) => {
-          if (b.copyright !== true) {
-            const evaluation = isBookPublicDomainInJurisdiction(b, clientCountry);
-            return evaluation.isAllowed;
-          }
-          return false;
-        });
-    const totalFiltered = originalResults.length - filteredResults.length;
-
-    const isUnfiltered =
-      !params.search &&
-      !params.topic &&
-      !params.languages &&
-      params.authorYearStart === undefined &&
-      params.authorYearEnd === undefined &&
-      !params.ids &&
-      !params.mimeType;
-
-    let adjustedCount: number;
-    if (
-      isUnfiltered &&
-      jurisdictionRule !== 'US_PUBLIC_DOMAIN' &&
-      JURISDICTION_BASELINE_COUNTS[jurisdictionRule]
-    ) {
-      adjustedCount = JURISDICTION_BASELINE_COUNTS[jurisdictionRule];
-    } else if (data.count !== undefined) {
-      adjustedCount = Math.max(0, data.count - totalFiltered);
-    } else {
-      adjustedCount = filteredResults.length;
-    }
-
-    return {
-      ...data,
-      results: filteredResults,
-      count: adjustedCount,
-      source: 'upstream',
-      latencyMs: Math.max(1, Math.round(directElapsedMs)),
-      clientCountry,
-      jurisdictionRule,
-      totalFiltered,
-    };
-  } else {
-    // Server runtime: Direct fetch to Gutendex
-    const directUrl = `${API_ENDPOINTS.GUTENDEX_BASE_URL}/?${searchParams.toString()}`;
-    let res: Response;
-    try {
-      res = await fetch(directUrl, {
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'Bookarium/1.0 (Public Domain Library Reader)',
-        },
-      });
-    } catch (netErr: unknown) {
-      const msg = netErr instanceof Error ? netErr.message : 'Network error';
-      throw new Error(`Failed to fetch books: ${msg}`);
-    }
-    if (!res.ok) {
-      throw new Error(`Failed to fetch books: ${res.statusText || res.status}`);
-    }
-    let data: GutendexResponse;
-    try {
-      data = await res.json();
-    } catch {
-      throw new Error('Failed to fetch books: Invalid JSON response from server');
-    }
-    const filteredResults = params.includeRestrictedMetadata
-      ? (data.results || [])
-      : (data.results || []).filter((b: GutendexBook) => {
-          if (b.copyright !== true) {
-            const evaluation = isBookPublicDomainInJurisdiction(b, 'US');
-            return evaluation.isAllowed;
-          }
-          return false;
-        });
-    return {
-      ...data,
-      results: filteredResults,
-      count: data.count !== undefined ? data.count : filteredResults.length,
-      source: 'upstream',
-    };
+  let res: Response;
+  try {
+    res = await fetch(targetUrl, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+  } catch (netErr: unknown) {
+    clearTimeout(timeoutId);
+    const msg = netErr instanceof Error ? netErr.message : 'Network error';
+    throw new Error(`Failed to fetch books: ${msg}`);
   }
+  clearTimeout(timeoutId);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch books: ${res.statusText || res.status}`);
+  }
+
+  let data: GutendexResponse;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error('Failed to fetch books: Invalid JSON response from server');
+  }
+
+  if (!data || (!Array.isArray(data.results) && data.count === undefined)) {
+    throw new Error('Failed to fetch books: Unexpected catalog payload');
+  }
+
+  const elapsedMs =
+    (typeof performance !== 'undefined' ? performance.now() : Date.now()) - requestStartMs;
+
+  const clientCountry = isBrowser
+    ? useJurisdictionStore.getState().getEffectiveCountry() || 'US'
+    : 'US';
+  const originalResults = Array.isArray(data.results) ? data.results : [];
+  const filteredResults = params.includeRestrictedMetadata
+    ? originalResults
+    : originalResults.filter((b: GutendexBook) => {
+        if (b.copyright !== true) {
+          const evaluation = isBookPublicDomainInJurisdiction(b, clientCountry);
+          return evaluation.isAllowed;
+        }
+        return false;
+      });
+
+  return {
+    ...data,
+    results: filteredResults,
+    count: data.count !== undefined ? data.count : filteredResults.length,
+    source: data.source || 'supabase',
+    latencyMs: Math.max(1, Math.round(elapsedMs)),
+    clientCountry: data.clientCountry || clientCountry,
+    jurisdictionRule: data.jurisdictionRule || getJurisdictionRule(clientCountry),
+  };
 }
 
 export function useBooks(params: UseBooksParams = {}, options: UseBooksOptions = {}) {
+  const effectiveCountry = useJurisdictionStore((s) => s.overrideCountry || s.country || 'US');
   return useQuery({
-    queryKey: ['books', params],
+    queryKey: ['books', params, effectiveCountry],
     queryFn: () => fetchBooks(params),
     placeholderData: keepPreviousData, // Keep previous page data while new page is loading
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -244,6 +168,7 @@ export function useBooks(params: UseBooksParams = {}, options: UseBooksOptions =
  */
 export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = true) {
   const queryClient = useQueryClient();
+  const effectiveCountry = useJurisdictionStore((s) => s.overrideCountry || s.country || 'US');
   const currentPage = params.page || 1;
   const {
     ids,
@@ -294,7 +219,7 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
     // Use requestIdleCallback if available, or fallback to setTimeout
     const prefetch = () => {
       queryClient.prefetchQuery({
-        queryKey: ['books', nextParams],
+        queryKey: ['books', nextParams, effectiveCountry],
         queryFn: () => fetchBooks(nextParams),
         staleTime: 5 * 60 * 1000,
       });
@@ -312,17 +237,17 @@ export function usePrefetchNextPage(params: UseBooksParams = {}, hasNextPage = t
       const timer = setTimeout(prefetch, 400);
       return () => clearTimeout(timer);
     }
-  }, [queryClient, nextParams, hasNextPage]);
+  }, [queryClient, nextParams, hasNextPage, effectiveCountry]);
 
   // Return manual prefetch trigger (e.g. for onMouseEnter on Next button)
   return React.useCallback(() => {
     if (!hasNextPage) return;
     queryClient.prefetchQuery({
-      queryKey: ['books', nextParams],
+      queryKey: ['books', nextParams, effectiveCountry],
       queryFn: () => fetchBooks(nextParams),
       staleTime: 5 * 60 * 1000,
     });
-  }, [queryClient, nextParams, hasNextPage]);
+  }, [queryClient, nextParams, hasNextPage, effectiveCountry]);
 }
 
 /**

@@ -1,8 +1,9 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { useAccountSecurityActions } from './useAccountSecurityActions';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';
+import type { ActiveUserSession } from '@/lib/session-device-parser';
 
 describe('useAccountSecurityActions', () => {
   const mockUser = {
@@ -478,6 +479,136 @@ describe('useAccountSecurityActions', () => {
       'scholar@bookarium.test',
       'turnstile-reset-token'
     );
+  });
+
+  it('loads active sessions on Security tab, resets on user change, and handles revocation and sign-out scopes', async () => {
+    const sampleSessions: ActiveUserSession[] = [
+      {
+        id: 'sess-current',
+        userAgent: 'Mozilla/5.0 Chrome/130',
+        ipAddress: '203.0.113.x',
+        createdAt: '2026-11-14T10:00:00Z',
+        updatedAt: '2026-11-14T10:20:00Z',
+        refreshedAt: '2026-11-14T10:30:00Z',
+        notAfter: null,
+        isCurrent: true,
+      },
+      {
+        id: 'sess-mobile',
+        userAgent: 'Mozilla/5.0 (iPhone) Safari/604.1',
+        ipAddress: '198.51.100.x',
+        createdAt: '2026-11-13T09:00:00Z',
+        updatedAt: '2026-11-13T11:00:00Z',
+        refreshedAt: null,
+        notAfter: null,
+        isCurrent: false,
+      },
+    ];
+
+    const listActiveSessions = vi.fn().mockResolvedValue({
+      sessions: sampleSessions,
+      error: null,
+    });
+    const revokeSession = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Revoke RPC failed') });
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const signOutOtherDevices = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Sign out others failed') });
+    const onAfterSignOut = vi.fn();
+
+    const { result, rerender } = renderHook(
+      ({ activeUser, tab }: { activeUser: User | null; tab: string }) =>
+        useAccountSecurityActions({
+          user: activeUser,
+          profile: mockProfile,
+          isRecoveryMode: false,
+          onClearRecoveryParam: vi.fn(),
+          updateProfile: vi.fn().mockResolvedValue({ error: null }),
+          updatePassword: vi.fn().mockResolvedValue({ error: null }),
+          resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+          requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+          resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+          activeTab: tab,
+          signOut,
+          signOutOtherDevices,
+          listActiveSessions,
+          revokeSession,
+          onAfterSignOut,
+        }),
+      { initialProps: { activeUser: mockUser, tab: 'habits' } as { activeUser: User | null; tab: string } }
+    );
+
+    // Not fetched until Security tab is active
+    expect(listActiveSessions).not.toHaveBeenCalled();
+
+    rerender({ activeUser: mockUser, tab: 'security' });
+    await waitFor(() => {
+      expect(listActiveSessions).toHaveBeenCalledTimes(1);
+      expect(result.current.sessions).toHaveLength(2);
+    });
+
+    // Revoking another device removes it cleanly
+    await act(async () => {
+      await result.current.handleRevokeSession(sampleSessions[1]);
+    });
+    expect(revokeSession).toHaveBeenCalledWith('sess-mobile');
+    expect(result.current.sessions).toHaveLength(1);
+    expect(result.current.sessionsSuccess).toBe('Device session revoked.');
+
+    // Error branch on revokeSession preserves remaining list & exposes error
+    await act(async () => {
+      await result.current.handleRevokeSession({ ...sampleSessions[1], id: 'sess-err' });
+    });
+    expect(result.current.sessionsError).toBe('Revoke RPC failed');
+
+    // Manual refresh reloads list
+    await act(async () => {
+      await result.current.refreshActiveSessions();
+    });
+    expect(listActiveSessions).toHaveBeenCalledTimes(2);
+    expect(result.current.sessions).toHaveLength(2);
+
+    // Sign out other devices keeps current session & surfaces confirmation
+    await act(async () => {
+      await result.current.handleSignOutOtherDevices();
+    });
+    expect(signOutOtherDevices).toHaveBeenCalledTimes(1);
+    expect(result.current.sessions).toEqual([sampleSessions[0]]);
+    expect(result.current.sessionsSuccess).toBe('Signed out from all other devices.');
+
+    await act(async () => {
+      await result.current.handleSignOutOtherDevices();
+    });
+    expect(result.current.sessionsError).toBe('Sign out others failed');
+
+    // Revoking current session delegates cleanly to local sign-out
+    await act(async () => {
+      await result.current.handleRevokeSession(sampleSessions[0]);
+    });
+    expect(signOut).toHaveBeenCalledWith('local');
+    expect(onAfterSignOut).toHaveBeenCalledTimes(1);
+
+    // Confirmation modal state + confirmed Sign Out All Devices invokes global scope
+    act(() => {
+      result.current.setIsSignOutAllModalOpen(true);
+    });
+    expect(result.current.isSignOutAllModalOpen).toBe(true);
+
+    await act(async () => {
+      await result.current.handleSignOutAllDevices();
+    });
+    expect(result.current.isSignOutAllModalOpen).toBe(false);
+    expect(signOut).toHaveBeenCalledWith('global');
+    expect(onAfterSignOut).toHaveBeenCalledTimes(2);
+
+    // Switching / clearing user resets loaded session state cleanly
+    rerender({ activeUser: null, tab: 'security' });
+    expect(result.current.sessions).toEqual([]);
+    expect(result.current.hasLoadedSessions).toBe(false);
   });
 });
 

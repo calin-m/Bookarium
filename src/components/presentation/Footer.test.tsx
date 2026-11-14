@@ -9,7 +9,7 @@ describe('Footer component', () => {
     expect(screen.getAllByText(/CC0 Public Domain/i)[0]).toBeInTheDocument();
     expect(screen.getByText(/Sources & Credits/i)).toBeInTheDocument();
     expect(screen.getByText(/Project Gutenberg Archive/i)).toBeInTheDocument();
-    expect(screen.getByText(/Gutendex REST API/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Gutendex/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Wikidata Knowledge Graph/i)).toBeInTheDocument();
     expect(screen.getByText(/Booksaw UI Template \(CC BY 4\.0\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Google Antigravity \(AI Co-Engineer\)/i)).toBeInTheDocument();

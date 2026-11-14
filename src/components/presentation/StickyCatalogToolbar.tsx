@@ -37,7 +37,7 @@ export interface StickyCatalogToolbarProps {
   isFetching?: boolean;
   onPrefetchNext?: () => void;
   latencyMs?: number;
-  catalogSource?: 'supabase' | 'upstream' | 'cache';
+  catalogSource?: 'supabase' | 'cache';
   isError?: boolean;
   pageSize?: number;
   onPageSizeChange?: (size: number) => void;

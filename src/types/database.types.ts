@@ -543,6 +543,19 @@ export interface Database {
         Args: Record<string, never>;
         Returns: void;
       };
+      get_active_sessions: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          user_agent: string | null;
+          ip_address: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          refreshed_at: string | null;
+          not_after: string | null;
+          is_current: boolean;
+        }[];
+      };
       lookup_scholar_by_username: {
         Args: {
           target_username: string;
@@ -552,6 +565,12 @@ export interface Database {
           username: string;
           display_name: string;
         }[];
+      };
+      revoke_user_session: {
+        Args: {
+          target_session_id: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

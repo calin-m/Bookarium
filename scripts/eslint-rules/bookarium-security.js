@@ -1971,6 +1971,21 @@ const rules = {
         }
       }
 
+      function checkStringForRetiredGutendexUrl(node, strValue) {
+        if (isTestFile || typeof strValue !== 'string') return;
+        for (const match of strValue.matchAll(/https?:\/\/([^\s"'`/?#]+)/gi)) {
+          const host = match[1].toLowerCase().split(':')[0];
+          if (host === 'gutendex.com' || host.endsWith('.gutendex.com')) {
+            context.report({
+              node,
+              message:
+                'Retired external dependency (ADR-080): runtime references to external "gutendex.com" APIs are forbidden. Use SupabaseCatalogProvider or curated-fallback.ts instead.',
+            });
+            return;
+          }
+        }
+      }
+
       return {
         VariableDeclarator(node) {
           if (node.id && node.id.type === 'Identifier' && exprHasPrimaryKeyInCall(node.init)) {
@@ -1985,11 +2000,13 @@ const rules = {
         Literal(node) {
           if (typeof node.value === 'string') {
             checkStringForCopyrightTrue(node, node.value);
+            checkStringForRetiredGutendexUrl(node, node.value);
           }
         },
         StringLiteral(node) {
           if (typeof node.value === 'string') {
             checkStringForCopyrightTrue(node, node.value);
+            checkStringForRetiredGutendexUrl(node, node.value);
           }
         },
         TemplateLiteral(node) {
@@ -1997,6 +2014,7 @@ const rules = {
             .map((q) => (q.value && (q.value.cooked || q.value.raw)) || '')
             .join('');
           checkStringForCopyrightTrue(node, combinedRaw);
+          checkStringForRetiredGutendexUrl(node, combinedRaw);
         },
         CallExpression(node) {
           const { objectName, methodName } = getCalleeName(node);

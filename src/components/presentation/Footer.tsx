@@ -58,16 +58,6 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a
-                  href={SITE_CONFIG.GUTENDEX}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors inline-flex items-center gap-1 py-1"
-                >
-                  Gutendex REST API <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                </a>
-              </li>
-              <li>
-                <a
                   href={SITE_CONFIG.WIKIDATA}
                   target="_blank"
                   rel="noopener noreferrer"

@@ -12,6 +12,31 @@ import {
 import { encodeReadingCardShareToken } from '@/lib/reading-card-export';
 
 describe('GET /api/books/content', () => {
+  /**
+   * Configures Supabase env vars and mocks the Tier 2 `public.books` metadata query
+   * so cross-jurisdiction tests verify DB-backed copyright checks without external HTTP calls.
+   */
+  async function mockSupabaseBookQuery(rowData: Record<string, unknown> | null) {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+    const mockMaybeSingle = vi.fn().mockResolvedValue({
+      data: rowData,
+      error: null,
+    });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+    return { clientSpy, mockFrom, mockSelect, mockEq };
+  }
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
@@ -154,7 +179,7 @@ describe('GET /api/books/content', () => {
   });
 
   it('should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK', async () => {
-    // Mock metadata for Agatha Christie
+    // Resolve non-featured Agatha Christie metadata via Tier 2 Supabase `public.books`
     const christieMeta = {
       id: 863,
       title: 'The Mysterious Affair at Styles',
@@ -163,27 +188,33 @@ describe('GET /api/books/content', () => {
       copyright: false,
     };
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(christieMeta), { status: 200 })
-    );
+    const { clientSpy, mockFrom, mockSelect, mockEq } = await mockSupabaseBookQuery(christieMeta);
+    const fetchSpy = vi.spyOn(global, 'fetch');
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=863', {
-      headers: {
-        'x-vercel-ip-country': 'GB',
-      },
-    });
+    try {
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=863', {
+        headers: {
+          'x-vercel-ip-country': 'GB',
+        },
+      });
 
-    const res = await GET(req);
-    expect(res.status).toBe(451);
-    expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
+      const res = await GET(req);
+      expect(res.status).toBe(451);
+      expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
+      expect(mockFrom).toHaveBeenCalledWith('books');
+      expect(mockSelect).toHaveBeenCalledWith('id, title, authors, translators, copyright');
+      expect(mockEq).toHaveBeenCalledWith('id', 863);
+      expect(fetchSpy).not.toHaveBeenCalled();
 
-    const json = await res.json();
-    expect(json.country).toBe('GB');
-    expect(json.rule).toBe('LIFE_70');
-    expect(json.publicDomainYear).toBe(2047);
-    expect(json.restrictingDeathYear).toBe(1976);
-
-    fetchSpy.mockRestore();
+      const json = await res.json();
+      expect(json.country).toBe('GB');
+      expect(json.rule).toBe('LIFE_70');
+      expect(json.publicDomainYear).toBe(2047);
+      expect(json.restrictingDeathYear).toBe(1976);
+    } finally {
+      clientSpy.mockRestore();
+      fetchSpy.mockRestore();
+    }
   });
 
   it('should return HTTP 451 in local development via ?country=GB query parameter without headers', async () => {
@@ -197,70 +228,74 @@ describe('GET /api/books/content', () => {
       copyright: false,
     };
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(christieMeta), { status: 200 })
-    );
+    const { clientSpy, mockFrom, mockEq } = await mockSupabaseBookQuery(christieMeta);
+    const fetchSpy = vi.spyOn(global, 'fetch');
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=863&country=GB');
-    const res = await GET(req);
+    try {
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=863&country=GB');
+      const res = await GET(req);
 
-    expect(res.status).toBe(451);
-    const json = await res.json();
-    expect(json.country).toBe('GB');
-    expect(json.rule).toBe('LIFE_70');
-    expect(json.publicDomainYear).toBe(2047);
-    expect(json.restrictingDeathYear).toBe(1976);
+      expect(res.status).toBe(451);
+      expect(mockFrom).toHaveBeenCalledWith('books');
+      expect(mockEq).toHaveBeenCalledWith('id', 863);
+      expect(fetchSpy).not.toHaveBeenCalled();
 
-    fetchSpy.mockRestore();
-    vi.unstubAllEnvs();
+      const json = await res.json();
+      expect(json.country).toBe('GB');
+      expect(json.rule).toBe('LIFE_70');
+      expect(json.publicDomainYear).toBe(2047);
+      expect(json.restrictingDeathYear).toBe(1976);
+    } finally {
+      clientSpy.mockRestore();
+      fetchSpy.mockRestore();
+      vi.unstubAllEnvs();
+    }
   });
 
   it('should return HTTP 451 when book is protected in Mexico (Life + 100)', async () => {
-    const gatsbyMeta = {
-      id: 64317,
-      title: 'The Great Gatsby',
-      authors: [{ name: 'Fitzgerald, F. Scott', birth_year: 1896, death_year: 1940 }],
-      translators: [],
-      copyright: false,
-    };
+    // Book 64317 resolves author lifespan (F. Scott Fitzgerald, death_year: 1940) via Tier 3 FEATURED_HERO_BOOKS
+    const fetchSpy = vi.spyOn(global, 'fetch');
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(gatsbyMeta), { status: 200 })
-    );
+    try {
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=64317', {
+        headers: {
+          'x-vercel-ip-country': 'MX',
+        },
+      });
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=64317', {
-      headers: {
-        'x-vercel-ip-country': 'MX',
-      },
-    });
+      const res = await GET(req);
+      expect(res.status).toBe(451);
+      expect(fetchSpy).not.toHaveBeenCalled();
 
-    const res = await GET(req);
-    expect(res.status).toBe(451);
-    const json = await res.json();
-    expect(json.country).toBe('MX');
-    expect(json.rule).toBe('LIFE_100');
-    expect(json.publicDomainYear).toBe(2041);
-
-    fetchSpy.mockRestore();
+      const json = await res.json();
+      expect(json.country).toBe('MX');
+      expect(json.rule).toBe('LIFE_100');
+      expect(json.publicDomainYear).toBe(2041);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it('should return HTTP 503 fail-closed when metadata cannot be retrieved for international user', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response('Service Unavailable', { status: 503 })
-    );
+    // Non-featured book 9999 with unconfigured Supabase fails closed without outbound HTTP lookups
+    const fetchSpy = vi.spyOn(global, 'fetch');
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=9999', {
-      headers: {
-        'x-vercel-ip-country': 'FR',
-      },
-    });
+    try {
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=9999', {
+        headers: {
+          'x-vercel-ip-country': 'FR',
+        },
+      });
 
-    const res = await GET(req);
-    expect(res.status).toBe(503);
-    const json = await res.json();
-    expect(json.error).toContain('Unable to verify copyright clearance');
+      const res = await GET(req);
+      expect(res.status).toBe(503);
+      expect(fetchSpy).not.toHaveBeenCalled();
 
-    fetchSpy.mockRestore();
+      const json = await res.json();
+      expect(json.error).toContain('Unable to verify copyright clearance');
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it('should fetch and return book text for valid public domain id in US', async () => {
@@ -286,33 +321,26 @@ describe('GET /api/books/content', () => {
   }, 15000);
 
   it('should stream public domain book to GB user when metadata confirms death year <= 1955', async () => {
-    const austenMeta = {
-      id: 1342,
-      title: 'Pride and Prejudice',
-      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-      translators: [],
-      copyright: false,
-    };
+    // Book 1342 resolves Jane Austen lifespan (death_year: 1817) via Tier 3 FEATURED_HERO_BOOKS; only text mirror is fetched
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(sampleBookText, { status: 200 })
+    );
 
-    const fetchSpy = vi.spyOn(global, 'fetch')
-      .mockResolvedValueOnce(new Response(JSON.stringify(austenMeta), { status: 200 })) // Metadata check
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () => sampleBookText,
-      } as any); // Text stream
+    try {
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+        headers: {
+          'x-vercel-ip-country': 'GB',
+        },
+      });
+      const res = await GET(req);
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
-      headers: {
-        'x-vercel-ip-country': 'GB',
-      },
-    });
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    const text = await res.text();
-    expect(text).toContain('Pride and Prejudice');
-
-    fetchSpy.mockRestore();
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const text = await res.text();
+      expect(text).toContain('Pride and Prejudice');
+    } finally {
+      fetchSpy.mockRestore();
+    }
   }, 15000);
 
   it('should return 502 if upstream text mirrors fail or time out', async () => {
@@ -601,18 +629,9 @@ describe('GET /api/books/content', () => {
     });
 
     it('serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity', async () => {
-      const austenMeta = {
-        id: 1342,
-        title: 'Pride and Prejudice',
-        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-        translators: [],
-        copyright: false,
-      };
-
       const fetchSpy = vi
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }))
-        .mockResolvedValueOnce(new Response(JSON.stringify(austenMeta), { status: 200 }));
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
 
       // First request from US populates server-side LRU cache
       const usReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
@@ -622,15 +641,15 @@ describe('GET /api/books/content', () => {
       expect(usRes.status).toBe(200);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
 
-      // Second request from DE verifies copyright clearance and serves text from in-memory LRU without hitting Gutenberg mirror again
+      // Second request from DE verifies copyright clearance locally via Tier 3 curated fixture and serves text from in-memory LRU
       const deReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
         headers: { 'x-vercel-ip-country': 'DE' },
       });
       const deRes = await GET(deReq);
       expect(deRes.status).toBe(200);
       expect(await deRes.text()).toContain('Pride and Prejudice');
-      // Only 2 fetch calls total: 1 mirror fetch + 1 metadata lookup for DE
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      // Still only 1 mirror fetch total: metadata resolves locally without any external API call
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
 
       // Fill cache past MAX_CACHED_BOOKS (20) to verify LRU eviction of oldest entry
       fetchSpy.mockImplementation(async () => new Response(sampleBookText, { status: 200 }));

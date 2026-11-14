@@ -1,5 +1,3 @@
-import { API_ENDPOINTS } from '@/config/api-endpoints';
-import { SITE_CONFIG } from '@/config/site-config';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { parseLifespansFromName, type GenericBookInput } from '@/lib/copyright-engine';
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
@@ -131,7 +129,7 @@ export function getBookMetadataCache(bookId: number): CachedMetadata | undefined
  * Resolves book metadata for copyright verification.
  * Priority Tier 1: In-memory LRU cache.
  * Priority Tier 2: Dedicated Supabase PostgreSQL catalog (`public.books`).
- * Priority Tier 3: Upstream Gutendex REST API with canonical trailing slash.
+ * Priority Tier 3: Bundled curated classics fixtures (`FEATURED_HERO_BOOKS`).
  */
 export async function resolveBookMetadata(bookId: number): Promise<GenericBookInput | null> {
   const now = Date.now();
@@ -171,42 +169,18 @@ export async function resolveBookMetadata(bookId: number): Promise<GenericBookIn
         return book;
       }
     } catch {
-      // Degrade gracefully to upstream Gutendex
+      // Fall through to bundled curated classics fixture
     }
   }
 
-  // Tier 3: Fallback to upstream Gutendex API with canonical trailing slash
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-    const res = await fetch(`${API_ENDPOINTS.GUTENDEX_BASE_URL}/${bookId}/`, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': SITE_CONFIG.USER_AGENT,
-      },
-      signal: controller.signal,
+  // Tier 3: Bundled curated classics fallback (zero external HTTP requests)
+  const fallback = getFeaturedHeroFallback(bookId);
+  if (fallback) {
+    setBookMetadataCache(bookId, {
+      book: fallback,
+      expiresAt: now + CACHE_TTL_MS,
     });
-
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      return getFeaturedHeroFallback(bookId);
-    }
-
-    const data = await res.json();
-    if (data && typeof data === 'object') {
-      const enriched = enrichWithFeaturedLifespans(bookId, data as GenericBookInput);
-      setBookMetadataCache(bookId, {
-        book: enriched,
-        expiresAt: now + CACHE_TTL_MS,
-      });
-      return enriched;
-    }
-
-    return getFeaturedHeroFallback(bookId);
-  } catch {
-    return getFeaturedHeroFallback(bookId);
   }
+  return fallback;
 }
 

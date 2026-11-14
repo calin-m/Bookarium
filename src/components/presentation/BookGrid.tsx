@@ -171,10 +171,41 @@ export const BookGrid: React.FC<BookGridProps> = ({
     );
   }
 
+  const paginationBar = onPageChange ? (
+    <div data-testid="catalog-pagination-bar" className="flex items-center justify-center gap-3 pt-5 sm:pt-6 border-t border-border">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+        className="gap-1.5 text-xs font-medium"
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Previous
+      </Button>
+
+      <span className="text-xs font-mono px-3 text-muted-foreground">
+        Page {page}
+      </span>
+
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={!hasNextPage}
+        onClick={() => onPageChange(page + 1)}
+        className="gap-1.5 text-xs font-medium"
+        aria-label="Next page"
+      >
+        Next
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </div>
+  ) : null;
+
   if (activeViewMode !== 'shelf' && books.length === 0) {
     const isFavoritesEmpty = activeView === 'favorites';
-
-    return (
+    const emptyState = (
       <CollectionEmptyState
         icon={isFavoritesEmpty ? <Heart className="w-8 h-8" /> : <BookOpen className="w-8 h-8" />}
         iconContainerClassName={
@@ -197,6 +228,17 @@ export const BookGrid: React.FC<BookGridProps> = ({
         }
       />
     );
+
+    if (onPageChange && page > 1) {
+      return (
+        <div className="space-y-6 sm:space-y-8" data-testid="book-grid-container">
+          {emptyState}
+          {paginationBar}
+        </div>
+      );
+    }
+
+    return emptyState;
   }
 
   return (
@@ -265,37 +307,7 @@ export const BookGrid: React.FC<BookGridProps> = ({
       </div>
 
       {/* Pagination Bar */}
-      {onPageChange && (
-        <div data-testid="catalog-pagination-bar" className="flex items-center justify-center gap-3 pt-5 sm:pt-6 border-t border-border">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
-            className="gap-1.5 text-xs font-medium"
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </Button>
-
-          <span className="text-xs font-mono px-3 text-muted-foreground">
-            Page {page}
-          </span>
-
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasNextPage}
-            onClick={() => onPageChange(page + 1)}
-            className="gap-1.5 text-xs font-medium"
-            aria-label="Next page"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
+      {paginationBar}
     </div>
   );
 };

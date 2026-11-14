@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCatalogFilters, parseFiltersFromUrl, extractReaderBookIdFromPath } from './useCatalogFilters';
 
+let mockHasMountedOverride: boolean | null = null;
+
+vi.mock('@/hooks/useHasMounted', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useHasMounted')>();
+  return {
+    ...actual,
+    useHasMounted: () => (mockHasMountedOverride !== null ? mockHasMountedOverride : actual.useHasMounted()),
+  };
+});
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -244,6 +254,12 @@ describe('parseFiltersFromUrl', () => {
 });
 
 describe('windowed chunk sub-pagination in useCatalogFilters', () => {
+  afterEach(() => {
+    mockHasMountedOverride = null;
+    delete (window as unknown as { location?: unknown }).location;
+    (window as unknown as { location: URL }).location = new URL('http://localhost:3000/');
+  });
+
   it('maps client sub-pages to upstream 32-batch apiPage', () => {
     const { result } = renderHook(() => useCatalogFilters());
 
@@ -447,6 +463,58 @@ describe('windowed chunk sub-pagination in useCatalogFilters', () => {
     // Desktop page 3 apiPage: Math.floor((3 - 1) / 2) + 1 = 2 (still batch 2!)
     expect(result.current.queryParams.page).toBe(2);
 
+    window.matchMedia = originalMatchMedia;
+  });
+
+  it('does not spuriously translate mobile URL ?page=2 on initial SSR-to-mobile hydration commit while keeping post-mount resize translation', () => {
+    const originalMatchMedia = window.matchMedia;
+    let isMobile = false;
+    let listeners: Array<() => void> = [];
+
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 767px)' ? isMobile : !isMobile,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_event: string, cb: () => void) => {
+        listeners.push(cb);
+      },
+      removeEventListener: (_event: string, cb: () => void) => {
+        listeners = listeners.filter((l) => l !== cb);
+      },
+      dispatchEvent: vi.fn(),
+    }));
+
+    delete (window as unknown as { location?: unknown }).location;
+    (window as unknown as { location: URL }).location = new URL('http://localhost:3000/?page=2');
+    mockHasMountedOverride = false;
+
+    const { result, rerender } = renderHook(() => useCatalogFilters());
+    expect(result.current.pageSize).toBe(16);
+    expect(result.current.page).toBe(2);
+
+    // Client hydration commit flips hasMounted (false -> true) AND isMobile (false -> true) simultaneously
+    act(() => {
+      mockHasMountedOverride = true;
+      isMobile = true;
+      rerender();
+    });
+
+    expect(result.current.pageSize).toBe(8);
+    expect(result.current.page).toBe(2);
+
+    // Subsequent viewport resize to desktop AFTER mount still translates page 2 (indices 8..15) -> desktop page 1
+    act(() => {
+      isMobile = false;
+      listeners.forEach((cb) => cb());
+    });
+    expect(result.current.pageSize).toBe(16);
+    expect(result.current.page).toBe(1);
+
+    mockHasMountedOverride = null;
+    delete (window as unknown as { location?: unknown }).location;
+    (window as unknown as { location: URL }).location = new URL('http://localhost:3000/');
     window.matchMedia = originalMatchMedia;
   });
 

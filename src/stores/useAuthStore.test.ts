@@ -754,6 +754,7 @@ describe('useAuthStore', () => {
     expect(mockEq).toHaveBeenCalledWith('user_id', 'user-delete');
     expect(mockEq).toHaveBeenCalledWith('id', 'user-delete');
     expect(mockRpc).toHaveBeenCalledWith('delete_current_user');
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'global' });
 
     // Verify all local persistent stores, IndexedDB books, reader/theme/preferences settings, and session flags were wiped
     expect(clearBookshelfSpy).toHaveBeenCalled();
@@ -911,7 +912,7 @@ describe('useAuthStore', () => {
 
       await useAuthStore.getState().signOut();
 
-      expect(mockSignOut).toHaveBeenCalled();
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
       expect(flushOutboxSpy).toHaveBeenCalledWith('user-to-logout');
       expect(flushAnnotationOutboxSpy).toHaveBeenCalledWith('user-to-logout');
       expect(clearBookshelfSpy).toHaveBeenCalled();
@@ -922,6 +923,94 @@ describe('useAuthStore', () => {
       expect(resetReaderSessionSpy).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
       expect(useAuthStore.getState().profile).toBeNull();
+    });
+
+    it('supports explicit global signOut, signOutOtherDevices, listActiveSessions, and revokeSession', async () => {
+      mockSignOut.mockResolvedValue({ error: null });
+      useAuthStore.setState({
+        user: { id: 'user-sessions-1', email: 'reader@bookarium.test' } as any,
+        profile: { id: 'user-sessions-1', display_name: 'Reader One' } as any,
+      });
+
+      // 1. signOutOtherDevices keeps current user intact and uses scope: 'others'
+      const othersRes = await useAuthStore.getState().signOutOtherDevices();
+      expect(othersRes.error).toBeNull();
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'others' });
+      expect(useAuthStore.getState().user?.id).toBe('user-sessions-1');
+
+      mockSignOut.mockResolvedValueOnce({ error: { message: 'Others failed' } });
+      const othersErrRes = await useAuthStore.getState().signOutOtherDevices();
+      expect(othersErrRes.error?.message).toBe('Others failed');
+
+      // 2. listActiveSessions maps returned rows cleanly including masked ipAddress
+      mockRpc.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'sess-current',
+            user_agent: 'Mozilla/5.0 Chrome/130',
+            ip_address: '203.0.113.x',
+            created_at: '2026-11-14T10:00:00Z',
+            updated_at: '2026-11-14T10:30:00Z',
+            refreshed_at: '2026-11-14T10:45:00Z',
+            not_after: null,
+            is_current: true,
+          },
+        ],
+        error: null,
+      });
+      const listRes = await useAuthStore.getState().listActiveSessions();
+      expect(mockRpc).toHaveBeenCalledWith('get_active_sessions');
+      expect(listRes.error).toBeNull();
+      expect(listRes.sessions).toEqual([
+        {
+          id: 'sess-current',
+          userAgent: 'Mozilla/5.0 Chrome/130',
+          ipAddress: '203.0.113.x',
+          createdAt: '2026-11-14T10:00:00Z',
+          updatedAt: '2026-11-14T10:30:00Z',
+          refreshedAt: '2026-11-14T10:45:00Z',
+          notAfter: null,
+          isCurrent: true,
+        },
+      ]);
+
+      // PGRST202 unavailable RPC degrades gracefully without surfacing fatal error
+      mockRpc.mockResolvedValueOnce({
+        data: null,
+        error: { code: 'PGRST202', message: 'Could not find the function public.get_active_sessions' },
+      });
+      const rpcMissingRes = await useAuthStore.getState().listActiveSessions();
+      expect(rpcMissingRes).toEqual({
+        sessions: [],
+        error: null,
+        isRpcUnavailable: true,
+      });
+
+      // Unexpected RPC error surfaces error cleanly
+      mockRpc.mockResolvedValueOnce({
+        data: null,
+        error: { code: '50000', message: 'Database unavailable' },
+      });
+      const rpcErrRes = await useAuthStore.getState().listActiveSessions();
+      expect(rpcErrRes.sessions).toEqual([]);
+      expect(rpcErrRes.error?.message).toBe('Database unavailable');
+
+      // 3. revokeSession invokes public.revoke_user_session RPC
+      mockRpc.mockResolvedValueOnce({ data: true, error: null });
+      const revokeRes = await useAuthStore.getState().revokeSession('sess-other');
+      expect(mockRpc).toHaveBeenCalledWith('revoke_user_session', {
+        target_session_id: 'sess-other',
+      });
+      expect(revokeRes.error).toBeNull();
+
+      mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'Revoke failed' } });
+      const revokeErrRes = await useAuthStore.getState().revokeSession('sess-other');
+      expect(revokeErrRes.error?.message).toBe('Revoke failed');
+
+      // 4. Explicit global signOut clears user and invokes scope: 'global'
+      await useAuthStore.getState().signOut('global');
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'global' });
+      expect(useAuthStore.getState().user).toBeNull();
     });
   });
 

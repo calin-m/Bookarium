@@ -1328,5 +1328,33 @@ describe('BookshelfRack Component', () => {
     observer.disconnect();
     expect(observedPillLabels.some((label) => /\b1\b/.test(label))).toBe(false);
   });
+
+  it('isolates Catalog shelf view (showShelfControls=false) from activeDownloaded shelf and custom shelf state', async () => {
+    const { getOfflineBookIds, getAllOfflineBookMetas } = await import('@/lib/offline-storage');
+    const offlineOnlyBook = { ...mockBooks[0], id: 777001, title: 'Downloaded Personal Tome' };
+    vi.mocked(getOfflineBookIds).mockResolvedValue([offlineOnlyBook.id]);
+    vi.mocked(getAllOfflineBookMetas).mockResolvedValue([offlineOnlyBook]);
+
+    useAuthStore.setState({ user: { id: 'user-1', email: 'test@example.com' } as any });
+    useBookshelfStore.setState({
+      activeBookshelfId: '__downloaded__',
+      cloudBookshelves: [
+        { id: 'shelf-1', user_id: 'user-1', name: 'General', is_default: true, created_at: '', updated_at: '' },
+        { id: 'shelf-2', user_id: 'user-1', name: 'Personal Only Shelf', is_default: false, created_at: '', updated_at: '' },
+      ],
+      savedBooks: [offlineOnlyBook],
+    });
+
+    await act(async () => {
+      render(<BookshelfRack books={mockBooks} showShelfControls={false} />);
+    });
+
+    // Renders the Catalog API books inside shelf-content-container, ignoring __downloaded__ and personal shelf filters
+    expect(screen.getByTestId('shelf-content-container')).toBeInTheDocument();
+    expect(screen.getByTestId(`shelf-book-${mockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`shelf-book-${offlineOnlyBook.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Downloaded/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Personal Only Shelf' })).not.toBeInTheDocument();
+  });
 });
 

@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-254%20Suites%20%7C%202587%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.59%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-255%20Suites%20%7C%202573%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.51%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2587 tests across 254 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2573 tests across 255 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,12 +108,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.29)
+## 🛠️ Latest Improvements (v2.9.31)
 
-- **Zero-Visual-Shift Reusable UI Primitives Extraction (`ADR-080`)**: Consolidated duplicated toggle switches, multi-variant textareas (`default`, `subtle`, `reader`), bare/adorned select controls, status/alert banners, and segmented button/tab groups across 20 consumer components (`AccountPublicProfileSection`, `AccountNarrationSubPanel`, `AccountSecuritySection`, `AccountAccoladesCard`, `AccountTypographySubPanel`, `ReaderControls`, `ReaderAnnotationsDrawer`, `TextHighlightPopover`, `ReaderSpeechBar`, `ReaderShareModal`, `NotebookQuoteCard`, `BookshelfMobileModal`, `BookshelfSpine`, `BookmarkCard`, `CollectionSortDropdown`, `LanguageSelector`, `SymposiumInviteModal`, `AuthModal`, `StickyCatalogToolbar`, `BookGrid`) with strict DOM parity, zero wrapper regressions, and 1:1 co-located test coverage.
-- **Shared Dialog Focus-Trap, Escape & Focus-Restoration Hook (`ADR-058`, `ADR-080`)**: Unified overlay `Tab`/`Shift+Tab` focus wrapping (`findTabbableElements`), global `Escape` dismissal, and `{ preventScroll: true }` trigger focus restoration behind `useDialogFocusTrap` (`autoFocus?: boolean`, preserving `autoFocus: false` on `BottomSheetDrawerShell` and `AccoladeCelebrationModal` while guarding against inline callback focus-stealing).
-- **Shared Turnstile Widget & Account Recovery / Resend CAPTCHA Parity (`ADR-080`)**: Extracted shared `TurnstileWidget` (no-op when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is blank), wired reveal-on-click inline Turnstile verification into `/account` password reset and verification resend with zero idle layout shift, forwarded optional `captchaToken` strings in `useAccountSecurityActions`, and fixed `AuthModal` and `EmailSentView` resend token forwarding.
-- **Bounded Mobile Viewport Scrollability & Compact Vertical Rhythm in `AuthModal` (`src/components/auth/AuthModal.tsx`, `src/components/auth/AuthModal.test.tsx`, `ADR-080`)**: Constrained `AuthModal` height to `max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh]` with a pinned `shrink-0` close header, an internal `overflow-y-auto overscroll-contain` body, and compact `< sm` vertical spacing (`h-9 sm:h-11` inputs, `h-9 sm:h-10` buttons, tighter field gaps) so `sign_up` never clips top/bottom on mobile viewports or open keyboards while preserving `>= 640px` desktop layout.
+- **Confirmation-Guarded Security Actions & Identity Ribbon Sign-Out (`ADR-080`)**: Unified `AccountSecuritySection` session and OAuth unlink actions behind a data-driven `ConfirmActionModal` covering Google login `Disconnect` (showing the linked email), per-device `Revoke` (showing target device label, masked IP, and last-active timestamp), `Sign Out This Browser` (`'local'`, offline-capable), `Sign Out Other Devices` (`'others'`), and `Sign Out All Devices` (`'global'`), and guarded the top `AccountIdentityCard` `Sign Out` ribbon pill (`identity-sign-out-button`) with confirmation while preserving single-click exit on the Navbar avatar hover menu.
+- **Deterministic Catalog Sub-Pagination & Jurisdictional Cache Key Isolation (`ADR-080`)**: Added `effectiveCountry` to TanStack Query keys (`["books", params, effectiveCountry]`), preserved `?page=2` SSR-to-mobile hydration in `useCatalogFilters`, upgraded `SupabaseCatalogProvider` to exact `limit + 1` probing with bounded backfill (`MAX_BACKFILL_ITERATIONS = 5`), and clamped overshoot sub-pages deterministically via `batchStartPage + lastPopulatedOffset`.
+- **Personal `BookshelfRack` Filter Isolation in Catalog Spine Mode (`src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/BookGrid.tsx`, `ADR-080`)**: Scoped `effectiveIsViewingDownloaded` and active custom shelf item filters strictly on `showShelfControls` (`showShelfControls ?? (activeView === "bookshelf")`), preventing active `__downloaded__` or Bookshelf shelf selections from hiding online volumes when browsing the Catalog in 3D Spine mode.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -127,12 +126,12 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 | Service / Source | Endpoint / Provider | Description & Usage |
 |---|---|---|
 | **Dedicated Supabase Catalog** | [`public.books`](#step-3-populate-public-domain-book-catalog-optional) (PostgreSQL) | Primary catalog provider hosting 78,000+ Project Gutenberg titles with automated GIN full-text search (`search_vector`) and pre-computed author lifespan indexes, delivering sub-50ms single-book copyright verification, consistent ~1–2s 32-volume catalog page searches, and zero-egress searches. |
-| **Gutendex REST API** | [`gutendex.com`](https://gutendex.com/) • [`GitHub`](https://github.com/garethbjohnson/gutendex) | Resilient upstream search fallback created by [Gareth B. Johnson](https://github.com/garethbjohnson/gutendex) indexing 70,000+ titles with strict `copyright=false` filtering. Engaged automatically when Supabase is unseeded or offline. |
+| **Bundled Curated Classics Archive** | [`src/lib/catalog/curated-fallback.ts`](src/lib/catalog/curated-fallback.ts) | Zero-network bundled classic anthology (`FEATURED_HERO_BOOKS`, strict `copyright=false` jurisdictional filtering) automatically serving `/api/books` searches when Supabase is unconfigured without external API dependencies (`ADR-080`). |
 | **Project Gutenberg CDN & Mirrors** | [`gutenberg.org`](https://www.gutenberg.org/) • Mirrors | Content delivery network and mirrors (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`) providing plain text (`.txt`), official EPUB packages (`.epub.images`), Kindle/MOBI formats, and web-ready HTML. |
 | **Wikidata SPARQL Knowledge Graph** | [`query.wikidata.org`](https://query.wikidata.org/) • [`CC0 1.0`](https://www.wikidata.org/) | Open public-domain bibliographic knowledge graph (`wdt:P2034` Project Gutenberg eBook ID, `wdt:P407` / `wdt:P424` language of work) powering relational FRBR work clustering across multilingual editions (`public.book_translations`). |
 | **Supabase (Auth, Sync & Catalog)** | [`supabase.com`](https://supabase.com/) | Cloud authentication, user library synchronization (bookshelves, annotations, progress, streaks, accolades) with RLS user isolation, and dedicated public domain catalog. |
 | **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, global CDN delivery, and cookie-less aggregate performance telemetry (Vercel Web Analytics & Speed Insights). |
-| **Public Domain Archive Proxies** | `/api/books`, `/api/books/content` & `/api/books/translations` | Next.js server-side route proxies providing multi-tier Vercel Edge CDN caching (`12h` 48-volume rotating quote pool, `24h` 11-column catalog & plain-text/OG card streams, `7d` quote/metadata ID batches, FRBR translations, and `?type=cover` Gutenberg mirror cover image proxy), Strangler Fig dual-provider catalog resolution, Tier 1/Tier 2 content streaming, and guaranteed public domain integrity before client delivery. |
+| **Public Domain Archive Proxies** | `/api/books`, `/api/books/content` & `/api/books/translations` | Next.js server-side route proxies providing multi-tier Vercel Edge CDN caching (`12h` 48-volume rotating quote pool, `24h` 11-column catalog & plain-text/OG card streams, `7d` quote/metadata ID batches, FRBR translations, and `?type=cover` Gutenberg mirror cover image proxy), Supabase/curated-fallback catalog resolution, Tier 1/Tier 2 content streaming, and guaranteed public domain integrity before client delivery. |
 
 ---
 
@@ -210,7 +209,7 @@ flowchart TD
         CollectionEmptyStateNode["CollectionEmptyState.tsx\n(Unified Collection Empty State Card: p-12 Editorial Card, Section Icon Badge, Explore Catalog & Iconless Sign-in Actions)"]
         PaginationNode["Pagination.tsx\n(Accessible Numeric Page Navigation)"]
         BookPreviewModalNode["BookPreviewModal.tsx & NotablePassagesSpread.tsx\n(3D Open-Book Preview Spread, Notable Passages & Jurisdictional Protection)"]
-        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\n(Dynamic 2-Shelf Capacity, Sequential Left-to-Right Fill, 3D Hardwood Shelf, Kinetic Strip, <1024px Touch Sheet & >=1024px Spines)"]
+        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\n(Dynamic 2-Shelf Capacity, Sequential Left-to-Right Fill, showShelfControls Isolation, 3D Hardwood Shelf, Kinetic Strip, <1024px Touch Sheet & >=1024px Spines)"]
         BookshelfMobileModalNode["BookshelfMobileModal.tsx\n(Mobile & Tablet <1024px Action & Curation Sheet)"]
         RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\n(Offline Cache & Collection Eviction Confirmations)"]
         CatalogOfflineNode["CatalogOfflineView.tsx\n(Offline Catalog Notice & Collection Quick-Links)"]
@@ -220,7 +219,7 @@ flowchart TD
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
             Grid["Catalog View (/)\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]
-            ShelfView["Bookshelf View (/bookshelf)\n(Curated Library, Dynamic 2-Shelf Capacity, Sequential Left-to-Right Shelf Fill, Downloaded (N) Smart Shelf & Active-Shelf Clear)"]
+            ShelfView["Bookshelf View (/bookshelf)\n(Curated Library, Dynamic 2-Shelf Capacity, Sequential Left-to-Right Shelf Fill, showShelfControls Isolation, Downloaded (N) Smart Shelf & Active-Shelf Clear)"]
             FavView["Favorites View (/favorites)\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]
             MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger, 2-Col Archival Grid, Status Filter, Direction-Aware Sort & Dedicated Resume CTA)"]
             NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections, Tags, 2-Col Archival Grid, Tactile Scroll Focus (<1024px) & View Mode Scrubber)"]
@@ -230,6 +229,7 @@ flowchart TD
             HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
             AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
             SymposiumCard["AccountSymposiumSection.tsx\n(Reader Circles & Literary Symposiums)"]
+            SecurityCard["AccountSecuritySection.tsx\n(Active Device Sessions, Google Disconnect & Confirm-Guarded Sign-Out)"]
             PrefsCard["AccountPreferencesSection.tsx\n(AccountTypographySubPanel • AccountNarrationSubPanel • Two-Tier Custom Defaults)"]
             ProfilePage["Public Scholar Sanctuary (/u/[username])\n(Public Profile, Pinned Accolades & Fellowship CTA)"]
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
@@ -282,7 +282,7 @@ flowchart TD
     subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
         RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]
         ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs, Rate Limit, Seam Controller)"]
-        CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\n(supabase-provider.ts • gutendex-provider.ts)"]
+        CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\n(supabase-provider.ts • curated-fallback.ts)"]
         ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]
         ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]
@@ -302,7 +302,7 @@ flowchart TD
     end
 
     subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
-        Gutendex["🌐 Gutendex Search API\n(Upstream Search Fallback)"]
+        CuratedArchive["📚 Bundled Curated Archive\n(featured-books.ts • 27 Classics)"]
         GutenbergCDN["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
         WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
@@ -371,6 +371,7 @@ flowchart TD
     AccView --> AccoladesCard
     AccoladesCard --> AccoladesEngine
     AccView --> SymposiumCard
+    AccView --> SecurityCard
     AccView --> PrefsCard
     SymposiumCard --> StoreFellowship
     ProfilePage --> PublicSanctuaryNodes
@@ -403,9 +404,8 @@ flowchart TD
     ProxyBooks --> CatalogSeam
     CatalogSeam --> EngineCore
     CatalogSeam -->|"Primary: Estimated-Count Fast Scan / <50ms Single-Book"| SupabaseCloud
-    CatalogSeam -.->|Fallback on unseeded/offline| Gutendex
+    CatalogSeam -.->|Fallback when Supabase unconfigured| CuratedArchive
     SyncEngine -->|Weekly Cron Snapshot Diff & pg_catalog.csv.gz Stream| SupabaseCloud
-    QueryBooks -.->|Client Failover on 504| Gutendex
     
     ReaderPage --> QueryContent
     ReaderPage --> ReaderDrawers
@@ -416,7 +416,7 @@ flowchart TD
     QueryContent --> ProxyContent
     ProxyContent --> MetaCache
     MetaCache -->|1. Supabase public.books check| SupabaseCloud
-    MetaCache -.->|2. Fallback to Gutendex & Featured Fixtures| Gutendex
+    MetaCache -.->|2. Fallback to Bundled Featured Fixtures| CuratedArchive
     MetaCache --> EngineCore
     EngineCore --> JointAuthors
     EngineCore --> Translators
@@ -426,7 +426,7 @@ flowchart TD
     LangDrawer --> QueryTranslate
     QueryTranslate -->|Tier 1: Relational Work Mapping| ProxyBookTranslations
     ProxyBookTranslations -->|100% Precision Relational Query| SupabaseCloud
-    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex
+    QueryTranslate -.->|Tier 2: Internal /api/books Author Search| ProxyBooks
     SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud
     SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL
     SyncQuotes -->|Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert| SupabaseCloud
@@ -522,7 +522,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 ### Step 2: Run Database Schema Script
 1. In your Supabase Dashboard, open the **SQL Editor** from the left sidebar.
 2. Click **New Query**, copy and paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**.
-3. The script is **100% idempotent** and safely provisions all `14` database tables, `37` consolidated `(select auth.uid())` Row Level Security (RLS) policies, `21` explicit indexes, and `5` stored functions/triggers:
+3. The script is **100% idempotent** and safely provisions all `14` database tables, `47` consolidated `(select auth.uid())` Row Level Security (RLS) policies, `21` explicit indexes, and `9` stored functions/triggers (`5` row triggers):
 
 | Database Object | Type | Purpose & Security Governance |
 |---|---|---|
@@ -541,8 +541,11 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 | `public.book_translations` | Table (RLS) | Relational FRBR junction table linking Gutenberg volumes to canonical literary works across languages (`< 2.5 MB` for 75,000 books). |
 | `public.handle_new_user()` | Trigger | Provisions `public.profiles` and the default `'General'` shelf on `auth.users` insert (`SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`). |
 | `public.handle_profile_identity_sync()` | Trigger | Propagates updated scholar `username` and `display_name` across active `symposium_sessions` and `user_annotations` (`SET search_path = ''`). |
+| `public.enforce_fellowship_update_guard()` | Trigger | Enforces anti-spoofing ownership/status integrity across `reader_circles` and `symposium_sessions` updates (`SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`). |
 | `public.delete_current_user()` | RPC Function | Atomic 11-table + `storage.objects` user data erasure prior to `auth.users` deletion (`authenticated`-only, `SET search_path = ''`). |
 | `public.lookup_scholar_by_username()` | RPC Function | Zero-PII handle resolution returning minimal `(id, username, display_name)` for Reader Circle invitations (`authenticated`-only, `SET search_path = ''`). |
+| `public.get_active_sessions()` | RPC Function | Owner-scoped (`(select auth.uid())`) active device session inspection returning masked IP addresses (IPv4 `.x`, IPv6 `/48 ::x`), user-agent strings, and `"isCurrent"` UUID claim matching (`authenticated`-only, `SET search_path = ''`). |
+| `public.revoke_user_session()` | RPC Function | Owner-scoped remote device session revocation deleting target `auth.sessions` rows for `(select auth.uid())` (`authenticated`-only, `SET search_path = ''`). |
 | `public.books_search_vector_trigger()` | Trigger | Maintains `search_vector` across `title`, `subjects`, and `bookshelves` with an `IS DISTINCT FROM` guard that skips recomputation on `download_count`-only updates. |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
@@ -651,7 +654,6 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 
 * **[Google AI / Antigravity](https://antigravity.google)**: For powering the autonomous agentic engineering, architectural refactoring, and deterministic quality verification driving the development of this codebase.
 * **[Project Gutenberg](https://www.gutenberg.org/)**: For pioneering the public domain digitization movement and preserving thousands of classic literary masterpieces for humanity.
-* **[Gutendex by Gareth B. Johnson](https://github.com/garethbjohnson/gutendex)**: For creating and maintaining the high-performance, open-source RESTful JSON web API for Project Gutenberg metadata.
 * **[Wikidata / Wikimedia Foundation (CC0 1.0)](https://www.wikidata.org/)**: For providing the open, public-domain SPARQL knowledge graph and bibliographic entity identifiers (`P2034`) powering Bookarium's multilingual FRBR translation clustering.
 * **[Booksaw Bookstore Design Template (CC BY 4.0)](https://www.figma.com/community/file/1521831984874247291/booksaw-bookstore-ecommerce-website-design-template)**: For inspiring the warm, tactile bookstore aesthetic and skeuomorphic open-book layouts.
 

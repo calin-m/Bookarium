@@ -87,6 +87,9 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/4\. HTTP 451: Unavailable For Legal Reasons/i)).toBeInTheDocument();
     expect(screen.getByText(/Privacy-First Functional Verification:/i)).toBeInTheDocument();
     expect(screen.getByText(/bookarium-geo-country/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Jurisdiction verification itself never logs, tracks, or stores your IP address/i)
+    ).toBeInTheDocument();
     expect(screen.getByText(/Fail-Closed Longevity Heuristic:/i)).toBeInTheDocument();
   });
 
@@ -138,7 +141,8 @@ describe('CopyrightPage', () => {
     render(<CopyrightPage />);
 
     expect(screen.getByText(/6\. Open Cultural Preservation Partners/i)).toBeInTheDocument();
-    expect(screen.getByText('Gutendex')).toBeInTheDocument();
+    expect(screen.queryByText(/Gutendex/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Project Gutenberg')).toBeInTheDocument();
     expect(screen.getByText('Wikidata (CC0 1.0)')).toBeInTheDocument();
     expect(screen.getByText('Standard Ebooks')).toBeInTheDocument();
     expect(screen.getByTestId('mock-footer')).toBeInTheDocument();

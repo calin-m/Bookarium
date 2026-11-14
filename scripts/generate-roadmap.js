@@ -194,8 +194,8 @@ const ROADMAP_MILESTONES = [
         check: () => fileExists('.github/workflows/catalog-sync.yml') && fileContains('.github/workflows/catalog-sync.yml', 'sync-gutenberg-catalog.js'),
       },
       {
-        title: 'Dual-Provider Catalog Seam & Strangler Fig Fallback',
-        description: 'Unified `ICatalogProvider` seam (`src/lib/catalog/`) probing Supabase PostgreSQL as primary provider (~1–2s catalog / <50ms single-book) with seamless fallback to Gutendex when unseeded, offline, or experiencing network errors.',
+        title: 'Catalog Provider Seam & Bundled Curated Fallback',
+        description: 'Unified `ICatalogProvider` seam (`src/lib/catalog/`) probing Supabase PostgreSQL as primary provider (~1–2s catalog / <50ms single-book) with zero-key fallback to bundled `curated-fallback.ts` when unconfigured (external Gutendex API retired under `ADR-080`).',
         check: () => fileExists('src/lib/catalog/supabase-provider.ts') && fileContains('src/app/api/books/route.ts', 'supabaseCatalogProvider'),
       },
       {
@@ -354,7 +354,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Full 32-Bookshelf & 20-Language Project Gutenberg Discovery Taxonomy (`catalog-filters.ts` & `AdvancedFilterDrawer.tsx`)',
-        description: 'Complete 32 Project Gutenberg Bookshelf & Subject categories and 20 top languages in `src/config/catalog-filters.ts` and `AdvancedFilterDrawer.tsx` with progressive `+ Show all 32 Bookshelves` / `+ Show all 20 Languages` disclosure, `bookshelves` GIN `search_vector` indexing (`public.books_search_vector_trigger()`), and MIME/topic provider parity (`supabase-provider.ts`, `gutendex-provider.ts`).',
+        description: 'Complete 32 Project Gutenberg Bookshelf & Subject categories and 20 top languages in `src/config/catalog-filters.ts` and `AdvancedFilterDrawer.tsx` with progressive `+ Show all 32 Bookshelves` / `+ Show all 20 Languages` disclosure, `bookshelves` GIN `search_vector` indexing (`public.books_search_vector_trigger()`), and MIME/topic provider parity (`supabase-provider.ts`, `curated-fallback.ts`).',
         check: () =>
           fileExists('src/config/catalog-filters.ts') &&
           fileContains('src/components/presentation/AdvancedFilterDrawer.tsx', 'Show all') &&
@@ -540,6 +540,7 @@ ${renderProgressBar(totalCompleted, totalFeatures)}
 | **Client-Side JSON/CSV Backup & File Import** | 🚫 **Retired (Architectural Decision ADR-072)** | Retired client-side file backup and JSON import (\`src/lib/library-backup.ts\`, originally \`ADR-023\`) to eliminate untrusted client-side payload ingestion, Last-Write-Wins (\`updatedAt\`) timestamp poisoning, semantic metadata spoofing on public scholar profiles, and offline restore ambiguity in favor of zero-trust Supabase PostgreSQL RLS synchronization and IndexedDB offline caching. |
 | **Batch Shelf Offline Downloader (\`downloadAll\`)** | 🚫 **Retired (Architectural Decision ADR-069)** | Retired batch "Download Shelf Offline" actions across \`BookshelfRack.tsx\` and \`useOfflineBooks.ts\` to strictly honor Project Gutenberg's individual-only human download policy and mirror-first harvest rules. |
 | **Redundant Secondary \`public.books\` Indexes (\`idx_books_subjects\` & \`idx_books_with_quotes_popular\`)** | 🚫 **Retired (Architectural Decisions ADR-073 & ADR-080)** | Consolidated \`subjects\` / \`bookshelves\` into the single composite \`idx_books_search_vector\` GIN index and replaced the low-selectivity partial quote index with Primary-Key-Scoped \`books_pkey\` (\`.in('id', chunk).neq('quotes', '[]')\`) + single-column \`idx_books_download_count\` lookups to reclaim ~15 MB of free-tier storage and prevent 78,000-row table scans. |
+| **External Gutendex REST API (\`gutendex-provider.ts\` & \`GUTENDEX_API_URL\`)** | 🚫 **Retired (Architectural Decision ADR-080)** | Decommissioned all runtime, UI, CSP, and CLI dependencies on external \`gutendex.com\` endpoints in favor of Supabase PostgreSQL (\`public.books\`), 2-tier local metadata resolution (\`metadata-cache.ts\`), and bundled zero-network \`curated-fallback.ts\` (\`FEATURED_HERO_BOOKS\`), eliminating third-party outages and licensing/rate-limit drift while preserving internal DTO types non-breaking. |
 
 ---
 

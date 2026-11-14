@@ -68,6 +68,12 @@ describe('PrivacyPage', () => {
     // Section 4: Account Data & Cloud Sync
     expect(screen.getByText(/4\. Cloud Sync & Account Data/i)).toBeInTheDocument();
     expect(screen.getByText(/GDPR Article 6\(1\)\(b\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Active session metadata maintained natively by Supabase Auth/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/inspect masked network IP and device labels or revoke active sessions/i)
+    ).toBeInTheDocument();
 
     // Section 5: User Rights & Self-Service Erasure
     expect(screen.getByText(/5\. Your Rights & Self-Service Data Erasure/i)).toBeInTheDocument();

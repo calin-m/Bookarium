@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { headers } from 'next/headers';
@@ -15,9 +15,15 @@ vi.mock('next/headers', () => ({
 
 describe('BookReaderLayout and generateMetadata', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     clearServerMetadataCache();
     vi.mocked(headers).mockResolvedValue(new Headers());
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('generates rich metadata for a curated hero classic (Frankenstein #84)', async () => {
@@ -118,8 +124,11 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(await isClientSideNavigation()).toBe(false);
   });
 
-  it('serves repeated requests from in-memory server cache without network calls', async () => {
-    const mockBook = {
+  it('serves repeated requests from in-memory server cache without repeated database queries', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+    const mockDbRow = {
       id: 55555,
       title: 'Cached Wonder',
       authors: [{ name: 'Cache Master', birth_year: null, death_year: null }],
@@ -133,16 +142,21 @@ describe('BookReaderLayout and generateMetadata', () => {
       download_count: 100,
     };
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ results: [mockBook] }),
-    } as Response);
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockDbRow, error: null });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
-    // Initial direct navigation (e.g. crawler) fetches from network
+    // Initial direct navigation (e.g. crawler) queries Supabase catalog once
     const meta1 = await generateMetadata({
       params: Promise.resolve({ id: '55555' }),
     });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
     expect((meta1.title as { absolute: string }).absolute).toBe(
       'Bookarium | Reader | Cached Wonder — Cache Master'
     );
@@ -151,7 +165,7 @@ describe('BookReaderLayout and generateMetadata', () => {
     const meta2 = await generateMetadata({
       params: Promise.resolve({ id: '55555' }),
     });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
     expect((meta2.title as { absolute: string }).absolute).toBe(
       'Bookarium | Reader | Cached Wonder — Cache Master'
     );
@@ -191,7 +205,10 @@ describe('BookReaderLayout and generateMetadata', () => {
   });
 
   it('enriches OpenGraph tags, meta keywords, translators, lifespan dates, formats, and JSON-LD genre array from catalog metadata', async () => {
-    const mockTranslatedBook = {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+    const mockTranslatedDbRow = {
       id: 2600,
       title: 'War and Peace',
       authors: [
@@ -212,16 +229,21 @@ describe('BookReaderLayout and generateMetadata', () => {
       download_count: 5000,
     };
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ results: [mockTranslatedBook] }),
-    } as Response);
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockTranslatedDbRow, error: null });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
     const meta = await generateMetadata({
       params: Promise.resolve({ id: '2600' }),
     });
 
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
     expect(meta.description).toContain('Genoa and Lucca');
     expect(meta.description).toContain('translated by Louise Maude');
     expect(meta.description).toContain('Historical');
@@ -271,10 +293,18 @@ describe('BookReaderLayout and generateMetadata', () => {
   });
 
   it('marks explicitly confirmed-missing numeric book IDs as noindex while preserving fallback UI', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ results: [] }),
-    } as Response);
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
     const meta = await generateMetadata({
       params: Promise.resolve({ id: '999998' }),
@@ -283,8 +313,21 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(meta.robots).toEqual({ index: false, follow: true });
   });
 
-  it('falls back gracefully without noindex when upstream fetch times out or fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError'));
+  it('falls back gracefully without noindex when catalog query times out or fails', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+    const mockMaybeSingle = vi.fn().mockRejectedValue(
+      new DOMException('The operation was aborted.', 'AbortError')
+    );
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
     const meta = await generateMetadata({
       params: Promise.resolve({ id: '999999' }),

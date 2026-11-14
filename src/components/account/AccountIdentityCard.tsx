@@ -21,6 +21,7 @@ import {
 import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import {
   TurnstileWidget,
   getTurnstileSiteKey,
@@ -78,6 +79,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [prevSaveSuccess, setPrevSaveSuccess] = useState(saveSuccess);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const turnstileSiteKey = getTurnstileSiteKey();
   const [isVerifyCaptchaOpen, setIsVerifyCaptchaOpen] = useState(false);
   const [verifyTurnstileError, setVerifyTurnstileError] = useState<string | null>(null);
@@ -215,7 +217,7 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
           {onSignOut && (
             <button
               type="button"
-              onClick={onSignOut}
+              onClick={() => setIsSignOutModalOpen(true)}
               data-testid="identity-sign-out-button"
               title="Sign out from this browser"
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border border-border bg-muted/30 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors cursor-pointer"
@@ -449,6 +451,25 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
           </Button>
         </div>
       </form>
+
+      {onSignOut && (
+        <ConfirmActionModal
+          isOpen={isSignOutModalOpen}
+          onClose={() => setIsSignOutModalOpen(false)}
+          onConfirm={() => {
+            setIsSignOutModalOpen(false);
+            void onSignOut();
+          }}
+          title="Sign Out This Browser"
+          heading="Sign out from this browser?"
+          description="Only your current browser session will end and local account data will be cleared from this device. Your synced books, notes, and other signed-in devices remain safe."
+          confirmLabel="Sign Out This Browser"
+          modalTestId="identity-sign-out-modal"
+          dialogTestId="identity-sign-out-dialog"
+          confirmTestId="confirm-identity-sign-out-button"
+          cancelTestId="cancel-identity-sign-out-button"
+        />
+      )}
     </div>
   );
 };

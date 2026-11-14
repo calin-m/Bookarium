@@ -54,27 +54,21 @@ describe('metadata-cache', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('fetches metadata from upstream with trailing slash when not cached and Supabase is unconfigured', async () => {
-    const mockUpstreamBook = {
-      id: 888,
-      title: 'Upstream Book',
-      authors: [{ name: 'Writer, W.', birth_year: null, death_year: 1930 }],
-    };
+  it('resolves bundled FEATURED_HERO_BOOKS metadata without HTTP fetch when unconfigured, and returns null for unknown IDs', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(mockUpstreamBook), { status: 200 })
-    );
+    const featured = await resolveBookMetadata(1342);
+    expect(featured?.id).toBe(1342);
+    expect(featured?.title).toBe('Pride and Prejudice');
+    expect(featured?.authors).toEqual([
+      { name: 'Jane Austen', birth_year: 1775, death_year: 1817 },
+    ]);
+    expect(getBookMetadataCache(1342)?.book.title).toBe('Pride and Prejudice');
 
-    const result = await resolveBookMetadata(888);
-    expect(result).toEqual(mockUpstreamBook);
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/\/books\/888\/$/),
-      expect.any(Object)
-    );
-
-    // Should now be cached
-    const cached = getBookMetadataCache(888);
-    expect(cached?.book.title).toBe('Upstream Book');
+    const unknown = await resolveBookMetadata(888);
+    expect(unknown).toBeNull();
+    expect(getBookMetadataCache(888)).toBeUndefined();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('resolves metadata directly from Supabase when configured and present', async () => {
@@ -124,7 +118,7 @@ describe('metadata-cache', () => {
     }
   });
 
-  it('degrades gracefully to upstream Gutendex when Supabase query times out', async () => {
+  it('degrades gracefully to bundled FEATURED_HERO_BOOKS when Supabase query times out', async () => {
     const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
@@ -142,20 +136,13 @@ describe('metadata-cache', () => {
       from: mockFrom,
     } as any);
 
-    const mockUpstreamBook = {
-      id: 2600,
-      title: 'War and Peace',
-      authors: [{ name: 'Tolstoy, Leo', birth_year: 1828, death_year: 1910 }],
-    };
-
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(mockUpstreamBook), { status: 200 })
-    );
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     try {
       const result = await resolveBookMetadata(2600);
-      expect(result).toEqual(mockUpstreamBook);
-      expect(fetchSpy).toHaveBeenCalled();
+      expect(result?.id).toBe(2600);
+      expect(result?.title).toBe('War and Peace');
+      expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
@@ -163,14 +150,15 @@ describe('metadata-cache', () => {
     }
   });
 
-  it('falls back to upstream Gutendex when Supabase record is not found', async () => {
+  it('falls back to bundled FEATURED_HERO_BOOKS when Supabase record is not found and returns null for unknown IDs', async () => {
     const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-anon-key-12345';
 
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
     const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 
@@ -179,25 +167,17 @@ describe('metadata-cache', () => {
       from: mockFrom,
     } as any);
 
-    const mockUpstreamBook = {
-      id: 555,
-      title: 'Fallback Tome',
-      authors: [{ name: 'Ancient, A.', birth_year: 1800, death_year: 1860 }],
-    };
-
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify(mockUpstreamBook), { status: 200 })
-    );
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
     try {
-      const result = await resolveBookMetadata(555);
-
-      expect(result).toEqual(mockUpstreamBook);
+      const heroResult = await resolveBookMetadata(84);
+      expect(heroResult?.id).toBe(84);
+      expect(heroResult?.title).toBe('Frankenstein');
       expect(mockFrom).toHaveBeenCalledWith('books');
-      expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/\/books\/555\/$/),
-        expect.any(Object)
-      );
+
+      const missingResult = await resolveBookMetadata(555);
+      expect(missingResult).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
     } finally {
       process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
@@ -205,49 +185,42 @@ describe('metadata-cache', () => {
     }
   });
 
-  it('returns null when upstream returns error status', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response('Not Found', { status: 404 })
-    );
+  it('enriches missing lifespans on Supabase records from FEATURED_HERO_BOOKS', async () => {
+    const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-anon-key-12345';
 
-    const result = await resolveBookMetadata(777);
-    expect(result).toBeNull();
-  });
+    const mockMaybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        id: 1727,
+        title: 'The Odyssey',
+        authors: [{ name: 'Homer', birth_year: null, death_year: null }],
+        translators: [],
+        copyright: false,
+      },
+      error: null,
+    });
+    const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
 
-  it('returns null when network throws an error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network offline'));
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: mockFrom,
+    } as any);
 
-    const result = await resolveBookMetadata(666);
-    expect(result).toBeNull();
-  });
-
-  it('enriches missing lifespans and falls back to FEATURED_HERO_BOOKS for curated classics', async () => {
-    // 1. Upstream returns book 1727 (Homer) with null birth/death years -> enriched from FEATURED_HERO_BOOKS
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          id: 1727,
-          title: 'The Odyssey',
-          authors: [{ name: 'Homer', birth_year: null, death_year: null }],
-        }),
-        { status: 200 }
-      )
-    );
-
-    const enriched = await resolveBookMetadata(1727);
-    expect(enriched?.authors).toEqual([
-      { name: 'Homer', birth_year: -800, death_year: -750 },
-    ]);
-
-    clearBookMetadataCache();
-
-    // 2. Upstream fails for featured classic 1342 -> falls back to FEATURED_HERO_BOOKS
-    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Gutendex down'));
-    const fallback = await resolveBookMetadata(1342);
-    expect(fallback?.id).toBe(1342);
-    expect(fallback?.authors).toEqual([
-      { name: 'Jane Austen', birth_year: 1775, death_year: 1817 },
-    ]);
+    try {
+      const enriched = await resolveBookMetadata(1727);
+      expect(enriched?.authors).toEqual([
+        { name: 'Homer', birth_year: -800, death_year: -750 },
+      ]);
+    } finally {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
+      clientSpy.mockRestore();
+    }
   });
 
   it('stores, refreshes, expires, and caps bookContentLruCache entries', () => {
@@ -284,16 +257,21 @@ describe('metadata-cache', () => {
     });
     expect(getBookMetadataCache(3)?.book.title).toBe('Volume 3 Refreshed');
 
-    // Expired entry is evicted on resolveBookMetadata and re-fetched from upstream
-    setBookMetadataCache(7777, {
-      book: { id: 7777, title: 'Stale Volume', authors: [] },
+    // Expired entry is evicted on resolveBookMetadata and re-resolved cleanly
+    setBookMetadataCache(1342, {
+      book: { id: 1342, title: 'Stale Volume', authors: [] },
       expiresAt: Date.now() - 1000,
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ id: 7777, title: 'Fresh Volume', authors: [] }), { status: 200 })
-    );
-    const resolved = await resolveBookMetadata(7777);
-    expect(resolved?.title).toBe('Fresh Volume');
+    const resolved = await resolveBookMetadata(1342);
+    expect(resolved?.title).toBe('Pride and Prejudice');
+
+    setBookMetadataCache(7777, {
+      book: { id: 7777, title: 'Stale Unknown', authors: [] },
+      expiresAt: Date.now() - 1000,
+    });
+    const resolvedUnknown = await resolveBookMetadata(7777);
+    expect(resolvedUnknown).toBeNull();
+    expect(getBookMetadataCache(7777)).toBeUndefined();
   });
 
   it('anchors metadata and content LRU caches on globalThis to survive Next.js HMR reloads', () => {

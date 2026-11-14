@@ -7,6 +7,23 @@ import { ROUTES } from '@/config/routes';
 import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { buildAuthRedirectUrl, sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
+import type { ActiveUserSession } from '@/lib/session-device-parser';
+
+function isSessionRpcUnavailableError(
+  error: { code?: string; message?: string } | null | undefined
+): boolean {
+  if (!error) return false;
+  const code = typeof error.code === 'string' ? error.code : '';
+  if (code === 'PGRST202' || code === '42883') {
+    return true;
+  }
+  const msg = typeof error.message === 'string' ? error.message.toLowerCase() : '';
+  return (
+    msg.includes('could not find the function') ||
+    (msg.includes('get_active_sessions') &&
+      (msg.includes('does not exist') || msg.includes('schema cache')))
+  );
+}
 
 export function syncAuthCookieHint(isAuthenticated: boolean): void {
   if (typeof document === 'undefined') return;
@@ -218,7 +235,14 @@ export interface AuthState {
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
   linkOAuthIdentity: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
   unlinkOAuthIdentity: (provider: 'google' | 'github') => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<void>;
+  signOut: (scope?: 'local' | 'global') => Promise<void>;
+  signOutOtherDevices: () => Promise<{ error: AuthError | Error | null }>;
+  listActiveSessions: () => Promise<{
+    sessions: ActiveUserSession[];
+    error: Error | null;
+    isRpcUnavailable?: boolean;
+  }>;
+  revokeSession: (sessionId: string) => Promise<{ error: Error | null }>;
   fetchProfile: () => Promise<void>;
   syncWithCloud: (userId?: string) => Promise<void>;
   updateProfile: (updates: {
@@ -746,7 +770,7 @@ export const useAuthStore = create<AuthState>()(
     return { error: null };
   },
 
-  signOut: async () => {
+  signOut: async (scope = 'local') => {
     const { user } = get();
     if (user?.id) {
       try {
@@ -764,10 +788,92 @@ export const useAuthStore = create<AuthState>()(
     }
 
     const supabase = createClient();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope });
     set(SIGNED_OUT_AUTH_STATE);
     syncAuthCookieHint(false);
     await clearLocalUserStores({ wipeDeviceStorage: false });
+  },
+
+  signOutOtherDevices: async () => {
+    const currentUser = get().user;
+    if (!currentUser) {
+      return { error: new Error('Not signed in.') };
+    }
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut({ scope: 'others' });
+      if (error) {
+        return { error };
+      }
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
+  },
+
+  listActiveSessions: async () => {
+    const currentUser = get().user;
+    if (!currentUser) {
+      return { sessions: [], error: null };
+    }
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('get_active_sessions');
+      if (error) {
+        if (isSessionRpcUnavailableError(error)) {
+          return { sessions: [], error: null, isRpcUnavailable: true };
+        }
+        return {
+          sessions: [],
+          error: new Error(error.message || 'Unable to load active device sessions.'),
+        };
+      }
+
+      const sessions: ActiveUserSession[] = Array.isArray(data)
+        ? data.map((row) => ({
+            id: String(row.id),
+            userAgent: typeof row.user_agent === 'string' ? row.user_agent : null,
+            ipAddress: typeof row.ip_address === 'string' ? row.ip_address : null,
+            createdAt: typeof row.created_at === 'string' ? row.created_at : null,
+            updatedAt: typeof row.updated_at === 'string' ? row.updated_at : null,
+            refreshedAt: typeof row.refreshed_at === 'string' ? row.refreshed_at : null,
+            notAfter: typeof row.not_after === 'string' ? row.not_after : null,
+            isCurrent: Boolean(row.is_current),
+          }))
+        : [];
+
+      return { sessions, error: null };
+    } catch (err: unknown) {
+      return {
+        sessions: [],
+        error: err instanceof Error ? err : new Error(String(err)),
+      };
+    }
+  },
+
+  revokeSession: async (sessionId: string) => {
+    const currentUser = get().user;
+    if (!currentUser) {
+      return { error: new Error('Not signed in.') };
+    }
+    if (!sessionId) {
+      return { error: new Error('Invalid session identifier.') };
+    }
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc('revoke_user_session', {
+        target_session_id: sessionId,
+      });
+      if (error) {
+        return { error: new Error(error.message || 'Failed to revoke device session.') };
+      }
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
   },
 
   fetchProfile: () => {
@@ -1068,8 +1174,8 @@ export const useAuthStore = create<AuthState>()(
       } catch {
         // Non-blocking fallback if RPC is not provisioned
       }
-      // 4. Terminate auth session and clear all local persisted user stores
-      await supabase.auth.signOut();
+      // 4. Terminate all auth sessions globally and clear all local persisted user stores
+      await supabase.auth.signOut({ scope: 'global' });
       set(SIGNED_OUT_AUTH_STATE);
       syncAuthCookieHint(false);
       await clearLocalUserStores({ wipeDeviceStorage: true });

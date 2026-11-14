@@ -154,13 +154,22 @@ export function useCatalogFilters() {
 
   const pageSize = explicitPageSize ?? (isMobile ? 8 : 16);
   const [prevPageSize, setPrevPageSize] = useState(pageSize);
+  const [prevHasMounted, setPrevHasMounted] = useState(hasMounted);
 
-  // Translate page coordinates upon responsive breakpoint change to prevent redundant API fetches and preserve reading position
-  if (prevPageSize !== pageSize) {
+  // Translate page coordinates only on post-hydration breakpoint changes so SSR (16) -> mobile
+  // client (8) snapshot convergence on refresh preserves URL ?page=N without doubling it.
+  if (!prevHasMounted && hasMounted) {
+    setPrevHasMounted(true);
+    if (prevPageSize !== pageSize) {
+      setPrevPageSize(pageSize);
+    }
+  } else if (prevPageSize !== pageSize) {
     setPrevPageSize(pageSize);
-    const currentFirstBookIndex = (page - 1) * prevPageSize;
-    const newPage = Math.max(1, Math.floor(currentFirstBookIndex / pageSize) + 1);
-    setPage(newPage);
+    if (hasMounted) {
+      const currentFirstBookIndex = (page - 1) * prevPageSize;
+      const newPage = Math.max(1, Math.floor(currentFirstBookIndex / pageSize) + 1);
+      setPage(newPage);
+    }
   }
 
   // Sync state to URL search parameters and clean path without page reload (after hydration)

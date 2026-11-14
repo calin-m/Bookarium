@@ -1178,3 +1178,97 @@ BEGIN
   END IF;
 END $$;
 
+-- Owner-Scoped Active Device Session Inspector (Account Security)
+CREATE OR REPLACE FUNCTION public.get_active_sessions()
+RETURNS TABLE (
+  id UUID,
+  user_agent TEXT,
+  ip_address TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  refreshed_at TIMESTAMPTZ,
+  not_after TIMESTAMPTZ,
+  is_current BOOLEAN
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id UUID := auth.uid();
+  v_session_claim TEXT := COALESCE(auth.jwt() ->> 'session_id', '');
+  v_current_session_id UUID;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF v_session_claim ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    v_current_session_id := v_session_claim::UUID;
+  ELSE
+    v_current_session_id := NULL;
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    s.id,
+    s.user_agent,
+    CASE
+      WHEN s.ip IS NULL THEN NULL
+      WHEN s.ip = '::ffff:127.0.0.1'::INET THEN '127.0.0.1'
+      WHEN s.ip IN ('127.0.0.1'::INET, '::1'::INET) THEN HOST(s.ip)
+      WHEN HOST(s.ip) ~ '^[0-9]{1,3}([.][0-9]{1,3}){3}$' THEN regexp_replace(HOST(s.ip), '[.][0-9]+$', '.x')
+      WHEN HOST(s.ip) ~* '^::ffff:[0-9]{1,3}([.][0-9]{1,3}){3}$' THEN regexp_replace(regexp_replace(HOST(s.ip), '^::ffff:', '', 'i'), '[.][0-9]+$', '.x')
+      ELSE HOST(network(set_masklen(s.ip, 48))) || 'x'
+    END AS ip_address,
+    s.created_at::TIMESTAMPTZ,
+    s.updated_at::TIMESTAMPTZ,
+    s.refreshed_at::TIMESTAMPTZ,
+    s.not_after::TIMESTAMPTZ,
+    (v_current_session_id IS NOT NULL AND s.id = v_current_session_id) AS is_current
+  FROM auth.sessions s
+  WHERE s.user_id = v_user_id
+    AND (s.not_after IS NULL OR s.not_after > now())
+  ORDER BY
+    (v_current_session_id IS NOT NULL AND s.id = v_current_session_id) DESC,
+    COALESCE(s.refreshed_at::TIMESTAMPTZ, s.updated_at::TIMESTAMPTZ, s.created_at::TIMESTAMPTZ) DESC;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_active_sessions() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_active_sessions() FROM anon;
+GRANT EXECUTE ON FUNCTION public.get_active_sessions() TO authenticated;
+
+-- Owner-Scoped Individual Session Revocation RPC (Account Security)
+CREATE OR REPLACE FUNCTION public.revoke_user_session(target_session_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id UUID := auth.uid();
+  v_deleted_count INTEGER := 0;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF target_session_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  DELETE FROM auth.sessions
+  WHERE id = target_session_id
+    AND user_id = v_user_id;
+
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+  RETURN v_deleted_count > 0;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.revoke_user_session(UUID) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.revoke_user_session(UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION public.revoke_user_session(UUID) TO authenticated;
+
+

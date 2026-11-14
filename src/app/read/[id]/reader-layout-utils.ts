@@ -1,6 +1,5 @@
 import { cache } from 'react';
 import type { GutendexBook } from '@/types/book.types';
-import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { SITE_CONFIG } from '@/config/site-config';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import {
@@ -9,7 +8,11 @@ import {
   CATALOG_METADATA_COLUMNS,
 } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
-import { isPlaceholderAuthor, type ResolvedBookIdentity } from '@/lib/book-metadata';
+import {
+  featuredHeroToGutendexBook,
+  isPlaceholderAuthor,
+  type ResolvedBookIdentity,
+} from '@/lib/book-metadata';
 import { resolveBookTags } from '@/lib/book-tags';
 import { formatAuthorName } from '@/lib/utils';
 import { isClientSideNavigation } from '@/lib/server-rsc-nav';
@@ -96,40 +99,29 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
     }
   }
 
-  const hasFeaturedFixture = FEATURED_HERO_BOOKS.some((b) => b.id === bookId);
+  const featured = FEATURED_HERO_BOOKS.find((b) => b.id === bookId);
 
-  // Tier 3: Upstream Gutendex REST fallback
-  try {
-    const res = await fetch(`${API_ENDPOINTS.GUTENDEX_BASE_URL}/?ids=${bookId}&copyright=false`, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': SITE_CONFIG.USER_AGENT,
+  // Tier 3: Bundled curated classics fallback (zero external HTTP requests)
+  if (featured) {
+    const fallbackBook = featuredHeroToGutendexBook(featured, {
+      formats: {
+        'text/plain; charset=utf-8': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.txt`,
+        'text/html': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}-images.html`,
+        'application/epub+zip': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.epub`,
+        'image/jpeg': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.cover.medium.jpg`,
       },
-      signal: AbortSignal.timeout(1500),
-      next: { revalidate: 86400 }, // 24-hour ISR edge cache
     });
-
-    if (!res.ok) {
-      if ((res.status === 404 || res.status === 410) && !supabaseUnavailable && !hasFeaturedFixture) {
-        markConfirmedNotFound(bookId);
-      }
-      return null;
+    if (featured.translators) {
+      fallbackBook.translators = [...featured.translators];
     }
-
-    const data = await res.json();
-    const book = data.results?.[0] || null;
-    if (book) {
-      setServerMetadataCache(bookId, book);
-      return book;
-    }
-
-    if (!supabaseUnavailable && !hasFeaturedFixture) {
-      markConfirmedNotFound(bookId);
-    }
-    return null;
-  } catch {
-    return null;
+    setServerMetadataCache(bookId, fallbackBook);
+    return fallbackBook;
   }
+
+  if (isSupabaseConfigured() && !supabaseUnavailable) {
+    markConfirmedNotFound(bookId);
+  }
+  return null;
 });
 
 export interface ReaderSeoPerson {

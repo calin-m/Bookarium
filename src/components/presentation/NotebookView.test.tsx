@@ -49,6 +49,7 @@ describe('NotebookView component', () => {
     useAnnotationStore.getState().clearAllAnnotations();
     useAnnotationStore.setState({ fellowAnnotations: [], marginaliaSourceFilter: 'all' });
     useBookshelfStore.getState().clearBookshelf();
+    useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
   });
 
   it('renders empty state when there are no annotations', () => {
@@ -148,7 +149,7 @@ describe('NotebookView component', () => {
 
   it('resolves authentic title and author for non-featured, non-saved book (e.g. 31635) via remote book query', async () => {
     testQueryClient.setQueryData(
-      ['books', { ids: '31635', page: 1, copyright: false, includeRestrictedMetadata: true }],
+      ['books', { ids: '31635', page: 1, copyright: false, includeRestrictedMetadata: true }, 'US'],
       {
         count: 1,
         results: [
@@ -192,7 +193,7 @@ describe('NotebookView component', () => {
     useJurisdictionStore.getState().setCountry('GB');
 
     testQueryClient.setQueryData(
-      ['books', { ids: '863', page: 1, copyright: false, includeRestrictedMetadata: true }],
+      ['books', { ids: '863', page: 1, copyright: false, includeRestrictedMetadata: true }, 'GB'],
       {
         count: 1,
         results: [
@@ -219,13 +220,15 @@ describe('NotebookView component', () => {
       note: 'Classic deduction',
     });
 
-    render(<NotebookView />);
+    const { unmount } = render(<NotebookView />);
 
     expect(screen.getAllByText('The Mysterious Affair at Styles').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/by Agatha Christie/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Protected/i).length).toBeGreaterThanOrEqual(1);
 
+    unmount();
     useJurisdictionStore.getState().resetOverride();
+    useJurisdictionStore.getState().setCountry('US');
   });
 
   it('filters annotations by search query across quote, note, title, and author', async () => {
@@ -1786,7 +1789,7 @@ describe('NotebookView component', () => {
       useJurisdictionStore.setState({ country: 'RO' });
 
       testQueryClient.setQueryData(
-        ['books', { ids: '11', page: 1, copyright: false, includeRestrictedMetadata: true }],
+        ['books', { ids: '11', page: 1, copyright: false, includeRestrictedMetadata: true }, 'RO'],
         {
           count: 1,
           results: [

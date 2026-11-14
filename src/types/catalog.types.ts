@@ -28,7 +28,7 @@ export interface CatalogQueryResult {
   next: string | null;
   previous: string | null;
   results: GutendexBook[];
-  source: 'supabase' | 'upstream' | 'cache';
+  source: 'supabase' | 'cache';
   latencyMs: number;
   clientCountry: string;
   jurisdictionRule: JurisdictionRule;
@@ -39,7 +39,7 @@ export class CatalogProviderError extends Error {
   constructor(
     message: string,
     public readonly statusCode: number,
-    public readonly source: 'upstream' | 'supabase' = 'upstream'
+    public readonly source: 'supabase' | 'cache' = 'supabase'
   ) {
     super(message);
     this.name = 'CatalogProviderError';
@@ -47,7 +47,7 @@ export class CatalogProviderError extends Error {
 }
 
 export interface ICatalogProvider {
-  readonly name: 'supabase' | 'gutendex';
+  readonly name: 'supabase';
   searchBooks(options: CatalogQueryOptions): Promise<CatalogQueryResult>;
   isHealthy(): Promise<boolean>;
 }

@@ -364,8 +364,16 @@ function HomeContent() {
   };
 
   const handlePageChange = (newPage: number) => {
-    pendingPageScrollRef.current = newPage;
-    setPage(newPage);
+    const resolvedPage =
+      !isOffline &&
+      activeView === 'catalog' &&
+      newPage > page &&
+      !hasNextSubPage &&
+      Boolean(booksData?.next)
+        ? (Math.floor((page - 1) / subPagesPerBatch) + 1) * subPagesPerBatch + 1
+        : newPage;
+    pendingPageScrollRef.current = resolvedPage;
+    setPage(resolvedPage);
     scrollToCatalogSection();
   };
 
@@ -415,6 +423,38 @@ function HomeContent() {
     isDisplayLoading = missingFavoriteIds.length > 0 && isHealing;
     isDisplayError = false;
   }
+
+  // Defensive sub-page auto-clamp: if deep-linked/hydrated on an unpopulated trailing slice of a partial
+  // 32-item API batch (e.g. ?page=3 when batch only holds 14 items), snap cleanly to the last populated sub-page.
+  useEffect(() => {
+    if (
+      activeView === 'catalog' &&
+      !isOffline &&
+      !isDisplayLoading &&
+      !isDisplayError &&
+      booksData &&
+      booksData.results.length > 0 &&
+      sliceStart >= booksData.results.length
+    ) {
+      const batchStartPage = Math.floor((page - 1) / subPagesPerBatch) * subPagesPerBatch + 1;
+      const lastPopulatedOffset = Math.max(0, Math.ceil(booksData.results.length / pageSize) - 1);
+      const clampedPage = batchStartPage + lastPopulatedOffset;
+      if (clampedPage !== page) {
+        setPage(clampedPage);
+      }
+    }
+  }, [
+    activeView,
+    isOffline,
+    isDisplayLoading,
+    isDisplayError,
+    booksData,
+    sliceStart,
+    page,
+    subPagesPerBatch,
+    pageSize,
+    setPage,
+  ]);
 
   useEffect(() => {
     if (!isDisplayLoading && pendingPageScrollRef.current !== null) {

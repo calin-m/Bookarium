@@ -199,6 +199,16 @@ function extractDatabaseCatalog(rootDirPath) {
       description:
         'Locks immutable keys, acceptance authority, and opposite-participant progress/identity columns against unauthorized modification (`SECURITY DEFINER`, `SET search_path = \'\'`, RPC execution revoked from `PUBLIC`, `anon`, `authenticated`).',
     },
+    get_active_sessions: {
+      targetTables: '`auth.sessions` (read-only)',
+      description:
+        'Lists the signed-in user\'s non-expired sessions from `auth.sessions` with `is_current` claim detection (`auth.jwt() ->> \'session_id\'`) and SQL-level IP masking (`127.0.0.1` / `::1` preserved, IPv4 `.x`, IPv6 `/48 ::x`; `SECURITY DEFINER`, `SET search_path = \'\'`, RPC execution revoked from `PUBLIC` and `anon`, granted strictly to `authenticated`).',
+    },
+    revoke_user_session: {
+      targetTables: '`auth.sessions`',
+      description:
+        'Deletes a single session row in `auth.sessions` strictly owned by `(select auth.uid())` (`WHERE id = target_session_id AND user_id = auth.uid()`) for individual device revocation (`SECURITY DEFINER`, `SET search_path = \'\'`, RPC execution revoked from `PUBLIC` and `anon`, granted strictly to `authenticated`).',
+    },
   };
 
   const functions = [];
@@ -539,7 +549,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: 'vercel.json',
       layer: 'Edge Deployment & Datacenter Pinning',
       responsibility:
-        'Pins serverless function execution to `iad1` (Washington D.C. / US-East) adjacent to Project Gutenberg & Gutendex nodes with 1024 MB memory and 30s max duration for `/api/books/**` routes.',
+        'Pins serverless function execution to `iad1` (Washington D.C. / US-East) adjacent to Project Gutenberg origin mirrors with 1024 MB memory and 30s max duration for `/api/books/**` routes.',
     },
     {
       name: 'tsconfig.json',
@@ -693,7 +703,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'src/components/', role: `${counts.componentCount || 73} production React 19 UI components & motion config primitives organized across \`account/\`, \`accolades/\`, \`auth/\`, \`bookshelf/\`, \`motion/\`, \`presentation/\` (including \`bookshelf/\`), \`profile/\`, \`pwa/\`, \`reader/\`, \`symposium/\`, and \`ui/\`, each paired with co-located \`*.test.{ts,tsx}\` suites.` },
     { path: 'src/stores/', role: `${counts.storeCount || 10} Zustand client-side state stores (\`useBookshelfStore\`, \`useReaderStore\`, \`useAuthStore\`, \`useFellowshipStore\`, \`useAnnotationStore\`, \`useAccoladesStore\`, \`useHabitsStore\`, \`useJurisdictionStore\`, \`usePreferencesStore\`, \`useThemeStore\`) with \`localStorage\` persistence and bi-directional Supabase cloud outbox synchronization.` },
     { path: 'src/hooks/', role: `${counts.hookCount || 22} custom React hooks organized into \`queries/\` (TanStack Query v5 data fetching), \`reader/\` (Web Speech TTS, session coordinates, gestures, worker AST, reading ledger), and root UI/network/copyright hooks (\`useNetworkStatus\`, \`useOfflineBooks\`, \`useBookCopyright\`, \`useCatalogFilters\`, \`useCollectionAutoHeal\`).` },
-    { path: 'src/lib/', role: `${counts.utilityCount || 36} domain computational engines, App Router route helpers, and adapters covering Gutenberg AST segmentation/pagination/reflow (\`gutenberg/\`), dual-provider catalog resolution (\`catalog/\`), Supabase SSR/browser clients (\`supabase/\`), multi-jurisdictional copyright (\`copyright-engine.ts\`), IndexedDB storage (\`offline-storage.ts\`), interval annotation partitioning (\`reader-annotator.ts\`), cloud bookshelf sync (\`bookshelf-cloud-sync.ts\`), and co-located \`src/app/**\` server route utilities (\`metadata-cache.ts\`, \`url-validator.ts\`, \`reader-layout-utils.ts\`, \`profile-layout-utils.ts\`).` },
+    { path: 'src/lib/', role: `${counts.utilityCount || 36} domain computational engines, App Router route helpers, and adapters covering Gutenberg AST segmentation/pagination/reflow (\`gutenberg/\`), authoritative Supabase & bundled curated-fallback catalog resolution (\`catalog/\`), Supabase SSR/browser clients (\`supabase/\`), multi-jurisdictional copyright (\`copyright-engine.ts\`), IndexedDB storage (\`offline-storage.ts\`), interval annotation partitioning (\`reader-annotator.ts\`), cloud bookshelf sync (\`bookshelf-cloud-sync.ts\`), and co-located \`src/app/**\` server route utilities (\`metadata-cache.ts\`, \`url-validator.ts\`, \`reader-layout-utils.ts\`, \`profile-layout-utils.ts\`).` },
     { path: 'src/config/', role: `${counts.configCount || 13} centralized design token, routing, theme, language, era, literary quote, and 27-masterwork curated anthology configuration modules.` },
     { path: 'src/types/', role: `${counts.typeCount || 4} canonical TypeScript type contract modules (\`book.types.ts\`, \`database.types.ts\`, \`catalog.types.ts\`, \`accolades.types.ts\`) defining zero-any domain and PostgreSQL row schemas.` },
     { path: 'src/workers/', role: 'Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations.' },
@@ -832,7 +842,7 @@ function generateMarkdown() {
     '        CollectionEmptyStateNode["CollectionEmptyState.tsx\\n(Unified Collection Empty State Card: p-12 Editorial Card, Section Icon Badge, Explore Catalog & Iconless Sign-in Actions)"]',
     '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
     '        BookPreviewModalNode["BookPreviewModal.tsx & NotablePassagesSpread.tsx\\n(3D Open-Book Preview Spread, Notable Passages & Jurisdictional Protection)"]',
-    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(Dynamic 2-Shelf Capacity, Sequential Left-to-Right Fill, 3D Hardwood Shelf, Kinetic Strip, <1024px Touch Sheet & >=1024px Spines)"]',
+    '        BookshelfRackNode["BookshelfRack.tsx & BookshelfSpine.tsx\\n(Dynamic 2-Shelf Capacity, Sequential Left-to-Right Fill, showShelfControls Isolation, 3D Hardwood Shelf, Kinetic Strip, <1024px Touch Sheet & >=1024px Spines)"]',
     '        BookshelfMobileModalNode["BookshelfMobileModal.tsx\\n(Mobile & Tablet <1024px Action & Curation Sheet)"]',
     '        RemoveOfflineModalNode["RemoveOfflineBookModal.tsx • RemoveCollectionBookModal.tsx\\n(Offline Cache & Collection Eviction Confirmations)"]',
     '        CatalogOfflineNode["CatalogOfflineView.tsx\\n(Offline Catalog Notice & Collection Quick-Links)"]',
@@ -840,9 +850,9 @@ function generateMarkdown() {
     '        AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]',
     '        PublicSanctuaryNodes["PublicProfileView.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]',
     '        ',
-    '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
+        '        subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]',
     '            Grid["Catalog View (/)\\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]',
-    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Dynamic 2-Shelf Capacity, Sequential Left-to-Right Shelf Fill, Downloaded (N) Smart Shelf & Active-Shelf Clear)"]',
+    '            ShelfView["Bookshelf View (/bookshelf)\\n(Curated Library, Dynamic 2-Shelf Capacity, Sequential Left-to-Right Shelf Fill, showShelfControls Isolation, Downloaded (N) Smart Shelf & Active-Shelf Clear)"]',
     '            FavView["Favorites View (/favorites)\\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]',
     '            MarksView["Bookmarks View (/bookmarks)\\n(Tactile Reading Ledger, 2-Col Archival Grid, Status Filter, Direction-Aware Sort & Dedicated Resume CTA)"]',
     '            NoteView["Commonplace Notebook (/notebook)\\n(Highlights, Reflections, Tags, 2-Col Archival Grid, Tactile Scroll Focus (<1024px) & View Mode Scrubber)"]',
@@ -852,6 +862,7 @@ function generateMarkdown() {
     '            HabitsCard["AccountHabitsCard.tsx\\n(Reading Streaks, Daily Progress, Annual Challenge)"]',
     '            AccoladesCard["AccountAccoladesCard.tsx\\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]',
     '            SymposiumCard["AccountSymposiumSection.tsx\\n(Reader Circles & Literary Symposiums)"]',
+    '            SecurityCard["AccountSecuritySection.tsx\\n(Active Device Sessions, Google Disconnect & Confirm-Guarded Sign-Out)"]',
     '            PrefsCard["AccountPreferencesSection.tsx\\n(AccountTypographySubPanel • AccountNarrationSubPanel • Two-Tier Custom Defaults)"]',
     '            ProfilePage["Public Scholar Sanctuary (/u/[username])\\n(Public Profile, Pinned Accolades & Fellowship CTA)"]',
     '            ReaderPage["Focus Reader Page (/read/[id])\\n(Continuous Pagination, Subtitles, AST)"]',
@@ -904,7 +915,7 @@ function generateMarkdown() {
     '    subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]',
     '        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]',
     '        ProxyBooks["GET /api/books\\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs, Rate Limit, Seam Controller)"]',
-    '        CatalogSeam["Catalog Seam & Dual Providers (src/lib/catalog/)\\n(supabase-provider.ts • gutendex-provider.ts)"]',
+    '        CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\\n(supabase-provider.ts • curated-fallback.ts)"]',
     '        ProxyContent["GET /api/books/content\\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]',
     '        ProxyBookTranslations["GET /api/books/translations\\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]',
     '        AuthCallback["GET /auth/callback\\n(PKCE & Token-Hash OTP Verification, Origin Sanitizer)"]',
@@ -924,7 +935,7 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]',
-    '        Gutendex["🌐 Gutendex Search API\\n(Upstream Search Fallback)"]',
+    '        CuratedArchive["📚 Bundled Curated Archive\\n(featured-books.ts • 27 Classics)"]',
     '        GutenbergCDN["🌐 Project Gutenberg Mirrors\\n(aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms, www.gutenberg.org)"]',
     '        WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]',
     '        SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]',
@@ -993,6 +1004,7 @@ function generateMarkdown() {
     '    AccView --> AccoladesCard',
     '    AccoladesCard --> AccoladesEngine',
     '    AccView --> SymposiumCard',
+    '    AccView --> SecurityCard',
     '    AccView --> PrefsCard',
     '    SymposiumCard --> StoreFellowship',
     '    ProfilePage --> PublicSanctuaryNodes',
@@ -1025,9 +1037,8 @@ function generateMarkdown() {
     '    ProxyBooks --> CatalogSeam',
     '    CatalogSeam --> EngineCore',
     '    CatalogSeam -->|"Primary: Estimated-Count Fast Scan / <50ms Single-Book"| SupabaseCloud',
-    '    CatalogSeam -.->|Fallback on unseeded/offline| Gutendex',
+    '    CatalogSeam -.->|Fallback when Supabase unconfigured| CuratedArchive',
     '    SyncEngine -->|Weekly Cron Snapshot Diff & pg_catalog.csv.gz Stream| SupabaseCloud',
-    '    QueryBooks -.->|Client Failover on 504| Gutendex',
     '    ',
     '    ReaderPage --> QueryContent',
     '    ReaderPage --> ReaderDrawers',
@@ -1038,7 +1049,7 @@ function generateMarkdown() {
     '    QueryContent --> ProxyContent',
     '    ProxyContent --> MetaCache',
     '    MetaCache -->|1. Supabase public.books check| SupabaseCloud',
-    '    MetaCache -.->|2. Fallback to Gutendex & Featured Fixtures| Gutendex',
+    '    MetaCache -.->|2. Fallback to Bundled Featured Fixtures| CuratedArchive',
     '    MetaCache --> EngineCore',
     '    EngineCore --> JointAuthors',
     '    EngineCore --> Translators',
@@ -1048,7 +1059,7 @@ function generateMarkdown() {
     '    LangDrawer --> QueryTranslate',
     '    QueryTranslate -->|Tier 1: Relational Work Mapping| ProxyBookTranslations',
     '    ProxyBookTranslations -->|100% Precision Relational Query| SupabaseCloud',
-    '    QueryTranslate -.->|Tier 2: Client Author AST Fallback| Gutendex',
+    '    QueryTranslate -.->|Tier 2: Internal /api/books Author Search| ProxyBooks',
     '    SyncTranslations -->|Weekly & On-Demand Ingestion| SupabaseCloud',
     '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
     '    SyncQuotes -->|Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert| SupabaseCloud',
@@ -1241,7 +1252,7 @@ function generateMarkdown() {
     useAnnotationStore:
       'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), per-user coalesced (`coalesceInFlightByUser`) cloud outbox synchronization with retry-loop-safe dirty tracking, and opt-in `15,000ms` passive mount/drawer cooldowns (`lastPassiveAnnotationSyncByUser`, `lastFellowBookSyncByKey`, `invalidateAnnotationSyncCooldown`) decoupled from persisted `lastAnnotationSyncAt` LWW tracking.',
     useAuthStore:
-      'Supabase session authentication with module-scoped `inFlightInitialUserCheck` Strict-Mode deduplication and synchronous `INITIAL_SESSION` racing protection, Google OAuth PKCE (`signInWithOAuth`), connected identities linking/unlinking (`linkOAuthIdentity`, `unlinkOAuthIdentity`), anti-lockout protection (`hasPasswordIdentity`), transient reload error resilience (`sessionData.session.user` preservation), Cloudflare Turnstile `captchaToken` forwarding (`signInWithPassword`, `signUpWithPassword`, `signInWithOtp`, `resetPasswordForEmail`, `resendVerificationEmail`), anonymous local `getSession()` guard before `getUser()`, pre-sync active JWT session verification (`hasSupabaseAuthCookie`, `shouldVerifyCloudSession`, `verifyActiveCloudSession`) with cookie-clearance guest reconciliation (`bookarium-auth-hint=guest`), offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), shared `coalesceInFlightByUser` profile coalescing, OWASP current-password re-authentication (`updatePassword`), complete 10-store session teardown & IndexedDB/speech/sessionStorage erasure on account deletion (`clearLocalUserStores`), and cloud profile synchronization with live companion identity propagation.',
+      'Supabase session authentication with module-scoped `inFlightInitialUserCheck` Strict-Mode deduplication and synchronous `INITIAL_SESSION` racing protection, Google OAuth PKCE (`signInWithOAuth`), connected identities linking/unlinking (`linkOAuthIdentity`, `unlinkOAuthIdentity`), anti-lockout protection (`hasPasswordIdentity`), transient reload error resilience (`sessionData.session.user` preservation), Cloudflare Turnstile `captchaToken` forwarding (`signInWithPassword`, `signUpWithPassword`, `signInWithOtp`, `resetPasswordForEmail`, `resendVerificationEmail`), anonymous local `getSession()` guard before `getUser()`, scoped sign-out (`signOut(scope = \'local\')` default preserving remote/sibling-origin sessions, plus `signOutOtherDevices()` with `{ scope: \'others\' }` and explicit `{ scope: \'global\' }` in `deleteAccount()`), active session inspection and per-device revocation (`listActiveSessions`, `revokeSession` via `get_active_sessions`/`revoke_user_session` RPCs with graceful `PGRST202`/`42883` fallback), pre-sync active JWT session verification (`hasSupabaseAuthCookie`, `shouldVerifyCloudSession`, `verifyActiveCloudSession`) with cookie-clearance guest reconciliation (`bookarium-auth-hint=guest`), offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), shared `coalesceInFlightByUser` profile coalescing, OWASP current-password re-authentication (`updatePassword`), complete 10-store session teardown & IndexedDB/speech/sessionStorage erasure on account deletion (`clearLocalUserStores`), and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
       'Personal library collections, reading queue, reading history, custom named shelves, active-shelf-aware book clearing (`clearSavedBooks`, `clearCustomShelfBooks`), placeholder-to-authentic author & subject/format self-healing (`enrichSavedBooks`), atomic selector hooks (`useIsBookSaved`, `useIsBookFavorite`, `useHydratedBookshelfCounts`, `useBookRating`, `useReadingStatus`), deletion tombstones, ratings, opt-in `15,000ms` passive mount cooldown (`invalidateBookshelfSyncCooldown`), and cloud outbox reconciliation (`DELETE_BOOK`, `INSERT_BOOK`, `DELETE_FAVORITE`, `UPSERT_FAVORITE`, `UPSERT_CURATION`, `DELETE_CURATION`, `MOVE_BOOK`, `UPDATE_SHELF`) via `bookshelf-cloud-sync.ts`.',
     useFellowshipStore:
@@ -1363,7 +1374,7 @@ function generateMarkdown() {
     '| **`useFellowshipStore`** | `bookarium-fellowship-storage` (`localStorage`) | `public.reader_circles`, `public.symposium_sessions` | Outbox Queue (`pendingSymposiumProgress`) + Passive `15s` Mount Cooldown & Mutation Invalidation (`lastFellowshipSyncByUser`) + Participant RLS (`requester_id`/`recipient_id`, `host_id`/`fellow_id`) + Trigger Identity Propagation | 1. `delete_current_user()` RPC + `ON DELETE CASCADE`<br>2. Client `.or(...)` `.delete()` fallback<br>3. `clearFellowship()` |',
     '| **`useHabitsStore`** | `bookarium-reading-habits` (`localStorage`) | `public.user_reading_habits` | Union Merge of `activityDates[]` + Max Streak/Minutes/Completed Books Reconciliation | 1. `delete_current_user()` RPC + `ON DELETE CASCADE`<br>2. Client `.delete()` fallback<br>3. `clearHabits()` |',
     '| **`useAccoladesStore`** | `bookarium-accolades-storage` (`localStorage`) | `public.user_accolades` | Pending Pin Mutation Queue (`pendingPinUpdates`) + Idempotent `(user_id, accolade_id)` Upsert | 1. `delete_current_user()` RPC + `ON DELETE CASCADE`<br>2. Client `.delete()` fallback<br>3. `clearAccolades()` |',
-    '| **`useAuthStore`** | `bookarium-auth-profile` (`localStorage`) | `public.profiles`, `auth.users`, `storage.objects` | Optimistic Offline Profile Outbox (`pendingProfileUpdates`) + Pre-Sync Active JWT Guard (`verifyActiveCloudSession`) & Cookie-Clearance Guest Reconciliation | 1. `delete_current_user()` purges 11 tables, `storage.objects`, and `auth.users`<br>2. Clears `bookarium-auth-profile` & Supabase session cookies |',
+    '| **`useAuthStore`** | `bookarium-auth-profile` (`localStorage`) | `public.profiles`, `auth.users`, `auth.sessions`, `storage.objects` | Optimistic Offline Profile Outbox (`pendingProfileUpdates`) + Pre-Sync Active JWT Guard (`verifyActiveCloudSession`), Cookie-Clearance Guest Reconciliation & Owner-Scoped Device Session Inspection/Revocation (`get_active_sessions`, `revoke_user_session`) | 1. `delete_current_user()` purges 11 tables, `storage.objects`, and `auth.users` alongside `{ scope: \'global\' }` sign-out<br>2. Standard `signOut()` uses `{ scope: \'local\' }` to clear `bookarium-auth-profile` & current-origin cookies without terminating peer devices |',
     '| **`usePreferencesStore` & `useThemeStore`** | `bookarium-preferences-storage`, `bookarium-theme-storage` (`localStorage`) | `public.profiles.preferences` (`JSONB`) | 2,000ms Debounced LWW Timestamp (`preferencesUpdatedAt`) across `active` & `customDefaults` 13-key snapshots | Reset to `FACTORY_PREFERENCES` (`theme: "light"`, `stickyScroll: true`, default TTS) via `clearLocalUserStores({ wipeDeviceStorage: true })` |',
     '| **Quote Pool & Passage LRU Caches** | `bookarium-quote-enriched-books-v1`, `bookarium-extracted-passages-v1` (`localStorage`) | `public.books.quotes` (`JSONB`, Read-Only) | `12h` TTL 48-volume (`DEFAULT_QUOTE_POOL_LIMIT = 48`) 2-spread rotating pool (`useBooks.ts`) + `30-day` TTL / `100`-book LRU dynamically extracted passages (`useBookPassageShuffle.ts`) | Public domain literary quote caches (zero user PII); `bookarium-extracted-passages-v1` cleared via `clearCachedBookPassages()` |',
     '| **`offline-storage` (IndexedDB)** | `bookarium-offline-db` -> `books` (`IndexedDB`) | _Device-Local Unabridged Cache_ | Offline-First Read (`networkMode: "always"`) + Asynchronous Author Lifespan Back-Fill (`patchOfflineBookAuthors`) + Cover Blob Cache | Wiped completely via `clearAllOfflineBooks()` during `clearLocalUserStores({ wipeDeviceStorage: true })` |',
@@ -1424,7 +1435,7 @@ function generateMarkdown() {
     '    else Not Cached Locally (Online Fetch)',
     '        Hook->>API: GET /api/books/content?id=[id]',
     '        API->>API: Strict Query Allowlist, activeRateLimiter.check() (30 text / 60 cover / 20 card) & url-validator.ts',
-    '        API->>Gate: resolveBookMetadata(id) (1. 24h LRU -> 2. Supabase -> 3. Gutendex -> 4. Featured)',
+    '        API->>Gate: resolveBookMetadata(id) (1. 24h LRU -> 2. Supabase -> 3. Bundled Featured Classics)',
     '        Gate->>Gate: isBookPublicDomainInJurisdiction(authors, translators, country)',
     '        alt Restricted in Client Jurisdiction (e.g. Life+70 / Life+100)',
     '            Gate-->>API: Protected Status + Public Domain Unlock Year',
@@ -1485,7 +1496,7 @@ function generateMarkdown() {
     let upstream = 'Project Gutenberg Infrastructure';
     if (r.path === '/api/books') {
       cacheDesc = '`s-maxage=86400` (Catalog, `MAX_CATALOG_PAGE=5000` / `MAX_CATALOG_OFFSET=160_000`) / `s-maxage=43200` (`?pool=quotes`, 12h rotating `DEFAULT_QUOTE_POOL_LIMIT=48`) / `s-maxage=604800` (`?ids=...&has_quotes=true` & `include_restricted_metadata=true`) • Query Allowlist (`400 no-store`), `CORP: same-origin` & `nosniff` • `globalThis` `booksApiRateLimiter` (`60 req/min`) • `503 no-store` DB-down guard';
-      upstream = 'Supabase `public.books` (`searchBooks` / `fetchQuoteEnrichedPool`) -> `https://gutendex.com/books/` (search failover)';
+      upstream = 'Supabase `public.books` (`searchBooks` / `fetchQuoteEnrichedPool`) -> `curated-fallback.ts` (unconfigured search fallback)';
     } else if (r.path === '/api/books/content') {
       cacheDesc = '`max-age=86400, s-maxage=86400, stale-while-revalidate=604800` (text `CORP: same-origin`; `type=card` OpenGraph PNG `CORP: cross-origin`) / `max-age=604800, s-maxage=604800, stale-while-revalidate=2592000` (`type=cover`, `CORP: same-origin`, non-US metadata check bypassed) • Strict Query Allowlist (`s` gated to `type=card`), Mode-Scoped `globalThis` Limiters (`30` text / `60` cover / `20` card req/min), 20-Book LRU (`bookContentLruCache`), In-Flight Mirror Coalescing, Anti-SSRF Allowlist & Jurisdictional Gate';
       upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN & `next/og` `ImageResponse`';
@@ -1511,11 +1522,11 @@ function generateMarkdown() {
     'src/app/read/[id]/layout.tsx': 'Server layout generating ISR 24h dynamic `Bookarium | Reader | <Title> — <Author>` (`SITE_CONFIG.READER_NAME`), featured `openingLine` + tag/translator-enriched `<meta name="keywords">`, OpenGraph `book:author`/`book:tag`, Twitter Card, Schema.org Book JSON-LD (`identifier`, `bookFormat`, `MediaObject` `encoding`, `birthDate`/`deathDate` contributors, `sameAs`, `genre`, `keywords`), companion `BreadcrumbList` JSON-LD, and timeout-safe invalid/confirmed-missing `noindex` via `React.cache` and `buildReaderSeoMetadataPayload`, verifying signed `x-bookarium-share-token` (`decodeReadingCardShareToken`) to bind `/api/books/content?id=<id>&type=card&s=<token>` (`1200×630`) as the primary social preview image.',
     'src/app/read/[id]/page.tsx': 'Dedicated distraction-free Focus Reader with warm `currentBook` metadata reuse (`hasCompleteCurrentBook`), continuous pagination, Web Worker AST segmentation, TTS narration, and Symposium marginalia.',
     'src/app/account/layout.tsx': 'Server layout defining canonical metadata and robots noindex directives for the Scholar Account Hub.',
-    'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Cloud Sync, and Preferences.',
+    'src/app/account/page.tsx': 'Scholar Account Hub for Reading Habits, Literary Accolades, Reader Circles & Symposiums, Active Device Sessions & Security Confirmations, Cloud Sync, and Preferences.',
     'src/app/u/[username]/layout.tsx': 'Server layout emitting dynamic OpenGraph `profile`, Twitter cards, canonical `/u/<username>`, and `ProfilePage` JSON-LD for opt-in public scholars via `isClientSideNavigation()` fast-path and `fetchPublicScholarProfileSummary`, collapsing private and nonexistent handles to identical `noindex` fallback.',
     'src/app/u/[username]/page.tsx': 'Public Scholar Sanctuary displaying pinned Ex-Libris bookplates, public profile stats, and 1-on-1 Literary Fellowship invitation actions.',
     'src/app/privacy/layout.tsx': 'Server layout defining `SITE_CONFIG.SITE_URL` canonical SEO, OpenGraph, and Twitter summary metadata for the Privacy Architecture manifesto.',
-    'src/app/privacy/page.tsx': 'Zero-Tracker Privacy Architecture manifesto, functional geo-cookie disclosure, COPPA / GDPR Art. 8 governance, and 3-Tier Zero-Retention Erasure Protocol.',
+    'src/app/privacy/page.tsx': 'Zero-Tracker Privacy Architecture manifesto, functional geo-cookie & Supabase masked-IP session metadata disclosures, COPPA / GDPR Art. 8 governance, and 3-Tier Zero-Retention Erasure Protocol.',
     'src/app/copyright/layout.tsx': 'Server layout defining canonical SEO, OpenGraph, and Twitter summary metadata for Copyright & Public Domain Governance.',
     'src/app/copyright/page.tsx': 'Multi-Jurisdictional Public Domain Copyright Governance manifesto, territory rules table, and takedown notice channel.',
     'src/app/auth/confirm-deletion/layout.tsx': 'Server layout enforcing `robots: { index: false, follow: false }` metadata on the account deletion confirmation route.',
@@ -1547,7 +1558,7 @@ function generateMarkdown() {
   );
 
   const hookRoles = {
-    useBooks: 'TanStack Query fetching catalog volumes (`useBooks` with client-side round-trip `performance.now()` latency telemetry), featured book quotes (`useFeaturedQuotes` with local `readCachedQuoteEnrichedBooks` cache-first lookup and 7-day Edge-cached `/api/books?ids=...&has_quotes=true` routing), and the shared `48`-volume (`DEFAULT_QUOTE_POOL_LIMIT = 48`) 12h Edge-cached rotating quote pool (`useQuoteEnrichedBooks` via `/api/books?pool=quotes`, 2-spread quota trimming, 12-hour `!isCacheFresh` gating, zero-swap `ssrMatch` hydration, and an `isPoolSettled` signal with `QUOTE_POOL_SETTLE_TIMEOUT_MS` safety net so consumers reveal quotes exactly once) powering Hero (Full Pool), Classic of the Day (Classics Filter), and Words That Shaped Humanity (3-Distinct-Book Fisher-Yates Rotation) with sub-pagination and client failover.',
+    useBooks: 'TanStack Query fetching catalog volumes (`useBooks` keyed by `["books", params, effectiveCountry]` with client-side round-trip `performance.now()` latency telemetry and strict HTTP error propagation), featured book quotes (`useFeaturedQuotes` with local `readCachedQuoteEnrichedBooks` cache-first lookup and 7-day Edge-cached `/api/books?ids=...&has_quotes=true` routing), and the shared `48`-volume (`DEFAULT_QUOTE_POOL_LIMIT = 48`) 12h Edge-cached rotating quote pool (`useQuoteEnrichedBooks` via `/api/books?pool=quotes`, 2-spread quota trimming, 12-hour `!isCacheFresh` gating, zero-swap `ssrMatch` hydration, and an `isPoolSettled` signal with `QUOTE_POOL_SETTLE_TIMEOUT_MS` safety net so consumers reveal quotes exactly once) powering Hero (Full Pool), Classic of the Day (Classics Filter), and Words That Shaped Humanity (3-Distinct-Book Fisher-Yates Rotation) with deterministic sub-pagination.',
     useBookContent: 'TanStack Query (`networkMode: "always"`) fetching book plain text with canonical `/api/books/content?id=<bookId>` cache keys, IndexedDB offline-first check, multi-store lifespan verification (`resolveAuthoritativeLocalAuthors`), and online server-gatekeeper deferral.',
     useBookTranslations: 'Sequential Two-Tier TanStack Query resolving international language translations and editions (`Tier 1` `/api/books/translations?id=<id>` relational lookup -> `Tier 2` `/api/books?search=...` AST fallback gated on `!isDbLoading && !hasDbEditions` and `!isOffline`).',
     useReaderSpeech: 'Browser-native Web Speech synthesis with boundary word highlighting and auto-flip.',
@@ -1556,7 +1567,7 @@ function generateMarkdown() {
     useReaderDrawers: 'Mutual exclusivity coordination for in-reader tool drawers and modals.',
     useReaderGestures: 'Touch swipe detection, tactile single-finger tap detection (`onTapSurface`) for immersive bar toggling, keyboard shortcuts, selection gesture conflict guards, and damped 2-finger pinch-to-zoom (`14px` deadzone `PINCH_DEADZONE_PX` + `24px`/step `PINCH_PIXELS_PER_STEP`) with non-passive touch/WebKit gesture cancellation.',
     useGutenbergParserWorker: 'Persistent Web Worker chapter segmentation and layout pagination calculations.',
-    useCatalogFilters: 'Catalog filter state URL binding, default Recently Added (descending) sort, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
+    useCatalogFilters: 'Hydration-safe catalog filter & pagination URL state binding (`parseFiltersFromUrl`), `!prevHasMounted && hasMounted` SSR-to-mobile page preservation, default Recently Added (descending) sort, atomic filter staging, multi-era bounding calculation, and multi-filter query synchronization.',
     useScrollDirection: 'Stepped directional scroll detection with hero dock tracking (`isDocked`), 3-state navigation visibility (`isHeaderVisible`, `isToolbarVisible`), and user auto-hide preference persistence.',
     usePerformanceTier: 'Hardware concurrency and memory heuristic detection for fluid 60fps animations.',
     useOfflineBooks: 'Atomic IndexedDB cache enumeration via `Promise.allSettled` (`readOfflineIdsAndMetas`, `applyOfflineSnapshot`, `syncEpochRef`, `isMountedRef` for `offlineIds`, `offlineBooks`, and `isLoaded`) with synchronous non-blocking quota updates, reactive cross-instance event broadcast (`OFFLINE_BOOKS_UPDATED_EVENT`), loading state propagation (`OFFLINE_DOWNLOADING_EVENT`), author lifespan normalization (`normalizeOfflineAuthors`), idle missing cover backfill, and individual-only offline book download/deletion management with local cover Blob persistence.',
@@ -1572,7 +1583,7 @@ function generateMarkdown() {
     useCopyFeedback: 'Transient clipboard copy state hook with automatic timer cleanup (`copy`, `isCopied`, `copiedKey`) for share URLs and scholar handles.',
     useNotebookMetadataResolver: 'Multi-source volume metadata resolver (`resolveVolumeMeta`, `missingBookIds`, `isMetadataLoading`) healing missing titles, authors, and languages across Personal and Fellow Marginalia.',
     useReaderHabitTelemetry: 'Reader session lifecycle, book identity self-healing, `Bookarium | Reader | <Title> — <Author>` client tab title synchronization (`SITE_CONFIG.READER_NAME`), 3-page reading activation threshold (`currently_reading` / `finished`), Literary Symposium companion progress sync, and idle-aware habit telemetry coordinator.',
-    useAccountSecurityActions: 'Account Hub security, profile display name, email verification resend cooldown with optional Turnstile `captchaToken` forwarding, password strength/generation/recovery, and account deletion workflow hook.',
+    useAccountSecurityActions: 'Account Hub security, Active Device Sessions inspection/revocation (`get_active_sessions`, `revoke_user_session`), `ConfirmActionModal`-guarded Google disconnect, session revocation, and scoped sign-out (`local` / `others` / `global`), profile display name, email verification resend cooldown with optional Turnstile `captchaToken` forwarding, password strength/generation/recovery, and account deletion workflow hook.',
     useOfflineCatalogFallback: 'Local IndexedDB offline catalog filtering, topic/language/author-lifespan matching, sorting, and sub-page slicing hook when offline.',
     useVisualViewportKeyboard: 'Mobile software virtual keyboard elevation hook leveraging the Visual Viewport API (`window.visualViewport`) to dynamically elevate floating inputs above tactile on-screen keyboards.',
     useBookshelfCapacity: 'Hydration-safe physical shelf spine capacity hook (`useSyncExternalStore`) dynamically coupling Bookshelf page size (2 shelves x capacity) and row limits across mobile (6), tablet (10), laptop (14), and desktop (18).',
@@ -1607,7 +1618,7 @@ function generateMarkdown() {
     'accolades-engine':
       'Historical literary accolades evaluation engine, criteria matching, milestone progress calculation, summary aggregation (`computeAccoladesSummary`), and era determination.',
     'book.adapter':
-      'Bidirectional domain transformation between Gutendex API schemas, canonical Book models, and Supabase cloud persistence payloads.',
+      'Bidirectional domain transformation between internal catalog DTO schemas (`GutendexBook` / `GutendexResponse`), canonical Book models, and Supabase cloud persistence payloads.',
     'api-utils':
       'Server-side API route helpers, IP address extraction (`resolveClientIp`), `ApiCorpPolicy` / `buildApiSecurityHeaders` (`Cross-Origin-Resource-Policy` & `nosniff`), strict query allowlisting (`hasUnexpectedQueryParams`), `createNoStoreErrorResponse`, and `no-store` `same-origin` `429` rate-limit responses.',
     'bookshelf-cloud-sync':
@@ -1620,8 +1631,8 @@ function generateMarkdown() {
       'Multi-jurisdictional copyright engine evaluating public domain status across US, EU/Berne (Life + 70), Mexico (Life + 100), and Colombia/Spain (Life + 80), with joint authorship (Art. 7bis), translator protection (Art. 2(3)), and longevity heuristics.',
     'country-resolver':
       'Synchronous and edge geographic country resolution coordinating timezone mapping, geo-cookies, and developer overrides.',
-    'gutendex-provider':
-      'Upstream Gutendex REST catalog provider implementing ICatalogProvider with 15s timeout control, primary topic/mimeType failover normalization, error mapping, and jurisdictional copyright filtering.',
+    'curated-fallback':
+      'Zero-dependency bundled curated classics catalog provider (`searchCuratedCatalogFallback`) serving jurisdictional public-domain search, filtering, sorting, and pagination from `FEATURED_HERO_BOOKS` (`source: "cache"`) whenever Supabase is unconfigured or unseeded without external REST calls.',
     'gutenberg-parser':
       'Root domain facade barrel re-exporting all Gutenberg segmentation, pagination, reflow, and passage extraction subsystems.',
     index:
@@ -1661,7 +1672,7 @@ function generateMarkdown() {
     'speech-utils':
       'Web Speech API voice selection heuristics identifying natural/neural/cloud synthesis voices, BCP-47 locale normalization, book-language voice compatibility filtering, and quality score sorting (`getVoiceQualityScore`, `sortVoicesByQuality`, `resolveBestVoice`).',
     'supabase-provider':
-      'Dedicated Supabase PostgreSQL catalog provider implementing ICatalogProvider with passively warmed cached healthcheck (60s TTL), `globalThis`-anchored 5m / 64-query catalog response cache (`__bookariumCatalogQueryCache`, isolated per mock client, cleared via `resetHealthCache`) + passive `__bookariumMetadataCache` pre-warming, 11-column `CATALOG_METADATA_COLUMNS` projection, GIN full-text search_vector queries across title/subjects/bookshelves, MIME charset prefix matching, author lifespan bounds, `MAX_CATALOG_OFFSET = 160_000` empty-page short-circuiting before `getSupabase()` / `buildSearchQuery()`, bounded dynamic backfill (`MAX_BACKFILL_ITERATIONS = 2`), and Primary-Key-Scoped 48-volume (`DEFAULT_QUOTE_POOL_LIMIT = 48`) 12h rotating 2-spread Quote Pool assembly (`fetchQuoteEnrichedPool`, `selectRotatingQuotePoolCandidateIds`) for sub-50ms single-book lookups and ~1-2s catalog page queries.',
+      'Dedicated Supabase PostgreSQL catalog provider implementing ICatalogProvider with passively warmed cached healthcheck (60s TTL), `globalThis`-anchored 5m / 64-query catalog response cache (`__bookariumCatalogQueryCache`, isolated per mock client, cleared via `resetHealthCache`) + passive `__bookariumMetadataCache` pre-warming, 11-column `CATALOG_METADATA_COLUMNS` projection, GIN full-text search_vector queries across title/subjects/bookshelves, MIME charset prefix matching, author lifespan bounds, `MAX_CATALOG_OFFSET = 160_000` empty-page short-circuiting before `getSupabase()` / `buildSearchQuery()`, exact `limit + 1` SQL probing with bounded dynamic backfill (`MAX_BACKFILL_ITERATIONS = 5`), and Primary-Key-Scoped 48-volume (`DEFAULT_QUOTE_POOL_LIMIT = 48`) 12h rotating 2-spread Quote Pool assembly (`fetchQuoteEnrichedPool`, `selectRotatingQuotePoolCandidateIds`) for sub-50ms single-book lookups and ~1-2s catalog page queries.',
     client:
       'Browser-side Supabase client initialization with credential sanitization and local session persistence.',
     middleware:
@@ -1679,7 +1690,7 @@ function generateMarkdown() {
     utils:
       'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, and format badges.',
     'metadata-cache':
-      '3-tier `globalThis`-anchored in-memory LRU author lifespan cache (`__bookariumMetadataCache`, 24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books`, upstream Gutendex API, and `FEATURED_HERO_BOOKS` fallback, paired with a `globalThis`-anchored 20-book plain-text LRU cache (`bookContentLruCache` / `__bookariumContentLruCache`, `getCachedBookContent`, `setCachedBookContent`, `clearBookContentCache`, 24h TTL, <= 1.8M chars) shielding Project Gutenberg mirrors across `Vary: x-vercel-ip-country` edge misses.',
+      '2-tier external-API-free `globalThis`-anchored in-memory LRU author lifespan cache (`__bookariumMetadataCache`, 24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books` and bundled `FEATURED_HERO_BOOKS` fallback, paired with a `globalThis`-anchored 20-book plain-text LRU cache (`bookContentLruCache` / `__bookariumContentLruCache`, `getCachedBookContent`, `setCachedBookContent`, `clearBookContentCache`, 24h TTL, <= 1.8M chars) shielding Project Gutenberg mirrors across `Vary: x-vercel-ip-country` edge misses.',
     'url-validator':
       'Zero-trust anti-SSRF upstream URL validator enforcing HTTPS, relative Location redirect resolution, and strict Project Gutenberg hostname allowlisting (`gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`).',
     'server-rsc-nav':
@@ -1687,7 +1698,7 @@ function generateMarkdown() {
     'profile-layout-utils':
       'Zero-PII Public Scholar metadata resolver (`fetchPublicScholarProfileSummary`), 5-minute / 500-entry LRU cache (`hasCachedScholarProfile`), SQL `ILIKE` `_`-wildcard neutralization, and anti-enumeration `private_or_missing` collapsing for `/u/[username]`.',
     'reader-layout-utils':
-      'Server-side metadata resolution (`fetchBookData`), confirmed-missing ID tracking (`isConfirmedMissingBook`), re-exported `isClientSideNavigation`, and non-visual SEO payload builder (`buildReaderSeoMetadataPayload` with featured `openingLine` hooks, lifespan contributors, and encoding MIME formats) for `/read/[id]` OpenGraph, Twitter Card, and Schema.org JSON-LD generation.',
+      '2-tier server-side metadata resolution (`fetchBookData`: `Supabase public.books` -> bundled `FEATURED_HERO_BOOKS` with zero external HTTP calls), confirmed-missing ID tracking (`isConfirmedMissingBook`), re-exported `isClientSideNavigation`, and non-visual SEO payload builder (`buildReaderSeoMetadataPayload` with featured `openingLine` hooks, lifespan contributors, and encoding MIME formats) for `/read/[id]` OpenGraph, Twitter Card, and Schema.org JSON-LD generation.',
     'reader-bookmark-geometry':
       'DOM text-node walker (`collectContentTextSegments`), character range measurement (`measureCharRect`), ratio-weighted passage matching (`findBestTextMatch`), and binary-searched row text/span resolution (`extractRowTextFromElement`, `resolveTextRowSpanInElement`).',
     'annotation-cloud-sync':
@@ -1702,6 +1713,8 @@ function generateMarkdown() {
       'Client-side HTML5 2D `<canvas>` reading card generator (`renderReadingCardToCanvas`, `exportReadingCardBlob`, `wrapCanvasText`, `CARD_PALETTES`), book-bound FNV-1a signed Base64URL share token codec (`encodeReadingCardShareToken`, `decodeReadingCardShareToken`, `buildReadingCardShareUrl`, `computeShareTokenSignature`), and zero-key social Web Intent URL builder (`buildReadingShareText`, `buildSocialShareUrls`) across X, Reddit, WhatsApp, Telegram, Bluesky, Facebook, LinkedIn, and Email.',
     'notebook-sorting':
       'Pure sorting, filtering, volume grouping (`filterAndGroupNotebookEntries`, `parseNotebookSortValue`), and sort-key decomposition engine for the Commonplace Literary Notebook (`NotebookView`).',
+    'session-device-parser':
+      'Zero-regex CWE-1333-safe user-agent device/OS/browser classifier (`parseSessionDevice`), dual-layer masked IP formatter (`formatSessionIpAddress`: IPv4 `.x`, IPv6 `/48 ::x`, localhost labels), and timestamp formatter (`formatSessionTimestamp`) for Account Security active session inspection.',
   };
 
   for (const u of utilities) {
@@ -1798,7 +1811,6 @@ function generateMarkdown() {
     '    subgraph UpstreamFeeds ["External Public Domain Feeds & Release Snapshot Cache"]',
     '        ReleaseCache[("📦 GitHub Release Tag: catalog-cache\\ngutenberg-catalog-cache.json.gz (~4.5 MB)\\nPermanent Snapshot (--clobber)")]',
     '        FeedCSV["📦 Project Gutenberg Feeds (3 Mirrors)\\nrdf-files.tar.bz2 (121MB) + pg_catalog.csv.gz (5.3MB)"]',
-    '        FeedGutendex["📊 Gutendex Popularity API\\nFallback download_count Hydration (--no-rdf)"]',
     '        FeedWikidata["🌐 Wikidata SPARQL + Offline Cache\\nP2034 Gutenberg ID & P407 Language"]',
     '        FeedMirrors["🏛️ Official PGLAF Mirrors (8.0s–16.0s Float Delay)\\ngutenberg.pglaf.org • aleph.gutenberg.org • gutenberg.readingroo.ms"]',
     '    end',
@@ -1810,14 +1822,13 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph SupabaseTables ["Supabase PostgreSQL Catalog Tables (Read-Only for Anon / Written by Service Role)"]',
-    '        TableBooks[("🗄️ public.books (78,000+ Rows)\\n• books_pkey (id)\\n• idx_books_download_count (download_count DESC)\\n• idx_books_with_quotes_popular (WHERE quotes <> \'[]\')\\n• idx_books_search_vector (GIN TSVECTOR)")]',
+    '        TableBooks[("🗄️ public.books (78,000+ Rows)\\n• books_pkey (id)\\n• idx_books_download_count (download_count DESC)\\n• idx_books_search_vector (GIN TSVECTOR)")]',
     '        TableTrans[("🗄️ public.book_translations (4,500+ Rows)\\n• book_translations_pkey (work_id, book_id)\\n• idx_book_translations_book_id\\n• idx_book_translations_work_lang")]',
     '    end',
     '',
     '    CatTrigger --> ScriptCatalog',
     '    ReleaseCache <-->|"gh release download / upload --clobber"| ScriptCatalog',
     '    FeedCSV --> ScriptCatalog',
-    '    FeedGutendex --> ScriptCatalog',
     '    ScriptCatalog -->|"Upsert Delta Rows Only (0 Read Egress)"| TableBooks',
     '    ScriptCatalog -->|"Chains Step 2 on Success"| ScriptTrans',
     '    ScriptCatalog -->|"Passes quote-diff.json on Disk"| ScriptQuotes',
@@ -1992,7 +2003,7 @@ function generateMarkdown() {
     '',
     '| Module | Source File | Responsibilities & Security Directives |',
     '| :--- | :--- | :--- |',
-    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), setting `bookarium-geo-country` cookie on page routes (skipping `updateSession` on `/api/books*`, `/auth/*`, `/sw.js`, `/manifest.webmanifest`, Next.js `<Link>` prefetches, `x-bookarium-sw-precache: 1` warm requests, and public client-side RSC navigations `rsc: 1` outside `/account*` to preserve Vercel Edge CDN `s-maxage` caching and eliminate redundant Supabase Auth `GET /user` bursts), returning bare `NextResponse.next()` when no valid share token is present so `x-middleware-override-headers` is omitted while forwarding validated `?s=<token>` share parameters via `x-bookarium-share-token` to Server Component layouts, handling development query override (`?country=XX`), and enforcing strict security headers. |',
+    '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) | Next.js 16 Edge proxy extracting client IP country (`x-vercel-ip-country`), forwarding `x-bookarium-country` on non-`/api/books/content*` routes and setting `bookarium-geo-country` cookie on page routes (skipping `updateSession` on `/api/books*`, `/auth/*`, `/sw.js`, `/manifest.webmanifest`, Next.js `<Link>` prefetches, `x-bookarium-sw-precache: 1` warm requests, and public client-side RSC navigations `rsc: 1` outside `/account*` to preserve Vercel Edge CDN `s-maxage` caching and eliminate redundant Supabase Auth `GET /user` bursts), returning bare `NextResponse.next()` on unshared `/api/books/content*` requests (`!validShareToken`) so `x-middleware-override-headers` is omitted while forwarding validated `?s=<token>` share parameters via `x-bookarium-share-token` to Server Component layouts, handling development query override (`?country=XX`), and enforcing strict security headers. |',
     '',
     '---',
     '',
@@ -2028,12 +2039,12 @@ function generateMarkdown() {
     '    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]',
     '        VitestCfg["⚙️ vitest.config.mts\\n• jsdom environment • maxWorkers: 4\\n• @/* path alias • V8 Coverage Provider"]',
     '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed handleUnhandledMswRequest\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
-    '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v2 setupServer(...handlers) lifecycle + fail-closed guard\\n• GET /api/books, /api/books/content, /api/books/translations\\n• HTTPS Gutendex, 4 Gutenberg Mirrors & Supabase/*.co/:54321 503 catch-all\\n• mockBooks & sampleBookText fixtures (0 external network calls)"]',
+    '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v2 setupServer(...handlers) lifecycle + fail-closed guard\\n• GET /api/books, /api/books/content, /api/books/translations\\n• 4 Gutenberg Mirrors & Supabase/*.co/:54321 503 catch-all\\n• mockBooks & sampleBookText fixtures (0 external network calls)"]',
     '    end',
     '',
     `    subgraph TestTiers ["4-Tier Co-Located Test Suites (${testHarness.totalSuites} Suites)"]`,
     '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
-    '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, gutendex-provider"]',
+    '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, curated-fallback"]',
     '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
     `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI & Security Pipelines (ingest-catalog.test.ts, sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts, bookarium-security.test.ts)"]`,
     '    end',
@@ -2291,8 +2302,8 @@ function generateMarkdown() {
     '',
     '## ⚡ Data Pulling & Caching Strategy',
     '',
-    '1. **Dual-Provider Catalog Architecture**: Primary search queries execute against dedicated Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back seamlessly to upstream Gutendex REST API if Supabase is unconfigured, unseeded, or unreachable, unconditionally enforcing `copyright=false`.',
-    '2. **Unified Visible Telemetry & Zero-CLS Radar**: `StickyCatalogToolbar.tsx` renders a unified Zero-CLS API connectivity, latency, and archive query radar pill with locked geometry (`min-w-[72px] sm:min-w-[78px]`) supporting 4 states (Online Idle, Active Querying with micro-spinner and pulse `•••`, Pending Measure, and Offline), paired with a collision-aware diagnostic popover card that automatically flips upwards when docked at the hero fold or downwards when stuck at the top, complete with touch tap-toggle interaction and dual-service diagnostics across Bookarium DB and Gutendex API.',
+    '1. **Authoritative Supabase Catalog & Bundled Curated Fallback**: Primary search queries execute against dedicated Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back cleanly to the bundled Curated Archive (`src/lib/catalog/curated-fallback.ts`) when Supabase is unconfigured without external third-party catalog REST dependencies, unconditionally enforcing `copyright=false`.',
+    '2. **Unified Visible Telemetry & Zero-CLS Radar**: `StickyCatalogToolbar.tsx` (`CatalogTelemetryBadge.tsx`) renders a unified Zero-CLS API connectivity, latency, and archive query radar pill with locked geometry (`min-w-[72px] sm:min-w-[78px]`) supporting 4 states (Online Idle, Active Querying with micro-spinner and pulse `•••`, Pending Measure, and Offline), paired with a collision-aware diagnostic popover card that automatically flips upwards when docked at the hero fold or downwards when stuck at the top, complete with touch tap-toggle interaction and provider telemetry across Bookarium Catalog (`supabase`) and Curated Archive Cache (`cache`).',
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
     '4. **Multi-Tier Vercel Edge CDN Caching, Geographic Vary Partitioning & Gutenberg Cover Proxy**: Public API routes offload >99% of repeat traffic to the Vercel Global Edge CDN with route-specific TTLs and minimal `Vary` keys: `/api/books?pool=quotes` caches the 48-volume 2-spread rotating quote pool for `12h` (`s-maxage=43200, swr=86400, Vary: Accept-Encoding`); `/api/books` caches 11-column catalog searches for `24h` (`s-maxage=86400, swr=604800, Vary: x-vercel-ip-country, Accept-Encoding`); `/api/books?ids=...&has_quotes=true` & `include_restricted_metadata=true` cache explicit quote/metadata batches for `7d` (`s-maxage=604800, swr=2592000, Vary: Accept-Encoding`); `/api/books/translations` caches FRBR work clusters for `7d` (`s-maxage=604800, swr=2592000`); and `/api/books/content` caches plain-text & `type=card` OG PNGs for `24h` (`s-maxage=86400, swr=604800`) and `?type=cover` Project Gutenberg mirror cover images for `7d` (`s-maxage=604800, swr=2592000`).',
     '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
@@ -2319,7 +2330,6 @@ function generateMarkdown() {
     '    subgraph ExternalSystems ["External Public Domain & Cloud Infrastructure"]',
     '        SupaDB[("⚡ Supabase PostgreSQL & PostgREST\\n(https://*.supabase.co/rest/v1/*)")]',
     '        SupaAuth["🔐 Supabase Auth & Cloudflare Turnstile\\n(https://*.supabase.co/auth/v1/* • challenges.cloudflare.com)"]',
-    '        GutendexAPI["🌐 Gutendex REST API\\n(https://gutendex.com/books)"]',
     '        GutenbergMirrors["📚 4 Allowlisted Gutenberg Mirrors\\n1. aleph.gutenberg.org\\n2. gutenberg.pglaf.org\\n3. gutenberg.readingroo.ms\\n4. www.gutenberg.org"]',
     '        GutenbergFeeds["📦 Gutenberg Catalog Feeds (3 Mirrors)\\n(rdf-files.tar.bz2 & pg_catalog.csv.gz)"]',
     '        WikidataAPI["🌍 Wikidata SPARQL Endpoint\\n(https://query.wikidata.org/sparql)"]',
@@ -2328,12 +2338,10 @@ function generateMarkdown() {
     '',
     '    BrowserTier -->|"Anon JWT + RLS (7-Store Sync)"| SupaDB',
     '    BrowserTier -->|"Session / OAuth / Password Auth"| SupaAuth',
-    '    BrowserTier -.->|"Direct 504 Failover (copyright=false)"| GutendexAPI',
     '    BrowserTier -.->|"Cover Art (img-src HTTPS)"| GutenbergMirrors',
     '    BrowserTier -.->|"Cookie-less Web Vitals"| VercelRUM',
     '    EdgeTier -->|"Primary Catalog & FRBR Lookups"| SupaDB',
     '    EdgeTier -->|"PKCE / OTP Code Exchange"| SupaAuth',
-    '    EdgeTier -.->|"15s Timeout Catalog Failover"| GutendexAPI',
     '    EdgeTier -->|"Anti-SSRF Validated Text Stream"| GutenbergMirrors',
     '    CLITier -->|"Bulk Upsert (Service Role / Anon)"| SupaDB',
     '    CLITier -->|"Weekly RDF + CSV Stream"| GutenbergFeeds',
@@ -2346,7 +2354,6 @@ function generateMarkdown() {
     '| :--- | :--- | :--- | :--- | :--- | :--- |',
     '| **Supabase PostgREST (`https://*.supabase.co/rest/v1`)** | Browser Client, Edge Routes & CLI | HTTPS REST • `NEXT_PUBLIC_SUPABASE_ANON_KEY` (RLS JWT) or CLI `SUPABASE_SERVICE_ROLE_KEY` | 60s healthcheck TTL (`supabase-provider.ts`); CLI adaptive batch halving on `57014` | All 14 tables enforce `ENABLE ROW LEVEL SECURITY`; CSP `connect-src https://*.supabase.co`; `sanitizeSupabaseUrl` | [`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts), [`src/lib/supabase/client.ts`](src/lib/supabase/client.ts) |',
     '| **Supabase Auth & Turnstile (`https://*.supabase.co/auth/v1`, `challenges.cloudflare.com`)** | Browser Client, `src/proxy.ts` & `/auth/callback` | HTTPS PKCE Code Exchange, Token-Hash OTP & Turnstile `captchaToken` (`exchangeCodeForSession`, `verifyOtp`) | Document & `/account*` Edge SSR cookie refresh (`updateSession`, bypassing public `rsc=1` & prefetch routes) + client `checkInitialUser` / `fetchProfile` coalescing; 60s email resend cooldown | Open-redirect sanitization (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`); shared `TurnstileWidget` CAPTCHA (`AuthModal`, `EmailSentView` & `/account` recovery/resend) & Honeypot bot guard; OWASP current-password re-auth | [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts), [`src/components/auth/AuthModal.tsx`](src/components/auth/AuthModal.tsx), [`src/components/auth/TurnstileWidget.tsx`](src/components/auth/TurnstileWidget.tsx), [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) |',
-    '| **Gutendex REST API (`https://gutendex.com/books`)** | `/api/books`, `metadata-cache.ts` & Client `useBooks.ts` | HTTPS GET (`copyright=false` unconditionally enforced; Zero API Keys) | `15,000ms` `AbortController` timeout (`gutendex-provider.ts`); `60 req/min` `globalThis` route rate limit (`booksApiRateLimiter`) | `bookarium-security/enforce-gutenberg-and-copyright-policy` AST rule; `SITE_CONFIG.USER_AGENT` header | [`src/lib/catalog/gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts), [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) |',
     '| **Project Gutenberg Mirrors (`aleph`, `pglaf`, `readingroo.ms`, `www.gutenberg.org`)** | `/api/books/content` | HTTPS GET Plain-Text & Binary Cover Stream (Mirror-First Prioritization ahead of `www.gutenberg.org`) | `8s–12s` per-mirror timeout; mode-scoped `globalThis` sliding-window limits (`bookContentRateLimiter` `30/min` text, `bookCoverRateLimiter` `60/min` cover, `bookCardRateLimiter` `20/min` OG card) | Zero-trust `url-validator.ts` (HTTPS-only, 4 allowlisted hostnames, max 3 redirect hops validated per hop, individual-only downloads) | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts), [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) |',
     '| **Gutenberg Catalog Archives (`rdf-files.tar.bz2` & `pg_catalog.csv.gz`)** | Node.js CLI & GitHub Actions (`catalog-sync.yml`) | HTTPS GET Streaming Bzip2/Gzip (`tar -xOjf -` + `zlib.createGunzip` across 3 allowlisted mirrors) | Weekly Sunday `02:00 UTC` schedule; 3-mirror failover + exponential retry backoff (`1s, 2s, 4s`) | Allowlisted feed URLs (`isAllowedRdfFeedUrl`, `isAllowedCsvFeedUrl`), in-RAM `gutenberg-catalog-cache.json.gz` diffing, filters `Text` type only, strips non-public-domain records, computes `max_author_death_year` & 30-day `download_count`, and emits `quote-diff.json` | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) |',
     '| **Wikidata SPARQL (`https://query.wikidata.org/sparql`)** | Node.js CLI & GitHub Actions (`catalog-sync.yml` Step 2 & on-demand `translations-sync.yml`) | HTTPS GET SPARQL JSON (`P2034` Gutenberg ID + `P407` Language) | Weekly Sunday `02:00 UTC` sequential pipeline (`catalog-sync.yml`) + manual `workflow_dispatch`; `30s` query timeout | 5 Pipeline Blockers & 7 Hardening Defenses; offline snapshot fallback (`scripts/data/wikidata-translations-cache.json`) | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) |',
@@ -2365,10 +2372,10 @@ function generateMarkdown() {
     '    subgraph CatalogResilience ["1. Catalog Search Resilience Cascade"]',
     '        CatReq["Catalog Query (/api/books)"] --> SupaHealth{"Supabase Configured &\\n60s Healthcheck OK?"}',
     '        SupaHealth -->|"Yes"| SupaQuery["Query public.books (GIN + B-Tree)"]',
-    '        SupaHealth -->|"No / Unreachable"| GutServer["Server Failover: gutendex-provider.ts (15s Timeout)"]',
-    '        SupaQuery -->|"Error / Empty Seed"| GutServer',
-    '        GutServer -->|"HTTP 502 / 504"| GutClient["Client Failover: useBooks.ts Direct Gutendex Fetch"]',
-    '        GutClient -->|"Navigator Offline"| OfflineCat["Adaptive Offline Catalog (useOfflineCatalogFallback.ts)\\nServes IndexedDB Volumes or CatalogOfflineView.tsx"]',
+    '        SupaHealth -->|"No / Unconfigured"| CuratedServer["Bundled Curated Fallback\\n(curated-fallback.ts • 27 Classics)"]',
+    '        SupaQuery -->|"Transient DB Error"| DbError503["HTTP 503 No-Store Error Telemetry"]',
+    '        DbError503 -->|"Navigator Offline"| OfflineCat["Adaptive Offline Catalog (useOfflineCatalogFallback.ts)\\nServes IndexedDB Volumes or CatalogOfflineView.tsx"]',
+    '        CuratedServer -->|"Navigator Offline"| OfflineCat',
     '    end',
     '',
     '    subgraph ContentResilience ["2. Book Content Streaming Resilience Cascade"]',
@@ -2394,17 +2401,17 @@ function generateMarkdown() {
     '',
     '| Failure Scenario / Fault Domain | Detection Mechanism | Circuit-Breaker / Retry Policy | Automatic Fallback / Self-Healing Action | User-Facing Experience |',
     '| :--- | :--- | :--- | :--- | :--- |',
-    '| **1. Supabase Unconfigured or Unreachable** | `isSupabaseConfigured()` or query error in [`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `60,000ms` healthcheck circuit-breaker TTL prevents repeated failing DB probes | Seamlessly routes `/api/books` to [`src/lib/catalog/gutendex-provider.ts`](src/lib/catalog/gutendex-provider.ts) (`copyright=false`) | 100% transparent catalog browsing with zero configuration or API keys required. |',
-    '| **2. `/api/books` Edge Gateway Timeout (`502` / `504`)** | Response status check in [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) | Immediate client-side failover on `502`/`504` before React Query retry exhaustion | Browser fetches directly from `https://gutendex.com/books` and normalizes payload | Catalog grid populates without error screens even if upstream takes >15s. |',
+    '| **1. Supabase Unconfigured or Temporarily Unhealthy** | `isSupabaseConfigured()` & 60s healthcheck in [`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) | `60,000ms` healthcheck circuit-breaker TTL avoids repeated failing DB probes | Routes unconfigured `/api/books` searches cleanly to bundled [`src/lib/catalog/curated-fallback.ts`](src/lib/catalog/curated-fallback.ts) (`source: "cache"`, `no-store`) and fails closed with `HTTP 503` on transient configured DB outages | Zero-key environments browse curated classics without external dependencies; live outages report honest recoverable states. |',
+    '| **2. `/api/books` Gateway Timeout or Transient `503`/`504`** | Abort/HTTP status telemetry in [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) | Bounded `15,000ms` `AbortController` + TanStack Query retry & `CatalogTelemetryBadge` error radar | Surfaces recoverable Retry state cleanly in `BookGrid` and degrades to IndexedDB volumes (`useOfflineCatalogFallback.ts`) when offline | Eliminates stale upstream errors, third-party outages, and silent data corruption while keeping cached reading uninterrupted. |',
     '| **3. Primary Gutenberg Mirror Down or Throttled** | Per-mirror `AbortController` timeout or non-200 status in [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts) | Sequential 4-mirror cascade (`aleph` -> `pglaf` -> `readingroo.ms` -> `www.gutenberg.org`) | Validates each candidate & redirect hop via [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) until a clean `200 OK` text stream resolves | Book opens reliably even when individual Gutenberg mirrors undergo maintenance. |',
-    '| **4. Missing or `"Anonymous"` Author Lifespans** | `isPlaceholderAuthor()` & `!hasVerifiedLifespans()` in [`src/lib/book-metadata.ts`](src/lib/book-metadata.ts) | 3-Tier server LRU ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts)) + client [`src/hooks/useCollectionAutoHeal.ts`](src/hooks/useCollectionAutoHeal.ts) | Resolves lifespans via Supabase -> Gutendex -> `FEATURED_HERO_BOOKS` and back-fills IndexedDB (`patchOfflineBookAuthors`) & Zustand stores | Prevents false `HTTP 451` blocks and heals legacy saved/offline volumes automatically. |',
+    '| **4. Missing or `"Anonymous"` Author Lifespans** | `isPlaceholderAuthor()` & `!hasVerifiedLifespans()` in [`src/lib/book-metadata.ts`](src/lib/book-metadata.ts) | 2-Tier server LRU ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts)) + client [`src/hooks/useCollectionAutoHeal.ts`](src/hooks/useCollectionAutoHeal.ts) | Resolves lifespans via Supabase -> `FEATURED_HERO_BOOKS` and back-fills IndexedDB (`patchOfflineBookAuthors`) & Zustand stores | Prevents false `HTTP 451` blocks and heals legacy saved/offline volumes automatically without external API calls. |',
     '| **5. Jurisdictional Copyright Restriction (`HTTP 451`)** | `isBookPublicDomainInJurisdiction()` in [`src/lib/copyright-engine.ts`](src/lib/copyright-engine.ts) | Deterministic Berne (`Life+70`, `Life+80`, `Life+100`, Art. 7bis, Art. 2(3)) evaluation | Blocks full-text stream (`HTTP 451`), passes `includeRestrictedMetadata=true` for collection citations, and renders `CopyrightNoticeBanner` | Clear territorial legal notice with exact public-domain unlock year; collection cards keep real titles/authors. |',
     `| **6. Complete Device Offline State (\`navigator.onLine = false\`)** | \`useSyncExternalStore\` in [\`src/hooks/useNetworkStatus.ts\`](src/hooks/useNetworkStatus.ts) & [\`public/sw.js\`](public/sw.js) | Instantaneous 0ms transition; Service Worker \`${swMeta.versionLabel}\` intercepts \`/read/*\` & App Shell routes | [\`src/hooks/useOfflineCatalogFallback.ts\`](src/hooks/useOfflineCatalogFallback.ts) serves IndexedDB volumes in Catalog; uncached books dim with \`Not Downloaded\` badges | Downloaded volumes read & search 100% offline; uncached triggers cleanly disable with clear offline guidance. |`,
     '| **7. Web Worker Initialization or Parse Error** | `worker.onerror` or `Worker === undefined` in [`src/hooks/reader/useGutenbergParserWorker.ts`](src/hooks/reader/useGutenbergParserWorker.ts) | Automatic fallback on worker construction failure or `PARSE_ERROR` message | Executes `parseGutenbergChapters` & `paginateChapterContent` asynchronously on main thread via `setTimeout(..., 0)` | Focus Reader segments chapters and renders pages smoothly even in restricted WebViews. |',
     '| **8. Font-Size or Viewport Reflow Shifting Bookmark Line** | `isBookmarkLayoutReady` & `resolveTextRowSpanInElement` in [`src/lib/reader-bookmark-geometry.ts`](src/lib/reader-bookmark-geometry.ts) | Canonical text-span matching (`findCanonicalTextSpan`) + binary-searched DOM `Range` client rects | Re-anchors `bookmarkRow` to the exact sentence (`bookmarkText`) across font sizes (`12px–36px`) and column widths | Reader silk bookmark and scroll position stay locked to the exact passage across devices and display tweaks. |',
     '| **9. Concurrent Multi-Tab, Strict-Mode Mount or Offline Cloud Sync Mutations** | `inFlightInitialUserCheck` + `coalesceInFlightByUser` (across `useAuthStore`, `sync-utils.ts`, and all individual store syncs) alongside `inFlightOutboxFlushes` & `inFlightCloudSyncs` in [`src/lib/bookshelf-cloud-sync.ts`](src/lib/bookshelf-cloud-sync.ts) | Per-user active Promise identity reuse (`p1 === p2`), mid-flight `dirty*Users` follow-up re-run tracking (retry-loop-safe), `lastSyncTimeRef` `15s` cooldown (`providers.tsx`), & `2,000ms` debounced LWW sync (`preferences-sync.ts`) | Deduplicates overlapping mounts/syncs, queues mutations in persistent `localStorage` outboxes with deletion tombstones, & replays cleanly on `online` | Zero duplicate Supabase `/user` or PostgREST bursts, zero duplicate shelf items, zero resurrected deleted books, and zero race-condition state flicker. |',
     '| **10. PostgreSQL Statement Timeout (`57014`) in CLI Sync** | Error code inspection in [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | Sticky dynamic write chunk sizing (`100 -> 50 -> 25` rows) + recursive batch halving + exponential retry backoff (`1s, 2s, 4s`) | Verifies pre-retry DB state (`filterChangedOrNewBooks`), splits timed-out upsert batches in half, and falls back to `scripts/data/wikidata-translations-cache.json` if Wikidata is down | Weekly 78,000-book catalog and translation sync completes reliably on free-tier database instances. |',
-    '| **11. Edge Quote Pool Gateway Unavailable (`GET /api/books?pool=quotes` -> `HTTP 503`)** | `!result` when `queryOptions.pool === "quotes"` in [`src/app/api/books/route.ts`](src/app/api/books/route.ts) & [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) | Returns `503` with `Cache-Control: no-store, max-age=0` (never falling back to quote-less Gutendex or poisoning Edge CDN cache) | `fetchQuoteEnrichedBooks` cascades from Edge `/api/books?pool=quotes` -> Direct Client Supabase -> `localStorage` (`bookarium-quote-enriched-books-v1`) -> Static Curated Anthology (`FEATURED_HERO_BOOKS` & `LITERARY_QUOTES`) | 3D Hero Book, Classic of the Day, and Words That Shaped Humanity render authentic literary quotes with zero empty states or text swaps. |',
+    '| **11. Edge Quote Pool Gateway Unavailable (`GET /api/books?pool=quotes` -> `HTTP 503`)** | `!result` when `queryOptions.pool === "quotes"` in [`src/app/api/books/route.ts`](src/app/api/books/route.ts) & [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) | Returns `503` with `Cache-Control: no-store, max-age=0` (never falling back to unquoted fallback data or poisoning Edge CDN cache) | `fetchQuoteEnrichedBooks` cascades from Edge `/api/books?pool=quotes` -> Direct Client Supabase -> `localStorage` (`bookarium-quote-enriched-books-v1`) -> Static Curated Anthology (`FEATURED_HERO_BOOKS` & `LITERARY_QUOTES`) | 3D Hero Book, Classic of the Day, and Words That Shaped Humanity render authentic literary quotes with zero empty states or text swaps. |',
     '',
     '---',
     '',
@@ -2426,7 +2433,7 @@ function generateMarkdown() {
     '    subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]',
     '        Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• In-Memory 24h Metadata LRU (1,000 entries), 20-Book Text LRU & Rate Limiters"]',
     `        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\\n• ${dbCatalog.tables.length} RLS Tables • ${dbCatalog.indexes.length} B-Tree/GIN Indexes • ${dbCatalog.functions.length} Stored Functions")]`,
-    '        GutenbergUS["🏛️ Project Gutenberg & Gutendex Nodes (US-East Adjacent)"]',
+    '        GutenbergUS["🏛️ Project Gutenberg Mirror Nodes (US-East Adjacent)"]',
     '    end',
     '',
     '    subgraph GitHubOps ["GitHub Actions Autonomous CI/CD & Data Operations"]',
@@ -2552,7 +2559,7 @@ function generateMarkdown() {
     '',
     '| Untrusted Input Source (Taint Origin) | Trust Boundary Transition | Canonical Sanitizer / Validator Module | Enforced Security Invariants | Protected Downstream Sink |',
     '| :--- | :--- | :--- | :--- | :--- |',
-    '| **Public API Query Params (`request.url`, `searchParams`)** | Browser / Edge -> `/api/books/**` | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) (`hasUnexpectedQueryParams`, `buildApiSecurityHeaders`) & [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) (`parseCatalogQuery`) | Strict per-route allowlists (`400 no-store` on unknown keys or production `?country=`), `s` gated to `type=card`, bounded `page <= 5000` / `offset < 160_000` / `pool=quotes` (`DEFAULT_QUOTE_POOL_LIMIT = 48`) / translation `id <= 10_000_000`, `CORP` (`cross-origin` on `type=card`, `same-origin` elsewhere) & `copyright=false` | `SupabaseCatalogProvider`, `GutendexCatalogProvider`, `next/og` & `book_translations` |',
+    '| **Public API Query Params (`request.url`, `searchParams`)** | Browser / Edge -> `/api/books/**` | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) (`hasUnexpectedQueryParams`, `buildApiSecurityHeaders`) & [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) (`parseCatalogQuery`) | Strict per-route allowlists (`400 no-store` on unknown keys or production `?country=`), `s` gated to `type=card`, bounded `page <= 5000` / `offset < 160_000` / `pool=quotes` (`DEFAULT_QUOTE_POOL_LIMIT = 48`) / translation `id <= 10_000_000`, `CORP` (`cross-origin` on `type=card`, `same-origin` elsewhere) & `copyright=false` | `SupabaseCatalogProvider`, `searchCuratedCatalogFallback`, `next/og` & `book_translations` |',
     '| **Upstream Mirror URL & Redirect Hops (`?url=`, `Location` header)** | `/api/books/content` -> External Mirror | [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) (`isSafeUpstreamUrl`, `sanitizeUpstreamUrl`) | Strictly `https:` protocol, zero credentials/ports, 4 allowlisted Gutenberg domains, re-validated on every `301`/`302` redirect hop (max 3) | Server `fetch()` in `/api/books/content` |',
     '| **Auth Callback Redirect (`?next=`, `origin`, `x-forwarded-host`)** | External OAuth / Magic Link -> `/auth/callback` | [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`) | Rejects `//`, `http:`, `javascript:`, backslash tricks, and foreign hosts; locks redirect origin to `NEXT_PUBLIC_SITE_URL` | `NextResponse.redirect()` in `/auth/callback` |',
     '| **Persisted Cloud Preferences & Dynamic Object Keys (`profiles.preferences`)** | Cloud / Local Storage -> Client State Hydration | [`src/lib/preferences-sync.ts`](src/lib/preferences-sync.ts) (`normalizePreferencesSnapshot`) & [`scripts/eslint-rules/bookarium-security.js`](scripts/eslint-rules/bookarium-security.js) (`no-tainted-request-sink`) | Strict 13-key schema normalization, finite range clamping, and prototype-pollution key rejection (`__proto__`, `constructor`, `prototype`) | Zustand Stores (`usePreferencesStore`, `useReaderStore`, `useThemeStore`) |',

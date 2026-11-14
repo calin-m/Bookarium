@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
@@ -6,6 +6,11 @@ import { booksApiRateLimiter } from '@/lib/rate-limiter';
 describe('GET /api/books route handler', () => {
   beforeEach(() => {
     booksApiRateLimiter.reset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('should reject unsupported query params and production ?country= overrides with 400 no-store and same-origin CORP', async () => {
@@ -45,298 +50,149 @@ describe('GET /api/books route handler', () => {
     expect(blockedRes.headers.get('X-RateLimit-Remaining')).toBe('0');
   });
 
-  it('should fetch and return public domain books JSON with zero copyright and latencyMs', async () => {
+  it('serves deterministic curated archive cache with no-store when Supabase is unconfigured', async () => {
     const req = new NextRequest('http://localhost:3000/api/books?search=Jane+Austen');
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
     expect(json.results).toBeDefined();
     expect(Array.isArray(json.results)).toBe(true);
-    expect(json.count).toBeDefined();
-    expect(json.source).toBe('upstream');
+    expect(json.results.some((b: { id: number }) => b.id === 1342)).toBe(true);
+    expect(json.count).toBeGreaterThanOrEqual(1);
+    expect(json.source).toBe('cache');
     expect(json.latencyMs).toBeDefined();
     expect(json.clientCountry).toBe('US');
     expect(json.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
-    expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
-  });
-
-  it('should forward copyright=false to upstream Gutendex API', async () => {
-    let capturedUrl = '';
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
-      capturedUrl = String(input);
-      return new Response(JSON.stringify({ count: 1, results: [] }), { status: 200 });
-    });
-
-    const req = new NextRequest('http://localhost:3000/api/books?search=Austen');
-    await GET(req);
-
-    expect(capturedUrl).toContain('copyright=false');
-    fetchSpy.mockRestore();
-  });
-
-  it('should filter out authors who died within Life + 70 when requested from GB', async () => {
-    const mockResults = [
-      {
-        id: 1342,
-        title: 'Pride and Prejudice',
-        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-        translators: [],
-        copyright: false,
-      },
-      {
-        id: 863,
-        title: 'The Mysterious Affair at Styles',
-        authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
-        translators: [],
-        copyright: false,
-      },
-    ];
-
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ count: 2, results: mockResults }), { status: 200 })
+    expect(res.headers.get('Vary')).toBe(
+      'x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding'
     );
+  });
 
-    const req = new NextRequest('http://localhost:3000/api/books?search=detective', {
+  it('forwards Life+70 and Life+100 jurisdiction headers and dev ?country= overrides cleanly', async () => {
+    const gbReq = new NextRequest('http://localhost:3000/api/books?ids=1342,64317', {
       headers: {
         'x-vercel-ip-country': 'GB',
       },
     });
-    const res = await GET(req);
-    expect(res.status).toBe(200);
+    const gbRes = await GET(gbReq);
+    expect(gbRes.status).toBe(200);
+    const gbJson = await gbRes.json();
+    expect(gbJson.clientCountry).toBe('GB');
+    expect(gbJson.jurisdictionRule).toBe('LIFE_70');
+    expect(gbJson.source).toBe('cache');
 
-    const json = await res.json();
-    expect(json.clientCountry).toBe('GB');
-    expect(json.jurisdictionRule).toBe('LIFE_70');
-    expect(json.totalFiltered).toBe(1);
-    expect(json.results).toHaveLength(1);
-    expect(json.results[0].title).toBe('Pride and Prejudice');
+    const mxReq = new NextRequest('http://localhost:3000/api/books?ids=1342,64317', {
+      headers: {
+        'cf-ipcountry': 'MX',
+      },
+    });
+    const mxRes = await GET(mxReq);
+    expect(mxRes.status).toBe(200);
+    const mxJson = await mxRes.json();
+    expect(mxJson.clientCountry).toBe('MX');
+    expect(mxJson.jurisdictionRule).toBe('LIFE_100');
+    expect(mxJson.totalFiltered).toBeGreaterThanOrEqual(1);
+    expect(mxJson.results).toHaveLength(1);
+    expect(mxJson.results[0].id).toBe(1342);
 
-    fetchSpy.mockRestore();
-  });
-
-  it('should filter out protected authors in local development via ?country=GB query parameter without headers', async () => {
     vi.stubEnv('NODE_ENV', 'development');
-
-    const mockResults = [
-      {
-        id: 1342,
-        title: 'Pride and Prejudice',
-        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-        translators: [],
-        copyright: false,
-      },
-      {
-        id: 863,
-        title: 'The Mysterious Affair at Styles',
-        authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
-        translators: [],
-        copyright: false,
-      },
-    ];
-
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ count: 2, results: mockResults }), { status: 200 })
+    const devOverrideReq = new NextRequest(
+      'http://localhost:3000/api/books?ids=64317&country=MX'
     );
-
-    const req = new NextRequest('http://localhost:3000/api/books?search=detective&country=GB');
-    const res = await GET(req);
-    expect(res.status).toBe(200);
-
-    const json = await res.json();
-    expect(json.clientCountry).toBe('GB');
-    expect(json.jurisdictionRule).toBe('LIFE_70');
-    expect(json.totalFiltered).toBe(1);
-    expect(json.results).toHaveLength(1);
-    expect(json.results[0].title).toBe('Pride and Prejudice');
-
-    fetchSpy.mockRestore();
+    const devOverrideRes = await GET(devOverrideReq);
+    expect(devOverrideRes.status).toBe(200);
+    const devJson = await devOverrideRes.json();
+    expect(devJson.clientCountry).toBe('MX');
+    expect(devJson.jurisdictionRule).toBe('LIFE_100');
+    expect(devJson.results).toEqual([]);
     vi.unstubAllEnvs();
   });
 
-  it('should filter out authors who died within Life + 100 when requested from Mexico (MX)', async () => {
-    const mockResults = [
-      {
-        id: 1342,
-        title: 'Pride and Prejudice',
-        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-        translators: [],
-        copyright: false,
-      },
-      {
-        id: 64317,
-        title: 'The Great Gatsby',
-        authors: [{ name: 'Fitzgerald, F. Scott', birth_year: 1896, death_year: 1940 }],
-        translators: [],
-        copyright: false,
-      },
-    ];
-
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ count: 2, results: mockResults }), { status: 200 })
-    );
-
-    const req = new NextRequest('http://localhost:3000/api/books?search=gatsby', {
-      headers: {
-        'x-vercel-ip-country': 'MX',
-      },
-    });
-    const res = await GET(req);
-    expect(res.status).toBe(200);
-
-    const json = await res.json();
-    expect(json.clientCountry).toBe('MX');
-    expect(json.jurisdictionRule).toBe('LIFE_100');
-    expect(json.totalFiltered).toBe(1);
-    expect(json.results).toHaveLength(1);
-    expect(json.results[0].title).toBe('Pride and Prejudice');
-
-    fetchSpy.mockRestore();
-  });
-
-  it('should pass topic, language, page, era, sort, and mime_type query parameters', async () => {
-    const req = new NextRequest(
-      'http://localhost:3000/api/books?topic=Philosophy&languages=en&page=2&author_year_start=1800&author_year_end=1900&sort=popular&mime_type=text/html'
-    );
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
-    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
-    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
-    const json = await res.json();
-    expect(json.results).toBeDefined();
-  });
-
-  it('should ignore single-character search queries to protect upstream API', async () => {
-    let capturedUrl = '';
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
-      capturedUrl = String(input);
-      return new Response(JSON.stringify({ count: 10, results: [] }), { status: 200 });
-    });
-
-    const req = new NextRequest('http://localhost:3000/api/books?search=a');
-    await GET(req);
-
-    expect(capturedUrl).not.toContain('search=');
-    fetchSpy.mockRestore();
-  });
-
-  it('should normalize whitespace in search queries when passing to upstream API', async () => {
-    let capturedUrl = '';
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementationOnce(async (input) => {
-      capturedUrl = String(input);
-      return new Response(JSON.stringify({ count: 10, results: [] }), { status: 200 });
-    });
-
-    const req = new NextRequest('http://localhost:3000/api/books?search=Charles%20%20%20Dickens');
-    await GET(req);
-
-    expect(capturedUrl).toContain('search=Charles+Dickens');
-    fetchSpy.mockRestore();
-  });
-
-  it('should return error response when upstream API returns an error status', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ detail: 'Invalid query parameter' }), {
-        status: 400,
-        statusText: 'Bad Request',
-      })
-    );
-
-    const req = new NextRequest('http://localhost:3000/api/books?page=999999');
-    const res = await GET(req);
-
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toContain('Upstream Gutenberg API error');
-    expect(json.results).toHaveLength(0);
-    fetchSpy.mockRestore();
-  });
-
-  it('should return 502 status code when network connection fails', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network connection failed'));
-
-    const req = new NextRequest('http://localhost:3000/api/books?page=1');
-    const res = await GET(req);
-
-    expect(res.status).toBe(502);
-    const json = await res.json();
-    expect(json.error).toContain('Unable to connect to Gutenberg API');
-    expect(json.results).toHaveLength(0);
-    fetchSpy.mockRestore();
-  });
-
-  it('should return 504 status code when upstream API times out via AbortError', async () => {
-    const abortError = new Error('The operation was aborted');
-    abortError.name = 'AbortError';
-    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValueOnce(abortError);
-
-    const req = new NextRequest('http://localhost:3000/api/books?page=1');
-    const res = await GET(req);
-
-    expect(res.status).toBe(504);
-    const json = await res.json();
-    expect(json.error).toContain('Gutenberg API request timed out');
-    expect(json.results).toHaveLength(0);
-    fetchSpy.mockRestore();
-  });
-
-  it('should return 502 status code when upstream API returns invalid non-JSON body', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response('<html>Error</html>', {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' },
-      })
-    );
-    const req = new NextRequest('http://localhost:3000/api/books?search=Test');
-    const res = await GET(req);
-
-    expect(res.status).toBe(502);
-    const json = await res.json();
-    expect(json.error).toContain('Invalid JSON response');
-    expect(json.results).toHaveLength(0);
-    fetchSpy.mockRestore();
-  });
-
-  it('should query Supabase provider first when healthy and return source supabase', async () => {
+  it('passes topic, language, page, era, sort, mime_type, and normalized search parameters to catalog provider', async () => {
     const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
     const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValueOnce(true);
     const searchBooksSpy = vi.spyOn(supabaseCatalogProvider, 'searchBooks').mockResolvedValueOnce({
       count: 1,
       next: null,
-      previous: null,
-      results: [
-        {
-          id: 1342,
-          title: 'Pride and Prejudice',
-          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-          translators: [],
-          subjects: ['Courtship -- Fiction'],
-          bookshelves: [],
-          languages: ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: {},
-          download_count: 50000,
-        },
-      ],
+      previous: '/api/books?page=1',
+      results: [],
       source: 'supabase',
-      latencyMs: 12,
+      latencyMs: 8,
       clientCountry: 'US',
       jurisdictionRule: 'US_PUBLIC_DOMAIN',
     });
+
+    const req = new NextRequest(
+      'http://localhost:3000/api/books?search=Charles%20%20%20Dickens&topic=Philosophy&languages=en&page=2&author_year_start=1800&author_year_end=1900&sort=popular&mime_type=text/html'
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
+    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(searchBooksSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: 'Charles Dickens',
+        topic: 'Philosophy',
+        languages: ['en'],
+        page: 2,
+        authorYearStart: 1800,
+        authorYearEnd: 1900,
+        sort: 'popular',
+        mimeType: 'text/html',
+      })
+    );
+
+    isHealthySpy.mockRestore();
+    searchBooksSpy.mockRestore();
+  });
+
+  it('should query Supabase directly when configured and return source supabase without falling back on error', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    const { CatalogProviderError } = await import('@/types/catalog.types');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon-key-valid');
+
+    // Configured Supabase bypasses negative isHealthy latch so stale failure caches cannot split users
+    const isHealthySpy = vi
+      .spyOn(supabaseProviderModule.supabaseCatalogProvider, 'isHealthy')
+      .mockResolvedValue(false);
+    const searchBooksSpy = vi
+      .spyOn(supabaseProviderModule.supabaseCatalogProvider, 'searchBooks')
+      .mockResolvedValueOnce({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 1342,
+            title: 'Pride and Prejudice',
+            authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+            translators: [],
+            subjects: ['Courtship -- Fiction'],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 50000,
+          },
+        ],
+        source: 'supabase',
+        latencyMs: 12,
+        clientCountry: 'US',
+        jurisdictionRule: 'US_PUBLIC_DOMAIN',
+      });
 
     const req = new NextRequest('http://localhost:3000/api/books?search=Pride');
     const res = await GET(req);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
+    expect(res.headers.get('Cache-Control')).toContain('max-age=300');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
@@ -345,48 +201,27 @@ describe('GET /api/books route handler', () => {
     expect(json.results).toHaveLength(1);
     expect(json.results[0].title).toBe('Pride and Prejudice');
 
-    isHealthySpy.mockRestore();
-    searchBooksSpy.mockRestore();
-  });
-
-  it('should gracefully degrade to upstream Gutendex when Supabase provider throws an error', async () => {
-    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
-    const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValueOnce(true);
-    const searchBooksSpy = vi.spyOn(supabaseCatalogProvider, 'searchBooks').mockRejectedValueOnce(
-      new Error('Supabase database connection timeout')
+    // When configured Supabase throws CatalogProviderError or unexpected error, fails closed with no-store (never falls back to partial cache)
+    searchBooksSpy.mockRejectedValueOnce(
+      new CatalogProviderError('Supabase Catalog query error: connection reset', 503, 'supabase')
     );
+    const errRes = await GET(new NextRequest('http://localhost:3000/api/books?search=Pride'));
+    expect(errRes.status).toBe(503);
+    expect(errRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    const errJson = await errRes.json();
+    expect(errJson.error).toBe('Catalog database temporarily unavailable. Please try again.');
+    expect(errJson.results).toEqual([]);
 
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({
-        count: 1,
-        results: [
-          {
-            id: 1342,
-            title: 'Pride and Prejudice',
-            authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-            translators: [],
-            copyright: false,
-          },
-        ],
-      }), { status: 200 })
-    );
-
-    const req = new NextRequest('http://localhost:3000/api/books?search=Pride');
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
-    expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
-    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
-    expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
-    const json = await res.json();
-    expect(json.source).toBe('upstream');
-    expect(json.results).toHaveLength(1);
-    expect(json.results[0].title).toBe('Pride and Prejudice');
+    searchBooksSpy.mockRejectedValueOnce(new Error('Unexpected runtime error'));
+    const fallbackErrRes = await GET(new NextRequest('http://localhost:3000/api/books?page=1'));
+    expect(fallbackErrRes.status).toBe(503);
+    expect(fallbackErrRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    const fallbackErrJson = await fallbackErrRes.json();
+    expect(fallbackErrJson.error).toBe('Catalog database temporarily unavailable. Please try again.');
 
     isHealthySpy.mockRestore();
     searchBooksSpy.mockRestore();
-    fetchSpy.mockRestore();
+    vi.unstubAllEnvs();
   });
 
   it('should return 503 with no-store when pool=quotes and Supabase is unavailable', async () => {

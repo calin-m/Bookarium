@@ -16,13 +16,13 @@ export interface CatalogTelemetryBadgeProps {
   page: number;
   activeFetching: boolean;
   latencyMs?: number;
-  catalogSource?: 'supabase' | 'upstream' | 'cache';
+  catalogSource?: 'supabase' | 'cache';
   isError?: boolean;
 }
 
 /**
  * Zero-CLS Unified Catalog API Status, Latency & Dual-Service Diagnostic Radar Pill
- * (`Bookarium DB` + `Gutendex API`) with automatic viewport-collision placement.
+ * (`Bookarium DB` + `Curated Archive Cache`) with automatic viewport-collision placement.
  */
 export const CatalogTelemetryBadge: React.FC<CatalogTelemetryBadgeProps> = ({
   page,
@@ -81,11 +81,7 @@ export const CatalogTelemetryBadge: React.FC<CatalogTelemetryBadgeProps> = ({
     !isError && (latencyMs === undefined || isNaN(latencyMs));
   const displayLatencyText = formatApiLatency(latencyMs);
   const catalogProviderLabel =
-    catalogSource === 'supabase'
-      ? 'Bookarium Catalog'
-      : catalogSource === 'upstream'
-      ? 'Project Gutenberg Mirror'
-      : 'Bookarium Catalog';
+    catalogSource === 'cache' ? 'Curated Archive Cache' : 'Bookarium Catalog';
 
   return (
     <div
@@ -222,25 +218,25 @@ export const CatalogTelemetryBadge: React.FC<CatalogTelemetryBadgeProps> = ({
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
-                  !isError && catalogSource === 'upstream'
+                  !isError && catalogSource === 'cache'
                     ? 'bg-success'
                     : isError
                     ? 'bg-destructive'
                     : 'bg-muted-foreground/40'
                 }`}
               />
-              Gutendex API
+              Curated Archive Cache
             </span>
             <span
               className={
-                !isError && catalogSource === 'upstream'
+                !isError && catalogSource === 'cache'
                   ? 'text-success font-semibold'
                   : 'text-muted-foreground'
               }
             >
               {isError
                 ? 'Offline'
-                : catalogSource === 'upstream'
+                : catalogSource === 'cache'
                 ? `Active · ${displayLatencyText}`
                 : 'Standby'}
             </span>
@@ -251,18 +247,18 @@ export const CatalogTelemetryBadge: React.FC<CatalogTelemetryBadgeProps> = ({
           {activeFetching ? (
             <>
               Scanning through <strong>70,000+ public domain titles</strong>.
-              Large page offsets compute deep relational queries on live
-              Gutenberg servers and may take a moment to deliver.
+              Large page offsets compute deep relational queries on the catalog
+              index and may take a moment to deliver.
             </>
           ) : isError ? (
             <>
               Network or service unavailable. Your cached bookshelf, saved
               quotes, and downloaded books remain fully accessible offline.
             </>
-          ) : catalogSource === 'upstream' ? (
+          ) : catalogSource === 'cache' ? (
             <>
-              Serving public domain volumes via the upstream Gutendex REST
-              mirror. Automatic failover active.
+              Serving curated public domain classics from the offline archive
+              cache while database credentials are unconfigured.
             </>
           ) : (
             <>

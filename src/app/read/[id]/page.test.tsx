@@ -32,7 +32,7 @@ const mockUseBooks = vi.fn((..._args: unknown[]) => ({
   data: {
     count: 1,
     results: [mockBooks[0]],
-    source: 'upstream',
+    source: 'supabase',
   },
   isLoading: false,
 }));

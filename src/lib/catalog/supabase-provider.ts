@@ -321,7 +321,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
   /**
    * Health check verifying Supabase connectivity and presence of catalog records.
-   * Returns false if unconfigured, unreachable, or table is empty (triggering Gutendex fallback).
+   * Returns false if unconfigured, unreachable, or table is empty.
    * Caches result for 60 seconds to eliminate redundant network roundtrips on consecutive queries.
    */
   public async isHealthy(): Promise<boolean> {
@@ -654,7 +654,6 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     const page = Math.max(1, options.page || 1);
     const limit = Math.max(1, Math.min(100, options.limit || 32));
     const from = (page - 1) * limit;
-    const to = from + limit - 1;
 
     if (from >= MAX_CATALOG_OFFSET) {
       return {
@@ -696,19 +695,28 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     const supabase = this.getSupabase();
 
     try {
-      const baseQuery = this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear);
+      const executeInitialProbe = async () => {
+        const res = await this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear)
+          .range(from, from + limit);
+        if (res.error) {
+          throw new CatalogProviderError(
+            `Supabase Catalog query error: ${res.error.message}`,
+            500,
+            'supabase'
+          );
+        }
+        return res;
+      };
 
-      const query = baseQuery.range(from, to);
-
-      const { data, count, error } = await query;
-
-      if (error) {
-        throw new CatalogProviderError(
-          `Supabase Catalog query error: ${error.message}`,
-          500,
-          'supabase'
-        );
+      let initialProbe;
+      try {
+        initialProbe = await executeInitialProbe();
+      } catch {
+        // Single fast transient retry for cold serverless connection hiccups
+        initialProbe = await executeInitialProbe();
       }
+
+      const { data, count } = initialProbe;
 
       this.lastHealthCheckTime = Date.now();
       this.lastHealthCheckResult = true;
@@ -719,21 +727,25 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       let totalFiltered = initialBatch.restrictedCount;
       let totalSentinelFiltered = initialBatch.sentinelCount;
 
-      // Resilient dynamic backfill: if runtime jurisdictional or format filtering withheld
-      // rows and we haven't reached the end of the table, top up until finalResults.length === limit.
+      let sqlExhausted = rawRows.length < limit + 1;
+      const targetValidCount = limit + 1;
+
+      // Exact limit + 1 probing & bounded backfill: whenever runtime jurisdictional or format filtering
+      // withholds rows and SQL has not reached EOF, top up toward limit + 1 compliant items so pagination
+      // links accurately reflect real available items beyond inaccurate estimated row counts.
       if (
-        finalResults.length < limit &&
-        rawRows.length === limit &&
+        finalResults.length < targetValidCount &&
+        !sqlExhausted &&
         !options.includeRestrictedMetadata
       ) {
-        let nextOffset = to + 1;
+        let nextOffset = from + rawRows.length;
         let iterations = 0;
-        const MAX_BACKFILL_ITERATIONS = 2;
+        const MAX_BACKFILL_ITERATIONS = 5;
 
-        while (finalResults.length < limit && iterations < MAX_BACKFILL_ITERATIONS) {
+        while (finalResults.length < targetValidCount && iterations < MAX_BACKFILL_ITERATIONS) {
           iterations++;
-          const deficit = limit - finalResults.length;
-          const fetchBatch = Math.max(deficit * 2, 8);
+          const deficit = targetValidCount - finalResults.length;
+          const fetchBatch = Math.max(deficit * 2, 32);
           const backfillQuery = this.buildSearchQuery(
             supabase,
             options,
@@ -742,7 +754,11 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           ).range(nextOffset, nextOffset + fetchBatch - 1);
 
           const { data: backfillData, error: backfillError } = await backfillQuery;
-          if (backfillError || !backfillData || backfillData.length === 0) {
+          if (backfillError) {
+            break;
+          }
+          if (!backfillData || backfillData.length === 0) {
+            sqlExhausted = true;
             break;
           }
 
@@ -752,7 +768,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           totalSentinelFiltered += backfillBatch.sentinelCount;
 
           for (const book of backfillBatch.validBooks) {
-            if (finalResults.length < limit) {
+            if (finalResults.length < targetValidCount) {
               finalResults.push(book);
             } else {
               break;
@@ -761,19 +777,34 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
 
           nextOffset += rawBackfill.length;
           if (rawBackfill.length < fetchBatch) {
+            sqlExhausted = true;
             break;
           }
         }
       }
 
-      const totalCount =
+      const pageResults = finalResults.slice(0, limit);
+      const hasNext =
+        finalResults.length > limit || (!sqlExhausted && pageResults.length === limit);
+
+      const estimatedAdjusted =
         count !== null && count !== undefined
           ? Math.max(0, count - totalFiltered - totalSentinelFiltered)
-          : finalResults.length;
+          : 0;
+
+      const totalCount =
+        pageResults.length === 0 && sqlExhausted
+          ? from === 0
+            ? 0
+            : Math.min(from, estimatedAdjusted)
+          : sqlExhausted
+            ? from + pageResults.length
+            : count !== null && count !== undefined
+              ? Math.max(from + pageResults.length, estimatedAdjusted)
+              : from + pageResults.length;
       const latencyMs = Date.now() - startTime;
 
       // Next / previous pagination links
-      const hasNext = from + limit < (count ?? 0);
       const hasPrev = page > 1;
 
       const nextUrl = hasNext ? `/api/books?page=${page + 1}` : null;
@@ -783,7 +814,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         count: totalCount,
         next: nextUrl,
         previous: prevUrl,
-        results: finalResults,
+        results: pageResults,
         source: 'supabase',
         latencyMs,
         clientCountry: country,

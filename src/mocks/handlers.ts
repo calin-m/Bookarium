@@ -185,53 +185,6 @@ This was invitation enough.
 `;
 
 export const handlers = [
-  // Direct Gutendex API handler
-  http.get('https://gutendex.com/books', ({ request }) => {
-    const url = new URL(request.url);
-    const search = url.searchParams.get('search')?.toLowerCase() || '';
-    const topic = url.searchParams.get('topic')?.toLowerCase() || '';
-    const languages = url.searchParams.get('languages')?.toLowerCase() || '';
-    const ids = url.searchParams.get('ids');
-
-    let filtered = [...mockBooks];
-
-    if (ids) {
-      const idList = ids.split(',').map((id) => parseInt(id.trim(), 10)).filter((n) => !isNaN(n));
-      if (idList.length > 0) {
-        filtered = filtered.filter((b) => idList.includes(b.id));
-      }
-    }
-
-    if (search) {
-      filtered = filtered.filter(
-        (b) =>
-          b.title.toLowerCase().includes(search) ||
-          b.authors.some((a) => a.name.toLowerCase().includes(search)) ||
-          b.subjects.some((s) => s.toLowerCase().includes(search))
-      );
-    }
-
-    if (topic) {
-      filtered = filtered.filter(
-        (b) =>
-          b.subjects.some((s) => s.toLowerCase().includes(topic)) ||
-          b.bookshelves.some((bs) => bs.toLowerCase().includes(topic))
-      );
-    }
-
-    if (languages) {
-      const langs = languages.split(',');
-      filtered = filtered.filter((b) => b.languages.some((l) => langs.includes(l.toLowerCase())));
-    }
-
-    return HttpResponse.json({
-      count: filtered.length,
-      next: null,
-      previous: null,
-      results: filtered,
-    });
-  }),
-
   // Next.js internal API proxy handler
   http.get('/api/books', ({ request }) => {
     const url = new URL(request.url, 'http://localhost:3000');
@@ -382,37 +335,6 @@ export const handlers = [
     }
 
     return HttpResponse.json({ results: [] });
-  }),
-
-  // Direct Gutendex trailing-slash & single-book metadata handlers
-  http.get('https://gutendex.com/books/', ({ request }) => {
-    const url = new URL(request.url);
-    const ids = url.searchParams.get('ids');
-    let filtered = [...mockBooks];
-    if (ids) {
-      const idList = ids
-        .split(',')
-        .map((id) => parseInt(id.trim(), 10))
-        .filter((n) => !isNaN(n));
-      if (idList.length > 0) {
-        filtered = filtered.filter((b) => idList.includes(b.id));
-      }
-    }
-    return HttpResponse.json({
-      count: filtered.length,
-      next: null,
-      previous: null,
-      results: filtered,
-    });
-  }),
-  http.get(/https:\/\/gutendex\.com\/books\/(\d+)\/?$/, ({ request }) => {
-    const match = request.url.match(/\/books\/(\d+)\/?$/);
-    const id = match ? parseInt(match[1], 10) : NaN;
-    const found = mockBooks.find((b) => b.id === id);
-    if (!found) {
-      return HttpResponse.json({ detail: 'Not found.' }, { status: 404 });
-    }
-    return HttpResponse.json(found);
   }),
 
   // Default catch-all Supabase PostgREST, Auth, Storage, Realtime, Functions & GraphQL handlers

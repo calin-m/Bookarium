@@ -141,7 +141,7 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
   let breadcrumbJsonLd: Record<string, unknown> | null = null;
 
   if (bookId && !isNaN(bookId) && bookId > 0) {
-    // For client-side transitions, never block layout rendering on remote Gutendex API
+    // For client-side transitions, avoid blocking layout rendering on remote metadata lookups
     const isClientTransition = await isClientSideNavigation();
     const bookData = (!isClientTransition || serverMetadataCache.has(bookId))
       ? await fetchBookData(bookId)

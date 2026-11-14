@@ -27,7 +27,6 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(SITE_CONFIG.GITHUB_PROFILE).toBe('https://github.com/calin-m');
     expect(SITE_CONFIG.USER_AGENT).toContain('Bookarium-PublicDomain-Reader/1.0');
     expect(SITE_CONFIG.PROJECT_GUTENBERG).toBe('https://www.gutenberg.org');
-    expect(SITE_CONFIG.GUTENDEX).toBe('https://gutendex.com');
   });
 
   it('dynamically resolves repository URL across environments without hardcoding personal usernames', () => {

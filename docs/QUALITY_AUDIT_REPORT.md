@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 14 Nov 2026 10:16:40 GMT  
+**Last Generated**: Sat, 14 Nov 2026 13:22:17 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 254 passed  
-**Total Verified Tests**: 2587 passed  
+**Total Test Suites**: 255 passed  
+**Total Verified Tests**: 2573 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **254/254 test suites passed** (2587 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **255/255 test suites passed** (2573 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.59%** (14903/15428) — *Target: $\ge$ 95%*
-- **Statements**: **95.29%** (16047/16839) — *Target: $\ge$ 95%*
-- **Functions**: **94.16%** (3226/3426) — *Target: $\ge$ 92%*
-- **Branches**: **87.84%** (14823/16875) — *Target: $\ge$ 85%*
+- **Lines**: **96.51%** (15189/15738) — *Target: $\ge$ 95%*
+- **Statements**: **95.17%** (16355/17184) — *Target: $\ge$ 95%*
+- **Functions**: **94.28%** (3300/3500) — *Target: $\ge$ 92%*
+- **Branches**: **87.57%** (15180/17333) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (254 Suites / 2587 Tests)
+## 🧪 Comprehensive Test Suite Catalog (255 Suites / 2573 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 327 Tests)
+### 🚀 App Routes & Pages (31 Suites · 317 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,7 +46,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (25 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top`
 - ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
@@ -68,6 +68,7 @@
 - ✔ `enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs`
 - ✔ `covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)`
 - ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
+- ✔ `manages Active Device Sessions revocation, Sign Out Other Devices, and confirmed Sign Out All Devices on Security tab`
 - ✔ `renders offline banner and guest local workspace when offline as a guest, and authenticated offline banner when signed in`
 - ✔ `automatically defaults to security tab in recovery mode when tabParam is omitted (?recovery=true)`
 - ✔ `suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])`
@@ -76,17 +77,15 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/app/api/books/content/metadata-cache.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `stores and retrieves cached metadata correctly`
 - ✔ `returns cached metadata if not expired without network fetch`
-- ✔ `fetches metadata from upstream with trailing slash when not cached and Supabase is unconfigured`
+- ✔ `resolves bundled FEATURED_HERO_BOOKS metadata without HTTP fetch when unconfigured, and returns null for unknown IDs`
 - ✔ `resolves metadata directly from Supabase when configured and present`
-- ✔ `degrades gracefully to upstream Gutendex when Supabase query times out`
-- ✔ `falls back to upstream Gutendex when Supabase record is not found`
-- ✔ `returns null when upstream returns error status`
-- ✔ `returns null when network throws an error`
-- ✔ `enriches missing lifespans and falls back to FEATURED_HERO_BOOKS for curated classics`
+- ✔ `degrades gracefully to bundled FEATURED_HERO_BOOKS when Supabase query times out`
+- ✔ `falls back to bundled FEATURED_HERO_BOOKS when Supabase record is not found and returns null for unknown IDs`
+- ✔ `enriches missing lifespans on Supabase records from FEATURED_HERO_BOOKS`
 - ✔ `stores, refreshes, expires, and caps bookContentLruCache entries`
 - ✔ `caps bookMetadataCache at MAX_METADATA_CACHE_ENTRIES and evicts expired entries on lookup`
 - ✔ `anchors metadata and content LRU caches on globalThis to survive Next.js HMR reloads`
@@ -171,24 +170,14 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `should reject unsupported query params and production ?country= overrides with 400 no-store and same-origin CORP`
 - ✔ `should return 429 when client exceeds max request rate limit`
-- ✔ `should fetch and return public domain books JSON with zero copyright and latencyMs`
-- ✔ `should forward copyright=false to upstream Gutendex API`
-- ✔ `should filter out authors who died within Life + 70 when requested from GB`
-- ✔ `should filter out protected authors in local development via ?country=GB query parameter without headers`
-- ✔ `should filter out authors who died within Life + 100 when requested from Mexico (MX)`
-- ✔ `should pass topic, language, page, era, sort, and mime_type query parameters`
-- ✔ `should ignore single-character search queries to protect upstream API`
-- ✔ `should normalize whitespace in search queries when passing to upstream API`
-- ✔ `should return error response when upstream API returns an error status`
-- ✔ `should return 502 status code when network connection fails`
-- ✔ `should return 504 status code when upstream API times out via AbortError`
-- ✔ `should return 502 status code when upstream API returns invalid non-JSON body`
-- ✔ `should query Supabase provider first when healthy and return source supabase`
-- ✔ `should gracefully degrade to upstream Gutendex when Supabase provider throws an error`
+- ✔ `serves deterministic curated archive cache with no-store when Supabase is unconfigured`
+- ✔ `forwards Life+70 and Life+100 jurisdiction headers and dev ?country= overrides cleanly`
+- ✔ `passes topic, language, page, era, sort, mime_type, and normalized search parameters to catalog provider`
+- ✔ `should query Supabase directly when configured and return source supabase without falling back on error`
 - ✔ `should return 503 with no-store when pool=quotes and Supabase is unavailable`
 - ✔ `should apply 12h global Edge cache for pool=quotes and 7d global Edge cache for jurisdiction-independent quote/ID lookups`
 
@@ -313,7 +302,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (54 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (55 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -369,6 +358,7 @@
 - ✔ `eliminates standalone BackToTop button in favor of the universal bottom capsule dock`
 - ✔ `allows searching the catalog mid-scroll via the floating capsule dock search button`
 - ✔ `updates catalog section heading dynamically across Recent, Popular, Oldest, and Search states`
+- ✔ `skips phantom empty trailing sub-pages when advancing from a partial catalog batch and auto-clamps deep-linked empty sub-pages`
 
 </details>
 
@@ -415,11 +405,11 @@
 - ✔ `provides safe noindex fallback metadata for invalid book ID`
 - ✔ `bypasses outbound network calls on client-side router navigation (rsc: 1 fast-path)`
 - ✔ `detects client-side navigation correctly from various Next.js headers`
-- ✔ `serves repeated requests from in-memory server cache without network calls`
+- ✔ `serves repeated requests from in-memory server cache without repeated database queries`
 - ✔ `renders children, Schema.org Book JSON-LD, and BreadcrumbList script`
 - ✔ `enriches OpenGraph tags, meta keywords, translators, lifespan dates, formats, and JSON-LD genre array from catalog metadata`
 - ✔ `marks explicitly confirmed-missing numeric book IDs as noindex while preserving fallback UI`
-- ✔ `falls back gracefully without noindex when upstream fetch times out or fails`
+- ✔ `falls back gracefully without noindex when catalog query times out or fails`
 
 </details>
 
@@ -487,10 +477,10 @@
 - ✔ `returns false when headers() throws`
 - ✔ `returns null for non-numeric or falsy book IDs`
 - ✔ `returns cached book immediately if present in serverMetadataCache`
-- ✔ `fetches upstream book and populates serverMetadataCache when Supabase is unconfigured`
+- ✔ `resolves bundled featured book and populates serverMetadataCache without HTTP requests when Supabase is unconfigured`
 - ✔ `resolves book directly from Supabase catalog when configured`
-- ✔ `degrades gracefully to upstream Gutendex when Supabase query times out or fails`
-- ✔ `records confirmed missing IDs on 404 or empty upstream results but never on network exceptions`
+- ✔ `degrades gracefully to bundled FEATURED_HERO_BOOKS when Supabase query times out or fails`
+- ✔ `records confirmed missing IDs only when configured Supabase cleanly returns not-found (not on timeouts or unconfigured env)`
 - ✔ `normalizes tags, lifespan contributors, formats, featured opening hooks, and Gutenberg URL without duplicates`
 - ✔ `falls back safely when subjects, bookshelves, formats, and authentic authors are absent`
 
@@ -550,7 +540,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 574 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 576 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -617,7 +607,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `should render loading skeletons when isLoading is true and match pageSize`
 - ✔ `should render error state with retry button`
@@ -632,6 +622,7 @@
 - ✔ `renders personal shelf management buttons in shelf view when activeView is bookshelf`
 - ✔ `applies tightened 2-column mobile grid gap classes to prevent grid blowout`
 - ✔ `applies responsive container and pagination bar spacing classes`
+- ✔ `keeps pagination controls accessible on empty pages beyond page 1 so users can navigate back`
 
 </details>
 
@@ -774,7 +765,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (60 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (61 tests)</summary>
 
 - ✔ `renders shelf with books and invariant minimum shelf height to prevent layout shifts`
 - ✔ `renders empty message when no books are provided`
@@ -836,6 +827,7 @@
 - ✔ `resets form state when closing Create New Bookshelf modal`
 - ✔ `renders shelves in a kinetic single-row horizontal strip with compact top padding`
 - ✔ `renders Downloaded pill at full merged count without intermediate flicker when IndexedDB metadata resolves slower than IDs`
+- ✔ `isolates Catalog shelf view (showShelfControls=false) from activeDownloaded shelf and custom shelf state`
 
 </details>
 
@@ -1343,7 +1335,7 @@
 - ✔ `applies translate-y-0 when isHeaderVisible is true and -translate-y-16 when false`
 - ✔ `applies -translate-y-[calc(100%+4rem+env(safe-area-inset-top,0px))] and pointer-events-none when isVisible is false`
 - ✔ `renders archive fetching badge when isFetching is true and unifies telemetry into zero-CLS radar pill`
-- ✔ `renders dual-service diagnostics in popover card across Supabase, Gutendex fallback, and offline states`
+- ✔ `renders dual-service diagnostics in popover card across Supabase, curated archive cache, and offline states`
 - ✔ `dynamically flips popover orientation between downwards and upwards based on viewport clearance`
 - ✔ `supports touch tap toggling, outside-tap dismissal, and Escape key dismissal for telemetry popover`
 - ✔ `renders direct page jump input without redundant Pg label`
@@ -1745,7 +1737,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 228 Tests)
+### ⚡ Zustand State Stores (10 Suites · 229 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1809,7 +1801,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (38 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (39 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1841,6 +1833,7 @@
 - ✔ `normalizes username to lowercase and updates public profile preferences`
 - ✔ `normalizes empty string username to null`
 - ✔ `signs out from Supabase, clears user profile, flushes outboxes, and resets all 6 local user stores`
+- ✔ `supports explicit global signOut, signOutOtherDevices, listActiveSessions, and revokeSession`
 - ✔ `preserves persisted user and profile when initializeAuth runs offline`
 - ✔ `preserves session user on transient network/reload errors while online and clears only on definitive 401/session_not_found errors`
 - ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
@@ -2035,7 +2028,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (48 Suites · 609 Tests)
+### 📚 Gutenberg Parsers & Metadata (49 Suites · 603 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2195,19 +2188,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/gutendex-provider.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/catalog/curated-fallback.test.ts</code></b> (3 tests)</summary>
 
-- ✔ `has name "gutendex"`
-- ✔ `searches books, enforces copyright=false, and calculates latency`
-- ✔ `applies jurisdictional filtering when queried from GB`
-- ✔ `throws CatalogProviderError with status 400 on upstream bad request`
-- ✔ `throws CatalogProviderError with status 502 on network failure`
-- ✔ `throws CatalogProviderError with status 504 on request timeout`
-- ✔ `bypasses jurisdictional filtering when includeRestrictedMetadata is true`
-- ✔ `throws CatalogProviderError with status 502 on invalid non-JSON body`
-- ✔ `checks isHealthy via HEAD request`
-- ✔ `uses calibrated baseline count for unfiltered catalog queries under non-US jurisdictions`
-- ✔ `normalizes comma-separated topic and mimeType to primary token when querying upstream Gutendex`
+- ✔ `returns curated public domain books with cache source, formats, quotes, and pagination metadata`
+- ✔ `enforces multi-jurisdictional Life+100 filtering in MX and bypasses when includeRestrictedMetadata is true`
+- ✔ `filters by search query (>= 2 chars), topic, languages, author era, mimeType, quotes/pool, and sorts by ID`
 
 </details>
 
@@ -2247,17 +2232,17 @@
 - ✔ `queries books using GIN search_vector with OR union when multiple topics are provided`
 - ✔ `filters out authors protected under Life + 70 when client is in GB and applies SQL B-Tree cutoff`
 - ✔ `applies SQL B-Tree cutoff bounds for Life + 80 (CO) and Life + 100 (MX) jurisdictions`
-- ✔ `generates next and previous pagination links and passes exact range bounds`
+- ✔ `uses limit + 1 probing for exact next/previous pagination links without phantom empty pages`
 - ✔ `filters results by mimeType if specified`
 - ✔ `filters results by multiple mimeTypes if specified`
 - ✔ `matches plain text formats across charset variations (e.g. text/plain; charset=us-ascii vs utf-8)`
 - ✔ `filters by comma-delimited book IDs`
 - ✔ `applies ascending and descending sort directions`
-- ✔ `throws CatalogProviderError when Supabase returns an error`
+- ✔ `retries once on transient initial query error and throws CatalogProviderError when retry also fails`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
 - ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
 - ✔ `caches searchBooks results for 5 minutes and pre-warms globalThis bookMetadataCache`
-- ✔ `automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch`
+- ✔ `automatically backfills toward limit + 1 when runtime copyright filtering withholds rows and SQL has not reached EOF`
 - ✔ `handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically`
 - ✔ `handles pool === "quotes" with native PostgREST quote0 and quote1 aliased projection`
 - ✔ `returns empty array for invalid bookId`
@@ -2695,6 +2680,18 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/session-device-parser.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `identifies desktop browsers and platforms accurately`
+- ✔ `identifies mobile and tablet user agents and handles empty strings gracefully`
+- ✔ `masks public IPv4, IPv4-mapped IPv6, and already-masked IPv4 inputs idempotently`
+- ✔ `masks IPv6 addresses to /48 prefix and preserves already-masked IPv6 values`
+- ✔ `labels loopback addresses locally and returns null for empty or invalid values`
+- ✔ `formats valid ISO timestamps and falls back to Unknown for invalid dates`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/smart-search.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `should return empty string for null, undefined, or empty inputs`
@@ -2805,7 +2802,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
 - ✔ `permits HTTPS and relative internal API fetch() calls`
@@ -2826,6 +2823,7 @@
 - ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
 - ✔ `permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries`
 - ✔ `flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")`
+- ✔ `flags external gutendex.com runtime URLs in production code while permitting DTO types and test fixtures (ADR-080)`
 - ✔ `verifies zero AST or taint violations across the entire production src/ directory`
 
 </details>
@@ -2888,7 +2886,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (41 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (36 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -2910,9 +2908,6 @@
 - ✔ `normalizes multi-line and whitespace title strings cleanly`
 - ✔ `successfully upserts a batch when Supabase returns no error`
 - ✔ `adaptively splits the batch in half when encountering statement timeout`
-- ✔ `fetches popular download counts from Gutendex and updates matching public.books rows`
-- ✔ `steps down cooled-off books in the top 1000 when entries reach minEntriesForDemote`
-- ✔ `gracefully handles network failures from Gutendex without throwing`
 - ✔ `ignores JSONB key-order differences when all catalog fields match byte-for-byte`
 - ✔ `detects even a single-character, single-space, or lifespan year change across any catalog field`
 - ✔ `deduplicates duplicate book IDs within a batch and filters out unchanged rows while preserving quotes isolation`
@@ -2922,8 +2917,6 @@
 - ✔ `scans public.books via keyset pagination, protects Hero classics, and deletes withdrawn book IDs`
 - ✔ `triggers the maxPrunePerRun safety circuit breaker when candidate removals exceed cap`
 - ✔ `retries keyset scan and delete chunks in place when encountering transient connection pool timeouts`
-- ✔ `retries a timed-out or HTTP 503 Gutendex page in place and continues fetching remaining pages`
-- ✔ `retries transient Supabase errors during popularity updates and cooled-off demotion`
 - ✔ `extracts bookId and download_count pairs from a multi-chunk RDF XML stream`
 - ✔ `enforces RDF feed mirror allowlist, prioritizes Fastly CDN feed, and fails over to the next official mirror when one fails`
 - ✔ `attaches download_count in normalizeCsvRow when downloadCountsMap is provided and detects download_count diffs`
@@ -2934,7 +2927,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 336 Tests)
+### 🔄 Hooks & React Query (36 Suites · 333 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -2961,23 +2954,18 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
 - ✔ `should execute fetchBooks directly and attach measured client latencyMs`
 - ✔ `should support predictive prefetching for next page`
-- ✔ `should fallback to direct upstream when internal proxy fails`
-- ✔ `should throw error when both internal proxy and direct API fail`
-- ✔ `should throw when direct upstream returns non-ok status`
-- ✔ `should fetch in server environment when window is undefined`
-- ✔ `should throw in server environment when server fetch fails`
-- ✔ `should handle simulated offline network drop in useBooks hook`
-- ✔ `should respect enabled: false and not fetch books`
-- ✔ `should throw when upstream returns invalid non-JSON body`
-- ✔ `should filter protected books during Strategy 2 fallback for international users`
-- ✔ `should retain protected books during Strategy 2 fallback when includeRestrictedMetadata is true`
-- ✔ `should use calibrated baseline count during Strategy 2 fallback for unfiltered catalog queries in RO`
+- ✔ `propagates HTTP error status from internal /api/books without direct external fallback`
+- ✔ `throws on network error and unexpected non-JSON or malformed payloads`
+- ✔ `fetches from SITE_URL in server environment when window is undefined and throws on failure`
+- ✔ `handles simulated offline network drop in useBooks hook`
+- ✔ `respects enabled: false and includes effectiveCountry in React Query key to isolate jurisdictions`
+- ✔ `filters protected books client-side for international users unless includeRestrictedMetadata is true`
 - ✔ `should schedule idle prefetch via requestIdleCallback when available and cancel on unmount`
 - ✔ `should fallback to setTimeout in usePrefetchNextPage and skip when hasNextPage is false`
 - ✔ `should handle server runtime non-ok status, invalid JSON, and copyright filtering`
@@ -3192,13 +3180,14 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
 - ✔ `handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions`
 - ✔ `resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions`
 - ✔ `forwards optional Turnstile captchaToken on password reset and verification resend while ignoring invalid tokens`
+- ✔ `loads active sessions on Security tab, resets on user change, and handles revocation and sign-out scopes`
 
 </details>
 
@@ -3242,7 +3231,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (33 tests)</summary>
+<summary><b><code>src/hooks/useCatalogFilters.test.ts</code></b> (34 tests)</summary>
 
 - ✔ `initializes with default catalog filters and page 1`
 - ✔ `updates search and resets page to 1`
@@ -3266,6 +3255,7 @@
 - ✔ `normalizes page coordinates and prevents redundant API query changes when resizing from mobile to desktop`
 - ✔ `normalizes page coordinates and preserves batch index when resizing from desktop to mobile`
 - ✔ `preserves higher batch coordinates (batch 2) across mobile-to-desktop resize`
+- ✔ `does not spuriously translate mobile URL ?page=2 on initial SSR-to-mobile hydration commit while keeping post-mount resize translation`
 - ✔ `does not alter page or pageSize when explicit size override is set`
 - ✔ `synchronizes catalog pagination to URL as /?page=2 when on catalog view`
 - ✔ `omits catalog pagination parameter when navigating from catalog page 2 to /bookshelf`
@@ -3488,7 +3478,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (64 Suites · 288 Tests)
+### 🧩 UI Primitives & Motion (64 Suites · 290 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3564,7 +3554,7 @@
 - ✔ `displays save error and save success alert banners`
 - ✔ `renders muted streak badge when readingStreak is 0`
 - ✔ `falls back gracefully to user_metadata display name or Scholar monogram S when name is missing`
-- ✔ `renders top-level Sign Out pill button when onSignOut is provided and invokes it on click`
+- ✔ `renders top-level Sign Out pill button when onSignOut is provided and requires confirmation before invoking it`
 - ✔ `reveals inline Turnstile challenge before resending verification email when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set`
 
 </details>
@@ -3613,13 +3603,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
 - ✔ `renders forgot-password email trigger, confirmation banner, and recovery mode state`
 - ✔ `disables Update Password and Delete Account buttons when offline`
 - ✔ `renders Connected Accounts card with Connect Google, Google-only Set Account Password mode, and Disconnect when dual-linked`
 - ✔ `reveals inline Turnstile challenge before requesting password reset when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set`
+- ✔ `renders active device sessions with masked IP, Revoke controls, and confirmed Sign Out All Devices dialog`
+- ✔ `allows confirmed local sign-out offline while disabling remote session and Google disconnect actions`
 
 </details>
 
@@ -4013,7 +4005,7 @@
 <details>
 <summary><b><code>src/config/api-endpoints.test.ts</code></b> (1 tests)</summary>
 
-- ✔ `exposes HTTPS upstream Gutenberg/Gutendex URLs and root-relative internal API routes`
+- ✔ `exposes HTTPS Project Gutenberg URLs and root-relative internal API routes`
 
 </details>
 

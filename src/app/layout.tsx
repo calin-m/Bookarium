@@ -205,8 +205,6 @@ export default async function RootLayout({
             <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
           </>
         )}
-        <link rel="preconnect" href={SITE_CONFIG.GUTENDEX} />
-        <link rel="dns-prefetch" href={SITE_CONFIG.GUTENDEX} />
         <link rel="preconnect" href={SITE_CONFIG.PROJECT_GUTENBERG} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={SITE_CONFIG.PROJECT_GUTENBERG} />
         <script

@@ -11,10 +11,16 @@ import {
   LogOut,
   Trash2,
   Mail,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Globe,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import {
   TurnstileWidget,
@@ -23,6 +29,147 @@ import {
 } from '@/components/auth/TurnstileWidget';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import type { PasswordStrength } from '@/lib/password';
+import {
+  parseSessionDevice,
+  formatSessionIpAddress,
+  formatSessionTimestamp,
+  type ActiveUserSession,
+  type SessionDeviceType,
+} from '@/lib/session-device-parser';
+
+function renderDeviceIcon(deviceType: SessionDeviceType) {
+  switch (deviceType) {
+    case 'mobile':
+      return <Smartphone className="w-4 h-4 text-primary shrink-0" />;
+    case 'tablet':
+      return <Tablet className="w-4 h-4 text-primary shrink-0" />;
+    case 'desktop':
+      return <Monitor className="w-4 h-4 text-primary shrink-0" />;
+    default:
+      return <Globe className="w-4 h-4 text-muted-foreground shrink-0" />;
+  }
+}
+
+type PendingSecurityConfirmAction =
+  | { type: 'unlink-google' }
+  | {
+      type: 'revoke-session';
+      session: ActiveUserSession;
+      deviceLabel: string;
+      maskedIp: string | null;
+      lastActive: string;
+    }
+  | { type: 'sign-out-local' }
+  | { type: 'sign-out-others' }
+  | { type: 'sign-out-all' };
+
+interface SecurityConfirmModalConfig {
+  title: string;
+  heading: string;
+  description: string;
+  confirmLabel: string;
+  modalTestId: string;
+  dialogTestId: string;
+  cancelTestId: string;
+  confirmTestId: string;
+  preview?: React.ReactNode;
+}
+
+function buildSecurityConfirmConfig(
+  action: PendingSecurityConfirmAction,
+  options: {
+    linkedGoogleEmail?: string;
+    otherSessionsCount: number;
+    isUnlinkingGoogle: boolean;
+    isSigningOutScope: 'local' | 'others' | 'global' | null;
+  }
+): SecurityConfirmModalConfig {
+  switch (action.type) {
+    case 'unlink-google':
+      return {
+        title: 'Disconnect Google Sign-In',
+        heading: 'Disconnect your Google account?',
+        description:
+          'You will no longer be able to sign in with Google unless you reconnect it later. You can still access your account with your email and password.',
+        confirmLabel: options.isUnlinkingGoogle ? 'Disconnecting...' : 'Disconnect Google',
+        modalTestId: 'disconnect-google-modal',
+        dialogTestId: 'disconnect-google-dialog',
+        cancelTestId: 'cancel-disconnect-google-button',
+        confirmTestId: 'confirm-disconnect-google-button',
+        preview: options.linkedGoogleEmail ? (
+          <div className="mt-2 p-2.5 rounded-lg bg-muted/40 border border-border text-xs font-mono text-foreground truncate">
+            Connected Google account: {options.linkedGoogleEmail}
+          </div>
+        ) : undefined,
+      };
+    case 'revoke-session':
+      return {
+        title: 'Revoke Device Session',
+        heading: `Revoke access on ${action.deviceLabel}?`,
+        description:
+          'This browser or device will be signed out immediately and will need to sign in again to access your cloud library.',
+        confirmLabel: 'Revoke Session',
+        modalTestId: 'revoke-session-modal',
+        dialogTestId: 'revoke-session-dialog',
+        cancelTestId: 'cancel-revoke-session-button',
+        confirmTestId: 'confirm-revoke-session-button',
+        preview: (
+          <div className="mt-2 p-2.5 rounded-lg bg-muted/40 border border-border text-[11px] font-mono text-muted-foreground space-y-0.5">
+            <p className="text-foreground font-semibold">{action.deviceLabel}</p>
+            <p>
+              {action.maskedIp ? `IP: ${action.maskedIp} · ` : ''}
+              Last active: {action.lastActive}
+            </p>
+          </div>
+        ),
+      };
+    case 'sign-out-local':
+      return {
+        title: 'Sign Out This Browser',
+        heading: 'Sign out from this browser?',
+        description:
+          'Only your current browser session will end and local account data will be cleared from this device. Your synced books, notes, and other signed-in devices remain safe.',
+        confirmLabel:
+          options.isSigningOutScope === 'local' ? 'Signing out...' : 'Sign Out This Browser',
+        modalTestId: 'sign-out-local-modal',
+        dialogTestId: 'sign-out-local-dialog',
+        cancelTestId: 'cancel-sign-out-local-button',
+        confirmTestId: 'confirm-sign-out-local-button',
+      };
+    case 'sign-out-others':
+      return {
+        title: 'Sign Out Other Devices',
+        heading: 'Sign out from all other devices?',
+        description:
+          options.otherSessionsCount > 0
+            ? `Every other active device (${options.otherSessionsCount} remote ${options.otherSessionsCount === 1 ? 'session' : 'sessions'}) will be signed out immediately while this browser stays signed in.`
+            : 'Every other browser and device currently signed into your account will be signed out immediately while this browser stays signed in.',
+        confirmLabel:
+          options.isSigningOutScope === 'others'
+            ? 'Signing out others...'
+            : 'Sign Out Other Devices',
+        modalTestId: 'sign-out-others-modal',
+        dialogTestId: 'sign-out-others-dialog',
+        cancelTestId: 'cancel-sign-out-others-button',
+        confirmTestId: 'confirm-sign-out-others-button',
+      };
+    case 'sign-out-all':
+      return {
+        title: 'Sign Out All Devices',
+        heading: 'End sessions across every browser and device?',
+        description:
+          'You will be signed out from this browser as well as every other phone, tablet, or desktop currently signed into your account. Any synced cloud data stays safe.',
+        confirmLabel:
+          options.isSigningOutScope === 'global'
+            ? 'Signing out all devices...'
+            : 'Sign Out All Devices',
+        modalTestId: 'sign-out-all-modal',
+        dialogTestId: 'sign-out-all-dialog',
+        cancelTestId: 'cancel-sign-out-all-button',
+        confirmTestId: 'confirm-sign-out-all-button',
+      };
+  }
+}
 
 export interface AccountSecuritySectionProps {
   currentPassword?: string;
@@ -59,6 +206,21 @@ export interface AccountSecuritySectionProps {
   identityError?: string | null;
   onLinkGoogle?: () => void;
   onUnlinkGoogle?: () => void;
+  sessions?: ActiveUserSession[];
+  isLoadingSessions?: boolean;
+  hasLoadedSessions?: boolean;
+  isSessionsRpcUnavailable?: boolean;
+  sessionsError?: string | null;
+  sessionsSuccess?: string | null;
+  revokingSessionId?: string | null;
+  isSigningOutScope?: 'local' | 'others' | 'global' | null;
+  isSignOutAllModalOpen?: boolean;
+  onOpenSignOutAllModal?: () => void;
+  onCloseSignOutAllModal?: () => void;
+  onRefreshSessions?: () => Promise<void> | void;
+  onRevokeSession?: (session: ActiveUserSession) => Promise<void> | void;
+  onSignOutOtherDevices?: () => Promise<void> | void;
+  onSignOutAllDevices?: () => Promise<void> | void;
 }
 
 export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
@@ -96,13 +258,100 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   identityError = null,
   onLinkGoogle,
   onUnlinkGoogle,
+  sessions = [],
+  isLoadingSessions = false,
+  hasLoadedSessions = false,
+  isSessionsRpcUnavailable = false,
+  sessionsError = null,
+  sessionsSuccess = null,
+  revokingSessionId = null,
+  isSigningOutScope = null,
+  isSignOutAllModalOpen,
+  onOpenSignOutAllModal,
+  onCloseSignOutAllModal,
+  onRefreshSessions,
+  onRevokeSession,
+  onSignOutOtherDevices,
+  onSignOutAllDevices,
 }) => {
   const { isOffline } = useNetworkStatus();
   const turnstileSiteKey = getTurnstileSiteKey();
   const [isResetCaptchaOpen, setIsResetCaptchaOpen] = React.useState(false);
   const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
+  const [pendingConfirmAction, setPendingConfirmAction] =
+    React.useState<PendingSecurityConfirmAction | null>(null);
   const turnstileRef = React.useRef<TurnstileWidgetHandle>(null);
   const isSubmittingResetRef = React.useRef(false);
+
+  const otherSessionsCount = sessions.filter((session) => !session.isCurrent).length;
+  const activeConfirmAction: PendingSecurityConfirmAction | null =
+    isSignOutAllModalOpen && onSignOutAllDevices
+      ? { type: 'sign-out-all' }
+      : pendingConfirmAction;
+
+  const openSignOutAllModal = () => {
+    if (onOpenSignOutAllModal && isSignOutAllModalOpen !== undefined) {
+      onOpenSignOutAllModal();
+      return;
+    }
+    setPendingConfirmAction({ type: 'sign-out-all' });
+    onOpenSignOutAllModal?.();
+  };
+
+  const closeConfirmModal = () => {
+    if (activeConfirmAction?.type === 'sign-out-all') {
+      onCloseSignOutAllModal?.();
+    }
+    setPendingConfirmAction(null);
+  };
+
+  const executeConfirmAction = () => {
+    if (!activeConfirmAction) return;
+    const action = activeConfirmAction;
+    closeConfirmModal();
+
+    switch (action.type) {
+      case 'unlink-google':
+        if (!isOffline && canUnlinkGoogle && !isUnlinkingGoogle) {
+          onUnlinkGoogle?.();
+        }
+        break;
+      case 'revoke-session':
+        if (!isOffline && !isSigningOutScope && revokingSessionId !== action.session.id) {
+          void onRevokeSession?.(action.session);
+        }
+        break;
+      case 'sign-out-local':
+        if (!isSigningOutScope) {
+          void onSignOut();
+        }
+        break;
+      case 'sign-out-others':
+        if (!isOffline && !isSigningOutScope) {
+          void onSignOutOtherDevices?.();
+        }
+        break;
+      case 'sign-out-all':
+        if (!isOffline && !isSigningOutScope) {
+          void onSignOutAllDevices?.();
+        }
+        break;
+    }
+  };
+
+  const confirmModalConfig = activeConfirmAction
+    ? buildSecurityConfirmConfig(activeConfirmAction, {
+        linkedGoogleEmail: googleIdentityEmail || userEmail,
+        otherSessionsCount,
+        isUnlinkingGoogle,
+        isSigningOutScope,
+      })
+    : null;
+
+  const disableSignOutOthers =
+    isOffline ||
+    Boolean(isSigningOutScope) ||
+    (hasLoadedSessions && !isSessionsRpcUnavailable && otherSessionsCount === 0);
 
   const handleResetButtonClick = () => {
     if (!onRequestPasswordReset) return;
@@ -437,7 +686,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                   size="chip"
                   isLoading={isUnlinkingGoogle}
                   disabled={isOffline || isUnlinkingGoogle || !canUnlinkGoogle}
-                  onClick={onUnlinkGoogle}
+                  onClick={() => setPendingConfirmAction({ type: 'unlink-google' })}
                   data-testid="disconnect-google-button"
                   className="shrink-0 font-mono text-xs cursor-pointer"
                 >
@@ -486,33 +735,234 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
             )}
           </div>
 
-          {/* Section 2: Active Device Session */}
+          {/* Section 2: Active Device Sessions */}
           <div className="p-5 rounded-xl border border-border bg-muted/20 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-mono font-bold text-foreground uppercase tracking-wider">
-                Active Device Session
+                Active Device Sessions
               </p>
-              {userEmail && (
-                <span className="text-[11px] font-mono text-muted-foreground truncate max-w-[170px]" title={userEmail}>
-                  {userEmail}
-                </span>
-              )}
+              <div className="flex items-center gap-2 min-w-0">
+                {userEmail && (
+                  <span
+                    className="text-[11px] font-mono text-muted-foreground truncate max-w-[170px]"
+                    title={userEmail}
+                  >
+                    {userEmail}
+                  </span>
+                )}
+                {onRefreshSessions && (
+                  <button
+                    type="button"
+                    onClick={() => void onRefreshSessions()}
+                    disabled={isOffline || isLoadingSessions}
+                    aria-label="Refresh active device sessions"
+                    className="p-1.5 rounded-lg border border-border bg-background/80 text-muted-foreground hover:text-foreground disabled:opacity-50 cursor-pointer transition-colors"
+                  >
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${isLoadingSessions ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+              </div>
             </div>
             <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-              Sign out from this browser. Your synced bookshelves, bookmarks, and notes remain safely stored in your cloud account while local session data is cleared from this device.
+              Sign out from this browser without ending your sessions elsewhere. Your synced bookshelves, bookmarks, and notes remain safely stored in your cloud account while local session data is cleared from this device.
             </p>
-            <div className="pt-1">
+
+            {sessionsError && (
+              <Alert variant="error" data-testid="sessions-error-banner" className="rounded-xl text-xs">
+                {sessionsError}
+              </Alert>
+            )}
+
+            {sessionsSuccess && (
+              <Alert variant="success" data-testid="sessions-success-banner" className="rounded-xl text-xs">
+                {sessionsSuccess}
+              </Alert>
+            )}
+
+            {isOffline && (
+              <Alert variant="info" data-testid="sessions-offline-banner" className="rounded-xl text-xs">
+                You are offline. Viewing active devices and ending remote sessions requires an internet connection, though you can still sign out from this browser locally.
+              </Alert>
+            )}
+
+            {!isOffline && isSessionsRpcUnavailable && (
+              <Alert
+                variant="info"
+                data-testid="sessions-rpc-unavailable-banner"
+                className="rounded-xl text-xs"
+              >
+                Per-device session listing is awaiting database RPC provisioning. You can still sign out other browsers or all devices below.
+              </Alert>
+            )}
+
+            {!isOffline && !isSessionsRpcUnavailable && isLoadingSessions && sessions.length === 0 && (
+              <p
+                className="text-xs font-mono text-muted-foreground py-2"
+                data-testid="sessions-loading-indicator"
+              >
+                Loading active device sessions...
+              </p>
+            )}
+
+            {!isOffline &&
+              !isSessionsRpcUnavailable &&
+              hasLoadedSessions &&
+              !isLoadingSessions &&
+              sessions.length === 0 &&
+              !sessionsError && (
+                <p
+                  className="text-xs font-mono text-muted-foreground py-1"
+                  data-testid="sessions-empty-indicator"
+                >
+                  No active remote device records found.
+                </p>
+              )}
+
+            {!isOffline && !isSessionsRpcUnavailable && sessions.length > 0 && (
+              <ul className="space-y-2" aria-label="Active device sessions">
+                {sessions.map((session) => {
+                  const device = parseSessionDevice(session.userAgent);
+                  const maskedIp = formatSessionIpAddress(session.ipAddress);
+                  const lastActive = formatSessionTimestamp(
+                    session.refreshedAt ?? session.updatedAt ?? session.createdAt
+                  );
+                  const signedIn = formatSessionTimestamp(session.createdAt);
+                  const isRevokingThis = revokingSessionId === session.id;
+
+                  return (
+                    <li
+                      key={session.id}
+                      data-testid={`active-session-row-${session.id}`}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border bg-background/70"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-muted/70 border border-border mt-0.5 shrink-0">
+                          {renderDeviceIcon(device.deviceType)}
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-medium text-foreground truncate">
+                              {device.label}
+                            </span>
+                            {session.isCurrent && (
+                              <span
+                                data-testid="current-session-badge"
+                                className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                              >
+                                This device
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] font-mono text-muted-foreground">
+                            {maskedIp && (
+                              <span data-testid={`session-ip-${session.id}`}>IP: {maskedIp}</span>
+                            )}
+                            <span>Last active: {lastActive}</span>
+                            <span>Signed in: {signedIn}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {!session.isCurrent && onRevokeSession && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setPendingConfirmAction({
+                              type: 'revoke-session',
+                              session,
+                              deviceLabel: device.label,
+                              maskedIp,
+                              lastActive,
+                            })
+                          }
+                          disabled={
+                            isOffline || isRevokingThis || Boolean(isSigningOutScope)
+                          }
+                          aria-label={`Revoke session on ${device.label}`}
+                          className="shrink-0 font-mono text-[11px] text-muted-foreground hover:text-destructive hover:border-destructive/50 cursor-pointer"
+                        >
+                          {isRevokingThis ? 'Revoking...' : 'Revoke'}
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <div className="pt-1 space-y-2">
               <Button
                 variant="outline"
                 size="chip"
-                onClick={onSignOut}
+                onClick={() => setPendingConfirmAction({ type: 'sign-out-local' })}
+                disabled={Boolean(isSigningOutScope)}
                 className="w-full justify-center text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
+                <span>
+                  {isSigningOutScope === 'local' ? 'Signing out...' : 'Sign Out This Browser'}
+                </span>
               </Button>
+
+              {(onSignOutOtherDevices || onSignOutAllDevices) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {onSignOutOtherDevices && (
+                    <Button
+                      variant="outline"
+                      size="chip"
+                      onClick={() => setPendingConfirmAction({ type: 'sign-out-others' })}
+                      disabled={disableSignOutOthers}
+                      className="w-full justify-center text-muted-foreground hover:text-foreground font-mono text-xs cursor-pointer"
+                    >
+                      <span>
+                        {isSigningOutScope === 'others'
+                          ? 'Signing out others...'
+                          : 'Sign Out Other Devices'}
+                      </span>
+                    </Button>
+                  )}
+
+                  {onSignOutAllDevices && (
+                    <Button
+                      variant="outline"
+                      size="chip"
+                      onClick={openSignOutAllModal}
+                      disabled={isOffline || Boolean(isSigningOutScope)}
+                      className="w-full justify-center border-destructive/40 text-destructive hover:bg-destructive/10 font-mono text-xs cursor-pointer"
+                    >
+                      <span>
+                        {isSigningOutScope === 'global'
+                          ? 'Signing out all devices...'
+                          : 'Sign Out All Devices'}
+                      </span>
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+
+          {confirmModalConfig && (
+            <ConfirmActionModal
+              isOpen={true}
+              onClose={closeConfirmModal}
+              onConfirm={executeConfirmAction}
+              title={confirmModalConfig.title}
+              heading={confirmModalConfig.heading}
+              description={confirmModalConfig.description}
+              confirmLabel={confirmModalConfig.confirmLabel}
+              modalTestId={confirmModalConfig.modalTestId}
+              dialogTestId={confirmModalConfig.dialogTestId}
+              confirmTestId={confirmModalConfig.confirmTestId}
+              cancelTestId={confirmModalConfig.cancelTestId}
+            >
+              {confirmModalConfig.preview}
+            </ConfirmActionModal>
+          )}
 
           {/* Section 3: Danger Zone (Framed Inset Callout) */}
           <div className="rounded-xl border border-destructive/40 dark:border-destructive/50 bg-destructive/5 p-5 space-y-3">

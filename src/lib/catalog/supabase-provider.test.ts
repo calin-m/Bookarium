@@ -333,7 +333,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(builder.lte).toHaveBeenCalledWith('min_author_birth_year', 1850);
       expect(builder.order).toHaveBeenCalledWith('download_count', { ascending: false });
       expect(builder.order).not.toHaveBeenCalledWith('id', { ascending: true });
-      expect(builder.range).toHaveBeenCalledWith(0, 31);
+      expect(builder.range).toHaveBeenCalledWith(0, 32);
     });
 
     it('queries books using GIN search_vector when only topic is provided', async () => {
@@ -416,8 +416,14 @@ describe('SupabaseCatalogProvider', () => {
       expect(resultMx.results).toHaveLength(1);
     });
 
-    it('generates next and previous pagination links and passes exact range bounds', async () => {
-      const { client, builder } = createMockQueryBuilder(sampleDbRows, 100);
+    it('uses limit + 1 probing for exact next/previous pagination links without phantom empty pages', async () => {
+      // Page 2 with limit 32 probes range(32, 64) = 33 rows; returning 33 rows proves page 3 exists
+      const fullPlusOneRows: DatabaseBook[] = Array.from({ length: 33 }, (_, idx) => ({
+        ...sampleDbRows[0],
+        id: 2000 + idx,
+        title: `Classic Volume ${idx + 1}`,
+      }));
+      const { client, builder } = createMockQueryBuilder(fullPlusOneRows, 100);
       const provider = new SupabaseCatalogProvider(client as any);
 
       const options: CatalogQueryOptions = {
@@ -428,15 +434,24 @@ describe('SupabaseCatalogProvider', () => {
 
       const result = await provider.searchBooks(options);
 
-      expect(builder.range).toHaveBeenCalledWith(32, 63);
+      expect(builder.range).toHaveBeenCalledWith(32, 64);
+      expect(result.results).toHaveLength(32);
       expect(result.previous).toBe('/api/books?page=1');
       expect(result.next).toBe('/api/books?page=3');
 
-      // Clamps excessive limit > 100 to 100 (range 0..99)
+      // When SQL returns fewer than limit + 1 rows (e.g. 2 rows on page 2), next is null even if estimated count is high
+      const { client: clientExhausted } = createMockQueryBuilder(sampleDbRows, 100);
+      const providerExhausted = new SupabaseCatalogProvider(clientExhausted as any);
+      const exhaustedResult = await providerExhausted.searchBooks(options);
+      expect(exhaustedResult.previous).toBe('/api/books?page=1');
+      expect(exhaustedResult.next).toBeNull();
+      expect(exhaustedResult.count).toBe(34);
+
+      // Clamps excessive limit > 100 to 100 (probes range 0..100 for limit + 1 = 101 rows)
       const { client: clientClamp, builder: builderClamp } = createMockQueryBuilder(sampleDbRows, 250);
       const providerClamp = new SupabaseCatalogProvider(clientClamp as any);
       await providerClamp.searchBooks({ page: 1, limit: 250, country: 'US' });
-      expect(builderClamp.range).toHaveBeenCalledWith(0, 99);
+      expect(builderClamp.range).toHaveBeenCalledWith(0, 100);
 
       // Short-circuits high offset pagination >= 160,000 before querying PostgreSQL
       const { client: clientHighOffset } = createMockQueryBuilder(sampleDbRows, 250);
@@ -537,7 +552,41 @@ describe('SupabaseCatalogProvider', () => {
       expect(builderDesc.order).toHaveBeenCalledWith('id', { ascending: false });
     });
 
-    it('throws CatalogProviderError when Supabase returns an error', async () => {
+    it('retries once on transient initial query error and throws CatalogProviderError when retry also fails', async () => {
+      // 1. Transient failure on attempt 1 followed by success on attempt 2
+      let attempt = 0;
+      const transientBuilder = {
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        textSearch: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        overlaps: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        lte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockReturnThis(),
+        then: vi.fn((resolve: (val: unknown) => void) => {
+          attempt++;
+          if (attempt === 1) {
+            resolve({ data: null, count: 0, error: { message: 'Transient connection reset' } });
+          } else {
+            resolve({ data: [sampleDbRows[0]], count: 1, error: null });
+          }
+        }),
+      };
+      const transientClient = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue(transientBuilder),
+        }),
+      } as unknown as ConstructorParameters<typeof SupabaseCatalogProvider>[0];
+
+      const retryProvider = new SupabaseCatalogProvider(transientClient);
+      const retried = await retryProvider.searchBooks({ page: 1, limit: 32, country: 'US' });
+      expect(attempt).toBe(2);
+      expect(retried.results.map((b) => b.id)).toEqual([1342]);
+
+      // 2. Persistent error exhausts single retry and throws CatalogProviderError
       const { client } = createMockQueryBuilder([], 0, { message: 'Database connection terminated' });
       const provider = new SupabaseCatalogProvider(client as any);
 
@@ -642,16 +691,19 @@ describe('SupabaseCatalogProvider', () => {
       expect(client.from).toHaveBeenCalledTimes(2);
     });
 
-    it('automatically backfills deficit when runtime copyright filtering withholds books from an initial full batch', async () => {
+    it('automatically backfills toward limit + 1 when runtime copyright filtering withholds rows and SQL has not reached EOF', async () => {
       const validRow1: DatabaseBook = { ...sampleDbRows[0], id: 101, title: 'Book 101' };
       const validRow2: DatabaseBook = { ...sampleDbRows[0], id: 102, title: 'Book 102' };
       const restrictedRow1: DatabaseBook = { ...sampleDbRows[1], id: 103, title: 'Book 103' }; // Agatha Christie (d. 1976)
       const restrictedRow2: DatabaseBook = { ...sampleDbRows[1], id: 104, title: 'Book 104' }; // Agatha Christie (d. 1976)
-      const backfillRow1: DatabaseBook = { ...sampleDbRows[0], id: 105, title: 'Book 105' };
-      const backfillRow2: DatabaseBook = { ...sampleDbRows[0], id: 106, title: 'Book 106' };
+      const restrictedRow3: DatabaseBook = { ...sampleDbRows[1], id: 105, title: 'Book 105' }; // Agatha Christie (d. 1976)
+      const backfillRow1: DatabaseBook = { ...sampleDbRows[0], id: 106, title: 'Book 106' };
+      const backfillRow2: DatabaseBook = { ...sampleDbRows[0], id: 107, title: 'Book 107' };
+      const backfillRow3: DatabaseBook = { ...sampleDbRows[0], id: 108, title: 'Book 108' };
 
-      const initialBatch = [validRow1, restrictedRow1, validRow2, restrictedRow2]; // 4 rows, 2 valid under LIFE_70
-      const backfillBatch = [backfillRow1, backfillRow2]; // 2 valid rows
+      // limit=4 -> initial probe fetches limit + 1 = 5 rows (.range(0, 4)) -> 2 valid, 3 restricted, not EOF
+      const initialBatch = [validRow1, restrictedRow1, validRow2, restrictedRow2, restrictedRow3];
+      const backfillBatch = [backfillRow1, backfillRow2, backfillRow3];
 
       let callCount = 0;
       const builder: any = {
@@ -689,10 +741,11 @@ describe('SupabaseCatalogProvider', () => {
       });
 
       expect(result.results).toHaveLength(4);
-      expect(result.results.map((b) => b.id)).toEqual([101, 102, 105, 106]);
+      expect(result.results.map((b) => b.id)).toEqual([101, 102, 106, 107]);
+      expect(result.next).toBe('/api/books?page=2');
       expect(callCount).toBe(2);
-      expect(builder.range).toHaveBeenNthCalledWith(1, 0, 3);
-      expect(builder.range).toHaveBeenNthCalledWith(2, 4, 11);
+      expect(builder.range).toHaveBeenNthCalledWith(1, 0, 4);
+      expect(builder.range).toHaveBeenNthCalledWith(2, 5, 36);
     });
 
     it('handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically', async () => {

@@ -9,6 +9,40 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.31',
+    date: '2026-11-14',
+    title: 'Deterministic Catalog Pagination, Bookshelf Spine Isolation & Complete Gutendex Decommission',
+    sections: {
+      Fixed: [
+        'Deterministic Catalog Sub-Pagination & Jurisdictional Cache Key Isolation (`src/lib/catalog/supabase-provider.ts`, `src/hooks/queries/useBooks.ts`, `src/hooks/useCatalogFilters.ts`, `src/app/page.tsx`, `ADR-080`): Added `effectiveCountry` to TanStack Query keys (`["books", params, effectiveCountry]`), preserved `?page=2` SSR-to-mobile hydration in `useCatalogFilters`, upgraded `SupabaseCatalogProvider` to exact `limit + 1` probing with bounded backfill (`MAX_BACKFILL_ITERATIONS = 5`), and clamped overshoot sub-pages deterministically via `batchStartPage + lastPopulatedOffset`.',
+        'Personal `BookshelfRack` Filter Isolation in Catalog Spine Mode (`src/components/presentation/BookshelfRack.tsx`, `src/components/presentation/BookGrid.tsx`, `ADR-080`): Scoped `effectiveIsViewingDownloaded` and active custom shelf item filters strictly on `showShelfControls` (`showShelfControls ?? (activeView === "bookshelf")`), preventing active `__downloaded__` or Bookshelf shelf selections from hiding online volumes when browsing the Catalog in 3D Spine mode.',
+      ],
+      Changed: [
+        'Confirmation-Guarded Security Actions & Identity Ribbon Sign-Out (`src/components/account/AccountSecuritySection.tsx`, `src/components/account/AccountIdentityCard.tsx`, `src/components/account/AccountSecuritySection.test.tsx`, `src/components/account/AccountIdentityCard.test.tsx`, `src/app/account/page.test.tsx`, `ADR-080`): Unified `AccountSecuritySection` session and OAuth unlink actions behind a data-driven `ConfirmActionModal` covering Google login `Disconnect` (showing the linked email), per-device `Revoke` (showing target device label, masked IP, and last-active timestamp), `Sign Out This Browser` (`\'local\'`, offline-capable), `Sign Out Other Devices` (`\'others\'`), and `Sign Out All Devices` (`\'global\'`), and guarded the top `AccountIdentityCard` `Sign Out` ribbon pill (`identity-sign-out-button`) with confirmation while preserving single-click exit on the Navbar avatar hover menu.',
+      ],
+      Removed: [
+        'Complete Non-Breaking Gutendex API Decommission & Curated Fallback (`src/lib/catalog/curated-fallback.ts`, `src/app/api/books/route.ts`, `src/app/api/books/content/metadata-cache.ts`, `src/app/read/[id]/reader-layout-utils.ts`, `src/components/presentation/CatalogTelemetryBadge.tsx`, `src/components/presentation/Footer.tsx`, `src/app/copyright/page.tsx`, `next.config.ts`, `src/proxy.ts`, `scripts/eslint-rules/bookarium-security.js`, `ADR-037`, `ADR-038`, `ADR-080`): Retired external Gutendex runtime, UI, CSP, and CLI dependencies cleanly with bundled zero-network `searchCuratedCatalogFallback` (`source: "cache"` when Supabase is unconfigured), `HTTP 503` error reporting on transient DB outages, omitted `x-middleware-override-headers` on unshared `/api/books/content*` requests, retained internal DTO interfaces and external `gutendex.com` runtime URL AST bans (`bookarium-security`), and a retired entry in `ROADMAP.md`.',
+      ],
+    },
+  },
+  {
+    version: '2.9.30',
+    date: '2026-11-14',
+    title: 'Local Sign-Out Default & Active Device Session Manager',
+    sections: {
+      Added: [
+        'Active Device Sessions Manager & Masked IP Formatting (`src/lib/session-device-parser.ts`, `src/hooks/useAccountSecurityActions.ts`, `src/components/account/AccountSecuritySection.tsx`, `src/app/account/page.tsx`, `ADR-080`): Replaced the ambiguous session logout control under Account Security with an active device list displaying parsed OS/browser icons (`parseSessionDevice`), `"This device"` current-session identification, dual SQL/TypeScript masked IPs (`203.0.113.x`, `2001:db8:85a3::x`, localhost labels), per-device `Revoke` controls, `Sign Out Other Devices` (`scope: \'others\'`), and `ConfirmActionModal`-guarded `Sign Out All Devices` (`scope: \'global\'`).',
+      ],
+      Changed: [
+        'Local-Scoped Sign-Out Default & Multi-Origin Session Isolation (`src/stores/useAuthStore.ts`, `src/stores/useAuthStore.test.ts`, `ADR-005`, `ADR-072`): Changed `useAuthStore.signOut(scope = \'local\')` to default to Supabase local sign-out while preserving outbox flush and 10-store local teardown, eliminating spurious `403 GET /user — Session not found` warnings across separate origins or devices (`localhost` alongside production) while retaining explicit `{ scope: \'global\' }` revocation inside `deleteAccount()`.',
+        'Privacy & Copyright Session Metadata Disclosures (`src/app/privacy/page.tsx`, `src/app/copyright/page.tsx`, `ADR-080`): Documented native Supabase Auth masked IP and user-agent retention inside Account Security under `/privacy` Section 4 and narrowed `/copyright` Section 4 copy specifically to regional copyright jurisdiction verification.',
+      ],
+      Security: [
+        'Owner-Scoped Session Inspection & Revocation RPCs (`supabase/schema.sql`, `src/types/database.types.ts`, `ADR-080`): Added idempotent `SECURITY DEFINER` RPCs `public.get_active_sessions()` (returning `auth.sessions` metadata with SQL-level IPv4 `.x` / IPv6 `/48 ::x` masking and strict UUID `session_id` claim checks) and `public.revoke_user_session(UUID)` scoped strictly to `(select auth.uid())`, revoking execution from `PUBLIC` and `anon` with `SET search_path = \'\'` and graceful `PGRST202`/`42883` client fallbacks.',
+      ],
+    },
+  },
+  {
     version: '2.9.29',
     date: '2026-11-14',
     title: 'Zero-Visual-Shift Reusable UI Primitives, Overlay Focus-Trap & Turnstile Auth Recovery',

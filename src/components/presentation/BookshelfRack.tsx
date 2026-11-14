@@ -257,26 +257,39 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     activeBookshelfId,
     downloadedShelfId: DOWNLOADED_SHELF_ID,
   });
+  const effectiveIsViewingDownloaded = showShelfControls && isViewingDownloaded;
 
   // Auto-fallback to default shelf if user was viewing Downloaded shelf and it becomes empty
   useEffect(() => {
-    if (isOfflineLoaded && activeBookshelfId === DOWNLOADED_SHELF_ID && downloadedSavedBooks.length === 0) {
+    if (
+      showShelfControls &&
+      isOfflineLoaded &&
+      activeBookshelfId === DOWNLOADED_SHELF_ID &&
+      downloadedSavedBooks.length === 0
+    ) {
       setActiveBookshelfId(defaultShelf?.id || null);
     }
-  }, [isOfflineLoaded, activeBookshelfId, downloadedSavedBooks.length, defaultShelf?.id, setActiveBookshelfId]);
+  }, [
+    showShelfControls,
+    isOfflineLoaded,
+    activeBookshelfId,
+    downloadedSavedBooks.length,
+    defaultShelf?.id,
+    setActiveBookshelfId,
+  ]);
 
   // On the 'General' master shelf, show all books across all collections.
-  // On 'Downloaded' virtual shelf, show only downloaded books.
+  // On 'Downloaded' virtual shelf, show only downloaded books when shelf controls are active.
   // On custom shelves, filter to only the books assigned to that shelf.
   const effectiveShelfBooks = useMemo(() => {
-    if (isViewingDownloaded) {
+    if (effectiveIsViewingDownloaded) {
       return books.filter((b) => isBookOffline(b.id));
     }
     if (!showShelfControls || cloudBookshelves.length <= 1 || isViewingGeneral) {
       return books;
     }
     return filterCustomShelfBooks(books, cloudBookshelfItems, currentActiveShelfId);
-  }, [isViewingDownloaded, isBookOffline, showShelfControls, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
+  }, [effectiveIsViewingDownloaded, isBookOffline, showShelfControls, cloudBookshelves.length, isViewingGeneral, cloudBookshelfItems, currentActiveShelfId, books]);
 
   // Partition shelf books into public domain titles in current jurisdiction vs copyright-restricted titles
   const { downloadableBooks, restrictedBooks } = useMemo(() => {
@@ -313,7 +326,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   }, [effectiveShelfBooks, shelfCapacity, showShelfControls]);
 
   const activeShelf = cloudBookshelves.find((s) => s.id === currentActiveShelfId) || defaultShelf;
-  const activeShelfDisplayName = isViewingDownloaded
+  const activeShelfDisplayName = effectiveIsViewingDownloaded
     ? 'Downloaded'
     : (activeShelf?.is_default ? 'General' : (activeShelf?.name || 'General'));
 
@@ -499,7 +512,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
       {/* Empty State vs Hardwood Shelf Rails with tactile page turn */}
       <div
-        key={`shelf-content-${isViewingGeneral ? 'general' : (currentActiveShelfId || 'general')}`}
+        key={showShelfControls ? `shelf-content-${isViewingGeneral ? 'general' : (currentActiveShelfId || 'general')}` : 'shelf-content-catalog'}
         className="animate-page-turn w-full"
         data-testid="shelf-content-container"
       >

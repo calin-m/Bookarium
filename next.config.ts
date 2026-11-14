@@ -54,7 +54,6 @@ const nextConfig: NextConfig = {
     const connectSrc = [
       "'self'",
       'https://*.supabase.co',
-      'https://gutendex.com',
       ...(isDev
         ? [
             'ws:',

@@ -192,7 +192,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Zero Automated Scraping:</strong> Bookarium never runs scrapers, spiders, or automated crawlers against <code className="font-mono text-primary font-semibold">www.gutenberg.org</code>.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Decoupled Architecture:</strong> All user catalog browsing, keyword searches, and subject facets are served via the Gutendex REST API and our regional Supabase cache, completely shielding Gutenberg origin servers from discovery traffic.
+                <strong className="text-foreground font-medium">Decoupled Architecture:</strong> All user catalog browsing, keyword searches, and subject facets are served via our dedicated Supabase PostgreSQL catalog and regional Edge cache, completely shielding Gutenberg origin servers from discovery traffic.
               </li>
               <li>
                 <strong className="text-foreground font-medium">Official Bulk Data Feeds:</strong> Catalog indexes are synchronized using Gutenberg&apos;s authorized weekly catalog archives (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code>).
@@ -228,7 +228,7 @@ export default function CopyrightPage() {
             </p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">
               <p>
-                <strong className="text-foreground font-medium">Privacy-First Functional Verification:</strong> Edge routers inspect non-identifying country headers (<code className="font-mono">CF-IPCountry</code> / <code className="font-mono">x-vercel-ip-country</code>) to set the functional cookie <code className="font-mono text-primary font-semibold">bookarium-geo-country</code>. No IP addresses, user locations, or reading habits are ever logged, tracked, or stored.
+                <strong className="text-foreground font-medium">Privacy-First Functional Verification:</strong> Edge routers inspect non-identifying country headers (<code className="font-mono">CF-IPCountry</code> / <code className="font-mono">x-vercel-ip-country</code>) to set the functional cookie <code className="font-mono text-primary font-semibold">bookarium-geo-country</code>. Jurisdiction verification itself never logs, tracks, or stores your IP address, precise location, or reading habits.
               </p>
               <p>
                 <strong className="text-foreground font-medium">Fail-Closed Longevity Heuristic:</strong> If author or translator death dates cannot be verified with mathematical certainty from authoritative national libraries, Bookarium conservatively withholds modern titles in Life+70/80/100 jurisdictions to guarantee zero infringement.
@@ -329,17 +329,11 @@ export default function CopyrightPage() {
                 <p className="text-xs font-mono text-muted-foreground">Upstream Archives &amp; Digital Commons</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Project Gutenberg</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
                   The original digital library founded by Michael S. Hart in 1971, curating over 70,000 public domain ebooks.
-                </p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
-                <span className="text-xs font-mono font-bold text-foreground block">Gutendex</span>
-                <p className="text-[11px] text-muted-foreground font-sans">
-                  Open-source REST API providing decoupled, high-performance catalog search and metadata retrieval.
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">

@@ -9,8 +9,11 @@ import {
 } from '@/lib/api-utils';
 import { getJurisdictionRule } from '@/lib/copyright-engine';
 import { parseCatalogQuery } from '@/lib/catalog/query-parser';
-import { gutendexProvider } from '@/lib/catalog/gutendex-provider';
-import { supabaseCatalogProvider } from '@/lib/catalog/supabase-provider';
+import { searchCuratedCatalogFallback } from '@/lib/catalog/curated-fallback';
+import {
+  supabaseCatalogProvider,
+  isSupabaseConfigured,
+} from '@/lib/catalog/supabase-provider';
 import { CatalogProviderError } from '@/types/catalog.types';
 import type { CatalogQueryResult } from '@/types/catalog.types';
 
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
       {
         results: [],
         count: 0,
-        source: 'upstream',
+        source: 'supabase',
         latencyMs: Date.now() - startTime,
       }
     );
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
       {
         results: [],
         count: 0,
-        source: 'upstream',
+        source: 'supabase',
         latencyMs: Date.now() - startTime,
       }
     );
@@ -70,32 +73,33 @@ export async function GET(request: NextRequest) {
   const queryOptions = parseCatalogQuery(request);
 
   try {
-    let result: CatalogQueryResult | null = null;
+    const supabaseConfigured = isSupabaseConfigured();
+    const shouldQuerySupabase =
+      supabaseConfigured || (await supabaseCatalogProvider.isHealthy().catch(() => false));
 
-    // Strangler Fig Gateway: Query dedicated Supabase PostgreSQL catalog first
-    try {
-      const isSupabaseHealthy = await supabaseCatalogProvider.isHealthy();
-      if (isSupabaseHealthy) {
+    let result: CatalogQueryResult;
+
+    if (shouldQuerySupabase) {
+      try {
         result = await supabaseCatalogProvider.searchBooks(queryOptions);
+      } catch {
+        throw new CatalogProviderError(
+          'Catalog database temporarily unavailable. Please try again.',
+          503,
+          'supabase'
+        );
       }
-    } catch {
-      // Supabase query failure or network glitch: gracefully degrade to upstream Gutendex
-      result = null;
-    }
-
-    // Fall back to upstream Gutendex API if Supabase is unseeded, unhealthy, or throws (quotes pool is Supabase-exclusive)
-    if (!result) {
-      if (queryOptions.pool === 'quotes') {
-        return createNoStoreErrorResponse('Quote pool unavailable from database', 503, {
-          results: [],
-          count: 0,
-          source: 'supabase',
-          latencyMs: Date.now() - startTime,
-          clientCountry: queryOptions.country,
-          jurisdictionRule: getJurisdictionRule(queryOptions.country),
-        });
-      }
-      result = await gutendexProvider.searchBooks(queryOptions);
+    } else if (queryOptions.pool === 'quotes') {
+      return createNoStoreErrorResponse('Quote pool unavailable from database', 503, {
+        results: [],
+        count: 0,
+        source: 'supabase',
+        latencyMs: Date.now() - startTime,
+        clientCountry: queryOptions.country,
+        jurisdictionRule: getJurisdictionRule(queryOptions.country),
+      });
+    } else {
+      result = searchCuratedCatalogFallback(queryOptions);
     }
 
     const isQuotePool = queryOptions.pool === 'quotes';
@@ -103,16 +107,19 @@ export async function GET(request: NextRequest) {
       queryOptions.includeRestrictedMetadata || (queryOptions.ids && queryOptions.hasQuotes)
     );
 
-    const cacheControl = isQuotePool
-      ? 'public, max-age=3600, s-maxage=43200, stale-while-revalidate=604800'
-      : isJurisdictionIndependentLookup
-      ? 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000'
-      : 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
+    const cacheControl =
+      result.source === 'cache'
+        ? 'no-store, max-age=0'
+        : isQuotePool
+          ? 'public, max-age=3600, s-maxage=43200, stale-while-revalidate=604800'
+          : isJurisdictionIndependentLookup
+            ? 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000'
+            : 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800';
 
     const varyHeader =
       isQuotePool || isJurisdictionIndependentLookup
         ? 'Accept-Encoding'
-        : 'x-vercel-ip-country, Accept-Encoding';
+        : 'x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding';
 
     return NextResponse.json(result, {
       status: 200,
@@ -139,11 +146,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return createNoStoreErrorResponse('Unable to connect to Gutenberg API', 502, {
+    return createNoStoreErrorResponse('Catalog service temporarily unavailable.', 503, {
       latencyMs,
       results: [],
       count: 0,
-      source: 'upstream',
+      source: 'supabase',
       clientCountry: country,
       jurisdictionRule,
     });

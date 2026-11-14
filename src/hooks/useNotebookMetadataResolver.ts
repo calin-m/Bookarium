@@ -40,7 +40,7 @@ export interface ResolvedNotebookBookDetails {
 
 /**
  * Encapsulates multi-pool book metadata resolution (`savedBooks`, `favoriteBooks`,
- * `recentBooks`, `offlineBooks`, `FEATURED_HERO_BOOKS`, and remote Gutendex fallback),
+ * `recentBooks`, `offlineBooks`, `FEATURED_HERO_BOOKS`, and remote catalog API fallback),
  * automatic store metadata self-healing, Fellow Scholar profile hydration,
  * and `primeReaderForBook` for the Literary Notebook.
  */
@@ -110,7 +110,7 @@ export function useNotebookMetadataResolver(
     resolvedRemoteBooks,
   ]);
 
-  // Query Gutendex remote API / cache for any unindexed annotated books
+  // Query remote catalog API / cache for any unindexed annotated books
   const { data: remoteBooksData } = useBooks(
     {
       ids: missingMetadataBookIds.join(','),

@@ -68,9 +68,8 @@ export const SITE_CONFIG = {
   // Support, Inquiries & Legal Intake (Configurable via NEXT_PUBLIC_LEGAL_CONTACT_FORM)
   LEGAL_CONTACT_FORM: process.env.NEXT_PUBLIC_LEGAL_CONTACT_FORM || '',
 
-  // Public Domain Partners & Upstream Providers
+  // Public Domain Partners & Upstream Archives
   PROJECT_GUTENBERG: 'https://www.gutenberg.org',
-  GUTENDEX: 'https://gutendex.com',
   WIKIDATA: 'https://www.wikidata.org',
 
   // Design Attribution & UI Foundation

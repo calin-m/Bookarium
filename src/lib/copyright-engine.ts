@@ -316,7 +316,7 @@ export function isBookPublicDomainInJurisdiction(
   }
 
   // Rule 1: United States
-  // In the US, works published <= 1930 are public domain. Gutendex signals this with copyright === false.
+  // In the US, works published <= 1930 are public domain. Bookarium catalog metadata signals this with copyright === false.
   if (rule === 'US_PUBLIC_DOMAIN') {
     // If explicitly marked as copyrighted, withhold
     if (book.copyright === true) {

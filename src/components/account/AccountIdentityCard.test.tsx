@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountIdentityCard } from './AccountIdentityCard';
 
@@ -285,7 +285,7 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('R')).toBeInTheDocument();
   });
 
-  it('renders top-level Sign Out pill button when onSignOut is provided and invokes it on click', () => {
+  it('renders top-level Sign Out pill button when onSignOut is provided and requires confirmation before invoking it', () => {
     const handleSignOut = vi.fn();
     render(
       <AccountIdentityCard
@@ -305,6 +305,14 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     const signOutBtn = screen.getByTestId('identity-sign-out-button');
     expect(signOutBtn).toBeInTheDocument();
     fireEvent.click(signOutBtn);
+
+    const dialog = screen.getByTestId('identity-sign-out-dialog');
+    expect(within(dialog).getByText(/Sign out from this browser\?/i)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByTestId('cancel-identity-sign-out-button'));
+    expect(handleSignOut).not.toHaveBeenCalled();
+
+    fireEvent.click(signOutBtn);
+    fireEvent.click(screen.getByTestId('confirm-identity-sign-out-button'));
     expect(handleSignOut).toHaveBeenCalledTimes(1);
   });
 
