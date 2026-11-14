@@ -27,6 +27,8 @@ import { ROUTES } from '@/config/routes';
 import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Switch } from '@/components/ui/Switch';
 
 export interface AccountPublicProfileSectionProps {
   user: User;
@@ -323,14 +325,13 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
                 {bio.length}/200
               </span>
             </div>
-            <textarea
+            <Textarea
               id="scholar-bio-input"
               rows={3}
               maxLength={200}
               placeholder="A brief reflection, favorite literary era, or personal reading motto..."
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent resize-none transition-colors"
             />
           </div>
         </div>
@@ -359,18 +360,12 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
               </p>
             </div>
 
-            <label className="relative inline-flex items-center cursor-pointer shrink-0">
-              <input
-                id="public-profile-toggle"
-                type="checkbox"
-                role="switch"
-                aria-checked={isPublic}
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-muted peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
-            </label>
+            <Switch
+              id="public-profile-toggle"
+              mode="checkbox"
+              checked={isPublic}
+              onCheckedChange={setIsPublic}
+            />
           </div>
 
           {/* Granular Privacy Toggles */}

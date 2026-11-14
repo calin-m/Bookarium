@@ -14,7 +14,13 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import {
+  TurnstileWidget,
+  getTurnstileSiteKey,
+  type TurnstileWidgetHandle,
+} from '@/components/auth/TurnstileWidget';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import type { PasswordStrength } from '@/lib/password';
 
@@ -39,7 +45,7 @@ export interface AccountSecuritySectionProps {
   onToggleShowPassword: () => void;
   onGeneratePassword: () => void;
   onUpdatePassword: (e: React.FormEvent) => void;
-  onRequestPasswordReset?: () => void;
+  onRequestPasswordReset?: (captchaToken?: string) => void | Promise<void>;
   onSignOut: () => Promise<void>;
   onOpenDeleteModal: () => void;
   userEmail?: string;
@@ -92,6 +98,36 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   onUnlinkGoogle,
 }) => {
   const { isOffline } = useNetworkStatus();
+  const turnstileSiteKey = getTurnstileSiteKey();
+  const [isResetCaptchaOpen, setIsResetCaptchaOpen] = React.useState(false);
+  const [turnstileError, setTurnstileError] = React.useState<string | null>(null);
+  const turnstileRef = React.useRef<TurnstileWidgetHandle>(null);
+  const isSubmittingResetRef = React.useRef(false);
+
+  const handleResetButtonClick = () => {
+    if (!onRequestPasswordReset) return;
+    if (!turnstileSiteKey) {
+      void onRequestPasswordReset();
+      return;
+    }
+    setTurnstileError(null);
+    isSubmittingResetRef.current = false;
+    setIsResetCaptchaOpen((prev) => !prev);
+  };
+
+  const handleResetCaptchaToken = async (token: string | null) => {
+    if (!token || !onRequestPasswordReset || isSubmittingResetRef.current) return;
+    isSubmittingResetRef.current = true;
+    setTurnstileError(null);
+    try {
+      await onRequestPasswordReset(token);
+      setIsResetCaptchaOpen(false);
+    } finally {
+      isSubmittingResetRef.current = false;
+      turnstileRef.current?.reset();
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
       {/* Master Card Header */}
@@ -123,27 +159,23 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
 
           <form onSubmit={onUpdatePassword} className="space-y-4">
             {isRecoveryMode ? (
-              <div
+              <Alert
+                variant="info"
                 data-testid="password-recovery-banner"
-                role="status"
-                className="p-3 rounded-xl bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150"
+                icon={<Check className="w-3.5 h-3.5 shrink-0" />}
+                className="rounded-xl gap-2 animate-in fade-in duration-150"
               >
-                <Check className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  Email recovery link verified — enter and confirm your new password below.
-                </span>
-              </div>
+                Email recovery link verified — enter and confirm your new password below.
+              </Alert>
             ) : !hasPasswordIdentity ? (
-              <div
+              <Alert
+                variant="info"
                 data-testid="oauth-set-password-banner"
-                role="status"
-                className="p-3 rounded-xl bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150"
+                icon={<KeyRound className="w-3.5 h-3.5 shrink-0" />}
+                className="rounded-xl gap-2 animate-in fade-in duration-150"
               >
-                <KeyRound className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  You signed in with Google. Set a password below if you also want to sign in with email and password.
-                </span>
-              </div>
+                You signed in with Google. Set a password below if you also want to sign in with email and password.
+              </Alert>
             ) : (
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2 min-h-[1.5rem]">
@@ -156,7 +188,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                   {onRequestPasswordReset && (
                     <button
                       type="button"
-                      onClick={onRequestPasswordReset}
+                      onClick={handleResetButtonClick}
                       disabled={isOffline || isSendingResetEmail || resetCooldown > 0}
                       className="text-[11px] font-mono text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1 whitespace-nowrap cursor-pointer select-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
                     >
@@ -180,17 +212,52 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
                   placeholder="Enter your current password"
                   className="text-xs font-mono"
                 />
-                {resetEmailSent && (
+                {isResetCaptchaOpen && turnstileSiteKey && (
                   <div
-                    data-testid="password-reset-sent-banner"
-                    role="status"
-                    className="p-2.5 rounded-lg bg-primary/10 border border-border flex items-center gap-2 text-xs font-mono text-primary animate-in fade-in duration-150"
+                    data-testid="password-reset-turnstile-panel"
+                    className="rounded-xl border border-border bg-muted/40 p-3 space-y-2 animate-in fade-in duration-150"
                   >
-                    <Mail className="w-3.5 h-3.5 shrink-0" />
-                    <span>
-                      Password reset link sent{userEmail ? ` to ${userEmail}` : ''}! Click the link in your inbox to set a new password without your current password.
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-mono text-muted-foreground">
+                        Complete security check to email your reset link
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsResetCaptchaOpen(false);
+                          setTurnstileError(null);
+                        }}
+                        className="text-[11px] font-mono text-muted-foreground hover:text-foreground underline cursor-pointer shrink-0"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      active={isResetCaptchaOpen}
+                      testId="account-reset-turnstile-widget"
+                      onTokenChange={(token) => {
+                        void handleResetCaptchaToken(token);
+                      }}
+                      onLoadError={setTurnstileError}
+                      className="flex justify-center"
+                    />
+                    {turnstileError && (
+                      <p className="text-[11px] font-mono text-destructive text-center">
+                        {turnstileError}
+                      </p>
+                    )}
                   </div>
+                )}
+                {resetEmailSent && (
+                  <Alert
+                    variant="info"
+                    data-testid="password-reset-sent-banner"
+                    icon={<Mail className="w-3.5 h-3.5 shrink-0" />}
+                    className="p-2.5 gap-2 animate-in fade-in duration-150"
+                  >
+                    Password reset link sent{userEmail ? ` to ${userEmail}` : ''}! Click the link in your inbox to set a new password without your current password.
+                  </Alert>
                 )}
                 {resetEmailError && (
                   <p className="text-xs font-mono text-destructive flex items-center gap-1.5">

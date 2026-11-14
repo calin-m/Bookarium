@@ -19,9 +19,9 @@ export interface UseAccountSecurityActionsParams {
     newPassword: string,
     currentPassword?: string
   ) => Promise<{ error: Error | null }>;
-  resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
+  resetPasswordForEmail: (email: string, captchaToken?: string) => Promise<{ error: Error | null }>;
   requestAccountDeletion: () => Promise<{ error: Error | null }>;
-  resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
+  resendVerificationEmail: (email: string, captchaToken?: string) => Promise<{ error: Error | null }>;
   linkOAuthIdentity?: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
   unlinkOAuthIdentity?: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
 }
@@ -90,14 +90,18 @@ export function useAccountSecurityActions({
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleResendVerification = async () => {
+  const handleResendVerification = async (captchaToken?: string) => {
     if (!user?.email || isResendingVerification || resendCooldown > 0) return;
     setIsResendingVerification(true);
     setResendError(null);
     setResendSuccess(false);
 
     try {
-      const { error } = await resendVerificationEmail(user.email);
+      const validToken =
+        typeof captchaToken === 'string' && captchaToken.length > 0 ? captchaToken : undefined;
+      const { error } = validToken
+        ? await resendVerificationEmail(user.email, validToken)
+        : await resendVerificationEmail(user.email);
       if (error) {
         setResendError(error.message);
       } else {
@@ -135,14 +139,18 @@ export function useAccountSecurityActions({
     return () => clearInterval(timer);
   }, [resetCooldown]);
 
-  const handleRequestPasswordReset = async () => {
+  const handleRequestPasswordReset = async (captchaToken?: string) => {
     if (!user?.email || isSendingResetEmail || resetCooldown > 0) return;
     setIsSendingResetEmail(true);
     setResetEmailError(null);
     setResetEmailSent(false);
 
     try {
-      const { error } = await resetPasswordForEmail(user.email);
+      const validToken =
+        typeof captchaToken === 'string' && captchaToken.length > 0 ? captchaToken : undefined;
+      const { error } = validToken
+        ? await resetPasswordForEmail(user.email, validToken)
+        : await resetPasswordForEmail(user.email);
       if (error) {
         setResetEmailError(error.message);
       } else {

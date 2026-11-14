@@ -16,6 +16,7 @@ import { useBookRating, useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { StarRating } from '@/components/ui/StarRating';
+import { Select } from '@/components/ui/Select';
 import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
@@ -538,7 +539,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
         {cloudBookshelves.length > 1 && onMoveBookToShelf && (
           <div className="pt-2 mt-2 border-t border-border flex items-center justify-between gap-1.5" onClick={(e) => e.stopPropagation()}>
             <span className="text-[10px] font-mono text-muted-foreground">Shelf:</span>
-            <select
+            <Select
               aria-label={`Move ${book.title} to shelf`}
               value={
                 cloudBookshelfItems.find((i) => i.book_id === book.id)?.bookshelf_id ||
@@ -552,14 +553,14 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
                   await onMoveBookToShelf(book.id, targetShelfId, userId || '');
                 }
               }}
-              className="text-base sm:text-[10px] font-mono bg-card text-foreground border border-border rounded px-1.5 py-0.5 max-w-[130px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-hidden"
+              className="text-base sm:text-[10px] font-mono bg-card text-foreground border border-border rounded px-1.5 py-0.5 max-w-[130px] truncate hover:border-primary transition-colors focus:outline-hidden"
             >
               {cloudBookshelves.map((shelf) => (
                 <option key={shelf.id} value={shelf.id}>
                   {shelf.is_default ? 'General (All)' : shelf.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
       </div>

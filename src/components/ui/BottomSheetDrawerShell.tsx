@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 
 /**
  * Splits a comma-separated filter string into trimmed non-empty tokens.
@@ -80,25 +81,20 @@ export const BottomSheetDrawerShell: React.FC<
   children,
 }) => {
   const resolvedActiveCount = activeFilterCount ?? activeCount ?? 0;
-  useEffect(() => {
-    if (!isOpen) return;
+  const sheetDialogRef = useRef<HTMLDivElement>(null);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  useDialogFocusTrap({
+    isOpen,
+    containerRef: sheetDialogRef,
+    onClose,
+    autoFocus: false,
+  });
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div
+          ref={sheetDialogRef}
           className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none overflow-hidden [contain:strict]"
           role="dialog"
           aria-modal="true"

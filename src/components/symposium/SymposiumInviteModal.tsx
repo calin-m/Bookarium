@@ -5,6 +5,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { Users, BookOpen, Check, Sparkles, UserPlus, ChevronDown } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
+import { Alert } from '@/components/ui/Alert';
 import {
   useFellowshipStore,
   formatFellowScholarLabel,
@@ -134,21 +136,22 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
                 {initialBookTitle}
               </p>
             ) : savedBooks.length > 0 ? (
-              <div className="relative mt-1">
-                <select
-                  aria-label="Select volume for Symposium"
-                  value={selectedBookId}
-                  onChange={(e) => setSelectedBookId(Number(e.target.value))}
-                  className="w-full appearance-none py-2 pl-3 pr-8 text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40 transition-colors cursor-pointer"
-                >
-                  {savedBooks.map((book) => (
-                    <option key={book.id} value={book.id}>
-                      {book.title}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
-              </div>
+              <Select
+                wrapperClassName="mt-1"
+                aria-label="Select volume for Symposium"
+                value={selectedBookId}
+                onChange={(e) => setSelectedBookId(Number(e.target.value))}
+                className="w-full appearance-none py-2 pl-3 pr-8 text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40 transition-colors"
+                rightChevron={
+                  <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                }
+              >
+                {savedBooks.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {book.title}
+                  </option>
+                ))}
+              </Select>
             ) : (
               <p className="text-sm font-serif font-bold text-foreground">
                 Pride and Prejudice (#1342)
@@ -188,21 +191,21 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
             >
               Choose Fellow Scholar from Reader Circle
             </label>
-            <div className="relative">
-              <select
-                id="symposium-fellow-select"
-                value={effectiveFellow?.fellowId || ''}
-                onChange={(e) => setSelectedFellowId(e.target.value)}
-                className="w-full appearance-none py-2 pl-3 pr-8 text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40 transition-colors cursor-pointer"
-              >
-                {acceptedFellows.map((f) => (
-                  <option key={f.fellowId} value={f.fellowId}>
-                    {formatFellowScholarLabel(f.displayName, f.username)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
-            </div>
+            <Select
+              id="symposium-fellow-select"
+              value={effectiveFellow?.fellowId || ''}
+              onChange={(e) => setSelectedFellowId(e.target.value)}
+              className="w-full appearance-none py-2 pl-3 pr-8 text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/40 transition-colors"
+              rightChevron={
+                <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+              }
+            >
+              {acceptedFellows.map((f) => (
+                <option key={f.fellowId} value={f.fellowId}>
+                  {formatFellowScholarLabel(f.displayName, f.username)}
+                </option>
+              ))}
+            </Select>
           </div>
         ) : (
           <form onSubmit={handleQuickCircleInvite} className="space-y-2.5 p-4 rounded-2xl border border-border bg-muted/20">
@@ -232,24 +235,29 @@ export const SymposiumInviteModal: React.FC<SymposiumInviteModalProps> = ({
           </form>
         )}
 
-        <div className="p-3 rounded-xl bg-muted/30 border border-border flex items-start gap-2.5 text-[11px] text-muted-foreground leading-relaxed">
-          <Sparkles className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-          <span>
-            Once accepted, both scholars can view and filter shared marginalia in this volume while keeping all other books private.
-          </span>
-        </div>
+        <Alert
+          variant="neutral"
+          role={null}
+          icon={<Sparkles className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />}
+          className="rounded-xl flex items-start gap-2.5"
+        >
+          Once accepted, both scholars can view and filter shared marginalia in this volume while keeping all other books private.
+        </Alert>
 
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-destructive/10 border border-border text-xs font-mono text-destructive flex items-start gap-2" role="alert">
-            <span>{errorMsg}</span>
-          </div>
+          <Alert variant="error" className="rounded-xl border-border flex items-start gap-2">
+            {errorMsg}
+          </Alert>
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-success/10 border border-border text-xs font-mono text-success flex items-start gap-2" role="status">
-            <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>{successMsg}</span>
-          </div>
+          <Alert
+            variant="success-token"
+            icon={<Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+            className="rounded-xl flex items-start gap-2"
+          >
+            {successMsg}
+          </Alert>
         )}
 
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">

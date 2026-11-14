@@ -17,6 +17,7 @@ import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotat
 import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from './DeleteAnnotationModal';
 import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
+import { Textarea } from '@/components/ui/Textarea';
 
 export interface ReaderAnnotationsDrawerProps {
   isOpen: boolean;
@@ -421,13 +422,13 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                       {/* Note Section */}
                       {!isFellow && editingNoteId === item.id ? (
                         <div className="flex flex-col gap-1.5 pt-1">
-                          <textarea
+                          <Textarea
+                            variant="reader"
                             data-testid="annotation-edit-textarea"
                             value={editingNoteText}
                             onChange={(e) => setEditingNoteText(e.target.value)}
                             placeholder="Enter personal note..."
                             rows={2}
-                            className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
                             autoFocus
                           />
                           <div className="flex items-center justify-end gap-1.5">
@@ -485,13 +486,13 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
                       {isFellow && onSaveFellowAnnotation && (
                         savingFellowId === item.id ? (
                           <div className="flex flex-col gap-1.5 pt-1">
-                            <textarea
+                            <Textarea
+                              variant="reader"
                               data-testid={`drawer-reply-textarea-${item.id}`}
                               value={savingFellowText}
                               onChange={(e) => setSavingFellowText(e.target.value)}
                               placeholder="Write your personal note to save with this highlight..."
                               rows={2}
-                              className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 focus:outline-none focus:ring-1 focus:ring-primary-500 font-sans"
                               autoFocus
                             />
                             <div className="flex items-center justify-end gap-1.5">

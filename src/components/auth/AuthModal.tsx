@@ -2,38 +2,28 @@
 
 import React, { useState, useEffect, useRef, useId, useCallback } from 'react';
 import Link from 'next/link';
-import Script from 'next/script';
 import { X, Mail, Lock, User as UserIcon, Sparkles, AlertCircle, ArrowRight, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore, type AuthModalView } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
 import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { EmailSentView } from './EmailSentView';
+import {
+  TurnstileWidget,
+  getTurnstileSiteKey,
+  type TurnstileWidgetHandle,
+  type TurnstileRenderOptions,
+  type TurnstileApi,
+} from './TurnstileWidget';
 
-export interface TurnstileRenderOptions {
-  sitekey: string;
-  theme?: 'light' | 'dark' | 'auto';
-  callback?: (token: string) => void;
-  'expired-callback'?: () => void;
-  'error-callback'?: () => void;
-}
-
-export interface TurnstileApi {
-  render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
-  reset: (widgetId?: string) => void;
-  remove: (widgetId?: string) => void;
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi;
-  }
-}
+export type { TurnstileRenderOptions, TurnstileApi };
 
 export const AUTH_VIEW_CONFIG: Record<AuthModalView, { title: string; description: string; submitLabel: string }> = {
   sign_in: {
@@ -109,159 +99,30 @@ export const AuthModal: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [honeypot, setHoneypot] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
 
-  const turnstileSiteKey = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '').trim();
+  const turnstileSiteKey = getTurnstileSiteKey();
   const titleId = useId();
   const cardRef = useRef<HTMLDivElement>(null);
-  const turnstileContainerRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetIdRef = useRef<string | null>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-  const closeAuthModalRef = useRef(closeAuthModal);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const resetTurnstileWidget = useCallback(() => {
     setCaptchaToken(null);
-    if (typeof window !== 'undefined' && window.turnstile && turnstileWidgetIdRef.current) {
-      try {
-        window.turnstile.reset(turnstileWidgetIdRef.current);
-      } catch {
-        // Ignore reset errors on unmounted widgets
-      }
+    turnstileRef.current?.reset();
+  }, []);
+
+  const handleTurnstileTokenChange = useCallback((token: string | null) => {
+    setCaptchaToken(token);
+    if (token) {
+      setResendNotice(null);
     }
   }, []);
 
-  const mountTurnstileWidget = useCallback(() => {
-    if (
-      !isAuthModalOpen ||
-      !turnstileSiteKey ||
-      typeof window === 'undefined' ||
-      !window.turnstile ||
-      !turnstileContainerRef.current
-    ) {
-      return;
-    }
-    if (turnstileWidgetIdRef.current) {
-      try {
-        window.turnstile.remove(turnstileWidgetIdRef.current);
-      } catch {
-        // Ignore cleanup errors
-      }
-      turnstileWidgetIdRef.current = null;
-    }
-    setCaptchaToken(null);
-    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
-      sitekey: turnstileSiteKey,
-      theme: 'auto',
-      callback: (token: string) => setCaptchaToken(token),
-      'expired-callback': () => setCaptchaToken(null),
-      'error-callback': () => setCaptchaToken(null),
-    });
-  }, [isAuthModalOpen, turnstileSiteKey]);
-
-  useEffect(() => {
-    if (!isAuthModalOpen || !turnstileSiteKey) return;
-    const isSentView =
-      (verificationEmailSent && authModalView === 'sign_up') ||
-      (magicLinkSent && authModalView === 'magic_link') ||
-      (resetPasswordSent && authModalView === 'forgot_password');
-    if (isSentView) return;
-
-    mountTurnstileWidget();
-
-    return () => {
-      if (typeof window !== 'undefined' && window.turnstile && turnstileWidgetIdRef.current) {
-        try {
-          window.turnstile.remove(turnstileWidgetIdRef.current);
-        } catch {
-          // Ignore cleanup errors
-        }
-        turnstileWidgetIdRef.current = null;
-      }
-    };
-  }, [
-    isAuthModalOpen,
-    turnstileSiteKey,
-    authModalView,
-    verificationEmailSent,
-    magicLinkSent,
-    resetPasswordSent,
-    mountTurnstileWidget,
-  ]);
-
-  useEffect(() => {
-    closeAuthModalRef.current = closeAuthModal;
-  }, [closeAuthModal]);
-
-  // Focus trap & Escape dismissal effect
-  useEffect(() => {
-    if (!isAuthModalOpen) return;
-
-    if (typeof document !== 'undefined') {
-      previousFocusRef.current = document.activeElement as HTMLElement | null;
-    }
-
-    const getTabbableElements = (): HTMLElement[] => {
-      if (!cardRef.current) return [];
-      const selector =
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-      return Array.from(cardRef.current.querySelectorAll<HTMLElement>(selector)).filter(
-        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true'
-      );
-    };
-
-    const timer = setTimeout(() => {
-      if (cardRef.current && (!document.activeElement || !cardRef.current.contains(document.activeElement))) {
-        const tabbables = getTabbableElements();
-        if (tabbables.length > 0) {
-          tabbables[0].focus({ preventScroll: true });
-        }
-      }
-    }, 0);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closeAuthModalRef.current();
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        const tabbables = getTabbableElements();
-        if (tabbables.length === 0) {
-          e.preventDefault();
-          return;
-        }
-
-        const firstElement = tabbables[0];
-        const lastElement = tabbables[tabbables.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement || !cardRef.current?.contains(document.activeElement)) {
-            e.preventDefault();
-            lastElement.focus({ preventScroll: true });
-          }
-        } else {
-          if (document.activeElement === lastElement || !cardRef.current?.contains(document.activeElement)) {
-            e.preventDefault();
-            firstElement.focus({ preventScroll: true });
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('keydown', handleKeyDown);
-      if (
-        previousFocusRef.current &&
-        typeof previousFocusRef.current.focus === 'function' &&
-        typeof document !== 'undefined' &&
-        document.body.contains(previousFocusRef.current)
-      ) {
-        previousFocusRef.current.focus({ preventScroll: true });
-      }
-    };
-  }, [isAuthModalOpen]);
+  useDialogFocusTrap({
+    isOpen: isAuthModalOpen,
+    containerRef: cardRef,
+    onClose: closeAuthModal,
+  });
 
   // Cooldown countdown effect
   useEffect(() => {
@@ -272,15 +133,25 @@ export const AuthModal: React.FC = () => {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const handleResendVerification = async () => {
+  const handleResendVerification = async (tokenOverride?: string) => {
     if (!email || isResending || resendCooldown > 0) return;
+    const resolvedToken =
+      typeof tokenOverride === 'string' && tokenOverride.length > 0
+        ? tokenOverride
+        : captchaToken;
+    if (turnstileSiteKey && !resolvedToken) {
+      setResendNotice('Please complete the security check below before resending.');
+      return;
+    }
+
+    setResendNotice(null);
     setIsResending(true);
     setError(null);
     setResendSuccess(false);
 
     try {
-      const { error: resendErr } = captchaToken
-        ? await resendVerificationEmail(email, captchaToken)
+      const { error: resendErr } = resolvedToken
+        ? await resendVerificationEmail(email, resolvedToken)
         : await resendVerificationEmail(email);
       if (resendErr) {
         setError(resendErr.message);
@@ -395,11 +266,15 @@ export const AuthModal: React.FC = () => {
     >
       <div
         ref={cardRef}
-        className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden p-6 sm:p-8 text-foreground space-y-6"
+        data-testid="auth-modal-card"
+        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col text-foreground"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
+        <div
+          data-testid="auth-modal-header"
+          className="shrink-0 flex items-start justify-between gap-4 px-5 pt-4 pb-2 sm:px-8 sm:pt-8 sm:pb-3"
+        >
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/10 text-primary border border-primary/30">
               <Sparkles className="w-3.5 h-3.5" />
@@ -423,46 +298,60 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
+        {/* Scrollable Body */}
+        <div
+          data-testid="auth-modal-scroll-body"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 pt-1 sm:px-8 sm:pb-8 sm:pt-3 space-y-3 sm:space-y-6"
+        >
+
         {/* Status / Verification Notice Banner */}
         {statusMessage && (
-          <div
-            role="status"
-            className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-mono"
-          >
-            <Check className="w-4 h-4 shrink-0" />
-            <span>{statusMessage}</span>
-          </div>
+          <Alert variant="success" icon={<Check className="w-4 h-4 shrink-0" />}>
+            {statusMessage}
+          </Alert>
         )}
 
         {/* Error Alert with Optional Resend Action if Email Not Confirmed */}
         {error && (
-          <div className="space-y-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs font-mono">
-            <div className="flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-            {error.toLowerCase().includes('email not confirmed') && (
-              <div className="pt-1.5 flex items-center justify-between gap-2 border-t border-destructive/20">
-                <span className="text-[11px] text-foreground/80">
-                  Didn&apos;t receive or link expired?
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResendVerification}
-                  disabled={isResending || resendCooldown > 0}
-                  className="text-[11px] font-mono shrink-0 cursor-pointer h-7 px-2"
-                >
-                  {isResending
-                    ? 'Sending...'
-                    : resendCooldown > 0
-                    ? `Wait ${resendCooldown}s`
-                    : 'Resend Link'}
-                </Button>
-              </div>
-            )}
-          </div>
+          <Alert
+            variant="error"
+            role={null}
+            icon={<AlertCircle className="w-4 h-4 shrink-0" />}
+            footer={
+              error.toLowerCase().includes('email not confirmed') ? (
+                <div className="pt-1.5 space-y-1.5 border-t border-destructive/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-foreground/80">
+                      Didn&apos;t receive or link expired?
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        void handleResendVerification();
+                      }}
+                      disabled={isResending || resendCooldown > 0}
+                      className="text-[11px] font-mono shrink-0 cursor-pointer h-7 px-2"
+                    >
+                      {isResending
+                        ? 'Sending...'
+                        : resendCooldown > 0
+                        ? `Wait ${resendCooldown}s`
+                        : 'Resend Link'}
+                    </Button>
+                  </div>
+                  {resendNotice && (
+                    <p className="text-[11px] font-mono text-amber-600 dark:text-amber-400">
+                      {resendNotice}
+                    </p>
+                  )}
+                </div>
+              ) : undefined
+            }
+          >
+            {error}
+          </Alert>
         )}
 
         <ContentCrossfade
@@ -475,7 +364,7 @@ export const AuthModal: React.FC = () => {
               ? 'reset-sent'
               : authModalView
           }`}
-          className="space-y-4"
+          className="space-y-3 sm:space-y-4"
         >
           {/* Verification Email Sent Screen (Sign Up) */}
           {verificationEmailSent && authModalView === 'sign_up' ? (
@@ -517,9 +406,9 @@ export const AuthModal: React.FC = () => {
           ) : (
             <>
               {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-4">
             {(authModalView === 'sign_in' || authModalView === 'sign_up') && (
-              <div className="space-y-4">
+              <div className="space-y-2.5 sm:space-y-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -528,7 +417,7 @@ export const AuthModal: React.FC = () => {
                   disabled={isSubmitting || isOAuthSubmitting}
                   onClick={() => handleOAuth('google')}
                   data-testid="google-oauth-button"
-                  className="w-full font-mono text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2.5 cursor-pointer"
+                  className="w-full h-9 sm:h-10 font-mono text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2.5 cursor-pointer"
                 >
                   <svg
                     className="w-4 h-4 shrink-0"
@@ -581,7 +470,7 @@ export const AuthModal: React.FC = () => {
             </div>
 
             {authModalView === 'sign_up' && (
-              <div className="space-y-1">
+              <div className="space-y-0.5 sm:space-y-1">
                 <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
                   <UserIcon className="w-3 h-3" /> Full Name
                 </label>
@@ -590,13 +479,13 @@ export const AuthModal: React.FC = () => {
                   placeholder="Jane Austen"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="text-xs font-mono"
+                  className="h-9 sm:h-11 text-xs font-mono"
                   required
                 />
               </div>
             )}
 
-            <div className="space-y-1">
+            <div className="space-y-0.5 sm:space-y-1">
               <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
                 <Mail className="w-3 h-3" /> Email Address
               </label>
@@ -605,13 +494,13 @@ export const AuthModal: React.FC = () => {
                 placeholder="reader@bookarium.org"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="text-xs font-mono"
+                className="h-9 sm:h-11 text-xs font-mono"
                 required
               />
             </div>
 
             {authModalView !== 'magic_link' && authModalView !== 'forgot_password' && (
-              <div className="space-y-1.5">
+              <div className="space-y-1 sm:space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
                     <Lock className="w-3 h-3" /> Password
@@ -657,7 +546,7 @@ export const AuthModal: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete={authModalView === 'sign_up' ? 'new-password' : 'current-password'}
-                    className="text-xs font-mono pr-9"
+                    className="h-9 sm:h-11 text-xs font-mono pr-9"
                     required
                     minLength={6}
                   />
@@ -672,7 +561,7 @@ export const AuthModal: React.FC = () => {
                 </div>
 
                 {authModalView === 'sign_up' && (
-                  <div className="space-y-1.5 pt-1.5">
+                  <div className="space-y-1 sm:space-y-1.5 pt-1 sm:pt-1.5">
                     <label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
                       <Lock className="w-3 h-3" /> Confirm Password
                     </label>
@@ -683,7 +572,7 @@ export const AuthModal: React.FC = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         autoComplete="new-password"
-                        className="text-xs font-mono pr-9"
+                        className="h-9 sm:h-11 text-xs font-mono pr-9"
                         required
                         minLength={6}
                       />
@@ -700,34 +589,27 @@ export const AuthModal: React.FC = () => {
               </div>
             )}
 
-            {turnstileSiteKey && (
-              <div className="pt-1 flex justify-center">
-                <Script
-                  src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-                  strategy="afterInteractive"
-                  onReady={mountTurnstileWidget}
-                />
-                <div
-                  ref={turnstileContainerRef}
-                  data-testid="turnstile-widget-container"
-                  className="min-h-[65px] flex items-center justify-center"
-                />
-              </div>
-            )}
+            <TurnstileWidget
+              ref={turnstileRef}
+              active={isAuthModalOpen}
+              mountKey={authModalView}
+              onTokenChange={handleTurnstileTokenChange}
+              className="pt-1 flex justify-center"
+            />
 
             <Button
               type="submit"
               variant="primary"
               size="md"
               isLoading={isSubmitting}
-              className="w-full font-mono text-xs uppercase tracking-wider font-bold"
+              className="w-full h-9 sm:h-10 font-mono text-xs uppercase tracking-wider font-bold"
             >
               <span>{AUTH_VIEW_CONFIG[authModalView].submitLabel}</span>
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
 
             {authModalView === 'sign_up' && (
-              <p className="text-[11px] text-muted-foreground text-center pt-2 leading-relaxed font-sans">
+              <p className="text-[11px] text-muted-foreground text-center pt-0.5 sm:pt-2 leading-snug sm:leading-relaxed font-sans">
                 By creating an account, you confirm that you are at least 13 years of age (or the digital age of consent in your jurisdiction) and agree to our{' '}
                 <Link
                   href={ROUTES.PRIVACY}
@@ -749,7 +631,7 @@ export const AuthModal: React.FC = () => {
           </form>
 
           {/* View Switchers */}
-          <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-muted-foreground">
+          <div className="pt-2 sm:pt-3 border-t border-border flex items-center justify-between text-xs font-mono text-muted-foreground">
             {authModalView === 'sign_in' ? (
               <>
                 <button
@@ -802,6 +684,7 @@ export const AuthModal: React.FC = () => {
         </>
       )}
     </ContentCrossfade>
+        </div>
       </div>
     </div>
   );

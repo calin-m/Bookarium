@@ -18,6 +18,7 @@ import {
   resolveBestVoice,
 } from '@/lib/speech-utils';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
+import { Select } from '@/components/ui/Select';
 
 export interface AccountNarrationSubPanelProps {
   isActive: boolean;
@@ -171,12 +172,12 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
           Preferred System Narrator Voice
         </label>
 
-        <select
+        <Select
           id="preferred-narrator-voice-select"
           value={speechVoiceURI || ''}
           onChange={(e) => onSpeechVoiceChange(e.target.value || null)}
           aria-label="Preferred narrator voice"
-          className="w-full py-2 px-3 text-base sm:text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full truncate"
+          className="w-full py-2 px-3 text-base sm:text-xs font-mono rounded-xl border border-border bg-card text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary max-w-full truncate"
         >
           <option value="">✨ Auto-Select Highest Quality Voice (Recommended)</option>
           {naturalVoices.length > 0 && (
@@ -197,7 +198,7 @@ export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> =
               ))}
             </optgroup>
           )}
-        </select>
+        </Select>
         <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
           In the Reader, voices automatically filter to match the book&apos;s language. On phones and tablets, additional free neural voices can be enabled in your device OS settings (iOS Spoken Content or Android Text-to-speech output).
         </p>

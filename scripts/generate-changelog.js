@@ -9,6 +9,19 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.29',
+    date: '2026-11-14',
+    title: 'Zero-Visual-Shift Reusable UI Primitives, Overlay Focus-Trap & Turnstile Auth Recovery',
+    sections: {
+      Changed: [
+        'Zero-Visual-Shift Reusable UI Primitives Extraction (`src/components/ui/Switch.tsx`, `src/components/ui/Textarea.tsx`, `src/components/ui/Select.tsx`, `src/components/ui/Alert.tsx`, `src/components/ui/SegmentedControl.tsx`, `ADR-080`): Consolidated duplicated toggle switches, multi-variant textareas (`default`, `subtle`, `reader`), bare/adorned select controls, status/alert banners, and segmented button/tab groups across 20 consumer components (`AccountPublicProfileSection`, `AccountNarrationSubPanel`, `AccountSecuritySection`, `AccountAccoladesCard`, `AccountTypographySubPanel`, `ReaderControls`, `ReaderAnnotationsDrawer`, `TextHighlightPopover`, `ReaderSpeechBar`, `ReaderShareModal`, `NotebookQuoteCard`, `BookshelfMobileModal`, `BookshelfSpine`, `BookmarkCard`, `CollectionSortDropdown`, `LanguageSelector`, `SymposiumInviteModal`, `AuthModal`, `StickyCatalogToolbar`, `BookGrid`) with strict DOM parity, zero wrapper regressions, and 1:1 co-located test coverage.',
+        'Shared Dialog Focus-Trap, Escape & Focus-Restoration Hook (`src/hooks/useDialogFocusTrap.ts`, `src/hooks/useDialogFocusTrap.test.ts`, `src/components/ui/Modal.tsx`, `src/components/auth/AuthModal.tsx`, `src/components/ui/BottomSheetDrawerShell.tsx`, `src/components/accolades/AccoladeCelebrationModal.tsx`, `ADR-058`, `ADR-080`): Unified overlay `Tab`/`Shift+Tab` focus wrapping (`findTabbableElements`), global `Escape` dismissal, and `{ preventScroll: true }` trigger focus restoration behind `useDialogFocusTrap` (`autoFocus?: boolean`, preserving `autoFocus: false` on `BottomSheetDrawerShell` and `AccoladeCelebrationModal` while guarding against inline callback focus-stealing).',
+        'Shared Turnstile Widget & Account Recovery / Resend CAPTCHA Parity (`src/components/auth/TurnstileWidget.tsx`, `src/components/auth/TurnstileWidget.test.tsx`, `src/components/auth/AuthModal.tsx`, `src/components/auth/EmailSentView.tsx`, `src/components/account/AccountSecuritySection.tsx`, `src/components/account/AccountIdentityCard.tsx`, `src/hooks/useAccountSecurityActions.ts`, `ADR-080`): Extracted shared `TurnstileWidget` (no-op when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is blank), wired reveal-on-click inline Turnstile verification into `/account` password reset and verification resend with zero idle layout shift, forwarded optional `captchaToken` strings in `useAccountSecurityActions`, and fixed `AuthModal` and `EmailSentView` resend token forwarding.',
+        'Bounded Mobile Viewport Scrollability & Compact Vertical Rhythm in `AuthModal` (`src/components/auth/AuthModal.tsx`, `src/components/auth/AuthModal.test.tsx`, `ADR-080`): Constrained `AuthModal` height to `max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh]` with a pinned `shrink-0` close header, an internal `overflow-y-auto overscroll-contain` body, and compact `< sm` vertical spacing (`h-9 sm:h-11` inputs, `h-9 sm:h-10` buttons, tighter field gaps) so `sign_up` never clips top/bottom on mobile viewports or open keyboards while preserving `>= 640px` desktop layout.',
+      ],
+    },
+  },
+  {
     version: '2.9.28',
     date: '2026-11-13',
     title: 'Public API Anti-Abuse Hardening, CORP Isolation, Mode-Scoped Rate Limiters & Unified Collection Empty States',

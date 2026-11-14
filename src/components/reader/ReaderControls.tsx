@@ -6,6 +6,8 @@ import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Switch } from '@/components/ui/Switch';
 
 export interface ReaderControlsProps {
   isOpen: boolean;
@@ -82,44 +84,33 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           <label className={`block ${activeTheme.textMuted} mb-1.5 uppercase tracking-wider text-[10px]`}>
             Reading Surface
           </label>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => onThemeChange('light')}
-              aria-pressed={theme === 'light'}
-              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
-                theme === 'light'
-                  ? `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`
-                  : `${activeTheme.pill} ${activeTheme.inactivePill}`
-              }`}
-            >
-              <Sun className="w-3.5 h-3.5 text-amber-500" /> Light
-            </button>
-            <button
-              type="button"
-              onClick={() => onThemeChange('sepia')}
-              aria-pressed={theme === 'sepia'}
-              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
-                theme === 'sepia'
-                  ? `${activeTheme.activePill} border-[#f59e0b] font-bold shadow-xs`
-                  : `${activeTheme.pill} ${activeTheme.inactivePill}`
-              }`}
-            >
-              <Coffee className="w-3.5 h-3.5 text-amber-700" /> Sepia
-            </button>
-            <button
-              type="button"
-              onClick={() => onThemeChange('dark')}
-              aria-pressed={theme === 'dark'}
-              className={`p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors ${
-                theme === 'dark'
-                  ? `${activeTheme.activePill} border-primary-500 font-bold shadow-xs`
-                  : `${activeTheme.pill} ${activeTheme.inactivePill}`
-              }`}
-            >
-              <Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark
-            </button>
-          </div>
+          <SegmentedControl<ReaderTheme>
+            value={theme}
+            onChange={onThemeChange}
+            className="grid grid-cols-3 gap-2"
+            optionClassName="p-2 rounded-lg border flex items-center justify-center gap-1.5 transition-colors"
+            inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+            options={[
+              {
+                value: 'light',
+                icon: <Sun className="w-3.5 h-3.5 text-amber-500" />,
+                label: 'Light',
+                activeClassName: `${activeTheme.activePill} border-primary-600 font-bold shadow-xs`,
+              },
+              {
+                value: 'sepia',
+                icon: <Coffee className="w-3.5 h-3.5 text-amber-700" />,
+                label: 'Sepia',
+                activeClassName: `${activeTheme.activePill} border-[#f59e0b] font-bold shadow-xs`,
+              },
+              {
+                value: 'dark',
+                icon: <Moon className="w-3.5 h-3.5 text-indigo-400" />,
+                label: 'Dark',
+                activeClassName: `${activeTheme.activePill} border-primary-500 font-bold shadow-xs`,
+              },
+            ]}
+          />
         </div>
 
         {/* Page Brightness (Google Play Books Style) */}
@@ -157,23 +148,20 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 : 'accent-primary-600 bg-stone-200 dark:bg-stone-700'
             }`}
           />
-          <div className="grid grid-cols-3 gap-1 mt-1.5">
-            {READER_FONT_CONFIG.PRESET_BRIGHTNESS.map((b) => (
-              <button
-                key={b}
-                type="button"
-                onClick={() => onBrightnessChange?.(b)}
-                aria-pressed={brightness === b}
-                className={`py-0.5 rounded text-[9px] font-mono border transition-colors ${
-                  brightness === b
-                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
-                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                }`}
-              >
-                {b}%
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<number>
+            value={brightness}
+            onChange={(b) => onBrightnessChange?.(b)}
+            className="grid grid-cols-3 gap-1 mt-1.5"
+            optionClassName="py-0.5 rounded text-[9px] font-mono border transition-colors"
+            activeClassName={`${activeTheme.activePill} ${
+              theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'
+            } font-bold`}
+            inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+            options={READER_FONT_CONFIG.PRESET_BRIGHTNESS.map((b) => ({
+              value: b,
+              label: `${b}%`,
+            }))}
+          />
         </div>
 
         {/* Font Family */}
@@ -181,26 +169,22 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
           <label className={`block ${activeTheme.textMuted} mb-2 uppercase tracking-wider text-[10px]`}>
             Typeface
           </label>
-          <div className="grid grid-cols-3 gap-2">
-            {(['serif', 'sans', 'mono'] as const).map((fam) => (
-              <button
-                key={fam}
-                type="button"
-                onClick={() => onFontFamilyChange(fam)}
-                aria-pressed={fontFamily === fam}
-                aria-label={`Font family ${fam}`}
-                className={`p-2 rounded-lg border text-sm capitalize transition-colors ${
-                  fam === 'serif' ? 'font-serif' : fam === 'mono' ? 'font-mono' : 'font-sans'
-                } ${
-                  fontFamily === fam
-                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
-                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                }`}
-              >
-                {fam.charAt(0).toUpperCase() + fam.slice(1)}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<ReaderFontFamily>
+            value={fontFamily}
+            onChange={onFontFamilyChange}
+            className="grid grid-cols-3 gap-2"
+            optionClassName="p-2 rounded-lg border text-sm capitalize transition-colors"
+            activeClassName={`${activeTheme.activePill} ${
+              theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'
+            } font-bold shadow-xs`}
+            inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+            options={(['serif', 'sans', 'mono'] as const).map((fam) => ({
+              value: fam,
+              label: fam.charAt(0).toUpperCase() + fam.slice(1),
+              ariaLabel: `Font family ${fam}`,
+              className: fam === 'serif' ? 'font-serif' : fam === 'mono' ? 'font-mono' : 'font-sans',
+            }))}
+          />
         </div>
 
         {/* Font Size & Line Height Sliders */}
@@ -229,22 +213,21 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   : 'accent-primary-600 bg-stone-200 dark:bg-stone-700'
               }`}
             />
-            <div className="grid grid-cols-3 gap-1 mt-1.5">
-              {READER_FONT_CONFIG.PRESET_SIZES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => onFontSizeChange(s)}
-                  className={`py-0.5 rounded text-[9px] font-mono border transition-colors ${
-                    fontSize === s
-                      ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
-                      : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                  }`}
-                >
-                  {s}px
-                </button>
-              ))}
-            </div>
+            <SegmentedControl<number>
+              value={fontSize}
+              onChange={onFontSizeChange}
+              emitAriaPressed={false}
+              className="grid grid-cols-3 gap-1 mt-1.5"
+              optionClassName="py-0.5 rounded text-[9px] font-mono border transition-colors"
+              activeClassName={`${activeTheme.activePill} ${
+                theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'
+              } font-bold`}
+              inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+              options={READER_FONT_CONFIG.PRESET_SIZES.map((s) => ({
+                value: s,
+                label: `${s}px`,
+              }))}
+            />
           </div>
 
           <div>
@@ -271,22 +254,21 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                   : 'accent-primary-600 bg-stone-200 dark:bg-stone-700'
               }`}
             />
-            <div className="grid grid-cols-3 gap-1 mt-1.5">
-              {[1.4, 1.8, 2.2].map((lh) => (
-                <button
-                  key={lh}
-                  type="button"
-                  onClick={() => onLineHeightChange(lh)}
-                  className={`py-0.5 rounded text-[9px] font-mono border transition-colors ${
-                    lineHeight === lh
-                      ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'} font-bold`
-                      : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                  }`}
-                >
-                  {lh}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl<number>
+              value={lineHeight}
+              onChange={onLineHeightChange}
+              emitAriaPressed={false}
+              className="grid grid-cols-3 gap-1 mt-1.5"
+              optionClassName="py-0.5 rounded text-[9px] font-mono border transition-colors"
+              activeClassName={`${activeTheme.activePill} ${
+                theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600'
+              } font-bold`}
+              inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+              options={[1.4, 1.8, 2.2].map((lh) => ({
+                value: lh,
+                label: lh,
+              }))}
+            />
           </div>
         </div>
 
@@ -294,53 +276,38 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
         <div className={`pt-3 border-t ${activeTheme.border} grid grid-cols-2 gap-3`}>
           <div>
             <label className={`block ${activeTheme.textMuted} mb-1.5 uppercase text-[10px]`}>Paging</label>
-            <div className="grid grid-cols-2 gap-1">
-              <button
-                type="button"
-                onClick={() => onReadingModeChange('paginated')}
-                aria-pressed={readingMode === 'paginated'}
-                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-colors ${
-                  readingMode === 'paginated'
-                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
-                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                }`}
-              >
-                <Columns className="w-3 h-3" /> Page
-              </button>
-              <button
-                type="button"
-                onClick={() => onReadingModeChange('scroll')}
-                aria-pressed={readingMode === 'scroll'}
-                className={`p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-colors ${
-                  readingMode === 'scroll'
-                    ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
-                    : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                }`}
-              >
-                <AlignLeft className="w-3 h-3" /> Scroll
-              </button>
-            </div>
+            <SegmentedControl<'paginated' | 'scroll'>
+              value={readingMode}
+              onChange={onReadingModeChange}
+              className="grid grid-cols-2 gap-1"
+              optionClassName="p-1.5 rounded text-[11px] border flex items-center justify-center gap-1 transition-colors"
+              activeClassName={`${activeTheme.activePill} ${
+                theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'
+              } font-bold shadow-xs`}
+              inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+              options={[
+                { value: 'paginated', icon: <Columns className="w-3 h-3" />, label: 'Page' },
+                { value: 'scroll', icon: <AlignLeft className="w-3 h-3" />, label: 'Scroll' },
+              ]}
+            />
           </div>
 
           <div>
             <label className={`block ${activeTheme.textMuted} mb-1.5 uppercase text-[10px]`}>Width</label>
-            <div className="grid grid-cols-3 gap-1">
-              {(['narrow', 'normal', 'wide'] as const).map((w) => (
-                <button
-                  key={w}
-                  type="button"
-                  onClick={() => onColumnWidthChange(w)}
-                  aria-pressed={columnWidth === w}
-                  className={`py-1.5 px-1 rounded text-[10px] sm:text-[11px] font-mono border capitalize text-center transition-colors ${
-                    columnWidth === w
-                      ? `${activeTheme.activePill} ${theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'} font-bold shadow-xs`
-                      : `${activeTheme.pill} ${activeTheme.inactivePill}`
-                  }`}
-                >
-                  {w.charAt(0).toUpperCase() + w.slice(1)}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl<'narrow' | 'normal' | 'wide'>
+              value={columnWidth}
+              onChange={onColumnWidthChange}
+              className="grid grid-cols-3 gap-1"
+              optionClassName="py-1.5 px-1 rounded text-[10px] sm:text-[11px] font-mono border capitalize text-center transition-colors"
+              activeClassName={`${activeTheme.activePill} ${
+                theme === 'sepia' ? 'border-[#f59e0b]' : 'border-primary-600 dark:border-primary-500/70'
+              } font-bold shadow-xs`}
+              inactiveClassName={`${activeTheme.pill} ${activeTheme.inactivePill}`}
+              options={(['narrow', 'normal', 'wide'] as const).map((w) => ({
+                value: w,
+                label: w.charAt(0).toUpperCase() + w.slice(1),
+              }))}
+            />
           </div>
         </div>
 
@@ -355,25 +322,20 @@ export const ReaderControls: React.FC<ReaderControlsProps> = ({
                 Remind to set line ribbon or keep in Bookmarks when closing
               </span>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={exitBookmarkReminderEnabled}
-              aria-label="Toggle Exit Bookmark Prompt"
-              data-testid="reader-toggle-exit-bookmark-prompt"
-              onClick={() => onExitBookmarkReminderChange(!exitBookmarkReminderEnabled)}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+            <Switch
+              mode="button"
+              checked={exitBookmarkReminderEnabled}
+              onCheckedChange={onExitBookmarkReminderChange}
+              ariaLabel="Toggle Exit Bookmark Prompt"
+              dataTestId="reader-toggle-exit-bookmark-prompt"
+              className={
                 exitBookmarkReminderEnabled
-                  ? theme === 'sepia' ? 'bg-[#f59e0b]' : 'bg-primary'
+                  ? theme === 'sepia'
+                    ? 'bg-[#f59e0b]'
+                    : 'bg-primary'
                   : 'bg-muted-foreground/30'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                  exitBookmarkReminderEnabled ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </button>
+              }
+            />
           </div>
         )}
 

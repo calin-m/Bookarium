@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { EmailSentView } from './EmailSentView';
+import type { TurnstileRenderOptions } from './TurnstileWidget';
 
 describe('EmailSentView Component', () => {
   it('renders title, email, and message prefix', () => {
@@ -93,6 +94,70 @@ describe('EmailSentView Component', () => {
       />
     );
     expect(screen.getByRole('button', { name: 'Resend in 45s' })).toBeDisabled();
+  });
+
+  it('mounts Turnstile on resend screens when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set and gates/forwards verification token', async () => {
+    const prevKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAAATestKey';
+
+    let capturedOptions: TurnstileRenderOptions = { sitekey: '' };
+    const resetMock = vi.fn();
+    window.turnstile = {
+      render: vi.fn((_el: HTMLElement, opts: TurnstileRenderOptions) => {
+        capturedOptions = opts;
+        return 'sent-view-widget';
+      }),
+      reset: resetMock,
+      remove: vi.fn(),
+    };
+
+    const onResend = vi.fn().mockResolvedValue(undefined);
+
+    try {
+      render(
+        <EmailSentView
+          email="test@example.com"
+          messagePrefix="We sent a link to"
+          onBackToSignIn={vi.fn()}
+          onResend={onResend}
+        />
+      );
+
+      expect(screen.getByTestId('email-sent-turnstile-widget')).toBeInTheDocument();
+
+      // Clicking before Turnstile solves blocks resend with inline hint
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Email' }));
+      expect(
+        screen.getByText(/Please complete the security verification check above before resending/i)
+      ).toBeInTheDocument();
+      expect(onResend).not.toHaveBeenCalled();
+
+      // Error callback surfaces load error cleanly
+      await waitFor(() => {
+        capturedOptions['error-callback']?.();
+      });
+      expect(
+        screen.getByText(/Security verification failed to load or verify/i)
+      ).toBeInTheDocument();
+
+      // Solving Turnstile clears hint/error and forwards token on click
+      await waitFor(() => {
+        capturedOptions.callback?.('sent-view-token-789');
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Email' }));
+
+      await waitFor(() => {
+        expect(onResend).toHaveBeenCalledWith('sent-view-token-789');
+      });
+      expect(resetMock).toHaveBeenCalledWith('sent-view-widget');
+    } finally {
+      if (prevKey === undefined) {
+        delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = prevKey;
+      }
+      delete window.turnstile;
+    }
   });
 });
 

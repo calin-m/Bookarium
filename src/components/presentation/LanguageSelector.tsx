@@ -3,6 +3,7 @@
 import React from 'react';
 import { Globe } from 'lucide-react';
 import { CATALOG_LANGUAGES } from '@/config/catalog-filters';
+import { Select } from '@/components/ui/Select';
 
 export interface LanguageSelectorProps {
   value?: string;
@@ -24,13 +25,13 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   showIcon = variant === 'compact',
 }) => {
   const selectElement = (
-    <select
+    <Select
       id={id}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
       data-testid={dataTestId}
       aria-label="Filter catalog by language"
-      className={`bg-card text-foreground border border-border rounded focus:outline-hidden focus:border-primary cursor-pointer transition-colors max-w-full truncate ${
+      className={`bg-card text-foreground border border-border rounded focus:outline-hidden focus:border-primary transition-colors max-w-full truncate ${
         variant === 'compact'
           ? 'px-2 py-0.5 text-base sm:text-xs'
           : 'w-full p-2.5 text-base sm:text-xs rounded-lg'
@@ -46,7 +47,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
           {lang.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 
   if (variant === 'compact') {

@@ -88,4 +88,46 @@ describe('BottomSheetDrawerShell & CSV token helpers', () => {
     fireEvent.click(applyBtn);
     expect(onApply).toHaveBeenCalledTimes(1);
   });
+
+  it('traps Tab navigation within the bottom sheet without stealing initial focus on open', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Trigger Filters';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    render(
+      <BottomSheetDrawerShell
+        isOpen={true}
+        onClose={vi.fn()}
+        titleId="trap-drawer-title"
+        title="Filter Bookshelf"
+        subtitle="Narrow shelf"
+        icon={<Filter className="w-4 h-4" />}
+        dialogTestId="trap-drawer-dialog"
+        backdropTestId="trap-drawer-backdrop"
+        closeBtnTestId="trap-drawer-close"
+        resetBtnTestId="trap-drawer-reset"
+        applyBtnTestId="trap-drawer-apply"
+        onResetAll={vi.fn()}
+        onApply={vi.fn()}
+      >
+        <div>Body Content</div>
+      </BottomSheetDrawerShell>
+    );
+
+    // Zero visual focus shift: opening never steals focus onto close button
+    expect(document.activeElement).toBe(trigger);
+
+    const closeBtn = screen.getByTestId('trap-drawer-close');
+    const applyBtn = screen.getByTestId('trap-drawer-apply');
+
+    closeBtn.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(applyBtn);
+
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).toBe(closeBtn);
+
+    document.body.removeChild(trigger);
+  });
 });

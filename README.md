@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-247%20Suites%20%7C%202565%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.53%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-254%20Suites%20%7C%202587%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.59%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2565 tests across 247 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2587 tests across 254 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -108,11 +108,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.28)
+## 🛠️ Latest Improvements (v2.9.29)
 
-- **Unified Collection Empty States, Spacing Parity, Clean Guest Labels & Subtitle Counts (`ADR-080`)**: Extracted a shared `CollectionEmptyState` card matching Bookmarks geometry (`bg-card rounded-2xl border p-12 max-w-lg shadow-xs`), circular `w-16 h-16` section-tinted icon badges (`Library`, `Heart`, `Highlighter`, `Bookmark`), and `font-serif` copy; normalized `py-6 sm:py-12` collection section padding while preserving `pt-6 sm:pt-12 pb-8 sm:pb-12` on Catalog; unified empty CTAs to `"Explore Catalog"` (`<Compass />`, adding it to empty Favorites); simplified `BookshelfRack` guest controls to `"Guest Mode"` and iconless `"Sign In"`; and aligned `BookmarksView` and empty `NotebookView` header subtitles (`"You have N volume(s) in your reading ledger"`, `"You have 0 passages preserved in your notebook"`).
-- **Strict API Query Allowlisting, CORP Resource Isolation & Pagination/Pool Bounding (`ADR-080`)**: Enforced strict per-route query parameter allowlists (`hasUnexpectedQueryParams`, rejecting unknown keys and production `?country=` with `400 no-store`), `nosniff`, and `Cross-Origin-Resource-Policy` (`cross-origin` on `type=card` OpenGraph PNGs; `same-origin` across `/api/books`, `/api/books/translations`, text streams, covers, and error responses), while hard-capping `DEFAULT_QUOTE_POOL_LIMIT = 48`, `MAX_CATALOG_PAGE = 5000`, `MAX_CATALOG_OFFSET = 160_000`, search/topic/ID/language/MIME/era bounds, and translation IDs (`1..10_000_000`).
-- **Mode-Scoped globalThis Rate Limiters & Companion Vercel Firewall Alignment (`ADR-080`)**: Anchored `booksApiRateLimiter` (`60/min`), `bookContentRateLimiter` (`30/min`), `bookCardRateLimiter` (`20/min` for `type=card` `next/og`), and `bookCoverRateLimiter` (`60/min` for `type=cover` cover proxy) on `globalThis` so warm instances split expensive compute/image rendering from catalog browsing without starving text readers, aligned with manual Vercel Dashboard WAF rules and Attack Challenge Mode exclusion.
+- **Zero-Visual-Shift Reusable UI Primitives Extraction (`ADR-080`)**: Consolidated duplicated toggle switches, multi-variant textareas (`default`, `subtle`, `reader`), bare/adorned select controls, status/alert banners, and segmented button/tab groups across 20 consumer components (`AccountPublicProfileSection`, `AccountNarrationSubPanel`, `AccountSecuritySection`, `AccountAccoladesCard`, `AccountTypographySubPanel`, `ReaderControls`, `ReaderAnnotationsDrawer`, `TextHighlightPopover`, `ReaderSpeechBar`, `ReaderShareModal`, `NotebookQuoteCard`, `BookshelfMobileModal`, `BookshelfSpine`, `BookmarkCard`, `CollectionSortDropdown`, `LanguageSelector`, `SymposiumInviteModal`, `AuthModal`, `StickyCatalogToolbar`, `BookGrid`) with strict DOM parity, zero wrapper regressions, and 1:1 co-located test coverage.
+- **Shared Dialog Focus-Trap, Escape & Focus-Restoration Hook (`ADR-058`, `ADR-080`)**: Unified overlay `Tab`/`Shift+Tab` focus wrapping (`findTabbableElements`), global `Escape` dismissal, and `{ preventScroll: true }` trigger focus restoration behind `useDialogFocusTrap` (`autoFocus?: boolean`, preserving `autoFocus: false` on `BottomSheetDrawerShell` and `AccoladeCelebrationModal` while guarding against inline callback focus-stealing).
+- **Shared Turnstile Widget & Account Recovery / Resend CAPTCHA Parity (`ADR-080`)**: Extracted shared `TurnstileWidget` (no-op when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is blank), wired reveal-on-click inline Turnstile verification into `/account` password reset and verification resend with zero idle layout shift, forwarded optional `captchaToken` strings in `useAccountSecurityActions`, and fixed `AuthModal` and `EmailSentView` resend token forwarding.
+- **Bounded Mobile Viewport Scrollability & Compact Vertical Rhythm in `AuthModal` (`src/components/auth/AuthModal.tsx`, `src/components/auth/AuthModal.test.tsx`, `ADR-080`)**: Constrained `AuthModal` height to `max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh]` with a pinned `shrink-0` close header, an internal `overflow-y-auto overscroll-contain` body, and compact `< sm` vertical spacing (`h-9 sm:h-11` inputs, `h-9 sm:h-10` buttons, tighter field gaps) so `sign_up` never clips top/bottom on mobile viewports or open keyboards while preserving `>= 640px` desktop layout.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -194,7 +195,7 @@ flowchart TD
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
         Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync, GlobalTitleTooltip & Dynamic AuthModal)"]
         SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v7, Static Asset Warmup & Offline Fallback)"]
-        AuthModalNode["AuthModal.tsx & EmailSentView.tsx\n(Sign-In, Sign-Up, Turnstile CAPTCHA, Honeypot, OAuth, Magic Link & Reset)"]
+        AuthModalNode["AuthModal.tsx, EmailSentView.tsx & TurnstileWidget.tsx\n(Sign-In, Sign-Up, Turnstile CAPTCHA, Honeypot, OAuth, Magic Link & Reset)"]
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]
         Hero["HeroSearch.tsx\n(Precision Viewport Fold Docking, 3D Rotating Spotlight & Search)"]
         Hero3D["HeroFeaturedBook3D.tsx\n(3D Open-Cover Hinge, Leaf-Flip Engine & Fluid Kinematics)"]
@@ -510,7 +511,7 @@ Bookarium uses Supabase PostgreSQL for optional cloud authentication, cross-devi
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-# Optional: Cloudflare Turnstile Site Key for Auth Modal bot & signup-spam protection
+# Optional: Cloudflare Turnstile Site Key for AuthModal & /account recovery/verification bot protection
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 # Optional: Google Search Console HTML meta verification token
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=

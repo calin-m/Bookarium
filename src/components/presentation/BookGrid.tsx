@@ -6,6 +6,7 @@ import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
 import { CollectionEmptyState, COLLECTION_EMPTY_ACTION_CLASS } from './CollectionEmptyState';
 import { Button } from '@/components/ui/Button';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, Heart, ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react';
 
@@ -207,36 +208,28 @@ export const BookGrid: React.FC<BookGridProps> = ({
             {books.length} Volumes Available
           </div>
 
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border">
-            <button
-              type="button"
-              onClick={() => handleViewToggle('grid')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
-                activeViewMode === 'grid'
-                  ? 'bg-card text-foreground shadow-xs font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-label="Grid cover view"
-              aria-pressed={activeViewMode === 'grid'}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Cover Grid</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewToggle('shelf')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
-                activeViewMode === 'shelf'
-                  ? 'bg-card text-foreground shadow-xs font-bold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-label="Bookshelf spine view"
-              aria-pressed={activeViewMode === 'shelf'}
-            >
-              <Library className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Bookshelf Rack</span>
-            </button>
-          </div>
+          <SegmentedControl<BookViewMode>
+            value={activeViewMode}
+            onChange={handleViewToggle}
+            className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border"
+            optionClassName="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all"
+            activeClassName="bg-card text-foreground shadow-xs font-bold"
+            inactiveClassName="text-muted-foreground hover:text-foreground"
+            options={[
+              {
+                value: 'grid',
+                icon: <LayoutGrid className="w-3.5 h-3.5" />,
+                label: <span className="hidden sm:inline">Cover Grid</span>,
+                ariaLabel: 'Grid cover view',
+              },
+              {
+                value: 'shelf',
+                icon: <Library className="w-3.5 h-3.5" />,
+                label: <span className="hidden sm:inline">Bookshelf Rack</span>,
+                ariaLabel: 'Bookshelf spine view',
+              },
+            ]}
+          />
         </div>
       )}
 

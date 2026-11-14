@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useDialogFocusTrap } from '@/hooks/useDialogFocusTrap';
 import {
   Flame,
   Calendar,
@@ -50,32 +51,25 @@ export function AccoladeCelebrationModal({
 
   const activeAccolade = propAccolade !== undefined ? propAccolade : storeActiveCelebration;
   const handleDismiss = propOnDismiss || storeDismissCelebration;
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  const onKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && activeAccolade) {
-        handleDismiss();
-      }
-    },
-    [activeAccolade, handleDismiss]
-  );
+  useDialogFocusTrap({
+    isOpen: Boolean(activeAccolade),
+    containerRef: cardRef,
+    onClose: handleDismiss,
+    autoFocus: false,
+  });
 
   useEffect(() => {
-    if (activeAccolade) {
-      window.addEventListener('keydown', onKeyDown);
+    if (activeAccolade && typeof window !== 'undefined' && 'vibrate' in navigator) {
       // Tactile celebration vibration pattern on mobile/tablet (double tap)
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-        try {
-          navigator.vibrate([35, 60, 35]);
-        } catch {
-          // Ignore vibration permission issues
-        }
+      try {
+        navigator.vibrate([35, 60, 35]);
+      } catch {
+        // Ignore vibration permission issues
       }
     }
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [activeAccolade, onKeyDown]);
+  }, [activeAccolade]);
 
   if (!activeAccolade) return null;
 
@@ -92,6 +86,7 @@ export function AccoladeCelebrationModal({
       onClick={handleDismiss}
     >
       <div
+        ref={cardRef}
         className={`relative w-full max-w-md bg-card border ${tierConfig.cardBorder} rounded-2xl p-6 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountIdentityCard } from './AccountIdentityCard';
 
@@ -306,5 +306,74 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(signOutBtn).toBeInTheDocument();
     fireEvent.click(signOutBtn);
     expect(handleSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('reveals inline Turnstile challenge before resending verification email when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set', async () => {
+    const prevKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAAATestKey';
+
+    let capturedOptions: {
+      callback?: (token: string) => void;
+      'error-callback'?: () => void;
+    } = {};
+    window.turnstile = {
+      render: vi.fn((_el: HTMLElement, opts: typeof capturedOptions) => {
+        capturedOptions = opts;
+        return 'acct-verify-widget';
+      }),
+      reset: vi.fn(),
+      remove: vi.fn(),
+    };
+
+    const onResendVerification = vi.fn().mockResolvedValue(undefined);
+
+    try {
+      render(
+        <AccountIdentityCard
+          user={mockUnverifiedUser}
+          profile={null}
+          formattedDate="February 2026"
+          displayName="New Reader"
+          onDisplayNameChange={vi.fn()}
+          onSaveProfile={vi.fn()}
+          isSaving={false}
+          saveSuccess={false}
+          saveError={null}
+          onResendVerification={onResendVerification}
+        />
+      );
+
+      expect(screen.queryByTestId('resend-verification-turnstile-panel')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Verification Link' }));
+      expect(screen.getByTestId('resend-verification-turnstile-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('account-verify-turnstile-widget')).toBeInTheDocument();
+      expect(onResendVerification).not.toHaveBeenCalled();
+
+      act(() => {
+        capturedOptions['error-callback']?.();
+      });
+      expect(
+        await screen.findByText(/Security verification failed to load or verify/i)
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByTestId('resend-verification-turnstile-panel')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Verification Link' }));
+      act(() => {
+        capturedOptions.callback?.('account-verify-token-456');
+      });
+      await waitFor(() => {
+        expect(onResendVerification).toHaveBeenCalledWith('account-verify-token-456');
+      });
+    } finally {
+      if (prevKey === undefined) {
+        delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = prevKey;
+      }
+      delete window.turnstile;
+    }
   });
 });

@@ -18,6 +18,7 @@ import { getReaderTheme } from '@/config/reader-themes';
 import { cleanVoiceName, normalizeSpeechLang } from '@/lib/speech-utils';
 import type { UseReaderSpeechReturn } from '@/hooks/reader/useReaderSpeech';
 import { cn } from '@/lib/utils';
+import { Select } from '@/components/ui/Select';
 
 export interface ReaderSpeechBarProps {
   speech?: UseReaderSpeechReturn;
@@ -554,47 +555,46 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                 <div className="flex items-center gap-1.5 w-full sm:w-auto sm:ml-auto">
                   {/* Voice Selector */}
                   {availableVoices.length > 0 && (
-                    <div className="relative flex-1 min-w-0 sm:max-w-[190px]">
-                      <select
-                        value={selectedVoice?.voiceURI || ''}
-                        onChange={(e) => onVoiceChange(e.target.value)}
-                        aria-label="Narrator voice"
-                        style={{ colorScheme: theme === 'light' ? 'light' : 'dark' }}
-                        className={cn(
-                          'w-full min-h-[40px] py-1.5 pl-2 pr-5 text-base sm:text-[11px] font-mono truncate rounded-lg border focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-full',
-                          activeTheme.border,
-                          activeTheme.pill
-                        )}
-                      >
-                        {naturalVoices.length > 0 && (
-                          <optgroup label="🌟 Natural & Neural">
-                            {naturalVoices.map((voice) => (
-                              <option key={voice.voiceURI} value={voice.voiceURI}>
-                                {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)}) ✨
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
+                    <Select
+                      wrapperClassName="flex-1 min-w-0 sm:max-w-[190px]"
+                      value={selectedVoice?.voiceURI || ''}
+                      onChange={(e) => onVoiceChange(e.target.value)}
+                      aria-label="Narrator voice"
+                      style={{ colorScheme: theme === 'light' ? 'light' : 'dark' }}
+                      className={cn(
+                        'w-full min-h-[40px] py-1.5 pl-2 pr-5 text-base sm:text-[11px] font-mono truncate rounded-lg border focus:outline-hidden focus:ring-1 focus:ring-primary max-w-full',
+                        activeTheme.border,
+                        activeTheme.pill
+                      )}
+                    >
+                      {naturalVoices.length > 0 && (
+                        <optgroup label="🌟 Natural & Neural">
+                          {naturalVoices.map((voice) => (
+                            <option key={voice.voiceURI} value={voice.voiceURI}>
+                              {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)}) ✨
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
 
-                        {standardVoices.length > 0 && (
-                          <optgroup label="🔈 Standard Voices">
-                            {standardVoices.map((voice) => (
-                              <option key={voice.voiceURI} value={voice.voiceURI}>
-                                {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)})
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-
-                        {naturalVoices.length === 0 &&
-                          standardVoices.length === 0 &&
-                          availableVoices.map((voice) => (
+                      {standardVoices.length > 0 && (
+                        <optgroup label="🔈 Standard Voices">
+                          {standardVoices.map((voice) => (
                             <option key={voice.voiceURI} value={voice.voiceURI}>
                               {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)})
                             </option>
                           ))}
-                      </select>
-                    </div>
+                        </optgroup>
+                      )}
+
+                      {naturalVoices.length === 0 &&
+                        standardVoices.length === 0 &&
+                        availableVoices.map((voice) => (
+                          <option key={voice.voiceURI} value={voice.voiceURI}>
+                            {cleanVoiceName(voice.name)} ({normalizeSpeechLang(voice.lang)})
+                          </option>
+                        ))}
+                    </Select>
                   )}
 
                   {/* Speed Preset Selector */}

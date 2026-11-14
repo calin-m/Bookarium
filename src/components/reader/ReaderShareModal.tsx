@@ -28,6 +28,7 @@ import {
 } from '@/lib/reading-card-export';
 import { SITE_CONFIG } from '@/config/site-config';
 import { useCopyFeedback } from '@/hooks/useCopyFeedback';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
 const SOCIAL_SVG_PATHS: Record<Exclude<SocialPlatformId, 'email'>, string> = {
   x: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z',
@@ -321,38 +322,36 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
 
           {/* Card Customization Row: Guaranteed Single-Line Theme Style + Progress Toggle */}
           <div className="flex items-center justify-between gap-1.5 whitespace-nowrap pt-0.5">
-            <div
-              className={`inline-flex items-center gap-0.5 p-0.5 rounded-lg border shrink-0 ${activeTheme.pill}`}
+            <SegmentedControl<'light' | 'sepia' | 'dark'>
               role="group"
-              aria-label="Reading card theme"
-            >
-              {(
-                [
-                  { id: 'light', label: 'Light', Icon: Sun },
-                  { id: 'sepia', label: 'Sepia', Icon: Coffee },
-                  { id: 'dark', label: 'Dark', Icon: Moon },
-                ] as const
-              ).map(({ id, label, Icon }) => {
-                const isSelected = cardTheme === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setCardThemeOverride({ baseTheme: theme, selectedTheme: id })}
-                    aria-pressed={isSelected}
-                    data-testid={`share-card-theme-${id}`}
-                    className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
-                      isSelected
-                        ? `${activeTheme.activePill} shadow-2xs`
-                        : `${activeTheme.textMuted} ${activeTheme.drawerHover}`
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />
-                    <span>{label}</span>
-                  </button>
-                );
-              })}
-            </div>
+              ariaLabel="Reading card theme"
+              value={cardTheme}
+              onChange={(selectedTheme) => setCardThemeOverride({ baseTheme: theme, selectedTheme })}
+              className={`inline-flex items-center gap-0.5 p-0.5 rounded-lg border shrink-0 ${activeTheme.pill}`}
+              optionClassName="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer"
+              activeClassName={`${activeTheme.activePill} shadow-2xs`}
+              inactiveClassName={`${activeTheme.textMuted} ${activeTheme.drawerHover}`}
+              options={[
+                {
+                  value: 'light',
+                  icon: <Sun className="w-3 h-3 shrink-0" aria-hidden="true" />,
+                  label: <span>Light</span>,
+                  testId: 'share-card-theme-light',
+                },
+                {
+                  value: 'sepia',
+                  icon: <Coffee className="w-3 h-3 shrink-0" aria-hidden="true" />,
+                  label: <span>Sepia</span>,
+                  testId: 'share-card-theme-sepia',
+                },
+                {
+                  value: 'dark',
+                  icon: <Moon className="w-3 h-3 shrink-0" aria-hidden="true" />,
+                  label: <span>Dark</span>,
+                  testId: 'share-card-theme-dark',
+                },
+              ]}
+            />
 
             <label className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-medium cursor-pointer select-none shrink-0">
               <input

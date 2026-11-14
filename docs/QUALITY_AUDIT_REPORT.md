@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 13 Nov 2026 21:30:28 GMT  
+**Last Generated**: Sat, 14 Nov 2026 10:16:40 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 247 passed  
-**Total Verified Tests**: 2565 passed  
+**Total Test Suites**: 254 passed  
+**Total Verified Tests**: 2587 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **247/247 test suites passed** (2565 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **254/254 test suites passed** (2587 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.53%** (14838/15370) — *Target: $\ge$ 95%*
-- **Statements**: **95.24%** (15981/16778) — *Target: $\ge$ 95%*
-- **Functions**: **94.16%** (3230/3430) — *Target: $\ge$ 92%*
-- **Branches**: **87.71%** (14779/16848) — *Target: $\ge$ 85%*
+- **Lines**: **96.59%** (14903/15428) — *Target: $\ge$ 95%*
+- **Statements**: **95.29%** (16047/16839) — *Target: $\ge$ 95%*
+- **Functions**: **94.16%** (3226/3426) — *Target: $\ge$ 92%*
+- **Branches**: **87.84%** (14823/16875) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (247 Suites / 2565 Tests)
+## 🧪 Comprehensive Test Suite Catalog (254 Suites / 2587 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 327 Tests)
 
@@ -1692,10 +1692,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (2 Suites · 28 Tests)
+### 🔐 Authentication & Security (3 Suites · 33 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (24 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1721,16 +1721,27 @@
 - ✔ `blocks automated form submissions when the honeypot field is populated`
 - ✔ `mounts Cloudflare Turnstile when NEXT_PUBLIC_TURNSTILE_SITE_KEY is configured, enforces verification, forwards token, and resets widget`
 - ✔ `renders Continue with Google button on sign_in and sign_up views and invokes signInWithOAuth`
+- ✔ `keeps Email not confirmed Resend Link visible while awaiting Turnstile re-check and forwards verified token across both resend flows`
+- ✔ `bounds dialog height to mobile viewport with a pinned header and scrollable Sign Up body`
 
 </details>
 
 <details>
-<summary><b><code>src/components/auth/EmailSentView.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/auth/EmailSentView.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders title, email, and message prefix`
 - ✔ `renders optional subtitle and resendSuccess message`
 - ✔ `triggers onBackToSignIn with custom label`
 - ✔ `renders and handles resend button interactions`
+- ✔ `mounts Turnstile on resend screens when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set and gates/forwards verification token`
+
+</details>
+
+<details>
+<summary><b><code>src/components/auth/TurnstileWidget.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders nothing when NEXT_PUBLIC_TURNSTILE_SITE_KEY is empty or active is false`
+- ✔ `mounts Turnstile, forwards verification/error callbacks, resets via imperative handle, and cleans up on unmount`
 
 </details>
 
@@ -2923,7 +2934,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (35 Suites · 332 Tests)
+### 🔄 Hooks & React Query (36 Suites · 336 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3181,12 +3192,13 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
 - ✔ `handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions`
 - ✔ `resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions`
+- ✔ `forwards optional Turnstile captchaToken on password reset and verification resend while ignoring invalid tokens`
 
 </details>
 
@@ -3301,6 +3313,15 @@
 - ✔ `updates mouse coordinates on handleMouseMove`
 - ✔ `activates tooltip after specified delay on mouseEnter`
 - ✔ `cleans up state and resets action on mouseLeave`
+
+</details>
+
+<details>
+<summary><b><code>src/hooks/useDialogFocusTrap.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `auto-focuses the first enabled visible tabbable element, handles Escape, wraps Tab/Shift+Tab, and restores prior focus on close`
+- ✔ `skips initial focus jump when autoFocus is false while still containing Tab and Shift+Tab inside the dialog`
+- ✔ `prevents Tab navigation when the container has zero tabbable descendants`
 
 </details>
 
@@ -3467,10 +3488,10 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (59 Suites · 275 Tests)
+### 🧩 UI Primitives & Motion (64 Suites · 288 Tests)
 
 <details>
-<summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (6 tests)</summary>
+<summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
 
 - ✔ `renders nothing when activeAccolade is null`
 - ✔ `renders celebration details when an accolade is provided`
@@ -3478,6 +3499,7 @@
 - ✔ `dismisses when backdrop is clicked`
 - ✔ `dismisses when Escape key is pressed`
 - ✔ `reads activeCelebration from useAccoladesStore, triggers vibration, stops inner card propagation, and dismisses via acceptance CTA`
+- ✔ `traps Tab and Shift+Tab within the celebration card while keeping autoFocus disabled`
 
 </details>
 
@@ -3533,7 +3555,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor`
 - ✔ `always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS`
@@ -3543,6 +3565,7 @@
 - ✔ `renders muted streak badge when readingStreak is 0`
 - ✔ `falls back gracefully to user_metadata display name or Scholar monogram S when name is missing`
 - ✔ `renders top-level Sign Out pill button when onSignOut is provided and invokes it on click`
+- ✔ `reveals inline Turnstile challenge before resending verification email when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set`
 
 </details>
 
@@ -3590,12 +3613,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/components/account/AccountSecuritySection.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders password fields, strength meter, and buttons`
 - ✔ `renders forgot-password email trigger, confirmation banner, and recovery mode state`
 - ✔ `disables Update Password and Delete Account buttons when offline`
 - ✔ `renders Connected Accounts card with Connect Google, Google-only Set Account Password mode, and Disconnect when dual-linked`
+- ✔ `reveals inline Turnstile challenge before requesting password reset when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set`
 
 </details>
 
@@ -3743,6 +3767,14 @@
 </details>
 
 <details>
+<summary><b><code>src/components/ui/Alert.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders info, success, warning, error, and neutral role defaults accurately`
+- ✔ `supports stacked vertical layout when footer slot is supplied`
+
+</details>
+
+<details>
 <summary><b><code>src/components/ui/AmbientCapsuleDock.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `renders the floating capsule dock, ambient aura, and pointer interaction handlers`
@@ -3770,10 +3802,11 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/BottomSheetDrawerShell.test.tsx</code></b> (2 tests)</summary>
+<summary><b><code>src/components/ui/BottomSheetDrawerShell.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `splits and toggles CSV filter tokens accurately`
 - ✔ `renders nothing when closed and handles Escape, backdrop click, reset, and apply actions when open`
+- ✔ `traps Tab navigation within the bottom sheet without stealing initial focus on open`
 
 </details>
 
@@ -3914,6 +3947,22 @@
 </details>
 
 <details>
+<summary><b><code>src/components/ui/SegmentedControl.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders accessible toggle group, emits selected values, and applies custom per-option styles`
+- ✔ `supports custom isSelected tolerance predicates and omitting aria-pressed when disabled`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/Select.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders a bare <select> with zero wrapper div by default and forwards ref + optgroups`
+- ✔ `renders relative wrapper, leading icon, and trailing chevron only when configured`
+
+</details>
+
+<details>
 <summary><b><code>src/components/ui/StarRating.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders 5 interactive star buttons in interactive mode`
@@ -3924,6 +3973,21 @@
 - ✔ `supports keyboard navigation with arrow keys and enter`
 - ✔ `renders correctly in readOnly mode without interactive buttons`
 - ✔ `supports compactOnMobile in readOnly mode hiding stars 2 to 5 on mobile viewports`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/Switch.test.tsx</code></b> (2 tests)</summary>
+
+- ✔ `renders accessible button switch mode with aria-checked and thumb slide state`
+- ✔ `renders checkbox-backed peer switch compatible with .toBeChecked() assertions`
+
+</details>
+
+<details>
+<summary><b><code>src/components/ui/Textarea.test.tsx</code></b> (1 tests)</summary>
+
+- ✔ `forwards ref, applies variant styles without forcing resize-none on reader variant, and handles change events`
 
 </details>
 

@@ -1,8 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import {
+  TurnstileWidget,
+  getTurnstileSiteKey,
+  type TurnstileWidgetHandle,
+} from './TurnstileWidget';
 
 export interface EmailSentViewProps {
   title?: string;
@@ -10,7 +15,7 @@ export interface EmailSentViewProps {
   messagePrefix: string;
   subtitle?: string;
   resendSuccess?: boolean;
-  onResend?: () => void;
+  onResend?: (captchaToken?: string) => void | Promise<void>;
   isResending?: boolean;
   resendCooldown?: number;
   onBackToSignIn: () => void;
@@ -29,6 +34,30 @@ export function EmailSentView({
   onBackToSignIn,
   backButtonLabel = 'Back to Sign In',
 }: EmailSentViewProps) {
+  const turnstileSiteKey = getTurnstileSiteKey();
+  const [resendToken, setResendToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const [resendHint, setResendHint] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+
+  const handleResendClick = async () => {
+    if (!onResend) return;
+    if (turnstileSiteKey && !resendToken) {
+      setResendHint('Please complete the security verification check above before resending.');
+      return;
+    }
+    setResendHint(null);
+    const tokenToSend = resendToken || undefined;
+    try {
+      await (tokenToSend ? onResend(tokenToSend) : onResend());
+    } finally {
+      if (turnstileSiteKey) {
+        setResendToken(null);
+        turnstileRef.current?.reset();
+      }
+    }
+  };
+
   return (
     <div className="space-y-4 text-center py-4">
       <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
@@ -49,14 +78,39 @@ export function EmailSentView({
             Fresh verification link sent! Please check your inbox.
           </p>
         )}
+        {turnstileError && (
+          <p className="text-[11px] font-mono text-destructive pt-1">{turnstileError}</p>
+        )}
+        {resendHint && (
+          <p className="text-[11px] font-mono text-amber-600 dark:text-amber-400 pt-1">
+            {resendHint}
+          </p>
+        )}
       </div>
+      {onResend && turnstileSiteKey && (
+        <TurnstileWidget
+          ref={turnstileRef}
+          testId="email-sent-turnstile-widget"
+          onTokenChange={(token) => {
+            setResendToken(token);
+            if (token) {
+              setTurnstileError(null);
+              setResendHint(null);
+            }
+          }}
+          onLoadError={setTurnstileError}
+          className="pt-1 flex justify-center"
+        />
+      )}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
         {onResend && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={onResend}
+            onClick={() => {
+              void handleResendClick();
+            }}
             disabled={isResending || resendCooldown > 0}
             className="font-mono text-xs cursor-pointer w-full sm:w-auto"
           >

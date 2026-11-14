@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { CatalogTelemetryBadge, formatApiLatency } from './CatalogTelemetryBadge';
 import { CatalogMobileBottomDock } from './CatalogMobileBottomDock';
@@ -222,25 +223,20 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             {onPageSizeChange && (
               <div className="hidden lg:flex items-center gap-1 text-xs font-mono text-muted-foreground pl-2 border-l border-border">
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Show:</span>
-                <div className="flex items-center bg-muted p-0.5 rounded-md border border-border">
-                  {pageSizes.map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => onPageSizeChange(size)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all ${
-                        pageSize === size
-                          ? 'bg-card text-primary shadow-xs'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                      aria-label={`Show ${size} books per page`}
-                      title={`Show ${size} books per page`}
-                      aria-pressed={pageSize === size}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl<number>
+                  value={pageSize}
+                  onChange={onPageSizeChange}
+                  className="flex items-center bg-muted p-0.5 rounded-md border border-border"
+                  optionClassName="px-2 py-0.5 rounded text-[11px] font-bold transition-all"
+                  activeClassName="bg-card text-primary shadow-xs"
+                  inactiveClassName="text-muted-foreground hover:text-foreground"
+                  options={pageSizes.map((size) => ({
+                    value: size,
+                    label: size,
+                    ariaLabel: `Show ${size} books per page`,
+                    title: `Show ${size} books per page`,
+                  }))}
+                />
               </div>
             )}
           </div>
@@ -259,36 +255,28 @@ export const StickyCatalogToolbar: React.FC<StickyCatalogToolbarProps> = ({
             <div className="h-4 w-[1px] bg-border hidden sm:block" />
 
             {/* View Mode Toggle with Comfortable Mobile Touch Targets */}
-            <div className="flex items-center bg-muted p-0.5 rounded-lg border border-border">
-              <button
-                type="button"
-                onClick={() => onViewModeChange('grid')}
-                className={`p-2 sm:p-1.5 rounded-md text-xs transition-all ${
-                  viewMode === 'grid'
-                    ? 'bg-card text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                aria-label="Grid view"
-                title="Cover Grid View (2:3 Portrait Cards)"
-                aria-pressed={viewMode === 'grid'}
-              >
-                <LayoutGrid className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onViewModeChange('shelf')}
-                className={`p-2 sm:p-1.5 rounded-md text-xs transition-all ${
-                  viewMode === 'shelf'
-                    ? 'bg-card text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                aria-label="Shelf view"
-                title="Spine Shelf View (Architectural Bookcase)"
-                aria-pressed={viewMode === 'shelf'}
-              >
-                <Library className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              </button>
-            </div>
+            <SegmentedControl<'grid' | 'shelf'>
+              value={viewMode}
+              onChange={onViewModeChange}
+              className="flex items-center bg-muted p-0.5 rounded-lg border border-border"
+              optionClassName="p-2 sm:p-1.5 rounded-md text-xs transition-all"
+              activeClassName="bg-card text-foreground shadow-xs"
+              inactiveClassName="text-muted-foreground hover:text-foreground"
+              options={[
+                {
+                  value: 'grid',
+                  icon: <LayoutGrid className="w-4 h-4 sm:w-3.5 sm:h-3.5" />,
+                  ariaLabel: 'Grid view',
+                  title: 'Cover Grid View (2:3 Portrait Cards)',
+                },
+                {
+                  value: 'shelf',
+                  icon: <Library className="w-4 h-4 sm:w-3.5 sm:h-3.5" />,
+                  ariaLabel: 'Shelf view',
+                  title: 'Spine Shelf View (Architectural Bookcase)',
+                },
+              ]}
+            />
 
             <div className="h-4 w-[1px] bg-border hidden sm:block" />
 

@@ -423,5 +423,61 @@ describe('useAccountSecurityActions', () => {
     });
     expect(result.current.identityError).toContain('Failed to disconnect Google account');
   });
+
+  it('forwards optional Turnstile captchaToken on password reset and verification resend while ignoring invalid tokens', async () => {
+    const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
+    const resendVerificationEmail = vi.fn().mockResolvedValue({ error: null });
+
+    const { result: firstHook } = renderHook(() =>
+      useAccountSecurityActions({
+        user: mockUser,
+        profile: mockProfile,
+        isRecoveryMode: false,
+        onClearRecoveryParam: vi.fn(),
+        updateProfile: vi.fn().mockResolvedValue({ error: null }),
+        updatePassword: vi.fn().mockResolvedValue({ error: null }),
+        resetPasswordForEmail,
+        requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+        resendVerificationEmail,
+      })
+    );
+
+    // Non-string values (e.g. accidental click events) are ignored cleanly
+    await act(async () => {
+      await firstHook.current.handleResendVerification({} as unknown as string);
+      await firstHook.current.handleRequestPasswordReset({} as unknown as string);
+    });
+    expect(resendVerificationEmail).toHaveBeenLastCalledWith('scholar@bookarium.test');
+    expect(resetPasswordForEmail).toHaveBeenLastCalledWith('scholar@bookarium.test');
+
+    // Fresh hook without active 60s cooldown forwards valid string tokens cleanly
+    const { result: secondHook } = renderHook(() =>
+      useAccountSecurityActions({
+        user: mockUser,
+        profile: mockProfile,
+        isRecoveryMode: false,
+        onClearRecoveryParam: vi.fn(),
+        updateProfile: vi.fn().mockResolvedValue({ error: null }),
+        updatePassword: vi.fn().mockResolvedValue({ error: null }),
+        resetPasswordForEmail,
+        requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+        resendVerificationEmail,
+      })
+    );
+
+    await act(async () => {
+      await secondHook.current.handleResendVerification('turnstile-verify-token');
+      await secondHook.current.handleRequestPasswordReset('turnstile-reset-token');
+    });
+
+    expect(resendVerificationEmail).toHaveBeenLastCalledWith(
+      'scholar@bookarium.test',
+      'turnstile-verify-token'
+    );
+    expect(resetPasswordForEmail).toHaveBeenLastCalledWith(
+      'scholar@bookarium.test',
+      'turnstile-reset-token'
+    );
+  });
 });
 

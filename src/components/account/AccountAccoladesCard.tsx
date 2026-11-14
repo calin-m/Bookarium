@@ -27,6 +27,7 @@ import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
+import { Alert } from '@/components/ui/Alert';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
 
 const AccoladeCelebrationModal = dynamic(
@@ -208,13 +209,13 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
 
       {/* Pin limit warning alert */}
       {pinLimitWarning && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 dark:border-amber-500/50 text-amber-800 dark:text-amber-200 text-xs animate-in fade-in"
+        <Alert
+          variant="warning"
+          icon={<AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />}
+          className="gap-2 px-3.5 py-2.5 rounded-xl animate-in fade-in"
         >
-          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-          <span>{pinLimitWarning}</span>
-        </div>
+          {pinLimitWarning}
+        </Alert>
       )}
 
       {/* Personal Showcase (Pinned Bookplates) */}

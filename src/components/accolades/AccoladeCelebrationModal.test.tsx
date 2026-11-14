@@ -79,5 +79,28 @@ describe('AccoladeCelebrationModal', () => {
     expect(dismissSpy).toHaveBeenCalledTimes(1);
     expect(useAccoladesStore.getState().activeCelebration).toBeNull();
   });
+
+  it('traps Tab and Shift+Tab within the celebration card while keeping autoFocus disabled', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Trigger Celebration';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    render(<AccoladeCelebrationModal accolade={sampleAccolade} onDismiss={vi.fn()} />);
+
+    expect(document.activeElement).toBe(trigger);
+
+    const closeBtn = screen.getByRole('button', { name: /dismiss celebration/i });
+    const acceptBtn = screen.getByRole('button', { name: /place in ex-libris collection/i });
+
+    closeBtn.focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(acceptBtn);
+
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).toBe(closeBtn);
+
+    document.body.removeChild(trigger);
+  });
 });
 

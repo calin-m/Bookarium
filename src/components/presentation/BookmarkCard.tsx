@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { BookOpen, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
 import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import {
   CopyBookLinkIndicator,
   handleCopyBookLinkClick,
@@ -419,17 +420,17 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         )}
 
         {onStatusChange && (
-          <select
+          <Select
             value={status}
             onChange={(e) => onStatusChange(book.id, e.target.value as LedgerItemStatus)}
             aria-label={`Change reading status for ${book.title}`}
             title="Change reading status"
-            className={`h-7 sm:h-8 px-1.5 sm:px-2 rounded border ${currentBadge.selectBorderClass} bg-background text-foreground font-mono text-[11px] sm:text-xs flex-1 sm:flex-none min-w-[68px] max-w-[96px] sm:w-auto sm:max-w-[110px] truncate focus:outline-none focus:ring-1 cursor-pointer transition-colors`}
+            className={`h-7 sm:h-8 px-1.5 sm:px-2 rounded border ${currentBadge.selectBorderClass} bg-background text-foreground font-mono text-[11px] sm:text-xs flex-1 sm:flex-none min-w-[68px] max-w-[96px] sm:w-auto sm:max-w-[110px] truncate focus:outline-none focus:ring-1 transition-colors`}
           >
             <option value="in_progress" className="bg-background text-foreground">Reading</option>
             <option value="completed" className="bg-background text-foreground">Finished</option>
             <option value="on_hold" className="bg-background text-foreground">On Hold</option>
-          </select>
+          </Select>
         )}
 
         {!isRestricted && onToggleOffline && (

@@ -17,6 +17,7 @@ import type {
   ReaderReadingMode,
   ReaderColumnWidth,
 } from '@/stores/useReaderStore';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
 export interface AccountTypographySubPanelProps {
   theme: AppTheme;
@@ -111,32 +112,19 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
         <label className="text-xs font-mono text-foreground font-bold block">
           Default Typeface
         </label>
-        <div className="grid grid-cols-3 gap-3">
-          {(
-            [
-              { id: 'serif', label: 'Serif', sampleClass: 'font-serif' },
-              { id: 'sans', label: 'Sans', sampleClass: 'font-sans' },
-              { id: 'mono', label: 'Mono', sampleClass: 'font-mono' },
-            ] as const
-          ).map((item) => {
-            const isSelected = fontFamily === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => onFontFamilyChange(item.id)}
-                className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${item.sampleClass} ${
-                  isSelected
-                    ? 'bg-primary/10 border-primary text-primary shadow-xs'
-                    : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl<ReaderFontFamily>
+          value={fontFamily}
+          onChange={onFontFamilyChange}
+          className="grid grid-cols-3 gap-3"
+          optionClassName="flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+          activeClassName="bg-primary/10 border-primary text-primary shadow-xs"
+          inactiveClassName="bg-muted/30 border-border hover:bg-muted text-muted-foreground"
+          options={[
+            { value: 'serif', label: <span>Serif</span>, className: 'font-serif' },
+            { value: 'sans', label: <span>Sans</span>, className: 'font-sans' },
+            { value: 'mono', label: <span>Mono</span>, className: 'font-mono' },
+          ]}
+        />
       </div>
 
       {/* Font Size & Line Spacing Grid */}
@@ -176,23 +164,18 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
               A+
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {READER_FONT_CONFIG.PRESET_SIZES.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                aria-pressed={fontSize === preset}
-                onClick={() => onFontSizeChange(preset)}
-                className={`py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer ${
-                  fontSize === preset
-                    ? 'bg-primary/10 border-primary text-primary font-bold'
-                    : 'bg-card border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {preset}px
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<number>
+            value={fontSize}
+            onChange={onFontSizeChange}
+            className="grid grid-cols-3 gap-1.5"
+            optionClassName="py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer"
+            activeClassName="bg-primary/10 border-primary text-primary font-bold"
+            inactiveClassName="bg-card border-border text-muted-foreground hover:text-foreground"
+            options={READER_FONT_CONFIG.PRESET_SIZES.map((preset) => ({
+              value: preset,
+              label: `${preset}px`,
+            }))}
+          />
         </div>
 
         {/* Line Spacing */}
@@ -230,26 +213,19 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
               Wider
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {LINE_HEIGHT_PRESETS.map((preset) => {
-              const isMatch = Math.abs(lineHeight - preset) < 0.03;
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  aria-pressed={isMatch}
-                  onClick={() => onLineHeightChange(preset)}
-                  className={`py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer ${
-                    isMatch
-                      ? 'bg-primary/10 border-primary text-primary font-bold'
-                      : 'bg-card border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {preset}x
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl<number>
+            value={lineHeight}
+            onChange={onLineHeightChange}
+            isSelected={(preset) => Math.abs(lineHeight - preset) < 0.03}
+            className="grid grid-cols-3 gap-1.5"
+            optionClassName="py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer"
+            activeClassName="bg-primary/10 border-primary text-primary font-bold"
+            inactiveClassName="bg-card border-border text-muted-foreground hover:text-foreground"
+            options={LINE_HEIGHT_PRESETS.map((preset) => ({
+              value: preset,
+              label: `${preset}x`,
+            }))}
+          />
         </div>
       </div>
 
@@ -281,23 +257,18 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
           aria-label="Default Page Brightness"
           className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-amber-500 bg-border"
         />
-        <div className="grid grid-cols-3 gap-1.5">
-          {READER_FONT_CONFIG.PRESET_BRIGHTNESS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              aria-pressed={brightness === preset}
-              onClick={() => onBrightnessChange(preset)}
-              className={`py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer ${
-                brightness === preset
-                  ? 'bg-primary/10 border-primary text-primary font-bold'
-                  : 'bg-card border-border text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {preset}%
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<number>
+          value={brightness}
+          onChange={onBrightnessChange}
+          className="grid grid-cols-3 gap-1.5"
+          optionClassName="py-1 rounded-md border text-[10px] font-mono transition-colors cursor-pointer"
+          activeClassName="bg-primary/10 border-primary text-primary font-bold"
+          inactiveClassName="bg-card border-border text-muted-foreground hover:text-foreground"
+          options={READER_FONT_CONFIG.PRESET_BRIGHTNESS.map((preset) => ({
+            value: preset,
+            label: `${preset}%`,
+          }))}
+        />
       </div>
 
       {/* Reading Flow Mode & Page Column Width */}
@@ -308,32 +279,18 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
             <AlignLeft className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>Default Reading Flow</span>
           </label>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              aria-pressed={readingMode === 'paginated'}
-              onClick={() => onReadingModeChange('paginated')}
-              className={`p-2.5 rounded-xl border text-xs font-mono font-bold transition-colors cursor-pointer ${
-                readingMode === 'paginated'
-                  ? 'bg-primary/10 border-primary text-primary shadow-xs'
-                  : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
-              }`}
-            >
-              Paged
-            </button>
-            <button
-              type="button"
-              aria-pressed={readingMode === 'scroll'}
-              onClick={() => onReadingModeChange('scroll')}
-              className={`p-2.5 rounded-xl border text-xs font-mono font-bold transition-colors cursor-pointer ${
-                readingMode === 'scroll'
-                  ? 'bg-primary/10 border-primary text-primary shadow-xs'
-                  : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
-              }`}
-            >
-              Scroll
-            </button>
-          </div>
+          <SegmentedControl<ReaderReadingMode>
+            value={readingMode}
+            onChange={onReadingModeChange}
+            className="grid grid-cols-2 gap-2.5"
+            optionClassName="p-2.5 rounded-xl border text-xs font-mono font-bold transition-colors cursor-pointer"
+            activeClassName="bg-primary/10 border-primary text-primary shadow-xs"
+            inactiveClassName="bg-muted/30 border-border hover:bg-muted text-muted-foreground"
+            options={[
+              { value: 'paginated', label: 'Paged' },
+              { value: 'scroll', label: 'Scroll' },
+            ]}
+          />
         </div>
 
         {/* Column Width */}
@@ -342,23 +299,18 @@ export const AccountTypographySubPanel: React.FC<AccountTypographySubPanelProps>
             <Columns className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>Default Page Width</span>
           </label>
-          <div className="grid grid-cols-3 gap-2">
-            {(['narrow', 'normal', 'wide'] as const).map((w) => (
-              <button
-                key={w}
-                type="button"
-                aria-pressed={columnWidth === w}
-                onClick={() => onColumnWidthChange(w)}
-                className={`p-2.5 rounded-xl border text-xs font-mono font-bold capitalize transition-colors cursor-pointer ${
-                  columnWidth === w
-                    ? 'bg-primary/10 border-primary text-primary shadow-xs'
-                    : 'bg-muted/30 border-border hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                {w}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl<ReaderColumnWidth>
+            value={columnWidth}
+            onChange={onColumnWidthChange}
+            className="grid grid-cols-3 gap-2"
+            optionClassName="p-2.5 rounded-xl border text-xs font-mono font-bold capitalize transition-colors cursor-pointer"
+            activeClassName="bg-primary/10 border-primary text-primary shadow-xs"
+            inactiveClassName="bg-muted/30 border-border hover:bg-muted text-muted-foreground"
+            options={(['narrow', 'normal', 'wide'] as const).map((w) => ({
+              value: w,
+              label: w,
+            }))}
+          />
         </div>
       </div>
 

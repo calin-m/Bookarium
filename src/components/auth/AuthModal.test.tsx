@@ -828,4 +828,121 @@ describe('AuthModal Component', () => {
     rerender(<AuthModal />);
     expect(screen.queryByTestId('google-oauth-button')).not.toBeInTheDocument();
   });
+
+  it('keeps Email not confirmed Resend Link visible while awaiting Turnstile re-check and forwards verified token across both resend flows', async () => {
+    const prevKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAAATestTurnstileKey';
+
+    let capturedOptions: {
+      callback?: (token: string) => void;
+      'expired-callback'?: () => void;
+      'error-callback'?: () => void;
+    } = {};
+    const mockTurnstileRender = vi.fn((_el: HTMLElement, opts: typeof capturedOptions) => {
+      capturedOptions = opts;
+      return 'turnstile-resend-widget';
+    });
+    const mockTurnstileReset = vi.fn();
+    window.turnstile = {
+      render: mockTurnstileRender,
+      reset: mockTurnstileReset,
+      remove: vi.fn(),
+    };
+
+    const setError = vi.fn();
+    mockResendVerificationEmail.mockResolvedValue({ error: null });
+
+    try {
+      (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        isAuthModalOpen: true,
+        authModalView: 'sign_in',
+        error: 'Email not confirmed',
+        closeAuthModal: vi.fn(),
+        setAuthModalView: vi.fn(),
+        setError,
+        signInWithPassword: mockSignInWithPassword,
+        resendVerificationEmail: mockResendVerificationEmail,
+      });
+
+      render(<AuthModal />);
+
+      fireEvent.change(screen.getByPlaceholderText('reader@bookarium.org'), {
+        target: { value: 'reader@bookarium.org' },
+      });
+
+      // Clicking Resend Link before Turnstile resolves shows footer hint without clearing Email not confirmed
+      const resendBtn = screen.getByRole('button', { name: 'Resend Link' });
+      fireEvent.click(resendBtn);
+      expect(
+        screen.getByText(/Please complete the security check below before resending/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resend Link' })).toBeInTheDocument();
+      expect(mockResendVerificationEmail).not.toHaveBeenCalled();
+
+      // Resolving Turnstile clears notice and sends token on click
+      await waitFor(() => {
+        capturedOptions.callback?.('resend-verified-token-321');
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Resend Link' }));
+
+      await waitFor(() => {
+        expect(mockResendVerificationEmail).toHaveBeenCalledWith(
+          'reader@bookarium.org',
+          'resend-verified-token-321'
+        );
+      });
+      expect(mockTurnstileReset).toHaveBeenCalledWith('turnstile-resend-widget');
+    } finally {
+      if (prevKey === undefined) {
+        delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = prevKey;
+      }
+      delete window.turnstile;
+    }
+  });
+
+  it('bounds dialog height to mobile viewport with a pinned header and scrollable Sign Up body', () => {
+    const closeAuthModal = vi.fn();
+    const setAuthModalView = vi.fn();
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'sign_up',
+      error: null,
+      closeAuthModal,
+      setAuthModalView,
+      setError: vi.fn(),
+      signUpWithPassword: mockSignUpWithPassword,
+    });
+
+    render(<AuthModal />);
+
+    const card = screen.getByTestId('auth-modal-card');
+    const header = screen.getByTestId('auth-modal-header');
+    const scrollBody = screen.getByTestId('auth-modal-scroll-body');
+    const closeButton = screen.getByRole('button', { name: 'Close Authentication Modal' });
+    const createAccountButton = screen.getByRole('button', { name: /Create Account/i });
+    const signInSwitcher = screen.getByRole('button', { name: /Sign In/i });
+
+    expect(card).toHaveClass(
+      'max-h-[calc(100dvh-2rem)]',
+      'sm:max-h-[90dvh]',
+      'flex',
+      'flex-col',
+      'overflow-hidden'
+    );
+    expect(header).toHaveClass('shrink-0');
+    expect(header).toContainElement(closeButton);
+    expect(scrollBody).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto', 'overscroll-contain');
+    expect(scrollBody).not.toContainElement(closeButton);
+    expect(scrollBody).toContainElement(createAccountButton);
+    expect(scrollBody).toContainElement(signInSwitcher);
+
+    fireEvent.click(closeButton);
+    expect(closeAuthModal).toHaveBeenCalledTimes(1);
+    fireEvent.click(signInSwitcher);
+    expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
+  });
 });

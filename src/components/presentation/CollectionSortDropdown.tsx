@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpDown, ChevronDown, Check } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 export interface SortOption {
   value: string;
@@ -184,7 +185,7 @@ export const CollectionSortDropdown: React.FC<CollectionSortDropdownProps> = ({
         )}
 
         {/* Standard Select (Desktop on compactOnMobile, or universal when compactOnMobile=false) */}
-        <select
+        <Select
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={ariaLabel}
@@ -194,14 +195,14 @@ export const CollectionSortDropdown: React.FC<CollectionSortDropdownProps> = ({
             compactOnMobile ? 'sr-only sm:not-sr-only sm:relative sm:w-full sm:h-8' : 'w-full h-8'
           } ${
             shouldHideLeadingIcon ? 'pl-2.5 sm:pl-3' : 'pl-8 sm:pl-9'
-          } pr-7 sm:pr-8 py-1 text-xs font-sans font-medium rounded-lg bg-card border border-border hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground cursor-pointer transition-all shadow-booksaw appearance-none select-none truncate`}
+          } pr-7 sm:pr-8 py-1 text-xs font-sans font-medium rounded-lg bg-card border border-border hover:border-primary/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all shadow-booksaw appearance-none select-none truncate`}
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value} className="bg-background text-foreground py-1 text-xs">
               {opt.label}
             </option>
           ))}
-        </select>
+        </Select>
 
         <div className={`absolute right-2.5 sm:right-3 pointer-events-none ${compactOnMobile ? 'hidden sm:flex' : 'flex'} items-center justify-center text-muted-foreground`}>
           <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />

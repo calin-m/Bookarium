@@ -1189,8 +1189,8 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     },
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
-      fallback: 'Optional: `AuthModal` omits the Turnstile widget and submits directly when unconfigured in local development or offline setups.',
-      purpose: 'Public Cloudflare Turnstile site key mounting a Managed bot-protection challenge in `AuthModal` and passing single-use `captchaToken` verification to Supabase Auth.',
+      fallback: 'Optional: `TurnstileWidget` renders nothing (zero external scripts or UI) and `AuthModal`, `EmailSentView`, and `/account` recovery/verification flows submit directly when unconfigured in local development or offline setups.',
+      purpose: 'Public Cloudflare Turnstile site key mounting a shared Managed bot-protection widget (`TurnstileWidget.tsx`) across `AuthModal`, `EmailSentView` resends, and reveal-on-click `/account` password reset & verification resend flows, forwarding single-use `captchaToken` verification to Supabase Auth.',
     },
     NEXT_PUBLIC_LEGAL_CONTACT_FORM: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',

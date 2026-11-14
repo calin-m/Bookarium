@@ -8,6 +8,7 @@ import type { HighlightColor, FellowAnnotation } from '@/stores/useAnnotationSto
 import { isPlaceholderUsername } from '@/stores/useFellowshipStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { Textarea } from '@/components/ui/Textarea';
 
 export interface TextHighlightPopoverProps {
   isOpen: boolean;
@@ -416,13 +417,14 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
               >
                 {isEditingNote ? (
                   <>
-                    <textarea
+                    <Textarea
+                      variant="reader"
                       data-testid="highlight-note-textarea"
                       value={noteText}
                       onChange={(e) => setNoteText(e.target.value)}
                       placeholder="Add your note or reflection..."
                       rows={2}
-                      className="w-full text-xs p-2 rounded-md border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/50 focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none font-sans"
+                      className="bg-stone-50/50 dark:bg-stone-800/50 resize-none"
                       autoFocus
                     />
                     <div className="flex items-center justify-end gap-1.5">

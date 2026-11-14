@@ -15,6 +15,7 @@ import { CopyrightNoticeBanner } from '@/components/presentation/CopyrightNotice
 import { StarRating } from '@/components/ui/StarRating';
 import { ReadingStatusSelector } from '@/components/bookshelf/ReadingStatusSelector';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import {
   CopyBookLinkIndicator,
   handleCopyBookLinkClick,
@@ -464,7 +465,7 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
               {cloudBookshelves.length > 1 && onMoveBookToShelf && (
                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
                   <span className="text-xs font-mono text-muted-foreground">Shelf:</span>
-                  <select
+                  <Select
                     aria-label={`Move ${selectedMobileBook.title} to shelf`}
                     value={
                       cloudBookshelfItems.find((i) => i.book_id === selectedMobileBook.id)?.bookshelf_id ||
@@ -478,14 +479,14 @@ export const BookshelfMobileModal: React.FC<BookshelfMobileModalProps> = ({
                         await onMoveBookToShelf(selectedMobileBook.id, targetShelfId, userId || '');
                       }
                     }}
-                    className="text-base sm:text-xs font-mono bg-card text-foreground border border-border rounded-lg px-2.5 py-1 max-w-[200px] truncate cursor-pointer hover:border-primary transition-colors focus:outline-hidden"
+                    className="text-base sm:text-xs font-mono bg-card text-foreground border border-border rounded-lg px-2.5 py-1 max-w-[200px] truncate hover:border-primary transition-colors focus:outline-hidden"
                   >
                     {cloudBookshelves.map((shelf) => (
                       <option key={shelf.id} value={shelf.id}>
                         {shelf.is_default ? 'General (All)' : shelf.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
 

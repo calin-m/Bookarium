@@ -21,6 +21,11 @@ import {
 import type { Profile } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import {
+  TurnstileWidget,
+  getTurnstileSiteKey,
+  type TurnstileWidgetHandle,
+} from '@/components/auth/TurnstileWidget';
 import { ROUTES } from '@/config/routes';
 
 export interface AccountRibbonStats {
@@ -42,7 +47,7 @@ export interface AccountIdentityCardProps {
   isSaving: boolean;
   saveSuccess: boolean;
   saveError: string | null;
-  onResendVerification?: () => Promise<void>;
+  onResendVerification?: (captchaToken?: string) => Promise<void> | void;
   isResendingVerification?: boolean;
   resendSuccess?: boolean;
   resendError?: string | null;
@@ -73,6 +78,35 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [prevSaveSuccess, setPrevSaveSuccess] = useState(saveSuccess);
+  const turnstileSiteKey = getTurnstileSiteKey();
+  const [isVerifyCaptchaOpen, setIsVerifyCaptchaOpen] = useState(false);
+  const [verifyTurnstileError, setVerifyTurnstileError] = useState<string | null>(null);
+  const verifyTurnstileRef = React.useRef<TurnstileWidgetHandle>(null);
+  const isSubmittingVerifyRef = React.useRef(false);
+
+  const handleResendClick = () => {
+    if (!onResendVerification) return;
+    if (!turnstileSiteKey) {
+      void onResendVerification();
+      return;
+    }
+    setVerifyTurnstileError(null);
+    isSubmittingVerifyRef.current = false;
+    setIsVerifyCaptchaOpen((prev) => !prev);
+  };
+
+  const handleVerifyCaptchaToken = async (token: string | null) => {
+    if (!token || !onResendVerification || isSubmittingVerifyRef.current) return;
+    isSubmittingVerifyRef.current = true;
+    setVerifyTurnstileError(null);
+    try {
+      await onResendVerification(token);
+      setIsVerifyCaptchaOpen(false);
+    } finally {
+      isSubmittingVerifyRef.current = false;
+      verifyTurnstileRef.current?.reset();
+    }
+  };
 
   // Auto-close editor upon transition to saveSuccess during rendering (no cascading render effect)
   if (saveSuccess !== prevSaveSuccess) {
@@ -268,40 +302,80 @@ export const AccountIdentityCard: React.FC<AccountIdentityCardProps> = ({
 
       {/* Unverified Email Warning & Resend Banner */}
       {!isEmailVerified && (
-        <div className="p-3.5 rounded-xl border border-amber-500/40 dark:border-amber-500/50 bg-amber-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
-          <div className="space-y-1 min-w-0">
-            <p className="font-bold text-foreground flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>Please verify your email address</span>
-            </p>
-            <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
-              Verification links expire in 1 hour. Confirm your email to secure your account.
-            </p>
-            {resendError && (
-              <p className="text-[11px] text-destructive font-mono pt-1">{resendError}</p>
-            )}
-            {resendSuccess && (
-              <p className="text-[11px] text-success font-mono pt-1">
-                Verification link sent! Check your inbox.
+        <div className="p-3.5 rounded-xl border border-amber-500/40 dark:border-amber-500/50 bg-amber-500/5 space-y-3 text-xs font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <p className="font-bold text-foreground flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Please verify your email address</span>
               </p>
+              <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                Verification links expire in 1 hour. Confirm your email to secure your account.
+              </p>
+              {resendError && (
+                <p className="text-[11px] text-destructive font-mono pt-1">{resendError}</p>
+              )}
+              {resendSuccess && (
+                <p className="text-[11px] text-success font-mono pt-1">
+                  Verification link sent! Check your inbox.
+                </p>
+              )}
+            </div>
+
+            {onResendVerification && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResendClick}
+                disabled={isResendingVerification || resendCooldown > 0}
+                className="shrink-0 text-xs font-mono cursor-pointer"
+              >
+                {isResendingVerification
+                  ? 'Sending...'
+                  : resendCooldown > 0
+                    ? `Resend in ${resendCooldown}s`
+                    : 'Resend Verification Link'}
+              </Button>
             )}
           </div>
 
-          {onResendVerification && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onResendVerification}
-              disabled={isResendingVerification || resendCooldown > 0}
-              className="shrink-0 text-xs font-mono cursor-pointer"
+          {isVerifyCaptchaOpen && turnstileSiteKey && (
+            <div
+              data-testid="resend-verification-turnstile-panel"
+              className="rounded-xl border border-border bg-card/80 p-3 space-y-2 animate-in fade-in duration-150"
             >
-              {isResendingVerification
-                ? 'Sending...'
-                : resendCooldown > 0
-                  ? `Resend in ${resendCooldown}s`
-                  : 'Resend Verification Link'}
-            </Button>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  Complete security check to resend your verification email
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVerifyCaptchaOpen(false);
+                    setVerifyTurnstileError(null);
+                  }}
+                  className="text-[11px] font-mono text-muted-foreground hover:text-foreground underline cursor-pointer shrink-0"
+                >
+                  Cancel
+                </button>
+              </div>
+              <TurnstileWidget
+                ref={verifyTurnstileRef}
+                active={isVerifyCaptchaOpen}
+                testId="account-verify-turnstile-widget"
+                onTokenChange={(token) => {
+                  void handleVerifyCaptchaToken(token);
+                }}
+                onLoadError={setVerifyTurnstileError}
+                className="flex justify-center"
+              />
+              {verifyTurnstileError && (
+                <p className="text-[11px] font-mono text-destructive text-center">
+                  {verifyTurnstileError}
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}

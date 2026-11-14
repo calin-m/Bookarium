@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountSecuritySection } from './AccountSecuritySection';
 
@@ -275,6 +275,92 @@ describe('AccountSecuritySection', () => {
     expect(onUnlinkGoogle).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Google account disconnected.')).toBeInTheDocument();
     expect(screen.getByText('Sample error')).toBeInTheDocument();
+  });
+
+  it('reveals inline Turnstile challenge before requesting password reset when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set', async () => {
+    const prevKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = '0x4AAAAAAATestKey';
+
+    let capturedOptions: {
+      callback?: (token: string) => void;
+      'error-callback'?: () => void;
+    } = {};
+    window.turnstile = {
+      render: vi.fn((_el: HTMLElement, opts: typeof capturedOptions) => {
+        capturedOptions = opts;
+        return 'acct-reset-widget';
+      }),
+      reset: vi.fn(),
+      remove: vi.fn(),
+    };
+
+    const handleRequestPasswordReset = vi.fn().mockResolvedValue(undefined);
+
+    try {
+      render(
+        <AccountSecuritySection
+          currentPassword=""
+          newPassword=""
+          confirmPassword=""
+          showPassword={false}
+          copiedPassword={false}
+          isUpdatingPassword={false}
+          passwordSuccess={false}
+          passwordError={null}
+          strength={{ score: 0, label: 'Weak', color: 'bg-destructive' }}
+          onCurrentPasswordChange={vi.fn()}
+          onNewPasswordChange={vi.fn()}
+          onConfirmPasswordChange={vi.fn()}
+          onToggleShowPassword={vi.fn()}
+          onGeneratePassword={vi.fn()}
+          onUpdatePassword={vi.fn()}
+          onRequestPasswordReset={handleRequestPasswordReset}
+          onSignOut={vi.fn()}
+          onOpenDeleteModal={vi.fn()}
+          userEmail="scholar@bookarium.test"
+        />
+      );
+
+      // Hidden until clicked
+      expect(screen.queryByTestId('password-reset-turnstile-panel')).not.toBeInTheDocument();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Forgot current password\? Send reset link/i })
+      );
+      expect(screen.getByTestId('password-reset-turnstile-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('account-reset-turnstile-widget')).toBeInTheDocument();
+      expect(handleRequestPasswordReset).not.toHaveBeenCalled();
+
+      // Surface widget error cleanly without calling handler
+      act(() => {
+        capturedOptions['error-callback']?.();
+      });
+      expect(
+        await screen.findByText(/Security verification failed to load or verify/i)
+      ).toBeInTheDocument();
+
+      // Cancel dismisses inline challenge
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByTestId('password-reset-turnstile-panel')).not.toBeInTheDocument();
+
+      // Reopen and emit valid token
+      fireEvent.click(
+        screen.getByRole('button', { name: /Forgot current password\? Send reset link/i })
+      );
+      act(() => {
+        capturedOptions.callback?.('account-reset-token-123');
+      });
+      await waitFor(() => {
+        expect(handleRequestPasswordReset).toHaveBeenCalledWith('account-reset-token-123');
+      });
+    } finally {
+      if (prevKey === undefined) {
+        delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+      } else {
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = prevKey;
+      }
+      delete window.turnstile;
+    }
   });
 });
 

@@ -18,6 +18,7 @@ import {
   computeSharedQuoteSegments,
 } from '@/lib/reader-annotator';
 import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Textarea';
 import {
   CopyBookLinkIndicator,
   handleCopyBookLinkClick,
@@ -293,13 +294,13 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
             {/* Inline Personal Reflection Editor for Fellow Cards */}
             {isAddingOwnNote && (
               <div className="space-y-2.5 pt-1">
-                <textarea
+                <Textarea
+                  variant="subtle"
                   data-testid={`notebook-fellow-note-textarea-${ann.id}`}
                   value={ownNoteDraft}
                   onChange={(e) => setOwnNoteDraft(e.target.value)}
                   placeholder="Write your reflection or personal note..."
                   rows={3}
-                  className="w-full text-xs p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed resize-none"
                   autoFocus
                 />
                 <div className="flex items-center justify-end gap-2 pt-1">
@@ -361,13 +362,13 @@ export const NotebookQuoteCard: React.FC<NotebookQuoteCardProps> = ({
               </div>
             </div>
 
-            <textarea
+            <Textarea
+              variant="subtle"
               data-testid={`edit-note-textarea-${ann.id}`}
               value={editNoteText}
               onChange={(e) => setEditNoteText(e.target.value)}
               placeholder="Write your reflection or personal note..."
               rows={3}
-              className="w-full text-xs p-2.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed resize-none"
             />
             <div className="flex items-center justify-between gap-2 pt-1">
               {ann.note ? (
