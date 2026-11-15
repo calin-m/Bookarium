@@ -2276,6 +2276,74 @@ describe('NotebookView component', () => {
         Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline });
       }
     });
+
+    it('drives mobile bottom dock toggles, filter drawer view/direction switching, and reset all', async () => {
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'A single man in possession of a good fortune.',
+        color: 'yellow',
+        note: 'Opening irony',
+      });
+      await useAnnotationStore.getState().addAnnotation({
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        chapterIndex: 2,
+        chapterPage: 3,
+        selectedText: 'Beware; for I am fearless, and therefore powerful.',
+        color: 'mint',
+        note: 'Warning passage',
+      });
+
+      render(<NotebookView onBrowseCatalog={vi.fn()} />);
+
+      // Toggle floating search via mobile dock and dismiss via Escape
+      fireEvent.click(screen.getByTestId('collection-dock-search-btn'));
+      const searchInputs = screen.getAllByPlaceholderText('Search notes & quotes...');
+      fireEvent.change(searchInputs[searchInputs.length - 1], { target: { value: 'fearless' } });
+      expect(screen.getByText(/Beware; for I am fearless/i)).toBeInTheDocument();
+      expect(screen.queryByText(/single man in possession/i)).not.toBeInTheDocument();
+      fireEvent.keyDown(window, { key: 'Escape' });
+
+      // Clear search query
+      fireEvent.change(screen.getByTestId('notebook-search-input'), { target: { value: '' } });
+
+      // Toggle view mode via bottom dock
+      fireEvent.click(screen.getByTestId('collection-dock-view-mode-btn'));
+      expect(screen.getByTestId('notebook-view-mode-toggle')).toHaveAttribute(
+        'aria-label',
+        expect.stringContaining('Grouped by Book')
+      );
+      expect(screen.getByLabelText('Sort quotes chronologically')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('collection-dock-view-mode-btn'));
+      expect(screen.getByTestId('notebook-view-mode-toggle')).toHaveAttribute(
+        'aria-label',
+        expect.stringContaining('Chronological')
+      );
+
+      // Open filter drawer and switch direction in volume mode, then switch to chrono mode & change direction
+      fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
+      const drawer = screen.getByTestId('collection-filter-drawer');
+      expect(drawer).toBeInTheDocument();
+
+      fireEvent.click(within(drawer).getByTestId('filter-direction-desc-btn'));
+      fireEvent.click(within(drawer).getByTestId('filter-viewmode-chrono-btn'));
+      fireEvent.click(within(drawer).getByTestId('filter-direction-asc-btn'));
+      fireEvent.click(within(drawer).getByTestId('filter-viewmode-book-btn'));
+
+      if (within(drawer).queryByTestId('filter-shelf-mine')) {
+        fireEvent.click(within(drawer).getByTestId('filter-shelf-mine'));
+      }
+
+      // Reset all filters & close drawer
+      fireEvent.click(within(drawer).getByTestId('collection-filter-reset-btn'));
+      fireEvent.click(within(drawer).getByTestId('collection-filter-drawer-close-btn'));
+      expect(screen.queryByTestId('collection-filter-drawer')).not.toBeInTheDocument();
+    });
   });
 });
 

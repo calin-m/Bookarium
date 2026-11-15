@@ -109,7 +109,54 @@ describe('syncAllStoresWithCloud', () => {
       } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
     const readerMock = vi.fn().mockResolvedValue(undefined);
-    useReaderStore.setState({ syncWithCloud: readerMock });
+    useReaderStore.setState({
+      syncWithCloud: readerMock,
+      readingProgress: { 1342: 40 },
+      readingPositions: {
+        1342: {
+          chapterIndex: 0,
+          chapterPage: 2,
+          globalPage: 2,
+          bookmarkRow: 3,
+          bookmarkText: 'It is a truth universally acknowledged',
+          lastReadAt: '2026-11-15T00:00:00Z',
+          bookTitle: 'Pride and Prejudice',
+        },
+      },
+    });
+    useBookshelfStore.setState({
+      favoriteBookIds: [1342],
+      savedBooks: [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 100,
+        },
+      ],
+    });
+    useAnnotationStore.setState({
+      annotations: [
+        {
+          id: 'ann-cleared-1',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 2,
+          selectedText: 'Truth',
+          color: 'amber',
+          note: 'Key passage',
+          createdAt: '2026-11-15T00:00:00Z',
+          updatedAt: '2026-11-15T00:00:00Z',
+        },
+      ],
+    });
     useAuthStore.setState({
       user: { id: 'user-cleared-1', email: 'cleared@test.com' } as unknown as ReturnType<
         typeof useAuthStore.getState
@@ -119,6 +166,12 @@ describe('syncAllStoresWithCloud', () => {
     await syncAllStoresWithCloud('user-cleared-1');
     expect(readerMock).not.toHaveBeenCalled();
     expect(useAuthStore.getState().user).toBeNull();
+    expect(useBookshelfStore.getState().savedBooks).toEqual([]);
+    expect(useBookshelfStore.getState().favoriteBookIds).toEqual([]);
+    expect(useAnnotationStore.getState().annotations).toEqual([]);
+    expect(useReaderStore.getState().readingPositions).toEqual({});
+    expect(useReaderStore.getState().readingProgress).toEqual({});
+    expect(localStorage.getItem('bookarium-pending-store-cleanup')).toBeNull();
 
     // 4. When wake-up token refresh encounters a transient error (error != null),
     // skips unauthenticated sync without logging the user out

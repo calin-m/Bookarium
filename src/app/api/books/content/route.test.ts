@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import React from 'react';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
+import { SITE_CONFIG } from '@/config/site-config';
 import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache';
 import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { sampleBookText } from '@/mocks/handlers';
@@ -850,6 +852,35 @@ describe('GET /api/books/content', () => {
 
       expect(resFallback.status).toBe(200);
       expect(resFallback.headers.get('Content-Type')).toContain('image/png');
+    });
+
+    it('renders the canonical SITE_CONFIG.SITE_HOST domain footer in the type=card OpenGraph JSX tree', async () => {
+      await mockSupabaseBookQuery({
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        copyright: false,
+      });
+
+      const originalHost = SITE_CONFIG.SITE_HOST;
+      const createElementSpy = vi.spyOn(React, 'createElement');
+
+      try {
+        Object.assign(SITE_CONFIG, { SITE_HOST: 'books.custom-domain.test' });
+        const req = new NextRequest(
+          'http://localhost:3000/api/books/content?id=1342&type=card'
+        );
+        const res = await GET(req);
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get('Content-Type')).toContain('image/png');
+        const emittedChildren = createElementSpy.mock.calls.flatMap((args) => args.slice(2));
+        expect(emittedChildren).toContain('books.custom-domain.test/read/1342');
+      } finally {
+        createElementSpy.mockRestore();
+        Object.assign(SITE_CONFIG, { SITE_HOST: originalHost });
+      }
     });
   });
 });

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ingestTranslations = require('./ingest-translations');
 const {
+  resolveSiteOriginFallback,
+  resolveUserAgent,
   normalizeLanguageToCode,
   extractAuthorSurname,
   isOmnibusOrAnthology,
@@ -256,6 +258,52 @@ describe('scripts/ingest-translations Engine', () => {
       const candidates = [100, 200];
       const result = await filterValidCatalogBookIds(mockSupabase, candidates);
       expect(Array.from(result)).toEqual([100, 200]);
+    });
+  });
+
+  describe('resolveSiteOriginFallback & resolveUserAgent', () => {
+    it('normalizes canonical origin fallbacks across NEXT_PUBLIC_SITE_URL and Vercel production vars', () => {
+      expect(resolveSiteOriginFallback({})).toBe('https://bookarium.vercel.app');
+      expect(
+        resolveSiteOriginFallback({
+          VERCEL_PROJECT_PRODUCTION_URL: 'bookarium.ro/',
+        })
+      ).toBe('https://bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+          VERCEL_PROJECT_PRODUCTION_URL: 'ignored.example.com',
+        })
+      ).toBe('https://cdn.bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_SITE_URL: 'https://primary.bookarium.ro///',
+          NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+        })
+      ).toBe('https://primary.bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_SITE_URL: 'javascript:alert(1)',
+          VERCEL_PROJECT_PRODUCTION_URL: 'http://localhost:3000/',
+        })
+      ).toBe('http://localhost:3000');
+    });
+
+    it('builds descriptive Bookarium-Gatekeeper User-Agent strings from explicit or resolved origins', () => {
+      expect(
+        resolveUserAgent({
+          BOOKARIUM_REPO_URL: 'https://bookarium.ro',
+          GUTENBERG_CONTACT_EMAIL: 'ops@bookarium.ro',
+        })
+      ).toBe('Bookarium-Gatekeeper/1.0 (+https://bookarium.ro; ops@bookarium.ro)');
+
+      expect(
+        resolveUserAgent({
+          GITHUB_REPOSITORY: '/custom-org/bookarium-fork/',
+        })
+      ).toBe('Bookarium-Gatekeeper/1.0 (+https://github.com/custom-org/bookarium-fork)');
+
+      expect(resolveUserAgent({})).toMatch(/^Bookarium-Gatekeeper\/1\.0 \(\+https?:\/\/.+\)$/);
     });
   });
 });

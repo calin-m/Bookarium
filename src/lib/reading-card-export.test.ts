@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { SITE_CONFIG } from '@/config/site-config';
 import {
   CARD_DIMENSIONS,
   CARD_PALETTES,
@@ -147,6 +148,11 @@ describe('reading-card-export', () => {
       expect(CARD_PALETTES.dark.background).toBe('#0f0f0e');
       expect(mockCtx.fillText).toHaveBeenCalledWith(
         'UNABRIDGED PUBLIC DOMAIN EDITION  •  FREE DIGITAL READER',
+        expect.any(Number),
+        expect.any(Number)
+      );
+      expect(mockCtx.fillText).toHaveBeenCalledWith(
+        `${SITE_CONFIG.SITE_HOST}/read/84`,
         expect.any(Number),
         expect.any(Number)
       );

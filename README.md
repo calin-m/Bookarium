@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-257%20Suites%20%7C%202607%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.44%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-257%20Suites%20%7C%202629%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.22%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2607 tests across 257 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2629 tests across 257 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -109,14 +109,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.34)
+## 🛠️ Latest Improvements (v2.9.37)
 
-- **Vercel Edge Cache Tag Headers (`Vercel-Cache-Tag`)**: Added opt-in Edge cache tags (`quotes`, `catalog`, or `catalog,quotes` on `GET /api/books`, and `translations` on `GET /api/books/translations`) strictly on cacheable `200` database responses while omitting tags on curated `cache` fallbacks and `no-store` errors (`src/app/api/books/route.ts`, `src/app/api/books/translations/route.ts`, `ADR-080`).
-- **Edge Tag Purge CLI & Selective Manual Workflow (`scripts/purge-vercel-cache.js`, `.github/workflows/cache-purge.yml`)**: Implemented `purgeVercelEdgeCache` (`parsePurgeCliArgs`, `buildVercelCachePurgeUrl`, `appendPurgeStepSummary`) calling Vercel's `dangerously-delete-by-tags` endpoint with bounded `429`/`Retry-After`/`5xx` retries, `$GITHUB_STEP_SUMMARY` reporting, and clean `exit 0` skipping when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset; wired post-ingestion purges at the end of live `.github/workflows/catalog-sync.yml` (`catalog,quotes,translations`), `quotes-sync.yml` (`quotes`), and `translations-sync.yml` (`translations`) alongside a dedicated manual `workflow_dispatch`-only `.github/workflows/cache-purge.yml` (unchecked-by-default tag checkboxes with a fail-fast empty-selection guard, `target`, `dry_run`, zero `npm ci`) and 1:1 `scripts/purge-vercel-cache.test.ts` coverage (`ADR-080`).
-- **Dedicated GitHub Actions Operator Runbook (`docs/GITHUB_ACTIONS.md`) & Pass 5 Workflow Parity Gate**: Authored a comprehensive runbook covering all 6 `.github/workflows/*.yml` workflows (`catalog-sync`, `quotes-sync`, `translations-sync`, `cache-purge`, `ci`, `release`) and `.github/dependabot.yml` with triggers, permissions, secrets, `catalog-cache` setup, `workflow_dispatch` inputs, and local CLI commands, cross-linked across core guides (`README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`, `docs/PIPELINE_GUIDE.md`, `docs/ARCHITECTURE.md`) and enforced via `Pass 5` 1:1 workflow/cron parity and 17-doc governance checks (`scripts/verify-build.js`, `ADR-080`).
-- **Full Partial-Index Out-of-Window Quote Discovery (`scripts/sync-featured-quotes.js`)**: Added `fetchAllQuotedBookIds` (scanning partial index `idx_books_with_quotes_popular` across the entire table in 1,000-row ID pages) and `resolveBookMetadataByIds` so out-of-window quoted volumes beyond Top 500 Popular or Rolling 64 Recent are discovered deterministically regardless of `quote-diff.json` boundaries (`ADR-080`).
-- **Option-A 1-for-1 Pool Pruning (`computeOutOfWindowPrunePlan`, `2,000` Default Cap) & Visibility**: Retained `popularDeficit` most-popular demoted books as 1-for-1 backfill while Top 500 fills, pruning least-popular surplus (`download_count ASC, id ASC`) and oldest Recent > 64 overflow (`id ASC`) up to `DEFAULT_MAX_PRUNE_PER_RUN = 2000` (`--max-prune=<N>`, `50ms` inter-chunk yield past `500` IDs), and exposed pruned counts/causes/titles across console (`[Prune i/N ...]`, `• Purge Status:`, `• Out-of-Window:`) and `$GITHUB_STEP_SUMMARY` (`Out-of-Window (Pruned)` & `🧹 Pruned`) (`ADR-080`).
-- **Environment Guides, Architecture Diagrams & Stage-4 Governance Matrix Synchronization**: Documented `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, and optional `VERCEL_TEAM_ID` across `.env.example`, `DEVELOPMENT.md`, `docs/PIPELINE_GUIDE.md`, and `README.md`, registered `purge-vercel-cache.js` and `cache-purge.yml` in `scripts/verify-build.js`, `scripts/lib/ast-parser.js`, and `scripts/generate-architecture-matrix.js` (Diagrams `1/8/10/12/13`, contracts, and caching TTL/`Vary` specs), aligned `scripts/generate-roadmap.js` + `docs/DECISIONS.md` (`257` suites, `ADR-080`), and codified the explicit Stage-4 Plan Completeness Contract, `.github/workflows/*.yml` Impact Row, and separated `generate-architecture-matrix.js` / `ast-parser.js` map inventory in `AGENTS.md` and `.agents/AGENTS.md`.
+- **Global V8 Statement Coverage Margin Hardening (`95.04%` -> `95.98%`, `257` Suites / `2,629` Tests)**: Expanded 8 existing 1:1 co-located Vitest suites (`session-device-parser.test.ts`, `notebook-sorting.test.ts`, `ReaderShareModal.test.tsx`, `BookmarksView.test.tsx`, `NotebookView.test.tsx`, `useAuthStore.test.ts`, `supabase-provider.test.ts`, `useAccountSecurityActions.test.ts`) with zero runtime or threshold modifications, adding `+165` covered statements (`16,888 / 17,595` statements, `97.20%` lines, `95.12%` functions, `88.34%` branches) covering auth reload cleanup/token refresh, catalog LRU/TTL/backfill/translation error recovery, mobile dock/drawer controls, share/clipboard fallbacks, and cross-tab session BroadcastChannel guards (`ADR-071`, `ADR-073`, `ADR-080`).
+- **Automated `docs/GITHUB_ACTIONS.md` Release Tag Sync & Live Quality Telemetry (`scripts/generate-changelog.js`, `scripts/generate-architecture-matrix.js`, `docs/PIPELINE_GUIDE.md`)**: Extended `syncReleaseVersionFiles()` in `scripts/generate-changelog.js` to keep the `docs/GITHUB_ACTIONS.md` `workflow_dispatch` default `tag` synchronized with `RELEASES[0].version`, updated `generate-architecture-matrix.js` fallback counts and `purposeMap`, and recompiled all living quality/coverage badges and reports via `npm run docs:sync` (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -608,9 +604,9 @@ Once seeded, `/api/books` automatically routes queries to your dedicated Supabas
 ### Step 4: Configure Authentication Redirect URLs
 1. In your Supabase Dashboard, navigate to **Authentication $\to$ URL Configuration**.
 2. Set **Site URL** to your canonical public domain:
-   - `https://bookarium.vercel.app` (for production — **never** use a branch or deployment preview URL such as `https://bookarium-git-*.vercel.app`, which is gated by Vercel Deployment Protection) or `http://localhost:3000` (for local-only projects).
-3. Under **Redirect URLs**, add the following allowed callback patterns:
-   - `https://bookarium.vercel.app/**`
+   - Your production deployment URL (e.g. `https://your-domain.com` or `https://bookarium.vercel.app` — **never** use a branch or deployment preview URL such as `https://bookarium-git-*.vercel.app`, which is gated by Vercel Deployment Protection) or `http://localhost:3000` (for local-only projects).
+3. Under **Redirect URLs**, add the following allowed callback patterns (alongside any secondary/previous domain you still redirect during migration):
+   - `https://<your-production-domain>/**` (e.g. `https://bookarium.vercel.app/**`)
    - `http://localhost:3000/**`
    - *(Or explicitly list `/auth/callback`, `/auth/confirm-deletion`, and `/account` for both origins).*
 
@@ -674,4 +670,4 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 
 ## ⚖️ License & Public Domain Notice
 
-Licensed under the **MIT License**. All queried literature and book texts originate from **Project Gutenberg** and are in the **Public Domain** (Zero Copyright / CC0) in accordance with international public domain statutes. For detailed term calculations, Berne Convention rules, and our confidential notice & takedown portal, see our [**Copyright & Licensing**](https://bookarium.vercel.app/copyright) policy.
+Licensed under the **MIT License**. All queried literature and book texts originate from **Project Gutenberg** and are in the **Public Domain** (Zero Copyright / CC0) in accordance with international public domain statutes. For detailed term calculations, Berne Convention rules, and our confidential notice & takedown portal, see our [**Copyright & Licensing**](/copyright) policy.

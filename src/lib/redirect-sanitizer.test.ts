@@ -112,6 +112,24 @@ describe('resolveCanonicalShareOrigin and buildBookShareUrl', () => {
       )
     ).toBe('https://bookarium.vercel.app');
     expect(
+      resolveCanonicalShareOrigin('https://bookarium.ro', 'https://bookarium.ro')
+    ).toBe('https://bookarium.ro');
+    expect(
+      resolveCanonicalShareOrigin('http://localhost:3000', 'https://bookarium.ro')
+    ).toBe('http://localhost:3000');
+    expect(
+      resolveCanonicalShareOrigin(
+        'https://bookarium.vercel.app',
+        'https://bookarium.ro'
+      )
+    ).toBe('https://bookarium.ro');
+    expect(
+      resolveCanonicalShareOrigin(
+        'https://bookarium-git-feat.vercel.app',
+        'https://bookarium.ro'
+      )
+    ).toBe('https://bookarium.ro');
+    expect(
       resolveCanonicalShareOrigin('javascript:alert(1)', 'https://bookarium.vercel.app')
     ).toBe('https://bookarium.vercel.app');
     expect(

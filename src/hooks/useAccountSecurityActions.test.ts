@@ -768,5 +768,263 @@ describe('useAccountSecurityActions', () => {
       globalThis.BroadcastChannel = OriginalBroadcastChannel;
     }
   });
+
+  it('covers OAuth timeout clearing, BroadcastChannel fallbacks, and error/offline/unmount guards across session actions', async () => {
+    const sampleSession: ActiveUserSession = {
+      id: 'sess-remote',
+      userAgent: 'Mozilla/5.0',
+      ipAddress: '198.51.100.7',
+      createdAt: '2026-11-10T09:00:00Z',
+      updatedAt: '2026-11-15T12:00:00Z',
+      refreshedAt: null,
+      notAfter: null,
+      isCurrent: false,
+    };
+
+    const OriginalBroadcastChannel = globalThis.BroadcastChannel;
+
+    try {
+      // 1. Throwing BroadcastChannel fallback + unmount cancellation + initial load error/rejection
+      globalThis.BroadcastChannel = class ThrowingBroadcastChannel {
+        constructor() {
+          throw new Error('BroadcastChannel blocked');
+        }
+      } as unknown as typeof BroadcastChannel;
+
+      let resolveDeferredLoad!: (res: {
+        sessions: ActiveUserSession[];
+        error: Error | null;
+        isRpcUnavailable?: boolean;
+      }) => void;
+      const deferredListSessions = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDeferredLoad = resolve;
+          })
+      );
+
+      const unmountTest = renderHook(() =>
+        useAccountSecurityActions({
+          user: mockUser,
+          profile: mockProfile,
+          isRecoveryMode: false,
+          onClearRecoveryParam: vi.fn(),
+          updateProfile: vi.fn().mockResolvedValue({ error: null }),
+          updatePassword: vi.fn().mockResolvedValue({ error: null }),
+          resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+          requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+          resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+          activeTab: 'security',
+          listActiveSessions: deferredListSessions,
+        })
+      );
+
+      await waitFor(() => {
+        expect(deferredListSessions).toHaveBeenCalledTimes(1);
+      });
+      unmountTest.unmount();
+      await act(async () => {
+        resolveDeferredLoad({ sessions: [sampleSession], error: null });
+      });
+
+      // Initial effect res.error + rejected promise branches
+      const errorThenThrowListSessions = vi
+        .fn()
+        .mockResolvedValueOnce({ sessions: [], error: new Error('Session RPC failure') })
+        .mockRejectedValueOnce(new Error('Network timeout'));
+
+      const { result: errLoadResult, rerender: errRerender } = renderHook(
+        ({ activeUser }: { activeUser: User | null }) =>
+          useAccountSecurityActions({
+            user: activeUser,
+            profile: mockProfile,
+            isRecoveryMode: false,
+            onClearRecoveryParam: vi.fn(),
+            updateProfile: vi.fn().mockResolvedValue({ error: null }),
+            updatePassword: vi.fn().mockResolvedValue({ error: null }),
+            resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+            requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+            resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+            activeTab: 'security',
+            listActiveSessions: errorThenThrowListSessions,
+          }),
+        { initialProps: { activeUser: mockUser as User | null } }
+      );
+
+      await waitFor(() => {
+        expect(errLoadResult.current.sessionsError).toBe('Session RPC failure');
+      });
+
+      // Rejected manual refresh branch
+      await act(async () => {
+        await errLoadResult.current.refreshActiveSessions();
+      });
+      expect(errLoadResult.current.sessionsError).toBe('Network timeout');
+
+      // Initial effect rejected promise branch (reset user then restore user)
+      errorThenThrowListSessions.mockRejectedValueOnce(new Error('Initial boot network failure'));
+      errRerender({ activeUser: null });
+      errRerender({ activeUser: mockUser });
+      await waitFor(() => {
+        expect(errLoadResult.current.sessionsError).toBe('Initial boot network failure');
+      });
+
+      // 2. BroadcastChannel ignoring non-matching payload type & mismatched userId + fallback temp channel when activeChannel is null
+      const postedPayloads: unknown[] = [];
+      let registeredListener: ((event: MessageEvent) => void) | null = null;
+      globalThis.BroadcastChannel = class MockSyncChannel {
+        addEventListener(_type: string, listener: (event: MessageEvent) => void) {
+          registeredListener = listener;
+        }
+        removeEventListener() {}
+        postMessage(data: unknown) {
+          postedPayloads.push(data);
+        }
+        close() {}
+      } as unknown as typeof BroadcastChannel;
+
+      const listForBroadcast = vi.fn().mockResolvedValue({ sessions: [sampleSession], error: null });
+      const signOutOtherOk = vi.fn().mockResolvedValue({ error: null });
+      const { result: bcResult, rerender: bcRerender } = renderHook(
+        ({ tab, offline }: { tab: string; offline: boolean }) =>
+          useAccountSecurityActions({
+            user: mockUser,
+            profile: mockProfile,
+            isRecoveryMode: false,
+            onClearRecoveryParam: vi.fn(),
+            updateProfile: vi.fn().mockResolvedValue({ error: null }),
+            updatePassword: vi.fn().mockResolvedValue({ error: null }),
+            resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+            requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+            resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+            activeTab: tab,
+            isOffline: offline,
+            listActiveSessions: listForBroadcast,
+            signOutOtherDevices: signOutOtherOk,
+            revokeSession: vi.fn().mockRejectedValue(new Error('Revoke dropped')),
+            signOut: vi.fn().mockRejectedValue(new Error('Signout dropped')),
+          }),
+        { initialProps: { tab: 'security', offline: false } }
+      );
+
+      await waitFor(() => {
+        expect(listForBroadcast).toHaveBeenCalledTimes(1);
+      });
+
+      // Ignore unrelated message type and mismatched userId
+      act(() => {
+        registeredListener?.({ data: { type: 'other-event', userId: 'user-1' } } as MessageEvent);
+        registeredListener?.({
+          data: { type: 'sessions-changed', userId: 'different-user', senderId: 'tab-9' },
+        } as MessageEvent);
+      });
+      expect(listForBroadcast).toHaveBeenCalledTimes(1);
+
+      // Switch off Security tab so sessionsSyncChannelRef.current is null -> triggers ephemeral BroadcastChannel path
+      bcRerender({ tab: 'habits', offline: false });
+      await act(async () => {
+        await bcResult.current.handleSignOutOtherDevices();
+      });
+      expect(postedPayloads.length).toBeGreaterThanOrEqual(1);
+
+      // Rejected signOut('local'), signOut('global'), revokeSession, and offline guards
+      await act(async () => {
+        await bcResult.current.handleSignOutThisBrowser();
+      });
+      expect(bcResult.current.sessionsError).toBe('Signout dropped');
+
+      await act(async () => {
+        await bcResult.current.handleSignOutAllDevices();
+      });
+      expect(bcResult.current.sessionsError).toBe('Signout dropped');
+
+      await act(async () => {
+        await bcResult.current.handleRevokeSession(sampleSession);
+      });
+      expect(bcResult.current.sessionsError).toBe('Revoke dropped');
+
+      // Missing BroadcastChannel fallback
+      delete (globalThis as { BroadcastChannel?: typeof BroadcastChannel }).BroadcastChannel;
+      await act(async () => {
+        await bcResult.current.handleSignOutOtherDevices();
+      });
+      expect(signOutOtherOk).toHaveBeenCalledTimes(2);
+
+      // Offline guards skip reload/signOutOther/signOutAll/revoke
+      bcRerender({ tab: 'security', offline: true });
+      const callsBeforeOffline = listForBroadcast.mock.calls.length;
+      await act(async () => {
+        await bcResult.current.refreshActiveSessions();
+        await bcResult.current.handleSignOutOtherDevices();
+        await bcResult.current.handleSignOutAllDevices();
+        await bcResult.current.handleRevokeSession(sampleSession);
+      });
+      expect(listForBroadcast).toHaveBeenCalledTimes(callsBeforeOffline);
+
+      // 3. OAuth missing-callback early returns + 4s identitySuccess timeout clearing
+      vi.useFakeTimers();
+      try {
+        const dualUser = {
+          ...mockUser,
+          identities: [
+            { id: 'id-email', provider: 'email' },
+            { id: 'id-google', provider: 'google', identity_data: { email: 'scholar@bookarium.test' } },
+          ],
+          app_metadata: { provider: 'email', providers: ['email', 'google'] },
+        } as unknown as User;
+
+        const unlinkOAuthIdentity = vi.fn().mockResolvedValue({ error: null });
+        const { result: oauthResult } = renderHook(() =>
+          useAccountSecurityActions({
+            user: dualUser,
+            profile: mockProfile,
+            isRecoveryMode: false,
+            onClearRecoveryParam: vi.fn(),
+            updateProfile: vi.fn().mockResolvedValue({ error: null }),
+            updatePassword: vi.fn().mockResolvedValue({ error: null }),
+            resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+            requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+            resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+            unlinkOAuthIdentity,
+          })
+        );
+
+        await act(async () => {
+          await oauthResult.current.handleSignOutThisBrowser();
+          await oauthResult.current.handleLinkGoogle();
+          await oauthResult.current.handleUnlinkGoogle();
+        });
+        expect(oauthResult.current.identitySuccess).toBe('Google account disconnected.');
+
+        act(() => {
+          vi.advanceTimersByTime(4100);
+        });
+        expect(oauthResult.current.identitySuccess).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+
+      // Missing unlink callback early return
+      const { result: noUnlinkResult } = renderHook(() =>
+        useAccountSecurityActions({
+          user: mockUser,
+          profile: mockProfile,
+          isRecoveryMode: false,
+          onClearRecoveryParam: vi.fn(),
+          updateProfile: vi.fn().mockResolvedValue({ error: null }),
+          updatePassword: vi.fn().mockResolvedValue({ error: null }),
+          resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
+          requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
+          resendVerificationEmail: vi.fn().mockResolvedValue({ error: null }),
+        })
+      );
+      await act(async () => {
+        await noUnlinkResult.current.handleUnlinkGoogle();
+      });
+      expect(noUnlinkResult.current.identityError).toBeNull();
+    } finally {
+      globalThis.BroadcastChannel = OriginalBroadcastChannel;
+    }
+  });
 });
 

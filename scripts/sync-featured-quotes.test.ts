@@ -1438,4 +1438,31 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       coldLogs.some((l) => l.includes('[Prune 2/2 · Cycled Recent] #75001 "Aged Recent Volume": quotes cleared.'))
     ).toBe(true);
   });
+
+  it('resolves canonical site origin fallback from NEXT_PUBLIC_SITE_URL and normalized Vercel production hostnames', () => {
+    expect(quotesSync.resolveSiteOriginFallback({})).toBe('https://bookarium.vercel.app');
+    expect(
+      quotesSync.resolveSiteOriginFallback({
+        VERCEL_PROJECT_PRODUCTION_URL: 'bookarium.ro/',
+      })
+    ).toBe('https://bookarium.ro');
+    expect(
+      quotesSync.resolveSiteOriginFallback({
+        NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+        VERCEL_PROJECT_PRODUCTION_URL: 'ignored.example.com',
+      })
+    ).toBe('https://cdn.bookarium.ro');
+    expect(
+      quotesSync.resolveSiteOriginFallback({
+        NEXT_PUBLIC_SITE_URL: 'https://primary.bookarium.ro///',
+        NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+      })
+    ).toBe('https://primary.bookarium.ro');
+    expect(
+      quotesSync.resolveSiteOriginFallback({
+        NEXT_PUBLIC_SITE_URL: 'javascript:alert(1)',
+        VERCEL_PROJECT_PRODUCTION_URL: 'http://localhost:3000/',
+      })
+    ).toBe('http://localhost:3000');
+  });
 });

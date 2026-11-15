@@ -47,6 +47,28 @@ function loadEnv() {
   return env;
 }
 
+function resolveSiteOriginFallback(env = process.env) {
+  const candidates = [
+    env.NEXT_PUBLIC_SITE_URL,
+    env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL,
+    env.VERCEL_PROJECT_PRODUCTION_URL,
+  ];
+  for (const raw of candidates) {
+    const trimmed = (raw || '').trim().replace(/\/+$/, '');
+    if (!trimmed) continue;
+    const withProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    try {
+      const parsed = new URL(withProtocol);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.origin;
+      }
+    } catch {}
+  }
+  return 'https://bookarium.vercel.app';
+}
+
 function resolveUserAgent(env = loadEnv()) {
   let repo = env.NEXT_PUBLIC_GITHUB_REPO || env.BOOKARIUM_REPO_URL;
   if (!repo && env.GITHUB_REPOSITORY) {
@@ -67,7 +89,7 @@ function resolveUserAgent(env = loadEnv()) {
     } catch {}
   }
   if (!repo) {
-    repo = env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app';
+    repo = resolveSiteOriginFallback(env);
   }
   const email = (env.GUTENBERG_CONTACT_EMAIL || '').trim();
   const contactPart = email ? `+${repo}; ${email}` : `+${repo}`;
@@ -513,6 +535,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+  resolveSiteOriginFallback,
+  resolveUserAgent,
   normalizeLanguageToCode,
   extractAuthorSurname,
   isOmnibusOrAnthology,

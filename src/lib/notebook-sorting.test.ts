@@ -121,4 +121,130 @@ describe('notebook-sorting', () => {
       'Pride and Prejudice',
     ]);
   });
+
+  it('handles every volume/chronological sort option and fallback branch', () => {
+    expect(resolveVolumeSort('author', 'asc')).toBe('author_asc');
+    expect(resolveVolumeSort('author', 'desc')).toBe('author_desc');
+    expect(resolveVolumeSort('count', 'asc')).toBe('count_asc');
+    expect(resolveVolumeSort('downloaded', 'asc')).toBe('downloaded');
+    expect(decomposeVolumeSort('invalid' as never)).toEqual({
+      base: 'title',
+      dir: 'asc',
+      isDirectionDisabled: false,
+    });
+
+    expect(decomposeChronoSort('title_desc')).toEqual({
+      base: 'title',
+      dir: 'desc',
+      isDirectionDisabled: false,
+    });
+    expect(decomposeChronoSort('author_desc')).toEqual({
+      base: 'author',
+      dir: 'desc',
+      isDirectionDisabled: false,
+    });
+    expect(decomposeChronoSort('downloaded')).toEqual({
+      base: 'downloaded',
+      dir: 'desc',
+      isDirectionDisabled: true,
+    });
+    expect(decomposeChronoSort('unknown' as never)).toEqual({
+      base: 'date',
+      dir: 'desc',
+      isDirectionDisabled: false,
+    });
+
+    expect(resolveChronoSort('title', 'asc')).toBe('title_asc');
+    expect(resolveChronoSort('title', 'desc')).toBe('title_desc');
+    expect(resolveChronoSort('author', 'desc')).toBe('author_desc');
+    expect(resolveChronoSort('downloaded', 'desc')).toBe('downloaded');
+
+    const items: NotebookDisplayItem[] = [
+      makeDisplayItem({
+        id: '1',
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        createdAt: '2026-01-02T10:00:00Z',
+        updatedAt: '2026-01-03T10:00:00Z',
+      }),
+      makeDisplayItem({
+        id: '2',
+        bookId: 84,
+        bookTitle: 'Frankenstein',
+        bookAuthor: 'Mary Shelley',
+        createdAt: '2026-01-01T10:00:00Z',
+        updatedAt: '2026-01-01T10:00:00Z',
+      }),
+      makeDisplayItem({
+        id: '3',
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        bookAuthor: 'Jane Austen',
+        createdAt: '2026-01-04T10:00:00Z',
+        updatedAt: '2026-01-04T10:00:00Z',
+      }),
+    ];
+
+    const resolveDetails = (ann: { bookId: number }) =>
+      ann.bookId === 1342
+        ? { title: 'Pride and Prejudice', author: 'Jane Austen' }
+        : { title: 'Frankenstein', author: 'Mary Shelley' };
+    const offlineOnlyAusten = (id: number) => id === 1342;
+
+    expect(
+      sortNotebookAnnotationsChronologically(items, 'title_desc', resolveDetails, offlineOnlyAusten).map(
+        (i) => i.bookTitle
+      )
+    ).toEqual(['Pride and Prejudice', 'Pride and Prejudice', 'Frankenstein']);
+
+    expect(
+      sortNotebookAnnotationsChronologically(items, 'author_asc', resolveDetails, offlineOnlyAusten).map(
+        (i) => i.bookAuthor
+      )
+    ).toEqual(['Jane Austen', 'Jane Austen', 'Mary Shelley']);
+
+    expect(
+      sortNotebookAnnotationsChronologically(items, 'author_desc', resolveDetails, offlineOnlyAusten).map(
+        (i) => i.bookAuthor
+      )
+    ).toEqual(['Mary Shelley', 'Jane Austen', 'Jane Austen']);
+
+    expect(
+      sortNotebookAnnotationsChronologically(items, 'downloaded', resolveDetails, offlineOnlyAusten).map(
+        (i) => i.id
+      )
+    ).toEqual(['3', '1']);
+
+    expect(
+      sortNotebookAnnotationsChronologically(items, 'date_desc', resolveDetails, offlineOnlyAusten).map(
+        (i) => i.id
+      )
+    ).toEqual(['3', '1', '2']);
+
+    const groups = groupAnnotationsByVolume(items, resolveDetails);
+    expect(sortNotebookVolumeGroups(groups, 'title_desc', offlineOnlyAusten).map((g) => g.title)).toEqual([
+      'Pride and Prejudice',
+      'Frankenstein',
+    ]);
+    expect(sortNotebookVolumeGroups(groups, 'author_desc', offlineOnlyAusten).map((g) => g.author)).toEqual([
+      'Mary Shelley',
+      'Jane Austen',
+    ]);
+    expect(sortNotebookVolumeGroups(groups, 'count_desc', offlineOnlyAusten).map((g) => g.items.length)).toEqual([
+      2, 1,
+    ]);
+    expect(sortNotebookVolumeGroups(groups, 'count_asc', offlineOnlyAusten).map((g) => g.items.length)).toEqual([
+      1, 2,
+    ]);
+    expect(sortNotebookVolumeGroups(groups, 'recent_asc', offlineOnlyAusten).map((g) => g.bookId)).toEqual([
+      84, 1342,
+    ]);
+    expect(sortNotebookVolumeGroups(groups, 'recent', offlineOnlyAusten).map((g) => g.bookId)).toEqual([
+      1342, 84,
+    ]);
+    expect(sortNotebookVolumeGroups(groups, 'downloaded', offlineOnlyAusten).map((g) => g.bookId)).toEqual([
+      1342,
+    ]);
+  });
 });

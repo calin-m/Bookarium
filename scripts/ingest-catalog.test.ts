@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ingestCatalog = require('./ingest-catalog');
 const {
+  resolveSiteOriginFallback,
   resolveRepositoryOrSiteUrl,
   resolveIngestUserAgent,
   CURATED_CLASSICS,
@@ -142,6 +143,35 @@ describe('scripts/ingest-catalog CLI helpers & invariants', () => {
         'UPDATE public.books SET content = $bookarium_txt_11$Chapter I text body$bookarium_txt_11$, updated_at = NOW() WHERE id = 11;'
       );
       expect(updateSql).not.toContain('WHERE id = 84');
+    });
+  });
+
+  describe('resolveSiteOriginFallback', () => {
+    it('resolves NEXT_PUBLIC_SITE_URL, normalized Vercel production domains, and clean default fallback', () => {
+      expect(resolveSiteOriginFallback({})).toBe('https://bookarium.vercel.app');
+      expect(
+        resolveSiteOriginFallback({
+          VERCEL_PROJECT_PRODUCTION_URL: 'bookarium.ro/',
+        })
+      ).toBe('https://bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+          VERCEL_PROJECT_PRODUCTION_URL: 'ignored.example.com',
+        })
+      ).toBe('https://cdn.bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_SITE_URL: 'https://primary.bookarium.ro///',
+          NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+        })
+      ).toBe('https://primary.bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_SITE_URL: 'javascript:alert(1)',
+          VERCEL_PROJECT_PRODUCTION_URL: 'http://localhost:3000/',
+        })
+      ).toBe('http://localhost:3000');
     });
   });
 });

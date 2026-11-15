@@ -66,6 +66,39 @@ function clearClientIpSyncCookie(): void {
   }
 }
 
+type PendingCleanupMode = 'session' | 'wipe';
+
+function readPendingUserStoreCleanup(): PendingCleanupMode | null {
+  try {
+    const raw = safeLocalStorage.getItem(STORAGE_KEYS.PENDING_STORE_CLEANUP);
+    return raw === 'wipe' || raw === 'session' ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function markPendingUserStoreCleanup(wipeDeviceStorage: boolean): void {
+  try {
+    const existing = readPendingUserStoreCleanup();
+    const nextMode: PendingCleanupMode =
+      wipeDeviceStorage || existing === 'wipe' ? 'wipe' : 'session';
+    safeLocalStorage.setItem(STORAGE_KEYS.PENDING_STORE_CLEANUP, nextMode);
+  } catch {
+    // Non-blocking fallback
+  }
+}
+
+function clearPendingUserStoreCleanup(expectedMode?: PendingCleanupMode): void {
+  try {
+    if (expectedMode === 'session' && readPendingUserStoreCleanup() === 'wipe') {
+      return;
+    }
+    safeLocalStorage.removeItem(STORAGE_KEYS.PENDING_STORE_CLEANUP);
+  } catch {
+    // Non-blocking fallback
+  }
+}
+
 export interface SessionVerifiableClient {
   auth?: {
     getSession?: () => Promise<{
@@ -123,8 +156,10 @@ export async function verifyActiveCloudSession(
         !hasSupabaseAuthCookie() &&
         useAuthStore.getState().user?.id === userId
       ) {
-        syncAuthCookieHint(false);
-        useAuthStore.setState({ user: null, profile: null, isLoading: false });
+        await resetClientAuthState(useAuthStore.setState, {
+          userId,
+          wipeDeviceStorage: false,
+        });
       }
       return false;
     }
@@ -309,6 +344,14 @@ const SIGNED_OUT_AUTH_STATE = {
   statusMessage: null,
 } as const;
 
+let activeSessionResetToken: object | null = null;
+let activeSessionResetPromise: Promise<void> | null = null;
+let activeLocalCleanupState: {
+  promise: Promise<void>;
+  includesWipe: boolean;
+  upgradeToWipe: boolean;
+} | null = null;
+
 async function resetClientAuthState(
   set: (partial: Partial<AuthState>) => void,
   options: { userId?: string | null; wipeDeviceStorage: boolean }
@@ -316,13 +359,38 @@ async function resetClientAuthState(
   lastSessionCheckAtMs = 0;
   lastClientIpSyncAtMs = 0;
   clearConsumedRecoveryMarker(options.userId ?? undefined);
-  set(SIGNED_OUT_AUTH_STATE);
+  markPendingUserStoreCleanup(options.wipeDeviceStorage);
   syncAuthCookieHint(false);
   clearClientIpSyncCookie();
-  await clearLocalUserStores({ wipeDeviceStorage: options.wipeDeviceStorage });
+
+  if (options.wipeDeviceStorage) {
+    set({ ...SIGNED_OUT_AUTH_STATE, isLoading: false });
+    await clearLocalUserStores({ wipeDeviceStorage: true });
+    return;
+  }
+
+  if (activeSessionResetPromise) {
+    return activeSessionResetPromise;
+  }
+
+  const resetToken = {};
+  activeSessionResetToken = resetToken;
+  activeSessionResetPromise = (async () => {
+    try {
+      await clearLocalUserStores({ wipeDeviceStorage: false });
+      set({ ...SIGNED_OUT_AUTH_STATE, isLoading: false });
+    } finally {
+      if (activeSessionResetToken === resetToken) {
+        activeSessionResetToken = null;
+        activeSessionResetPromise = null;
+      }
+    }
+  })();
+
+  return activeSessionResetPromise;
 }
 
-async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Promise<void> {
+async function runSingleLocalStoreCleanupPass(wipeDeviceStorage: boolean): Promise<void> {
   const localCleanupTasks: Array<() => Promise<unknown>> = [
     async () => {
       const { cancelPendingPreferencesCloudSync } = await import('@/lib/preferences-sync');
@@ -335,7 +403,7 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
     async () => {
       const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
       useAnnotationStore.getState().clearAllAnnotations();
-      if (options.wipeDeviceStorage) {
+      if (wipeDeviceStorage) {
         useAnnotationStore.getState().setSpoilerShieldEnabled(true);
       }
     },
@@ -354,7 +422,7 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
     async () => {
       const { useReaderStore } = await import('@/stores/useReaderStore');
       const { resolveDefaultReaderFontSize } = await import('@/config/reader-config');
-      if (options.wipeDeviceStorage) {
+      if (wipeDeviceStorage) {
         await useReaderStore.getState().clearAllVolumes();
         useReaderStore.setState({
           fontSize: resolveDefaultReaderFontSize(),
@@ -372,7 +440,7 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
     },
   ];
 
-  if (options.wipeDeviceStorage) {
+  if (wipeDeviceStorage) {
     localCleanupTasks.push(
       async () => {
         const { clearAllOfflineBooks } = await import('@/lib/offline-storage');
@@ -394,7 +462,49 @@ async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Pr
     );
   }
 
-  await Promise.allSettled(localCleanupTasks.map((task) => task()));
+  const results = await Promise.allSettled(localCleanupTasks.map((task) => task()));
+  if (
+    results.every((res) => res.status === 'fulfilled') &&
+    !activeLocalCleanupState?.upgradeToWipe
+  ) {
+    clearPendingUserStoreCleanup(wipeDeviceStorage ? 'wipe' : 'session');
+  }
+}
+
+async function clearLocalUserStores(options: { wipeDeviceStorage: boolean }): Promise<void> {
+  markPendingUserStoreCleanup(options.wipeDeviceStorage);
+
+  if (activeLocalCleanupState) {
+    if (options.wipeDeviceStorage && !activeLocalCleanupState.includesWipe) {
+      activeLocalCleanupState.upgradeToWipe = true;
+    }
+    await activeLocalCleanupState.promise;
+    return;
+  }
+
+  const state = {
+    promise: Promise.resolve(),
+    includesWipe: options.wipeDeviceStorage,
+    upgradeToWipe: false,
+  };
+  activeLocalCleanupState = state;
+
+  state.promise = (async () => {
+    try {
+      await runSingleLocalStoreCleanupPass(options.wipeDeviceStorage);
+      while (state.upgradeToWipe) {
+        state.upgradeToWipe = false;
+        state.includesWipe = true;
+        await runSingleLocalStoreCleanupPass(true);
+      }
+    } finally {
+      if (activeLocalCleanupState === state) {
+        activeLocalCleanupState = null;
+      }
+    }
+  })();
+
+  return state.promise;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -445,6 +555,18 @@ export const useAuthStore = create<AuthState>()(
       const checkPromiseRef: { current: Promise<void> | null } = { current: null };
       const checkInitialUser = async () => {
         try {
+          const pendingCleanupMode = readPendingUserStoreCleanup();
+          if (pendingCleanupMode !== null) {
+            await clearLocalUserStores({
+              wipeDeviceStorage: pendingCleanupMode === 'wipe',
+            });
+            if (pendingCleanupMode === 'wipe') {
+              set({ ...SIGNED_OUT_AUTH_STATE, isLoading: false });
+              lastKnownUserId = null;
+            } else if (!get().user) {
+              lastKnownUserId = null;
+            }
+          }
           let sessionUser: User | null = null;
           if (typeof supabase.auth.getSession === 'function') {
             const { data: sessionData } = await supabase.auth.getSession();
@@ -540,6 +662,7 @@ export const useAuthStore = create<AuthState>()(
       syncAuthCookieHint(Boolean(user));
 
       if (needsStoreCleanup) {
+        markPendingUserStoreCleanup(false);
         set((state) => ({
           user: null,
           profile: null,

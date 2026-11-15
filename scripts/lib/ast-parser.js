@@ -1174,8 +1174,8 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
   const varMetaMap = {
     NEXT_PUBLIC_SITE_URL: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
-      fallback: 'Defaults to `https://bookarium.vercel.app` (`SITE_CONFIG.URL`) or request origin header.',
-      purpose: 'Canonical origin for OpenGraph metadata, `sitemap.xml`, `robots.txt`, shareable book links, and PKCE auth callback validation.',
+      fallback: 'Normalized fallback chain: `NEXT_PUBLIC_SITE_URL` -> `NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL` -> SSR-only `VERCEL_PROJECT_PRODUCTION_URL` -> `https://bookarium.vercel.app` (`SITE_CONFIG.SITE_URL` / `SITE_CONFIG.SITE_HOST`).',
+      purpose: 'Canonical origin for OpenGraph metadata, `sitemap.xml`, `robots.txt`, shareable book links, reading card host footers, and PKCE auth callback validation.',
     },
     NEXT_PUBLIC_SUPABASE_URL: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
@@ -1298,8 +1298,13 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
           plugins: ['typescript', 'jsx'],
         });
         traverse(ast, {
-          MemberExpression({ node }) {
-            if (
+          MemberExpression(astPath) {
+            const { node } = astPath;
+            if (!node.property || node.property.type !== 'Identifier') return;
+            const varName = node.property.name;
+            if (!consumersMap.has(varName)) return;
+
+            const isDirectProcessEnv =
               node.object &&
               node.object.type === 'MemberExpression' &&
               node.object.object &&
@@ -1307,14 +1312,30 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
               node.object.object.name === 'process' &&
               node.object.property &&
               node.object.property.type === 'Identifier' &&
-              node.object.property.name === 'env' &&
-              node.property &&
-              node.property.type === 'Identifier'
-            ) {
-              const varName = node.property.name;
-              if (consumersMap.has(varName)) {
-                foundVars.add(varName);
+              node.object.property.name === 'env';
+
+            let isInjectedEnvParam = false;
+            if (!isDirectProcessEnv && node.object && node.object.type === 'Identifier' && node.object.name === 'env') {
+              const binding = astPath.scope.getBinding('env');
+              const assignParent = binding?.path?.parentPath;
+              if (binding?.kind === 'param' && assignParent?.isAssignmentPattern()) {
+                const defaultExpr = assignParent.node.right;
+                const isDefaultProcessEnv =
+                  defaultExpr?.type === 'MemberExpression' &&
+                  defaultExpr.object?.type === 'Identifier' &&
+                  defaultExpr.object.name === 'process' &&
+                  defaultExpr.property?.type === 'Identifier' &&
+                  defaultExpr.property.name === 'env';
+                const isDefaultLoadEnv =
+                  defaultExpr?.type === 'CallExpression' &&
+                  defaultExpr.callee?.type === 'Identifier' &&
+                  defaultExpr.callee.name === 'loadEnv';
+                isInjectedEnvParam = isDefaultProcessEnv || isDefaultLoadEnv;
               }
+            }
+
+            if (isDirectProcessEnv || isInjectedEnvParam) {
+              foundVars.add(varName);
             }
           },
         });

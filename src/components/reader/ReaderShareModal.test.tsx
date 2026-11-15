@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ReaderShareModal } from './ReaderShareModal';
+import { SITE_CONFIG } from '@/config/site-config';
 import * as readingCardExport from '@/lib/reading-card-export';
 
 describe('ReaderShareModal Component', () => {
@@ -237,5 +238,124 @@ describe('ReaderShareModal Component', () => {
         })
       );
     });
+  });
+
+  it('canonicalizes ephemeral preview window origins to SITE_CONFIG.SITE_URL and passes SITE_CONFIG.SITE_HOST', async () => {
+    const fakeBlob = new Blob(['png-data'], { type: 'image/png' });
+    vi.spyOn(readingCardExport, 'exportReadingCardBlob').mockResolvedValue(fakeBlob);
+
+    const shareMock = vi.fn().mockResolvedValue(undefined);
+    const canShareMock = vi.fn().mockReturnValue(false);
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: shareMock,
+    });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: canShareMock,
+    });
+
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        origin: 'https://bookarium-git-feat-calins-projects.vercel.app',
+      },
+    });
+
+    try {
+      render(<ReaderShareModal {...defaultProps} />);
+
+      expect(readingCardExport.renderReadingCardToCanvas).toHaveBeenCalledWith(
+        expect.any(HTMLCanvasElement),
+        expect.objectContaining({
+          siteHost: SITE_CONFIG.SITE_HOST,
+        })
+      );
+
+      fireEvent.click(screen.getByTestId('share-native-os-btn'));
+
+      const escapedSiteUrl = SITE_CONFIG.SITE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await waitFor(() => {
+        expect(shareMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: expect.stringMatching(new RegExp(`^${escapedSiteUrl}/read/1342\\?s=[A-Za-z0-9_-]+$`)),
+          })
+        );
+      });
+    } finally {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
+  it('reports actionable status messages when image clipboard copy, PNG export, or native share fails', async () => {
+    const fakeBlob = new Blob(['png-data'], { type: 'image/png' });
+    const exportSpy = vi
+      .spyOn(readingCardExport, 'exportReadingCardBlob')
+      .mockResolvedValue(fakeBlob);
+
+    const originalClipboardItem = (globalThis as { ClipboardItem?: unknown }).ClipboardItem;
+    class MockClipboardItem {
+      items: Record<string, Blob>;
+      constructor(items: Record<string, Blob>) {
+        this.items = items;
+      }
+    }
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: MockClipboardItem,
+    });
+
+    const writeMock = vi.fn().mockRejectedValue(new Error('Clipboard blocked'));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { write: writeMock },
+    });
+
+    const abortError = Object.assign(new Error('User cancelled share'), { name: 'AbortError' });
+    const shareMock = vi
+      .fn()
+      .mockRejectedValueOnce(abortError)
+      .mockRejectedValueOnce(new Error('Share target unavailable'));
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: shareMock,
+    });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: vi.fn().mockReturnValue(false),
+    });
+
+    try {
+      render(<ReaderShareModal {...defaultProps} />);
+
+      // 1. Clipboard write failure
+      fireEvent.click(screen.getByTestId('share-copy-image-btn'));
+      expect(
+        await screen.findByText('Could not copy card image — use Download PNG')
+      ).toBeInTheDocument();
+
+      // 2. PNG export failure when blob resolves null
+      exportSpy.mockResolvedValueOnce(null);
+      fireEvent.click(screen.getByTestId('share-download-image-btn'));
+      expect(await screen.findByText('Could not export reading card image')).toBeInTheDocument();
+
+      // 3. Native share AbortError stays silent (does not overwrite status with error), generic failure updates status
+      fireEvent.click(screen.getByTestId('share-native-os-btn'));
+      await waitFor(() => expect(shareMock).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText('Device share could not be completed')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('share-native-os-btn'));
+      expect(await screen.findByText('Device share could not be completed')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: originalClipboardItem,
+      });
+    }
   });
 });

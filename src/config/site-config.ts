@@ -2,6 +2,54 @@
  * Centralized Site Branding, External Links & Storage Constants for Bookarium
  */
 
+const DEFAULT_SITE_URL = 'https://bookarium.vercel.app';
+
+/**
+ * Normalizes an origin URL or bare hostname to a canonical origin (`https://<host>`),
+ * returning `null` when blank or invalid.
+ */
+export function normalizeSiteOrigin(rawUrl?: string): string | null {
+  const trimmed = (rawUrl || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return null;
+
+  const withProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null;
+    }
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Dynamically resolves the canonical production site URL across explicit configuration
+ * and Vercel's automatically populated Primary Domain system env variables.
+ * Uses static property accesses so Next.js client bundles inline `NEXT_PUBLIC_*` vars.
+ */
+export function resolveSiteUrl(): string {
+  return (
+    normalizeSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL) ||
+    normalizeSiteOrigin(process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL) ||
+    normalizeSiteOrigin(
+      typeof window === 'undefined' ? process.env.VERCEL_PROJECT_PRODUCTION_URL : undefined
+    ) ||
+    DEFAULT_SITE_URL
+  );
+}
+
+/**
+ * Resolves the canonical hostname (plus optional port) from the active production URL.
+ */
+export function resolveSiteHost(): string {
+  return new URL(resolveSiteUrl()).host;
+}
+
 /**
  * Dynamically resolves the canonical repository URL or site origin across environments
  * (explicit NEXT_PUBLIC_GITHUB_REPO, BOOKARIUM_REPO_URL, CI GITHUB_REPOSITORY, Vercel VERCEL_GIT_REPO_*, or site URL)
@@ -23,20 +71,21 @@ export function resolveRepositoryUrl(fallbackToGithub = false): string {
   if (fallbackToGithub) {
     return 'https://github.com/calin-m/Bookarium';
   }
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app';
+  return resolveSiteUrl();
 }
 
 /**
  * Builds an authentic, Project Gutenberg-compliant User-Agent header string.
- * Defaults to `(+<resolvedRepoUrl>)` when contact email is blank, and cleanly
- * appends `; <email>` when GUTENBERG_CONTACT_EMAIL is configured.
+ * Defaults to `(+<resolvedRepoUrl>)` when contact email is blank or omitted, and cleanly
+ * appends `; <email>` when `includeContactEmail` is enabled and `GUTENBERG_CONTACT_EMAIL` is set.
  */
 export function buildDescriptiveUserAgent(
   appName = 'Bookarium-PublicDomain-Reader',
-  version = '1.0'
+  version = '1.0',
+  includeContactEmail = true
 ): string {
   const repoOrSiteUrl = resolveRepositoryUrl();
-  const email = (process.env.GUTENBERG_CONTACT_EMAIL || '').trim();
+  const email = includeContactEmail ? (process.env.GUTENBERG_CONTACT_EMAIL || '').trim() : '';
   const contactPart = email ? `+${repoOrSiteUrl}; ${email}` : `+${repoOrSiteUrl}`;
   return `${appName}/${version} (${contactPart})`;
 }
@@ -58,12 +107,14 @@ export const SITE_CONFIG = {
   TAGLINE: 'Crafted with care for book lovers everywhere',
 
   // Canonical Domain & Production URL
-  SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://bookarium.vercel.app',
+  SITE_URL: resolveSiteUrl(),
+  SITE_HOST: resolveSiteHost(),
 
   // Author & Repository Links
   GITHUB_PROFILE: 'https://github.com/calin-m',
   GITHUB_REPO: resolveRepositoryUrl(true),
-  USER_AGENT: buildDescriptiveUserAgent('Bookarium-PublicDomain-Reader', '1.0'),
+  USER_AGENT: buildDescriptiveUserAgent('Bookarium-PublicDomain-Reader', '1.0', true),
+  PUBLIC_USER_AGENT: buildDescriptiveUserAgent('Bookarium-PublicDomain-Reader', '1.0', false),
 
   // Support, Inquiries & Legal Intake (Configurable via NEXT_PUBLIC_LEGAL_CONTACT_FORM)
   LEGAL_CONTACT_FORM: process.env.NEXT_PUBLIC_LEGAL_CONTACT_FORM || '',
@@ -91,6 +142,7 @@ export const STORAGE_KEYS = {
   THEME: 'bookarium-theme-preference',
   AUTH_HINT: 'bookarium-auth-hint',
   CLIENT_IP_SYNC: 'bookarium-client-ip-sync',
+  PENDING_STORE_CLEANUP: 'bookarium-pending-store-cleanup',
   ANNOTATIONS: 'bookarium-annotations-storage',
   HABITS: 'bookarium-habits-storage',
   ACCOLADES: 'bookarium-accolades-storage',

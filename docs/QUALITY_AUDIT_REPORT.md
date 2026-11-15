@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 15 Nov 2026 11:55:13 GMT  
+**Last Generated**: Sun, 15 Nov 2026 23:00:27 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 257 passed  
-**Total Verified Tests**: 2607 passed  
+**Total Verified Tests**: 2629 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **257/257 test suites passed** (2607 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **257/257 test suites passed** (2629 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 17 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.44%** (15484/16055) — *Target: $\ge$ 95%*
-- **Statements**: **95.12%** (16667/17522) — *Target: $\ge$ 95%*
-- **Functions**: **94.4%** (3339/3537) — *Target: $\ge$ 92%*
-- **Branches**: **87.58%** (15443/17633) — *Target: $\ge$ 85%*
+- **Lines**: **97.22%** (15680/16127) — *Target: $\ge$ 95%*
+- **Statements**: **96.01%** (16893/17595) — *Target: $\ge$ 95%*
+- **Functions**: **95.23%** (3378/3547) — *Target: $\ge$ 92%*
+- **Branches**: **88.32%** (15621/17686) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (257 Suites / 2607 Tests)
+## 🧪 Comprehensive Test Suite Catalog (257 Suites / 2629 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 323 Tests)
+### 🚀 App Routes & Pages (31 Suites · 325 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -114,7 +114,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (36 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (37 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -152,6 +152,7 @@
 - ✔ `skips copyright metadata lookup for type=cover in non-US jurisdictions and emits max-age browser caching headers`
 - ✔ `serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity`
 - ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
+- ✔ `renders the canonical SITE_CONFIG.SITE_HOST domain footer in the type=card OpenGraph JSX tree`
 
 </details>
 
@@ -239,12 +240,13 @@
 </details>
 
 <details>
-<summary><b><code>src/app/copyright/page.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/app/copyright/page.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders page header, badge, and back link to catalog`
 - ✔ `renders Section 1: 100% CC0 & Public Domain Manifesto`
 - ✔ `renders Section 2: Multi-Jurisdiction Legal Matrix with Berne Convention rules`
 - ✔ `renders Section 3: Project Gutenberg Compliance and policy links`
+- ✔ `displays the email-free PUBLIC_USER_AGENT dynamically derived from SITE_CONFIG without stale legacy strings`
 - ✔ `renders Section 4: HTTP 451, geolocation, and fail-closed heuristics`
 - ✔ `renders Section 5: Notice & Takedown Protocol with GitHub tracker fallback when form is unconfigured`
 - ✔ `renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured`
@@ -546,7 +548,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 576 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 578 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -664,7 +666,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (28 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarksView.test.tsx</code></b> (29 tests)</summary>
 
 - ✔ `renders empty state when no volumes are in the ledger`
 - ✔ `renders active volumes and updates status filter dropdown`
@@ -694,6 +696,7 @@
 - ✔ `paginates volumes when count exceeds page size of 12 and handles mobile scroll focus`
 - ✔ `activates closest card in mobile viewport central focus band and bottom boundary on RAF scroll`
 - ✔ `renders empty search feedback and empty filter state with Clear Search / View All actions`
+- ✔ `supports mobile bottom dock floating search, filter drawer direction sorting, and reset all`
 
 </details>
 
@@ -1259,7 +1262,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (53 tests)</summary>
+<summary><b><code>src/components/presentation/NotebookView.test.tsx</code></b> (54 tests)</summary>
 
 - ✔ `renders empty state when there are no annotations`
 - ✔ `renders saved annotations grouped by volume with resolved metadata`
@@ -1314,6 +1317,7 @@
 - ✔ `primes useReaderStore when clicking a volume heading in By-Book mode`
 - ✔ `handles mobile single-column scroll focus zone, boundaries, tap activation, and dismissal`
 - ✔ `invokes passive annotation sync with 15s cooldown on authenticated online mount`
+- ✔ `drives mobile bottom dock toggles, filter drawer view/direction switching, and reset all`
 
 </details>
 
@@ -1364,7 +1368,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (22 Suites · 192 Tests)
+### 📖 In-Browser Focus Reader (22 Suites · 194 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1563,7 +1567,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderShareModal.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/reader/ReaderShareModal.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders the live canvas reading card preview, customization controls, and all 8 social share links`
 - ✔ `copies the share link and share caption to the clipboard`
@@ -1572,6 +1576,8 @@
 - ✔ `handles unsupported ClipboardItem gracefully when copying card image`
 - ✔ `downloads the reading card as a PNG file`
 - ✔ `triggers native device share with PNG file attachment or falls back to link share`
+- ✔ `canonicalizes ephemeral preview window origins to SITE_CONFIG.SITE_URL and passes SITE_CONFIG.SITE_HOST`
+- ✔ `reports actionable status messages when image clipboard copy, PNG export, or native share fails`
 
 </details>
 
@@ -1743,7 +1749,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 237 Tests)
+### ⚡ Zustand State Stores (10 Suites · 241 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1807,7 +1813,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (47 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (51 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1856,6 +1862,10 @@
 - ✔ `enforces 10s cooldown, preserves transient errors offline/5xx, and tears down local state on 403 session_not_found`
 - ✔ `reconciles browser IP/UA via bookarium-client-ip-sync cookie while skipping offline or recovery flows`
 - ✔ `rejects revokeSession when RPC returns false and triggers dead-session checks on listActiveSessions / signOutOtherDevices`
+- ✔ `completes interrupted store cleanup on reload via PENDING_STORE_CLEANUP while keeping guest and offline data untouched`
+- ✔ `upgrades in-flight non-wipe cleanup to full device wipe across concurrent SIGNED_OUT + wipe recovery and handles getUser errors`
+- ✔ `coalesces verifyActiveSessionValidity, catches definitive thrown invalidation, and skips reconcile on ?recovery`
+- ✔ `handles signed-out guards, rpc exceptions, verifyPasswordRecoverySession fallback, and fetchProfile/syncWithCloud outbox flushing`
 
 </details>
 
@@ -2042,7 +2052,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (51 Suites · 621 Tests)
+### 📚 Gutenberg Parsers & Metadata (51 Suites · 631 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2241,7 +2251,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (35 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (38 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2278,6 +2288,9 @@
 - ✔ `filters out translation editions that are copyrighted or restricted in the caller jurisdiction`
 - ✔ `maps optional quotes JSONB array in mapDatabaseBookToGutendexBook when present`
 - ✔ `projects only mapped catalog metadata columns and rotates 12-hour quote pool candidate slices deterministically`
+- ✔ `hits Quote Pool cache, expires stale TTL entries, handles partial scan chains, skips invalid rows, and wraps Quote Pool failures`
+- ✔ `handles backfill error/empty/saturation break paths, LRU cache eviction, and unexpected search exceptions`
+- ✔ `returns empty array on translation step errors and filters copyright=true editions in getBookTranslations`
 
 </details>
 
@@ -2461,10 +2474,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/notebook-sorting.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/lib/notebook-sorting.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `decomposes and resolves volume and chronological sort options`
 - ✔ `filters, groups by volume, and sorts notebook annotations chronologically and by volume group`
+- ✔ `handles every volume/chronological sort option and fallback branch`
 
 </details>
 
@@ -2861,7 +2875,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `prioritizes explicit NEXT_PUBLIC_GITHUB_REPO and optional contact email`
 - ✔ `falls back through GITHUB_REPOSITORY and VERCEL_GIT_REPO_* cleanly`
@@ -2872,11 +2886,12 @@
 - ✔ `uses birth + 100 heuristic when death_year is missing, and fails closed if any contributor lacks both years`
 - ✔ `emits idempotent ON CONFLICT upsert SQL and escapes single quotes safely`
 - ✔ `emits dollar-quoted idempotent content UPDATE statements only for books with content`
+- ✔ `resolves NEXT_PUBLIC_SITE_URL, normalized Vercel production domains, and clean default fallback`
 
 </details>
 
 <details>
-<summary><b><code>scripts/ingest-translations.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>scripts/ingest-translations.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `normalizes common language names and variants to ISO codes`
 - ✔ `extracts primary identifying surname across various international conventions`
@@ -2892,6 +2907,8 @@
 - ✔ `returns all candidate IDs when supabase client is not provided`
 - ✔ `filters out book IDs that do not exist in public.books table`
 - ✔ `gracefully falls back to candidates when database query fails`
+- ✔ `normalizes canonical origin fallbacks across NEXT_PUBLIC_SITE_URL and Vercel production vars`
+- ✔ `builds descriptive Bookarium-Gatekeeper User-Agent strings from explicit or resolved origins`
 
 </details>
 
@@ -2907,7 +2924,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -2926,11 +2943,12 @@
 - ✔ `falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt`
 - ✔ `consumes --diff-file (quote-diff.json) without scanning the database pool, prioritizes promotedIds, and prunes demotedIds`
 - ✔ `discovers 100% of out-of-window quoted books via partial index pagination, applies Option-A cushion & drain, and yields past 500 prunes`
+- ✔ `resolves canonical site origin fallback from NEXT_PUBLIC_SITE_URL and normalized Vercel production hostnames`
 
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (36 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (38 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -2968,10 +2986,12 @@
 - ✔ `saves and loads compressed .json.gz snapshot caches and enforces the minCatalogSize safety floor`
 - ✔ `diffs incoming batches and reconciles withdrawn books 100% in RAM without querying Supabase when cachedBooksById is provided`
 - ✔ `computes Two-Tier quote pool promotedIds, demotedIds, and candidatePoolIds and writes quote-diff.json`
+- ✔ `resolves canonical site origins across NEXT_PUBLIC_SITE_URL and normalized Vercel production vars`
+- ✔ `builds Bookarium-Catalog-Sync User-Agent strings from explicit or resolved repository/site URLs`
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 334 Tests)
+### 🔄 Hooks & React Query (36 Suites · 335 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3224,7 +3244,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
@@ -3233,6 +3253,7 @@
 - ✔ `forwards optional Turnstile captchaToken on password reset and verification resend while ignoring invalid tokens`
 - ✔ `loads active sessions on Security tab, resets on user change, and handles revocation and sign-out scopes`
 - ✔ `syncs sessions across tabs via BroadcastChannel, token refresh events, and already-ended revocations`
+- ✔ `covers OAuth timeout clearing, BroadcastChannel fallbacks, and error/offline/unmount guards across session actions`
 
 </details>
 
@@ -3523,7 +3544,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (64 Suites · 291 Tests)
+### 🧩 UI Primitives & Motion (64 Suites · 292 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -4132,9 +4153,10 @@
 </details>
 
 <details>
-<summary><b><code>src/config/site-config.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/config/site-config.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `provides site branding and metadata constants`
+- ✔ `normalizes site origins and resolves canonical SITE_URL / SITE_HOST fallback chain`
 - ✔ `dynamically resolves repository URL across environments without hardcoding personal usernames`
 - ✔ `builds Project Gutenberg-compliant descriptive User-Agent strings with optional contact email`
 - ✔ `builds canonical Gutenberg ebook URL and defines legal intake form property`

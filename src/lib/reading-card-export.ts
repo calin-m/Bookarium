@@ -1,4 +1,5 @@
 import type { ReaderTheme } from '@/stores/useReaderStore';
+import { SITE_CONFIG } from '@/config/site-config';
 
 export interface ReadingCardConfig {
   bookId: string | number;
@@ -225,7 +226,7 @@ export function renderReadingCardToCanvas(
   const palette = CARD_PALETTES[config.theme] ?? CARD_PALETTES.light;
   const safeTitle = config.title.trim() || 'Untitled Volume';
   const safeAuthor = config.author.trim() || 'Classical Author';
-  const safeHost = config.siteHost?.trim() || 'bookarium.vercel.app';
+  const safeHost = config.siteHost?.trim() || SITE_CONFIG.SITE_HOST;
   const clampedProgress = Math.max(0, Math.min(100, Math.round(config.progress ?? 0)));
   const currentSec = Math.max(1, config.currentSection ?? 1);
   const totalSec = Math.max(currentSec, config.totalSections ?? 1);

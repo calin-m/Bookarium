@@ -27,6 +27,7 @@ import {
   type SocialPlatformId,
 } from '@/lib/reading-card-export';
 import { SITE_CONFIG } from '@/config/site-config';
+import { resolveCanonicalShareOrigin } from '@/lib/redirect-sanitizer';
 import { useCopyFeedback } from '@/hooks/useCopyFeedback';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 
@@ -119,16 +120,18 @@ export const ReaderShareModal: React.FC<ReaderShareModalProps> = ({
   }, [onClose]);
 
   const origin = useMemo(() => {
-    return typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : SITE_CONFIG.SITE_URL;
+    const rawOrigin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : SITE_CONFIG.SITE_URL;
+    return resolveCanonicalShareOrigin(rawOrigin, SITE_CONFIG.SITE_URL);
   }, []);
 
   const siteHost = useMemo(() => {
     try {
       return new URL(origin).host;
     } catch {
-      return 'bookarium.vercel.app';
+      return SITE_CONFIG.SITE_HOST;
     }
   }, [origin]);
 

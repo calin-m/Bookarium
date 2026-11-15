@@ -120,6 +120,33 @@ describe('session-device-parser', () => {
         label: 'DuckDuckGo on macOS',
       });
 
+      expect(
+        parseSessionDevice('Opera/9.80 (X11; CrOS x86_64 14541.0.0) Presto/2.12.388')
+      ).toEqual({
+        browser: 'Opera',
+        os: 'ChromeOS',
+        deviceType: 'desktop',
+        label: 'Opera on ChromeOS',
+      });
+
+      expect(
+        parseSessionDevice(
+          'Mozilla/5.0 (Linux; Android 14; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36'
+        )
+      ).toEqual({
+        browser: 'Samsung Internet',
+        os: 'Android',
+        deviceType: 'mobile',
+        label: 'Samsung Internet on Android',
+      });
+
+      expect(parseSessionDevice('CustomReaderAgent/1.0')).toEqual({
+        browser: 'Browser session',
+        os: 'Unknown OS',
+        deviceType: 'unknown',
+        label: 'Browser session',
+      });
+
       expect(parseSessionDevice(null)).toEqual({
         browser: 'Browser session',
         os: 'Unknown OS',
@@ -135,13 +162,21 @@ describe('session-device-parser', () => {
       expect(formatSessionIpAddress('203.0.113.42/32')).toBe('203.0.113.x');
       expect(formatSessionIpAddress('::ffff:203.0.113.42')).toBe('203.0.113.x');
       expect(formatSessionIpAddress('203.0.113.x')).toBe('203.0.113.x');
+      expect(formatSessionIpAddress('256.0.0.1')).toBeNull();
     });
 
     it('masks IPv6 addresses to /48 prefix and preserves already-masked IPv6 values', () => {
       expect(formatSessionIpAddress('2001:0db8:85a3::8a2e:0370:7334')).toBe('2001:db8:85a3::x');
+      expect(formatSessionIpAddress('2001:0db8:0001:0002:0003:0004:0005:0006')).toBe('2001:db8:1::x');
       expect(formatSessionIpAddress('2001:db8:85a3::1/128')).toBe('2001:db8:85a3::x');
       expect(formatSessionIpAddress('fe80::1')).toBe('fe80::x');
       expect(formatSessionIpAddress('2001:db8:85a3::x')).toBe('2001:db8:85a3::x');
+      expect(formatSessionIpAddress('::x')).toBe('::x');
+      expect(formatSessionIpAddress('zzzz::x')).toBeNull();
+      expect(formatSessionIpAddress('2001::db8::1')).toBeNull();
+      expect(formatSessionIpAddress('2001::zzzz')).toBeNull();
+      expect(formatSessionIpAddress('1:2:3:4::5:6:7:8')).toBeNull();
+      expect(formatSessionIpAddress('1:2:3:4:5:6:7')).toBeNull();
     });
 
     it('labels loopback addresses locally and returns null for empty or invalid values', () => {
@@ -150,6 +185,7 @@ describe('session-device-parser', () => {
       expect(formatSessionIpAddress('::1')).toBe('::1 (Localhost)');
       expect(formatSessionIpAddress(null)).toBeNull();
       expect(formatSessionIpAddress('')).toBeNull();
+      expect(formatSessionIpAddress('/32')).toBeNull();
       expect(formatSessionIpAddress('not-an-ip')).toBeNull();
     });
   });

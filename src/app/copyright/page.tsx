@@ -201,7 +201,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Bandwidth Shielding &amp; Edge Caching:</strong> Masterwork text and EPUB packages are cached at the Vercel Edge CDN for 24 hours (<code className="font-mono">s-maxage=86400, stale-while-revalidate=604800</code>) and locally in browser IndexedDB for offline reading. Direct downloads are strictly human-initiated.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> All server-side requests transmit identifying headers (<code className="font-mono text-primary font-semibold">Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)</code>).
+                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> All server-side requests transmit identifying headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>).
               </li>
               <li>
                 <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with or endorsed by the Project Gutenberg Literary Archive Foundation (PGLAF).

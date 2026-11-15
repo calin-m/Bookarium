@@ -1032,6 +1032,84 @@ describe('BookmarksView', () => {
     // Clear search via empty state button
     fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+
+    // Switch filter to 'downloaded' when no volumes are downloaded -> 'No downloaded volumes' -> 'View All Volumes'
+    fireEvent.change(filterSelect, { target: { value: 'downloaded' } });
+    expect(screen.getByText('No downloaded volumes')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'View All Volumes' }));
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+  });
+
+  it('supports mobile bottom dock floating search, filter drawer direction sorting, and reset all', () => {
+    const secondBook: GutendexBook = {
+      ...mockBook,
+      id: 84,
+      title: 'Frankenstein',
+      authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+    };
+
+    useBookshelfStore.setState({
+      savedBooks: [mockBook, secondBook],
+      bookStatuses: { 1342: 'currently_reading', 84: 'want_to_read' },
+    });
+    useReaderStore.setState({
+      readingPositions: {
+        1342: { chapterIndex: 1, chapterPage: 1, globalPage: 5, lastReadAt: '2026-01-02T00:00:00Z' },
+        84: { chapterIndex: 2, chapterPage: 1, globalPage: 8, lastReadAt: '2026-01-01T00:00:00Z' },
+      },
+      readingProgress: { 1342: 25, 84: 60 },
+    });
+
+    renderWithClient(<BookmarksView />);
+
+    // Open mobile floating search via dock and close with Escape
+    fireEvent.click(screen.getByTestId('collection-dock-search-btn'));
+    const floatingInputs = screen.getAllByPlaceholderText('Search bookmarks by title or author...');
+    fireEvent.change(floatingInputs[floatingInputs.length - 1], { target: { value: 'Frankenstein' } });
+    expect(screen.queryByText('Pride and Prejudice')).not.toBeInTheDocument();
+    expect(screen.getByText('Frankenstein')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    // Clear floating query so both volumes reappear before testing drawer controls
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search bookmarks' }), { target: { value: '' } });
+
+    // Open mobile Filter & Sort drawer and exercise shelf + every sort field & direction change
+    fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
+    const drawer = screen.getByTestId('collection-filter-drawer');
+    expect(drawer).toBeInTheDocument();
+
+    fireEvent.click(within(drawer).getByTestId('filter-sort-title'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-desc-btn'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-asc-btn'));
+
+    fireEvent.click(within(drawer).getByTestId('filter-sort-author'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-desc-btn'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-asc-btn'));
+
+    fireEvent.click(within(drawer).getByTestId('filter-sort-progress'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-asc-btn'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-desc-btn'));
+
+    fireEvent.click(within(drawer).getByTestId('filter-sort-recent'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-asc-btn'));
+    fireEvent.click(within(drawer).getByTestId('filter-direction-desc-btn'));
+
+    fireEvent.click(within(drawer).getByTestId('filter-shelf-in_progress'));
+    expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
+    expect(screen.queryByText('Frankenstein')).not.toBeInTheDocument();
+
+    // Reset all filters & close drawer
+    fireEvent.click(within(drawer).getByTestId('collection-filter-reset-btn'));
+    expect(screen.getByText('Frankenstein')).toBeInTheDocument();
+
+    fireEvent.click(within(drawer).getByTestId('collection-filter-drawer-close-btn'));
+    expect(screen.queryByTestId('collection-filter-drawer')).not.toBeInTheDocument();
+
+    // Cancel confirmation modal dismissal handlers
+    fireEvent.click(screen.getByRole('button', { name: /Clear Bookmarks/i }));
+    expect(screen.getByTestId('clear-bookmarks-dialog')).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId('clear-bookmarks-dialog')).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByTestId('clear-bookmarks-dialog')).not.toBeInTheDocument();
   });
 });
 

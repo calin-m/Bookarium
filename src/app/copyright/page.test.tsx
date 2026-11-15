@@ -81,6 +81,17 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/pg_catalog\.csv\.gz/i)).toBeInTheDocument();
   });
 
+  it('displays the email-free PUBLIC_USER_AGENT dynamically derived from SITE_CONFIG without stale legacy strings', async () => {
+    const { SITE_CONFIG } = await import('@/config/site-config');
+    render(<CopyrightPage />);
+
+    expect(SITE_CONFIG.PUBLIC_USER_AGENT).toMatch(
+      /^Bookarium-PublicDomain-Reader\/1\.0 \(\+https:\/\/[^;)]+\)$/
+    );
+    expect(screen.getByText(SITE_CONFIG.PUBLIC_USER_AGENT)).toBeInTheDocument();
+    expect(screen.queryByText(/Bookarium\/2\.8\.1/i)).not.toBeInTheDocument();
+  });
+
   it('renders Section 4: HTTP 451, geolocation, and fail-closed heuristics', () => {
     render(<CopyrightPage />);
 

@@ -388,7 +388,7 @@ export async function GET(request: NextRequest) {
                 color: palette.accent,
               },
             },
-            `bookarium.vercel.app/read/${bookId}`
+            `${SITE_CONFIG.SITE_HOST}/read/${bookId}`
           )
         )
       )

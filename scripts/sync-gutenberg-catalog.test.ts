@@ -5,6 +5,9 @@ import path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const syncGutenbergCatalog = require('./sync-gutenberg-catalog');
 const {
+  resolveSiteOriginFallback,
+  resolveRepositoryOrSiteUrl,
+  resolveCatalogUserAgent,
   CATALOG_DIFF_SELECT_COLUMNS,
   GUTENBERG_RDF_FEED_MIRRORS,
   GUTENBERG_CSV_FEED_MIRRORS,
@@ -1099,6 +1102,61 @@ describe('sync-gutenberg-catalog parser', () => {
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
+    });
+  });
+
+  describe('resolveSiteOriginFallback & resolveCatalogUserAgent', () => {
+    it('resolves canonical site origins across NEXT_PUBLIC_SITE_URL and normalized Vercel production vars', () => {
+      expect(resolveSiteOriginFallback({})).toBe('https://bookarium.vercel.app');
+      expect(
+        resolveSiteOriginFallback({
+          VERCEL_PROJECT_PRODUCTION_URL: 'bookarium.ro/',
+        })
+      ).toBe('https://bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+          VERCEL_PROJECT_PRODUCTION_URL: 'ignored.example.com',
+        })
+      ).toBe('https://cdn.bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_SITE_URL: 'https://primary.bookarium.ro///',
+          NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
+        })
+      ).toBe('https://primary.bookarium.ro');
+      expect(
+        resolveSiteOriginFallback({
+          NEXT_PUBLIC_SITE_URL: 'javascript:alert(1)',
+          VERCEL_PROJECT_PRODUCTION_URL: 'http://localhost:3000/',
+        })
+      ).toBe('http://localhost:3000');
+    });
+
+    it('builds Bookarium-Catalog-Sync User-Agent strings from explicit or resolved repository/site URLs', () => {
+      expect(
+        resolveRepositoryOrSiteUrl({
+          VERCEL_GIT_REPO_OWNER: 'reader-org',
+          VERCEL_GIT_REPO_SLUG: 'bookarium-mirror',
+        })
+      ).toBe('https://github.com/reader-org/bookarium-mirror');
+
+      expect(
+        resolveCatalogUserAgent({
+          BOOKARIUM_REPO_URL: 'https://bookarium.ro',
+          GUTENBERG_CONTACT_EMAIL: 'catalog@bookarium.ro',
+        })
+      ).toBe('Bookarium-Catalog-Sync/1.0 (+https://bookarium.ro; catalog@bookarium.ro)');
+
+      expect(
+        resolveCatalogUserAgent({
+          NEXT_PUBLIC_GITHUB_REPO: 'https://github.com/example-org/bookarium',
+        })
+      ).toBe('Bookarium-Catalog-Sync/1.0 (+https://github.com/example-org/bookarium)');
+
+      expect(resolveCatalogUserAgent({})).toMatch(
+        /^Bookarium-Catalog-Sync\/1\.0 \(\+https?:\/\/.+\)$/
+      );
     });
   });
 });

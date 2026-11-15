@@ -1741,5 +1741,247 @@ describe('useAuthStore', () => {
         Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline });
       }
     });
+
+    it('completes interrupted store cleanup on reload via PENDING_STORE_CLEANUP while keeping guest and offline data untouched', async () => {
+      const [
+        { STORAGE_KEYS },
+        { useBookshelfStore },
+        { useAnnotationStore },
+        { useReaderStore },
+      ] = await Promise.all([
+        import('@/config/site-config'),
+        import('@/stores/useBookshelfStore'),
+        import('@/stores/useAnnotationStore'),
+        import('@/stores/useReaderStore'),
+      ]);
+
+      mockOnAuthStateChange.mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      });
+
+      const sampleBook = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: [],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 100,
+      };
+      const sampleAnnotation = {
+        id: 'ann-reload-1',
+        bookId: 1342,
+        chapterIndex: 0,
+        chapterPage: 1,
+        selectedText: 'Truth',
+        color: 'amber' as const,
+        note: 'Opening line',
+        createdAt: '2026-11-15T00:00:00Z',
+        updatedAt: '2026-11-15T00:00:00Z',
+      };
+      const samplePosition = {
+        chapterIndex: 0,
+        chapterPage: 2,
+        globalPage: 2,
+        bookmarkRow: 4,
+        bookmarkText: 'universally acknowledged',
+        lastReadAt: '2026-11-15T00:00:00Z',
+        bookTitle: 'Pride and Prejudice',
+      };
+
+      // 1. Anonymous guest without PENDING_STORE_CLEANUP retains local stores across initializeAuth()
+      useAuthStore.setState({ user: null, profile: null, isLoading: true });
+      useBookshelfStore.setState({ savedBooks: [sampleBook], favoriteBookIds: [1342] });
+      useAnnotationStore.setState({ annotations: [sampleAnnotation] });
+      useReaderStore.setState({
+        readingProgress: { 1342: 25 },
+        readingPositions: { 1342: samplePosition },
+      });
+      mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: null });
+
+      useAuthStore.getState().initializeAuth();
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().isLoading).toBe(false);
+      });
+      expect(useBookshelfStore.getState().savedBooks).toHaveLength(1);
+      expect(useBookshelfStore.getState().favoriteBookIds).toEqual([1342]);
+      expect(useAnnotationStore.getState().annotations).toHaveLength(1);
+      expect(useReaderStore.getState().readingPositions[1342]).toBeDefined();
+
+      // 2. Stranded stores left after an interrupted reload (user already null + PENDING_STORE_CLEANUP='session')
+      localStorage.setItem(STORAGE_KEYS.PENDING_STORE_CLEANUP, 'session');
+      useAuthStore.setState({ user: null, profile: null, isLoading: true });
+      mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: null });
+
+      useAuthStore.getState().initializeAuth();
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().isLoading).toBe(false);
+      });
+      expect(useBookshelfStore.getState().savedBooks).toEqual([]);
+      expect(useBookshelfStore.getState().favoriteBookIds).toEqual([]);
+      expect(useAnnotationStore.getState().annotations).toEqual([]);
+      expect(useReaderStore.getState().readingPositions).toEqual({});
+      expect(useReaderStore.getState().readingProgress).toEqual({});
+      expect(localStorage.getItem(STORAGE_KEYS.PENDING_STORE_CLEANUP)).toBeNull();
+    });
+
+    it('upgrades in-flight non-wipe cleanup to full device wipe across concurrent SIGNED_OUT + wipe recovery and handles getUser errors', async () => {
+      const { STORAGE_KEYS } = await import('@/config/site-config');
+      const { useThemeStore } = await import('@/stores/useThemeStore');
+      const { useReaderStore } = await import('@/stores/useReaderStore');
+
+      let authListener: ((event: string, session: { user: { id: string } } | null) => void) | undefined;
+      mockOnAuthStateChange.mockImplementation((cb) => {
+        authListener = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const onlineUser = { id: 'user-race-1', email: 'race@bookarium.test' } as never;
+      useAuthStore.setState({ user: onlineUser, profile: null, isLoading: false });
+      useThemeStore.getState().setTheme('dark');
+      useReaderStore.setState({ readingProgress: { 1342: 55 } });
+
+      mockGetUser.mockRejectedValueOnce(new Error('Transient network failure'));
+      const cleanup = useAuthStore.getState().initializeAuth();
+
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().isLoading).toBe(false);
+      });
+      // Cached online/offline user survives transient getUser exception
+      expect(useAuthStore.getState().user).toBeTruthy();
+
+      // Trigger TOKEN_REFRESHED custom event & concurrent SIGNED_OUT -> wipe upgrade
+      const tokenSpy = vi.fn();
+      window.addEventListener('bookarium:auth-token-refreshed', tokenSpy);
+      authListener?.('TOKEN_REFRESHED', { user: { id: 'user-race-1' } });
+      expect(tokenSpy).toHaveBeenCalledTimes(1);
+      window.removeEventListener('bookarium:auth-token-refreshed', tokenSpy);
+
+      // Simultaneous SIGNED_OUT (non-wipe) + pending 'wipe' boot recovery upgrades in-flight cleanup
+      mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: null });
+      authListener?.('SIGNED_OUT', null);
+      localStorage.setItem(STORAGE_KEYS.PENDING_STORE_CLEANUP, 'wipe');
+      const cleanup2 = useAuthStore.getState().initializeAuth();
+
+      await vi.waitFor(() => {
+        expect(localStorage.getItem(STORAGE_KEYS.PENDING_STORE_CLEANUP)).toBeNull();
+      });
+      expect(useThemeStore.getState().theme).toBe('light');
+      expect(useReaderStore.getState().readingProgress).toEqual({});
+
+      cleanup();
+      cleanup2();
+    });
+  });
+
+  describe('session validity, recovery, and profile sync guards', () => {
+    it('coalesces verifyActiveSessionValidity, catches definitive thrown invalidation, and skips reconcile on ?recovery', async () => {
+      const signedInUser = { id: 'user-val-1', email: 'val@bookarium.test' } as never;
+      useAuthStore.setState({ user: signedInUser, isPasswordRecovery: false });
+      mockSignOut.mockResolvedValue({ error: null });
+
+      let rejectGetUser: ((err: Error) => void) | undefined;
+      mockGetUser.mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectGetUser = reject;
+          })
+      );
+
+      const firstPromise = useAuthStore.getState().verifyActiveSessionValidity({ force: true });
+      const secondPromise = useAuthStore.getState().verifyActiveSessionValidity({ force: true });
+      expect(mockGetUser).toHaveBeenCalledTimes(1);
+
+      rejectGetUser?.(Object.assign(new Error('session_not_found'), { status: 403 }));
+      const [firstResult, secondResult] = await Promise.all([firstPromise, secondPromise]);
+      expect(firstResult).toBe(false);
+      expect(secondResult).toBe(false);
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
+      expect(useAuthStore.getState().user).toBeNull();
+
+      // Transient error keeps user signed in
+      useAuthStore.setState({ user: signedInUser });
+      mockGetUser.mockRejectedValueOnce(new Error('ETIMEDOUT'));
+      expect(await useAuthStore.getState().verifyActiveSessionValidity({ force: true })).toBe(true);
+      expect(useAuthStore.getState().user).toBeTruthy();
+
+      // reconcileClientSessionOrigin skips cleanly on ?recovery=true
+      const originalLocation = window.location;
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...originalLocation, search: '?recovery=true' },
+      });
+      try {
+        document.cookie = 'bookarium-client-ip-sync=1; path=/';
+        await useAuthStore.getState().reconcileClientSessionOrigin();
+        expect(mockRefreshSession).not.toHaveBeenCalled();
+      } finally {
+        Object.defineProperty(window, 'location', {
+          configurable: true,
+          value: originalLocation,
+        });
+      }
+    });
+
+    it('handles signed-out guards, rpc exceptions, verifyPasswordRecoverySession fallback, and fetchProfile/syncWithCloud outbox flushing', async () => {
+      // Signed-out short-circuits
+      useAuthStore.setState({ user: null, profile: null, pendingProfileUpdates: null });
+      expect((await useAuthStore.getState().signOutOtherDevices()).error?.message).toBe('Not signed in.');
+      expect(await useAuthStore.getState().listActiveSessions()).toEqual({ sessions: [], error: null });
+      expect((await useAuthStore.getState().revokeSession('sess-1')).error?.message).toBe('Not signed in.');
+      await useAuthStore.getState().fetchProfile();
+      await useAuthStore.getState().syncWithCloud();
+
+      // Signed-in guard & error resilience paths
+      const user = { id: 'user-sync-9', email: 'sync9@bookarium.test' } as never;
+      useAuthStore.setState({
+        user,
+        pendingProfileUpdates: { bio: 'Queued offline bio' } as never,
+      });
+
+      expect((await useAuthStore.getState().revokeSession('')).error?.message).toBe(
+        'Invalid session identifier.'
+      );
+
+      mockSignOut.mockRejectedValueOnce('string-signout-error');
+      expect((await useAuthStore.getState().signOutOtherDevices()).error?.message).toBe(
+        'string-signout-error'
+      );
+
+      mockRpc.mockRejectedValueOnce(new Error('RPC transport dropped'));
+      const listedErr = await useAuthStore.getState().listActiveSessions();
+      expect(listedErr.sessions).toEqual([]);
+      expect(listedErr.error?.message).toBe('RPC transport dropped');
+
+      mockRpc.mockRejectedValueOnce(new Error('Revoke dropped'));
+      expect((await useAuthStore.getState().revokeSession('sess-2')).error?.message).toBe(
+        'Revoke dropped'
+      );
+
+      // verifyPasswordRecoverySession outer catch clears active recovery flag
+      useAuthStore.setState({ isPasswordRecovery: true });
+      mockGetAuthenticatorAssuranceLevel.mockRejectedValueOnce(new Error('AAL failure'));
+      expect(await useAuthStore.getState().verifyPasswordRecoverySession()).toBe(false);
+      expect(useAuthStore.getState().isPasswordRecovery).toBe(false);
+
+      // syncWithCloud flushes pending updates when explicit targetUserId differs from current user
+      const eqMock = vi.fn().mockResolvedValue({ error: null });
+      const updateMock = vi.fn().mockReturnValue({ eq: eqMock });
+      const singleMock = vi.fn().mockResolvedValue({
+        data: { id: 'user-sync-9', bio: 'Queued offline bio' },
+        error: null,
+      });
+      const selectEqMock = vi.fn().mockReturnValue({ single: singleMock });
+      const selectMock = vi.fn().mockReturnValue({ eq: selectEqMock });
+      mockFrom.mockReturnValue({ update: updateMock, select: selectMock });
+
+      await useAuthStore.getState().syncWithCloud('other-target-id');
+      expect(updateMock).toHaveBeenCalledWith({ bio: 'Queued offline bio' });
+      expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
+    });
   });
 });

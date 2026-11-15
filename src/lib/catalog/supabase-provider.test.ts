@@ -1126,6 +1126,334 @@ describe('SupabaseCatalogProvider', () => {
       const toppedUp = selectRotatingQuotePoolCandidateIds(mostlyHeroIds, 16, 0);
       expect(toppedUp).toHaveLength(16);
     });
+
+    it('hits Quote Pool cache, expires stale TTL entries, handles partial scan chains, skips invalid rows, and wraps Quote Pool failures', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-16T00:00:00Z'));
+
+      try {
+        const { QUOTE_POOL_CACHE_TTL_MS } = await import('./supabase-provider');
+        let quoteQueryError: { message: string } | null = null;
+        let shouldThrow = false;
+
+        const mockSupabase = {
+          from: vi.fn().mockImplementation(() => {
+            if (shouldThrow) {
+              throw new Error('Socket reset during quote pool fetch');
+            }
+            return {
+              select: vi.fn().mockImplementation((cols: string) => {
+                if (cols === 'id') {
+                  // Deliberately return shape without .order() so fallback { data: null } is exercised
+                  return {};
+                }
+                return {
+                  in: vi.fn().mockReturnValue({
+                    neq: vi.fn().mockReturnValue({
+                      order: vi.fn().mockReturnValue({
+                        limit: vi.fn().mockImplementation(async () => {
+                          if (quoteQueryError) {
+                            return { data: null, error: quoteQueryError };
+                          }
+                          return {
+                            data: [
+                              null,
+                              {
+                                id: 1342,
+                                title: 'Pride and Prejudice',
+                                authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                                copyright: false,
+                                download_count: 5000,
+                                quotes: [],
+                              },
+                              {
+                                id: 84,
+                                title: 'Frankenstein',
+                                authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+                                translators: [],
+                                subjects: ['Science Fiction'],
+                                bookshelves: [],
+                                languages: ['en'],
+                                copyright: false,
+                                download_count: 4200,
+                                quote0: {
+                                  chapterLabel: 'Letter 1',
+                                  openingLine: 'To Mrs. Saville, England',
+                                  quoteExcerpt: 'I am already far north of London.',
+                                },
+                              },
+                            ],
+                            error: null,
+                          };
+                        }),
+                      }),
+                    }),
+                  }),
+                };
+              }),
+            };
+          }),
+        };
+
+        const provider = new SupabaseCatalogProvider(mockSupabase as never);
+        const first = await provider.searchBooks({ page: 1, pool: 'quotes', country: 'US', limit: 12 });
+        expect(first.results).toHaveLength(1);
+        expect(first.results[0].id).toBe(84);
+
+        // Second call within 12h window hits cached Quote Pool with zero extra queries
+        const callsAfterFirst = mockSupabase.from.mock.calls.length;
+        const cached = await provider.searchBooks({ page: 1, pool: 'quotes', country: 'US', limit: 12 });
+        expect(cached.latencyMs).toBe(0);
+        expect(cached.results).toHaveLength(1);
+        expect(mockSupabase.from.mock.calls.length).toBe(callsAfterFirst);
+
+        // Advance past QUOTE_POOL_CACHE_TTL_MS -> cached entry expires and is evicted
+        vi.advanceTimersByTime(QUOTE_POOL_CACHE_TTL_MS + 1000);
+        const refreshed = await provider.searchBooks({ page: 1, pool: 'quotes', country: 'US', limit: 12 });
+        expect(refreshed.results).toHaveLength(1);
+        expect(mockSupabase.from.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+
+        // Provider query error wraps into CatalogProviderError
+        quoteQueryError = { message: 'Pool RPC failed' };
+        await expect(
+          provider.searchBooks({ page: 1, pool: 'quotes', country: 'DE', limit: 12 })
+        ).rejects.toThrow(CatalogProviderError);
+
+        // Unexpected synchronous throw wraps into CatalogProviderError
+        quoteQueryError = null;
+        shouldThrow = true;
+        await expect(
+          provider.searchBooks({ page: 1, pool: 'quotes', country: 'FR', limit: 12 })
+        ).rejects.toThrow(/Supabase Quote Pool error: Socket reset/);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('handles backfill error/empty/saturation break paths, LRU cache eviction, and unexpected search exceptions', async () => {
+      const makeBookRow = (id: number, valid: boolean): DatabaseBook => ({
+        id,
+        title: `Volume ${id}`,
+        authors: [
+          valid
+            ? { name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }
+            : { name: 'Protected Author', birth_year: 1940, death_year: 2005 },
+        ],
+        translators: [],
+        subjects: ['Classic'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: valid ? false : true,
+        media_type: 'Text',
+        formats: { 'text/plain; charset=utf-8': `https://gutenberg.org/${id}.txt` },
+        download_count: 1000 - id,
+        max_author_death_year: valid ? 1817 : 2005,
+        min_author_birth_year: valid ? 1775 : 1940,
+        content: null,
+        search_vector: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      });
+
+      let rangeMode: 'saturate' | 'empty_backfill' | 'error_backfill' | 'throw_unexpected' | 'bulk' =
+        'saturate';
+      let bulkBatchIndex = 0;
+
+      const buildChain = () => {
+        const chain: Record<string, unknown> = {
+          range: vi.fn().mockImplementation(async (from: number) => {
+            if (rangeMode === 'throw_unexpected') {
+              throw new Error('Unexpected socket drop');
+            }
+            if (rangeMode === 'bulk') {
+              const base = bulkBatchIndex * 20 + 10000;
+              return {
+                data: Array.from({ length: 20 }, (_, i) => makeBookRow(base + i, true)),
+                count: 20,
+                error: null,
+              };
+            }
+            if (from === 0) {
+              // Initial limit=2 probe returns limit+1 (3) rows, 2 restricted + 1 valid -> triggers backfill
+              return {
+                data: [
+                  makeBookRow(1, false),
+                  makeBookRow(2, false),
+                  makeBookRow(3, true),
+                ],
+                count: 10,
+                error: null,
+              };
+            }
+            if (rangeMode === 'saturate') {
+              // Returns more valid rows than needed so targetValidCount break is reached
+              return {
+                data: [
+                  makeBookRow(4, true),
+                  makeBookRow(5, true),
+                  makeBookRow(6, true),
+                  makeBookRow(7, true),
+                ],
+                count: 10,
+                error: null,
+              };
+            }
+            if (rangeMode === 'empty_backfill') {
+              return { data: [], count: 10, error: null };
+            }
+            return { data: null, count: 10, error: { message: 'Backfill timeout' } };
+          }),
+        };
+        chain.select = vi.fn().mockReturnValue(chain);
+        chain.eq = vi.fn().mockReturnValue(chain);
+        chain.textSearch = vi.fn().mockReturnValue(chain);
+        chain.lte = vi.fn().mockReturnValue(chain);
+        chain.order = vi.fn().mockReturnValue(chain);
+        return chain;
+      };
+
+      const mockSupabase = {
+        from: vi.fn().mockImplementation(() => buildChain()),
+      };
+
+      const provider = new SupabaseCatalogProvider(mockSupabase as never);
+
+      // 1. Saturated backfill breaks once targetValidCount is reached
+      rangeMode = 'saturate';
+      const saturated = await provider.searchBooks({ page: 1, limit: 2, country: 'US' });
+      expect(saturated.results.map((b) => b.id)).toEqual([3, 4]);
+      expect(saturated.next).toBe('/api/books?page=2');
+
+      // 2. Empty backfill marks sqlExhausted
+      rangeMode = 'empty_backfill';
+      const exhaustedFresh = await provider.searchBooks({
+        page: 1,
+        limit: 2,
+        country: 'CA',
+      });
+      expect(exhaustedFresh.results.map((b) => b.id)).toEqual([3]);
+      expect(exhaustedFresh.next).toBeNull();
+
+      // 3. Backfill query error stops loop cleanly without failing initial batch
+      rangeMode = 'error_backfill';
+      const backfillErrRes = await provider.searchBooks({
+        page: 1,
+        limit: 2,
+        country: 'AU',
+      });
+      expect(backfillErrRes.results.map((b) => b.id)).toEqual([3]);
+
+      // 4. Unexpected non-CatalogProviderError during probe wraps as CatalogProviderError
+      rangeMode = 'throw_unexpected';
+      await expect(
+        provider.searchBooks({ page: 1, limit: 2, country: 'NZ' })
+      ).rejects.toThrow(/Supabase Catalog unexpected failure: Unexpected socket drop/);
+
+      // 5. Evict LRU entries across >64 queries and >1000 shared metadata entries
+      rangeMode = 'bulk';
+      for (let i = 0; i < 66; i++) {
+        bulkBatchIndex = i;
+        await provider.searchBooks({ page: 1, search: `evictquery${i}`, limit: 20, country: 'US' });
+      }
+      expect(mockSupabase.from).toHaveBeenCalled();
+
+      // Default singleton provider resetHealthCache clears module-level cache cleanly
+      const defaultProvider = new SupabaseCatalogProvider();
+      expect(() => defaultProvider.resetHealthCache()).not.toThrow();
+    });
+
+    it('returns empty array on translation step errors and filters copyright=true editions in getBookTranslations', async () => {
+      // Case 1: workErr or empty workMappings
+      const workErrProvider = new SupabaseCatalogProvider({
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'work error' } }),
+          }),
+        }),
+      } as never);
+      expect(await workErrProvider.getBookTranslations(1342, 'US')).toEqual([]);
+
+      // Case 2: clusterErr on book_translations IN query
+      const clusterErrProvider = new SupabaseCatalogProvider({
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [{ work_id: 'Q1' }], error: null }),
+            in: vi.fn().mockResolvedValue({ data: null, error: { message: 'cluster error' } }),
+          }),
+        }),
+      } as never);
+      expect(await clusterErrProvider.getBookTranslations(1342, 'US')).toEqual([]);
+
+      // Case 3: booksErr on books IN query
+      const booksErrProvider = new SupabaseCatalogProvider({
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'book_translations') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [{ work_id: 'Q1' }], error: null }),
+                in: vi.fn().mockResolvedValue({
+                  data: [{ book_id: 1342, language: 'en', is_original: true }],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: null, error: { message: 'books error' } }),
+            }),
+          };
+        }),
+      } as never);
+      expect(await booksErrProvider.getBookTranslations(1342, 'US')).toEqual([]);
+
+      // Case 4: skips b.copyright === true
+      const copyrightedEditionProvider = new SupabaseCatalogProvider({
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'book_translations') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [{ work_id: 'Q1' }], error: null }),
+                in: vi.fn().mockResolvedValue({
+                  data: [
+                    { book_id: 1342, language: 'en', is_original: true },
+                    { book_id: 99999, language: 'es', is_original: false },
+                  ],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    id: 1342,
+                    title: 'Pride and Prejudice',
+                    download_count: 5000,
+                    copyright: false,
+                    authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                    translators: [],
+                  },
+                  {
+                    id: 99999,
+                    title: 'Protected Edition',
+                    download_count: 200,
+                    copyright: true,
+                    authors: [],
+                    translators: [],
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          };
+        }),
+      } as never);
+      const translations = await copyrightedEditionProvider.getBookTranslations(1342, 'US');
+      expect(translations.map((t) => t.bookId)).toEqual([1342]);
+    });
   });
 });
 

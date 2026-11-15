@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.37] - 2026-11-16
+### *Statement Coverage Margin Hardening & Living Telemetry Sync*
+
+### Changed
+- **Global V8 Statement Coverage Margin Hardening (`95.04%` -> `95.98%`, `257` Suites / `2,629` Tests)**: Expanded 8 existing 1:1 co-located Vitest suites (`session-device-parser.test.ts`, `notebook-sorting.test.ts`, `ReaderShareModal.test.tsx`, `BookmarksView.test.tsx`, `NotebookView.test.tsx`, `useAuthStore.test.ts`, `supabase-provider.test.ts`, `useAccountSecurityActions.test.ts`) with zero runtime or threshold modifications, adding `+165` covered statements (`16,888 / 17,595` statements, `97.20%` lines, `95.12%` functions, `88.34%` branches) covering auth reload cleanup/token refresh, catalog LRU/TTL/backfill/translation error recovery, mobile dock/drawer controls, share/clipboard fallbacks, and cross-tab session BroadcastChannel guards (`ADR-071`, `ADR-073`, `ADR-080`).
+- **Automated `docs/GITHUB_ACTIONS.md` Release Tag Sync & Live Quality Telemetry (`scripts/generate-changelog.js`, `scripts/generate-architecture-matrix.js`, `docs/PIPELINE_GUIDE.md`)**: Extended `syncReleaseVersionFiles()` in `scripts/generate-changelog.js` to keep the `docs/GITHUB_ACTIONS.md` `workflow_dispatch` default `tag` synchronized with `RELEASES[0].version`, updated `generate-architecture-matrix.js` fallback counts and `purposeMap`, and recompiled all living quality/coverage badges and reports via `npm run docs:sync` (`ADR-080`).
+
+
+## [2.9.36] - 2026-11-15
+### *Atomic Auth Session Teardown & Reload-Safe Store Cleanup*
+
+### Fixed
+- **Atomic Pre-Null Session Teardown & Full Cookie-Clearance Reset (`src/stores/useAuthStore.ts`, `src/lib/sync-utils.test.ts`, `src/stores/useAuthStore.test.ts`)**: Updated `verifyActiveCloudSession` so dead sessions with cleared `sb-*-auth-token` cookies execute coalesced `resetClientAuthState(..., { wipeDeviceStorage: false })` instead of bare `setState({ user: null })`, and ordered non-wipe `resetClientAuthState` teardowns to clear all user collections (`Bookshelf`, `Favorites`, `Notes`, `Habits`, `Accolades`, `Fellowship`, and `Reader` bookmarks) before persisting `user: null` while preserving IndexedDB `offline_books` (`Downloaded` shelf) (`ADR-005`, `ADR-072`, `ADR-080`).
+- **Durable Reload-Safe Store Cleanup Completion (`src/config/site-config.ts`, `src/config/site-config.test.ts`, `src/stores/useAuthStore.ts`)**: Added `STORAGE_KEYS.PENDING_STORE_CLEANUP` (`bookarium-pending-store-cleanup`) stamped synchronously across `resetClientAuthState` and `onAuthStateChange` transitions (`'session'` vs. `'wipe'`), coalescing overlapping `clearLocalUserStores` runs (including upgrade-to-`wipe`) and finishing interrupted reloads inside `initializeAuth()` (`checkInitialUser()`) without affecting anonymous guests or offline signed-in sessions (`ADR-005`, `ADR-080`).
+
+
+## [2.9.35] - 2026-11-15
+### *Zero-Drift Custom-Domain Origin Normalization, Email-Free Public UA & Portable CLI Origin Parity*
+
+### Changed
+- **Normalized Custom-Domain & Vercel Primary-Domain Origin Resolution (`src/config/site-config.ts`, `src/config/site-config.test.ts`, `.env.example`, `.github/ISSUE_TEMPLATE/bug_report.yml`)**: Added `normalizeSiteOrigin`, `resolveSiteUrl`, `resolveSiteHost`, `SITE_CONFIG.SITE_HOST`, and email-free `SITE_CONFIG.PUBLIC_USER_AGENT` (`buildDescriptiveUserAgent(..., false)`), resolving `NEXT_PUBLIC_SITE_URL` -> `NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL` -> SSR-only `VERCEL_PROJECT_PRODUCTION_URL` -> `https://bookarium.vercel.app` without hardcoding domains, clearing `.env.example` default `NEXT_PUBLIC_SITE_URL`, and updating `bug_report.yml` (`ADR-080`).
+- **Canonical Share Links, OpenGraph Reading Card Host & CLI Origin Parity (`src/app/api/books/content/route.ts`, `src/lib/reading-card-export.ts`, `src/components/reader/ReaderShareModal.tsx`, `scripts/ingest-catalog.js`, `scripts/ingest-translations.js`, `scripts/sync-featured-quotes.js`, `scripts/sync-gutenberg-catalog.js`)**: Wired `SITE_CONFIG.SITE_HOST` into stateless `type=card` OpenGraph PNG cards, `renderReadingCardToCanvas` defaults, and `ReaderShareModal` via `resolveCanonicalShareOrigin` (eliminating `bookarium.vercel.app` fallbacks), and added shared `resolveSiteOriginFallback(env)` across all 4 CLI ingestion/sync engines with 1:1 Vitest coverage (`ADR-080`).
+- **Living Architecture, Governance & Deployment Guides (`docs/DECISIONS.md`, `scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `DEVELOPMENT.md`, `README.md`)**: Synchronized custom-domain origin fallback contracts, injected `(env = process.env | loadEnv())` CLI env-var consumer extraction (`ast-parser.js`), `/copyright` & CLI origin matrix descriptions (`generate-architecture-matrix.js`), `SITE_CONFIG.SITE_HOST` reading-card footers, Supabase Auth callback redirect URL examples, and relative copyright policy links across `docs/DECISIONS.md` (`ADR-080`), `DEVELOPMENT.md`, and `README.md` (`ADR-080`).
+
+### Fixed
+- **Dynamic Email-Free Public User-Agent Disclosure on `/copyright` (`src/app/copyright/page.tsx`, `src/app/copyright/page.test.tsx`)**: Replaced the legacy static `Bookarium/2.8.1 (+https://github.com/calin-m/Bookarium)` User-Agent disclosure on `/copyright` with `{SITE_CONFIG.PUBLIC_USER_AGENT}`, preserving full domain portability while ensuring `GUTENBERG_CONTACT_EMAIL` is never emitted in public client HTML (`ADR-080`).
+
+
 ## [2.9.34] - 2026-11-15
 ### *Vercel Edge Cache Tag Purge Integration, Partial-Index Out-of-Window Quote Pruning & Option-A Pool Telemetry*
 
