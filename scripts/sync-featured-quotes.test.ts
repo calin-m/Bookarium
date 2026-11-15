@@ -40,6 +40,7 @@ describe('sync-featured-quotes pipeline', () => {
     );
     expect(quotesSync.DEFAULT_POPULAR_POOL_SIZE).toBe(500);
     expect(quotesSync.DEFAULT_RECENT_POOL_SIZE).toBe(64);
+    expect(quotesSync.DEFAULT_MAX_PRUNE_PER_RUN).toBe(2000);
     expect(quotesSync.resolveSelectedMirrors('pglaf,aleph')).toEqual([
       'https://gutenberg.pglaf.org',
       'https://aleph.gutenberg.org',
@@ -80,6 +81,7 @@ describe('sync-featured-quotes pipeline', () => {
       '--target-count=15',
       '--popular-pool=500',
       '--recent-pool=64',
+      '--max-prune=1500',
       '--mirrors=pglaf,readingroo',
       '--ids=1342,84',
     ]);
@@ -92,6 +94,7 @@ describe('sync-featured-quotes pipeline', () => {
     expect(parsed.targetCount).toBe(15);
     expect(parsed.popularPool).toBe(500);
     expect(parsed.recentPool).toBe(64);
+    expect(parsed.maxPrunePerRun).toBe(1500);
     expect(parsed.mirrors).toEqual([
       'https://gutenberg.pglaf.org',
       'https://gutenberg.readingroo.ms',
@@ -1177,11 +1180,17 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
         download_count: 10,
         quotes: makeQuotes(12, 'Recent'),
       });
-      const demotedVolume = catalogRow({
+      const demotedHighVolume = catalogRow({
         id: 55555,
-        title: 'Demoted Volume',
+        title: 'Demoted Popular Cushion',
         download_count: 100,
-        quotes: makeQuotes(10, 'Demoted'),
+        quotes: makeQuotes(10, 'Demoted High'),
+      });
+      const demotedLowVolume = catalogRow({
+        id: 55554,
+        title: 'Demoted Low Volume',
+        download_count: 25,
+        quotes: makeQuotes(10, 'Demoted Low'),
       });
 
       fs.writeFileSync(
@@ -1191,7 +1200,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
           popularPoolIds: [1342, 2001, 2002],
           recentPoolIds: [79001],
           promotedIds: [2002],
-          demotedIds: [55555],
+          demotedIds: [55555, 55554],
           minRecentHorizonId: 74000,
           popularData: [
             { id: 1342, title: 'Pride and Prejudice', download_count: 90000, languages: ['en'] },
@@ -1205,7 +1214,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
         'utf8'
       );
 
-      const allRows = [pride, moby, newlyPromoted, recentRelease, demotedVolume];
+      const allRows = [pride, moby, newlyPromoted, recentRelease, demotedHighVolume, demotedLowVolume];
       const { client, orderMock, pruneInMock } = createCatalogSupabase(allRows, [], []);
       const logger = { log: vi.fn(), error: vi.fn() };
 
@@ -1224,11 +1233,209 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       // Newly promoted #2002 was prioritized ahead of #2001 even though #2001 had a higher download_count
       expect(summary.updated).toBe(1);
       expect(summary.books[0].id).toBe(2002);
-      // Demoted #55555 was pruned automatically
+      // Option A preserves higher-download #55555 as the 1-for-1 backfill cushion for unquoted #2001,
+      // and immediately prunes least-popular #55554 while reporting it in Tier Progress & Books Processed
       expect(summary.pruned).toBe(1);
-      expect(pruneInMock).toHaveBeenCalledWith('id', [55555]);
+      expect(pruneInMock).toHaveBeenCalledWith('id', [55554]);
+      expect(summary.pruneStats).toMatchObject({
+        eligible: 1,
+        purged: 1,
+        remaining: 0,
+        deferred: 1,
+      });
+      expect(summary.report).toContain('| Out-of-Window (Pruned) | 1 | 1 purged (1 deferred) | 0 | 100% |');
+      expect(summary.report).toContain('🧹 Pruned — left Top Popular pool');
+      expect(summary.report).toContain('Demoted Low Volume');
+      const consoleLines = logger.log.mock.calls.map((c) => String(c[0]));
+      expect(
+        consoleLines.some((l) => l.includes('[Prune 1/1 · Demoted Popular] #55554 "Demoted Low Volume": quotes cleared.'))
+      ).toBe(true);
+      expect(
+        consoleLines.some((l) => l.includes('• Purge Status:   1/1 purged (0 remaining · 100.0% · 1 backfill-deferred)'))
+      ).toBe(true);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+
+  it('discovers 100% of out-of-window quoted books via partial index pagination, applies Option-A cushion & drain, and yields past 500 prunes', async () => {
+    // 1. fetchAllQuotedBookIds paginates across pages (up to 1000/page) and maps downloadCounts
+    const page1 = Array.from({ length: 1000 }, (_, i) => ({
+      id: i + 1,
+      download_count: 5000 - i,
+    }));
+    const page2 = [
+      { id: 1001, download_count: 15 },
+      { id: 88001, download_count: 3 },
+    ];
+    const rangeMock = vi
+      .fn()
+      .mockResolvedValueOnce({ data: page1, error: null })
+      .mockResolvedValueOnce({ data: page2, error: null });
+    const paginatedSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          neq: vi.fn(() => ({ range: rangeMock })),
+        })),
+      })),
+    };
+    const fullScan = await quotesSync.fetchAllQuotedBookIds(paginatedSupabase);
+    expect(fullScan).not.toBeNull();
+    expect(fullScan.ids.size).toBe(1002);
+    expect(fullScan.downloadCounts.get(1001)).toBe(15);
+    expect(rangeMock).toHaveBeenCalledTimes(2);
+    expect(rangeMock).toHaveBeenNthCalledWith(1, 0, 999);
+    expect(rangeMock).toHaveBeenNthCalledWith(2, 1000, 1999);
+
+    // 2. computeOutOfWindowPrunePlan Option A:
+    //    - popularPoolIds has 3 slots, 2 quoted (#1, #2) -> deficit = 1
+    //    - demoted candidates: #30 (dl 900), #20 (dl 200), #10 (dl 50)
+    //    - recentPool cap = 2, quoted recent: #78004, #78003, #78002
+    //    -> retains #30 as 1-for-1 cushion, prunes least-popular #10, #20 + cycled recent #78002
+    const planWithDeficit = quotesSync.computeOutOfWindowPrunePlan({
+      currentQuotedIds: new Set([1, 2, 10, 20, 30, 78002, 78003, 78004]),
+      popularPoolIds: new Set([1, 2, 3]),
+      recentPoolIds: new Set([78003, 78004]),
+      minRecentHorizonId: 78000,
+      recentCap: 2,
+      downloadCounts: new Map([
+        [10, 50],
+        [20, 200],
+        [30, 900],
+      ]),
+    });
+    expect(planWithDeficit.deferredPopularIds).toEqual([30]);
+    expect(planWithDeficit.stalePopularIds).toEqual([10, 20]);
+    expect(planWithDeficit.staleRecentIds).toEqual([78002]);
+    expect(planWithDeficit.staleIds).toEqual([10, 20, 78002]);
+    expect(planWithDeficit.deferredCount).toBe(1);
+
+    // Once Top Popular reaches 3/3 (deficit = 0), cushion #30 drains cleanly too
+    const planDrained = quotesSync.computeOutOfWindowPrunePlan({
+      currentQuotedIds: new Set([1, 2, 3, 30, 78003, 78004]),
+      popularPoolIds: new Set([1, 2, 3]),
+      recentPoolIds: new Set([78003, 78004]),
+      minRecentHorizonId: 78000,
+      recentCap: 2,
+      downloadCounts: new Map([[30, 900]]),
+    });
+    expect(planDrained.deferredCount).toBe(0);
+    expect(planDrained.staleIds).toEqual([30]);
+
+    // 3. Cold-start / high-volume prune (> 500 IDs) triggers 50ms inter-chunk yield past chunk #20
+    const bulkIds = Array.from({ length: 525 }, (_, i) => i + 100);
+    const bulkRows = [
+      { id: 1, download_count: 99999 },
+      ...bulkIds.map((id) => ({ id, download_count: id })),
+    ];
+    const updateInMock = vi.fn().mockResolvedValue({ error: null });
+    const sleepMock = vi.fn().mockResolvedValue(undefined);
+    const bulkSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn((cols: string) => {
+          if (cols.includes('title')) {
+            return {
+              in: vi.fn((_c: string, ids: number[]) =>
+                Promise.resolve({
+                  data: ids.map((id) => ({ id, title: `Volume ${id}`, download_count: id })),
+                  error: null,
+                })
+              ),
+            };
+          }
+          return {
+            neq: vi.fn(() => Promise.resolve({ data: bulkRows, error: null })),
+          };
+        }),
+        update: vi.fn(() => ({ in: updateInMock })),
+      })),
+    };
+    const bulkLogger = { log: vi.fn() };
+    const bulkPrune = await quotesSync.pruneOutOfWindowBookQuotes(
+      bulkSupabase,
+      new Set([1]),
+      { minRecentHorizonId: 90000, recentPool: 64, sleepFn: sleepMock },
+      bulkLogger
+    );
+    expect(bulkPrune.prunedCount).toBe(525);
+    expect(bulkPrune.eligibleCount).toBe(525);
+    expect(bulkPrune.remainingBacklogCount).toBe(0);
+    expect(updateInMock).toHaveBeenCalledTimes(21); // 525 / 25 chunks
+    expect(sleepMock).toHaveBeenCalledTimes(1); // chunk #21 yields once past 500
+    expect(sleepMock).toHaveBeenCalledWith(50);
+
+    // 4. Full runFeaturedQuotesSync cold-start discovery catches out-of-window book #44444 + cycled recent #75001
+    const top1 = catalogRow({ id: 1, title: 'Top Canon 1', download_count: 90000, quotes: makeQuotes(12, 'Top1') });
+    const rec2 = catalogRow({ id: 75003, title: 'Newest Recent 2', download_count: 10, quotes: makeQuotes(12, 'Rec2') });
+    const rec1 = catalogRow({ id: 75002, title: 'Newer Recent 1', download_count: 10, quotes: makeQuotes(12, 'Rec1') });
+    const coldStartQuotedRows = [
+      { id: 1, title: 'Top Canon 1', download_count: 90000 },
+      { id: 44444, title: 'Historical Demoted Classic', download_count: 120 },
+      { id: 75003, title: 'Newest Recent 2', download_count: 10 },
+      { id: 75002, title: 'Newer Recent 1', download_count: 10 },
+      { id: 75001, title: 'Aged Recent Volume', download_count: 5 },
+    ];
+    const coldPruneInMock = vi.fn().mockResolvedValue({ error: null });
+    const coldStartSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn((cols: string) => {
+          if (cols === 'id, download_count') {
+            return {
+              neq: vi.fn(() => Promise.resolve({ data: coldStartQuotedRows, error: null })),
+            };
+          }
+          if (cols.includes('title, download_count') && !cols.includes('authors')) {
+            return {
+              in: vi.fn((_c: string, ids: number[]) =>
+                Promise.resolve({
+                  data: coldStartQuotedRows.filter((r) => ids.includes(r.id)),
+                  error: null,
+                })
+              ),
+            };
+          }
+          return {
+            order: vi.fn((col: string) => ({
+              limit: vi.fn().mockResolvedValue({
+                data: col === 'download_count' ? [top1] : [rec2, rec1],
+                error: null,
+              }),
+            })),
+            in: vi.fn((_c: string, ids: number[]) =>
+              Promise.resolve({
+                data: [top1, rec2, rec1].filter((r) => ids.includes(r.id)),
+                error: null,
+              })
+            ),
+          };
+        }),
+        update: vi.fn(() => ({ in: coldPruneInMock })),
+      })),
+    };
+    const coldLogger = { log: vi.fn(), error: vi.fn() };
+    const coldSummary = await quotesSync.runFeaturedQuotesSync(
+      { popularPool: 1, recentPool: 2, limit: 10, mirrors: ['pglaf'] },
+      { env: {}, supabaseClient: coldStartSupabase, logger: coldLogger, writeSeedFile: false }
+    );
+    expect(coldSummary.pruned).toBe(2);
+    expect(coldPruneInMock).toHaveBeenCalledWith('id', [44444, 75001]);
+    expect(coldSummary.pruneStats).toMatchObject({
+      eligible: 2,
+      purged: 2,
+      remaining: 0,
+      deferred: 0,
+    });
+    expect(coldSummary.report).toContain('| Out-of-Window (Pruned) | 2 | 2 purged | 0 | 100% |');
+    expect(coldSummary.report).toContain(
+      '| 1 | Demoted Popular | 44444 | Historical Demoted Classic | Database | 🧹 Pruned — left Top Popular pool | — |'
+    );
+    expect(coldSummary.report).toContain(
+      '| 2 | Cycled Recent | 75001 | Aged Recent Volume | Database | 🧹 Pruned — aged past Rolling Recent cap | — |'
+    );
+    const coldLogs = coldLogger.log.mock.calls.map((c) => String(c[0]));
+    expect(coldLogs.some((l) => l.includes('• Out-of-Window:  2 quoted book(s)'))).toBe(true);
+    expect(
+      coldLogs.some((l) => l.includes('[Prune 2/2 · Cycled Recent] #75001 "Aged Recent Volume": quotes cleared.'))
+    ).toBe(true);
   });
 });

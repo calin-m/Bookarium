@@ -514,7 +514,15 @@ function extractNodeScriptsCatalog() {
       npmCommand: '`npm run quotes:sync`',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes`, consuming `--diff-file=quote-diff.json` from `sync-gutenberg-catalog.js` (or Primary-Key-Scoped `books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` + `idx_books_download_count` fallback on standalone runs in `<15ms`), blending `40 Popular + 10 Recent` unpopulated English volumes per 50-book batch with cross-tier backfill and post-batch `1-for-1` sliding window auto-pruning across selectable PGLAF mirrors (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays, single-line console progress (`formatConsoleSummary`), and Markdown job summary reporting (`formatRunReport`).',
+        'Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes`, consuming `--diff-file=quote-diff.json` from `sync-gutenberg-catalog.js` (or `idx_books_download_count` + `books_pkey` on standalone runs), scanning all currently quoted rows via partial B-Tree index `idx_books_with_quotes_popular` (`fetchAllQuotedBookIds` + `resolveBookMetadataByIds` + `computeOutOfWindowPrunePlan`) to apply Option-A `1-for-1` sliding-window pruning across surplus demoted Popular & oldest > 64 Recent volumes up to `--max-prune=<N>` (`DEFAULT_MAX_PRUNE_PER_RUN = 2000` with `50ms` inter-chunk yield past `500` IDs), blending `40 Popular + 10 Recent` unpopulated English volumes per 50-book batch with cross-tier backfill across selectable PGLAF mirrors (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays, single-line console progress (`formatConsoleSummary` with `• Purge Status:` / `• Out-of-Window:`), and Markdown job summary reporting (`formatRunReport` with `Out-of-Window (Pruned)` and `🧹 Pruned` rows).',
+    },
+    {
+      name: 'purge-vercel-cache.js',
+      file: 'scripts/purge-vercel-cache.js',
+      npmCommand: 'CLI / CI Workflow Step',
+      nodeApis: '`fs` (`$GITHUB_STEP_SUMMARY`)',
+      responsibility:
+        'Invalidates Vercel Edge Data/CDN cache tags (`POST https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags?projectIdOrName={projectId}[&teamId={teamId}]`) via `--tags=...` at the end of non-dry-run `catalog-sync.yml` (`catalog,quotes,translations`), `quotes-sync.yml` (`quotes`), and `translations-sync.yml` (`translations`) workflows—or selectively on demand via manual `cache-purge.yml` (`catalog`/`quotes`/`translations` checkboxes, `--target`, `--dry-run`)—with bounded `429`/`5xx`/network backoff retries, `Retry-After` support, clean `exit 0` skip when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset, and `$GITHUB_STEP_SUMMARY` reporting.',
     },
     {
       name: 'approval-gate.js',
@@ -711,8 +719,8 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'public/', role: `Progressive Web App Service Worker (\`public/sw.js\` \`${counts.swVersionLabel || 'v7'}\`) and multi-resolution soaring open book brand emblem icons (\`favicon.ico\`, \`icon.svg\`, \`public/icons/*.png\`).` },
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 47} RLS policies, ${counts.dbFunctionCount || 9} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 15} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
-    { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance workflows (`translations-sync.yml`, `quotes-sync.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
+    { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance & cache purge workflows (`translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
   ];
 
   let auditTotals = { suites: counts.totalSuites || 247, tests: '2,566' };
@@ -752,6 +760,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { file: 'ROADMAP.md', mode: '100% AST-Generated', generator: '`scripts/generate-roadmap.js`', role: `Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–${maxMilestoneIdx}.` },
     { file: 'CHANGELOG.md', mode: '100% Script-Generated', generator: '`scripts/generate-changelog.js`', role: 'Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions.' },
     { file: 'docs/PIPELINE_GUIDE.md', mode: 'Curated Engineering Runbook', generator: '_Source-of-Truth Runbook_', role: 'Operational guide for the 7-Gateway Quality Engine, GitHub Actions workflows, and catalog/translation ingestion pipelines.' },
+    { file: 'docs/GITHUB_ACTIONS.md', mode: 'Curated Operator Runbook', generator: '_Source-of-Truth Runbook (Pass 5 Parity Verified)_', role: 'Complete trigger, schedule, permission, secret, workflow_dispatch input, CI command, and local CLI parity reference for all 6 `.github/workflows/*.yml` pipelines and Dependabot.' },
     { file: 'DEVELOPMENT.md & CONTRIBUTING.md', mode: 'Curated Contributor Guides', generator: '_Source-of-Truth Guides_', role: 'Local development environment setup, testing standards, and conventional commit protocols.' },
     { file: 'SECURITY.md & CODE_OF_CONDUCT.md', mode: 'Curated Governance Policies', generator: '_Source-of-Truth Policies_', role: 'Vulnerability disclosure policy, OWASP defense-in-depth overview, and Contributor Covenant v2.1 standards.' },
     { file: 'AGENTS.md & .agents/AGENTS.md', mode: 'Immutable Agent Governance', generator: '_Canonical Agent Rules_', role: 'Master operational rules (Rules 0–9) governing human and AI multi-agent engineering in Bookarium.' },
@@ -914,10 +923,10 @@ function generateMarkdown() {
     '',
     '    subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]',
     '        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]',
-    '        ProxyBooks["GET /api/books\\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs, Rate Limit, Seam Controller)"]',
+    '        ProxyBooks["GET /api/books\\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs • Vercel-Cache-Tag, Rate Limit, Seam Controller)"]',
     '        CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\\n(supabase-provider.ts • curated-fallback.ts)"]',
     '        ProxyContent["GET /api/books/content\\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]',
-    '        ProxyBookTranslations["GET /api/books/translations\\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]',
+    '        ProxyBookTranslations["GET /api/books/translations\\n(7d Edge SWR Cache • s-maxage=604800 • Vary: x-vercel-ip-country • Vercel-Cache-Tag: translations • FRBR Work Mapping)"]',
     '        AuthCallback["GET /auth/callback\\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]',
     '        LayoutServer["Server Layout (/read/[id])\\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]',
     '        ProfileLayoutServer["Server Layout (/u/[username])\\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]',
@@ -942,7 +951,8 @@ function generateMarkdown() {
     '        SyncEngine["🔄 Gutenberg Catalog Sync Engine\\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]',
     '        SyncTranslations["🔄 Relational Translations Sync\\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]',
     '        SyncQuotes["🔄 Featured Quotes Sync Engine\\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]',
-    '        VercelEdge["⚡ Vercel Edge Platform\\n(Cookie-less Analytics & Speed Insights)"]',
+    '        PurgeVercel["🧹 Edge Cache Tag Purge CLI\\n(scripts/purge-vercel-cache.js • .github/workflows/cache-purge.yml)"]',
+    '        VercelEdge["⚡ Vercel Edge Platform\\n(Edge CDN SWR, Cookie-less Analytics & Speed Insights)"]',
     '    end',
     '',
     '    User --> RootProxy',
@@ -1064,6 +1074,10 @@ function generateMarkdown() {
     '    SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL',
     '    SyncQuotes -->|Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert| SupabaseCloud',
     '    SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN',
+    '    SyncEngine -.->|"Live Run: Purge catalog,quotes,translations"| PurgeVercel',
+    '    SyncTranslations -.->|"Manual Live Run: Purge translations"| PurgeVercel',
+    '    SyncQuotes -.->|"Manual Live Run: Purge quotes"| PurgeVercel',
+    '    PurgeVercel -.->|"POST /v1/edge-cache/dangerously-delete-by-tags"| VercelEdge',
     '    ',
     '    Views --> StateStores',
     '    HabitsCard --> StoreHabits',
@@ -1504,13 +1518,13 @@ function generateMarkdown() {
     let cacheDesc = 'Edge Proxy';
     let upstream = 'Project Gutenberg Infrastructure';
     if (r.path === '/api/books') {
-      cacheDesc = '`s-maxage=86400` (Catalog, `MAX_CATALOG_PAGE=5000` / `MAX_CATALOG_OFFSET=160_000`) / `s-maxage=43200` (`?pool=quotes`, 12h rotating `DEFAULT_QUOTE_POOL_LIMIT=48`) / `s-maxage=604800` (`?ids=...&has_quotes=true` & `include_restricted_metadata=true`) • Query Allowlist (`400 no-store`), `CORP: same-origin` & `nosniff` • `globalThis` `booksApiRateLimiter` (`60 req/min`) • `503 no-store` DB-down guard';
-      upstream = 'Supabase `public.books` (`searchBooks` / `fetchQuoteEnrichedPool`) -> `curated-fallback.ts` (unconfigured search fallback)';
+      cacheDesc = '`s-maxage=86400` (Catalog, `Vercel-Cache-Tag: catalog` or `catalog,quotes` when `has_quotes=true`, `MAX_CATALOG_PAGE=5000` / `MAX_CATALOG_OFFSET=160_000`) / `s-maxage=43200` (`?pool=quotes`, `Vercel-Cache-Tag: quotes`, 12h rotating `DEFAULT_QUOTE_POOL_LIMIT=48`) / `s-maxage=604800` (`?ids=...&has_quotes=true` [`Vercel-Cache-Tag: catalog,quotes`] & `include_restricted_metadata=true` [`Vercel-Cache-Tag: catalog`]) • Query Allowlist (`400 no-store`), `CORP: same-origin` & `nosniff` • `globalThis` `booksApiRateLimiter` (`60 req/min`) • `503 no-store` DB-down guard';
+      upstream = 'Supabase `public.books` (`searchBooks` / `fetchQuoteEnrichedPool`) -> `curated-fallback.ts` (unconfigured search fallback, omits `Vercel-Cache-Tag`)';
     } else if (r.path === '/api/books/content') {
       cacheDesc = '`max-age=86400, s-maxage=86400, stale-while-revalidate=604800` (text `CORP: same-origin`; `type=card` OpenGraph PNG `CORP: cross-origin`) / `max-age=604800, s-maxage=604800, stale-while-revalidate=2592000` (`type=cover`, `CORP: same-origin`, non-US metadata check bypassed) • Strict Query Allowlist (`s` gated to `type=card`), Mode-Scoped `globalThis` Limiters (`30` text / `60` cover / `20` card req/min), 20-Book LRU (`bookContentLruCache`), In-Flight Mirror Coalescing, Anti-SSRF Allowlist & Jurisdictional Gate';
       upstream = 'Supabase `plain_text` -> Gutenberg Multi-Mirror CDN & `next/og` `ImageResponse`';
     } else if (r.path === '/api/books/translations') {
-      cacheDesc = '`max-age=86400, s-maxage=604800, stale-while-revalidate=2592000` • Query Allowlist, Strict ID (`1..10_000_000`), `CORP: same-origin` & `nosniff` • `globalThis` `booksApiRateLimiter` (`60 req/min`) & Jurisdictional Filter';
+      cacheDesc = '`max-age=86400, s-maxage=604800, stale-while-revalidate=2592000`, `Vercel-Cache-Tag: translations` (`200` responses) • Query Allowlist, Strict ID (`1..10_000_000`), `CORP: same-origin` & `nosniff` • `globalThis` `booksApiRateLimiter` (`60 req/min`) & Jurisdictional Filter';
       upstream = 'Supabase `public.book_translations` & `public.books`';
     } else if (r.path === '/auth/callback') {
       cacheDesc =
@@ -1743,11 +1757,13 @@ function generateMarkdown() {
 
   const workflowResponsibilityMap = {
     'catalog-sync.yml':
-      'Unified weekly Sunday CI cron workflow (`concurrency: gutenberg-catalog-sync`, `permissions: contents: write`) restoring `gutenberg-catalog-cache.json.gz` from the permanent `catalog-cache` GitHub Release, streaming `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across 3 official Gutenberg mirrors into `public.books` via 100% in-RAM diffing (`filterChangedOrNewBooks` & `reconcileWithdrawnCatalogBooks` preserving `quotes`), publishing the updated snapshot (`--clobber`), and sequentially chaining `ingest-translations.js` and `sync-featured-quotes.js --diff-file=quote-diff.json`.',
+      'Unified weekly Sunday CI cron workflow (`concurrency: gutenberg-catalog-sync`, `permissions: contents: write`) restoring `gutenberg-catalog-cache.json.gz` from the permanent `catalog-cache` GitHub Release, streaming `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across 3 official Gutenberg mirrors into `public.books` via 100% in-RAM diffing (`filterChangedOrNewBooks` & `reconcileWithdrawnCatalogBooks` preserving `quotes`), publishing the updated snapshot (`--clobber`), sequentially chaining `ingest-translations.js` and `sync-featured-quotes.js --diff-file=quote-diff.json` (with full out-of-window Option-A pruning), and invalidating Vercel Edge `catalog,quotes,translations` tags via `scripts/purge-vercel-cache.js` when `dry_run != \'true\'`.',
     'translations-sync.yml':
-      'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: gutenberg-translations-sync`) clustering upstream Wikidata `P2034`/`P407` editions and syncing to `public.book_translations` via `idx_book_translations_cluster` (scheduled Sunday execution is unified inside `catalog-sync.yml`).',
+      'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: gutenberg-translations-sync`) clustering upstream Wikidata `P2034`/`P407` editions and syncing to `public.book_translations` via `idx_book_translations_cluster`, followed by Vercel Edge `translations` cache tag invalidation via `scripts/purge-vercel-cache.js` when `dry_run != \'true\'` (scheduled Sunday execution is unified inside `catalog-sync.yml`).',
     'quotes-sync.yml':
-      'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: featured-quotes-sync`) populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) or specific `--ids` via selectable PGLAF mirrors (scheduled Sunday execution is unified inside `catalog-sync.yml` via `quote-diff.json`).',
+      'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: featured-quotes-sync`) populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) or specific `--ids` via selectable PGLAF mirrors, applying full partial-index Option-A out-of-window pruning (`--max-prune`, default `2000`), and invalidating Vercel Edge `quotes` cache tags via `scripts/purge-vercel-cache.js` when `dry_run != \'true\'` (scheduled Sunday execution is unified inside `catalog-sync.yml` via `quote-diff.json`).',
+    'cache-purge.yml':
+      'Manual-only (`workflow_dispatch`, zero `npm ci`) GitHub Actions utility workflow (`concurrency: cache-purge`, `permissions: contents: read`) allowing operators to selectively invalidate Vercel Edge CDN cache tags (`purge_catalog`, `purge_quotes`, `purge_translations` defaulting unchecked with a fail-fast guard requiring at least one checkbox selected), choose `target` (`production` / `preview`), and run `dry_run` diagnostics via `scripts/purge-vercel-cache.js`.',
     'ci.yml':
       'Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification on Node 22.',
     'release.yml':
@@ -1761,6 +1777,7 @@ function generateMarkdown() {
       'catalog-sync.yml',
       'translations-sync.yml',
       'quotes-sync.yml',
+      'cache-purge.yml',
       'ci.yml',
       'release.yml',
     ];
@@ -1789,6 +1806,8 @@ function generateMarkdown() {
         }
       } else if (wfFile === 'release.yml') {
         triggerDesc = '`push` (`tags: v*`) / On-Demand (`workflow_dispatch`)';
+      } else if (wfFile === 'cache-purge.yml') {
+        triggerDesc = 'On-Demand (`workflow_dispatch`) • Standalone Manual Cache Purge';
       } else if (wfText.includes('workflow_dispatch')) {
         triggerDesc = 'On-Demand (`workflow_dispatch`) • Chained in `catalog-sync.yml`';
       }
@@ -1817,6 +1836,7 @@ function generateMarkdown() {
     '        CatTrigger["🕒 catalog-sync.yml (Unified Sunday Pipeline)\\n• cron: 0 2 * * 0 (Sundays 02:00 UTC) / workflow_dispatch\\n• concurrency: gutenberg-catalog-sync • contents: write"]',
     '        TransTrigger["🎛️ translations-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: gutenberg-translations-sync"]',
     '        QuotesTrigger["🎛️ quotes-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: featured-quotes-sync"]',
+    '        PurgeTrigger["🧹 cache-purge.yml (Manual Cache Purge)\\n• On-Demand (workflow_dispatch • Unchecked Defaults)\\n• concurrency: cache-purge"]',
     '        CITrigger["✅ ci.yml & release.yml\\n• push / pull_request (master) & tags: v*\\n• Node 22 + 7-Gateway Quality Engine"]',
     '    end',
     '',
@@ -1830,11 +1850,12 @@ function generateMarkdown() {
     '    subgraph NodePipelines ["Sequential Node.js CLI Engines (scripts/ • SUPABASE_SERVICE_ROLE_KEY)"]',
     '        ScriptCatalog["⚙️ Step 1: scripts/sync-gutenberg-catalog.js\\n• Restores gutenberg-catalog-cache.json.gz & Diffs 78k Books 100% in RAM\\n• Upserts Changed/New Books Only & Reconciles Withdrawn IDs in RAM\\n• Writes quote-diff.json & Saves Updated Snapshot (--clobber)"]',
     '        ScriptTrans["⚙️ Step 2: scripts/ingest-translations.js\\n• 5 Pipeline Blockers & 7 Hardening Defenses\\n• Deterministic FRBR Cluster Upsert"]',
-    '        ScriptQuotes["⚙️ Step 3: scripts/sync-featured-quotes.js\\n• Consumes quote-diff.json (Zero Pool Discovery Scans)\\n• Primary-Key-Scoped fetchQuotedBookIds (~3.5 KB)\\n• Prunes Demoted Books & Quotes Promoted/Unquoted Pool Books"]',
+    '        ScriptQuotes["⚙️ Step 3: scripts/sync-featured-quotes.js\\n• Consumes quote-diff.json & Scans idx_books_with_quotes_popular\\n• Quotes Promoted/Unquoted Pool Books (40 Popular + 10 Recent)\\n• Option-A 1-for-1 Out-of-Window Prune (max 2,000/run)"]',
+    '        ScriptPurge["🧹 Step 4: scripts/purge-vercel-cache.js\\n• Invalidates Vercel-Cache-Tag (catalog, quotes, translations)\\n• Clean exit 0 skip when Vercel Secrets unset"]',
     '    end',
     '',
     '    subgraph SupabaseTables ["Supabase PostgreSQL Catalog Tables (Read-Only for Anon / Written by Service Role)"]',
-    '        TableBooks[("🗄️ public.books (78,000+ Rows)\\n• books_pkey (id)\\n• idx_books_download_count (download_count DESC)\\n• idx_books_search_vector (GIN TSVECTOR)")]',
+    '        TableBooks[("🗄️ public.books (78,000+ Rows)\\n• books_pkey (id)\\n• idx_books_download_count (download_count DESC)\\n• idx_books_with_quotes_popular (partial WHERE quotes <> [] )\\n• idx_books_search_vector (GIN TSVECTOR)")]',
     '        TableTrans[("🗄️ public.book_translations (4,500+ Rows)\\n• book_translations_pkey (work_id, book_id)\\n• idx_book_translations_book_id\\n• idx_book_translations_work_lang")]',
     '    end',
     '',
@@ -1848,19 +1869,25 @@ function generateMarkdown() {
     '    FeedWikidata --> ScriptTrans',
     '    ScriptTrans -->|"Upsert FRBR Edition Clusters"| TableTrans',
     '    ScriptTrans -->|"Chains Step 3 on Success"| ScriptQuotes',
+    '    ScriptTrans -.->|"Purge translations tag (manual live)"| ScriptPurge',
     '    QuotesTrigger -.->|"Manual Dispatch"| ScriptQuotes',
     '    FeedMirrors --> ScriptQuotes',
-    '    TableBooks -->|"~3.5 KB PK Quoted-ID Check"| ScriptQuotes',
-    '    ScriptQuotes -->|"Upsert 10–16 Quotes/Book & Prune Demoted IDs"| TableBooks',
+    '    TableBooks -->|"idx_books_with_quotes_popular + PK Lookup"| ScriptQuotes',
+    '    ScriptQuotes -->|"Upsert 10–16 Quotes/Book & Option-A Prune"| TableBooks',
+    '    ScriptQuotes -->|"Purge catalog,quotes,translations / quotes tags"| ScriptPurge',
+    '    PurgeTrigger -.->|"Manual Dispatch (Selected Tags + Target)"| ScriptPurge',
     '```',
     '',
     '### 2. CLI Pipelines & GitHub Actions Workflows Inventory',
+    '',
+    '> **Operator Runbook**: For complete trigger schedules, `workflow_dispatch` inputs, required/optional GitHub Secrets, `catalog-cache` release bootstrap behavior, and copy-paste local CLI commands across all 6 workflows, see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md).',
     '',
     '| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility & Database Index Contract |',
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **`sync-gutenberg-catalog`** | Node.js Streaming CLI | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) | `npm run catalog:sync` / Sunday Cron (`0 2 * * 0`) | Restores `gutenberg-catalog-cache.json.gz` (`--cache-file`), streams official Project Gutenberg `rdf-files.tar.bz2` (121MB) and `pg_catalog.csv.gz` (5.3MB) across 3 mirrors, diffs all 78,461 books and withdrawn IDs 100% in RAM (`filterChangedOrNewBooks` & `reconcileWithdrawnCatalogBooks` with cold-start Supabase fallback), upserts only new/changed rows while keeping `quotes` untouched, writes `quote-diff.json` (`--diff-output`), and updates the `catalog-cache` release asset (`>= 50,000` safety floor). |',
     '| **`ingest-translations`** | Node.js Batch & Sync CLI | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) | `npm run translations:sync` / Chained Sunday Step 2 | FRBR relational translation ingestion engine enforcing 5 Pipeline Blockers and 7 Hardening Defenses with live Supabase upserting (`idx_book_translations_cluster`). |',
-    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / Chained Sunday Step 3 | Consumes `quote-diff.json` (`--diff-file`) from Step 1 (or falls back to index scans on standalone manual runs) to maintain the Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes` via Primary-Key-Scoped `fetchQuotedBookIds` (`~3.5 KB`), prioritizing `promotedIds`, pruning `demotedIds`, and writing a zero-query Run Report (`formatRunReport`) to `$GITHUB_STEP_SUMMARY`. |',
+    '| **`sync-featured-quotes`** | Node.js Multi-Worker CLI | [`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js) | `npm run quotes:sync` / Chained Sunday Step 3 | Consumes `quote-diff.json` (`--diff-file`) from Step 1 (or falls back to index scans on standalone runs) to maintain the Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) in `public.books.quotes`, scans all quoted rows via `idx_books_with_quotes_popular` (`fetchAllQuotedBookIds` + `resolveBookMetadataByIds` + `computeOutOfWindowPrunePlan`), prioritizes `promotedIds`, applies Option-A `1-for-1` out-of-window pruning up to `2,000` (`--max-prune`), and writes `Out-of-Window (Pruned)` & `🧹 Pruned` rows in `formatRunReport` to `$GITHUB_STEP_SUMMARY`. |',
+    '| **`purge-vercel-cache`** | Node.js CI Cache CLI | [`scripts/purge-vercel-cache.js`](scripts/purge-vercel-cache.js) | Chained CI Step (`dry_run != true`) & `cache-purge.yml` | Calls Vercel `POST https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags?projectIdOrName={projectId}[&teamId={teamId}]` for `--tags=...` (`catalog,quotes,translations`, or selective manual subsets via `cache-purge.yml` with `--target` & `--dry-run`) with bounded retry backoff, `$GITHUB_STEP_SUMMARY` reporting, and clean `exit 0` skip when `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` are unset. |',
     '| **`ingest-catalog`** | Node.js Batch CLI | [`scripts/ingest-catalog.js`](scripts/ingest-catalog.js) | `npm run catalog:ingest` / On-Demand | Curated masterworks starter seeding and plain-text caching (`--with-content`) generating `supabase/seed_books.sql`. |',
     ...dynamicWorkflowRows
   );
@@ -1936,7 +1963,7 @@ function generateMarkdown() {
     '| **Catalog Search & Browse** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts)) | `SELECT <CATALOG_METADATA_COLUMNS> ... ORDER BY download_count DESC` (or `id ASC/DESC`) + optional `textSearch(search_vector)`, `overlaps(languages)`, `lte(max_author_death_year)` | `idx_books_download_count`, `idx_books_search_vector` (GIN), `idx_books_languages` (GIN), `idx_books_author_death_year`, `books_pkey` | `range(from, to)` (`<= 100` rows; short-circuited when `from >= MAX_CATALOG_OFFSET = 160_000` / `MAX_CATALOG_PAGE = 5000`) + `count: "estimated"` | **Never** select `content` or unrequested `quotes` in catalog list queries (`CATALOG_METADATA_COLUMNS` omits `quotes`; only selected via `CATALOG_WITH_QUOTES_COLUMNS` when `hasQuotes=true`); **never** chain `.order(\'id\', { ascending: true })` onto single-column `idx_books_download_count` or execute deep-offset scans beyond `160_000`. |',
     '| **Single-Book & Batch ID Lookup** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts), [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts)) | `SELECT ... FROM public.books WHERE id = $1` or `.in(\'id\', normalizedIds)` via 7-day Edge-cached `/api/books?ids=...&has_quotes=true` (`useFeaturedQuotes` when `cachedSpreads.length < 3` and book is opened/shuffled) | `books_pkey` (`INTEGER PRIMARY KEY`) | `1` to `100` IDs per query | Direct B-Tree Primary Key lookup (`< 2ms`); cached 7d on Vercel Edge (`s-maxage=604800`); backfills all 16 spreads on demand when the 2-spread pool is cached. |',
     '| **Quote-Enriched Books Discovery** ([`src/lib/catalog/supabase-provider.ts`](src/lib/catalog/supabase-provider.ts) `fetchQuoteEnrichedPool` via `/api/books?pool=quotes` & [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) `fetchQuoteEnrichedBooks`) | Step 1: `FEATURED_HERO_BOOKS` + `LITERARY_QUOTES` IDs + `select(\'id\').order(\'download_count\', DESC).limit(500)` + `order(\'id\', DESC).limit(64)`; Step 2: `selectRotatingQuotePoolCandidateIds` 12h window slice -> `.in(\'id\', selectedCandidateIds).neq(\'quotes\', \'[]\').order(\'download_count\', DESC).limit(48)` (`DEFAULT_QUOTE_POOL_LIMIT = 48`) with native PostgREST 2-spread projection (`quote0:quotes->0, quote1:quotes->1`) | `idx_books_download_count` + `books_pkey` (`.in(\'id\', selectedCandidateIds)`) | `~564` candidate IDs -> `limit = 48` default (`DEFAULT_QUOTE_POOL_LIMIT = 48`, Edge CDN `s-maxage=43200`, browser `max-age=3600`, `~22 KB` wire transfer) | **Never** execute an unbounded `.neq(\'quotes\', \'[]\').order(\'download_count\', DESC)` without `.in(\'id\', ...)` (prevents 78,000-row index walk); 14 weekly 12h batches (`672` slots/week) cycle all 564 books at `~44 KB/day`. |',
-    '| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js), `catalog-sync.yml` Step 3 & `quotes-sync.yml`) | Step 1: Consumes `quote-diff.json` (`--diff-file`) from `sync-gutenberg-catalog.js` (or `ORDER BY download_count DESC LIMIT 1000` + `.in(\'id\', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320` on standalone manual runs); Step 2: `fetchQuotedBookIds` via `.in(\'id\', chunk).neq(\'quotes\', \'[]\')` (`~3.5 KB`); Step 3: `.in(\'id\', selectedIds)` for `content, quotes` | `books_pkey` (+ `idx_books_download_count` on standalone fallback) | `200` IDs/chunk (`fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`) | **Zero full-table scans (`< 15ms` total)**: `quote-diff.json` eliminates pool discovery scans on Sunday runs; `content` is hydrated only for selected unquoted batch IDs; `fetchQuotedBookIds` is strictly Primary-Key-Scoped. |',
+    '| **Featured Quotes Sync Pipeline** ([`scripts/sync-featured-quotes.js`](scripts/sync-featured-quotes.js), `catalog-sync.yml` Step 3 & `quotes-sync.yml`) | Step 1: Consumes `quote-diff.json` (`--diff-file`) from `sync-gutenberg-catalog.js` (or `ORDER BY download_count DESC LIMIT 1000` + `.in(\'id\', PRIORITY_HERO_BOOK_IDS)` + `ORDER BY id DESC LIMIT 320` on standalone manual runs); Step 2: `fetchAllQuotedBookIds` across partial index `idx_books_with_quotes_popular` (`1,000`/page up to `MAX_PAGES = 20` / `20,000` rows max) + `resolveBookMetadataByIds` via `books_pkey`; Step 3: `.in(\'id\', selectedIds)` for `content, quotes` + post-batch `computeOutOfWindowPrunePlan` Option-A `1-for-1` pruning (`<= 2,000`/run) | `books_pkey` & `idx_books_with_quotes_popular` (+ `idx_books_download_count` on standalone fallback) | `1,000` IDs/page (`fetchAllQuotedBookIds`); `200` IDs/chunk (`resolveBookMetadataByIds` / `fetchQuotedBookIds`); `25` IDs/chunk (`pruneOutOfWindowBookQuotes`, `50ms` yield past `500` IDs, `DEFAULT_MAX_PRUNE_PER_RUN = 2000`) | **Zero full-table scans (`< 15ms` per page)**: `idx_books_with_quotes_popular` restricts discovery strictly to quoted rows (`WHERE quotes <> \'[]\'::jsonb`), `quote-diff.json` eliminates unquoted pool scans on Sunday runs, and `content` is hydrated only for selected batch IDs. |',
     '| **Gutenberg Catalog Sync Pipeline** ([`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) & `catalog-sync.yml` Step 1) | Step 1: In-RAM diff via `gutenberg-catalog-cache.json.gz` (`--cache-file`) in `filterChangedOrNewBooks` (cold-start fallback: `.select(CATALOG_DIFF_SELECT_COLUMNS).in(\'id\', batchIds)`); Step 2: `upsert(toUpsert, { onConflict: \'id\', ignoreDuplicates: false })` on new/changed rows only via sticky dynamic write chunks (`[25, 100]`); Step 3: In-RAM withdrawn-book detection via `cachedBookIds` in `reconcileWithdrawnCatalogBooks` (cold-start fallback: keyset `select(\'id\').gt(\'id\', lastId).order(\'id\', ASC).limit(1000)`) | `books_pkey` (`ON CONFLICT (id)` & cold-start keyset scan) | `0` DB reads for unchanged rows when snapshot cached (`200` rows/batch on cold start); sticky dynamic write chunks (`100 -> 50 -> 25` on `57014`); `50,000` min-catalog & `500` max-prune circuit breakers | **Zero read egress on unchanged rows, zero `quotes` overwrite & zero GIN dirtying on `download_count` updates**: `gutenberg-catalog-cache.json.gz` (`catalog-cache` GitHub Release) diffs 78,461 books in RAM (~39 MB/week egress saved) and writes `quote-diff.json`. |',
     '| **FRBR Translations Sync & Lookup** ([`scripts/ingest-translations.js`](scripts/ingest-translations.js), `/api/books/translations`) | `SELECT ... FROM public.book_translations WHERE book_id = $1` -> `WHERE work_id = $2` | `idx_book_translations_book_id`, `book_translations_pkey (work_id, book_id)`, `idx_book_translations_work_lang` | `500` rows/upsert batch (halving on `57014`) | 2-hop indexed B-Tree join resolves all multilingual editions of a work in `< 5ms` with zero full-table scans. |',
     '| **7-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `preferences-sync.ts`) | Pre-sync active JWT session check (`verifyActiveCloudSession`) + user-scoped `.eq(\'user_id\', user.id)` / `.or(\'requester_id.eq...,recipient_id.eq...\')` with per-user in-flight Promise coalescing (`coalesceInFlightByUser`) & batched multi-book `reading_progress` upsert (`upsertReadingProgressBatch`) | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on single-book `reading_progress` & `profiles.preferences`; single batched array upsert on multi-book healing) | Every `WHERE user_id = (select auth.uid())` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID and guarded against unauthenticated `42501` writes. |'
@@ -2058,7 +2085,7 @@ function generateMarkdown() {
     '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
     '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, curated-fallback"]',
     '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
-    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI & Security Pipelines (ingest-catalog.test.ts, sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts, bookarium-security.test.ts)"]`,
+    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI & Security Pipelines (ingest-catalog.test.ts, sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts, purge-vercel-cache.test.ts, bookarium-security.test.ts)"]`,
     '    end',
     '',
     '    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]',
@@ -2103,8 +2130,10 @@ function generateMarkdown() {
         : baseName === 'ingest-translations.test.ts'
           ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
           : baseName === 'sync-featured-quotes.test.ts'
-            ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), `--diff-file=quote-diff.json` zero-scan pool consumption, post-batch `1-for-1` sliding window auto-pruning, single-line console progress (`formatConsoleSummary`) and Markdown summary reporting (`formatRunReport`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
-            : baseName === 'bookarium-security.test.ts'
+            ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), `--diff-file=quote-diff.json` zero-scan pool consumption, partial-index out-of-window discovery (`fetchAllQuotedBookIds`), Option-A `1-for-1` pruning up to `2,000` (`computeOutOfWindowPrunePlan`, `--max-prune`, `50ms` inter-chunk yield), single-line console progress (`formatConsoleSummary` with `• Purge Status:` / `• Out-of-Window:`) and Markdown summary reporting (`formatRunReport` with `Out-of-Window (Pruned)` & `🧹 Pruned`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
+            : baseName === 'purge-vercel-cache.test.ts'
+              ? 'Hermetic unit tests verifying Vercel Edge cache tag purging (`parsePurgeCliArgs`, `buildVercelCachePurgeUrl`, `appendPurgeStepSummary`, `purgeVercelEdgeCache`), `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / optional `VERCEL_TEAM_ID` handling, clean skip behavior (`exit 0`), `429`/`Retry-After`/`5xx` retry backoff, and `$GITHUB_STEP_SUMMARY` reporting.'
+              : baseName === 'bookarium-security.test.ts'
               ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
               : 'Hermetic unit & integration tests verifying Project Gutenberg `rdf-files.tar.bz2` and `pg_catalog.csv.gz` streaming decompression across 3 mirrors, CSV RFC 4180 parsing, author lifespan extraction, in-RAM `--cache-file=gutenberg-catalog-cache.json.gz` snapshot diffing and `--diff-output=quote-diff.json` emission (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and sticky dynamic Supabase batch upserts.';
     lines.push(
@@ -2317,7 +2346,7 @@ function generateMarkdown() {
     '1. **Authoritative Supabase Catalog & Bundled Curated Fallback**: Primary search queries execute against dedicated Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back cleanly to the bundled Curated Archive (`src/lib/catalog/curated-fallback.ts`) when Supabase is unconfigured without external third-party catalog REST dependencies, unconditionally enforcing `copyright=false`.',
     '2. **Unified Visible Telemetry & Zero-CLS Radar**: `StickyCatalogToolbar.tsx` (`CatalogTelemetryBadge.tsx`) renders a unified Zero-CLS API connectivity, latency, and archive query radar pill with locked geometry (`min-w-[72px] sm:min-w-[78px]`) supporting 4 states (Online Idle, Active Querying with micro-spinner and pulse `•••`, Pending Measure, and Offline), paired with a collision-aware diagnostic popover card that automatically flips upwards when docked at the hero fold or downwards when stuck at the top, complete with touch tap-toggle interaction and provider telemetry across Bookarium Catalog (`supabase`) and Curated Archive Cache (`cache`).',
     '3. **Customizable Batch Sizing**: Readers can dynamically toggle batch sizes (`Show: [8 | 16 | 24 | 32]`) without page reloads.',
-    '4. **Multi-Tier Vercel Edge CDN Caching, Geographic Vary Partitioning & Gutenberg Cover Proxy**: Public API routes offload >99% of repeat traffic to the Vercel Global Edge CDN with route-specific TTLs and minimal `Vary` keys: `/api/books?pool=quotes` caches the 48-volume 2-spread rotating quote pool for `12h` (`s-maxage=43200, swr=86400, Vary: Accept-Encoding`); `/api/books` caches 11-column catalog searches for `24h` (`s-maxage=86400, swr=604800, Vary: x-vercel-ip-country, Accept-Encoding`); `/api/books?ids=...&has_quotes=true` & `include_restricted_metadata=true` cache explicit quote/metadata batches for `7d` (`s-maxage=604800, swr=2592000, Vary: Accept-Encoding`); `/api/books/translations` caches FRBR work clusters for `7d` (`s-maxage=604800, swr=2592000`); and `/api/books/content` caches plain-text & `type=card` OG PNGs for `24h` (`s-maxage=86400, swr=604800`) and `?type=cover` Project Gutenberg mirror cover images for `7d` (`s-maxage=604800, swr=2592000`).',
+    '4. **Multi-Tier Vercel Edge CDN Caching, Geographic Vary Partitioning, Tag Invalidation & Gutenberg Cover Proxy**: Public API routes offload >99% of repeat traffic to the Vercel Global Edge CDN with route-specific TTLs, minimal `Vary` keys, and instant post-ingestion or manual `Vercel-Cache-Tag` purging (`scripts/purge-vercel-cache.js` calling `POST https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags` at the end of live CI syncs or selectively via `.github/workflows/cache-purge.yml`): `/api/books?pool=quotes` caches the 48-volume 2-spread rotating quote pool for `12h` (`max-age=3600, s-maxage=43200, swr=604800, Vary: Accept-Encoding`, `Vercel-Cache-Tag: quotes`); `/api/books` caches 11-column catalog searches for `24h` (`max-age=300, s-maxage=86400, swr=604800, Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding`, `Vercel-Cache-Tag: catalog` or `catalog,quotes`); `/api/books?ids=...&has_quotes=true` (`Vercel-Cache-Tag: catalog,quotes`) & `include_restricted_metadata=true` (`Vercel-Cache-Tag: catalog`) cache explicit quote/metadata batches for `7d` (`max-age=86400, s-maxage=604800, swr=2592000, Vary: Accept-Encoding`); `/api/books/translations` caches FRBR work clusters for `7d` (`max-age=86400, s-maxage=604800, swr=2592000, Vary: x-vercel-ip-country`, `Vercel-Cache-Tag: translations`); and `/api/books/content` caches plain-text & `type=card` OG PNGs for `24h` (`max-age=86400, s-maxage=86400, swr=604800`) and `?type=cover` Project Gutenberg mirror cover images for `7d` (`max-age=604800, s-maxage=604800, swr=2592000`).',
     '5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.',
     '6. **Multi-Tier Text Streaming, In-Memory LRU & Multi-Mirror Failover**: Plain text is served on-demand from Tier 0 (`bookContentLruCache`: 24h TTL / 20-book in-memory LRU cache preventing cross-jurisdiction upstream re-fetches), Tier 1 (dedicated Supabase plain-text cache if present), or Tier 2 (mirror-first fallback across `aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, and `www.gutenberg.org` with in-flight promise coalescing `inFlightMirrorFetches`), protected by an in-memory 24h contributor metadata cache and anti-SSRF validator.',
     '7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.',
@@ -2336,7 +2365,7 @@ function generateMarkdown() {
     '    subgraph BookariumRuntime ["Bookarium Execution Tiers"]',
     `        BrowserTier["🖥️ Browser Client\\n(React 19 SPA, Service Worker ${swMeta.versionLabel}, IndexedDB)"]`,
     '        EdgeTier["⚡ Vercel Edge & Serverless (iad1)\\n(src/proxy.ts, /api/books/**, /auth/callback)"]',
-    '        CLITier["🛠️ GitHub Actions & Node.js CLI\\n(catalog-sync.yml, translations-sync.yml, quotes-sync.yml)"]',
+    '        CLITier["🛠️ GitHub Actions & Node.js CLI\\n(catalog-sync.yml, translations-sync.yml, quotes-sync.yml, cache-purge.yml)"]',
     '    end',
     '',
     '    subgraph ExternalSystems ["External Public Domain & Cloud Infrastructure"]',
@@ -2345,6 +2374,7 @@ function generateMarkdown() {
     '        GutenbergMirrors["📚 4 Allowlisted Gutenberg Mirrors\\n1. aleph.gutenberg.org\\n2. gutenberg.pglaf.org\\n3. gutenberg.readingroo.ms\\n4. www.gutenberg.org"]',
     '        GutenbergFeeds["📦 Gutenberg Catalog Feeds (3 Mirrors)\\n(rdf-files.tar.bz2 & pg_catalog.csv.gz)"]',
     '        WikidataAPI["🌍 Wikidata SPARQL Endpoint\\n(https://query.wikidata.org/sparql)"]',
+    '        VercelCacheAPI["🧹 Vercel Edge Cache Purge API\\n(api.vercel.com/v1/edge-cache/dangerously-delete-by-tags)"]',
     '        VercelRUM["📊 Vercel Edge Telemetry & Google Fonts\\n(vitals.vercel-insights.com • fonts.googleapis.com)"]',
     '    end',
     '',
@@ -2358,6 +2388,7 @@ function generateMarkdown() {
     '    CLITier -->|"Bulk Upsert (Service Role / Anon)"| SupaDB',
     '    CLITier -->|"Weekly RDF + CSV Stream"| GutenbergFeeds',
     '    CLITier -->|"Weekly P2034/P407 FRBR Query"| WikidataAPI',
+    '    CLITier -.->|"Post-Sync & Manual Tag Invalidation (VERCEL_API_TOKEN)"| VercelCacheAPI',
     '```',
     '',
     '### 2. External Integration Contracts, Timeouts & Security Matrix',
@@ -2369,6 +2400,7 @@ function generateMarkdown() {
     '| **Project Gutenberg Mirrors (`aleph`, `pglaf`, `readingroo.ms`, `www.gutenberg.org`)** | `/api/books/content` | HTTPS GET Plain-Text & Binary Cover Stream (Mirror-First Prioritization ahead of `www.gutenberg.org`) | `8s–12s` per-mirror timeout; mode-scoped `globalThis` sliding-window limits (`bookContentRateLimiter` `30/min` text, `bookCoverRateLimiter` `60/min` cover, `bookCardRateLimiter` `20/min` OG card) | Zero-trust `url-validator.ts` (HTTPS-only, 4 allowlisted hostnames, max 3 redirect hops validated per hop, individual-only downloads) | [`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts), [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) |',
     '| **Gutenberg Catalog Archives (`rdf-files.tar.bz2` & `pg_catalog.csv.gz`)** | Node.js CLI & GitHub Actions (`catalog-sync.yml`) | HTTPS GET Streaming Bzip2/Gzip (`tar -xOjf -` + `zlib.createGunzip` across 3 allowlisted mirrors) | Weekly Sunday `02:00 UTC` schedule; 3-mirror failover + exponential retry backoff (`1s, 2s, 4s`) | Allowlisted feed URLs (`isAllowedRdfFeedUrl`, `isAllowedCsvFeedUrl`), in-RAM `gutenberg-catalog-cache.json.gz` diffing, filters `Text` type only, strips non-public-domain records, computes `max_author_death_year` & 30-day `download_count`, and emits `quote-diff.json` | [`scripts/sync-gutenberg-catalog.js`](scripts/sync-gutenberg-catalog.js) |',
     '| **Wikidata SPARQL (`https://query.wikidata.org/sparql`)** | Node.js CLI & GitHub Actions (`catalog-sync.yml` Step 2 & on-demand `translations-sync.yml`) | HTTPS GET SPARQL JSON (`P2034` Gutenberg ID + `P407` Language) | Weekly Sunday `02:00 UTC` sequential pipeline (`catalog-sync.yml`) + manual `workflow_dispatch`; `30s` query timeout | 5 Pipeline Blockers & 7 Hardening Defenses; offline snapshot fallback (`scripts/data/wikidata-translations-cache.json`) | [`scripts/ingest-translations.js`](scripts/ingest-translations.js) |',
+    '| **Vercel Edge Cache Purge API (`https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags`)** | GitHub Actions & Node.js CLI (`catalog-sync.yml`, `translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`) | HTTPS POST JSON (`{ tags, target }`) • Bearer `VERCEL_API_TOKEN`, `?projectIdOrName=VERCEL_PROJECT_ID`, optional `&teamId=VERCEL_TEAM_ID` | Bounded retries (`0..5`, default `2`) on `429`/`5xx`/network faults honoring `Retry-After`; clean `exit 0` skip when secrets unset | Validated purge target (`production`/`preview`), trimmed deduplicated tags, secret-safe redacted error reporting, `$GITHUB_STEP_SUMMARY` ledger | [`scripts/purge-vercel-cache.js`](scripts/purge-vercel-cache.js) |',
     '| **Google Fonts & Vercel Edge Telemetry** | Root Layout (`src/app/layout.tsx`) | HTTPS Static CSS/WOFF2 & Cookie-Less Beacon (`@vercel/analytics`, `@vercel/speed-insights`) | Browser HTTP cache; non-blocking async beacon | Strictly scoped in `next.config.ts` CSP (`style-src`, `font-src`); zero tracking cookies (GDPR/COPPA compliant) | [`src/app/layout.tsx`](src/app/layout.tsx), [`next.config.ts`](next.config.ts) |',
     '',
     '---',
@@ -2436,6 +2468,7 @@ function generateMarkdown() {
     '| **11. Edge Quote Pool Gateway Unavailable (`GET /api/books?pool=quotes` -> `HTTP 503`)** | `!result` when `queryOptions.pool === "quotes"` in [`src/app/api/books/route.ts`](src/app/api/books/route.ts) & [`src/hooks/queries/useBooks.ts`](src/hooks/queries/useBooks.ts) | Returns `503` with `Cache-Control: no-store, max-age=0` (never falling back to unquoted fallback data or poisoning Edge CDN cache) | `fetchQuoteEnrichedBooks` cascades from Edge `/api/books?pool=quotes` -> Direct Client Supabase -> `localStorage` (`bookarium-quote-enriched-books-v1`) -> Static Curated Anthology (`FEATURED_HERO_BOOKS` & `LITERARY_QUOTES`) | 3D Hero Book, Classic of the Day, and Words That Shaped Humanity render authentic literary quotes with zero empty states or text swaps. |',
     '| **12. Cross-Device PKCE Reset Link or Spoofed / Expired / Replayed `?recovery=true`** | PKCE exchange error with `isRecoveryRedirectPath(next)` in [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) & [`src/lib/auth-recovery.ts`](src/lib/auth-recovery.ts) (`isRecoverySessionAmrVerified`, `readConsumedRecoverySentAt`) | Strict `3600s` recovery TTL + `10s` clock skew; single-use `bookarium-consumed-recovery` (`sessionStorage` + memory) check before honoring `recovery` | Routes PKCE misses to `/?auth_notice=recovery_cross_device` (opening `AuthModal` in `forgot_password`); `verifyPasswordRecoverySession()` refreshes `getUser()` and invokes `clearRecoveryParamInUrl` when unverified, expired, or consumed | Cross-device resets provide clear same-browser/resubmit guidance, while spoofed or stale `/account?recovery=true` tabs fail closed to `Current Password` re-auth. |',
     '| **13. Remotely Revoked Session Zombie JWT or AWS `18.x` IP / `"Browser session"` Attribution** | [`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts) (`verifyActiveSessionValidity` & `reconcileClientSessionOrigin`) wired in [`src/app/providers.tsx`](src/app/providers.tsx) & [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) | Coalesced `10,000ms` cooldown on `online`/`visible` focus and `60,000ms` visible-only interval (bypassed with `{ force: true }` on empty `isCurrent` or `already ended` RPC responses) | Tears down local state cleanly via `resetClientAuthState` (`scope: "local"`) only on definitive `400/401/403 session_not_found` (preserving offline/`5xx`); forwards `sanitizeForwardedUserAgent` and reconciles `bookarium-client-ip-sync` (`maxAge=120`) on mount | Remotely revoked PC/phone sessions log out automatically within ~60s or on focus/reload without false logouts offline, and Vercel logins attribute the real browser IP/UA cleanly. |',
+    '| **14. Post-Sync Vercel Edge Cache Purge Transient Fault or Unset Secrets** | `parsePurgeCliArgs` & `purgeVercelEdgeCache` in [`scripts/purge-vercel-cache.js`](scripts/purge-vercel-cache.js) across `catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml` & `cache-purge.yml` | Bounded retry backoff (`maxRetries: 2` default, `0..5`) on `429` (`Retry-After`), `5xx`, and network faults; secret-safe redacted error logging | Exits cleanly (`exit 0`) with a skip notice when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset; writes summary tables to `$GITHUB_STEP_SUMMARY`; recovers selectively via manual `.github/workflows/cache-purge.yml` | Forks and keyless CI runs complete without errors, while live deployments invalidate stale Edge cache tags automatically or on demand. |',
     '',
     '---',
     '',
@@ -2451,7 +2484,7 @@ function generateMarkdown() {
     '',
     '    subgraph VercelEdgeNetwork ["Vercel Global Edge Network (PoPs Worldwide)"]',
     '        EdgeProxy["🛡️ src/proxy.ts & next.config.ts\\n• Geo-IP Extraction (x-vercel-ip-country)\\n• Clean Path Rewrites (/bookshelf, /favorites, /notebook, /bookmarks -> /)\\n• 7 Mandatory OWASP Security Headers & Production CSP"]',
-    '        EdgeCDN["⚡ Vercel Edge CDN SWR Cache\\n• /api/books?pool=quotes: s-maxage=43200 (12h), swr=86400\\n• /api/books & /content (text/card): s-maxage=86400 (24h), swr=604800\\n• /api/books (ids), /translations & /content (cover): s-maxage=604800 (7d), swr=2592000"]',
+    '        EdgeCDN["⚡ Vercel Edge CDN SWR Cache (Vercel-Cache-Tag: catalog, quotes, translations)\\n• /api/books?pool=quotes: max-age=3600, s-maxage=43200 (12h), swr=604800\\n• /api/books & /content (text/card): s-maxage=86400 (24h), swr=604800\\n• /api/books (ids), /translations & /content (cover): s-maxage=604800 (7d), swr=2592000"]',
     '    end',
     '',
     '    subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]',
@@ -2463,9 +2496,10 @@ function generateMarkdown() {
     '    subgraph GitHubOps ["GitHub Actions Autonomous CI/CD & Data Operations"]',
     '        CIWorkflow["✅ .github/workflows/ci.yml\\n(Push / PR -> Node 22 -> 7-Gateway Quality Engine)"]',
     '        ReleaseWorkflow["🏷️ .github/workflows/release.yml\\n(Tag v* -> Verified GitHub Release)"]',
-    '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> Catalog + Release Snapshot + Translations + Quotes)"]',
-    '        TransCron["🎛️ .github/workflows/translations-sync.yml\\n(On-Demand workflow_dispatch -> ingest-translations.js)"]',
-    '        QuotesCron["🎛️ .github/workflows/quotes-sync.yml\\n(On-Demand workflow_dispatch -> sync-featured-quotes.js)"]',
+    '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> Catalog + Release Snapshot + Translations + Quotes + Edge Tag Purge)"]',
+    '        TransCron["🎛️ .github/workflows/translations-sync.yml\\n(On-Demand workflow_dispatch -> ingest-translations.js + Edge Tag Purge)"]',
+    '        QuotesCron["🎛️ .github/workflows/quotes-sync.yml\\n(On-Demand workflow_dispatch -> sync-featured-quotes.js + Edge Tag Purge)"]',
+    '        PurgeManual["🧹 .github/workflows/cache-purge.yml\\n(Manual-Only workflow_dispatch -> Selective Tag Purge + Target)"]',
     '    end',
     '',
     '    Client --> EdgeProxy',
@@ -2474,8 +2508,12 @@ function generateMarkdown() {
     '    Serverless <-->|"<50ms Co-Located Query"| SupabaseUS',
     '    Serverless <-->|"Mirror Stream / Failover"| GutenbergUS',
     '    CatalogCron -->|"Upsert 78k+ Volumes, FRBR Clusters & Two-Tier Quotes"| SupabaseUS',
+    '    CatalogCron -.->|"Purge Tags: catalog,quotes,translations"| EdgeCDN',
     '    TransCron -.->|"Manual workflow_dispatch Override"| SupabaseUS',
+    '    TransCron -.->|"Purge Tag: translations"| EdgeCDN',
     '    QuotesCron -.->|"Manual workflow_dispatch Override"| SupabaseUS',
+    '    QuotesCron -.->|"Purge Tag: quotes"| EdgeCDN',
+    '    PurgeManual -.->|"Selective Purge (catalog / quotes / translations)"| EdgeCDN',
     '```',
     '',
     '### 2. Multi-Tier Caching, Supabase Egress Shielding & Gutenberg Mirror Cover/Text Waterfall',
@@ -2489,9 +2527,10 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph L3_VercelEdge ["L3: Vercel Global Edge CDN & Image Optimizer"]',
-    '        EdgeQuotePool["GET /api/books?pool=quotes\\n• s-maxage=43200 (12h), swr=86400\\n• Vary: Accept-Encoding (Global Shared)\\n• ~22 KB/batch -> ~44 KB/day Supabase Egress"]',
-    '        EdgeCatalog["GET /api/books (11-Col Catalog)\\n• max-age=3600, s-maxage=86400 (24h), swr=604800\\n• Vary: x-vercel-ip-country, Accept-Encoding"]',
-    '        EdgeDeepQuotes["GET /api/books?ids=...&has_quotes=true\\n& GET /api/books/translations\\n• max-age=86400, s-maxage=604800 (7d), swr=2592000\\n• Vary: Accept-Encoding (~99% Edge Hit Rate)"]',
+    '        EdgeQuotePool["GET /api/books?pool=quotes\\n• max-age=3600, s-maxage=43200 (12h), swr=604800\\n• Vercel-Cache-Tag: quotes (purged on sync)\\n• Vary: Accept-Encoding (Global Shared) • ~44 KB/day Egress"]',
+    '        EdgeCatalog["GET /api/books (11-Col Catalog)\\n• max-age=300, s-maxage=86400 (24h), swr=604800\\n• Vercel-Cache-Tag: catalog or catalog,quotes\\n• Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding"]',
+    '        EdgeDeepQuotes["GET /api/books?ids=...&has_quotes=true\\n• max-age=86400, s-maxage=604800 (7d), swr=2592000\\n• Vercel-Cache-Tag: catalog,quotes • Vary: Accept-Encoding • ~99% Edge Hit Rate"]',
+    '        EdgeTranslations["GET /api/books/translations\\n• max-age=86400, s-maxage=604800 (7d), swr=2592000\\n• Vercel-Cache-Tag: translations • Vary: x-vercel-ip-country"]',
     '        EdgeTextCard["GET /api/books/content (Text & type=card OG)\\n• max-age=86400, s-maxage=86400 (24h), swr=604800\\n• Vary: x-vercel-ip-country, Accept-Encoding"]',
     '        EdgeCoverProxy["GET /api/books/content?type=cover & Next.js <Image>\\n• max-age=604800, s-maxage=604800 (7d), swr=2592000\\n• Non-US cover metadata bypassed • Binary Cover Stream"]',
     '    end',
@@ -2512,7 +2551,8 @@ function generateMarkdown() {
     '    L1Query -->|"Offline / Saved"| L2IDB',
     '    L2Local -->|"12h Expired"| EdgeQuotePool',
     '    L1Query -->|"Catalog Search"| EdgeCatalog',
-    '    L1Query -->|"Open 3D Book / Preview / Editions"| EdgeDeepQuotes',
+    '    L1Query -->|"Open 3D Book / Preview"| EdgeDeepQuotes',
+    '    L1Query -->|"Language / Editions"| EdgeTranslations',
     '    L1Query -.->|"SSR Route Nav (/read/[id], /u/[username])"| SsrRouteCaches',
     '    SsrRouteCaches -->|"ISR 24h / Profile Cache Miss"| SupaOrigin',
     '    L2IDB -->|"Uncached Text"| EdgeTextCard',
@@ -2520,6 +2560,7 @@ function generateMarkdown() {
     '    EdgeQuotePool -->|"Miss (2x/day Global)"| HealthCache',
     '    EdgeCatalog -->|"Miss (24h per Query)"| HealthCache',
     '    EdgeDeepQuotes -->|"Miss (7d per Book)"| HealthCache',
+    '    EdgeTranslations -->|"Miss (7d per Work)"| HealthCache',
     '    HealthCache --> SupaOrigin',
     '    EdgeTextCard -->|"Miss"| MetaLRU',
     '    MetaLRU --> TextLRU',
@@ -2534,7 +2575,7 @@ function generateMarkdown() {
     '| :--- | :--- | :--- | :--- | :--- |',
     '| **L1: Browser In-Memory** | TanStack React Query v5 (`QueryClient`) & `pagination.ts` | Windowed catalog sub-pages, predictive next-page prefetches, translations, and paginated chapter slices | Session memory (`staleTime` + `clearPaginationCache()`) | Query keys scoped by `[search, topic, language, era, sort, page, country]` |',
     `| **L2: Browser Persistent** | \`localStorage\` (10 stores + \`bookarium-quote-enriched-books-v1\` + \`bookarium-extracted-passages-v1\`), \`IndexedDB\` (\`bookarium-offline-db\`), \`CacheStorage\` (\`${swMeta.cacheName}\`) | User collections/outboxes, 48-volume (\`DEFAULT_QUOTE_POOL_LIMIT = 48\`) rotating quote pool (\`12h\` fresh), 30-day LRU extracted book passages (\`100\` books max), unabridged book texts + cover Blobs (\`offline-storage.ts\`), and PWA App Shell (\`${swMeta.cacheName}\`) | Persistent across restarts; \`30d\` TTL / \`100\` LRU entries (\`useBookPassageShuffle.ts\`); SW \`activate\` prunes old caches | Origin-locked; IndexedDB texts verified against active jurisdiction on read |`,
-    '| **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control`) | `GET /api/books` (`s-maxage=86400, swr=604800` Catalog; `s-maxage=43200` `?pool=quotes`; `s-maxage=604800` `?ids=...&has_quotes=true`); `GET /api/books/content` (`max-age=86400, s-maxage=86400` text/`type=card`; `max-age=604800, s-maxage=604800` `type=cover`) & `/translations` (`s-maxage=604800, swr=2592000`) | 12h fresh (Quote Pool); 24h fresh / 7d SWR (Catalog & Content); 7d browser+Edge / 30d SWR (Covers, Quote IDs & Translations) | `Vary: Accept-Encoding` (Global Quote Pool & Restricted-Metadata Lookups) / `Vary: x-vercel-ip-country, Accept-Encoding` (Catalog & Content) |',
+    '| **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control` & `Vercel-Cache-Tag`) | `GET /api/books` (`max-age=300, s-maxage=86400, swr=604800`, tag `catalog`/`catalog,quotes`; `max-age=3600, s-maxage=43200, swr=604800` `?pool=quotes`, tag `quotes`; `max-age=86400, s-maxage=604800, swr=2592000` `?ids=...&has_quotes=true` tag `catalog,quotes` & `include_restricted_metadata=true` tag `catalog`); `GET /api/books/content` (`max-age=86400, s-maxage=86400` text/`type=card`; `max-age=604800, s-maxage=604800` `type=cover`) & `/translations` (`max-age=86400, s-maxage=604800, swr=2592000`, tag `translations`) | 12h fresh (Quote Pool); 24h fresh / 7d SWR (Catalog & Content); 7d browser+Edge / 30d SWR (Covers, Quote IDs & Translations); instant CI `dangerously-delete-by-tags` purge | `Vary: Accept-Encoding` (Global Quote Pool & Restricted-Metadata Lookups) / `Vary: x-vercel-ip-country` (`/translations`) / `Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding` (Catalog) / `Vary: x-vercel-ip-country, Accept-Encoding` (`/content`) |',
     '| **L4: Serverless & `globalThis` Caches** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](src/app/api/books/content/metadata-cache.ts), pre-warmed by `supabase-provider.ts`), 20-book text LRU & in-flight mirror coalescing ([`src/app/api/books/content/route.ts`](src/app/api/books/content/route.ts)), 5m / 64-query catalog response cache & 60s healthcheck (`supabase-provider.ts`), `/read/[id]` ISR metadata & `confirmedNotFoundIds` ([`src/app/read/[id]/reader-layout-utils.ts`](src/app/read/[id]/reader-layout-utils.ts)), and `/u/[username]` public handle `serverProfileCache` ([`src/app/u/[username]/profile-layout-utils.ts`](src/app/u/[username]/profile-layout-utils.ts)) | `5m` / `64` queries (Catalog Query Cache); `5m` / `500` max entries (`serverProfileCache`); `500` max entries LRU (`confirmedNotFoundIds`); `24h` / `1,000` max entries (Metadata LRU); `24h` / `20` max books `<= 1.8M` chars (`bookContentLruCache`); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by normalized query options, Gutenberg `bookId`, or normalized lowercase `@username` |',
     `| **L5: Database & Repo Seeds** | Supabase PostgreSQL & \`supabase/seed_*.sql\` | \`78,000+\` catalog rows (\`public.books\`), Two-Tier Bounded Quote Pool (\`<= 564\` books in \`public.books.quotes\`), FRBR clusters (\`public.book_translations\`), and offline Wikidata cache | Updated weekly/periodically by GitHub Actions cron workflows | Indexed by ${dbCatalog.indexes.length} explicit B-Tree & GIN \`search_vector\` indexes |`,
     '',
@@ -2641,7 +2682,7 @@ function generateMarkdown() {
     '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
     '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |',
     '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
-    '| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 16 mandatory governance docs, semantic command/metric parity, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites |',
+    '| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 17 mandatory governance docs, semantic command/metric parity, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites |',
     `| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | \`eslint . --max-warnings 0\` (\`bookarium-security\`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and ${getSecurityPluginRuleCount()} custom AST/taint security rules; zero dead files/exports |`,
     '| **Pass 7** | Production Application Build | `next build` | Optimized production bundle compilation within byte budget |',
     '',

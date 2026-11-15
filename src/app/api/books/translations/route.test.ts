@@ -38,6 +38,7 @@ describe('GET /api/books/translations', () => {
     const json1 = await res1.json();
     expect(json1.error).toContain('Valid positive numeric book id is required');
     expect(res1.headers.get('Cache-Control')).toContain('no-store');
+    expect(res1.headers.get('Vercel-Cache-Tag')).toBeNull();
     expect(res1.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     expect(res1.headers.get('X-Content-Type-Options')).toBe('nosniff');
 
@@ -94,6 +95,7 @@ describe('GET /api/books/translations', () => {
     expect(res.headers.get('Cache-Control')).toContain('max-age=86400');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
     expect(res.headers.get('Vary')).toBe('x-vercel-ip-country');
+    expect(res.headers.get('Vercel-Cache-Tag')).toBe('translations');
     expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(supabaseCatalogProvider.getBookTranslations).toHaveBeenCalledWith(1342, 'DE');
@@ -125,6 +127,7 @@ describe('GET /api/books/translations', () => {
 
     expect(res.status).toBe(500);
     expect(res.headers.get('Cache-Control')).toContain('no-store');
+    expect(res.headers.get('Vercel-Cache-Tag')).toBeNull();
     expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     const json = await res.json();

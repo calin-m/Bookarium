@@ -1222,6 +1222,21 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       fallback: 'Auto-detected from `GITHUB_REPOSITORY` (CI/cron), `VERCEL_GIT_REPO_*` (Vercel), or `NEXT_PUBLIC_SITE_URL`.',
       purpose: 'Explicit repository URL override used for open-source attribution and `User-Agent` contact headers.',
     },
+    VERCEL_API_TOKEN: {
+      scope: 'GitHub Actions Cache Purge CLI (Optional CI)',
+      fallback: 'None (when unset, `scripts/purge-vercel-cache.js` cleanly skips Edge cache invalidation with exit code 0).',
+      purpose: 'Authenticates `POST https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags?projectIdOrName={projectId}` at the end of catalog, quote, and translation CI workflows and via standalone manual `.github/workflows/cache-purge.yml` runs to purge stale `Vercel-Cache-Tag` entries.',
+    },
+    VERCEL_PROJECT_ID: {
+      scope: 'GitHub Actions Cache Purge CLI (Optional CI)',
+      fallback: 'None (required together with `VERCEL_API_TOKEN` for Edge tag invalidation; skips gracefully when omitted).',
+      purpose: 'Identifies the target Vercel project (`prj_...` or project name) for Edge Data/CDN cache tag invalidation in `scripts/purge-vercel-cache.js`.',
+    },
+    VERCEL_TEAM_ID: {
+      scope: 'GitHub Actions Cache Purge CLI (Optional CI)',
+      fallback: 'Omitted when targeting a non-team personal scope; include when deploying under a Vercel team or Hobby personal team.',
+      purpose: 'Appends `&teamId=...` to the Vercel tag-purge API request in `scripts/purge-vercel-cache.js` when targeting a team-owned Vercel project.',
+    },
     NODE_ENV: {
       scope: 'Framework & Build-Time Runtime Constant',
       fallback: 'Set automatically by Next.js / Node.js (`development`, `production`, `test`).',

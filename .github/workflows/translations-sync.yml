@@ -73,3 +73,11 @@ jobs:
           fi
           node scripts/ingest-translations.js $TRANS_ARGS
 
+      - name: Purge Vercel Edge Cache
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: node scripts/purge-vercel-cache.js --tags=translations
+

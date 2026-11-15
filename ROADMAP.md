@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.33-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.34-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-42_of_47-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -177,7 +177,7 @@
 
 ---
 
-### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.33)`)
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.34)`)
 `[██████████░░░░░░░░░░]` **2/4 (50%)**
 
 > Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.
@@ -215,7 +215,7 @@
 | **Proprietary Third-Party TTS** | 🚫 **Excluded (Keyless Policy)** | Paid cloud TTS APIs (ElevenLabs, Google Cloud TTS) violate **Rule 4 (Zero API Key Requirement)**. We strictly use native browser `window.speechSynthesis` for zero-cost, privacy-first read-aloud functionality. |
 | **Client-Side JSON/CSV Backup & File Import** | 🚫 **Retired (Architectural Decision ADR-072)** | Retired client-side file backup and JSON import (`src/lib/library-backup.ts`, originally `ADR-023`) to eliminate untrusted client-side payload ingestion, Last-Write-Wins (`updatedAt`) timestamp poisoning, semantic metadata spoofing on public scholar profiles, and offline restore ambiguity in favor of zero-trust Supabase PostgreSQL RLS synchronization and IndexedDB offline caching. |
 | **Batch Shelf Offline Downloader (`downloadAll`)** | 🚫 **Retired (Architectural Decision ADR-069)** | Retired batch "Download Shelf Offline" actions across `BookshelfRack.tsx` and `useOfflineBooks.ts` to strictly honor Project Gutenberg's individual-only human download policy and mirror-first harvest rules. |
-| **Redundant Secondary `public.books` Indexes (`idx_books_subjects` & `idx_books_with_quotes_popular`)** | 🚫 **Retired (Architectural Decisions ADR-073 & ADR-080)** | Consolidated `subjects` / `bookshelves` into the single composite `idx_books_search_vector` GIN index and replaced the low-selectivity partial quote index with Primary-Key-Scoped `books_pkey` (`.in('id', chunk).neq('quotes', '[]')`) + single-column `idx_books_download_count` lookups to reclaim ~15 MB of free-tier storage and prevent 78,000-row table scans. |
+| **Redundant Secondary Indexes (`idx_books_subjects` & `idx_book_translations_work_id`)** | 🚫 **Retired (Architectural Decision ADR-073)** | Consolidated `subjects` / `bookshelves` into the single composite `idx_books_search_vector` GIN index and consolidated `idx_book_translations_work_id` into the composite primary key `book_translations_pkey(work_id, book_id)` (`0005_unused_index`), while retaining `idx_books_download_count` + `idx_books_with_quotes_popular` (`WHERE quotes <> '[]'::jsonb`) and Primary-Key-Scoped `books_pkey` lookups (`ADR-080`). |
 | **External Gutendex REST API (`gutendex-provider.ts` & `GUTENDEX_API_URL`)** | 🚫 **Retired (Architectural Decision ADR-080)** | Decommissioned all runtime, UI, CSP, and CLI dependencies on external `gutendex.com` endpoints in favor of Supabase PostgreSQL (`public.books`), 2-tier local metadata resolution (`metadata-cache.ts`), and bundled zero-network `curated-fallback.ts` (`FEATURED_HERO_BOOKS`), eliminating third-party outages and licensing/rate-limit drift while preserving internal DTO types non-breaking. |
 
 ---

@@ -397,7 +397,7 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **${totalSuitesCount}/${totalSuitesCount} test suites passed** (${totalTestCount} total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\\ge$ 95%, Statements $\\ge$ 95%, Functions $\\ge$ 92%, Branches $\\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | \`docs/ARCHITECTURE.md\`, \`CHANGELOG.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | ${adrCount} sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | ${adrCount} sequential ADRs, 17 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (${securityRuleCount}-Rule AST Security) & Knip | ${isQualityClean ? '✅ Passed' : '❌ Failed'} | ${eslintErrors} lint errors, ${eslintWarnings} lint warnings, ${knipIssues.length} unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 

@@ -96,9 +96,9 @@ This runs all automated quality gateways:
 1. **Pass 0.5**: Secret, Boundary, Tracked `.env*`, `.env.example` Parity & Transitive AST Graph Scanner
 2. **Pass 0.75**: 7-Pillar Pre-Commit SAST & OWASP Security Suite (Dependency CVEs & Lockfile/Workflow Sanity, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, License & Public Domain Policy, PostgreSQL Idempotent RLS, `search_path` & Account Deletion Parity, OWASP HTTP Headers, and 9-Rule `bookarium-security` AST & Request-Taint Engine)
 3. **Pass 1**: TypeScript Strict Typecheck (`tsc --noEmit`)
-4. **Pass 2 & 3**: Vitest MSW & UI Test Suites (`95/95/92/85` tiered coverage floor across `256` suites)
+4. **Pass 2 & 3**: Vitest MSW & UI Test Suites (`95/95/92/85` tiered coverage floor across `257` suites)
 5. **Pass 4**: Living Documentation AST Re-Compilation (`npm run docs:sync`)
-6. **Pass 5**: ADR Decision Ledger, 16-File Governance, 1:1 SQL$\leftrightarrow$TS Schema Parity, 0 Circular/Orphan Modules & 100% 1:1 Co-Located Test Parity
+6. **Pass 5**: ADR Decision Ledger, 17-File Governance, 1:1 SQL$\leftrightarrow$TS Schema Parity, 0 Circular/Orphan Modules & 100% 1:1 Co-Located Test Parity
 7. **Pass 6**: ESLint (`--max-warnings 0`) & Knip Quality Audit
 8. **Pass 7**: Next.js Production Build Verification
 
@@ -131,6 +131,6 @@ Target all pull requests to the **`master`** branch.
 1. Ensure every new or modified component (`*.tsx`), hook (`*.ts`), store (`*.ts`), route (`route.ts`), utility (`src/lib/**`), config (`src/config/**`), or worker (`src/workers/**`) includes an adjacent, 1:1 co-located test (`*.test.tsx` or `*.test.ts`).
 2. Adhere to the **Anti-Tautology Protocol**: assert genuine DOM interactions and user flows; never write synthetic tests solely to inflate coverage.
 3. Keep test coverage at or above the tiered thresholds (**Lines $\ge 95\%$**, **Statements $\ge 95\%$**, **Functions $\ge 92\%$**, **Branches $\ge 85\%$**).
-4. Run `npm run verify` locally before opening your PR.
+4. Run `npm run verify` locally before opening your PR (all pull requests automatically execute `npm run verify:build` via [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md#35-bookarium-ci-githubworkflowsciyml)).
 5. Fill out the [Pull Request Template](.github/pull_request_template.md) completely.
 

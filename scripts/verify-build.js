@@ -1237,6 +1237,7 @@ function pass5AdrValidation() {
     'supabase/schema.sql',
     'docs/ARCHITECTURE.md',
     'docs/DECISIONS.md',
+    'docs/GITHUB_ACTIONS.md',
     'docs/GUTENBERG_PARSER.md',
     'docs/QUALITY_AUDIT_REPORT.md',
     'ROADMAP.md',
@@ -1355,6 +1356,7 @@ function pass5AdrValidation() {
   const requiredPipelineScriptTests = [
     'scripts/ingest-catalog.js',
     'scripts/ingest-translations.js',
+    'scripts/purge-vercel-cache.js',
     'scripts/sync-featured-quotes.js',
     'scripts/sync-gutenberg-catalog.js',
     'scripts/eslint-rules/bookarium-security.js',
@@ -1517,6 +1519,7 @@ function pass5AdrValidation() {
     'CONTRIBUTING.md',
     'SECURITY.md',
     'docs/PIPELINE_GUIDE.md',
+    'docs/GITHUB_ACTIONS.md',
     '.github/pull_request_template.md',
     '.github/ISSUE_TEMPLATE/bug_report.yml',
     '.github/ISSUE_TEMPLATE/feature_request.yml',
@@ -1787,7 +1790,11 @@ function pass5AdrValidation() {
       }
     }
 
-    // 1:1 .github/workflows/*.yml & Cron Schedule Parity Check against docs/ARCHITECTURE.md
+    // 1:1 .github/workflows/*.yml & Cron Schedule Parity Check against docs/ARCHITECTURE.md & docs/GITHUB_ACTIONS.md
+    const actionsDocPath = path.join(rootDir, 'docs', 'GITHUB_ACTIONS.md');
+    const actionsDocContent = fs.existsSync(actionsDocPath)
+      ? fs.readFileSync(actionsDocPath, 'utf-8')
+      : null;
     const workflowsDir = path.join(rootDir, '.github', 'workflows');
     if (fs.existsSync(workflowsDir)) {
       const wfFiles = fs
@@ -1800,6 +1807,11 @@ function pass5AdrValidation() {
             `GitHub Actions workflow "${relWfPath}" is missing from docs/ARCHITECTURE.md (update scripts/generate-architecture-matrix.js and run "npm run docs:sync").`
           );
         }
+        if (actionsDocContent !== null && !actionsDocContent.includes(relWfPath)) {
+          docViolations.push(
+            `GitHub Actions workflow "${relWfPath}" is missing from docs/GITHUB_ACTIONS.md (document its triggers, inputs, secrets, and commands).`
+          );
+        }
         const wfText = fs.readFileSync(path.join(workflowsDir, wfFile), 'utf-8');
         const cronMatch = wfText.match(/cron:\s*['"]([^'"]+)['"]/);
         if (cronMatch && cronMatch[1]) {
@@ -1807,6 +1819,11 @@ function pass5AdrValidation() {
           if (!archContent.includes(`cron: ${cronExpr}`)) {
             docViolations.push(
               `Cron schedule "cron: ${cronExpr}" for "${relWfPath}" is out of sync in docs/ARCHITECTURE.md (run "npm run docs:sync").`
+            );
+          }
+          if (actionsDocContent !== null && !actionsDocContent.includes(`cron: ${cronExpr}`)) {
+            docViolations.push(
+              `Cron schedule "cron: ${cronExpr}" for "${relWfPath}" is out of sync in docs/GITHUB_ACTIONS.md.`
             );
           }
         }

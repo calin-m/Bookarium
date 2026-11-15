@@ -1,0 +1,105 @@
+name: Manual Cache Purge
+
+on:
+  # Manual-only utility workflow for selective Vercel Edge CDN tag invalidation.
+  workflow_dispatch:
+    inputs:
+      purge_catalog:
+        description: "Purge 'catalog' Edge cache tag (/api/books catalog & featured lookups)"
+        required: false
+        type: boolean
+        default: false
+      purge_quotes:
+        description: "Purge 'quotes' Edge cache tag (/api/books?pool=quotes rotating pool)"
+        required: false
+        type: boolean
+        default: false
+      purge_translations:
+        description: "Purge 'translations' Edge cache tag (/api/books/translations language clusters)"
+        required: false
+        type: boolean
+        default: false
+      target:
+        description: 'Vercel deployment environment to invalidate'
+        required: true
+        type: choice
+        default: 'production'
+        options:
+          - production
+          - preview
+      dry_run:
+        description: 'Dry run (validate secrets & log POST payload without purging Vercel Edge cache)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cache-purge
+  cancel-in-progress: false
+
+jobs:
+  purge-edge-cache:
+    name: Purge Selected Vercel Edge Cache Tags
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate Inputs & Purge Vercel Edge Cache
+        env:
+          INPUT_PURGE_CATALOG: ${{ inputs.purge_catalog }}
+          INPUT_PURGE_QUOTES: ${{ inputs.purge_quotes }}
+          INPUT_PURGE_TRANSLATIONS: ${{ inputs.purge_translations }}
+          INPUT_TARGET: ${{ inputs.target }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          TAGS=()
+          if [ "${INPUT_PURGE_CATALOG:-false}" = "true" ]; then
+            TAGS+=("catalog")
+          fi
+          if [ "${INPUT_PURGE_QUOTES:-false}" = "true" ]; then
+            TAGS+=("quotes")
+          fi
+          if [ "${INPUT_PURGE_TRANSLATIONS:-false}" = "true" ]; then
+            TAGS+=("translations")
+          fi
+
+          if [ "${#TAGS[@]}" -eq 0 ]; then
+            echo "::error::At least one cache tag checkbox (purge_catalog, purge_quotes, or purge_translations) must be checked." >&2
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              {
+                echo "## ❌ Manual Cache Purge Aborted"
+                echo ""
+                echo "At least one cache tag checkbox (\`purge_catalog\`, \`purge_quotes\`, or \`purge_translations\`) must be checked before running this workflow."
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+            exit 1
+          fi
+
+          if [ "${INPUT_TARGET:-}" != "production" ] && [ "${INPUT_TARGET:-}" != "preview" ]; then
+            echo "::error::Invalid target '${INPUT_TARGET:-}' (expected 'production' or 'preview')." >&2
+            exit 1
+          fi
+
+          JOINED_TAGS="$(IFS=,; echo "${TAGS[*]}")"
+          PURGE_ARGS=("--tags=$JOINED_TAGS" "--target=$INPUT_TARGET")
+          if [ "${INPUT_DRY_RUN:-false}" = "true" ]; then
+            PURGE_ARGS+=("--dry-run")
+          fi
+
+          node scripts/purge-vercel-cache.js "${PURGE_ARGS[@]}"

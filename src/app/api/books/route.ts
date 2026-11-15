@@ -121,13 +121,22 @@ export async function GET(request: NextRequest) {
         ? 'Accept-Encoding'
         : 'x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding';
 
+    const responseHeaders: Record<string, string> = {
+      'Cache-Control': cacheControl,
+      'Vary': varyHeader,
+      ...buildApiSecurityHeaders('same-origin'),
+    };
+    if (result.source !== 'cache') {
+      responseHeaders['Vercel-Cache-Tag'] = isQuotePool
+        ? 'quotes'
+        : queryOptions.hasQuotes
+          ? 'catalog,quotes'
+          : 'catalog';
+    }
+
     return NextResponse.json(result, {
       status: 200,
-      headers: {
-        'Cache-Control': cacheControl,
-        'Vary': varyHeader,
-        ...buildApiSecurityHeaders('same-origin'),
-      },
+      headers: responseHeaders,
     });
   } catch (err: unknown) {
     const latencyMs = Date.now() - startTime;

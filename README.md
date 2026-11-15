@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-256%20Suites%20%7C%202601%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-96.41%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-257%20Suites%20%7C%202607%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.44%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2601 tests across 256 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2607 tests across 257 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -79,6 +79,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
 | 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
+| ⚡ **GitHub Actions Operator Runbook** | Complete triggers, schedules, secrets, `workflow_dispatch` inputs, and local CLI parity for all 6 workflows. | [`docs/GITHUB_ACTIONS.md`](docs/GITHUB_ACTIONS.md) |
 | 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
 
 ---
@@ -108,13 +109,14 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.33)
+## 🛠️ Latest Improvements (v2.9.34)
 
-- **Cross-Tab Security Sync, Browser Classification & Honest Modal Disclosures**: Added sender-filtered `BroadcastChannel('bookarium-sessions-sync')` and `bookarium:auth-token-refreshed` live refresh listeners in `useAccountSecurityActions.ts` (`ADR-080`) without same-tab echo loops, expanded `parseSessionDevice` (`src/lib/session-device-parser.ts`) for `EdgA/`, `Vivaldi/`, and `DuckDuckGo/`, clarified remote logout timing in `AccountSecuritySection` confirmation modals, and displayed contextual duplicate-device hints when multiple sessions share a device label and masked IP.
-- **Living Architecture Diagrams, Governance Metrics & Decision Ledger Restoration (`scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `README.md`, `.agents/AGENTS.md`)**: Synchronized C4/Event-Bus/Failure-Mode/Trust-Zone diagrams and `bookarium-consumed-recovery` storage erasure matrices across `v2.9.32` recovery and `v2.9.33` session workflows, aligned `README.md` (`7-Store`, `47` RLS policies) and `.agents/AGENTS.md` (`9` functions/triggers) metrics, and restored `docs/DECISIONS.md`'s Decommissioned Decisions Ledger (`ADR-080`).
-- **Immediate Vercel Browser IP & Sanitized `User-Agent` Reconciliation**: Exported Edge/client-safe `sanitizeForwardedUserAgent` from `src/lib/supabase/client.ts` (avoiding `next/headers` leaks into `src/proxy.ts` via `middleware.ts`), forwarded sanitized `User-Agent` headers in `src/lib/supabase/server.ts`, `/auth/callback`, and `updateSession` (`src/lib/supabase/middleware.ts`), and stamped ephemeral `bookarium-client-ip-sync` (`STORAGE_KEYS.CLIENT_IP_SYNC`) on non-recovery exchanges and rotated `sb-*-auth-token` SSR refreshes so `reconcileClientSessionOrigin()` updates AWS egress `18.x` IPs and `"Browser session"` UAs to the reader's real browser immediately on mount (skipping offline and recovery flows).
-- **Automatic Remote Session Revocation Enforcement (`verifyActiveSessionValidity`)**: Added coalesced `10,000ms`-throttled session validation (`useAuthStore.ts`) wired into `Providers` (`src/app/providers.tsx`, `ADR-080`, `ADR-005`) on `online`, `visibilitychange` (`visible`), and a visible-only `60,000ms` interval so externally revoked or expired sessions (`400/401/403 session_not_found`) tear down signed-in state cleanly via `resetClientAuthState` across sibling tabs without logging users out on transient offline/`5xx` errors.
-- **Strict Session RPC & Dead-Session Verification (`revokeSession`, `listActiveSessions`, `signOutOtherDevices`)**: Hardened `revokeSession` (`useAuthStore.ts`, `ADR-080`) to reject explicit `false` returns from `revoke_user_session` with an already-ended recovery notice that refreshes Security sessions while preserving the error banner, and updated `listActiveSessions` + `signOutOtherDevices` to invoke `verifyActiveSessionValidity({ force: true })` whenever `isCurrent` is missing or empty so revoked tabs never remain signed in on stale JWTs.
+- **Vercel Edge Cache Tag Headers (`Vercel-Cache-Tag`)**: Added opt-in Edge cache tags (`quotes`, `catalog`, or `catalog,quotes` on `GET /api/books`, and `translations` on `GET /api/books/translations`) strictly on cacheable `200` database responses while omitting tags on curated `cache` fallbacks and `no-store` errors (`src/app/api/books/route.ts`, `src/app/api/books/translations/route.ts`, `ADR-080`).
+- **Edge Tag Purge CLI & Selective Manual Workflow (`scripts/purge-vercel-cache.js`, `.github/workflows/cache-purge.yml`)**: Implemented `purgeVercelEdgeCache` (`parsePurgeCliArgs`, `buildVercelCachePurgeUrl`, `appendPurgeStepSummary`) calling Vercel's `dangerously-delete-by-tags` endpoint with bounded `429`/`Retry-After`/`5xx` retries, `$GITHUB_STEP_SUMMARY` reporting, and clean `exit 0` skipping when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset; wired post-ingestion purges at the end of live `.github/workflows/catalog-sync.yml` (`catalog,quotes,translations`), `quotes-sync.yml` (`quotes`), and `translations-sync.yml` (`translations`) alongside a dedicated manual `workflow_dispatch`-only `.github/workflows/cache-purge.yml` (unchecked-by-default tag checkboxes with a fail-fast empty-selection guard, `target`, `dry_run`, zero `npm ci`) and 1:1 `scripts/purge-vercel-cache.test.ts` coverage (`ADR-080`).
+- **Dedicated GitHub Actions Operator Runbook (`docs/GITHUB_ACTIONS.md`) & Pass 5 Workflow Parity Gate**: Authored a comprehensive runbook covering all 6 `.github/workflows/*.yml` workflows (`catalog-sync`, `quotes-sync`, `translations-sync`, `cache-purge`, `ci`, `release`) and `.github/dependabot.yml` with triggers, permissions, secrets, `catalog-cache` setup, `workflow_dispatch` inputs, and local CLI commands, cross-linked across core guides (`README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`, `docs/PIPELINE_GUIDE.md`, `docs/ARCHITECTURE.md`) and enforced via `Pass 5` 1:1 workflow/cron parity and 17-doc governance checks (`scripts/verify-build.js`, `ADR-080`).
+- **Full Partial-Index Out-of-Window Quote Discovery (`scripts/sync-featured-quotes.js`)**: Added `fetchAllQuotedBookIds` (scanning partial index `idx_books_with_quotes_popular` across the entire table in 1,000-row ID pages) and `resolveBookMetadataByIds` so out-of-window quoted volumes beyond Top 500 Popular or Rolling 64 Recent are discovered deterministically regardless of `quote-diff.json` boundaries (`ADR-080`).
+- **Option-A 1-for-1 Pool Pruning (`computeOutOfWindowPrunePlan`, `2,000` Default Cap) & Visibility**: Retained `popularDeficit` most-popular demoted books as 1-for-1 backfill while Top 500 fills, pruning least-popular surplus (`download_count ASC, id ASC`) and oldest Recent > 64 overflow (`id ASC`) up to `DEFAULT_MAX_PRUNE_PER_RUN = 2000` (`--max-prune=<N>`, `50ms` inter-chunk yield past `500` IDs), and exposed pruned counts/causes/titles across console (`[Prune i/N ...]`, `• Purge Status:`, `• Out-of-Window:`) and `$GITHUB_STEP_SUMMARY` (`Out-of-Window (Pruned)` & `🧹 Pruned`) (`ADR-080`).
+- **Environment Guides, Architecture Diagrams & Stage-4 Governance Matrix Synchronization**: Documented `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, and optional `VERCEL_TEAM_ID` across `.env.example`, `DEVELOPMENT.md`, `docs/PIPELINE_GUIDE.md`, and `README.md`, registered `purge-vercel-cache.js` and `cache-purge.yml` in `scripts/verify-build.js`, `scripts/lib/ast-parser.js`, and `scripts/generate-architecture-matrix.js` (Diagrams `1/8/10/12/13`, contracts, and caching TTL/`Vary` specs), aligned `scripts/generate-roadmap.js` + `docs/DECISIONS.md` (`257` suites, `ADR-080`), and codified the explicit Stage-4 Plan Completeness Contract, `.github/workflows/*.yml` Impact Row, and separated `generate-architecture-matrix.js` / `ast-parser.js` map inventory in `AGENTS.md` and `.agents/AGENTS.md`.
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -283,10 +285,10 @@ flowchart TD
 
     subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
         RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]
-        ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs, Rate Limit, Seam Controller)"]
+        ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs • Vercel-Cache-Tag, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\n(supabase-provider.ts • curated-fallback.ts)"]
         ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]
-        ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • FRBR Work Mapping)"]
+        ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • Vary: x-vercel-ip-country • Vercel-Cache-Tag: translations • FRBR Work Mapping)"]
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]
         LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
         ProfileLayoutServer["Server Layout (/u/[username])\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]
@@ -311,7 +313,8 @@ flowchart TD
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
         SyncTranslations["🔄 Relational Translations Sync\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]
         SyncQuotes["🔄 Featured Quotes Sync Engine\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]
-        VercelEdge["⚡ Vercel Edge Platform\n(Cookie-less Analytics & Speed Insights)"]
+        PurgeVercel["🧹 Edge Cache Tag Purge CLI\n(scripts/purge-vercel-cache.js • .github/workflows/cache-purge.yml)"]
+        VercelEdge["⚡ Vercel Edge Platform\n(Edge CDN SWR, Cookie-less Analytics & Speed Insights)"]
     end
 
     User --> RootProxy
@@ -433,6 +436,10 @@ flowchart TD
     SyncTranslations -.->|Wikidata P2034 Query & Fallback Snapshot| WikidataSPARQL
     SyncQuotes -->|Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert| SupabaseCloud
     SyncQuotes -.->|8.0s–16.0s Float-Paced PGLAF Mirror Stream| GutenbergCDN
+    SyncEngine -.->|"Live Run: Purge catalog,quotes,translations"| PurgeVercel
+    SyncTranslations -.->|"Manual Live Run: Purge translations"| PurgeVercel
+    SyncQuotes -.->|"Manual Live Run: Purge quotes"| PurgeVercel
+    PurgeVercel -.->|"POST /v1/edge-cache/dangerously-delete-by-tags"| VercelEdge
     
     Views --> StateStores
     HabitsCard --> StoreHabits
@@ -551,7 +558,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 | `public.books_search_vector_trigger()` | Trigger | Maintains `search_vector` across `title`, `subjects`, and `bookshelves` with an `IS DISTINCT FROM` guard that skips recomputation on `download_count`-only updates. |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
-To activate the dedicated PostgreSQL book catalog and bypass third-party rate limits, choose any of the four ingestion workflows below (see [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md#-autonomous-ingestion-pipelines--telemetry-reference) for full CLI flags, console telemetry banners, and GitHub Actions run-report tables):
+To activate the dedicated PostgreSQL book catalog and bypass third-party rate limits, choose any of the four ingestion workflows below (see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for all 6 workflow triggers, secrets, `workflow_dispatch` inputs, `catalog-cache` setup, and manual tag purging, plus [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md#-autonomous-ingestion-pipelines--telemetry-reference) for console telemetry banners and run-report formats):
 
 #### Option A: Autonomous Full-Catalog Sync (78,000+ Titles — Recommended)
 ```bash
@@ -562,16 +569,18 @@ npm run catalog:sync -- --limit=100
 npm run catalog:sync
 ```
 > [!TIP]
-> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (and optionally `GUTENBERG_CONTACT_EMAIL` for outbound `User-Agent` contact attribution across Project Gutenberg, PGLAF mirrors, and Wikidata SPARQL) to **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`):
+> **Hands-Free Weekly Sync & GitHub Actions Automation**: Add `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (and optionally `GUTENBERG_CONTACT_EMAIL` for outbound `User-Agent` attribution plus `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / optional `VERCEL_TEAM_ID` for instant post-sync Vercel Edge tag invalidation) to **GitHub Secrets** (`Settings -> Secrets and variables -> Actions`):
 >
 > 1. **Unified Sunday Ingestion Pipeline ([`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml))**:
 >    - **Schedule**: Every Sunday at `02:00 UTC` (plus on-demand `workflow_dispatch`).
->    - **Sequential 3-Step Flow**:
->      1. **Catalog Sync (`catalog:sync`)**: Restores the permanent **`catalog-cache` GitHub Release snapshot** (`gutenberg-catalog-cache.json.gz`, skipping the `~70 MB` `rdf-files.tar.bz2` download when cached and saving `~39 MB/week` of Supabase read egress), streams `pg_catalog.csv.gz` across official Gutenberg mirrors, exact-diff upserts new/changed books and reconciles withdrawn IDs in `public.books`, updates the `catalog-cache` Release asset, and emits `quote-diff.json`.
+>    - **Sequential 4-Step Flow**:
+>      1. **Catalog Sync (`catalog:sync`)**: Restores the permanent **`catalog-cache` GitHub Release snapshot** (`gutenberg-catalog-cache.json.gz`, diffing all 78k+ catalog rows and withdrawn IDs 100% in RAM to save `~39 MB/week` of Supabase read egress), streams `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across official Gutenberg mirrors, exact-diff upserts new/changed books and reconciles withdrawn IDs in `public.books`, updates the `catalog-cache` Release asset, and emits `quote-diff.json`.
 >      2. **Relational Translations Sync (`translations:sync`)**: Clusters Wikidata `P2034` multilingual editions into `public.book_translations`.
->      3. **Featured Quotes Delta Sync (`quotes:sync --diff-file=quote-diff.json`)**: Consumes `quote-diff.json` with zero database pool-discovery queries, prunes demoted quotes, and ingests `10–16` multi-quote spreads across the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** via PGLAF bulk mirrors (`8.0s–16.0s` float pacing), publishing a Markdown **Run Report** to the GitHub Actions job summary.
-> 2. **Manual On-Demand Utility Workflows ([`translations-sync.yml`](.github/workflows/translations-sync.yml) & [`quotes-sync.yml`](.github/workflows/quotes-sync.yml))**:
->    - Configured as `workflow_dispatch`-only manual utilities (no overlapping cron schedules and no 60-day GitHub Actions inactivity warnings) so you can trigger targeted translation updates or custom quote backfills (`limit`, `ids`, `mirror_pglaf`/`mirror_aleph`/`mirror_readingroo`, `force_refresh`, `dry_run`) anytime from the **Actions** tab.
+>      3. **Featured Quotes Delta Sync (`quotes:sync --diff-file=quote-diff.json`)**: Consumes `quote-diff.json`, discovers all out-of-window quoted volumes via partial index `idx_books_with_quotes_popular`, ingests `10–16` multi-quote spreads across the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** via PGLAF bulk mirrors (`8.0s–16.0s` float pacing), prunes Option-A `1-for-1` out-of-window surplus up to `2,000` books per run (`--max-prune`), and publishes `Out-of-Window (Pruned)` & `🧹 Pruned` rows in the Markdown **Run Report** (`$GITHUB_STEP_SUMMARY`).
+>      4. **Vercel Edge Cache Purge (`node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations`)**: Runs when `dry_run != 'true'` to invalidate `Vercel-Cache-Tag` CDN entries immediately (`exit 0` skip if Vercel secrets are unset).
+> 2. **Manual On-Demand Utility Workflows ([`translations-sync.yml`](.github/workflows/translations-sync.yml), [`quotes-sync.yml`](.github/workflows/quotes-sync.yml) & [`cache-purge.yml`](.github/workflows/cache-purge.yml))**:
+>    - Configured as `workflow_dispatch`-only manual utilities (no overlapping cron schedules and no 60-day GitHub Actions inactivity warnings) so you can trigger targeted translation updates or custom quote backfills (`limit`, `ids`, `mirror_pglaf`/`mirror_aleph`/`mirror_readingroo`, `force_refresh`, `dry_run`), each automatically invalidating its corresponding Vercel Edge cache tag (`translations` or `quotes`) when `dry_run != 'true'`.
+>    - [`cache-purge.yml`](.github/workflows/cache-purge.yml) (`Manual Cache Purge`) provides a zero-`npm ci` standalone workflow with unchecked-by-default tag checkboxes (`purge_catalog`, `purge_quotes`, `purge_translations` requiring at least one selected via fail-fast validation), `target` (`production` / `preview`), and `dry_run`.
 
 #### Option B: Curated Masterworks Starter Seed (10 Books)
 ```bash
@@ -644,11 +653,13 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run lint` | Runs ESLint 10 rules and Core Web Vitals checks (`--max-warnings 0`) |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
-| `npm run catalog:sync` | Streams Project Gutenberg's `pg_catalog.csv.gz` (and `rdf-files.tar.bz2` on cold start or `--refresh-rdf`), diffs all 78,000+ books in RAM via `--cache-file=gutenberg-catalog-cache.json.gz`, upserts new/changed rows in Supabase, and emits `--diff-output=quote-diff.json` |
+| `npm run catalog:sync` | Streams Project Gutenberg's `rdf-files.tar.bz2` (unless `--no-rdf` or `--limit` is passed) and `pg_catalog.csv.gz`, diffs all 78,000+ books in RAM via `--cache-file=gutenberg-catalog-cache.json.gz`, upserts new/changed rows in Supabase, and emits `--diff-output=quote-diff.json` |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
 | `npm run quotes:sync` | Maintains the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` via `--diff-file=quote-diff.json` (or DB index scan fallback) and PGLAF bulk mirrors (`8.0s–16.0s` float pacing), publishing a Run Report to `$GITHUB_STEP_SUMMARY` |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
+
+> ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands execute across `.github/workflows/catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, and `release.yml` (including dry-run flags and required secrets).
 
 ---
 

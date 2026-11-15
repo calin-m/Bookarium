@@ -68,6 +68,8 @@ const GUTENBERG_MIRRORS = [
 const DEFAULT_POPULAR_POOL_SIZE = 500;
 const DEFAULT_RECENT_POOL_SIZE = 64;
 const DEFAULT_RECENT_BATCH_RATIO = 0.2;
+const DEFAULT_MAX_PRUNE_PER_RUN = 2000;
+const PRUNE_CHUNK_SIZE = 25;
 const MAX_BOOK_TEXT_BYTES = 15 * 1024 * 1024;
 const ALLOWED_PGLAF_MIRROR_HOSTS = new Set([
   'gutenberg.pglaf.org',
@@ -162,6 +164,7 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     limit: 50,
     popularPool: DEFAULT_POPULAR_POOL_SIZE,
     recentPool: DEFAULT_RECENT_POOL_SIZE,
+    maxPrunePerRun: null,
     minDelaySec: 8,
     maxDelaySec: 16,
     mirrorCooldownMs: 30000,
@@ -190,6 +193,9 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     } else if (arg.startsWith('--recent-pool=')) {
       const val = parseInt(arg.split('=')[1], 10);
       if (Number.isInteger(val) && val >= 0) options.recentPool = val;
+    } else if (arg.startsWith('--max-prune=')) {
+      const val = parseInt(arg.split('=')[1], 10);
+      if (Number.isInteger(val) && val > 0) options.maxPrunePerRun = val;
     } else if (arg.startsWith('--delay-range=')) {
       const parts = arg.split('=')[1].split('-');
       if (parts.length === 2) {
@@ -797,6 +803,98 @@ async function fetchQuotedBookIds(supabase, scopedIds = null) {
 }
 
 /**
+ * Fetches all currently quoted book IDs and their `download_count` across the database
+ * via partial index `idx_books_with_quotes_popular` (`WHERE quotes <> '[]'::jsonb`)
+ * in paginated ranges, so cold starts and standalone `quotes-sync.yml` runs always
+ * discover 100% of out-of-window surplus without scanning unquoted 78k rows.
+ *
+ * Returns `null` when the provided Supabase builder does not expose top-level `.select().neq()`,
+ * allowing minimal unit-test mocks to fall back cleanly to `fetchQuotedBookIds()`.
+ */
+async function fetchAllQuotedBookIds(supabase) {
+  if (!supabase || typeof supabase.from !== 'function') return null;
+
+  const probeBuilder = supabase.from('books').select('id, download_count');
+  if (!probeBuilder || typeof probeBuilder.neq !== 'function') {
+    return null;
+  }
+
+  const PAGE_SIZE = 1000;
+  const MAX_PAGES = 20;
+  const ids = new Set();
+  const downloadCounts = new Map();
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const selectBuilder =
+      page === 0 ? probeBuilder : supabase.from('books').select('id, download_count');
+    const neqQuery = selectBuilder.neq('quotes', '[]');
+    const hasRange = neqQuery && typeof neqQuery.range === 'function';
+    const finalQuery = hasRange
+      ? neqQuery.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+      : neqQuery;
+
+    const { data, error } = await finalQuery;
+    if (error) throw new Error(error.message);
+    if (!Array.isArray(data) || data.length === 0) break;
+
+    for (const row of data) {
+      if (!row || !Number.isInteger(row.id)) continue;
+      ids.add(row.id);
+      if (typeof row.download_count === 'number' && Number.isFinite(row.download_count)) {
+        downloadCounts.set(row.id, row.download_count);
+      } else if (!downloadCounts.has(row.id)) {
+        downloadCounts.set(row.id, 0);
+      }
+    }
+
+    if (!hasRange || data.length < PAGE_SIZE) break;
+  }
+
+  return { ids, downloadCounts };
+}
+
+/**
+ * Resolves missing `{ title, download_count }` metadata for out-of-window book IDs
+ * in 200-ID Primary-Key `.in('id', chunk)` batches so run reports show real titles
+ * and Option A ranks surplus accurately by `download_count`.
+ */
+async function resolveBookMetadataByIds(supabase, ids) {
+  const metadataById = new Map();
+  if (!supabase || typeof supabase.from !== 'function' || !Array.isArray(ids) || ids.length === 0) {
+    return metadataById;
+  }
+
+  const probeSelect = supabase.from('books').select('id, title, download_count');
+  if (!probeSelect || typeof probeSelect.in !== 'function') {
+    return metadataById;
+  }
+
+  const CHUNK_SIZE = 200;
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + CHUNK_SIZE);
+    const selectBuilder =
+      i === 0 ? probeSelect : supabase.from('books').select('id, title, download_count');
+    if (!selectBuilder || typeof selectBuilder.in !== 'function') break;
+    const { data, error } = await selectBuilder.in('id', chunk);
+    if (error) throw new Error(error.message);
+    if (Array.isArray(data)) {
+      for (const row of data) {
+        if (!row || !Number.isInteger(row.id)) continue;
+        metadataById.set(row.id, {
+          title: typeof row.title === 'string' && row.title.trim() ? row.title.trim() : null,
+          downloadCount:
+            typeof row.download_count === 'number' && Number.isFinite(row.download_count)
+              ? row.download_count
+              : null,
+        });
+      }
+    }
+  }
+
+  return metadataById;
+}
+
+/**
  * Blends candidate books from Tier 1 (Top Popular by `download_count DESC`) and
  * Tier 2 (Rolling Most Recent by `id DESC`) using an 80/20 split (e.g., 40 Popular + 10 Recent
  * for a 50-book batch), automatically backfilling from the other tier when one tier has
@@ -904,13 +1002,111 @@ function blendTwoTierCandidates(popularRows = [], recentRows = [], options = {})
 }
 
 /**
- * Post-batch Dual-Window (`Top 500 Popular` + `Rolling 64 Most Recent`) 1-for-1 auto-pruning:
- * - Tier 1 (`Popular 500`): Protects all IDs in `popularPoolIds` (`Top 500 Popular` canon) and
- *   prunes any former Popular book (`id < minRecentHorizonId`) that dropped out of the Top 500 (`#501+`).
- * - Tier 2 (`Recent 64`): Collects quoted Recent book IDs (`recentPoolIds` or `id >= minRecentHorizonId`
- *   outside `popularPoolIds`), sorts them by `id DESC` (newest to oldest), keeps the newest
- *   `recentPool` (`64`) quoted Recent books, and resets `quotes = '[]'::jsonb` on `.slice(64)`.
- * - Executes `UPDATE` statements in chunks of 25 IDs to prevent statement timeouts.
+ * Pure Option-A Dual-Window Out-of-Window Prune Planner (`Top 500 Popular` + `Rolling 64 Most Recent`):
+ * - Tier 1 (`Popular 500`): Computes `popularDeficit = max(0, popularPoolIds.size - quotedPopularInPoolCount)`
+ *   after new upserts complete. When `Top 500` is still backfilling (`popularDeficit > 0`), retains the
+ *   `popularDeficit` most-popular demoted books (`download_count DESC, id DESC`) as a symmetric 1-for-1 cushion
+ *   so live quotes stay full (~564), queuing the least-popular surplus (`download_count ASC, id ASC`) first.
+ *   Once `Top 500` hits 100%, `popularDeficit = 0` and 100% of demoted Popular books are pruned.
+ * - Tier 2 (`Recent 64`): Keeps the newest `recentCap` (`64`) quoted Recent books (`id DESC`) and
+ *   queues older cycled-out Recent books (`slice(recentCap)`) for pruning.
+ */
+function computeOutOfWindowPrunePlan({
+  currentQuotedIds = new Set(),
+  popularPoolIds = new Set(),
+  recentPoolIds = null,
+  minRecentHorizonId = null,
+  demotedIds = null,
+  recentCap = DEFAULT_RECENT_POOL_SIZE,
+  downloadCounts = null,
+  maxPrunePerRun = DEFAULT_MAX_PRUNE_PER_RUN,
+} = {}) {
+  const quotedSet = currentQuotedIds instanceof Set ? currentQuotedIds : new Set();
+  const topSet = popularPoolIds instanceof Set ? popularPoolIds : new Set();
+  const recSet = recentPoolIds instanceof Set ? recentPoolIds : null;
+  const demotedSet =
+    demotedIds instanceof Set ? demotedIds : Array.isArray(demotedIds) ? new Set(demotedIds) : null;
+  const dlMap = downloadCounts instanceof Map ? downloadCounts : null;
+
+  let quotedPopularInPoolCount = 0;
+  for (const id of topSet) {
+    if (quotedSet.has(id)) quotedPopularInPoolCount++;
+  }
+  const popularDeficit = Math.max(0, topSet.size - quotedPopularInPoolCount);
+
+  const demotedPopularCandidates = [];
+  const quotedRecentIds = [];
+
+  for (const id of quotedSet) {
+    if (!Number.isInteger(id) || topSet.has(id)) continue;
+    if (demotedSet && demotedSet.has(id) && !(recSet && recSet.has(id))) {
+      demotedPopularCandidates.push(id);
+      continue;
+    }
+    const isRecentCandidate =
+      (recSet && recSet.has(id)) || minRecentHorizonId === null || id >= minRecentHorizonId;
+
+    if (isRecentCandidate) {
+      quotedRecentIds.push(id);
+    } else {
+      demotedPopularCandidates.push(id);
+    }
+  }
+
+  quotedRecentIds.sort((a, b) => b - a);
+  const staleRecentIds = quotedRecentIds.slice(Math.max(0, recentCap));
+
+  const getDownloads = (id) => {
+    if (!dlMap) return 0;
+    const val = dlMap.get(id);
+    return typeof val === 'number' && Number.isFinite(val) ? val : 0;
+  };
+
+  // Sort demoted candidates descending by popularity so top `popularDeficit` are retained cleanly
+  demotedPopularCandidates.sort((a, b) => getDownloads(b) - getDownloads(a) || b - a);
+  const deferredCount = Math.min(popularDeficit, demotedPopularCandidates.length);
+  const deferredPopularIds = demotedPopularCandidates.slice(0, deferredCount);
+
+  // Prune remaining surplus least-popular first (`download_count ASC, id ASC`)
+  const stalePopularIds = demotedPopularCandidates.slice(deferredCount).reverse();
+
+  const allEligibleEntries = [
+    ...stalePopularIds.map((id) => ({
+      id,
+      cause: 'demoted-popular',
+      downloadCount: getDownloads(id),
+    })),
+    ...staleRecentIds.map((id) => ({
+      id,
+      cause: 'cycled-recent',
+      downloadCount: getDownloads(id),
+    })),
+  ];
+
+  const cap =
+    typeof maxPrunePerRun === 'number' && maxPrunePerRun > 0
+      ? maxPrunePerRun
+      : DEFAULT_MAX_PRUNE_PER_RUN;
+  const selectedEntries = allEligibleEntries.slice(0, cap);
+
+  return {
+    staleIds: selectedEntries.map((e) => e.id),
+    selectedEntries,
+    stalePopularIds,
+    staleRecentIds,
+    deferredPopularIds,
+    eligibleCount: allEligibleEntries.length,
+    remainingBacklogCount: Math.max(0, allEligibleEntries.length - selectedEntries.length),
+    deferredCount,
+    popularDeficit,
+    quotedPopularInPoolCount,
+  };
+}
+
+/**
+ * Post-batch Dual-Window (`Top 500 Popular` + `Rolling 64 Most Recent`) Option-A auto-pruning.
+ * Executes `UPDATE` statements in chunks of 25 IDs (with a brief 50ms yield past chunk #20)
+ * and resolves book titles so pruned entries appear in Console, `Tier Progress`, and `Books Processed`.
  */
 async function pruneOutOfWindowBookQuotes(
   supabase,
@@ -918,19 +1114,46 @@ async function pruneOutOfWindowBookQuotes(
   options = {},
   logger = console
 ) {
+  const emptyResult = {
+    prunedCount: 0,
+    prunedIds: [],
+    prunedBooks: [],
+    eligibleCount: 0,
+    remainingBacklogCount: 0,
+    deferredCount: 0,
+    popularDeficit: 0,
+  };
+
   if (
     !supabase ||
     !(popularPoolIds instanceof Set) ||
     popularPoolIds.size === 0 ||
     (options.ids && options.ids.length > 0)
   ) {
-    return { prunedCount: 0, prunedIds: [] };
+    return emptyResult;
   }
 
-  const currentQuotedIds =
-    options._quotedIds instanceof Set
-      ? new Set(options._quotedIds)
-      : await fetchQuotedBookIds(supabase, options._scannedPoolIds);
+  const downloadCounts = new Map(
+    options._quotedDownloadCounts instanceof Map ? options._quotedDownloadCounts : []
+  );
+
+  let currentQuotedIds;
+  if (options._quotedIds instanceof Set) {
+    currentQuotedIds = new Set(options._quotedIds);
+  } else if (options._allQuotedIds instanceof Set) {
+    currentQuotedIds = new Set(options._allQuotedIds);
+  } else {
+    const fullScan = await fetchAllQuotedBookIds(supabase);
+    if (fullScan) {
+      currentQuotedIds = new Set(fullScan.ids);
+      for (const [id, dl] of fullScan.downloadCounts.entries()) {
+        if (!downloadCounts.has(id)) downloadCounts.set(id, dl);
+      }
+    } else {
+      currentQuotedIds = await fetchQuotedBookIds(supabase, options._scannedPoolIds);
+    }
+  }
+
   if (options.newlyQuotedIds instanceof Set) {
     for (const id of options.newlyQuotedIds) {
       if (Number.isInteger(id)) currentQuotedIds.add(id);
@@ -938,7 +1161,7 @@ async function pruneOutOfWindowBookQuotes(
   }
 
   if (currentQuotedIds.size === 0) {
-    return { prunedCount: 0, prunedIds: [] };
+    return emptyResult;
   }
 
   const recentCap =
@@ -968,50 +1191,94 @@ async function pruneOutOfWindowBookQuotes(
           ? new Set(options.demotedIds)
           : null;
 
-  const stalePopularIds = [];
-  const quotedRecentIds = [];
-
-  for (const id of currentQuotedIds) {
-    if (!Number.isInteger(id) || popularPoolIds.has(id)) continue;
-    if (demotedIds && demotedIds.has(id) && !(recentPoolIds && recentPoolIds.has(id))) {
-      stalePopularIds.push(id);
-      continue;
-    }
-    const isRecentCandidate =
-      (recentPoolIds && recentPoolIds.has(id)) ||
-      minRecentHorizonId === null ||
-      id >= minRecentHorizonId;
-
-    if (isRecentCandidate) {
-      quotedRecentIds.push(id);
-    } else {
-      stalePopularIds.push(id);
-    }
-  }
-
-  quotedRecentIds.sort((a, b) => b - a);
-  const staleRecentIds = quotedRecentIds.slice(recentCap);
   const maxPrunePerRun =
     typeof options.maxPrunePerRun === 'number' && options.maxPrunePerRun > 0
       ? options.maxPrunePerRun
-      : Math.max((options.limit || 50) * 2, 64);
-  const staleIds = [...stalePopularIds, ...staleRecentIds].slice(0, maxPrunePerRun);
+      : DEFAULT_MAX_PRUNE_PER_RUN;
 
-  if (staleIds.length === 0) {
-    return { prunedCount: 0, prunedIds: [] };
+  // Hydrate missing download_count / title metadata for out-of-window candidates so Option A
+  // preserves the most-popular cushion accurately even when mocks lack top-level `.select().neq()`.
+  const outOfWindowIds = [];
+  for (const id of currentQuotedIds) {
+    if (Number.isInteger(id) && !popularPoolIds.has(id) && !downloadCounts.has(id)) {
+      outOfWindowIds.push(id);
+    }
+  }
+
+  const knownMetaById = new Map(
+    options._knownBooksById instanceof Map ? options._knownBooksById : []
+  );
+
+  if (outOfWindowIds.length > 0 && options._quotedIds === undefined) {
+    const resolvedMeta = await resolveBookMetadataByIds(supabase, outOfWindowIds);
+    for (const [id, meta] of resolvedMeta.entries()) {
+      if (meta.downloadCount !== null) {
+        downloadCounts.set(id, meta.downloadCount);
+      }
+      if (meta.title) {
+        knownMetaById.set(id, meta.title);
+      }
+    }
+  }
+
+  const plan = computeOutOfWindowPrunePlan({
+    currentQuotedIds,
+    popularPoolIds,
+    recentPoolIds,
+    minRecentHorizonId,
+    demotedIds,
+    recentCap,
+    downloadCounts,
+    maxPrunePerRun,
+  });
+
+  if (plan.staleIds.length === 0) {
+    if (plan.deferredCount > 0) {
+      logger.log(
+        `[Prune] Deferred ${plan.deferredCount} most-popular demoted book(s) as symmetric 1-for-1 cushion while Top ${options.popularPool || DEFAULT_POPULAR_POOL_SIZE} backfills (${plan.popularDeficit} slot(s) remaining).`
+      );
+    }
+    return {
+      prunedCount: 0,
+      prunedIds: [],
+      prunedBooks: [],
+      eligibleCount: plan.eligibleCount,
+      remainingBacklogCount: plan.remainingBacklogCount,
+      deferredCount: plan.deferredCount,
+      popularDeficit: plan.popularDeficit,
+    };
+  }
+
+  // Ensure titles are resolved for selected pruned entries
+  const missingTitleIds = plan.staleIds.filter((id) => !knownMetaById.has(id));
+  if (missingTitleIds.length > 0) {
+    const titleMeta = await resolveBookMetadataByIds(supabase, missingTitleIds);
+    for (const [id, meta] of titleMeta.entries()) {
+      if (meta.title) knownMetaById.set(id, meta.title);
+    }
   }
 
   logger.log(
-    `[Prune] Resetting quotes on ${staleIds.length} out-of-window book(s) (${stalePopularIds.length} demoted Popular + ${staleRecentIds.length} cycled-out Recent beyond newest ${recentCap}; Top ${
+    `[Prune] Resetting quotes on ${plan.staleIds.length} out-of-window book(s) (${plan.stalePopularIds.length} demoted Popular + ${plan.staleRecentIds.length} cycled-out Recent beyond newest ${recentCap}; Top ${
       options.popularPool || DEFAULT_POPULAR_POOL_SIZE
-    } Popular protected).`
+    } Popular protected${
+      plan.deferredCount > 0
+        ? `; ${plan.deferredCount} most-popular demoted retained as backfill cushion`
+        : ''
+    }).`
   );
 
   if (!options.dryRun) {
-    const PRUNE_CHUNK_SIZE = 25;
+    const sleepFn =
+      typeof options.sleepFn === 'function'
+        ? options.sleepFn
+        : (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const nowIso = new Date().toISOString();
-    for (let i = 0; i < staleIds.length; i += PRUNE_CHUNK_SIZE) {
-      const chunk = staleIds.slice(i, i + PRUNE_CHUNK_SIZE);
+    for (let i = 0; i < plan.staleIds.length; i += PRUNE_CHUNK_SIZE) {
+      if (i >= 20 * PRUNE_CHUNK_SIZE) {
+        await sleepFn(50);
+      }
+      const chunk = plan.staleIds.slice(i, i + PRUNE_CHUNK_SIZE);
       const { error: updateErr } = await supabase
         .from('books')
         .update({
@@ -1023,7 +1290,29 @@ async function pruneOutOfWindowBookQuotes(
     }
   }
 
-  return { prunedCount: staleIds.length, prunedIds: staleIds };
+  const prunedBooks = plan.selectedEntries.map((entry, idx) => {
+    const title = knownMetaById.get(entry.id) || `Gutenberg Volume #${entry.id}`;
+    const causeLabel = entry.cause === 'demoted-popular' ? 'Demoted Popular' : 'Cycled Recent';
+    logger.log(
+      `[Prune ${idx + 1}/${plan.selectedEntries.length} · ${causeLabel}] #${entry.id} "${title}": quotes cleared${options.dryRun ? ' (dry run)' : ''}.`
+    );
+    return {
+      id: entry.id,
+      title,
+      cause: entry.cause,
+      downloadCount: entry.downloadCount,
+    };
+  });
+
+  return {
+    prunedCount: plan.staleIds.length,
+    prunedIds: plan.staleIds,
+    prunedBooks,
+    eligibleCount: plan.eligibleCount,
+    remainingBacklogCount: plan.remainingBacklogCount,
+    deferredCount: plan.deferredCount,
+    popularDeficit: plan.popularDeficit,
+  };
 }
 
 /**
@@ -1156,6 +1445,8 @@ async function resolveManualRunTiers(supabase, options, requestedIds) {
 const TIER_LABELS = {
   top: 'Top',
   recent: 'Recent',
+  'demoted-popular': 'Demoted Popular',
+  'cycled-recent': 'Cycled Recent',
   outside: 'Outside pools',
   manual: 'Manual',
 };
@@ -1165,6 +1456,7 @@ const OUTCOME_LABELS = {
   refreshed: '🔄 Refreshed',
   'already-quoted': '⏭️ Already has quotes',
   'no-quotes': '⚪ No quotes found (placeholder)',
+  pruned: '🧹 Pruned',
   'not-found': '❓ Not in catalog',
   failed: '❌ Failed',
 };
@@ -1241,6 +1533,7 @@ function formatInitialPoolBanner({
   batchTopCount = 0,
   batchRecentCount = 0,
   totalBatchCount = 0,
+  outOfWindowCount = 0,
 } = {}) {
   const topRemaining = Math.max(0, topPoolSize - topDone);
   const topPct = topPoolSize > 0 ? (Math.round((topDone / topPoolSize) * 1000) / 10).toFixed(1) : '100.0';
@@ -1256,6 +1549,11 @@ function formatInitialPoolBanner({
     `  • Rolling Recent: ${recentDone}/${recentPoolSize} ingested (${recentRemaining} remaining · ${recentPct}%)`,
     `  • This Batch:     ${totalBatchCount} candidate(s) (${batchTopCount} Top · ${batchRecentCount} Recent)`,
   ];
+  if (outOfWindowCount > 0) {
+    lines.push(
+      `  • Out-of-Window:  ${outOfWindowCount} quoted book(s) outside Top Popular / Rolling Recent (post-batch Option-A prune queued)`
+    );
+  }
   if (recentRemaining === 0 && recentPoolSize > 0) {
     lines.push('  • Note: Rolling Recent pool is fully ingested (100%); batch slots backfilled by Top Popular.');
   }
@@ -1305,23 +1603,46 @@ function formatRunReport(summary, context = {}) {
 
   lines.push('### Tier Progress', '');
   const progress = summary.progress;
+  const pruneStats = summary.pruneStats || null;
   if (progress) {
     const row = (label, t) =>
       `| ${label} | ${t.pool} | ${t.doneNow}${t.addedThisRun > 0 ? ` (+${t.addedThisRun})` : ''} | ${t.remaining} | ${t.percent}% |`;
-    lines.push(
+    const tableRows = [
       '| Tier | Pool | Done | Remaining | Progress |',
       '|---|---:|---:|---:|---:|',
       row('Top Popular', progress.top),
       row('Rolling Recent', progress.recent),
       row('**Total**', progress.total),
-      ''
-    );
+    ];
+    if (pruneStats) {
+      const pct =
+        pruneStats.eligible > 0
+          ? Math.round((pruneStats.purged / pruneStats.eligible) * 1000) / 10
+          : 100;
+      const doneCell =
+        pruneStats.deferred > 0
+          ? `${pruneStats.purged} purged (${pruneStats.deferred} deferred)`
+          : `${pruneStats.purged} purged`;
+      tableRows.push(
+        `| Out-of-Window (Pruned) | ${pruneStats.eligible} | ${doneCell} | ${pruneStats.remaining} | ${pct}% |`
+      );
+    }
+    lines.push(...tableRows, '');
     lines.push(
       progress.total.remaining === 0
         ? '✅ Both pools are fully ingested.'
-        : `Estimated completion: ~${progress.etaRuns} more run(s) (≈${progress.etaHours}h at a 1.5h average window).`,
-      ''
+        : `Estimated completion: ~${progress.etaRuns} more run(s) (≈${progress.etaHours}h at a 1.5h average window).`
     );
+    if (pruneStats && pruneStats.remaining > 0) {
+      lines.push(
+        `_Out-of-window purge backlog: ${pruneStats.remaining} book(s) remaining for subsequent cleanup._`
+      );
+    } else if (pruneStats && pruneStats.deferred > 0) {
+      lines.push(
+        `_Option-A backfill cushion: temporarily preserving ${pruneStats.deferred} most-popular demoted book(s) while Top Popular finishes backfilling._`
+      );
+    }
+    lines.push('');
   } else {
     const reason = context.tierResolutionError
       ? `pool scan failed: ${escapeMarkdownCell(context.tierResolutionError)}`
@@ -1399,6 +1720,14 @@ function formatConsoleSummary(summary, context = {}) {
       `  • Top Popular:    ${fmtTier(progress.top)}`,
       `  • Rolling Recent: ${fmtTier(progress.recent)}`,
       `  • Total Pool:     ${progress.total.doneNow}/${progress.total.pool} ingested (${progress.total.remaining} remaining · ${progress.total.percent.toFixed(1)}%${progress.etaRuns > 0 ? ` · ~${progress.etaRuns} run(s) left` : ' · 100% complete'})`
+    );
+  }
+
+  const ps = summary.pruneStats;
+  if (ps) {
+    const pct = ps.eligible > 0 ? ((ps.purged / ps.eligible) * 100).toFixed(1) : '100.0';
+    lines.push(
+      `  • Purge Status:   ${ps.purged}/${ps.eligible} purged (${ps.remaining} remaining · ${pct}%${ps.deferred > 0 ? ` · ${ps.deferred} backfill-deferred` : ''})`
     );
   }
 
@@ -1533,7 +1862,22 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     }
   }
 
-  const quotedIds = await fetchQuotedBookIds(supabase, allScannedIds);
+  const knownBooksById = new Map();
+  for (const row of [...(popularData || []), ...(recentData || [])]) {
+    if (row && Number.isInteger(row.id) && typeof row.title === 'string' && row.title.trim()) {
+      knownBooksById.set(row.id, row.title.trim());
+    }
+  }
+
+  let quotedIds;
+  const fullQuoted = await fetchAllQuotedBookIds(supabase);
+  if (fullQuoted) {
+    options._allQuotedIds = fullQuoted.ids;
+    options._quotedDownloadCounts = fullQuoted.downloadCounts;
+    quotedIds = new Set(fullQuoted.ids);
+  } else {
+    quotedIds = await fetchQuotedBookIds(supabase, allScannedIds);
+  }
 
   const { candidates, popularPoolIds, recentPoolIds, allowedPoolIds, candidateTiers } =
     blendTwoTierCandidates(popularData, recentData, { ...options, quotedIds });
@@ -1544,6 +1888,7 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
   options._quotedIds = quotedIds;
   options._candidateTiers = candidateTiers;
   options._scannedPoolIds = Array.from(allScannedIds);
+  options._knownBooksById = knownBooksById;
 
   if (candidates.length > 0) {
     const candidateIds = candidates.map((c) => c.id);
@@ -1603,6 +1948,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     fromMirrors: 0,
     sentinelMarked: 0,
     pruned: 0,
+    pruneStats: null,
     failed: 0,
     mirrorBreakdown: {},
     sqlStatements: [],
@@ -1690,6 +2036,14 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   };
 
   if (!options._manualRun && topPoolSize > 0) {
+    let outOfWindowCount = 0;
+    if (options._allQuotedIds instanceof Set) {
+      for (const id of options._allQuotedIds) {
+        if (!topPoolIds.has(id) && !recentPoolIds.has(id)) {
+          outOfWindowCount++;
+        }
+      }
+    }
     const banner = formatInitialPoolBanner({
       topPoolSize,
       topDone: initialTopDone,
@@ -1698,6 +2052,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       batchTopCount: tierTotals['top'] || 0,
       batchRecentCount: tierTotals['recent'] || 0,
       totalBatchCount: booksToProcess.length,
+      outOfWindowCount,
     });
     logger.log(banner);
   }
@@ -1722,6 +2077,49 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
 
   const shouldPrune = () => Boolean(options._popularPoolIds && supabase && !options._manualRun);
 
+  const executePostBatchPrune = async () => {
+    if (!shouldPrune()) return;
+    // Strip internal `_quotedIds` cache from `fetchCandidateBooksFromSupabase` only if `_allQuotedIds`
+    // wasn't fetched yet; when `_allQuotedIds` exists, prune passes it so no duplicate DB scan runs.
+    const pruneOptions = {
+      ...options,
+      newlyQuotedIds,
+      sleepFn,
+    };
+    delete pruneOptions._quotedIds;
+    const pruneRes = await pruneOutOfWindowBookQuotes(
+      supabase,
+      options._popularPoolIds,
+      pruneOptions,
+      logger
+    );
+    summary.pruned = pruneRes.prunedCount;
+    summary.pruneStats = {
+      eligible: pruneRes.eligibleCount,
+      purged: pruneRes.prunedCount,
+      remaining: pruneRes.remainingBacklogCount,
+      deferred: pruneRes.deferredCount,
+      popularDeficit: pruneRes.popularDeficit,
+    };
+    for (const prunedEntry of pruneRes.prunedBooks || []) {
+      recordBook(
+        { id: prunedEntry.id, title: prunedEntry.title },
+        {
+          order: booksToProcess.length + summary.books.length + 1,
+          tier: prunedEntry.cause,
+          source: 'stored',
+          outcome: 'pruned',
+          quoteCount: 0,
+          existingQuoteCount: 0,
+          note:
+            prunedEntry.cause === 'demoted-popular'
+              ? 'left Top Popular pool'
+              : 'aged past Rolling Recent cap',
+        }
+      );
+    }
+  };
+
   const finalizeRun = () => {
     if (options._popularPoolIds instanceof Set) {
       summary.progress = computeTierProgress({
@@ -1742,15 +2140,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   };
 
   if (booksToProcess.length === 0) {
-    if (shouldPrune()) {
-      const pruneRes = await pruneOutOfWindowBookQuotes(
-        supabase,
-        options._popularPoolIds,
-        { ...options, newlyQuotedIds },
-        logger
-      );
-      summary.pruned = pruneRes.prunedCount;
-    }
+    await executePostBatchPrune();
     logger.log(
       options._manualRun
         ? 'None of the requested IDs exist in public.books — nothing to sync.'
@@ -2007,15 +2397,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     }
   }
 
-  if (shouldPrune()) {
-    const pruneRes = await pruneOutOfWindowBookQuotes(
-      supabase,
-      options._popularPoolIds,
-      { ...options, newlyQuotedIds },
-      logger
-    );
-    summary.pruned = pruneRes.prunedCount;
-  }
+  await executePostBatchPrune();
 
   if (options.dryRun && summary.sqlStatements.length > 0 && deps.writeSeedFile !== false) {
     const seedPath = path.resolve(__dirname, '..', 'supabase', 'seed_quotes.sql');
@@ -2055,6 +2437,7 @@ module.exports = {
   DEFAULT_POPULAR_POOL_SIZE,
   DEFAULT_RECENT_POOL_SIZE,
   DEFAULT_RECENT_BATCH_RATIO,
+  DEFAULT_MAX_PRUNE_PER_RUN,
   MAX_BOOK_TEXT_BYTES,
   PRIORITY_HERO_BOOK_IDS,
   isAllowedPglafMirrorUrl,
@@ -2076,7 +2459,10 @@ module.exports = {
   mergeDistinctQuoteSpreads,
   buildSqlQuoteSeedStatement,
   fetchQuotedBookIds,
+  fetchAllQuotedBookIds,
+  resolveBookMetadataByIds,
   blendTwoTierCandidates,
+  computeOutOfWindowPrunePlan,
   pruneOutOfWindowBookQuotes,
   scanTwoTierPools,
   resolveManualRunTiers,

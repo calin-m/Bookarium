@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 14 Nov 2026 15:01:46 GMT  
+**Last Generated**: Sun, 15 Nov 2026 11:55:13 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 256 passed  
-**Total Verified Tests**: 2601 passed  
+**Total Test Suites**: 257 passed  
+**Total Verified Tests**: 2607 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **256/256 test suites passed** (2601 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **257/257 test suites passed** (2607 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 16 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 17 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.41%** (15477/16052) — *Target: $\ge$ 95%*
-- **Statements**: **95.09%** (16659/17519) — *Target: $\ge$ 95%*
-- **Functions**: **94.28%** (3335/3537) — *Target: $\ge$ 92%*
-- **Branches**: **87.59%** (15440/17627) — *Target: $\ge$ 85%*
+- **Lines**: **96.44%** (15484/16055) — *Target: $\ge$ 95%*
+- **Statements**: **95.12%** (16667/17522) — *Target: $\ge$ 95%*
+- **Functions**: **94.4%** (3339/3537) — *Target: $\ge$ 92%*
+- **Branches**: **87.58%** (15443/17633) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (256 Suites / 2601 Tests)
+## 🧪 Comprehensive Test Suite Catalog (257 Suites / 2607 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 323 Tests)
 
@@ -2042,7 +2042,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (50 Suites · 615 Tests)
+### 📚 Gutenberg Parsers & Metadata (51 Suites · 621 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2896,7 +2896,18 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>scripts/purge-vercel-cache.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `parses --tags, --target, --dry-run, and --max-retries flags with deduplication and validation`
+- ✔ `constructs canonical dangerously-delete-by-tags URLs with optional teamId and rejects empty projectId`
+- ✔ `skips cleanly and writes step summary when Vercel credentials are unconfigured or --dry-run is active`
+- ✔ `sends authenticated POST requests to dangerously-delete-by-tags and retries transient 429/5xx errors`
+- ✔ `fails fast on non-retryable 401/403/404 responses, validates empty tags, and logs step summary failures safely`
+
+</details>
+
+<details>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -2914,6 +2925,7 @@
 - ✔ `reports manual --ids books with real tiers: already-quoted, topped-up, not-found and force-refreshed, without pruning`
 - ✔ `falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt`
 - ✔ `consumes --diff-file (quote-diff.json) without scanning the database pool, prioritizes promotedIds, and prunes demotedIds`
+- ✔ `discovers 100% of out-of-window quoted books via partial index pagination, applies Option-A cushion & drain, and yields past 500 prunes`
 
 </details>
 

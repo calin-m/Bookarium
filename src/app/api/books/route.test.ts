@@ -56,6 +56,7 @@ describe('GET /api/books route handler', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(res.headers.get('Vercel-Cache-Tag')).toBeNull();
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
@@ -134,6 +135,7 @@ describe('GET /api/books route handler', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('max-age=300');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('Vercel-Cache-Tag')).toBe('catalog');
     expect(searchBooksSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         search: 'Charles Dickens',
@@ -194,6 +196,7 @@ describe('GET /api/books route handler', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toContain('max-age=300');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
+    expect(res.headers.get('Vercel-Cache-Tag')).toBe('catalog');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
     const json = await res.json();
@@ -208,6 +211,7 @@ describe('GET /api/books route handler', () => {
     const errRes = await GET(new NextRequest('http://localhost:3000/api/books?search=Pride'));
     expect(errRes.status).toBe(503);
     expect(errRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(errRes.headers.get('Vercel-Cache-Tag')).toBeNull();
     const errJson = await errRes.json();
     expect(errJson.error).toBe('Catalog database temporarily unavailable. Please try again.');
     expect(errJson.results).toEqual([]);
@@ -261,6 +265,7 @@ describe('GET /api/books route handler', () => {
       'public, max-age=3600, s-maxage=43200, stale-while-revalidate=604800'
     );
     expect(poolRes.headers.get('Vary')).toBe('Accept-Encoding');
+    expect(poolRes.headers.get('Vercel-Cache-Tag')).toBe('quotes');
 
     const quoteIdReq = new NextRequest(
       'http://localhost:3000/api/books?ids=1342&has_quotes=true&include_restricted_metadata=true'
@@ -271,6 +276,14 @@ describe('GET /api/books route handler', () => {
       'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000'
     );
     expect(quoteIdRes.headers.get('Vary')).toBe('Accept-Encoding');
+    expect(quoteIdRes.headers.get('Vercel-Cache-Tag')).toBe('catalog,quotes');
+
+    const restrictedMetaOnlyReq = new NextRequest(
+      'http://localhost:3000/api/books?ids=1342&include_restricted_metadata=true'
+    );
+    const restrictedMetaOnlyRes = await GET(restrictedMetaOnlyReq);
+    expect(restrictedMetaOnlyRes.status).toBe(200);
+    expect(restrictedMetaOnlyRes.headers.get('Vercel-Cache-Tag')).toBe('catalog');
 
     isHealthySpy.mockRestore();
     searchBooksSpy.mockRestore();
