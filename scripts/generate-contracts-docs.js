@@ -253,6 +253,8 @@ function generateContractsMarkdown() {
     ' */',
     '```',
     '',
+    '> **Zero-Debt Authoring Rule**: Prefer citing exported constant or symbol identifiers (e.g., `MAX_ANNOTATION_TEXT_LENGTH`, `PASSIVE_SYNC_COOLDOWN_MS`, `QUOTE_POOL_SETTLE_TIMEOUT_MS`) inside `@invariant` tags instead of duplicating mutable numeric literals, and update existing tags incrementally when modifying those modules.',
+    '',
     '---',
     '',
     '## 📊 Contract Coverage Telemetry (Across All Executable Modules)',

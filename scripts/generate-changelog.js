@@ -9,6 +9,22 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.44',
+    date: '2026-11-16',
+    title: 'CI Live AST Timeout Fix, Coverage Hardening & Zero-Debt Doc-Sync Polish',
+    sections: {
+      Fixed: [
+        '**CI Full-Repo AST Test Splitting & Pass 5 Cross-Boundary Reuse (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/verify-build.js`, `docs/DECISIONS.md`)**: Split live Tier-1..Tier-4 contract validation and 17-map `findOrphanedGeneratorLookupKeys` checks into independent tests with `45_000`ms per-test timeouts across all 4 live AST scans to prevent shared GitHub Actions `15_000`ms runner timeouts, and added `{ crossBoundaryCatalog }` reuse inside Pass 5 (`ADR-081`).',
+      ],
+      Added: [
+        '**Collections Controller & Canonical Annotator Edge Coverage (`src/hooks/usePersonalCollectionsController.test.ts`, `src/lib/reader-annotator.test.ts`)**: Added behavioral tests for desktop toolbar direction promotion on `favorites`, drawer/clear preset reset edges, downloaded-favorites empty copy, page-overflow clamping, curly single-quote canonical matching, trimmed-needle fallback, and overlap containment guards (`ADR-019`, `ADR-080`).',
+      ],
+      Changed: [
+        '**Zero-Debt Doc-Sync Regex Fix & Static Prose Deduplication (`scripts/generate-quality-report.js`, `scripts/generate-contracts-docs.js`, `README.md`, `docs/PIPELINE_GUIDE.md`, `docs/DECISIONS.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Fixed the backticked README ADR-count auto-sync regex in `scripts/generate-quality-report.js`, trimmed stale hardcoded tier/ADR prose in `README.md` and duplicate CLI parameter tables in `README.md` & `docs/PIPELINE_GUIDE.md` to canonical runbook links, and documented the symbol-anchored `@invariant` authoring rule (`ADR-081`).',
+      ],
+    },
+  },
+  {
     version: '2.9.43',
     date: '2026-11-16',
     title: 'Tier-4 Behavioral Contracts for Gutenberg Parser/Worker, Reader Geometry & CLI/SAST Pipelines',

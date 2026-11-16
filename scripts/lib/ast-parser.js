@@ -3092,7 +3092,7 @@ function extractObjectLiteralKeysByVariable(filePath, targetNames) {
  * to detect stale keys whose modules, scripts, dependencies, workflows, SQL entities,
  * signals, workers, public assets, or environment variables were removed or renamed.
  */
-function findOrphanedGeneratorLookupKeys(rootDir, srcDir) {
+function findOrphanedGeneratorLookupKeys(rootDir, srcDir, options = {}) {
   const orphans = [];
 
   const checkAgainstSet = (mapName, file, keys, validSet, reason) => {
@@ -3242,7 +3242,9 @@ function findOrphanedGeneratorLookupKeys(rootDir, srcDir) {
 
       const signalKeys = keysByVar.get('signalMetaMap') || [];
       if (signalKeys.length > 0) {
-        const crossBoundary = extractCrossBoundaryCouplingCatalog(srcDir, rootDir);
+        const crossBoundary =
+          options?.crossBoundaryCatalog ||
+          extractCrossBoundaryCouplingCatalog(srcDir, rootDir);
         const liveSignalsSet = new Set(
           crossBoundary.signalChannels.map((s) => `${s.kind}:${s.name}`)
         );

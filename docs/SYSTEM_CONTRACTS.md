@@ -20,6 +20,8 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
  */
 ```
 
+> **Zero-Debt Authoring Rule**: Prefer citing exported constant or symbol identifiers (e.g., `MAX_ANNOTATION_TEXT_LENGTH`, `PASSIVE_SYNC_COOLDOWN_MS`, `QUOTE_POOL_SETTLE_TIMEOUT_MS`) inside `@invariant` tags instead of duplicating mutable numeric literals, and update existing tags incrementally when modifying those modules.
+
 ---
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
@@ -363,7 +365,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-060](DECISIONS.md)
 - **AST Blast Radius**: 11 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx), [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (26 tests)
+- **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (27 tests)
 
 #### [`src/lib/reader-bookmark-geometry.ts`](../src/lib/reader-bookmark-geometry.ts) *(Tier-4 Protected)*
 
@@ -824,7 +826,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
 - **AST Blast Radius**: 4 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (12 tests)
+- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (13 tests)
 
 #### [`scripts/purge-vercel-cache.js`](../scripts/purge-vercel-cache.js) *(Tier-4 Protected)*
 

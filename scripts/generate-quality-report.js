@@ -311,8 +311,8 @@ if (fs.existsSync(readmePath)) {
     `complete index of all ${totalTestCount} tests across ${totalSuitesCount} test suites.`
   );
   readme = readme.replace(
-    /\d+ validated ADRs \(ADR-001 through ADR-\d+\)/,
-    `${adrCount} validated ADRs (ADR-001 through ADR-${String(adrCount).padStart(3, '0')})`
+    /\d+ validated ADRs \(`?ADR-001`? through `?ADR-\d+`?\)/,
+    `${adrCount} validated ADRs (\`ADR-001\` through \`ADR-${String(adrCount).padStart(3, '0')}\`)`
   );
   if (readme !== originalReadme) {
     fs.writeFileSync(readmePath, readme, 'utf-8');

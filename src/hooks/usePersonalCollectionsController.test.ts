@@ -242,4 +242,94 @@ describe('usePersonalCollectionsController', () => {
     expect(result.current.isShelfFavoritesActive).toBe(false);
     expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([1342, 84]);
   });
+
+  it('handles toolbar direction promotion, favorites direction toggle, preset clear edges, page clamping, and downloaded favorites empty copy', () => {
+    const removeAllOfflineBooks = vi.fn().mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ activeView, offlineBookIds }) =>
+        usePersonalCollectionsController({
+          hasMounted: true,
+          activeView,
+          isMobile: false,
+          isOffline: false,
+          isBookOffline: (id) => offlineBookIds.includes(id),
+          offlineBooks: [],
+          catalogResults: sampleBooks,
+          removeAllOfflineBooks,
+        }),
+      {
+        initialProps: {
+          activeView: 'bookshelf' as 'bookshelf' | 'favorites' | 'catalog',
+          offlineBookIds: [] as number[],
+        },
+      }
+    );
+
+    // Selecting Favorites preset on toolbar, then toggling global direction promotes to orthogonal recent_asc
+    act(() => {
+      result.current.handleToolbarShelfSortChange('favorites');
+    });
+    expect(result.current.shelfSortBy).toBe('favorites');
+
+    act(() => {
+      result.current.handleCollectionDirectionToggle();
+    });
+    expect(result.current.shelfFavoritesOnly).toBe(true);
+    expect(result.current.shelfSortBy).toBe('recent_asc');
+
+    // Exiting toolbar Favorites-equivalent state (shelfFavoritesOnly + recent) clears shelfFavoritesOnly
+    act(() => {
+      result.current.handleDrawerShelfDirectionChange('desc');
+    });
+    expect(result.current.shelfSortBy).toBe('recent');
+
+    act(() => {
+      result.current.handleToolbarShelfSortChange('title');
+    });
+    expect(result.current.shelfFavoritesOnly).toBe(false);
+    expect(result.current.shelfSortBy).toBe('title_asc');
+
+    // Toggling drawer Favorites off or calling clearShelfFavoritesFilter resets preset 'favorites' to 'recent'
+    act(() => {
+      result.current.handleToolbarShelfSortChange('favorites');
+    });
+    act(() => {
+      result.current.handleDrawerFavoritesToggle(false);
+    });
+    expect(result.current.shelfSortBy).toBe('recent');
+
+    act(() => {
+      result.current.handleToolbarShelfSortChange('favorites');
+    });
+    act(() => {
+      result.current.clearShelfFavoritesFilter();
+    });
+    expect(result.current.shelfSortBy).toBe('recent');
+
+    // Downloaded shelf + Favorites with 0 offline books yields 'No downloaded favorites yet'
+    act(() => {
+      result.current.handleDrawerFavoritesToggle(true);
+      result.current.handleDrawerSelectShelf(DOWNLOADED_SHELF_ID);
+    });
+    expect(result.current.emptyStateCopy.title).toBe('No downloaded favorites yet');
+
+    // Out-of-bounds shelfPage clamps back to totalShelfPages (1)
+    act(() => {
+      result.current.setShelfPage(5);
+    });
+    expect(result.current.shelfPage).toBe(1);
+
+    // Favorites view direction toggle + out-of-bounds favoritesPage clamping
+    rerender({ activeView: 'favorites', offlineBookIds: [] });
+    act(() => {
+      result.current.handleCollectionDirectionToggle();
+    });
+    expect(result.current.favoritesSortBy).toBe('recent_asc');
+
+    act(() => {
+      result.current.setFavoritesPage(4);
+    });
+    expect(result.current.favoritesPage).toBe(1);
+  });
 });

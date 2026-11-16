@@ -542,6 +542,97 @@ describe('filterAndPairAnnotationsBySource', () => {
       'However little known the feelings or views of such a man may be on his first entering a neighbourhood'
     );
   });
+
+  it('normalizes curly single quotes, padded needles, empty text guards, and symmetric quote overlap containment', () => {
+    // Curly left/right single quotes match straight apostrophes via canonical map
+    const textWithCurly = '‘Twas the sailor’s own tale—written neatly.';
+    const curlySpan = findCanonicalTextSpan(textWithCurly, "'Twas the sailor's own tale--written");
+    expect(curlySpan).toEqual({
+      start: 0,
+      end: 35,
+    });
+    expect(textWithCurly.slice(curlySpan!.start, curlySpan!.end)).toBe(
+      '‘Twas the sailor’s own tale—written'
+    );
+
+    // Trimmed whitespace needle matches fast path when surrounded by whitespace in annotation
+    const trimmedSpans = findAllCanonicalTextSpans(textWithCurly, '  sailor’s own  ');
+    expect(trimmedSpans).toEqual([{ start: 10, end: 22 }]);
+    expect(textWithCurly.slice(trimmedSpans[0].start, trimmedSpans[0].end)).toBe('sailor’s own');
+
+    // Empty / whitespace-only needles or underline-only canonical strings safely return empty
+    expect(findAllCanonicalTextSpans('', 'test')).toEqual([]);
+    expect(findAllCanonicalTextSpans(textWithCurly, '   ')).toEqual([]);
+    expect(findAllCanonicalTextSpans(textWithCurly, '___')).toEqual([]);
+
+    // Empty selectedText annotations are ignored cleanly across both own and fellow collections
+    const fellowEmpty: FellowAnnotation = {
+      id: 'fellow-empty',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: '',
+      color: 'mint',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      isFellow: true,
+      fellowUsername: 'scholar',
+    };
+    const ownEmpty: Annotation = {
+      id: 'own-empty',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: '',
+      color: 'yellow',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    expect(computeAnnotationSpans(textWithCurly, [ownEmpty, fellowEmpty])).toEqual([]);
+
+    // areAnnotationsOverlapping edge cases: empty string, underscore-only string, canonical dash match, and lowercase variance
+    expect(
+      areAnnotationsOverlapping(
+        { bookId: 1, chapterIndex: 0, selectedText: '   ' },
+        { bookId: 1, chapterIndex: 0, selectedText: 'word' }
+      )
+    ).toBe(false);
+    expect(
+      areAnnotationsOverlapping(
+        { bookId: 1, chapterIndex: 0, selectedText: '_' },
+        { bookId: 1, chapterIndex: 0, selectedText: 'different' }
+      )
+    ).toBe(false);
+    expect(
+      areAnnotationsOverlapping(
+        { bookId: 1, chapterIndex: 0, selectedText: 'a golden age—truly' },
+        { bookId: 1, chapterIndex: 0, selectedText: 'a golden age--truly' }
+      )
+    ).toBe(true);
+    expect(
+      areAnnotationsOverlapping(
+        { bookId: 1, chapterIndex: 0, selectedText: 'A GOLDEN AGE' },
+        { bookId: 1, chapterIndex: 0, selectedText: 'a golden age' }
+      )
+    ).toBe(true);
+
+    // computeSharedQuoteSegments handles canonical-exact match (retaining ownText), surrounding fellow containment, and disjoint fallback
+    expect(computeSharedQuoteSegments('Sailor’s own tale', "Sailor's own tale")).toEqual({
+      isExact: true,
+      fullQuote: 'Sailor’s own tale',
+    });
+    expect(computeSharedQuoteSegments('Sailor’s own tale', "Opening Sailor's own tale closing")).toEqual({
+      isExact: false,
+      fullQuote: "Opening Sailor's own tale closing",
+      overlapText: "Sailor's own tale",
+      beforeText: 'Opening ',
+      afterText: ' closing',
+    });
+    expect(computeSharedQuoteSegments('Unrelated one', 'Unrelated two')).toEqual({
+      isExact: true,
+      fullQuote: 'Unrelated one',
+    });
+  });
 });
 
 

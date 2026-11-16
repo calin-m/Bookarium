@@ -386,7 +386,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(circularHealth.cycleCount).toBe(0);
     expect(layerViolations).toEqual([]);
     expect(orphans).toEqual([]);
-  });
+  }, 45_000);
 
   it('separates runtime edges from inline and declaration type-only imports in the dependency graph', () => {
     const { rootDir, srcDir } = createTempProject({
@@ -540,7 +540,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
         'scripts/generate-contracts-docs.js',
       ])
     );
-  });
+  }, 45_000);
 
   it('extracts module-level and symbol-level @scope/@invariant/@rationale/@adr tags across TS and CommonJS without misattribution', () => {
     const { rootDir, srcDir } = createTempProject({
@@ -676,8 +676,14 @@ describe('ast-parser architectural & SQL verification engine', () => {
 
     const syncUtils = byFile.get('src/lib/sync-utils.ts');
     expect(syncUtils?.symbolContracts.some((s) => s.name === 'syncAllStoresWithCloud')).toBe(true);
+  }, 45_000);
+
+  it('verifies zero orphaned lookup keys exist across all 17 live generator registries', () => {
+    const repoRoot = path.resolve(__dirname, '..', '..');
+    const repoSrc = path.join(repoRoot, 'src');
+
     expect(astParser.findOrphanedGeneratorLookupKeys(repoRoot, repoSrc)).toEqual([]);
-  });
+  }, 45_000);
 
   it('detects orphaned lookup keys across all generator registries when modules, deps, workflows, SQL entities, signals, workers, or env vars are removed', () => {
     const { rootDir, srcDir } = createTempProject({

@@ -1494,7 +1494,11 @@ function pass5AdrValidation() {
     const scriptsGraph = analyzeScriptsDependencyGraph(rootDir);
     crossBoundaryCatalog = extractCrossBoundaryCouplingCatalog(path.join(rootDir, 'src'), rootDir);
     const contractsCatalog = extractBehavioralContractsCatalog(path.join(rootDir, 'src'), rootDir);
-    const orphanLookupKeys = findOrphanedGeneratorLookupKeys(rootDir, path.join(rootDir, 'src'));
+    const orphanLookupKeys = findOrphanedGeneratorLookupKeys(
+      rootDir,
+      path.join(rootDir, 'src'),
+      { crossBoundaryCatalog }
+    );
 
     if (circularHealth.hasCycles || circularHealth.cycleCount > 0) {
       for (const cycle of circularHealth.cycles) {

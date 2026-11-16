@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202646%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202649%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.38%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,14 +68,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2646 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2649 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across all `src/` & CLI modules. | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 81 validated ADRs (`ADR-001` through `ADR-081`) governing zero-API-key operation, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, 7-pillar SAST/OWASP & 9-rule AST security gates (`ADR-073`), multi-tier Vercel Edge CDN caching, unified Sunday catalog/translation/quote ingestion (`ADR-080`), and AST-compiled Tier-1/Tier-2 code contracts with CI deterministic doc-sync enforcement (`ADR-081`). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 81 validated ADRs (`ADR-001` through `ADR-081`) governing zero-API-key operation, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, unified Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
@@ -110,11 +110,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.43)
+## 🛠️ Latest Improvements (v2.9.44)
 
-- **Tier-4 Gutenberg Parser, Web Worker & Reader Geometry/Session Contracts (`src/lib/gutenberg-parser.ts`, `src/lib/gutenberg/segmentation.ts`, `src/lib/gutenberg/pagination.ts`, `src/lib/gutenberg/passages.ts`, `src/lib/gutenberg/reflow.ts`, `src/workers/gutenberg.worker.ts`, `src/lib/reader-annotator.ts`, `src/lib/reader-bookmark-geometry.ts`, `src/hooks/reader/useReaderSession.ts`, `src/hooks/reader/useContinueReadingLedger.ts`)**: Seeded pure `@module` JSDoc `@scope`/`@invariant`/`@rationale`/`@adr` contracts locking Gutenberg license retention, whole-word/sentence page boundaries, typographic dash/verse reflow rules, off-thread Web Worker safety (`100%` `Web Workers` coverage), canonical annotation indexing, and reflow-resilient bookmark row geometry (`ADR-017`, `ADR-081`).
-- **Tier-4 CLI Ingestion, CDN Purge, SAST/AST Pipelines & Parser-Doc Filter (`scripts/ingest-catalog.js`, `scripts/ingest-translations.js`, `scripts/purge-vercel-cache.js`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/ast-parser.js`, `scripts/generate-parser-docs.js`, `scripts/generate-contracts-docs.js`, `scripts/verify-build.js`)**: Exported `TIER_4_CONTRACTED_MODULES` (`15` modules), expanding `PROTECTED_CONTRACTED_MODULES` to `61` guarded modules across Pass 5, and added JSDoc contract-block filtering in `generate-parser-docs.js` so `docs/GUTENBERG_PARSER.md` API tables stay cleanly separated (`ADR-073`, `ADR-081`).
-- **Pipeline Runbook & Architecture Script Registry Parity (`docs/PIPELINE_GUIDE.md`, `scripts/generate-architecture-matrix.js`)**: Updated `scriptMetaMap['scripts/ingest-catalog.js']` (`fs`, `path`, `https`, `child_process`, curated SQL seed generation) and synchronized [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) (`npm run catalog:ingest` + the CI `git diff --exit-code` deterministic doc-sync step) with [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (`ADR-081`).
+- **Collections Controller & Canonical Annotator Edge Coverage (`src/hooks/usePersonalCollectionsController.test.ts`, `src/lib/reader-annotator.test.ts`)**: Added behavioral tests for desktop toolbar direction promotion on `favorites`, drawer/clear preset reset edges, downloaded-favorites empty copy, page-overflow clamping, curly single-quote canonical matching, trimmed-needle fallback, and overlap containment guards (`ADR-019`, `ADR-080`).
+- **Zero-Debt Doc-Sync Regex Fix & Static Prose Deduplication (`scripts/generate-quality-report.js`, `scripts/generate-contracts-docs.js`, `README.md`, `docs/PIPELINE_GUIDE.md`, `docs/DECISIONS.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Fixed the backticked README ADR-count auto-sync regex in `scripts/generate-quality-report.js`, trimmed stale hardcoded tier/ADR prose in `README.md` and duplicate CLI parameter tables in `README.md` & `docs/PIPELINE_GUIDE.md` to canonical runbook links, and documented the symbol-anchored `@invariant` authoring rule (`ADR-081`).
+- **CI Full-Repo AST Test Splitting & Pass 5 Cross-Boundary Reuse (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/verify-build.js`, `docs/DECISIONS.md`)**: Split live Tier-1..Tier-4 contract validation and 17-map `findOrphanedGeneratorLookupKeys` checks into independent tests with `45_000`ms per-test timeouts across all 4 live AST scans to prevent shared GitHub Actions `15_000`ms runner timeouts, and added `{ crossBoundaryCatalog }` reuse inside Pass 5 (`ADR-081`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -651,10 +651,10 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run lint` | Runs ESLint 10 rules and Core Web Vitals checks (`--max-warnings 0`) |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
-| `npm run catalog:sync` | Streams Project Gutenberg's `rdf-files.tar.bz2` (unless `--no-rdf` or `--limit` is passed) and `pg_catalog.csv.gz`, diffs all 78,000+ books in RAM via `--cache-file=gutenberg-catalog-cache.json.gz`, upserts new/changed rows in Supabase, and emits `--diff-output=quote-diff.json` |
-| `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
-| `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |
-| `npm run quotes:sync` | Maintains the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` via `--diff-file=quote-diff.json` (or DB index scan fallback) and PGLAF bulk mirrors (`8.0s–16.0s` float pacing), publishing a Run Report to `$GITHUB_STEP_SUMMARY` |
+| `npm run catalog:sync` | Synchronizes Project Gutenberg's catalog feed into Supabase via cached RAM diffs and emits quote-diff candidates ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
+| `npm run catalog:ingest` | Generates idempotent curated SQL seed files (`supabase/seed_books.sql`) for local setup |
+| `npm run translations:sync` | Clusters multilingual FRBR editions via Wikidata SPARQL and batch-upserts `public.book_translations` ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
+| `npm run quotes:sync` | Maintains the Two-Tier bounded quote pool in `public.books.quotes` with mirror pacing and CI Run Reports ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
 > ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands execute across `.github/workflows/catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, and `release.yml` (including dry-run flags and required secrets).

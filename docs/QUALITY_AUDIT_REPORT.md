@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 16 Nov 2026 18:46:48 GMT  
+**Last Generated**: Mon, 16 Nov 2026 19:39:00 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 258 passed  
-**Total Verified Tests**: 2646 passed  
+**Total Verified Tests**: 2649 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2646 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2649 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.21%** (15730/16180) — *Target: $\ge$ 95%*
-- **Statements**: **96%** (16945/17651) — *Target: $\ge$ 95%*
+- **Lines**: **97.38%** (15757/16180) — *Target: $\ge$ 95%*
+- **Statements**: **96.19%** (16980/17651) — *Target: $\ge$ 95%*
 - **Functions**: **95.22%** (3388/3558) — *Target: $\ge$ 92%*
-- **Branches**: **88.37%** (15719/17787) — *Target: $\ge$ 85%*
+- **Branches**: **88.51%** (15745/17787) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2646 Tests)
+## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2649 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 326 Tests)
 
@@ -2056,7 +2056,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (52 Suites · 643 Tests)
+### 📚 Gutenberg Parsers & Metadata (52 Suites · 645 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2556,7 +2556,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (26 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -2584,6 +2584,7 @@
 - ✔ `filters "fellows" and attaches matchingOwnAnnotation when overlapping`
 - ✔ `pairs and deduplicates overlapping items under "all"`
 - ✔ `matches boundary-straddling highlights split across virtual page breaks`
+- ✔ `normalizes curly single quotes, padded needles, empty text guards, and symmetric quote overlap containment`
 
 </details>
 
@@ -2917,7 +2918,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
 - ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
@@ -2930,6 +2931,7 @@
 - ✔ `verifies live repository cross-boundary signals, API/RPC callers, and scripts graph cleanly`
 - ✔ `extracts module-level and symbol-level @scope/@invariant/@rationale/@adr tags across TS and CommonJS without misattribution`
 - ✔ `verifies all Tier-1, Tier-2, Tier-3, and Tier-4 protected modules in the live repository maintain valid @scope/@invariant contracts`
+- ✔ `verifies zero orphaned lookup keys exist across all 17 live generator registries`
 - ✔ `detects orphaned lookup keys across all generator registries when modules, deps, workflows, SQL entities, signals, workers, or env vars are removed`
 
 </details>
@@ -3013,7 +3015,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 336 Tests)
+### 🔄 Hooks & React Query (36 Suites · 337 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3505,10 +3507,11 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `filters, sorts, paginates, and clears bookshelf and favorites collections`
 - ✔ `excludes is_default shelves from bookshelfDrawerShelves and supports Favorites preset sorting in Bookshelf`
+- ✔ `handles toolbar direction promotion, favorites direction toggle, preset clear edges, page clamping, and downloaded favorites empty copy`
 
 </details>
 
