@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useAccoladesStore
+ * @scope Literary accolades unlock ledger, pending celebration queue, personal Ex-Libris showcase pinning (`MAX_PINNED_ACCOLADES = 3`), and offline pin outbox sync.
+ * @invariant Cap showcased bookplates strictly at `MAX_PINNED_ACCOLADES` (`3`), preserve pending offline pin mutations (`pendingPinUpdates`) until cloud flush succeeds, and coalesce sync via `coalesceInFlightByUser`.
+ * @invariant Bypass `15,000ms` passive mount cooldown (`lastAccoladesSyncByUser`) on explicit unlocks/pins (`invalidateAccoladesSyncCooldown`).
+ * @rationale Coalescing sync flights and isolating `pendingPinUpdates` prevents celebration loops or un-pinned showcase regressions when reconnecting after offline milestones.
+ * @adr ADR-027, ADR-030, ADR-032, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';

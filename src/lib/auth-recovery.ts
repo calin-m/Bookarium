@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/auth-recovery
+ * @scope Fail-closed Supabase JWT `amr` claim verifier and single-use password-recovery consumption marker manager (`bookarium-consumed-recovery`).
+ * @invariant Authorize password-recovery reset flows ONLY when signed JWT `amr` claims prove a fresh (`<= RECOVERY_LINK_TTL_SECONDS = 3600`s) unconsumed `'recovery'` or post-request `'otp'` event matching `recoverySentAt`.
+ * @invariant Persist consumed `recoverySentAt` timestamps per user (`markRecoveryConsumed`) so `?recovery=true` URLs or back-button reloads cannot replay recovery privileges.
+ * @rationale Treating client `?recovery=true` query parameters as untrusted hints closes password-reset session hijacking if an already signed-in or magic-link session visits the URL.
+ * @adr ADR-005, ADR-080
+ */
+
 export const RECOVERY_LINK_TTL_SECONDS = 3600;
 export const DEFAULT_RECOVERY_CLOCK_SKEW_SECONDS = 10;
 export const CONSUMED_RECOVERY_STORAGE_KEY = 'bookarium-consumed-recovery';

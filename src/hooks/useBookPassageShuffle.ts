@@ -1,5 +1,15 @@
 'use client';
 
+/**
+ * @module
+ * @scope Interactive book preview passage coordinator managing three-tier quote sourcing,
+ *        bounded `localStorage` caching, and `450ms` reduced-motion-safe 3D leaf-turn resets.
+ * @invariant Prioritize pre-seeded `supabaseQuotes` (skipping redundant full-text fetches whenever `>= 2` passages are present), falling back to bounded `bookarium-extracted-passages-v1` (`100` entries, `30`-day TTL) or `curatedPassages`.
+ * @invariant Reset `isTurningLeaf` after `450ms` via timeout safety fallback so page-turn interactions never lock under `prefers-reduced-motion` or 2D mobile mode.
+ * @rationale Avoiding unnecessary full-text fetches on quote-enriched Hero and Catalog volumes honors zero-pull homepage protection while preserving instant passage shuffling everywhere.
+ * @adr ADR-074, ADR-080
+ */
+
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getBookPassages, hasCuratedBookPassages, type BookPassage } from '@/config/featured-books';
 import { extractDynamicBookPassages } from '@/lib/gutenberg/passages';

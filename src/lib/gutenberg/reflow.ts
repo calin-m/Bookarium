@@ -1,4 +1,13 @@
 /**
+ * @module
+ * @scope Plain-text Gutenberg typography normalizer (`formatGutenbergTypography`) and hard-wrap paragraph reflow engine (`reflowGutenbergParagraphs`).
+ * @invariant Preserve divider rules, `4+`-space indented verse/blockquotes, and alternating-indent short poetry (`maxTrimmedLen <= 62`, `avgTrimmedLen <= 52`), while unwrapping hard 70-column prose lines into fluid browser paragraphs.
+ * @invariant Convert prose double-hyphens (`--`) to em-dashes (`—`) without mutating ASCII table borders (`+--+`, `|--|`), `---` rules, or `-->` arrows, and strip `_italic_` underscores while keeping redacted `____` blanks and `snake_case` intact.
+ * @rationale Project Gutenberg texts mix hard-wrapped prose, poetry, and tabular illustrations; geometry-aware reflow adapts prose cleanly to responsive columns without mangling verse stanzas or typographic artifacts.
+ * @adr ADR-017, ADR-074
+ */
+
+/**
  * Normalizes Project Gutenberg plain-text typographic artifacts within a single line or paragraph:
  * 1. Preserves horizontal dividers, scene breaks, and asterisms (`* * *`, `-----`).
  * 2. Converts strictly 2-hyphen prose tokens (`--`) into typographic em-dashes (`—`) while

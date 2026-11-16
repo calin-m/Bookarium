@@ -1,3 +1,12 @@
+/**
+ * @module
+ * @scope Canonical text span matching (`findAllCanonicalTextSpans`), dual-band self+fellow overlap interval slicing, and highlight reconciliation utilities.
+ * @invariant Execute an `O(N)` exact `indexOf` fast path first before falling back to `buildCanonicalIndexMap` (`--` <-> `—`, `_italic_`, whitespace, curly <-> straight quote equivalence) so saved annotations and bookmarks remain resilient across typography updates.
+ * @invariant Slice overlapping personal and fellow marginalia into non-overlapping `AnnotationSpan` segments while filtering PII (`isFellowAnnotation`) cleanly.
+ * @rationale Character-index-mapped canonical search prevents annotation orphaning across reflow changes without slowing down common exact-match highlights.
+ * @adr ADR-019, ADR-059, ADR-060
+ */
+
 import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
 
 export type AnyAnnotation = Annotation | FellowAnnotation;

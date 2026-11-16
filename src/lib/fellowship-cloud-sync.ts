@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/fellowship-cloud-sync
+ * @scope Privacy-safe scholar identity resolution, handle formatting, and non-regressive profile healing for Reader Circles and Symposiums.
+ * @invariant Treat blank, `'scholar'`, and `'fellow_scholar'` strings as replaceable placeholders (`isPlaceholderUsername`) and preserve authentic usernames during `healProfileIdentity`.
+ * @invariant Batch-query only non-sensitive public columns (`id, username, display_name`) from `public.profiles` and degrade gracefully to empty maps when offline.
+ * @rationale Keeping fellow handle resolution zero-PII and offline-resilient lets Bookmarks, Notebook, and Reader popovers attribute shared highlights without exposing emails or crashing offline.
+ * @adr ADR-033, ADR-055, ADR-059, ADR-068
+ */
+
 import type { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';

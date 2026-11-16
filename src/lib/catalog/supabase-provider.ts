@@ -1,3 +1,13 @@
+/**
+ * @module src/lib/catalog/supabase-provider
+ * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, and LRU response caching.
+ * @invariant Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
+ * @invariant Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1` and strip 1-item bibliographic sentinel rows.
+ * @invariant Short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`) and enforce `limit + 1` dynamic backfill under non-US copyright filters.
+ * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows that trigger PostgreSQL 8s `statement_timeout` full-table sorts if compound SQL ordering or unfiltered `quotes <> '[]'` scans are issued.
+ * @adr ADR-037, ADR-038, ADR-043, ADR-080
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   ICatalogProvider,

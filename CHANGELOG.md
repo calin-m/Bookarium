@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.43] - 2026-11-16
+### *Tier-4 Behavioral Contracts for Gutenberg Parser/Worker, Reader Geometry & CLI/SAST Pipelines*
+
+### Added
+- **Tier-4 Gutenberg Parser, Web Worker & Reader Geometry/Session Contracts (`src/lib/gutenberg-parser.ts`, `src/lib/gutenberg/segmentation.ts`, `src/lib/gutenberg/pagination.ts`, `src/lib/gutenberg/passages.ts`, `src/lib/gutenberg/reflow.ts`, `src/workers/gutenberg.worker.ts`, `src/lib/reader-annotator.ts`, `src/lib/reader-bookmark-geometry.ts`, `src/hooks/reader/useReaderSession.ts`, `src/hooks/reader/useContinueReadingLedger.ts`)**: Seeded pure `@module` JSDoc `@scope`/`@invariant`/`@rationale`/`@adr` contracts locking Gutenberg license retention, whole-word/sentence page boundaries, typographic dash/verse reflow rules, off-thread Web Worker safety (`100%` `Web Workers` coverage), canonical annotation indexing, and reflow-resilient bookmark row geometry (`ADR-017`, `ADR-081`).
+- **Tier-4 CLI Ingestion, CDN Purge, SAST/AST Pipelines & Parser-Doc Filter (`scripts/ingest-catalog.js`, `scripts/ingest-translations.js`, `scripts/purge-vercel-cache.js`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/ast-parser.js`, `scripts/generate-parser-docs.js`, `scripts/generate-contracts-docs.js`, `scripts/verify-build.js`)**: Exported `TIER_4_CONTRACTED_MODULES` (`15` modules), expanding `PROTECTED_CONTRACTED_MODULES` to `61` guarded modules across Pass 5, and added JSDoc contract-block filtering in `generate-parser-docs.js` so `docs/GUTENBERG_PARSER.md` API tables stay cleanly separated (`ADR-073`, `ADR-081`).
+
+### Fixed
+- **Pipeline Runbook & Architecture Script Registry Parity (`docs/PIPELINE_GUIDE.md`, `scripts/generate-architecture-matrix.js`)**: Updated `scriptMetaMap['scripts/ingest-catalog.js']` (`fs`, `path`, `https`, `child_process`, curated SQL seed generation) and synchronized [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) (`npm run catalog:ingest` + the CI `git diff --exit-code` deterministic doc-sync step) with [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (`ADR-081`).
+
+
+## [2.9.42] - 2026-11-16
+### *Tier-3 Behavioral Contracts for Hooks, Queries, Supabase SSR/Middleware & API/Geo Guards*
+
+### Added
+- **Tier-3 Cross-Boundary Hooks & React Query Contracts (`src/hooks/useOfflineBooks.ts`, `src/hooks/queries/useBooks.ts`, `src/hooks/queries/useBookContent.ts`, `src/hooks/queries/useBookTranslations.ts`, `src/hooks/useAccountSecurityActions.ts`, `src/hooks/useNetworkStatus.ts`, `src/hooks/useBookPassageShuffle.ts`, `src/hooks/useCollectionAutoHeal.ts`)**: Seeded pure `@module` JSDoc `@scope`/`@invariant`/`@rationale`/`@adr` contracts locking `networkMode: 'always'`, IndexedDB placeholder healing, `CustomEvent`/`BroadcastChannel` session sync, SSR-safe connectivity snapshots, and `1500ms` quote-pool settle guards (`ADR-070`, `ADR-081`).
+- **Tier-3 Supabase SSR/Middleware, Auth Callback, API & Geo/Metadata Contracts (`src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/middleware.ts`, `src/app/auth/callback/route.ts`, `src/app/api/books/translations/route.ts`, `src/app/api/books/content/metadata-cache.ts`, `src/lib/country-resolver.ts`, `src/lib/safe-storage.ts`, `src/lib/book-metadata.ts`, `scripts/lib/ast-parser.js`, `scripts/generate-contracts-docs.js`, `scripts/verify-build.js`)**: Exported `TIER_3_CONTRACTED_MODULES` (`17` modules), expanding `PROTECTED_CONTRACTED_MODULES` to `46` protected modules (`100%` Edge Proxy & API Routes coverage) enforced by Pass 5 (`ADR-073`, `ADR-081`).
+
+
+## [2.9.41] - 2026-11-16
+### *Tier-2 Store & Sync Contracts, 17-Map Orphan Audit & CI Deterministic Doc-Sync Guard*
+
+### Added
+- **Tier-2 Behavioral Contracts Across All `10` Zustand Stores & Cloud Sync / Security Guards (`src/stores/useBookshelfStore.ts`, `src/stores/useFellowshipStore.ts`, `src/stores/useAnnotationStore.ts`, `src/stores/useHabitsStore.ts`, `src/stores/useAccoladesStore.ts`, `src/stores/useJurisdictionStore.ts`, `src/stores/usePreferencesStore.ts`, `src/stores/useThemeStore.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/lib/annotation-cloud-sync.ts`, `src/lib/fellowship-cloud-sync.ts`, `src/lib/reader-cloud-sync.ts`, `src/lib/preferences-sync.ts`, `src/lib/auth-recovery.ts`, `src/lib/redirect-sanitizer.ts`, `src/lib/rate-limiter.ts`, `src/app/api/books/content/url-validator.ts`, `scripts/lib/ast-parser.js`, `scripts/generate-contracts-docs.js`, `scripts/verify-build.js`)**: Seeded pure JSDoc `@scope`/`@invariant`/`@rationale`/`@adr` contracts across `17` additional core modules, expanding `PROTECTED_CONTRACTED_MODULES` (`TIER_1_CONTRACTED_MODULES` + `TIER_2_CONTRACTED_MODULES`) to `29` protected modules (`10/10` Zustand store parity) compiled into `docs/SYSTEM_CONTRACTS.md` and guarded by Pass 5 (`ADR-072`, `ADR-081`).
+
+### Changed
+- **Content-Idempotent Doc Generators & CI Deterministic Doc-Sync Guard (`.github/workflows/ci.yml`, `scripts/generate-architecture-matrix.js`, `scripts/generate-parser-docs.js`, `scripts/generate-contracts-docs.js`, `scripts/generate-roadmap.js`, `scripts/generate-changelog.js`, `docs/GITHUB_ACTIONS.md`)**: Added `✔ [IDEMPOTENT]` skip-if-unchanged write guards (normalizing `Last Synchronized` date lines so UTC midnight rollovers cause zero spurious diffs), dynamic `workflowCount` interpolation in `generate-architecture-matrix.js`, and a `git diff --exit-code` CI gate verifying all `10` deterministic AST/SemVer/contract artifacts remain synchronized after `npm run verify:build` (`ADR-081`).
+
+### Fixed
+- **Full `17`-Map Generator Orphan Validation, Workflow Count Parity & `roleMap` Cleanup (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/verify-build.js`, `scripts/generate-quality-report.js`, `.agents/AGENTS.md`, `AGENTS.md`)**: Extended `findOrphanedGeneratorLookupKeys` to audit all `14` lookup maps in `scripts/generate-architecture-matrix.js` plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`17` total), pruned `3` obsolete App Router icon entries surfaced by `roleMap` verification, enforced reverse `.github/workflows/*.yml` and `"all N workflows"` parity in Pass 5, and synchronized governance protocols (`ADR-080`, `ADR-081`).
+
+
+## [2.9.40] - 2026-11-16
+### *AST-Compiled Code Contracts, Behavioral Invariants & 18-Doc Governance Pipeline*
+
+### Added
+- **AST Behavioral Contracts Engine & Living `docs/SYSTEM_CONTRACTS.md` (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-contracts-docs.js`, `package.json`, `docs/DECISIONS.md`)**: Exported `extractBehavioralContractsCatalog`, `parseJsDocContractTags`, `TIER_1_CONTRACTED_MODULES`, and `CONTRACT_LAYER_ORDER` to compile module-level and symbol-level `@scope`, repeatable `@invariant`, `@rationale`/`@why`, and `@adr` JSDoc tags across all `src/` and `scripts/*.js` modules into `docs/SYSTEM_CONTRACTS.md` (`npm run docs:contracts` & `docs:sync`), enriched with live caller blast radius, cross-boundary touchpoints, 1:1 test metrics, and an AST-ranked pending priority queue (`ADR-081`).
+- **Tier-1 Cross-Boundary Invariant Rollout (`src/proxy.ts`, `src/app/api/books/**`, `src/lib/**`, `src/stores/**`, `scripts/sync-*.js`)**: Seeded non-breaking JSDoc `@scope`/`@invariant`/`@rationale`/`@adr` contracts across 12 foundational modules covering Edge SSR/CDN caching, fail-closed `503`/`451` routes, Berne copyright statutes, 78k-row PostgreSQL index constraints, IndexedDB placeholder healing, coalesced 7-store cloud sync, pre-null auth teardown, reader bookmark dirty tracking, and PGLAF mirror/catalog sync (`ADR-081`).
+
+### Changed
+- **18-Doc Pass 4/5 Contract Verification, Pre-Commit Auto-Staging & Rule Synchronization (`scripts/verify-build.js`, `.husky/pre-commit`, `scripts/generate-architecture-matrix.js`, `scripts/generate-quality-report.js`, `AGENTS.md`, `.agents/AGENTS.md`, `README.md`, `docs/PIPELINE_GUIDE.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`, `docs/GITHUB_ACTIONS.md`, `.github/pull_request_template.md`)**: Integrated `generate-contracts-docs.js` into Pass 4 and `.husky/pre-commit`, updated mandatory governance checks from 17 to 18 docs, enforced zero JSDoc contract parse/placeholder errors, valid `ADR-XXX` links, and Tier-1 preservation in Pass 5, and synchronized all developer, agent, and PR guides (`ADR-081`).
+- **Circular Cross-Reference Hardening & Stale Comment Remediation (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/verify-build.js`, `scripts/sync-featured-quotes.js`, `src/types/book.types.ts`, `.agents/AGENTS.md`, `AGENTS.md`)**: Added `findOrphanedGeneratorLookupKeys` to detect stale keys across `generate-architecture-matrix.js` registries and `varMetaMap`, extended Pass 5 to verify live `src/`/`scripts/` file paths across all governance docs/runbooks plus Tier-1/contracted edit advisories, updated Inter-Reference Matrix deletion/renaming & 18-doc contract rules, and refreshed stale comments in `sync-featured-quotes.js` and `book.types.ts` (`ADR-081`).
+
+
+## [2.9.39] - 2026-11-16
+### *Drawer-Orthogonal Bookshelf Favorites Filter & AST/Architecture Engine Hardening*
+
+### Added
+- **Cross-Boundary AST Interconnectivity & CommonJS Script Dependency Graph (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `scripts/verify-build.js`)**: Added `extractCrossBoundaryCouplingCatalog` and `analyzeScriptsDependencyGraph` to extract Supabase `.from()`/`.rpc()` callers, internal `/api/*` & `/auth/callback` callers, `CustomEvent`/`BroadcastChannel` emitters & subscribers, shared `STORAGE_KEYS.*`/Cookie/IndexedDB bridges, runtime vs. `_(type)_` edges, and `scripts/*.js` `require()` graphs into `docs/ARCHITECTURE.md`—fixing Diagram 4 `bookarium:offline-updated` / `bookarium:offline-downloading` / `bookarium:book-link-copied` event drift with Pass 5 validation (`ADR-080`).
+
+### Changed
+- **Monochrome Orthogonal `Favorites` Switch in Bookshelf Filter Drawer (`src/lib/book-sorting.ts`, `src/hooks/usePersonalCollectionsController.ts`, `src/components/presentation/CollectionFilterDrawer.tsx`, `src/app/page.tsx`, `docs/DECISIONS.md`)**: Kept `'favorites'` inside the desktop `Sort bookshelf` dropdown (`BOOKSHELF_BASE_SORT_OPTIONS`) while exporting `BOOKSHELF_DRAWER_SORT_OPTIONS` so `CollectionFilterDrawer` omits `'favorites'` from `Sort By` and renders a dedicated monochrome, iconless `Filter` -> `Favorites (N)` `role="switch"` chip (`filter-favorites-only-btn`) composable with any Shelf, `Downloaded`, `Title`/`Author`/`Progress`/`Date Added` sort, and Asc/Desc direction—with synchronized top-bar preset promotion, deduplicated `bookshelfActiveFilterCount`, and matching test coverage (`ADR-066`, `ADR-071`, `ADR-080`).
+
+### Fixed
+- **AST Parser, Architecture Generator & Pass 5 Verification Hardening (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`)**: Fixed Pass 5's silent `circularHealth.hasCycles` check (`detectCircularDependencies` now returns `hasCycles: cycles.length > 0`), added Babel AST parse-error reporting (`getAstParseErrors`) and enforceable architectural layer boundaries (`detectLayerViolations` across `src/components/ui/**` and `src/lib/**`), upgraded props (`TSInterfaceDeclaration.extends` + `TSIntersectionType`), route HTTP methods (`PATCH`/`HEAD`/`OPTIONS`/`export const`), `persist` store keys, `workerRoleMap`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, shared `extractSqlSchemaEntities`, AST test extraction (`extractTestsFromSourceAst`), dynamic `scripts/*.js` / `scriptSuiteMetaMap` / `isWeeklySundayCron` scanning, explicit layer-boundary & Pass 5 doc parity (`CONTRIBUTING.md`, `PIPELINE_GUIDE.md`, `ARCHITECTURE.md`), and placeholder guards alongside 6 hermetic tests (`258` suites) (`ADR-080`).
+
+
 ## [2.9.38] - 2026-11-16
 ### *Bookshelf Favorites Filter, UI Decluttering & GitHub Issue Template Fixes*
 
@@ -1269,3 +1326,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-078: Babel 8 AST Engine, ESLint 10 Flat Config & Core Dependency Upgrades**
 - **ADR-079: 360-Degree Living Architecture Topology — Event Bus, Sequence Workflows, External Boundaries, Resilience, Deployment & AST Env Dependency Mapping**
 - **ADR-080: Fluid Multi-Resolution Kinematics, Touch-Safe Dismissal, Catalog-Unified Multi-Quote Spreads & Zero-Pull Homepage Gutenberg Shield for 3D Hero Book**
+- **ADR-081: AST-Compiled System Contracts & Behavioral Invariant Specification (`docs/SYSTEM_CONTRACTS.md`)**

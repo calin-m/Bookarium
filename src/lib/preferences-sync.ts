@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/preferences-sync
+ * @scope Cross-store scholar preferences coordinator bundling active display/narration settings, `customDefaults` presets, and LWW `public.profiles.preferences` cloud sync.
+ * @invariant Sanitize every untrusted local or cloud field through `sanitizePreferencesSnapshot` with clamped numeric bounds and resolve responsive baseline font sizing (`15px` / `17px` / `18px`) via `getFactoryPreferences`.
+ * @invariant Perform Last-Write-Wins reconciliation strictly on `updatedAt` timestamps without resetting unauthenticated local customization on sign-out unless explicitly requested.
+ * @rationale Centralizing cross-store capture/application breaks circular dependencies between `useThemeStore`, `useReaderStore`, `usePreferencesStore`, and `useAnnotationStore`.
+ * @adr ADR-071, ADR-079, ADR-080
+ */
+
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { useThemeStore, type AppTheme } from '@/stores/useThemeStore';
 import {

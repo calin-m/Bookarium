@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useThemeStore
+ * @scope Global visual theme state (`light` Day Paper, `sepia` Cozy Coffee, `dark` Obsidian) with zero-flash SSR cookie synchronization (`STORAGE_KEYS.THEME`).
+ * @invariant Mirror every theme transition synchronously to `document.documentElement` classes (`dark` / `sepia`), `colorScheme`, and the `bookarium-theme-preference` cookie alongside Zustand `persist` storage.
+ * @invariant Resolve client-persisted `dark`/`sepia` overrides inside `initializeTheme` without reverting explicit SSR non-light initializations.
+ * @rationale Synchronizing the theme cookie lets `src/app/layout.tsx` server-render the exact theme class on initial HTML response, guaranteeing 0.00 CLS and zero white-flash on dark/sepia loads.
+ * @adr ADR-001, ADR-042, ADR-079
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';

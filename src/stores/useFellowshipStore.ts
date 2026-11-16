@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useFellowshipStore
+ * @scope Reader Circle 1-on-1 fellowship state, per-volume Literary Symposium dual-reading sessions, and offline symposium progress outbox.
+ * @invariant Guard `fetchFellowshipData` / `syncWithCloud` behind `verifyActiveCloudSession` and `coalesceInFlightByUser` (`15,000ms` passive cooldown invalidated on membership or symposium mutations).
+ * @invariant Resolve placeholder usernames cleanly via `healProfileIdentity` / `fetchScholarProfilesMap` without leaking private profile PII or overwriting verified scholar handles.
+ * @rationale Pre-sync session validation and per-user promise coalescing stop participant RLS errors after cookie expiry while keeping companion progress synchronized offline-first.
+ * @adr ADR-055, ADR-069, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';

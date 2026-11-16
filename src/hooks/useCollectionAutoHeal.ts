@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Background metadata recovery hook (`useCollectionAutoHeal`) healing missing author lifespans
+ *        and titles across Bookshelf, Favorites, Reading Positions, Annotations, and IndexedDB offline books.
+ * @invariant Synchronously enrich matching `FEATURED_HERO_BOOKS` first and batch remaining incomplete IDs into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
+ * @invariant Record queried book IDs inside `sessionStorage` (`bookarium_auto_heal_attempted`) and guard store/offline patching behind `patchOfflineBookAuthors` so un-annotated works never trigger infinite refetch loops or metadata regressions.
+ * @rationale Older localStorage snapshots or sparse mobile sync records may omit author lifespan bounds needed for non-US copyright evaluation; session-bounded batch healing repairs them silently without UI blocking.
+ * @adr ADR-070, ADR-071
+ */
+
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';

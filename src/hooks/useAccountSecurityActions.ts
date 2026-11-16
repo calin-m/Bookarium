@@ -1,5 +1,15 @@
 'use client';
 
+/**
+ * @module
+ * @scope Headless Account Security controller managing profile names, current-password verified updates,
+ *        email verification resends, OAuth identity linking/unlinking, deletion requests, and multi-device sessions.
+ * @invariant Guard OAuth unlinking behind `canUnlinkGoogle` (`hasGoogleIdentity && hasPasswordIdentity`), require `currentPassword` validation on password updates, and synchronize session revocations across tabs via `BroadcastChannel('bookarium-sessions-sync')` plus `bookarium:auth-token-refreshed`.
+ * @invariant Suppress session and security mutations cleanly when `isOffline` or `isPreviewMode`, preserving clear recovery/verification cooldown timers without orphaned network actions.
+ * @rationale Centralizing OWASP re-authentication, cross-tab session revocation signaling, and identity invariants keeps security components purely presentational.
+ * @adr ADR-005, ADR-072, ADR-073
+ */
+
 import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';

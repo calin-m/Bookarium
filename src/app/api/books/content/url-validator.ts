@@ -1,3 +1,12 @@
+/**
+ * @module src/app/api/books/content/url-validator
+ * @scope Zero-trust anti-SSRF upstream URL validator and canonical Gutenberg mirror normalizer for `/api/books/content`.
+ * @invariant Allowlist strictly official Project Gutenberg domains (`ALLOWED_HOSTS`), rejecting custom ports, embedded credentials (`@` / `user:pass`), directory traversal (`..`), RFC1918/loopback IPs, and non-HTTP(S) schemes across both initial and `Location` redirect targets.
+ * @invariant Constrain URL pathnames to strict alphanumeric/punctuation characters (`^/[a-zA-Z0-9/_.-]+$`) before server-side `fetch` executes.
+ * @rationale Enforcing strict host allowlisting and redirect re-validation eliminates SSRF (`CWE-918`) and internal metadata-service probing from client-supplied `url` query parameters.
+ * @adr ADR-016, ADR-022, ADR-034, ADR-073
+ */
+
 const ALLOWED_HOSTS = new Set([
   'www.gutenberg.org',
   'gutenberg.org',

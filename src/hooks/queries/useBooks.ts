@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`),
+ *        featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
+ * @invariant Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
+ * @invariant Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place.
+ * @rationale Client-side copyright filtering and deterministic quote sorting prevent regional or visual flash regressions across hydration and partial network failures.
+ * @adr ADR-004, ADR-036, ADR-080
+ */
+
 import {
   useQuery,
   useQueryClient,

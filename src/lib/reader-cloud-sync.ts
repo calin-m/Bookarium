@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/reader-cloud-sync
+ * @scope Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, and lifespan-preserving author extraction for `public.reading_progress`.
+ * @invariant Encode row bookmark offsets fractionally on `scroll_offset` (`page + row / 1000`) alongside reflow-anchored `bookmark_text`, and identify empty Page-1 rows cleanly via `isGhostReadingPosition` / `isGhostCloudRow`.
+ * @invariant Preserve embedded contributor lifespans (`hasEmbeddedLifespans`) when merging remote rows so missing remote death years never strip local public domain dates (`extractVerifiedAuthors`).
+ * @rationale Shared row encoding and ghost classification let `useReaderStore` batch/prune cloud progress identically across mobile and desktop clients without `HTTP 451` lifespan regressions.
+ * @adr ADR-014, ADR-068, ADR-070, ADR-080
+ */
+
 import type { GutendexBook, Book, Author } from '@/types/book.types';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { hasAuthorLifespans } from '@/lib/book-metadata';

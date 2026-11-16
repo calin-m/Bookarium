@@ -42,6 +42,7 @@ export function usePersonalCollectionsController({
 }: UsePersonalCollectionsControllerOptions) {
   const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
   const [shelfSortBy, setShelfSortBy] = useState<BookshelfSortOption>('recent');
+  const [shelfFavoritesOnly, setShelfFavoritesOnly] = useState(false);
   const [favoritesSortBy, setFavoritesSortBy] =
     useState<FavoritesSortOption>('recent');
   const [shelfPage, setShelfPage] = useState(1);
@@ -155,9 +156,9 @@ export function usePersonalCollectionsController({
     ? 'general'
     : currentActiveShelfId || 'general';
   const [prevShelfKey, setPrevShelfKey] = useState(
-    `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${effectiveShelfKeyId}`
+    `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${shelfFavoritesOnly}-${effectiveShelfKeyId}`
   );
-  const currentShelfKey = `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${effectiveShelfKeyId}`;
+  const currentShelfKey = `${activeView}-${collectionSearchQuery}-${shelfSortBy}-${shelfFavoritesOnly}-${effectiveShelfKeyId}`;
   if (currentShelfKey !== prevShelfKey) {
     setPrevShelfKey(currentShelfKey);
     setShelfPage(1);
@@ -205,13 +206,46 @@ export function usePersonalCollectionsController({
     cloudBookshelfItems,
   ]);
 
+  const {
+    baseField: shelfSortBase,
+    direction: shelfSortDir,
+    isDirectionDisabled: isShelfDirDisabled,
+  } = decomposeBookSortKey(shelfSortBy);
+
+  const isShelfFavoritesActive =
+    shelfFavoritesOnly || shelfSortBase === 'favorites';
+
+  const drawerShelfSortBase =
+    shelfSortBase === 'favorites' ? 'recent' : shelfSortBase;
+  const isDrawerShelfDirDisabled = shelfSortBase === 'downloaded';
+
+  const toolbarShelfSortBase =
+    shelfSortBase === 'favorites' ||
+    (shelfFavoritesOnly && shelfSortBy === 'recent')
+      ? 'favorites'
+      : shelfSortBase;
+  const isToolbarShelfDirDisabled =
+    isShelfDirDisabled || toolbarShelfSortBase === 'favorites';
+
+  const shelfFavoritesCount = useMemo(
+    () =>
+      currentShelfBooks.filter((b) => favoriteBookIds.includes(b.id)).length,
+    [currentShelfBooks, favoriteBookIds]
+  );
+
   const bookshelfActiveFilterCount = useMemo(() => {
     let count = 0;
     if (!isViewingGeneral) count++;
-    if (shelfSortBy !== 'recent') count++;
+    if (isShelfFavoritesActive) count++;
+    if (shelfSortBy !== 'recent' && shelfSortBy !== 'favorites') count++;
     if (collectionSearchQuery.trim().length > 0) count++;
     return count;
-  }, [isViewingGeneral, shelfSortBy, collectionSearchQuery]);
+  }, [
+    isViewingGeneral,
+    isShelfFavoritesActive,
+    shelfSortBy,
+    collectionSearchQuery,
+  ]);
 
   const favoritesActiveFilterCount = useMemo(() => {
     let count = 0;
@@ -219,12 +253,6 @@ export function usePersonalCollectionsController({
     if (collectionSearchQuery.trim().length > 0) count++;
     return count;
   }, [favoritesSortBy, collectionSearchQuery]);
-
-  const {
-    baseField: shelfSortBase,
-    direction: shelfSortDir,
-    isDirectionDisabled: isShelfDirDisabled,
-  } = decomposeBookSortKey(shelfSortBy);
 
   const {
     baseField: favoritesSortBase,
@@ -238,6 +266,16 @@ export function usePersonalCollectionsController({
       if (isCurrentShelf) {
         const { baseField, direction, isDirectionDisabled } =
           decomposeBookSortKey(shelfSortBy);
+        if (baseField === 'favorites') {
+          setShelfFavoritesOnly(true);
+          setShelfSortBy(
+            resolveBookSortKey(
+              'recent',
+              direction === 'asc' ? 'desc' : 'asc'
+            ) as BookshelfSortOption
+          );
+          return;
+        }
         if (!isDirectionDisabled) {
           const nextDir = direction === 'asc' ? 'desc' : 'asc';
           setShelfSortBy(
@@ -256,6 +294,77 @@ export function usePersonalCollectionsController({
       }
     });
   }, [activeView, shelfSortBy, favoritesSortBy]);
+
+  const handleToolbarShelfSortChange = useCallback(
+    (newBase: string) => {
+      if (newBase === 'favorites') {
+        setShelfFavoritesOnly(false);
+        setShelfSortBy('favorites');
+        return;
+      }
+      const defaultDir =
+        newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
+      const exitingFavoritesPreset =
+        shelfSortBase === 'favorites' ||
+        (shelfFavoritesOnly && shelfSortBy === 'recent');
+      if (exitingFavoritesPreset) {
+        setShelfFavoritesOnly(false);
+      }
+      setShelfSortBy(
+        resolveBookSortKey(newBase, defaultDir) as BookshelfSortOption
+      );
+    },
+    [shelfSortBase, shelfFavoritesOnly, shelfSortBy]
+  );
+
+  const handleDrawerShelfSortChange = useCallback(
+    (newBase: string) => {
+      const defaultDir =
+        newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
+      if (shelfSortBase === 'favorites') {
+        setShelfFavoritesOnly(true);
+      }
+      setShelfSortBy(
+        resolveBookSortKey(newBase, defaultDir) as BookshelfSortOption
+      );
+    },
+    [shelfSortBase]
+  );
+
+  const handleDrawerShelfDirectionChange = useCallback(
+    (newDir: 'asc' | 'desc') => {
+      runPreservingScrollPosition(() => {
+        if (shelfSortBase === 'favorites') {
+          setShelfFavoritesOnly(true);
+          setShelfSortBy(
+            resolveBookSortKey('recent', newDir) as BookshelfSortOption
+          );
+          return;
+        }
+        setShelfSortBy(
+          resolveBookSortKey(shelfSortBase, newDir) as BookshelfSortOption
+        );
+      });
+    },
+    [shelfSortBase]
+  );
+
+  const handleDrawerFavoritesToggle = useCallback(
+    (next: boolean) => {
+      setShelfFavoritesOnly(next);
+      if (!next && shelfSortBase === 'favorites') {
+        setShelfSortBy('recent');
+      }
+    },
+    [shelfSortBase]
+  );
+
+  const clearShelfFavoritesFilter = useCallback(() => {
+    setShelfFavoritesOnly(false);
+    if (shelfSortBase === 'favorites') {
+      setShelfSortBy('recent');
+    }
+  }, [shelfSortBase]);
 
   const handleDrawerSelectShelf = useCallback(
     (shelfId: string) => {
@@ -276,14 +385,21 @@ export function usePersonalCollectionsController({
 
   // Smart filtered & sorted collection books (Bookshelf)
   const baseShelfBooks = useMemo(() => {
+    let filtered = currentShelfBooks;
     if (shelfSortBy === 'downloaded') {
-      return currentShelfBooks.filter((b) => isBookOffline(b.id));
+      filtered = filtered.filter((b) => isBookOffline(b.id));
     }
-    if (shelfSortBy === 'favorites') {
-      return currentShelfBooks.filter((b) => favoriteBookIds.includes(b.id));
+    if (isShelfFavoritesActive) {
+      filtered = filtered.filter((b) => favoriteBookIds.includes(b.id));
     }
-    return currentShelfBooks;
-  }, [currentShelfBooks, shelfSortBy, favoriteBookIds, isBookOffline]);
+    return filtered;
+  }, [
+    currentShelfBooks,
+    shelfSortBy,
+    isShelfFavoritesActive,
+    favoriteBookIds,
+    isBookOffline,
+  ]);
 
   const filteredSavedBooks = useMemo(
     () => filterBooksSmart(baseShelfBooks, collectionSearchQuery),
@@ -388,14 +504,18 @@ export function usePersonalCollectionsController({
         description:
           'Try adjusting your search terms, author name, or clear the search query.',
       }
-    : isShelf && shelfSortBy === 'favorites'
+    : isShelf && isShelfFavoritesActive
     ? {
-        title: isViewingDownloaded
-          ? 'No downloaded favorites yet'
-          : 'No favorited volumes on this shelf',
-        description: isViewingDownloaded
-          ? 'Volumes saved for offline reading and marked as favorites will appear here.'
-          : 'Click the heart icon on any volume on this shelf to mark it as a favorite.',
+        title:
+          shelfSortBy === 'downloaded' || isViewingDownloaded
+            ? isViewingDownloaded
+              ? 'No downloaded favorites yet'
+              : 'No downloaded favorites on this shelf'
+            : 'No favorited volumes on this shelf',
+        description:
+          shelfSortBy === 'downloaded' || isViewingDownloaded
+            ? 'Volumes saved for offline reading and marked as favorites will appear here.'
+            : 'Click the heart icon on any volume on this shelf to mark it as a favorite.',
       }
     : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
     ? {
@@ -479,6 +599,10 @@ export function usePersonalCollectionsController({
     setCollectionSearchQuery,
     shelfSortBy,
     setShelfSortBy,
+    shelfFavoritesOnly,
+    setShelfFavoritesOnly,
+    isShelfFavoritesActive,
+    shelfFavoritesCount,
     favoritesSortBy,
     setFavoritesSortBy,
     shelfPage,
@@ -504,10 +628,19 @@ export function usePersonalCollectionsController({
     shelfSortBase,
     shelfSortDir,
     isShelfDirDisabled,
+    drawerShelfSortBase,
+    isDrawerShelfDirDisabled,
+    toolbarShelfSortBase,
+    isToolbarShelfDirDisabled,
     favoritesSortBase,
     favoritesSortDir,
     isFavoritesDirDisabled,
     handleCollectionDirectionToggle,
+    handleToolbarShelfSortChange,
+    handleDrawerShelfSortChange,
+    handleDrawerShelfDirectionChange,
+    handleDrawerFavoritesToggle,
+    clearShelfFavoritesFilter,
     handleDrawerSelectShelf,
     viewConfig,
     isShelf,

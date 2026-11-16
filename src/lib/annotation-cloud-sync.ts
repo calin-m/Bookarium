@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/annotation-cloud-sync
+ * @scope Pure/adapter utilities for `user_annotations` cloud outbox mapping, RFC 4122 UUID generation, and Symposium fellow identity resolution.
+ * @invariant Enforce `MAX_ANNOTATION_TEXT_LENGTH` (`5000`) and `MAX_ANNOTATION_NOTE_LENGTH` (`2000`) bounds and generate valid v4 UUIDs even over non-HTTPS LAN development contexts.
+ * @invariant Never overwrite verified companion handles with placeholder usernames (`isPlaceholderUsername`) when resolving fellow marginalia attribution (`resolveFellowIdentityMap`).
+ * @rationale Normalizing annotation cloud payloads and fellow handle lookups outside React components guarantees consistent validation across optimistic store mutations and background outbox replays.
+ * @adr ADR-019, ADR-059, ADR-068, ADR-071
+ */
+
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/database.types';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';

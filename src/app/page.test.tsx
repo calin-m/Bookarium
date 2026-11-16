@@ -1855,7 +1855,7 @@ describe('Home page integration', () => {
     expect(within(clampedBars[clampedBars.length - 1]).getByText('Page 1')).toBeInTheDocument();
   });
 
-  it('filters Bookshelf by favorited books via the Sort dropdown and mobile filter drawer while hiding leaked default shelves', () => {
+  it('filters Bookshelf by favorited books via the top Sort dropdown and separate monochrome drawer switch while hiding leaked default shelves', () => {
     act(() => {
       useBookshelfStore.setState({
         savedBooks: pageMockBooks.slice(0, 2),
@@ -1910,51 +1910,61 @@ describe('Home page integration', () => {
     const banner = screen.getByRole('banner');
     fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf/i }));
 
-    // Both shelved books start visible and standalone toolbar Favorites button is absent (Option A)
+    // Both shelved books start visible and standalone toolbar Favorites button stays absent
     expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
     expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
     expect(screen.queryByTestId('bookshelf-favorites-filter-btn')).not.toBeInTheDocument();
 
-    // Desktop Sort bookshelf dropdown filters to Favorites and toggles back to Date Added
+    // Desktop Sort bookshelf dropdown filters to Favorites and syncs into the filter drawer
     const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
     fireEvent.change(sortSelect, { target: { value: 'favorites' } });
     expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
     expect(screen.queryByTestId(`shelf-book-${pageMockBooks[1].id}`)).not.toBeInTheDocument();
 
-    fireEvent.change(sortSelect, { target: { value: 'recent' } });
-    expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
-
-    // Open mobile filter drawer: leaked raw DB default shelf ('Favorites') and separate Curation switch are absent
+    // Open filter drawer: leaked raw DB default shelf ('Favorites') and duplicate Sort-By Favorites chip are absent
     fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
     expect(screen.queryByTestId('filter-shelf-shelf-default')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('filter-favorites-only-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filter-sort-favorites')).not.toBeInTheDocument();
     expect(screen.getByTestId('filter-shelf-all')).toBeInTheDocument();
     expect(screen.getByTestId('filter-shelf-shelf-interest')).toBeInTheDocument();
 
-    // Selecting Favorites inside Sort By hides Sort Direction and applies cleanly
-    const drawerFavChip = screen.getByTestId('filter-sort-favorites');
-    expect(drawerFavChip).toHaveAttribute('aria-checked', 'false');
-    fireEvent.click(drawerFavChip);
-    expect(drawerFavChip).toHaveAttribute('aria-checked', 'true');
-    expect(screen.queryByRole('radiogroup', { name: 'Sort Direction' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
+    // Monochrome Favorites switch reflects active top-bar Favorites selection and keeps Sort Direction available
+    const drawerFavSwitch = screen.getByTestId('filter-favorites-only-btn');
+    expect(drawerFavSwitch).toHaveAttribute('role', 'switch');
+    expect(drawerFavSwitch).toHaveAttribute('aria-checked', 'true');
+    expect(drawerFavSwitch).toHaveTextContent('Favorites(1)');
+    expect(drawerFavSwitch.querySelector('svg')).toBeNull();
+    expect(drawerFavSwitch.className).toContain('bg-foreground text-background');
+    expect(screen.getByRole('radiogroup', { name: 'Sort Direction' })).toBeInTheDocument();
 
+    // Combining Favorites switch + Title sort inside the drawer preserves Favorites while updating Sort
+    fireEvent.click(screen.getByTestId('filter-sort-title'));
+    expect(screen.getByTestId('filter-favorites-only-btn')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
     expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
     expect(screen.queryByTestId(`shelf-book-${pageMockBooks[1].id}`)).not.toBeInTheDocument();
-    expect(sortSelect).toHaveValue('favorites');
+    expect(sortSelect).toHaveValue('title');
 
-    // Switching to custom shelf ('Interested In') with 0 favorited books + active Favorites preset shows reset CTA
+    // Toggling Favorites off in drawer restores all shelf books cleanly
+    fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
+    fireEvent.click(screen.getByTestId('filter-favorites-only-btn'));
+    expect(screen.getByTestId('filter-favorites-only-btn')).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
+
+    // Switching to custom shelf ('Interested In') with 0 favorited books + enabling Favorites switch shows reset CTA
     fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
     fireEvent.click(screen.getByTestId('filter-shelf-shelf-interest'));
+    fireEvent.click(screen.getByTestId('filter-favorites-only-btn'));
     fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
     expect(screen.getByText(/No favorited volumes on "Interested In"/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Show All Shelf Books/i }));
     expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
 
-    // Drawer Reset All clears both custom shelf selection and Favorites sort preset
+    // Drawer Reset All clears custom shelf selection, sort order, and Favorites switch
     fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
-    fireEvent.click(screen.getByTestId('filter-sort-favorites'));
+    fireEvent.click(screen.getByTestId('filter-favorites-only-btn'));
     fireEvent.click(screen.getByTestId('collection-filter-reset-btn'));
     fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
     expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();

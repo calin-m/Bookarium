@@ -1,6 +1,13 @@
 /**
  * Lightweight, zero-dependency in-memory sliding window rate limiter.
  * Protects upstream public domain APIs without requiring external services or API keys.
+ *
+ * @module src/lib/rate-limiter
+ * @scope Route-mode-scoped sliding-window rate limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) anchored on `globalThis`.
+ * @invariant Anchor singleton limiters on `globalThis` with bounded key capacity (`maxKeys = 10,000`) and periodic `30,000ms` stale-record eviction (`pruneStaleRecords`) to prevent unbounded memory growth.
+ * @invariant Keep content (`30/min`), OpenGraph card rendering (`20/min`), cover proxying (`60/min`), and catalog search (`60/min`) buckets isolated so cover batches never starve reader text requests.
+ * @rationale Zero-dependency `globalThis` persistence preserves quota tracking across hot reloads and warm serverless invocations without requiring external Redis infrastructure.
+ * @adr ADR-016, ADR-022, ADR-080
  */
 
 interface RateLimitRecord {

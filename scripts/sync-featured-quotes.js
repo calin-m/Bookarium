@@ -2,11 +2,19 @@
 /**
  * Bookarium — PGLAF Mirror-First Featured Quotes Extraction & Sync Pipeline
  *
- * Queries `public.books` by `download_count DESC` (`WHERE quotes = '[]'::jsonb`),
+ * Resolves Two-Tier quote candidates via `--diff-file=quote-diff.json` (or `idx_books_download_count` + `books_pkey`
+ * primary-key scans) and scans populated rows via `idx_books_with_quotes_popular`,
  * dispatches dedicated per-mirror PGLAF workers (`gutenberg.pglaf.org`,
  * `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent `8.0s–16.0s`
  * randomized float delays and error circuit-breaker cooldowns, extracts `10–16`
  * multi-quote spreads per volume, and updates `public.books.quotes` JSONB.
+ *
+ * @module scripts/sync-featured-quotes
+ * @scope Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
+ * @invariant Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
+ * @invariant Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
+ * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), respects Project Gutenberg mirror politeness rules, and avoids 78k-row PostgreSQL statement timeouts.
+ * @adr ADR-074, ADR-080
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
@@ -114,8 +122,8 @@ function isAllowedPglafMirrorUrl(rawUrl) {
 
 /**
  * Canonical 27 Hero & Editorial Classic Book IDs (`FEATURED_HERO_BOOKS` in `src/config/featured-books.ts`).
- * Prioritized at the front of the unpopulated Tier 1 Popular queue so the first 1–2 runs of
- * `quotes-sync.yml` guarantee 10–16 multi-quote spreads in Supabase for all Hero/Editorial classics.
+ * Prioritized at the front of the unpopulated Tier 1 Popular queue so initial weekly
+ * `catalog-sync.yml` / manual `quotes-sync.yml` runs guarantee 10–16 multi-quote spreads in Supabase for all Hero/Editorial classics.
  */
 const PRIORITY_HERO_BOOK_IDS = [
   1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35, 2600, 135, 2554, 1260,
@@ -286,8 +294,9 @@ function computeScheduleWindowMs(seedTimestampIso, minHours = 1, maxHours = 2) {
 }
 
 /**
- * Evaluates whether the randomized 1.0h–2.0h float schedule window has elapsed
- * since the most recent quote update in `public.books`.
+ * Evaluates whether the randomized 1.0h–2.0h cooldown window has elapsed when
+ * invoked with the manual `--schedule-gate` flag (scheduled weekly Sunday runs chain
+ * directly inside `catalog-sync.yml`, while standalone `quotes-sync.yml` dispatches manually).
  * Queries `books_pkey` via `.in('id', chunk).neq('quotes', '[]')` across the
  * candidate pool IDs (`idx_books_download_count` + `books_pkey`) so PostgreSQL
  * never performs a 78,000-row table scan.

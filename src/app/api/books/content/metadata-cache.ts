@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Server-side LRU metadata (`1000` entries) and plain-text (`20` books, `1.8M` char cap, `24h` TTL)
+ *        cache powering `/api/books/content` copyright resolution across Supabase and curated fixtures.
+ * @invariant Pin LRU Map instances on `globalThis`, enforce `MAX_METADATA_CACHE_ENTRIES` (`1000`) and `MAX_CACHED_BOOKS` (`20`) FIFO-LRU eviction, and skip caching empty or oversized (`> 1,800,000` chars) payloads.
+ * @invariant Enrich Supabase book metadata missing author lifespans from `FEATURED_HERO_BOOKS` (`enrichWithFeaturedLifespans`) and return `null` cleanly rather than throwing on unconfigured or failed lookups.
+ * @rationale Separating bounded server caches from the route handler keeps Vercel serverless cold/warm invocations predictable without risking OOM memory spikes on massive omnibus volumes.
+ * @adr ADR-036, ADR-039, ADR-070
+ */
+
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { parseLifespansFromName, type GenericBookInput } from '@/lib/copyright-engine';
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';

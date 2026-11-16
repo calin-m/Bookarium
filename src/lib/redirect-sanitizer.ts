@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/redirect-sanitizer
+ * @scope Open-redirect validator, canonical auth/share origin resolver, recovery query scrubber, and signed Reading Card share URL builder.
+ * @invariant Force relative redirects through `sanitizeRedirectPath` (single leading `/`, rejecting protocol-relative `//` and backslashes `\` / `/\`), and strip `recovery` params after consumption.
+ * @invariant Normalize ephemeral Vercel preview hosts (`bookarium-*.vercel.app`) to canonical `SITE_CONFIG.SITE_URL` inside `resolveCanonicalAuthOrigin` / `resolveCanonicalShareOrigin` while preserving `localhost` / `127.0.0.1` for local dev.
+ * @rationale Prevents Open Redirect (`CWE-601`) and stops Vercel Deployment Protection URLs from leaking into OAuth confirmation emails or public OpenGraph share links.
+ * @adr ADR-022, ADR-035, ADR-080
+ */
+
 import { SITE_CONFIG } from '@/config/site-config';
 
 /**

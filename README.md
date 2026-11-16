@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-257%20Suites%20%7C%202633%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.26%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202646%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,13 +68,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2633 tests across 257 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2646 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
+| 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across all `src/` & CLI modules. | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 80 validated ADRs (`ADR-001` through `ADR-080`) governing zero-API-key operation, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, 7-pillar SAST/OWASP & 9-rule AST security gates (`ADR-073`), multi-tier Vercel Edge CDN caching, and unified Sunday catalog/translation/quote ingestion (`ADR-080`). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 81 validated ADRs (`ADR-001` through `ADR-081`) governing zero-API-key operation, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, 7-pillar SAST/OWASP & 9-rule AST security gates (`ADR-073`), multi-tier Vercel Edge CDN caching, unified Sunday catalog/translation/quote ingestion (`ADR-080`), and AST-compiled Tier-1/Tier-2 code contracts with CI deterministic doc-sync enforcement (`ADR-081`). | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
@@ -98,7 +99,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 | Pass 2    | Vitest Server Mocks | Validates MSW v2 handlers and query hooks |
 | Pass 3    | Vitest Client UI    | Unit & integration tests (95/95/92/85 cov)|
 | Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, AUDIT, & CHANGE|
-| Pass 5    | ADR & Parity Gate   | ADRs, 1:1 SQL<->TS & 100% 1:1 test parity |
+| Pass 5    | ADR & Parity Gate   | ADRs, SQL<->TS, AST & 1:1 test parity     |
 | Pass 6    | Quality & Dead Code | ESLint (--max-warnings 0) and Knip audit  |
 | Pass 7    | Production Build    | Compiles Next.js production bundle        |
 +-----------------------------------------------------------------------------+
@@ -109,11 +110,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.38)
+## 🛠️ Latest Improvements (v2.9.43)
 
-- **Sort-Integrated Bookshelf `Favorites` Preset & Filter-Placement Policy (`src/lib/book-sorting.ts`, `src/hooks/usePersonalCollectionsController.ts`, `src/components/presentation/BookGrid.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/app/page.tsx`, `docs/DECISIONS.md`)**: Added `'favorites'` to `BOOKSHELF_SORT_OPTIONS` and `BOOKSHELF_BASE_SORT_OPTIONS` alongside `'downloaded'` (`isDirectionDisabled: true`), filtering the active shelf (`General`, `Downloaded`, or custom shelf) to favorited volumes (`Saved ∩ Favorited`) via both desktop `Sort bookshelf` and mobile `CollectionFilterDrawer` `Sort By` chips with zero extra toolbar chrome, contextual `"No favorited volumes on ..."` / `"Show All Shelf Books"` recovery, and a documented Filter Placement & Conflict-Notification Policy (`ADR-066`, `ADR-071`, `ADR-080`).
-- **Bookshelf Filter Drawer Default-Shelf Leak (`src/hooks/usePersonalCollectionsController.ts`)**: Filtered `shelf.is_default` rows out of `bookshelfDrawerShelves` so raw database default-shelf labels (e.g. a legacy `"Favorites"` name on `is_default: true`) no longer duplicate `All Books` or snap back to `General` when tapped (`ADR-066`, `ADR-080`).
-- **GitHub Issue Template YAML Quoting & Missing Cross-Platform Domains (`.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/feature_request.yml`, `.github/ISSUE_TEMPLATE/good_first_issue.yml`)**: Quoted `: ` device strings in `bug_report.yml` to prevent YAML map rendering (`{"PC / Laptop (Desktop Browser" => ...}`), added `All Devices / Platform-Agnostic`, `All Orientations / Not Layout-Specific`, and `Affected Area / View`, and expanded `feature_request.yml` (`Proposal Category`, Global UI, Account `/account`, Personal Collections, CI/Docs) and `good_first_issue.yml` (`ADR-080`).
+- **Tier-4 Gutenberg Parser, Web Worker & Reader Geometry/Session Contracts (`src/lib/gutenberg-parser.ts`, `src/lib/gutenberg/segmentation.ts`, `src/lib/gutenberg/pagination.ts`, `src/lib/gutenberg/passages.ts`, `src/lib/gutenberg/reflow.ts`, `src/workers/gutenberg.worker.ts`, `src/lib/reader-annotator.ts`, `src/lib/reader-bookmark-geometry.ts`, `src/hooks/reader/useReaderSession.ts`, `src/hooks/reader/useContinueReadingLedger.ts`)**: Seeded pure `@module` JSDoc `@scope`/`@invariant`/`@rationale`/`@adr` contracts locking Gutenberg license retention, whole-word/sentence page boundaries, typographic dash/verse reflow rules, off-thread Web Worker safety (`100%` `Web Workers` coverage), canonical annotation indexing, and reflow-resilient bookmark row geometry (`ADR-017`, `ADR-081`).
+- **Tier-4 CLI Ingestion, CDN Purge, SAST/AST Pipelines & Parser-Doc Filter (`scripts/ingest-catalog.js`, `scripts/ingest-translations.js`, `scripts/purge-vercel-cache.js`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/ast-parser.js`, `scripts/generate-parser-docs.js`, `scripts/generate-contracts-docs.js`, `scripts/verify-build.js`)**: Exported `TIER_4_CONTRACTED_MODULES` (`15` modules), expanding `PROTECTED_CONTRACTED_MODULES` to `61` guarded modules across Pass 5, and added JSDoc contract-block filtering in `generate-parser-docs.js` so `docs/GUTENBERG_PARSER.md` API tables stay cleanly separated (`ADR-073`, `ADR-081`).
+- **Pipeline Runbook & Architecture Script Registry Parity (`docs/PIPELINE_GUIDE.md`, `scripts/generate-architecture-matrix.js`)**: Updated `scriptMetaMap['scripts/ingest-catalog.js']` (`fs`, `path`, `https`, `child_process`, curated SQL seed generation) and synchronized [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) (`npm run catalog:ingest` + the CI `git diff --exit-code` deterministic doc-sync step) with [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (`ADR-081`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -205,8 +206,8 @@ flowchart TD
         LiteraryQuotes["LiteraryQuotes.tsx\n(Words That Shaped Humanity, Safe Shuffling & isPoolSettled Guard)"]
         CopyrightBanner["CopyrightNoticeBanner.tsx\n(Declarative Territorial Restriction & Public Domain Notice)"]
         ContentAdvisory["ContentAdvisoryBanner.tsx\n(Non-blocking Mature/Historical Context Advisory)"]
-        CollectionToolbarNode["CollectionToolbar.tsx\n(Responsive Workbench: Single-Row Mobile Layout, Search, Compact Icon Sort & View Mode Toggles)"]
-        CollectionBottomDockNode["CollectionBottomDock.tsx • CollectionFloatingSearch.tsx • CollectionFilterDrawer.tsx\n(Universal Ambient Dock, Animated Light Aura, Floating Search & Bottom Sliding Drawer)"]
+        CollectionToolbarNode["CollectionToolbar.tsx\n(Responsive Workbench: Single-Row Mobile Layout, Search, Desktop Favorites Preset, Sort & View Mode Toggles)"]
+        CollectionBottomDockNode["CollectionBottomDock.tsx • CollectionFloatingSearch.tsx • CollectionFilterDrawer.tsx\n(Universal Ambient Dock, Animated Light Aura, Floating Search & Bottom Sliding Drawer with Shelf, Monochrome Filter & Sort Controls)"]
         CollectionEmptyStateNode["CollectionEmptyState.tsx\n(Unified Collection Empty State Card: p-12 Editorial Card, Section Icon Badge, Explore Catalog & Iconless Sign-in Actions)"]
         PaginationNode["Pagination.tsx\n(Accessible Numeric Page Navigation)"]
         BookPreviewModalNode["BookPreviewModal.tsx & NotablePassagesSpread.tsx\n(3D Open-Book Preview Spread, Notable Passages & Jurisdictional Protection)"]
@@ -649,7 +650,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run typecheck` | Validates TypeScript types across all `.ts`/`.tsx` files |
 | `npm run lint` | Runs ESLint 10 rules and Core Web Vitals checks (`--max-warnings 0`) |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
-| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
+| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST |
 | `npm run catalog:sync` | Streams Project Gutenberg's `rdf-files.tar.bz2` (unless `--no-rdf` or `--limit` is passed) and `pg_catalog.csv.gz`, diffs all 78,000+ books in RAM via `--cache-file=gutenberg-catalog-cache.json.gz`, upserts new/changed rows in Supabase, and emits `--diff-output=quote-diff.json` |
 | `npm run catalog:ingest` | Generates curated SQL seed files (`supabase/seed_books.sql`) for local setup |
 | `npm run translations:sync` | Clusters multilingual translations across Gutenberg volumes and batch-upserts into Supabase (`--all`, `--limit=N`, `--dry-run`, `--output=file.sql`) |

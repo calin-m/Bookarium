@@ -1,3 +1,12 @@
+/**
+ * @module
+ * @scope Project Gutenberg structural chapter parser (`parseGutenbergChapters`) and duplicate heading suppression (`stripDuplicateLeadingChapterHeading`).
+ * @invariant Preserve the Project Gutenberg `Colophon & License` section on parsed multi-chapter books and suppress front-matter TOC false chapter splits.
+ * @invariant Keep `chapter.content` unmodified while stripping duplicate top headings inside `stripDuplicateLeadingChapterHeading` so virtual page boundaries and canonical text offsets never shift.
+ * @rationale Project Gutenberg terms require retaining license notices in distributed e-texts, while display-only heading stripping prevents redundant stacked chapter banners without invalidating saved page coordinates or annotations.
+ * @adr ADR-017, ADR-028, ADR-069
+ */
+
 import { GUTENBERG_PARSER_CONFIG, type ChapterSection } from './types';
 import { formatGutenbergTypography, reflowGutenbergParagraphs } from './reflow';
 

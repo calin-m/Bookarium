@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Deterministic 8-tier jurisdiction resolver (`resolveClientCountry`) mapping Edge Geo-IP headers,
+ *        proxy stamps, session cookies, and dev-only overrides to ISO 3166-1 alpha-2 country codes.
+ * @invariant Restrict `?country=`, `DEV_COUNTRY`, `bookarium-dev-country-override`, and timezone inference strictly to `process.env.NODE_ENV === 'development'` so production users cannot bypass territorial copyright gates via query/env spoofing.
+ * @invariant Evaluate production requests strictly in precedence `Edge IP Headers (x-vercel-ip-country | cf-ipcountry | request.geo)` -> `x-bookarium-country` -> `bookarium-geo-country` cookie -> `'US'`, enforcing 2-letter uppercase ISO format (`^[A-Z]{2}$`).
+ * @rationale Isolating dev overrides behind `NODE_ENV === 'development'` prevents HTTP 451 copyright circumvention in production while allowing zero-network local jurisdiction testing.
+ * @adr ADR-036, ADR-042
+ */
+
 import { type NextRequest } from 'next/server';
 
 export const GEO_COOKIE_NAME = 'bookarium-geo-country';

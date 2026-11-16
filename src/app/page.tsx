@@ -56,9 +56,9 @@ import { Pagination } from '@/components/ui/Pagination';
 import { smartScrollToContent, runPreservingScrollPosition } from '@/lib/scroll-utils';
 import {
   BOOKSHELF_BASE_SORT_OPTIONS,
+  BOOKSHELF_DRAWER_SORT_OPTIONS,
   FAVORITES_BASE_SORT_OPTIONS,
   resolveBookSortKey,
-  type BookshelfSortOption,
   type FavoritesSortOption,
 } from '@/lib/book-sorting';
 import { featuredHeroToGutendexBook } from '@/lib/book-metadata';
@@ -200,6 +200,9 @@ function HomeContent() {
     collectionSearchQuery,
     setCollectionSearchQuery,
     setShelfSortBy,
+    setShelfFavoritesOnly,
+    isShelfFavoritesActive,
+    shelfFavoritesCount,
     setFavoritesSortBy,
     setShelfPage,
     setFavoritesPage,
@@ -217,13 +220,20 @@ function HomeContent() {
     bookshelfDrawerShelves,
     bookshelfActiveFilterCount,
     favoritesActiveFilterCount,
-    shelfSortBase,
     shelfSortDir,
-    isShelfDirDisabled,
+    drawerShelfSortBase,
+    isDrawerShelfDirDisabled,
+    toolbarShelfSortBase,
+    isToolbarShelfDirDisabled,
     favoritesSortBase,
     favoritesSortDir,
     isFavoritesDirDisabled,
     handleCollectionDirectionToggle,
+    handleToolbarShelfSortChange,
+    handleDrawerShelfSortChange,
+    handleDrawerShelfDirectionChange,
+    handleDrawerFavoritesToggle,
+    clearShelfFavoritesFilter,
     handleDrawerSelectShelf,
     bookshelfPageSize,
     favoritesPageSize,
@@ -763,12 +773,12 @@ function HomeContent() {
                   clearAriaLabel={`Clear ${viewConfig.collectionName} search`}
                   totalCount={collectionCount}
                   filteredCount={filteredCollectionBooks.length}
-                  sortValue={isShelf ? shelfSortBase : favoritesSortBase}
+                  sortValue={isShelf ? toolbarShelfSortBase : favoritesSortBase}
                   onSortChange={(newBase) => {
-                    const defaultDir = newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
                     if (isShelf) {
-                      setShelfSortBy(resolveBookSortKey(newBase, defaultDir) as BookshelfSortOption);
+                      handleToolbarShelfSortChange(newBase);
                     } else {
+                      const defaultDir = newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
                       setFavoritesSortBy(resolveBookSortKey(newBase, defaultDir) as FavoritesSortOption);
                     }
                   }}
@@ -776,7 +786,7 @@ function HomeContent() {
                   sortAriaLabel={isShelf ? 'Sort bookshelf' : 'Sort favorites'}
                   sortDirection={isShelf ? shelfSortDir : favoritesSortDir}
                   onDirectionToggle={handleCollectionDirectionToggle}
-                  isDirectionDisabled={isShelf ? isShelfDirDisabled : isFavoritesDirDisabled}
+                  isDirectionDisabled={isShelf ? isToolbarShelfDirDisabled : isFavoritesDirDisabled}
                   singleRowOnMobile={true}
                   hiddenOnMobile={true}
                   className="mb-4 sm:mb-6"
@@ -813,8 +823,8 @@ function HomeContent() {
                 onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
                 activeView={activeView}
                 totalBooksCount={savedBooks.length}
-                favoritesOnly={isShelf && shelfSortBase === 'favorites'}
-                onClearFavoritesOnly={() => setShelfSortBy('recent')}
+                favoritesOnly={isShelf && isShelfFavoritesActive}
+                onClearFavoritesOnly={clearShelfFavoritesFilter}
                 onTopicClick={(topicName) => {
                   handleTopicChange(topicName);
                   if (activeView !== 'catalog') {
@@ -983,13 +993,16 @@ function HomeContent() {
           selectedShelfId={isShelf ? currentDrawerShelfId : undefined}
           onSelectShelf={isShelf ? handleDrawerSelectShelf : undefined}
           shelfSectionTitle="Bookshelves"
-          sortOptions={isShelf ? BOOKSHELF_BASE_SORT_OPTIONS : FAVORITES_BASE_SORT_OPTIONS}
-          selectedSort={isShelf ? shelfSortBase : favoritesSortBase}
+          favoritesOnly={isShelf ? isShelfFavoritesActive : undefined}
+          onFavoritesOnlyChange={isShelf ? handleDrawerFavoritesToggle : undefined}
+          favoritesOnlyCount={isShelf ? shelfFavoritesCount : undefined}
+          sortOptions={isShelf ? BOOKSHELF_DRAWER_SORT_OPTIONS : FAVORITES_BASE_SORT_OPTIONS}
+          selectedSort={isShelf ? drawerShelfSortBase : favoritesSortBase}
           onSortChange={(newBase) => {
-            const defaultDir = newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
             if (isShelf) {
-              setShelfSortBy(resolveBookSortKey(newBase, defaultDir) as BookshelfSortOption);
+              handleDrawerShelfSortChange(newBase);
             } else {
+              const defaultDir = newBase === 'title' || newBase === 'author' ? 'asc' : 'desc';
               setFavoritesSortBy(resolveBookSortKey(newBase, defaultDir) as FavoritesSortOption);
             }
           }}
@@ -997,20 +1010,21 @@ function HomeContent() {
           sortDirection={isShelf ? shelfSortDir : favoritesSortDir}
           onDirectionToggle={handleCollectionDirectionToggle}
           onDirectionChange={(newDir) => {
-            runPreservingScrollPosition(() => {
-              if (isShelf) {
-                setShelfSortBy(resolveBookSortKey(shelfSortBase, newDir) as BookshelfSortOption);
-              } else {
+            if (isShelf) {
+              handleDrawerShelfDirectionChange(newDir);
+            } else {
+              runPreservingScrollPosition(() => {
                 setFavoritesSortBy(resolveBookSortKey(favoritesSortBase, newDir) as FavoritesSortOption);
-              }
-            });
+              });
+            }
           }}
-          isDirectionDisabled={isShelf ? isShelfDirDisabled : isFavoritesDirDisabled}
+          isDirectionDisabled={isShelf ? isDrawerShelfDirDisabled : isFavoritesDirDisabled}
           onResetAll={() => {
             setCollectionSearchQuery('');
             if (isShelf) {
               setActiveBookshelfId(null);
               setShelfSortBy('recent');
+              setShelfFavoritesOnly(false);
             } else {
               setFavoritesSortBy('recent');
             }
@@ -1030,7 +1044,7 @@ function HomeContent() {
           modeType="direction"
           sortDirection={isShelf ? shelfSortDir : favoritesSortDir}
           onDirectionToggle={handleCollectionDirectionToggle}
-          isDirectionDisabled={isShelf ? isShelfDirDisabled : isFavoritesDirDisabled}
+          isDirectionDisabled={isShelf ? isToolbarShelfDirDisabled : isFavoritesDirDisabled}
         />
       )}
 

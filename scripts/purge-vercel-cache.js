@@ -9,6 +9,13 @@
  *
  * Safe by default: if `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are not configured
  * (e.g. local runs or community forks), logs a skip notice and exits cleanly with status 0.
+ *
+ * @module scripts/purge-vercel-cache
+ * @scope Post-ingestion CDN invalidation CLI purging tagged Vercel Edge Cache entries (`catalog`, `quotes`, `translations`).
+ * @invariant Exit with status `0` cleanly (`skipped: true`) whenever `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` is absent or `--dry-run` is active, so community forks and credential-free local runs never fail.
+ * @invariant Allowlist cache tag formats strictly against `VALID_TAG_REGEX`, enforce `ALLOWED_PURGE_TARGETS` (`production` | `preview`), apply bounded `Retry-After` / exponential retries (`<= 5` retries) on `429`/`5xx`, and log status markdown to `$GITHUB_STEP_SUMMARY`.
+ * @rationale Prevents stale 12h/24h Vercel Edge cache entries after Sunday catalog/quote syncs while preserving zero-key fork safety and explicit CI observability.
+ * @adr ADR-080
  */
 
 const fs = require('fs');

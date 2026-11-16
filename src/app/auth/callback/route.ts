@@ -1,3 +1,12 @@
+/**
+ * @module
+ * @scope OAuth PKCE code exchange and email OTP verification callback route (`GET /auth/callback`).
+ * @invariant Validate origins via `resolveCanonicalAuthOrigin`, constrain `?next=` targets via `sanitizeRedirectPath`, strip recovery query routes on non-recovery flows (`stripRecoveryFromRedirectPath`), and allowlist strictly known `VALID_OTP_TYPES`.
+ * @invariant Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies on successful authentication.
+ * @rationale Prevents open redirects, accidental recovery-mode entry via normal logins, and confusing error screens when users confirm signup links on a secondary mobile mail client.
+ * @adr ADR-005, ADR-022, ADR-034, ADR-072
+ */
+
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';

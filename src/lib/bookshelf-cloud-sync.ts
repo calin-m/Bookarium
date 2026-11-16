@@ -3,6 +3,13 @@
  *
  * Coordinates offline outbox flushing, tombstone-aware multi-device shelf & favorite
  * reconciliation, Last-Write-Wins (LWW) curation merging, and custom shelf CRUD operations.
+ *
+ * @module src/lib/bookshelf-cloud-sync
+ * @scope Supabase bi-directional synchronization and offline outbox engine for `bookshelves`, `bookshelf_items`, `user_favorites`, and `user_book_curation`.
+ * @invariant Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
+ * @invariant Preserve richer local `GutendexBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
+ * @rationale Single-commit atomic state reconciliation plus snapshot-safe dirty-outbox queues prevent offline additions or custom shelf moves from flickering or being overwritten by concurrent pulls.
+ * @adr ADR-005, ADR-069, ADR-071, ADR-080
  */
 
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';

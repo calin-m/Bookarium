@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module
+ * @scope Hydration-safe React connectivity hook (`useNetworkStatus`) tracking browser `online` and `offline` events.
+ * @invariant Use `useSyncExternalStore` returning a constant `true` from `getServerNetworkSnapshot` so SSR markup and initial client hydration never diverge.
+ * @rationale Prevents React hydration mismatch warnings while keeping navbar indicators, catalog fallbacks, and offline guards reactive to browser connectivity changes.
+ * @adr ADR-069
+ */
+
 import { useSyncExternalStore } from 'react';
 
 function subscribeNetworkStatus(callback: () => void): () => void {

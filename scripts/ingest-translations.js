@@ -6,6 +6,13 @@
  * enforces 5 Pipeline Blockers and 7 Hardening Defenses to guarantee 100% precision
  * (Zero False Positives), and generates atomic, foreign-key safe SQL seeds or performs
  * direct batch upserts into Supabase PostgreSQL (public.book_translations).
+ *
+ * @module scripts/ingest-translations
+ * @scope Wikidata SPARQL (`P2034` / `P407`) FRBR work-clustering CLI populating idempotent cross-language edition links in `public.book_translations`.
+ * @invariant Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` foreign-key presence via `filterValidCatalogBookIds` before executing Supabase upserts.
+ * @invariant Support offline `--dry-run` / `--output=...` atomic SQL seed generation (`generateAtomicSeedSql`) cleanly even when Supabase env credentials are absent.
+ * @rationale Strict anthology rejection and catalog FK pre-validation eliminate spurious cross-author translation links and foreign-key upsert failures during scheduled weekly runs.
+ * @adr ADR-010, ADR-038
  * 
  * Usage:
  *   node scripts/ingest-translations.js --dry-run

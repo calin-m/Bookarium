@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Edge Proxy session refresh helper (`updateSession`) synchronizing Supabase Auth cookies
+ *        and propagating the short-lived `CLIENT_IP_SYNC` trigger cookie on rotated tokens.
+ * @invariant Short-circuit immediately when Supabase env vars or `SUPABASE_AUTH_COOKIE_PATTERN` cookies are absent, and ignore `setAll` calls containing solely empty cookie values (`Max-Age=0` deletion protection) so raced server refreshes never wipe active sessions.
+ * @invariant Stamp `STORAGE_KEYS.CLIENT_IP_SYNC` (`120s` TTL) whenever a non-empty auth token cookie rotates, and swallow transient `supabase.auth.getUser()` network errors without blocking navigation.
+ * @rationale Concurrent SSR requests can race single-use Supabase refresh tokens; refusing empty cookie deletions preserves valid browser sessions while allowing explicit client sign-out to clear credentials deterministically.
+ * @adr ADR-035, ADR-072
+ */
+
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/types/database.types';

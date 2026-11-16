@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useBookshelfStore
+ * @scope Personal library state (saved volumes, queue, favorites, custom named shelves, ratings, statuses), tombstone tracking, and offline outbox orchestration.
+ * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks` and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
+ * @invariant Route all Supabase persistence through `bookshelf-cloud-sync.ts` outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
+ * @rationale Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, and outbox + tombstone separation keeps offline edits deterministic across multi-device syncs.
+ * @adr ADR-003, ADR-069, ADR-071, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, ReadingStatus } from '@/types/book.types';

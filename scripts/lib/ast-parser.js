@@ -4,6 +4,13 @@
  * Programmatically inspects source code AST via Babel to provide a single
  * source of truth for architecture matrices, component catalogs, store schemas,
  * and dependency topologies with mathematical zero-drift.
+ *
+ * @module scripts/lib/ast-parser
+ * @scope Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, and `17`-map generator orphan checks.
+ * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
+ * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
+ * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
+ * @adr ADR-078, ADR-079, ADR-081
  */
 
 const fs = require('fs');
@@ -81,8 +88,43 @@ function analyzeDependencyGraph(srcDir, rootDir) {
     const rawImports = [];
     const internalImports = [];
     const staticImports = [];
+    const runtimeImports = [];
     const exportedProps = [];
     const exportedInterfaces = [];
+    const localInterfaces = new Map();
+    let parseError = null;
+
+    const isTypeOnlyImportNode = (node) =>
+      node.importKind === 'type' ||
+      (Array.isArray(node.specifiers) &&
+        node.specifiers.length > 0 &&
+        node.specifiers.every((spec) => spec.importKind === 'type'));
+
+    const isTypeOnlyExportNode = (node) =>
+      node.exportKind === 'type' ||
+      (Array.isArray(node.specifiers) &&
+        node.specifiers.length > 0 &&
+        node.specifiers.every((spec) => spec.exportKind === 'type'));
+
+    const extractMemberNames = (members = []) =>
+      members
+        .map((m) => (m.key && (m.key.name || m.key.value)) || null)
+        .filter(Boolean);
+
+    const extractTypeAnnotationMembers = (typeNode) => {
+      if (!typeNode) return [];
+      if (typeNode.type === 'TSTypeLiteral') {
+        return extractMemberNames(typeNode.members);
+      }
+      if (typeNode.type === 'TSIntersectionType' && Array.isArray(typeNode.types)) {
+        const merged = [];
+        for (const memberType of typeNode.types) {
+          merged.push(...extractTypeAnnotationMembers(memberType));
+        }
+        return Array.from(new Set(merged));
+      }
+      return [];
+    };
 
     try {
       const ast = parser.parse(content, {
@@ -96,8 +138,9 @@ function analyzeDependencyGraph(srcDir, rootDir) {
           rawImports.push(importSource);
           if (importSource.startsWith('@/') || importSource.startsWith('.')) {
             internalImports.push(importSource);
-            if (node.importKind !== 'type') {
+            if (!isTypeOnlyImportNode(node)) {
               staticImports.push(importSource);
+              runtimeImports.push(importSource);
             }
           }
         },
@@ -109,6 +152,7 @@ function analyzeDependencyGraph(srcDir, rootDir) {
               internalImports.push(importSource);
               if (node.exportKind !== 'type') {
                 staticImports.push(importSource);
+                runtimeImports.push(importSource);
               }
             }
           }
@@ -119,8 +163,9 @@ function analyzeDependencyGraph(srcDir, rootDir) {
             rawImports.push(importSource);
             if (importSource.startsWith('@/') || importSource.startsWith('.')) {
               internalImports.push(importSource);
-              if (node.exportKind !== 'type') {
+              if (!isTypeOnlyExportNode(node)) {
                 staticImports.push(importSource);
+                runtimeImports.push(importSource);
               }
             }
           }
@@ -133,6 +178,7 @@ function analyzeDependencyGraph(srcDir, rootDir) {
               rawImports.push(importSource);
               if (importSource.startsWith('@/') || importSource.startsWith('.')) {
                 internalImports.push(importSource);
+                runtimeImports.push(importSource);
               }
             }
           }
@@ -144,18 +190,22 @@ function analyzeDependencyGraph(srcDir, rootDir) {
             rawImports.push(importSource);
             if (importSource.startsWith('@/') || importSource.startsWith('.')) {
               internalImports.push(importSource);
+              runtimeImports.push(importSource);
             }
           }
         },
         TSInterfaceDeclaration({ node }) {
           if (node.id && node.id.name) {
-            const propNames = (node.body.body || [])
-              .filter((m) => m.key && m.key.name)
-              .map((m) => m.key.name);
+            const propNames = extractMemberNames(node.body && node.body.body);
+            const extendsNames = (node.extends || [])
+              .map((ext) => (ext.expression && ext.expression.type === 'Identifier' ? ext.expression.name : null))
+              .filter(Boolean);
             const iface = {
               name: node.id.name,
               props: propNames,
+              extendsNames,
             };
+            localInterfaces.set(node.id.name, iface);
             exportedInterfaces.push(iface);
             if (node.id.name.endsWith('Props')) {
               exportedProps.push(iface);
@@ -163,22 +213,37 @@ function analyzeDependencyGraph(srcDir, rootDir) {
           }
         },
         TSTypeAliasDeclaration({ node }) {
-          if (node.id && node.id.name && node.typeAnnotation && node.typeAnnotation.type === 'TSTypeLiteral') {
-            const propNames = (node.typeAnnotation.members || [])
-              .filter((m) => m.key && m.key.name)
-              .map((m) => m.key.name);
-            const typeInfo = {
-              name: node.id.name,
-              props: propNames,
-            };
-            exportedInterfaces.push(typeInfo);
-            if (node.id.name.endsWith('Props')) {
-              exportedProps.push(typeInfo);
+          if (node.id && node.id.name && node.typeAnnotation) {
+            const isStructuredType =
+              node.typeAnnotation.type === 'TSTypeLiteral' || node.typeAnnotation.type === 'TSIntersectionType';
+            if (isStructuredType) {
+              const propNames = extractTypeAnnotationMembers(node.typeAnnotation);
+              const extendsRefs =
+                node.typeAnnotation.type === 'TSIntersectionType' && Array.isArray(node.typeAnnotation.types)
+                  ? node.typeAnnotation.types
+                      .map((t) =>
+                        t.type === 'TSTypeReference' && t.typeName && t.typeName.type === 'Identifier'
+                          ? t.typeName.name
+                          : null
+                      )
+                      .filter(Boolean)
+                  : [];
+              const typeInfo = {
+                name: node.id.name,
+                props: propNames,
+                extendsNames: extendsRefs,
+              };
+              localInterfaces.set(node.id.name, typeInfo);
+              exportedInterfaces.push(typeInfo);
+              if (node.id.name.endsWith('Props')) {
+                exportedProps.push(typeInfo);
+              }
             }
           }
         },
       });
-    } catch (_err) {
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
       // Regex fallback for unparseable chunks
       const importRegex = /(?:import|export\s+.*?from|import\s*\()\s*['"](@\/.*?|\..*?)['"]/g;
       let match;
@@ -191,6 +256,7 @@ function analyzeDependencyGraph(srcDir, rootDir) {
     const workerMatch = content.match(/new\s+(?:window\.)?Worker\s*\(\s*new\s+URL\s*\(\s*['"]([^'"]+)['"]/);
     if (workerMatch && workerMatch[1]) {
       internalImports.push(workerMatch[1]);
+      runtimeImports.push(workerMatch[1]);
     }
 
     graph.set(relativePath, {
@@ -198,16 +264,54 @@ function analyzeDependencyGraph(srcDir, rootDir) {
       absolutePath: file,
       imports: Array.from(new Set(internalImports)),
       staticImports: Array.from(new Set(staticImports)),
+      runtimeImports: Array.from(new Set(runtimeImports)),
       rawImports: Array.from(new Set(rawImports)),
       exportedProps,
       exportedInterfaces,
+      localInterfaces,
+      parseError,
       resolvedImports: [],
       resolvedStaticImports: [],
+      resolvedRuntimeImports: [],
+      typeOnlyImports: [],
       consumedBy: [],
+      runtimeConsumedBy: [],
+      typeOnlyConsumedBy: [],
     });
   }
 
-  // Resolve internal linkage and downstream consumers
+  // Global interface index for cross-file interface inheritance resolution
+  const globalInterfaceRegistry = new Map();
+  for (const data of graph.values()) {
+    for (const iface of data.exportedInterfaces) {
+      if (!globalInterfaceRegistry.has(iface.name)) {
+        globalInterfaceRegistry.set(iface.name, iface);
+      }
+    }
+  }
+
+  const resolveInheritedProps = (iface, localMap, visited = new Set()) => {
+    if (!iface || visited.has(iface.name)) return [];
+    visited.add(iface.name);
+    const collected = [...(iface.props || [])];
+    for (const baseName of iface.extendsNames || []) {
+      const baseIface = localMap.get(baseName) || globalInterfaceRegistry.get(baseName);
+      if (baseIface) {
+        collected.push(...resolveInheritedProps(baseIface, localMap, visited));
+      }
+    }
+    return Array.from(new Set(collected));
+  };
+
+  for (const data of graph.values()) {
+    for (const iface of data.exportedInterfaces) {
+      if (iface.extendsNames && iface.extendsNames.length > 0) {
+        iface.props = resolveInheritedProps(iface, data.localInterfaces);
+      }
+    }
+  }
+
+  // Resolve internal linkage and downstream consumers (separating runtime vs type-only edges)
   for (const [fileRel, data] of graph.entries()) {
     for (const imp of data.imports) {
       const resolved = resolveImportPath(imp, fileRel, allFilesSet);
@@ -227,6 +331,29 @@ function analyzeDependencyGraph(srcDir, rootDir) {
         data.resolvedStaticImports.push(resolved);
       }
     }
+    for (const imp of data.runtimeImports) {
+      const resolved = resolveImportPath(imp, fileRel, allFilesSet);
+      if (resolved && graph.has(resolved)) {
+        if (!data.resolvedRuntimeImports.includes(resolved)) {
+          data.resolvedRuntimeImports.push(resolved);
+        }
+        const targetData = graph.get(resolved);
+        if (!targetData.runtimeConsumedBy.includes(fileRel)) {
+          targetData.runtimeConsumedBy.push(fileRel);
+        }
+      }
+    }
+    for (const resolved of data.resolvedImports) {
+      if (!data.resolvedRuntimeImports.includes(resolved)) {
+        data.typeOnlyImports.push(resolved);
+      }
+    }
+  }
+
+  for (const data of graph.values()) {
+    data.typeOnlyConsumedBy = data.consumedBy.filter(
+      (consumer) => !data.runtimeConsumedBy.includes(consumer)
+    );
   }
 
   return graph;
@@ -271,9 +398,65 @@ function detectCircularDependencies(graph) {
   }
 
   return {
+    hasCycles: cycles.length > 0,
     cycleCount: cycles.length,
     cycles,
   };
+}
+
+/**
+ * Collects files in the dependency graph where Babel AST parsing failed cleanly
+ * so verification gates fail loudly instead of silently degrading graph visibility.
+ */
+function getAstParseErrors(graph) {
+  const errors = [];
+  for (const data of graph.values()) {
+    if (data.parseError) {
+      errors.push({ file: data.file, error: data.parseError });
+    }
+  }
+  return errors;
+}
+
+/**
+ * Enforces directional architectural layer boundaries across static runtime imports
+ * (excluding type-only `import type` references) to prevent inverted coupling.
+ */
+function detectLayerViolations(graph) {
+  const violations = [];
+  const forbiddenUiTargets = [
+    /^src\/stores\//,
+    /^src\/app\//,
+    /^src\/components\/(?:presentation|reader|account|auth|symposium|profile|accolades)\//,
+  ];
+  const forbiddenLibTargets = [/^src\/components\//, /^src\/hooks\//, /^src\/app\//];
+
+  for (const [file, data] of graph.entries()) {
+    const targets = data.resolvedStaticImports || [];
+    if (file.startsWith('src/components/ui/')) {
+      for (const target of targets) {
+        if (forbiddenUiTargets.some((re) => re.test(target))) {
+          violations.push({
+            file,
+            target,
+            rule: 'UI primitive (`src/components/ui/**`) must not statically import domain stores, App Router modules, or feature components.',
+          });
+        }
+      }
+    } else if (file.startsWith('src/lib/')) {
+      for (const target of targets) {
+        if (forbiddenLibTargets.some((re) => re.test(target))) {
+          violations.push({
+            file,
+            target,
+            rule: 'Domain module (`src/lib/**`) must not statically import UI components, React hooks, or App Router modules.',
+          });
+        }
+      }
+    }
+  }
+
+  return violations;
 }
 
 /**
@@ -374,15 +557,59 @@ function extractStoreCatalog(srcDir) {
     const content = fs.readFileSync(filePath, 'utf-8');
     const storeName = file.replace(/\.(ts|tsx)$/, '');
 
-    // Extract storage key if persisted
+    // Extract storage key if persisted using Babel AST (with regex fallback)
     let storageKey = 'In-Memory (Ephemeral)';
-    const storageKeyMatch = content.match(/name:\s*['"]([^'"]+)['"]/);
-    if (storageKeyMatch) {
-      storageKey = `\`${storageKeyMatch[1]}\` (localStorage)`;
-    } else if (content.includes('STORAGE_KEYS.')) {
-      const constMatch = content.match(/STORAGE_KEYS\.([A-Z_]+)/);
-      if (constMatch) {
-        storageKey = `\`STORAGE_KEYS.${constMatch[1]}\` (localStorage)`;
+    let extractedViaAst = false;
+    try {
+      const ast = parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx'],
+      });
+      traverse(ast, {
+        CallExpression({ node }) {
+          if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'persist') {
+            const configArg = node.arguments && node.arguments[1];
+            if (configArg && configArg.type === 'ObjectExpression') {
+              for (const prop of configArg.properties || []) {
+                if (
+                  prop.type === 'ObjectProperty' &&
+                  prop.key &&
+                  ((prop.key.type === 'Identifier' && prop.key.name === 'name') ||
+                    (prop.key.type === 'StringLiteral' && prop.key.value === 'name'))
+                ) {
+                  if (prop.value.type === 'StringLiteral') {
+                    storageKey = `\`${prop.value.value}\` (localStorage)`;
+                    extractedViaAst = true;
+                  } else if (
+                    prop.value.type === 'MemberExpression' &&
+                    prop.value.object &&
+                    prop.value.object.type === 'Identifier' &&
+                    prop.value.object.name === 'STORAGE_KEYS' &&
+                    prop.value.property &&
+                    prop.value.property.type === 'Identifier'
+                  ) {
+                    storageKey = `\`STORAGE_KEYS.${prop.value.property.name}\` (localStorage)`;
+                    extractedViaAst = true;
+                  }
+                }
+              }
+            }
+          }
+        },
+      });
+    } catch (_err) {
+      // Fall back to regex inspection below
+    }
+
+    if (!extractedViaAst) {
+      const storageKeyMatch = content.match(/name:\s*['"]([^'"]+)['"]/);
+      if (storageKeyMatch) {
+        storageKey = `\`${storageKeyMatch[1]}\` (localStorage)`;
+      } else if (content.includes('STORAGE_KEYS.')) {
+        const constMatch = content.match(/STORAGE_KEYS\.([A-Z_]+)/);
+        if (constMatch) {
+          storageKey = `\`STORAGE_KEYS.${constMatch[1]}\` (localStorage)`;
+        }
       }
     }
 
@@ -414,11 +641,12 @@ function extractApiAndHookCatalog(srcDir) {
         scanApp(full, `${routePath}/${entry.name}`);
       } else if (entry.name === 'route.ts' || entry.name === 'route.js') {
         const content = fs.readFileSync(full, 'utf-8');
-        const methods = [];
-        if (/export\s+async\s+function\s+GET\b/.test(content)) methods.push('GET');
-        if (/export\s+async\s+function\s+POST\b/.test(content)) methods.push('POST');
-        if (/export\s+async\s+function\s+PUT\b/.test(content)) methods.push('PUT');
-        if (/export\s+async\s+function\s+DELETE\b/.test(content)) methods.push('DELETE');
+        const httpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
+        const methods = httpMethods.filter((method) =>
+          new RegExp(
+            `export\\s+(?:async\\s+function\\s+${method}\\b|const\\s+${method}\\s*=)`
+          ).test(content)
+        );
 
         routes.push({
           path: routePath || '/',
@@ -804,6 +1032,10 @@ function extractServiceWorkerMetadata(rootDir) {
 function extractWorkerCatalog(srcDir) {
   const workersDir = path.join(srcDir, 'workers');
   const workers = [];
+  const workerRoleMap = {
+    'gutenberg.worker':
+      'Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread.',
+  };
 
   if (fs.existsSync(workersDir)) {
     const files = fs
@@ -811,10 +1043,11 @@ function extractWorkerCatalog(srcDir) {
       .filter((f) => (f.endsWith('.ts') || f.endsWith('.js')) && !f.endsWith('.test.ts') && !f.endsWith('.test.js'));
 
     for (const file of files) {
+      const workerName = file.replace(/\.(ts|js)$/, '');
       workers.push({
-        name: file.replace(/\.(ts|js)$/, ''),
+        name: workerName,
         file: `src/workers/${file}`,
-        role: 'Dedicated off-thread Web Worker parsing raw Project Gutenberg plain-text AST, calculating chapter segmentation boundaries, and computing fluid paginated layouts without blocking the UI thread.',
+        role: workerRoleMap[workerName] || 'Background Web Worker script.',
       });
     }
   }
@@ -834,8 +1067,160 @@ function extractWorkerCatalog(srcDir) {
 }
 
 /**
- * Extracts Hermetic Testing, MSW v2 Network Isolation & Coverage Harness metadata from src/test/, src/mocks/, vitest.config.mts, and test suites.
+ * Extracts Vitest / RTL test case titles from a test file via Babel AST
+ * (preserving embedded quotes cleanly without regex quote clipping).
  */
+function extractTestsFromSourceAst(content) {
+  const titles = [];
+  const testCallNames = new Set(['it', 'test']);
+  const testModifiers = new Set(['only', 'skip']);
+
+  try {
+    const ast = parser.parse(content, {
+      sourceType: 'module',
+      plugins: ['typescript', 'jsx'],
+    });
+    traverse(ast, {
+      CallExpression({ node }) {
+        const callee = node.callee;
+        let isTestCall = false;
+        if (callee && callee.type === 'Identifier' && testCallNames.has(callee.name)) {
+          isTestCall = true;
+        } else if (
+          callee &&
+          callee.type === 'MemberExpression' &&
+          callee.object &&
+          callee.object.type === 'Identifier' &&
+          testCallNames.has(callee.object.name) &&
+          callee.property &&
+          callee.property.type === 'Identifier' &&
+          testModifiers.has(callee.property.name)
+        ) {
+          isTestCall = true;
+        }
+        if (!isTestCall) return;
+
+        const firstArg = node.arguments && node.arguments[0];
+        if (!firstArg) return;
+        if (firstArg.type === 'StringLiteral' && firstArg.value) {
+          titles.push(firstArg.value);
+        } else if (firstArg.type === 'TemplateLiteral' && Array.isArray(firstArg.quasis)) {
+          const rawTitle = firstArg.quasis.map((q) => q.value && q.value.raw).join('${...}');
+          if (rawTitle) titles.push(rawTitle);
+        }
+      },
+    });
+    return titles;
+  } catch (_err) {
+    const matches = [...content.matchAll(/(?:it|test)(?:\.skip|\.only)?\s*\(\s*(['"`])([\s\S]*?)\1/g)];
+    return matches.map((m) => m[2]);
+  }
+}
+
+/**
+ * Extracts canonical SQL table names, indexes, triggers, and stored functions
+ * from idempotent `supabase/schema.sql` DDL using balanced parameter scanning.
+ */
+function extractSqlSchemaEntities(schemaSql) {
+  const content = String(schemaSql || '');
+  const hasMigrationLedger = content.includes(
+    'CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations'
+  );
+
+  const tableNames = [];
+  const tableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.(\w+)\s*\([\s\S]*?\r?\n[ \t]*\);/gi;
+  let tableMatch;
+  while ((tableMatch = tableRegex.exec(content)) !== null) {
+    tableNames.push(tableMatch[1]);
+  }
+
+  const indexes = [];
+  const idxRegex =
+    /CREATE\s+(UNIQUE\s+)?INDEX\s+IF\s+NOT\s+EXISTS\s+(\w+)\s+ON\s+(public\.\w+)\s*(?:USING\s+(GIN)\s*)?\(([^;]+?)\)(?:\s+WHERE\s+([^;]+?))?;/gi;
+  let idxMatch;
+  while ((idxMatch = idxRegex.exec(content)) !== null) {
+    const isUnique = Boolean(idxMatch[1]);
+    const idxName = idxMatch[2];
+    const targetTable = idxMatch[3];
+    const isGin = Boolean(idxMatch[4]);
+    const expr = idxMatch[5].replace(/\s+/g, ' ').trim();
+    const whereClause = idxMatch[6] ? ` WHERE ${idxMatch[6].replace(/\s+/g, ' ').trim()}` : '';
+    let idxType = 'B-Tree Index';
+    if (isGin) idxType = 'GIN Index';
+    else if (isUnique && whereClause) idxType = 'Partial Unique Index';
+    else if (isUnique) idxType = 'Unique B-Tree Index';
+    else if (whereClause) idxType = 'Partial B-Tree Index';
+
+    indexes.push({
+      name: idxName,
+      type: idxType,
+      table: targetTable,
+      definition: `\`(${expr})${whereClause}\``,
+    });
+  }
+
+  const triggers = [];
+  const triggersByFunction = new Map();
+  const triggerRegex =
+    /CREATE\s+TRIGGER\s+(\w+)\s+[\s\S]*?ON\s+([\w.]+)\s+FOR\s+EACH\s+ROW\s+EXECUTE\s+FUNCTION\s+public\.(\w+)\s*\([^)]*\)\s*;/gi;
+  let trgMatch;
+  while ((trgMatch = triggerRegex.exec(content)) !== null) {
+    const trgName = trgMatch[1];
+    const trgTable = trgMatch[2];
+    const fnName = trgMatch[3];
+    triggers.push({ name: trgName, table: trgTable, functionName: fnName });
+    if (!triggersByFunction.has(fnName)) {
+      triggersByFunction.set(fnName, []);
+    }
+    triggersByFunction.get(fnName).push({ name: trgName, table: trgTable });
+  }
+
+  // Balanced parenthesis scan on CREATE OR REPLACE FUNCTION so defaults/types like numeric(10, 2) or DEFAULT now() never clip
+  const functions = [];
+  const fnHeaderRegex = /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.(\w+)\s*\(/gi;
+  let fnHeaderMatch;
+  while ((fnHeaderMatch = fnHeaderRegex.exec(content)) !== null) {
+    const fnName = fnHeaderMatch[1];
+    let cursor = fnHeaderRegex.lastIndex;
+    let depth = 1;
+    let inSingleQuote = false;
+    while (cursor < content.length && depth > 0) {
+      const ch = content[cursor];
+      if (ch === "'" && content[cursor - 1] !== '\\') {
+        inSingleQuote = !inSingleQuote;
+      } else if (!inSingleQuote) {
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+      }
+      cursor++;
+    }
+    if (depth !== 0) continue;
+    const afterArgs = content.slice(cursor, cursor + 1500);
+    const returnsMatch = afterArgs.match(/^\s*RETURNS\s+([\s\S]+?)\s+LANGUAGE\b/i);
+    if (!returnsMatch) continue;
+    const returnType = returnsMatch[1].replace(/\s+/g, ' ').trim().toUpperCase();
+    functions.push({
+      rawName: fnName,
+      returnType,
+    });
+  }
+
+  const hasRlsAutoEnable = content.includes("p.proname = 'rls_auto_enable'");
+  const policyCount = (content.match(/CREATE\s+POLICY\s+/gi) || []).length;
+  const checkConstraintCount = (content.match(/ADD\s+CONSTRAINT\s+chk_\w+/gi) || []).length;
+
+  return {
+    hasMigrationLedger,
+    tableNames,
+    indexes,
+    triggers,
+    triggersByFunction,
+    functions,
+    hasRlsAutoEnable,
+    policyCount,
+    checkConstraintCount,
+  };
+}
 function extractTestHarnessCatalog(srcDir, rootDir) {
   const harnessModules = [];
 
@@ -958,7 +1343,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 
@@ -968,8 +1353,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
     for (const rel of matchedFiles) {
       const fullPath = path.join(rootDir, rel);
       const content = fs.readFileSync(fullPath, 'utf-8');
-      const matches = [...content.matchAll(/(?:it|test)(?:\.skip|\.only)?\s*\(\s*['"`]/g)];
-      testCount += matches.length;
+      testCount += extractTestsFromSourceAst(content).length;
     }
     return {
       layer: def.layer,
@@ -1099,9 +1483,6 @@ function extractPublicAssetsCatalog(rootDir) {
     'public/icons/icon-1024.png': 'Ultra-High-DPI tablet PWA splash screen and application icon (`1024×1024` PNG, `purpose: "any"`).',
     'public/icons/icon-maskable-192.png': 'Android adaptive launcher maskable icon with safe-zone padding (`192×192` PNG, `purpose: "maskable"`).',
     'public/icons/icon-maskable-512.png': 'High-DPI Android adaptive launcher maskable icon (`512×512` PNG, `purpose: "maskable"`).',
-    'src/app/favicon.ico': 'Next.js App Router root `favicon.ico` metadata convention (`16×16`, `32×32`, `48×48` 32-bit RGBA `.ico`).',
-    'src/app/icon.svg': 'Next.js App Router scalable vector `icon.svg` metadata convention rendered in modern browser tabs.',
-    'src/app/apple-icon.png': 'Next.js App Router `apple-icon.png` metadata convention (`180×180` PNG) automatically linked as `apple-touch-icon`.',
   };
 
   function scanPublic(dir) {
@@ -1127,23 +1508,6 @@ function extractPublicAssetsCatalog(rootDir) {
   }
 
   scanPublic(publicDir);
-
-  const appIconCandidates = ['src/app/favicon.ico', 'src/app/icon.svg', 'src/app/apple-icon.png'];
-  for (const rel of appIconCandidates) {
-    const full = path.join(rootDir, rel);
-    if (fs.existsSync(full)) {
-      const stat = fs.statSync(full);
-      const sizeKb = (stat.size / 1024).toFixed(1) + ' KB';
-      const ext = path.extname(rel).replace('.', '').toUpperCase() || 'ASSET';
-      assets.push({
-        name: path.basename(rel),
-        file: rel,
-        format: ext,
-        size: sizeKb,
-        role: roleMap[rel] || 'Next.js App Router metadata icon asset.',
-      });
-    }
-  }
 
   return assets.sort((a, b) => a.file.localeCompare(b.file));
 }
@@ -1196,6 +1560,11 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
       fallback: 'Falls back to the repository GitHub Issue Tracker (`SITE_CONFIG.GITHUB_ISSUES_URL`) on `/copyright`.',
       purpose: 'Optional external intake URL for confidential territorial copyright or DMCA inquiries.',
+    },
+    NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: {
+      scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
+      fallback: 'Optional: Omit or leave blank to skip emitting the Google site verification `<meta>` tag (`resolveGoogleSiteVerification`).',
+      purpose: 'Google Search Console ownership verification token resolved via `src/config/site-config.ts` and emitted into root layout metadata.',
     },
     NEXT_PUBLIC_GITHUB_REPO: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
@@ -1295,6 +1664,7 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       try {
         const ast = parser.parse(content, {
           sourceType: 'unambiguous',
+          allowReturnOutsideFunction: true,
           plugins: ['typescript', 'jsx'],
         });
         traverse(ast, {
@@ -1376,12 +1746,1620 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
   });
 }
 
+function unwrapAstExpression(node) {
+  let current = node;
+  while (
+    current &&
+    (current.type === 'TSAsExpression' ||
+      current.type === 'TSTypeAssertion' ||
+      current.type === 'TypeCastExpression' ||
+      current.type === 'TSSatisfiesExpression' ||
+      current.type === 'ParenthesizedExpression')
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function resolveAstStringExpression(node, localConsts, globalConsts, globalMemberConsts) {
+  const expr = unwrapAstExpression(node);
+  if (!expr) return null;
+  if (expr.type === 'StringLiteral') return expr.value;
+  if (expr.type === 'Identifier') {
+    return localConsts.get(expr.name) || globalConsts.get(expr.name) || null;
+  }
+  if (
+    expr.type === 'MemberExpression' &&
+    !expr.computed &&
+    expr.object &&
+    expr.object.type === 'Identifier' &&
+    expr.property &&
+    expr.property.type === 'Identifier'
+  ) {
+    const memberKey = `${expr.object.name}.${expr.property.name}`;
+    return localConsts.get(memberKey) || globalMemberConsts.get(memberKey) || null;
+  }
+  if (expr.type === 'TemplateLiteral' && Array.isArray(expr.quasis)) {
+    let assembled = '';
+    for (let i = 0; i < expr.quasis.length; i++) {
+      assembled += expr.quasis[i].value.cooked ?? expr.quasis[i].value.raw ?? '';
+      if (i < expr.expressions.length) {
+        const inner = resolveAstStringExpression(
+          expr.expressions[i],
+          localConsts,
+          globalConsts,
+          globalMemberConsts
+        );
+        assembled += inner !== null ? inner : '${*}';
+      }
+    }
+    return assembled;
+  }
+  return null;
+}
+
+function canonicalizeInternalApiRoute(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return null;
+  if (urlStr.includes('/api/books/translations')) return '/api/books/translations';
+  if (urlStr.includes('/api/books/content')) return '/api/books/content';
+  if (/(?:^|[^a-zA-Z0-9_-])\/api\/books(?:$|[?#&])/.test(urlStr)) return '/api/books';
+  if (urlStr.includes('/auth/callback')) return '/auth/callback';
+  return null;
+}
+
+function classifyStorageAccessMode(astPath) {
+  let cur = astPath.parentPath;
+  while (cur) {
+    const n = cur.node;
+    if (
+      n.type === 'CallExpression' &&
+      n.callee &&
+      n.callee.type === 'MemberExpression' &&
+      n.callee.property &&
+      n.callee.property.type === 'Identifier'
+    ) {
+      const method = n.callee.property.name;
+      if (method === 'setItem' || method === 'set') return 'write';
+      if (method === 'removeItem' || method === 'delete') return 'clear';
+      if (method === 'getItem' || method === 'get' || method === 'getCookieValue') return 'read';
+    }
+    if (
+      n.type === 'CallExpression' &&
+      n.callee &&
+      n.callee.type === 'Identifier' &&
+      n.callee.name === 'getCookieValue'
+    ) {
+      return 'read';
+    }
+    if (
+      n.type === 'AssignmentExpression' &&
+      n.left &&
+      n.left.type === 'MemberExpression' &&
+      n.left.property &&
+      n.left.property.name === 'cookie'
+    ) {
+      return 'write';
+    }
+    if (
+      n.type === 'ObjectProperty' &&
+      n.key &&
+      n.key.type === 'Identifier' &&
+      n.key.name === 'name'
+    ) {
+      return 'persist';
+    }
+    cur = cur.parentPath;
+  }
+  return 'use';
+}
+
+function collectScriptFiles(rootDir) {
+  const results = [];
+  const subdirs = [
+    path.join(rootDir, 'scripts'),
+    path.join(rootDir, 'scripts', 'lib'),
+    path.join(rootDir, 'scripts', 'eslint-rules'),
+  ];
+  for (const dir of subdirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
+        const abs = path.join(dir, entry.name);
+        results.push({
+          abs,
+          rel: path.relative(rootDir, abs).replace(/\\/g, '/'),
+        });
+      }
+    }
+  }
+  return results.sort((a, b) => a.rel.localeCompare(b.rel));
+}
+
+function resolveScriptRequirePath(specifier, fromRel, scriptRelSet) {
+  if (!specifier || !specifier.startsWith('.')) return null;
+  const normalized = path.posix.normalize(path.posix.join(path.posix.dirname(fromRel), specifier));
+  const candidates = [normalized, `${normalized}.js`, `${normalized}/index.js`];
+  for (const cand of candidates) {
+    if (scriptRelSet.has(cand)) return cand;
+  }
+  return null;
+}
+
+/**
+ * Builds the CommonJS dependency graph and DB `.from()` touchpoints across scripts/*.js.
+ */
+function analyzeScriptsDependencyGraph(rootDir) {
+  const files = collectScriptFiles(rootDir);
+  const scriptRelSet = new Set(files.map((f) => f.rel));
+  const nodesMap = new Map();
+  const parseErrors = [];
+  const nonDbFrom = new Set(['Array', 'Buffer', 'Set', 'Object', 'Uint8Array']);
+
+  for (const fileInfo of files) {
+    const content = fs.readFileSync(fileInfo.abs, 'utf-8');
+    const rawRequires = [];
+    const internalRequires = [];
+    const externalRequires = [];
+    const dbTables = [];
+    let parseError = null;
+
+    try {
+      const ast = parser.parse(content, {
+        sourceType: 'unambiguous',
+        allowReturnOutsideFunction: true,
+        plugins: ['typescript', 'jsx'],
+      });
+      traverse(ast, {
+        CallExpression({ node }) {
+          if (
+            node.callee &&
+            node.callee.type === 'Identifier' &&
+            node.callee.name === 'require' &&
+            node.arguments &&
+            node.arguments[0] &&
+            node.arguments[0].type === 'StringLiteral'
+          ) {
+            const spec = node.arguments[0].value;
+            rawRequires.push(spec);
+            if (spec.startsWith('.')) {
+              const resolved = resolveScriptRequirePath(spec, fileInfo.rel, scriptRelSet);
+              if (resolved) internalRequires.push(resolved);
+            } else {
+              externalRequires.push(spec);
+            }
+          }
+          if (
+            node.callee &&
+            node.callee.type === 'MemberExpression' &&
+            node.callee.property &&
+            node.callee.property.type === 'Identifier' &&
+            node.callee.property.name === 'from' &&
+            node.arguments &&
+            node.arguments[0] &&
+            node.arguments[0].type === 'StringLiteral'
+          ) {
+            const objName =
+              node.callee.object && node.callee.object.type === 'Identifier'
+                ? node.callee.object.name
+                : '';
+            if (!nonDbFrom.has(objName) && /^[a-z][a-z0-9_]*$/.test(node.arguments[0].value)) {
+              dbTables.push(`public.${node.arguments[0].value}`);
+            }
+          }
+        },
+      });
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
+      parseErrors.push({ file: fileInfo.rel, error: parseError });
+    }
+
+    nodesMap.set(fileInfo.rel, {
+      file: fileInfo.rel,
+      requires: Array.from(new Set(internalRequires)).sort(),
+      externalRequires: Array.from(new Set(externalRequires)).sort(),
+      consumedBy: [],
+      dbTables: Array.from(new Set(dbTables)).sort(),
+      parseError,
+    });
+  }
+
+  for (const [rel, data] of nodesMap.entries()) {
+    for (const target of data.requires) {
+      const targetNode = nodesMap.get(target);
+      if (targetNode && !targetNode.consumedBy.includes(rel)) {
+        targetNode.consumedBy.push(rel);
+      }
+    }
+  }
+  for (const data of nodesMap.values()) {
+    data.consumedBy.sort();
+  }
+
+  return {
+    nodes: Array.from(nodesMap.values()),
+    nodesMap,
+    parseErrors,
+  };
+}
+
+/**
+ * Extracts runtime cross-boundary coupling across src/ and scripts/:
+ * - Supabase .from('table') and .rpc('fn') callers
+ * - Internal /api/* & /auth/callback callers (fetch, API_ENDPOINTS, ROUTES, card URLs)
+ * - DOM CustomEvent & BroadcastChannel emitters/subscribers (resolving exported constants)
+ * - Cross-module STORAGE_KEYS, localStorage/sessionStorage, IndexedDB & Cookie bindings
+ */
+function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
+  const sourceFiles = getAllSourceFiles(srcDir);
+  const parsedSrcFiles = [];
+  const parseErrors = [];
+  const globalConsts = new Map();
+  const globalMemberConsts = new Map();
+
+  for (const abs of sourceFiles) {
+    const rel = path.relative(rootDir, abs).replace(/\\/g, '/');
+    const content = fs.readFileSync(abs, 'utf-8');
+    let ast = null;
+    try {
+      ast = parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx'],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      parseErrors.push({ file: rel, error: msg });
+      continue;
+    }
+
+    // Pass 1: Harvest exported string constants and flat config objects (as const)
+    traverse(ast, {
+      ExportNamedDeclaration({ node }) {
+        if (!node.declaration || node.declaration.type !== 'VariableDeclaration') return;
+        for (const dec of node.declaration.declarations || []) {
+          if (!dec.id || dec.id.type !== 'Identifier' || !dec.init) continue;
+          const init = unwrapAstExpression(dec.init);
+          if (init && init.type === 'StringLiteral') {
+            globalConsts.set(dec.id.name, init.value);
+          } else if (init && init.type === 'ObjectExpression') {
+            for (const prop of init.properties || []) {
+              if (
+                prop.type === 'ObjectProperty' &&
+                prop.key &&
+                (prop.key.type === 'Identifier' || prop.key.type === 'StringLiteral')
+              ) {
+                const keyName = prop.key.name || prop.key.value;
+                const valNode = unwrapAstExpression(prop.value);
+                if (valNode && valNode.type === 'StringLiteral') {
+                  globalMemberConsts.set(`${dec.id.name}.${keyName}`, valNode.value);
+                }
+              }
+            }
+          }
+        }
+      },
+    });
+
+    parsedSrcFiles.push({ rel, ast });
+  }
+
+  const dbTableMap = new Map();
+  const rpcMap = new Map();
+  const apiCallerMap = new Map();
+  const signalMap = new Map();
+  const storageMap = new Map();
+
+  const addSetEntry = (map, key, value) => {
+    if (!map.has(key)) map.set(key, new Set());
+    map.get(key).add(value);
+  };
+
+  const ensureSignal = (kind, name) => {
+    const key = `${kind}:${name}`;
+    if (!signalMap.has(key)) {
+      signalMap.set(key, {
+        kind,
+        name,
+        emitters: new Set(),
+        subscribers: new Set(),
+        detailKeys: new Set(),
+        isCustomSignal: kind === 'BroadcastChannel' || name.startsWith('bookarium'),
+      });
+    }
+    return signalMap.get(key);
+  };
+
+  const ensureStorage = (keyName) => {
+    if (!storageMap.has(keyName)) {
+      storageMap.set(keyName, {
+        key: keyName,
+        writers: new Set(),
+        readers: new Set(),
+        persistedBy: new Set(),
+      });
+    }
+    return storageMap.get(keyName);
+  };
+
+  const nonDbFromObjects = new Set([
+    'Array',
+    'Buffer',
+    'Set',
+    'Map',
+    'Object',
+    'Uint8Array',
+    'Int8Array',
+    'Uint16Array',
+    'Uint32Array',
+    'Float32Array',
+    'Float64Array',
+  ]);
+  const apiSelfAndPaginationExclusions = new Set([
+    'src/config/api-endpoints.ts',
+    'src/config/routes.ts',
+    'src/lib/catalog/curated-fallback.ts',
+    'src/lib/catalog/supabase-provider.ts',
+    'src/lib/redirect-sanitizer.ts',
+    'src/app/robots.ts',
+    'src/proxy.ts',
+  ]);
+
+  // Pass 2: Traverse every parsed src/ module for cross-boundary call & signal edges
+  for (const { rel, ast } of parsedSrcFiles) {
+    const localConsts = new Map();
+
+    // Collect local variable string bindings first so `const endpoint = ...; fetch(endpoint)` resolves reliably
+    traverse(ast, {
+      VariableDeclarator({ node }) {
+        if (!node.id || node.id.type !== 'Identifier' || !node.init) return;
+        const resolved = resolveAstStringExpression(
+          node.init,
+          localConsts,
+          globalConsts,
+          globalMemberConsts
+        );
+        if (resolved !== null) {
+          localConsts.set(node.id.name, resolved);
+        }
+      },
+    });
+
+    const isRouteHandlerFile = rel.startsWith('src/app/api/') || rel === 'src/app/auth/callback/route.ts';
+    const isExcludedApiCallerFile = isRouteHandlerFile || apiSelfAndPaginationExclusions.has(rel);
+
+    const fileBroadcastOps = { channels: new Set(), hasPostMessage: false, hasMessageListener: false };
+
+    traverse(ast, {
+      CallExpression(astPath) {
+        const { node } = astPath;
+        const callee = node.callee;
+
+        // 1. Direct fetch(...) and buildAuthRedirectUrl(...) callers -> internal API route
+        if (!isExcludedApiCallerFile && callee && callee.type === 'Identifier') {
+          if ((callee.name === 'fetch' || callee.name === 'buildAuthRedirectUrl') && node.arguments[0]) {
+            const urlStr = resolveAstStringExpression(
+              node.arguments[0],
+              localConsts,
+              globalConsts,
+              globalMemberConsts
+            );
+            const routeKey = canonicalizeInternalApiRoute(urlStr);
+            if (routeKey) addSetEntry(apiCallerMap, routeKey, rel);
+          }
+        }
+
+        if (!callee || callee.type !== 'MemberExpression' || !callee.property || callee.property.type !== 'Identifier') {
+          return;
+        }
+        const propName = callee.property.name;
+
+        // 2. Supabase .from('table') & .rpc('fn')
+        if (propName === 'from' && node.arguments[0]) {
+          const objName = callee.object && callee.object.type === 'Identifier' ? callee.object.name : '';
+          if (!nonDbFromObjects.has(objName)) {
+            const tableName = resolveAstStringExpression(
+              node.arguments[0],
+              localConsts,
+              globalConsts,
+              globalMemberConsts
+            );
+            if (tableName && /^[a-z][a-z0-9_]*$/.test(tableName)) {
+              addSetEntry(dbTableMap, `public.${tableName}`, rel);
+            }
+          }
+        } else if (propName === 'rpc' && node.arguments[0]) {
+          const rpcName = resolveAstStringExpression(
+            node.arguments[0],
+            localConsts,
+            globalConsts,
+            globalMemberConsts
+          );
+          if (rpcName && /^[a-z][a-z0-9_]*$/.test(rpcName)) {
+            addSetEntry(rpcMap, `public.${rpcName}()`, rel);
+          }
+        }
+
+        // 3. DOM CustomEvent / BroadcastChannel listeners
+        if (propName === 'addEventListener' && node.arguments[0]) {
+          const evtName = resolveAstStringExpression(
+            node.arguments[0],
+            localConsts,
+            globalConsts,
+            globalMemberConsts
+          );
+          if (evtName === 'message') {
+            fileBroadcastOps.hasMessageListener = true;
+          } else if (evtName && evtName.startsWith('bookarium')) {
+            ensureSignal('CustomEvent', evtName).subscribers.add(rel);
+          }
+        } else if (propName === 'postMessage') {
+          fileBroadcastOps.hasPostMessage = true;
+        }
+
+        // 4. localStorage / sessionStorage / indexedDB.open string keys
+        if (
+          (propName === 'getItem' || propName === 'setItem' || propName === 'removeItem' || propName === 'open') &&
+          node.arguments[0]
+        ) {
+          const objName = callee.object && callee.object.type === 'Identifier' ? callee.object.name : '';
+          if (
+            propName === 'open' &&
+            objName !== 'indexedDB' &&
+            !(
+              callee.object &&
+              callee.object.type === 'MemberExpression' &&
+              callee.object.property &&
+              callee.object.property.name === 'indexedDB'
+            )
+          ) {
+            return;
+          }
+          const keyStr = resolveAstStringExpression(
+            node.arguments[0],
+            localConsts,
+            globalConsts,
+            globalMemberConsts
+          );
+          if (keyStr && (keyStr.startsWith('bookarium') || keyStr === 'BookariumOfflineDB')) {
+            const entry = ensureStorage(keyStr);
+            if (propName === 'open') {
+              entry.writers.add(rel);
+              entry.readers.add(rel);
+            } else if (propName === 'setItem' || propName === 'removeItem') {
+              entry.writers.add(rel);
+            } else {
+              entry.readers.add(rel);
+            }
+          }
+        }
+      },
+
+      NewExpression({ node }) {
+        if (!node.callee || node.callee.type !== 'Identifier' || !node.arguments[0]) return;
+        const ctor = node.callee.name;
+        const signalName = resolveAstStringExpression(
+          node.arguments[0],
+          localConsts,
+          globalConsts,
+          globalMemberConsts
+        );
+        if (!signalName) return;
+
+        if (ctor === 'CustomEvent') {
+          const sig = ensureSignal('CustomEvent', signalName);
+          sig.emitters.add(rel);
+          const opts = unwrapAstExpression(node.arguments[1]);
+          if (opts && opts.type === 'ObjectExpression') {
+            for (const p of opts.properties || []) {
+              if (
+                p.type === 'ObjectProperty' &&
+                p.key &&
+                (p.key.name || p.key.value) === 'detail'
+              ) {
+                const detailObj = unwrapAstExpression(p.value);
+                if (detailObj && detailObj.type === 'ObjectExpression') {
+                  for (const dp of detailObj.properties || []) {
+                    const dk = dp.key && (dp.key.name || dp.key.value);
+                    if (dk) sig.detailKeys.add(dk);
+                  }
+                }
+              }
+            }
+          }
+        } else if (ctor === 'BroadcastChannel') {
+          fileBroadcastOps.channels.add(signalName);
+          ensureSignal('BroadcastChannel', signalName);
+        }
+      },
+
+      MemberExpression(astPath) {
+        const { node } = astPath;
+        if (
+          node.object &&
+          node.object.type === 'Identifier' &&
+          node.object.name === 'STORAGE_KEYS' &&
+          node.property &&
+          node.property.type === 'Identifier' &&
+          rel !== 'src/config/site-config.ts'
+        ) {
+          const keyStr = globalMemberConsts.get(`STORAGE_KEYS.${node.property.name}`);
+          if (keyStr) {
+            const entry = ensureStorage(keyStr);
+            const mode = classifyStorageAccessMode(astPath);
+            if (mode === 'persist') entry.persistedBy.add(rel);
+            else if (mode === 'write' || mode === 'clear') entry.writers.add(rel);
+            else entry.readers.add(rel);
+          }
+        }
+
+        // Catch URL-constructing expressions using API_ENDPOINTS.INTERNAL_API_* or ROUTES.API_* (e.g. coverUrl / cardImageUrl)
+        if (
+          !isExcludedApiCallerFile &&
+          node.object &&
+          node.object.type === 'Identifier' &&
+          (node.object.name === 'API_ENDPOINTS' || node.object.name === 'ROUTES') &&
+          node.property &&
+          node.property.type === 'Identifier'
+        ) {
+          const val = globalMemberConsts.get(`${node.object.name}.${node.property.name}`);
+          const routeKey = canonicalizeInternalApiRoute(val);
+          if (routeKey) addSetEntry(apiCallerMap, routeKey, rel);
+        }
+      },
+
+      TemplateLiteral({ node }) {
+        if (isExcludedApiCallerFile) return;
+        const resolvedTpl = resolveAstStringExpression(
+          node,
+          localConsts,
+          globalConsts,
+          globalMemberConsts
+        );
+        const routeKey = canonicalizeInternalApiRoute(resolvedTpl);
+        if (routeKey) addSetEntry(apiCallerMap, routeKey, rel);
+      },
+    });
+
+    for (const chName of fileBroadcastOps.channels) {
+      const sig = ensureSignal('BroadcastChannel', chName);
+      if (fileBroadcastOps.hasPostMessage) sig.emitters.add(rel);
+      if (fileBroadcastOps.hasMessageListener) sig.subscribers.add(rel);
+    }
+  }
+
+  // Merge CLI scripts/*.js DB table touchpoints into dbTableMap
+  const scriptsGraph = analyzeScriptsDependencyGraph(rootDir);
+  for (const pErr of scriptsGraph.parseErrors) {
+    parseErrors.push(pErr);
+  }
+  for (const sNode of scriptsGraph.nodes) {
+    for (const tbl of sNode.dbTables) {
+      addSetEntry(dbTableMap, tbl, sNode.file);
+    }
+  }
+
+  // Known Zustand persist string keys (in stores where persist name isn't STORAGE_KEYS.*)
+  const storeCatalog = extractStoreCatalog(srcDir);
+  for (const st of storeCatalog) {
+    const cleanKey = st.storageKey.replace(/\s*\(localStorage\)$/, '').replace(/`/g, '');
+    if (cleanKey.startsWith('bookarium')) {
+      ensureStorage(cleanKey).persistedBy.add(st.file);
+    } else if (cleanKey.startsWith('STORAGE_KEYS.')) {
+      const resolvedKey = globalMemberConsts.get(cleanKey);
+      if (resolvedKey) ensureStorage(resolvedKey).persistedBy.add(st.file);
+    }
+  }
+
+  const serializeSetMap = (map, labelKey) =>
+    Array.from(map.entries())
+      .map(([k, setVal]) => ({
+        [labelKey]: k,
+        callers: Array.from(setVal).sort(),
+      }))
+      .sort((a, b) => a[labelKey].localeCompare(b[labelKey]));
+
+  const signalChannels = Array.from(signalMap.values())
+    .map((sig) => ({
+      kind: sig.kind,
+      name: sig.name,
+      isCustomSignal: sig.isCustomSignal,
+      emitters: Array.from(sig.emitters).sort(),
+      subscribers: Array.from(sig.subscribers).sort(),
+      detailKeys: Array.from(sig.detailKeys).sort(),
+    }))
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+
+  const storageKeyBindings = Array.from(storageMap.values())
+    .map((item) => ({
+      key: item.key,
+      persistedBy: Array.from(item.persistedBy).sort(),
+      writers: Array.from(item.writers).sort(),
+      readers: Array.from(item.readers).sort(),
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  return {
+    dbTouchpoints: serializeSetMap(dbTableMap, 'table'),
+    rpcCallers: serializeSetMap(rpcMap, 'rpc'),
+    apiRouteCallers: serializeSetMap(apiCallerMap, 'route'),
+    signalChannels,
+    storageKeyBindings,
+    parseErrors,
+  };
+}
+
+const TIER_1_CONTRACTED_MODULES = [
+  'src/proxy.ts',
+  'src/app/api/books/route.ts',
+  'src/app/api/books/content/route.ts',
+  'src/lib/copyright-engine.ts',
+  'src/lib/catalog/supabase-provider.ts',
+  'src/lib/book-sorting.ts',
+  'src/lib/offline-storage.ts',
+  'src/lib/sync-utils.ts',
+  'src/stores/useAuthStore.ts',
+  'src/stores/useReaderStore.ts',
+  'scripts/sync-gutenberg-catalog.js',
+  'scripts/sync-featured-quotes.js',
+];
+
+const TIER_2_CONTRACTED_MODULES = [
+  'src/stores/useBookshelfStore.ts',
+  'src/stores/useFellowshipStore.ts',
+  'src/stores/useAnnotationStore.ts',
+  'src/stores/useHabitsStore.ts',
+  'src/stores/useAccoladesStore.ts',
+  'src/stores/useJurisdictionStore.ts',
+  'src/stores/usePreferencesStore.ts',
+  'src/stores/useThemeStore.ts',
+  'src/lib/bookshelf-cloud-sync.ts',
+  'src/lib/annotation-cloud-sync.ts',
+  'src/lib/fellowship-cloud-sync.ts',
+  'src/lib/reader-cloud-sync.ts',
+  'src/lib/preferences-sync.ts',
+  'src/lib/auth-recovery.ts',
+  'src/lib/redirect-sanitizer.ts',
+  'src/lib/rate-limiter.ts',
+  'src/app/api/books/content/url-validator.ts',
+];
+
+const TIER_3_CONTRACTED_MODULES = [
+  'src/hooks/useOfflineBooks.ts',
+  'src/hooks/queries/useBooks.ts',
+  'src/hooks/queries/useBookContent.ts',
+  'src/hooks/queries/useBookTranslations.ts',
+  'src/hooks/useAccountSecurityActions.ts',
+  'src/hooks/useNetworkStatus.ts',
+  'src/hooks/useBookPassageShuffle.ts',
+  'src/hooks/useCollectionAutoHeal.ts',
+  'src/lib/supabase/client.ts',
+  'src/lib/supabase/server.ts',
+  'src/lib/supabase/middleware.ts',
+  'src/app/auth/callback/route.ts',
+  'src/app/api/books/translations/route.ts',
+  'src/app/api/books/content/metadata-cache.ts',
+  'src/lib/country-resolver.ts',
+  'src/lib/safe-storage.ts',
+  'src/lib/book-metadata.ts',
+];
+
+const TIER_4_CONTRACTED_MODULES = [
+  'src/lib/gutenberg-parser.ts',
+  'src/lib/gutenberg/segmentation.ts',
+  'src/lib/gutenberg/pagination.ts',
+  'src/lib/gutenberg/passages.ts',
+  'src/lib/gutenberg/reflow.ts',
+  'src/workers/gutenberg.worker.ts',
+  'src/lib/reader-annotator.ts',
+  'src/lib/reader-bookmark-geometry.ts',
+  'src/hooks/reader/useReaderSession.ts',
+  'src/hooks/reader/useContinueReadingLedger.ts',
+  'scripts/ingest-catalog.js',
+  'scripts/ingest-translations.js',
+  'scripts/purge-vercel-cache.js',
+  'scripts/eslint-rules/bookarium-security.js',
+  'scripts/lib/ast-parser.js',
+];
+
+const PROTECTED_CONTRACTED_MODULES = [
+  ...TIER_1_CONTRACTED_MODULES,
+  ...TIER_2_CONTRACTED_MODULES,
+  ...TIER_3_CONTRACTED_MODULES,
+  ...TIER_4_CONTRACTED_MODULES,
+];
+
+const CONTRACT_LAYER_ORDER = [
+  'Edge Proxy & API Routes',
+  'Domain Engines & Adapters',
+  'State Stores (Zustand)',
+  'React Hooks & Queries',
+  'Web Workers',
+  'App Router Pages & Layouts',
+  'UI & Feature Components',
+  'Config & Type Contracts',
+  'CLI Pipelines & Governance',
+];
+
+/**
+ * Classifies a repository file path into its architectural contract layer.
+ */
+function classifyContractLayer(relPath) {
+  if (relPath.startsWith('scripts/')) return 'CLI Pipelines & Governance';
+  if (relPath === 'src/proxy.ts' || relPath.startsWith('src/app/api/')) {
+    return 'Edge Proxy & API Routes';
+  }
+  if (relPath.startsWith('src/app/')) return 'App Router Pages & Layouts';
+  if (relPath.startsWith('src/stores/')) return 'State Stores (Zustand)';
+  if (relPath.startsWith('src/lib/')) return 'Domain Engines & Adapters';
+  if (relPath.startsWith('src/hooks/')) return 'React Hooks & Queries';
+  if (relPath.startsWith('src/workers/')) return 'Web Workers';
+  if (relPath.startsWith('src/components/')) return 'UI & Feature Components';
+  return 'Config & Type Contracts';
+}
+
+const PLACEHOLDER_CONTRACT_VALUE_RE = /^(?:tbd|todo|placeholder|none|n\/a|\.\.\.|-+)$/i;
+
+/**
+ * Parses @scope, @invariant, @rationale/@why, and @adr tags from a JSDoc comment body.
+ */
+function parseJsDocContractTags(commentValue) {
+  const lines = String(commentValue || '').split(/\r?\n/);
+  const scopeParts = [];
+  const invariants = [];
+  const rationales = [];
+  const adrs = [];
+  const emptyTagIssues = [];
+
+  let activeTag = null;
+  let activeIndex = -1;
+  let hasAnyContractTag = false;
+  let hasModuleHint = false;
+  let insideFence = false;
+
+  const commitIfEmpty = () => {
+    if (activeTag === 'scope' && scopeParts[activeIndex] !== undefined) {
+      const val = scopeParts[activeIndex].trim();
+      if (!val || PLACEHOLDER_CONTRACT_VALUE_RE.test(val)) {
+        emptyTagIssues.push('Empty or placeholder @scope tag');
+      }
+    } else if (activeTag === 'invariant' && invariants[activeIndex] !== undefined) {
+      const val = invariants[activeIndex].trim();
+      if (!val || PLACEHOLDER_CONTRACT_VALUE_RE.test(val)) {
+        emptyTagIssues.push('Empty or placeholder @invariant tag');
+      }
+    } else if (activeTag === 'rationale' && rationales[activeIndex] !== undefined) {
+      const val = rationales[activeIndex].trim();
+      if (!val || PLACEHOLDER_CONTRACT_VALUE_RE.test(val)) {
+        emptyTagIssues.push('Empty or placeholder @rationale/@why tag');
+      }
+    } else if (activeTag === 'adr' && adrs.length === 0) {
+      emptyTagIssues.push('Empty or invalid @adr tag (expected ADR-XXX)');
+    }
+  };
+
+  const extractAdrTokens = (rawText) => {
+    const found = String(rawText || '').match(/\bADR-\d{3}\b/g);
+    if (!found) return [];
+    return found;
+  };
+
+  for (const rawLine of lines) {
+    const cleaned = rawLine.replace(/^\s*\* ?/, '').trim();
+    if (cleaned.startsWith('```')) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (insideFence) continue;
+
+    if (!cleaned) {
+      commitIfEmpty();
+      activeTag = null;
+      activeIndex = -1;
+      continue;
+    }
+
+    const tagMatch = cleaned.match(/^@([a-zA-Z0-9_-]+)(?:\s+(.*))?$/);
+    if (tagMatch) {
+      commitIfEmpty();
+      const tag = tagMatch[1].toLowerCase();
+      const remainder = (tagMatch[2] || '').trim();
+
+      if (tag === 'module' || tag === 'file' || tag === 'fileoverview') {
+        hasModuleHint = true;
+        activeTag = null;
+        activeIndex = -1;
+        continue;
+      }
+
+      if (tag === 'scope') {
+        hasAnyContractTag = true;
+        scopeParts.push(remainder);
+        activeTag = 'scope';
+        activeIndex = scopeParts.length - 1;
+      } else if (tag === 'invariant') {
+        hasAnyContractTag = true;
+        invariants.push(remainder);
+        activeTag = 'invariant';
+        activeIndex = invariants.length - 1;
+      } else if (tag === 'rationale' || tag === 'why') {
+        hasAnyContractTag = true;
+        rationales.push(remainder);
+        activeTag = 'rationale';
+        activeIndex = rationales.length - 1;
+      } else if (tag === 'adr') {
+        hasAnyContractTag = true;
+        const parsedAdrs = extractAdrTokens(remainder);
+        adrs.push(...parsedAdrs);
+        activeTag = parsedAdrs.length === 0 ? 'adr' : 'adr-has-tokens';
+        activeIndex = adrs.length - 1;
+      } else {
+        activeTag = null;
+        activeIndex = -1;
+      }
+      continue;
+    }
+
+    if (!activeTag) continue;
+
+    if (activeTag === 'scope') {
+      scopeParts[activeIndex] = `${scopeParts[activeIndex]} ${cleaned}`.trim();
+    } else if (activeTag === 'invariant') {
+      invariants[activeIndex] = `${invariants[activeIndex]} ${cleaned}`.trim();
+    } else if (activeTag === 'rationale') {
+      rationales[activeIndex] = `${rationales[activeIndex]} ${cleaned}`.trim();
+    } else if (activeTag === 'adr' || activeTag === 'adr-has-tokens') {
+      const parsedAdrs = extractAdrTokens(cleaned);
+      if (parsedAdrs.length > 0) {
+        adrs.push(...parsedAdrs);
+        activeTag = 'adr-has-tokens';
+      }
+    }
+  }
+
+  commitIfEmpty();
+
+  const normalizedScope = scopeParts.map((s) => s.trim()).filter(Boolean).join(' ');
+  return {
+    hasAnyContractTag,
+    hasModuleHint,
+    scope: normalizedScope,
+    invariants: invariants.map((s) => s.trim()).filter(Boolean),
+    rationales: rationales.map((s) => s.trim()).filter(Boolean),
+    adrs: Array.from(new Set(adrs)),
+    emptyTagIssues: Array.from(new Set(emptyTagIssues)),
+  };
+}
+
+/**
+ * Formats a concise AST parameter list for exported functions/callables.
+ */
+function formatCallableParamList(params = []) {
+  return params
+    .map((param) => {
+      if (!param) return 'arg';
+      if (param.type === 'Identifier') return param.name;
+      if (param.type === 'AssignmentPattern' && param.left?.type === 'Identifier') {
+        return `${param.left.name}?`;
+      }
+      if (param.type === 'ObjectPattern') return '{ ... }';
+      if (param.type === 'ArrayPattern') return '[ ... ]';
+      if (param.type === 'RestElement' && param.argument?.type === 'Identifier') {
+        return `...${param.argument.name}`;
+      }
+      return 'arg';
+    })
+    .join(', ');
+}
+
+/**
+ * Returns true if a top-level statement is strictly a CommonJS require binding.
+ */
+function isCommonJsRequireStatement(stmt) {
+  if (!stmt || stmt.type !== 'VariableDeclaration') return false;
+  return (
+    Array.isArray(stmt.declarations) &&
+    stmt.declarations.length > 0 &&
+    stmt.declarations.every(
+      (decl) =>
+        decl.init &&
+        ((decl.init.type === 'CallExpression' && decl.init.callee?.name === 'require') ||
+          (decl.init.type === 'MemberExpression' &&
+            decl.init.object?.type === 'CallExpression' &&
+            decl.init.object.callee?.name === 'require'))
+    )
+  );
+}
+
+/**
+ * Extracts symbol metadata (name, kind, signature, exported) for a declaration node.
+ */
+function describeDeclarationSymbol(node, cjsExportsSet) {
+  if (!node) return null;
+  let exported = false;
+  let inner = node;
+
+  if (node.type === 'ExportNamedDeclaration') {
+    exported = true;
+    inner = node.declaration;
+  } else if (node.type === 'ExportDefaultDeclaration') {
+    exported = true;
+    inner = node.declaration;
+  }
+
+  if (!inner) return null;
+
+  if (inner.type === 'FunctionDeclaration') {
+    const name = inner.id?.name || 'default';
+    return {
+      name,
+      kind: 'function',
+      signature: `${inner.async ? 'async ' : ''}(${formatCallableParamList(inner.params)})`,
+      exported: exported || cjsExportsSet.has(name),
+    };
+  }
+  if (inner.type === 'ClassDeclaration') {
+    const name = inner.id?.name || 'default';
+    return {
+      name,
+      kind: 'class',
+      signature: `class ${name}`,
+      exported: exported || cjsExportsSet.has(name),
+    };
+  }
+  if (inner.type === 'TSInterfaceDeclaration') {
+    const name = inner.id?.name || 'Interface';
+    return {
+      name,
+      kind: 'interface',
+      signature: `interface ${name}`,
+      exported,
+    };
+  }
+  if (inner.type === 'TSTypeAliasDeclaration') {
+    const name = inner.id?.name || 'Type';
+    return {
+      name,
+      kind: 'type',
+      signature: `type ${name}`,
+      exported,
+    };
+  }
+  if (inner.type === 'VariableDeclaration' && inner.declarations?.length > 0) {
+    const decl = inner.declarations[0];
+    const name = decl.id?.name || 'constant';
+    let signature = 'const';
+    if (decl.init?.type === 'ArrowFunctionExpression' || decl.init?.type === 'FunctionExpression') {
+      signature = `${decl.init.async ? 'async ' : ''}(${formatCallableParamList(decl.init.params)})`;
+    }
+    return {
+      name,
+      kind: 'const',
+      signature,
+      exported: exported || cjsExportsSet.has(name),
+    };
+  }
+  return null;
+}
+
+/**
+ * Collects exported symbol names across TypeScript ES modules and CommonJS scripts.
+ */
+function collectFileExportNames(ast) {
+  const names = new Set();
+  const cjsExports = new Set();
+
+  traverse(ast, {
+    ExportNamedDeclaration({ node }) {
+      if (node.declaration) {
+        if (node.declaration.declarations) {
+          for (const d of node.declaration.declarations) {
+            if (d.id?.name) names.add(d.id.name);
+          }
+        } else if (node.declaration.id?.name) {
+          names.add(node.declaration.id.name);
+        }
+      }
+      if (node.specifiers) {
+        for (const s of node.specifiers) {
+          if (s.exported?.name) names.add(s.exported.name);
+        }
+      }
+    },
+    ExportDefaultDeclaration({ node }) {
+      names.add(node.declaration?.id?.name || 'default');
+    },
+    AssignmentExpression({ node }) {
+      if (
+        node.left?.type === 'MemberExpression' &&
+        node.left.object?.type === 'Identifier' &&
+        node.left.object.name === 'module' &&
+        node.left.property?.name === 'exports' &&
+        node.right?.type === 'ObjectExpression'
+      ) {
+        for (const prop of node.right.properties) {
+          if (prop.type === 'ObjectProperty' && prop.key?.name) {
+            names.add(prop.key.name);
+            cjsExports.add(prop.key.name);
+          }
+        }
+      }
+    },
+  });
+
+  return {
+    exportsList: Array.from(names),
+    cjsExportsSet: cjsExports,
+  };
+}
+
+/**
+ * Extracts structured @scope / @invariant / @rationale / @adr contracts from a single file AST.
+ */
+function parseSingleFileContract(relPath, absPath) {
+  const code = fs.readFileSync(absPath, 'utf-8');
+  const isScript = relPath.endsWith('.js');
+  const layer = classifyContractLayer(relPath);
+  const tier1Set = new Set(TIER_1_CONTRACTED_MODULES);
+  const tier2Set = new Set(TIER_2_CONTRACTED_MODULES);
+  const tier3Set = new Set(TIER_3_CONTRACTED_MODULES);
+  const tier4Set = new Set(TIER_4_CONTRACTED_MODULES);
+
+  let ast;
+  try {
+    ast = parser.parse(code, {
+      sourceType: isScript ? 'unambiguous' : 'module',
+      allowReturnOutsideFunction: isScript,
+      plugins: isScript ? ['jsx'] : ['typescript', 'jsx'],
+    });
+  } catch (err) {
+    return {
+      file: relPath,
+      layer,
+      isTier1Protected: tier1Set.has(relPath),
+      isTier2Protected: tier2Set.has(relPath),
+      isTier3Protected: tier3Set.has(relPath),
+      isTier4Protected: tier4Set.has(relPath),
+      hasContract: false,
+      moduleContract: null,
+      symbolContracts: [],
+      exportsList: [],
+      emptyTagIssues: [],
+      parseError: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  const { exportsList, cjsExportsSet } = collectFileExportNames(ast);
+  const body = Array.isArray(ast.program?.body) ? ast.program.body : [];
+  const firstStatement = body[0] || null;
+  const firstExecutableStmt =
+    body.find((s) => s.type !== 'ImportDeclaration' && !isCommonJsRequireStatement(s)) || null;
+
+  // Map comment start position -> immediately attached top-level or nested symbol info
+  const attachedDeclByCommentStart = new Map();
+  const registerLeadingComments = (declNode) => {
+    if (isCommonJsRequireStatement(declNode)) return;
+    const sym = describeDeclarationSymbol(declNode, cjsExportsSet);
+    if (!sym || !Array.isArray(declNode.leadingComments)) return;
+    for (const c of declNode.leadingComments) {
+      if (c && typeof c.start === 'number') {
+        attachedDeclByCommentStart.set(c.start, { sym, node: declNode });
+      }
+    }
+  };
+
+  for (const stmt of body) {
+    registerLeadingComments(stmt);
+  }
+
+  // Also check nested function declarations attached to leading comments (e.g. CommonJS helpers)
+  traverse(ast, {
+    FunctionDeclaration({ node }) {
+      if (Array.isArray(node.leadingComments)) {
+        for (const c of node.leadingComments) {
+          if (c && typeof c.start === 'number' && !attachedDeclByCommentStart.has(c.start)) {
+            attachedDeclByCommentStart.set(c.start, {
+              sym: {
+                name: node.id?.name || 'anonymous',
+                kind: 'function',
+                signature: `${node.async ? 'async ' : ''}(${formatCallableParamList(node.params)})`,
+                exported: cjsExportsSet.has(node.id?.name || ''),
+              },
+              node,
+            });
+          }
+        }
+      }
+    },
+  });
+
+  let moduleContract = null;
+  const symbolContracts = [];
+  const allEmptyIssues = [];
+
+  const comments = Array.isArray(ast.comments) ? ast.comments : [];
+  for (const c of comments) {
+    if (!c || c.type !== 'CommentBlock' || !String(c.value || '').startsWith('*')) continue;
+    const parsed = parseJsDocContractTags(c.value);
+    if (!parsed.hasAnyContractTag) continue;
+
+    for (const issue of parsed.emptyTagIssues) {
+      allEmptyIssues.push(issue);
+    }
+
+    const attachment = attachedDeclByCommentStart.get(c.start);
+    const attachedNode = attachment?.node || null;
+    const isBeforeExecutableCode =
+      !firstExecutableStmt || c.end < firstExecutableStmt.start;
+    const hasBlankLineBeforeAttached =
+      Boolean(attachedNode?.loc && c.loc) &&
+      attachedNode.loc.start.line - c.loc.end.line >= 2;
+
+    const isModuleHeader =
+      parsed.hasModuleHint ||
+      (!attachment && isBeforeExecutableCode) ||
+      Boolean(attachment && attachedNode === firstStatement && hasBlankLineBeforeAttached);
+
+    if (isModuleHeader) {
+      if (!moduleContract) {
+        moduleContract = {
+          scope: parsed.scope,
+          invariants: [...parsed.invariants],
+          rationales: [...parsed.rationales],
+          adrs: [...parsed.adrs],
+        };
+      } else {
+        if (parsed.scope) {
+          moduleContract.scope = moduleContract.scope
+            ? `${moduleContract.scope} ${parsed.scope}`
+            : parsed.scope;
+        }
+        moduleContract.invariants.push(...parsed.invariants);
+        moduleContract.rationales.push(...parsed.rationales);
+        moduleContract.adrs = Array.from(new Set([...moduleContract.adrs, ...parsed.adrs]));
+      }
+    } else if (attachment?.sym) {
+      symbolContracts.push({
+        name: attachment.sym.name,
+        kind: attachment.sym.kind,
+        signature: attachment.sym.signature,
+        exported: attachment.sym.exported,
+        scope: parsed.scope,
+        invariants: parsed.invariants,
+        rationales: parsed.rationales,
+        adrs: parsed.adrs,
+      });
+    } else {
+      // Unattached block inside file: preserve cleanly at module scope rather than dropping
+      if (!moduleContract) {
+        moduleContract = {
+          scope: parsed.scope,
+          invariants: [...parsed.invariants],
+          rationales: [...parsed.rationales],
+          adrs: [...parsed.adrs],
+        };
+      } else {
+        moduleContract.invariants.push(...parsed.invariants);
+        moduleContract.rationales.push(...parsed.rationales);
+        moduleContract.adrs = Array.from(new Set([...moduleContract.adrs, ...parsed.adrs]));
+      }
+    }
+  }
+
+  const hasContract = Boolean(moduleContract || symbolContracts.length > 0);
+  return {
+    file: relPath,
+    layer,
+    isTier1Protected: tier1Set.has(relPath),
+    isTier2Protected: tier2Set.has(relPath),
+    isTier3Protected: tier3Set.has(relPath),
+    isTier4Protected: tier4Set.has(relPath),
+    hasContract,
+    moduleContract,
+    symbolContracts,
+    exportsList,
+    emptyTagIssues: Array.from(new Set(allEmptyIssues)),
+    parseError: null,
+  };
+}
+
+/**
+ * Scans all executable src/ and scripts/ modules via Babel AST to compile
+ * behavioral @scope / @invariant / @rationale / @adr contracts and coverage metrics.
+ */
+function extractBehavioralContractsCatalog(srcDir, rootDir) {
+  const srcFiles = getAllSourceFiles(srcDir).map((abs) => ({
+    abs,
+    rel: path.relative(rootDir, abs).replace(/\\/g, '/'),
+  }));
+  const scriptFiles = collectScriptFiles(rootDir);
+  const allTargets = [...srcFiles, ...scriptFiles].sort((a, b) => a.rel.localeCompare(b.rel));
+
+  const modules = [];
+  const parseErrors = [];
+  const validationIssues = [];
+
+  for (const target of allTargets) {
+    const entry = parseSingleFileContract(target.rel, target.abs);
+    modules.push(entry);
+    if (entry.parseError) {
+      parseErrors.push({ file: entry.file, error: entry.parseError });
+    }
+    for (const issue of entry.emptyTagIssues) {
+      validationIssues.push({ file: entry.file, message: issue });
+    }
+  }
+
+  const byLayerMap = new Map(
+    CONTRACT_LAYER_ORDER.map((layer) => [
+      layer,
+      { layer, total: 0, contracted: 0, pending: 0 },
+    ])
+  );
+
+  let totalModuleInvariants = 0;
+  let totalSymbolContracts = 0;
+  let contractedModules = 0;
+
+  for (const mod of modules) {
+    const bucket = byLayerMap.get(mod.layer);
+    if (bucket) {
+      bucket.total += 1;
+      if (mod.hasContract) bucket.contracted += 1;
+      else bucket.pending += 1;
+    }
+    if (mod.hasContract) contractedModules += 1;
+    if (mod.moduleContract) {
+      totalModuleInvariants += mod.moduleContract.invariants.length;
+    }
+    totalSymbolContracts += mod.symbolContracts.length;
+  }
+
+  const totalModules = modules.length;
+  const coveragePct =
+    totalModules > 0 ? Number(((contractedModules / totalModules) * 100).toFixed(1)) : 0;
+
+  return {
+    modules,
+    tier1ProtectedModules: [...TIER_1_CONTRACTED_MODULES],
+    tier2ProtectedModules: [...TIER_2_CONTRACTED_MODULES],
+    tier3ProtectedModules: [...TIER_3_CONTRACTED_MODULES],
+    tier4ProtectedModules: [...TIER_4_CONTRACTED_MODULES],
+    protectedModules: [...PROTECTED_CONTRACTED_MODULES],
+    parseErrors,
+    validationIssues,
+    summary: {
+      totalModules,
+      contractedModules,
+      uncontractedModules: totalModules - contractedModules,
+      totalModuleInvariants,
+      totalSymbolContracts,
+      coveragePct,
+      byLayer: Array.from(byLayerMap.values()),
+    },
+  };
+}
+
+/**
+ * Extracts ObjectExpression literal keys from matching top-level or nested const/let/var initializers.
+ */
+function extractObjectLiteralKeysByVariable(filePath, targetNames) {
+  const result = new Map(targetNames.map((n) => [n, []]));
+  if (!fs.existsSync(filePath)) return { keysByVar: result, parseError: null };
+
+  const code = fs.readFileSync(filePath, 'utf-8');
+  let ast;
+  try {
+    ast = parser.parse(code, {
+      sourceType: 'unambiguous',
+      allowReturnOutsideFunction: true,
+      plugins: ['jsx'],
+    });
+  } catch (err) {
+    return {
+      keysByVar: result,
+      parseError: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  const targetSet = new Set(targetNames);
+  traverse(ast, {
+    VariableDeclarator({ node }) {
+      if (
+        node.id?.type === 'Identifier' &&
+        targetSet.has(node.id.name) &&
+        node.init?.type === 'ObjectExpression'
+      ) {
+        const list = [];
+        for (const prop of node.init.properties) {
+          if (prop.type !== 'ObjectProperty') continue;
+          const k =
+            prop.key.type === 'Identifier'
+              ? prop.key.name
+              : prop.key.type === 'StringLiteral'
+                ? prop.key.value
+                : null;
+          if (k) list.push(k);
+        }
+        result.set(node.id.name, list);
+      }
+    },
+  });
+
+  return { keysByVar: result, parseError: null };
+}
+
+/**
+ * Audits generator lookup maps across generate-architecture-matrix.js and ast-parser.js
+ * to detect stale keys whose modules, scripts, dependencies, workflows, SQL entities,
+ * signals, workers, public assets, or environment variables were removed or renamed.
+ */
+function findOrphanedGeneratorLookupKeys(rootDir, srcDir) {
+  const orphans = [];
+
+  const checkAgainstSet = (mapName, file, keys, validSet, reason) => {
+    for (const k of keys || []) {
+      if (!validSet.has(k)) {
+        orphans.push({ mapName, file, key: k, reason });
+      }
+    }
+  };
+
+  const checkAgainstDisk = (mapName, file, keys, reason) => {
+    for (const k of keys || []) {
+      if (!fs.existsSync(path.join(rootDir, k))) {
+        orphans.push({ mapName, file, key: k, reason });
+      }
+    }
+  };
+
+  const matrixRel = 'scripts/generate-architecture-matrix.js';
+  const matrixAbs = path.join(rootDir, matrixRel);
+  if (fs.existsSync(matrixAbs)) {
+    const { keysByVar, parseError } = extractObjectLiteralKeysByVariable(matrixAbs, [
+      'scriptMetaMap',
+      'pageDescriptions',
+      'storeDescriptions',
+      'hookRoles',
+      'utilityDescriptions',
+      'purposeMap',
+      'storeMap',
+      'writeAuthMap',
+      'descMap',
+      'indexDescMap',
+      'functionMetaMap',
+      'signalMetaMap',
+      'workflowResponsibilityMap',
+      'scriptSuiteMetaMap',
+    ]);
+    if (parseError) {
+      orphans.push({
+        mapName: 'AST_PARSE',
+        file: matrixRel,
+        key: matrixRel,
+        reason: `Failed to parse generator lookup maps: ${parseError}`,
+      });
+    } else {
+      const apiAndHooks = extractApiAndHookCatalog(srcDir);
+      const appPagesSet = new Set(apiAndHooks.appPages.map((p) => p.file));
+      const hooksSet = new Set(apiAndHooks.hooks.map((h) => h.name));
+      const storesSet = new Set(extractStoreCatalog(srcDir).map((s) => s.name));
+      const utilitiesSet = new Set(extractDomainUtilitiesCatalog(srcDir).map((u) => u.name));
+
+      checkAgainstDisk(
+        'scriptMetaMap',
+        matrixRel,
+        keysByVar.get('scriptMetaMap'),
+        'Script file no longer exists on disk.'
+      );
+      checkAgainstSet(
+        'pageDescriptions',
+        matrixRel,
+        keysByVar.get('pageDescriptions'),
+        appPagesSet,
+        'App Router entrypoint no longer exists in src/app/.'
+      );
+      checkAgainstSet(
+        'storeDescriptions',
+        matrixRel,
+        keysByVar.get('storeDescriptions'),
+        storesSet,
+        'Zustand store no longer exists in src/stores/.'
+      );
+      checkAgainstSet(
+        'hookRoles',
+        matrixRel,
+        keysByVar.get('hookRoles'),
+        hooksSet,
+        'Custom hook no longer exists in src/hooks/.'
+      );
+      checkAgainstSet(
+        'utilityDescriptions',
+        matrixRel,
+        keysByVar.get('utilityDescriptions'),
+        utilitiesSet,
+        'Domain utility no longer exists in src/lib/ or src/app/.'
+      );
+
+      const pkgPath = path.join(rootDir, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const depsSet = new Set([
+          ...Object.keys(pkg.dependencies || {}),
+          ...Object.keys(pkg.devDependencies || {}),
+          ...Object.keys(pkg.overrides || {}),
+        ]);
+        checkAgainstSet(
+          'purposeMap',
+          matrixRel,
+          keysByVar.get('purposeMap'),
+          depsSet,
+          'Package is no longer listed in package.json dependencies, devDependencies, or overrides.'
+        );
+      }
+
+      const schemaPath = path.join(rootDir, 'supabase', 'schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        const sqlEntities = extractSqlSchemaEntities(fs.readFileSync(schemaPath, 'utf-8'));
+        const tablesSet = new Set(sqlEntities.tableNames);
+        const indexesSet = new Set(sqlEntities.indexes.map((i) => i.name));
+        const functionsSet = new Set(sqlEntities.functions.map((f) => f.rawName));
+
+        checkAgainstSet(
+          'storeMap',
+          matrixRel,
+          keysByVar.get('storeMap'),
+          tablesSet,
+          'SQL table no longer exists in supabase/schema.sql.'
+        );
+        checkAgainstSet(
+          'writeAuthMap',
+          matrixRel,
+          keysByVar.get('writeAuthMap'),
+          tablesSet,
+          'SQL table no longer exists in supabase/schema.sql.'
+        );
+        checkAgainstSet(
+          'descMap',
+          matrixRel,
+          keysByVar.get('descMap'),
+          tablesSet,
+          'SQL table no longer exists in supabase/schema.sql.'
+        );
+        checkAgainstSet(
+          'indexDescMap',
+          matrixRel,
+          keysByVar.get('indexDescMap'),
+          indexesSet,
+          'SQL index no longer exists in supabase/schema.sql.'
+        );
+        checkAgainstSet(
+          'functionMetaMap',
+          matrixRel,
+          keysByVar.get('functionMetaMap'),
+          functionsSet,
+          'SQL stored function no longer exists in supabase/schema.sql.'
+        );
+      }
+
+      const signalKeys = keysByVar.get('signalMetaMap') || [];
+      if (signalKeys.length > 0) {
+        const crossBoundary = extractCrossBoundaryCouplingCatalog(srcDir, rootDir);
+        const liveSignalsSet = new Set(
+          crossBoundary.signalChannels.map((s) => `${s.kind}:${s.name}`)
+        );
+        checkAgainstSet(
+          'signalMetaMap',
+          matrixRel,
+          signalKeys,
+          liveSignalsSet,
+          'Cross-boundary signal channel is no longer emitted or subscribed in src/.'
+        );
+      }
+
+      const workflowsDir = path.join(rootDir, '.github', 'workflows');
+      if (fs.existsSync(workflowsDir)) {
+        const wfFilesSet = new Set(
+          fs
+            .readdirSync(workflowsDir)
+            .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
+        );
+        checkAgainstSet(
+          'workflowResponsibilityMap',
+          matrixRel,
+          keysByVar.get('workflowResponsibilityMap'),
+          wfFilesSet,
+          'GitHub Actions workflow file no longer exists in .github/workflows/.'
+        );
+      }
+
+      const suiteKeys = keysByVar.get('scriptSuiteMetaMap') || [];
+      if (suiteKeys.length > 0) {
+        const scriptSuiteNames = new Set(
+          extractTestHarnessCatalog(srcDir, rootDir).scriptSuites.map((f) => path.basename(f))
+        );
+        checkAgainstSet(
+          'scriptSuiteMetaMap',
+          matrixRel,
+          suiteKeys,
+          scriptSuiteNames,
+          'CLI pipeline test suite no longer exists in scripts/.'
+        );
+      }
+    }
+  }
+
+  const astParserRel = 'scripts/lib/ast-parser.js';
+  const astParserAbs = path.join(rootDir, astParserRel);
+  if (fs.existsSync(astParserAbs)) {
+    const envSet = new Set([
+      ...extractEnvironmentDependencyCatalog(rootDir, srcDir).map((e) => e.name),
+      'NODE_ENV',
+    ]);
+    const { keysByVar, parseError } = extractObjectLiteralKeysByVariable(astParserAbs, [
+      'varMetaMap',
+      'workerRoleMap',
+      'roleMap',
+    ]);
+    if (parseError) {
+      orphans.push({
+        mapName: 'AST_PARSE',
+        file: astParserRel,
+        key: astParserRel,
+        reason: `Failed to parse AST lookup maps: ${parseError}`,
+      });
+    } else {
+      checkAgainstSet(
+        'varMetaMap',
+        astParserRel,
+        keysByVar.get('varMetaMap'),
+        envSet,
+        'Environment variable is absent from .env.example and active consumers.'
+      );
+      const workersSet = new Set(
+        extractWorkerCatalog(srcDir)
+          .filter((w) => w.file.startsWith('src/workers/'))
+          .map((w) => w.name)
+      );
+      checkAgainstSet(
+        'workerRoleMap',
+        astParserRel,
+        keysByVar.get('workerRoleMap'),
+        workersSet,
+        'Web Worker file no longer exists in src/workers/.'
+      );
+      checkAgainstDisk(
+        'roleMap',
+        astParserRel,
+        keysByVar.get('roleMap'),
+        'Public/icon asset file no longer exists on disk.'
+      );
+    }
+  }
+
+  return orphans.sort(
+    (a, b) => a.mapName.localeCompare(b.mapName) || a.key.localeCompare(b.key)
+  );
+}
+
 module.exports = {
   getAllSourceFiles,
   resolveImportPath,
   analyzeDependencyGraph,
   detectCircularDependencies,
+  getAstParseErrors,
+  detectLayerViolations,
   detectOrphanedModules,
+  analyzeScriptsDependencyGraph,
+  extractCrossBoundaryCouplingCatalog,
+  TIER_1_CONTRACTED_MODULES,
+  TIER_2_CONTRACTED_MODULES,
+  TIER_3_CONTRACTED_MODULES,
+  TIER_4_CONTRACTED_MODULES,
+  PROTECTED_CONTRACTED_MODULES,
+  CONTRACT_LAYER_ORDER,
+  parseJsDocContractTags,
+  extractBehavioralContractsCatalog,
+  extractObjectLiteralKeysByVariable,
+  findOrphanedGeneratorLookupKeys,
   extractComponentCatalog,
   extractStoreCatalog,
   extractApiAndHookCatalog,
@@ -1390,6 +3368,8 @@ module.exports = {
   extractTypeCatalog,
   extractServiceWorkerMetadata,
   extractWorkerCatalog,
+  extractTestsFromSourceAst,
+  extractSqlSchemaEntities,
   extractTestHarnessCatalog,
   extractTestHarnessAstDependencies,
   extractPublicAssetsCatalog,

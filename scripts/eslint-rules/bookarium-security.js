@@ -5,6 +5,13 @@
  * client/server boundary isolation, project-level environment variable rules,
  * and test suite anti-tautology standards across both the IDE (VS Code ESLint)
  * and CI/Pre-Commit pipelines (`npm run lint`, `npm run security:audit`, `npm run verify`).
+ *
+ * @module scripts/eslint-rules/bookarium-security
+ * @scope Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS sinks.
+ * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/` and `scripts/`.
+ * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers.
+ * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, and weak assertions in real time before commit.
+ * @adr ADR-067, ADR-073
  */
 
 const fs = require('fs');

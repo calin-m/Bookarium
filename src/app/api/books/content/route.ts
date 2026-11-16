@@ -1,3 +1,13 @@
+/**
+ * @module src/app/api/books/content/route
+ * @scope Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), Project Gutenberg cover JPEG proxies (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
+ * @invariant Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), and bound payloads (`15 MB` text / `2 MB` cover).
+ * @invariant Enforce multi-jurisdictional `HTTP 451` gatekeeping on plain-text and `type=card` requests in non-US jurisdictions while bypassing `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
+ * @invariant Coalesce concurrent upstream mirror fetches per `bookId` inside `inFlightMirrorFetches` and cache Tier 0 resolved text in `bookContentLruCache`.
+ * @rationale Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
+ * @adr ADR-016, ADR-022, ADR-039, ADR-080
+ */
+
 import React from 'react';
 import { NextRequest, NextResponse } from 'next/server';
 import { ImageResponse } from 'next/og';

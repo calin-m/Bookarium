@@ -1,3 +1,11 @@
+/**
+ * @module
+ * @scope SSR-safe, quota-resilient Zustand `StateStorage` wrapper (`safeLocalStorage`) around `window.localStorage`.
+ * @invariant Short-circuit to `null`/no-op whenever `typeof window === 'undefined'` and catch all `QuotaExceededError` / `SecurityError` browser exceptions cleanly without rethrowing.
+ * @rationale Node 22+ emits warnings or `TypeError`s on bare `localStorage` access during SSR, while private browsing modes can throw synchronously on `getItem`/`setItem`.
+ * @adr ADR-003, ADR-069
+ */
+
 import type { StateStorage } from 'zustand/middleware';
 
 /**

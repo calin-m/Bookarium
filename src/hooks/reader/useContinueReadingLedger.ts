@@ -1,5 +1,14 @@
 'use client';
 
+/**
+ * @module
+ * @scope Headless Continue Reading ledger hook merging multi-store book metadata (`favorites -> saved -> recent -> offline -> currentBook -> API`), reading coordinates, and offline/status filtering for `/bookmarks`.
+ * @invariant Merge metadata non-regressively inside `setOrMergeBook` using `hasAuthenticAuthors` and `hasLifespan` checks so offline or partial records never replace verified author lifespans with fallback placeholders.
+ * @invariant Hydrate remaining incomplete IDs only once mounted (`hasMounted`) via session-tracked `attemptedMissingIds` deduplication and expose accurate tab counts (`all`, `in_progress`, `completed`, `on_hold`, `downloaded`).
+ * @rationale Reading ledgers combine data stored before and after metadata healing; prioritizing verified author lifespans preserves offline reading accuracy and non-US copyright clearance.
+ * @adr ADR-013, ADR-070, ADR-071
+ */
+
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';

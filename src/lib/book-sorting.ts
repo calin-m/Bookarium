@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/book-sorting
+ * @scope Pure bookshelf and favorites sorting/filtering utilities, desktop vs. mobile drawer preset partitioning, and downloaded offline blob overlay merging.
+ * @invariant Keep `'favorites'` in desktop `BOOKSHELF_BASE_SORT_OPTIONS` while omitting it from mobile `BOOKSHELF_DRAWER_SORT_OPTIONS` so `CollectionFilterDrawer` renders Favorites as a composable monochrome `filter` switch (`Saved ∩ Favorited`).
+ * @invariant Overlay locally cached IndexedDB `coverBlob` object URLs via `mergeDownloadedShelfBooks` and filter downloaded entries strictly against `offlineIds` + bookshelf membership.
+ * @rationale Decoupling drawer filter state from sort ordering lets mobile users combine Favorites with any shelf, `Downloaded` scope, or sort direction without duplicating presets or mutating desktop dropdown ergonomics.
+ * @adr ADR-062, ADR-066, ADR-071, ADR-080
+ */
+
 import type { GutendexBook } from '@/types/book.types';
 import { cleanBookTitle } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
@@ -68,6 +77,9 @@ export const BOOKSHELF_BASE_SORT_OPTIONS: SortOption[] = [
   { value: 'downloaded', label: 'Downloaded' },
   { value: 'favorites', label: 'Favorites' },
 ];
+
+export const BOOKSHELF_DRAWER_SORT_OPTIONS: SortOption[] =
+  BOOKSHELF_BASE_SORT_OPTIONS.filter((opt) => opt.value !== 'favorites');
 
 export const FAVORITES_BASE_SORT_OPTIONS: SortOption[] = [
   { value: 'recent', label: 'Date Added' },

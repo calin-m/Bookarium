@@ -27,6 +27,12 @@ export interface CollectionFilterDrawerProps {
   onSelectShelf?: (id: string) => void;
   shelfSectionTitle?: string;
 
+  // Orthogonal Quick Filter Toggle (e.g. Bookshelf Favorites Only)
+  favoritesOnly?: boolean;
+  onFavoritesOnlyChange?: (enabled: boolean) => void;
+  favoritesOnlyCount?: number;
+  favoritesSectionTitle?: string;
+
   // View Mode Section (e.g. Notebook)
   viewMode?: 'book' | 'chronological';
   onViewModeChange?: (mode: 'book' | 'chronological') => void;
@@ -56,6 +62,10 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
   selectedShelfId,
   onSelectShelf,
   shelfSectionTitle = 'Shelves & Categories',
+  favoritesOnly = false,
+  onFavoritesOnlyChange,
+  favoritesOnlyCount,
+  favoritesSectionTitle = 'Filter',
   viewMode,
   onViewModeChange,
   sortOptions,
@@ -162,6 +172,40 @@ export const CollectionFilterDrawer: React.FC<CollectionFilterDrawerProps> = ({
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Section: Orthogonal Filter Toggle (e.g. Bookshelf Favorites Switch) */}
+      {onFavoritesOnlyChange && (
+        <div className="space-y-2.5">
+          <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-foreground">
+            {favoritesSectionTitle}
+          </h4>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={favoritesOnly}
+              onClick={() => onFavoritesOnlyChange(!favoritesOnly)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                favoritesOnly
+                  ? 'bg-foreground text-background border-foreground shadow-xs'
+                  : 'bg-card border-border text-foreground hover:border-primary'
+              }`}
+              data-testid="filter-favorites-only-btn"
+            >
+              <span>Favorites</span>
+              {favoritesOnlyCount !== undefined && (
+                <span
+                  className={`text-[10px] font-mono font-bold ${
+                    favoritesOnly ? 'text-background/80' : 'text-muted-foreground'
+                  }`}
+                >
+                  ({favoritesOnlyCount})
+                </span>
+              )}
+            </button>
           </div>
         </div>
       )}

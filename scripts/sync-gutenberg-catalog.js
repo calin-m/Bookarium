@@ -5,7 +5,14 @@
  * Streams and decompresses Project Gutenberg's official catalog dump (pg_catalog.csv.gz),
  * parses authors, translators, lifespans, subjects, and format links, and batch-upserts
  * public domain metadata into Supabase PostgreSQL (public.books) with zero text bloat.
- * 
+ *
+ * @module scripts/sync-gutenberg-catalog
+ * @scope Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
+ * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
+ * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
+ * @rationale Prevents weekly catalog refreshes from overwriting curated multi-quote arrays, exhausting Supabase read egress on 78,461 unchanged rows, or wiping catalog rows during partial upstream feed outages.
+ * @adr ADR-040, ADR-080
+ *
  * Usage:
  *   node scripts/sync-gutenberg-catalog.js --dry-run
  *   node scripts/sync-gutenberg-catalog.js --limit=100

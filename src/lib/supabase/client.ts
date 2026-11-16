@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Browser Supabase SSR client factory plus shared URL and User-Agent sanitization helpers
+ *        consumed across browser, server, and Edge middleware Supabase clients.
+ * @invariant Strip trailing `/rest/v*` suffixes and trailing slashes inside `sanitizeSupabaseUrl`, falling back to `https://placeholder.supabase.co` and `'placeholder-anon-key'` when env vars are unset so zero-API-key builds succeed.
+ * @invariant Strip CR/LF/tabs and cap `sanitizeForwardedUserAgent` at `512` characters before forwarding client User-Agent headers in server-side Supabase Auth requests.
+ * @rationale Header injection sanitization prevents malformed Auth session telemetry, while keyless placeholders maintain strict local offline parity without mandatory `.env` setup.
+ * @adr ADR-005, ADR-072
+ */
+
 import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from '@/types/database.types';
 

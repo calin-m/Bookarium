@@ -1,3 +1,13 @@
+/**
+ * @module src/stores/useAuthStore
+ * @scope Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, and 3-layer GDPR account deletion.
+ * @invariant Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` must erase all 10 Zustand slices, localStorage keys, cookies, and IndexedDB in lockstep (`Rule 9`).
+ * @invariant Persist `STORAGE_KEYS.PENDING_STORE_CLEANUP` synchronously across teardowns so interrupted reloads finish cleanup in `initializeAuth()` without affecting offline signed-in sessions or guest users.
+ * @invariant Treat `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions.
+ * @rationale Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, and reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout.
+ * @adr ADR-005, ADR-072, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, UserIdentity, Session, AuthError } from '@supabase/supabase-js';

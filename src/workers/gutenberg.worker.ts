@@ -1,3 +1,11 @@
+/**
+ * @module
+ * @scope Background Web Worker off-loading `parseGutenbergChapters` and `calculateVolumePageSpread` off the UI main thread.
+ * @invariant Guard `typeof self !== 'undefined'` cleanly for SSR/test compatibility, ignore malformed messages missing `id` or `contentText`, and swallow non-fatal parse exceptions rather than crashing the worker loop.
+ * @rationale Parsing multi-megabyte classics like War and Peace off-thread preserves 60fps scrolling and zero main-thread jank when opening the Reader.
+ * @adr ADR-014, ADR-017
+ */
+
 import { parseGutenbergChapters, calculateVolumePageSpread } from '@/lib/gutenberg-parser';
 
 export interface GutenbergWorkerInput {

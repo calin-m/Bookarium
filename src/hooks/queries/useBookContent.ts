@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Reader text fetcher and React Query hook (`useBookContent`) resolving IndexedDB offline storage,
+ *        `/api/books/content` proxy streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
+ * @invariant Configure `networkMode: 'always'` so locally persisted IndexedDB books resolve instantaneously when offline, and resolve authoritative local author lifespans before serving offline volumes in non-US jurisdictions while online.
+ * @invariant Never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on proxy network timeouts (`8000ms` abort).
+ * @rationale Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance.
+ * @adr ADR-020, ADR-036, ADR-070
+ */
+
 import { useQuery } from '@tanstack/react-query';
 import { sampleBookText } from '@/mocks/handlers';
 import { API_ENDPOINTS } from '@/config/api-endpoints';

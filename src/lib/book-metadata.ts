@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Canonical bibliographic identity normalization, placeholder guard predicates (`isPlaceholderAuthor`,
+ *        `isPlaceholderTitle`), and multi-source book metadata resolution utilities.
+ * @invariant Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata with placeholders.
+ * @invariant Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
+ * @rationale Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
+ * @adr ADR-070, ADR-074
+ */
+
 import type { GutendexBook, GutendexResponse, Book, Author } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';

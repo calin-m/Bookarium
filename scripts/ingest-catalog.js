@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 /**
  * Bookarium — Dedicated Gutenberg Catalog Ingestion & Seeding Engine
- * 
+ *
+ * @module scripts/ingest-catalog
+ * @scope Offline SQL seed generator & mirror text hydrator producing idempotent `supabase/seed_books.sql` and optional `seed_books_content.sql` fixtures from `CURATED_CLASSICS`.
+ * @invariant Retire legacy `--pages=N` Gutendex REST pagination safely while emitting dollar-quoted (`$bookarium_txt_<id>$`) idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` / `UPDATE` scripts without requiring network credentials for `--dry-run`.
+ * @invariant Construct dynamic Project Gutenberg User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`.
+ * @rationale Gives local developers and fresh Supabase installs zero-key seed SQL files aligned with `public.books` lifespan bounds while honoring Gutenberg client identification rules.
+ * @adr ADR-038, ADR-080
+ *
  * Usage:
  *   node scripts/ingest-catalog.js --dry-run              # Generate supabase/seed_books.sql
  *   node scripts/ingest-catalog.js --curated              # Ingest/generate curated hero classics

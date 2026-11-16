@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { extractTestsFromSourceAst } = require('./lib/ast-parser');
 
 const rootDir = path.resolve(__dirname, '..');
 const srcDir = path.join(rootDir, 'src');
@@ -181,9 +182,7 @@ function indexTestSuites() {
       testCount = runtimeInfo.testCount;
     } else {
       const content = fs.readFileSync(filePath, 'utf-8');
-      testMatches = [...content.matchAll(/(?:it|test)(?:\.skip|\.only)?\s*\(\s*['"`](.*?)['"`]/g)].map(
-        (m) => m[1]
-      );
+      testMatches = extractTestsFromSourceAst(content);
       testCount = testMatches.length;
     }
 
@@ -396,8 +395,8 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **${totalSuitesCount}/${totalSuitesCount} test suites passed** (${totalTestCount} total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\\ge$ 95%, Statements $\\ge$ 95%, Functions $\\ge$ 92%, Branches $\\ge$ 85%) |
-| **Pass 4** | Living Docs AST Sync | ✅ Passed | \`docs/ARCHITECTURE.md\`, \`CHANGELOG.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | ${adrCount} sequential ADRs, 17 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent \`docs/ARCHITECTURE.md\`, \`docs/GUTENBERG_PARSER.md\`, \`docs/SYSTEM_CONTRACTS.md\`, \`CHANGELOG.md\`, \`ROADMAP.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | ${adrCount} sequential ADRs, 18 governance docs, Tier-1..Tier-4 \`@scope\`/\`@invariant\` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (${securityRuleCount}-Rule AST Security) & Knip | ${isQualityClean ? '✅ Passed' : '❌ Failed'} | ${eslintErrors} lint errors, ${eslintWarnings} lint warnings, ${knipIssues.length} unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 

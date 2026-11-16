@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 16 Nov 2026 09:46:05 GMT  
+**Last Generated**: Mon, 16 Nov 2026 18:46:48 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 257 passed  
-**Total Verified Tests**: 2633 passed  
+**Total Test Suites**: 258 passed  
+**Total Verified Tests**: 2646 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **257/257 test suites passed** (2633 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2646 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
-| **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 17 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
+| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.26%** (15692/16134) — *Target: $\ge$ 95%*
-- **Statements**: **96.03%** (16904/17602) — *Target: $\ge$ 95%*
-- **Functions**: **95.2%** (3379/3549) — *Target: $\ge$ 92%*
-- **Branches**: **88.39%** (15664/17721) — *Target: $\ge$ 85%*
+- **Lines**: **97.21%** (15730/16180) — *Target: $\ge$ 95%*
+- **Statements**: **96%** (16945/17651) — *Target: $\ge$ 95%*
+- **Functions**: **95.22%** (3388/3558) — *Target: $\ge$ 92%*
+- **Branches**: **88.37%** (15719/17787) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (257 Suites / 2633 Tests)
+## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2646 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 326 Tests)
 
@@ -365,7 +365,7 @@
 - ✔ `allows searching the catalog mid-scroll via the floating capsule dock search button`
 - ✔ `updates catalog section heading dynamically across Recent, Popular, Oldest, and Search states`
 - ✔ `skips phantom empty trailing sub-pages when advancing from a partial catalog batch and auto-clamps deep-linked empty sub-pages`
-- ✔ `filters Bookshelf by favorited books via the Sort dropdown and mobile filter drawer while hiding leaked default shelves`
+- ✔ `filters Bookshelf by favorited books via the top Sort dropdown and separate monochrome drawer switch while hiding leaked default shelves`
 
 </details>
 
@@ -549,7 +549,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 580 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 581 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -896,7 +896,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/CollectionFilterDrawer.test.tsx</code></b> (16 tests)</summary>
+<summary><b><code>src/components/presentation/CollectionFilterDrawer.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders nothing when isOpen is false`
 - ✔ `renders title, badge count, and all filter sections when isOpen is true`
@@ -914,6 +914,7 @@
 - ✔ `renders outer drawer wrapper with overflow-hidden and contain:strict for GPU isolation`
 - ✔ `hides sort direction when isDirectionDisabled is true and renders when enabled`
 - ✔ `renders active shelf, sort, viewmode, and direction chips without checkmark icons while maintaining aria-checked`
+- ✔ `renders monochrome iconless Favorites switch only when onFavoritesOnlyChange is supplied and toggles it`
 
 </details>
 
@@ -2055,7 +2056,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (51 Suites · 631 Tests)
+### 📚 Gutenberg Parsers & Metadata (52 Suites · 643 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2912,6 +2913,24 @@
 - ✔ `gracefully falls back to candidates when database query fails`
 - ✔ `normalizes canonical origin fallbacks across NEXT_PUBLIC_SITE_URL and Vercel production vars`
 - ✔ `builds descriptive Bookarium-Gatekeeper User-Agent strings from explicit or resolved origins`
+
+</details>
+
+<details>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (12 tests)</summary>
+
+- ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
+- ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
+- ✔ `flags static architectural layer violations while allowing type-only references`
+- ✔ `extracts inherited and intersected component Props, persist keys via AST, and all route HTTP methods`
+- ✔ `extracts SQL tables, functions with nested parentheses, triggers, and full quoted test titles`
+- ✔ `verifies live src/ repository graph has zero cycles, zero parse errors, zero orphans, and zero layer violations`
+- ✔ `separates runtime edges from inline and declaration type-only imports in the dependency graph`
+- ✔ `extracts cross-boundary Supabase tables/RPCs, API callers, signals, storage keys, and scripts CommonJS graph`
+- ✔ `verifies live repository cross-boundary signals, API/RPC callers, and scripts graph cleanly`
+- ✔ `extracts module-level and symbol-level @scope/@invariant/@rationale/@adr tags across TS and CommonJS without misattribution`
+- ✔ `verifies all Tier-1, Tier-2, Tier-3, and Tier-4 protected modules in the live repository maintain valid @scope/@invariant contracts`
+- ✔ `detects orphaned lookup keys across all generator registries when modules, deps, workflows, SQL entities, signals, workers, or env vars are removed`
 
 </details>
 

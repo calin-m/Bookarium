@@ -1,3 +1,11 @@
+/**
+ * @module
+ * @scope Request-scoped Next.js Server Component & Route Handler Supabase SSR client factory.
+ * @invariant Bind per-request `cookies()` getters/setters while catching `cookieStore.set` read-only throws inside Server Components, and forward only sanitized User-Agent headers (`sanitizeForwardedUserAgent`).
+ * @rationale Allows Server Components and `/auth/callback` route handlers to read authenticated Supabase sessions cleanly while preserving accurate multi-device session logs without crashing RSC renders.
+ * @adr ADR-005, ADR-042
+ */
+
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database.types';

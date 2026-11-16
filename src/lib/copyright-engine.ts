@@ -9,6 +9,13 @@
  * 5. Joint Authorship: Berne Convention Art. 7bis (term calculated from the death of the last surviving author).
  * 6. Translations: Berne Convention Art. 2(3) (independent copyright for translators).
  * 7. Longevity Heuristic: Conservative maximum human lifespan (100 years) for unlisted author death years.
+ *
+ * @module src/lib/copyright-engine
+ * @scope Authoritative pure-domain evaluator computing regional public domain eligibility across US, Life+70, Life+80, and Life+100 statutes.
+ * @invariant US jurisdictions allow works published `<= 1930` or cleared with `copyright === false`; non-US jurisdictions apply strict post-mortem terms from the last surviving contributor (`max_author_death_year` across authors + translators).
+ * @invariant Missing author death years apply a conservative 100-year longevity heuristic rather than defaulting to allowed; placeholder names (`"Anonymous"`) must never overwrite authentic lifespans upstream.
+ * @rationale Centralizing legal rules in a pure zero-network module guarantees SSR, Edge routes, catalog queries, and Reader `HTTP 451` checks produce identical deterministic decisions.
+ * @adr ADR-002, ADR-036, ADR-044, ADR-070
  */
 
 import type { Author, GutendexBook } from '@/types/book.types';

@@ -1,3 +1,12 @@
+/**
+ * @module src/proxy
+ * @scope Edge middleware proxy coordinating jurisdiction resolution (`x-vercel-ip-country` / `bookarium-geo-country`), share token forwarding (`?s=`), and conditional Supabase SSR session refresh.
+ * @invariant Never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches.
+ * @invariant Bypass SSR token rotation on App Router RSC navigations (`rsc: 1`) outside `/account` and `/account/*`; only set `x-middleware-override-headers` when `validShareToken` is present.
+ * @rationale Skipping cookies and `x-middleware-override-headers` on public API and RSC requests unblocks Vercel Edge CDN `s-maxage` caching while preventing concurrent prefetch/callback tabs from racing single-use OAuth refresh tokens.
+ * @adr ADR-035, ADR-042, ADR-080
+ */
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 

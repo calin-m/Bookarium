@@ -224,4 +224,44 @@ describe('CollectionFilterDrawer', () => {
     expect(activeDirection.className).toContain('bg-foreground text-background');
     expect(activeDirection.querySelectorAll('svg')).toHaveLength(1);
   });
+
+  it('renders monochrome iconless Favorites switch only when onFavoritesOnlyChange is supplied and toggles it', () => {
+    const { rerender } = render(<CollectionFilterDrawer {...defaultProps} />);
+    expect(screen.queryByTestId('filter-favorites-only-btn')).not.toBeInTheDocument();
+
+    const handleToggleFavoritesOnly = vi.fn();
+    rerender(
+      <CollectionFilterDrawer
+        {...defaultProps}
+        favoritesOnly={false}
+        onFavoritesOnlyChange={handleToggleFavoritesOnly}
+        favoritesOnlyCount={4}
+      />
+    );
+
+    const favToggle = screen.getByTestId('filter-favorites-only-btn');
+    expect(favToggle).toHaveAttribute('role', 'switch');
+    expect(favToggle).toHaveAttribute('aria-checked', 'false');
+    expect(favToggle).toHaveTextContent('Favorites(4)');
+    expect(favToggle.querySelector('svg')).toBeNull();
+    expect(favToggle.className).toContain('bg-card border-border');
+    expect(favToggle.className).not.toContain('destructive');
+
+    fireEvent.click(favToggle);
+    expect(handleToggleFavoritesOnly).toHaveBeenCalledWith(true);
+
+    rerender(
+      <CollectionFilterDrawer
+        {...defaultProps}
+        favoritesOnly={true}
+        onFavoritesOnlyChange={handleToggleFavoritesOnly}
+        favoritesOnlyCount={4}
+      />
+    );
+    const activeFavToggle = screen.getByTestId('filter-favorites-only-btn');
+    expect(activeFavToggle).toHaveAttribute('aria-checked', 'true');
+    expect(activeFavToggle.className).toContain('bg-foreground text-background border-foreground');
+    expect(activeFavToggle.className).not.toContain('destructive');
+    expect(activeFavToggle.querySelector('svg')).toBeNull();
+  });
 });

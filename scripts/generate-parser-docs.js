@@ -74,10 +74,13 @@ function extractModuleExports(filename) {
             return 'param';
           });
 
-          // Extract leading JSDoc / comments
+          // Extract leading JSDoc / comments (excluding @module behavioral contract blocks)
           let doc = '';
-          const comments = p.node.leadingComments || fn.leadingComments;
-          if (comments && comments.length > 0) {
+          const rawComments = p.node.leadingComments || fn.leadingComments || [];
+          const comments = rawComments.filter(
+            (c) => !/@(?:module|file|fileoverview|scope|invariant|rationale|why|adr)\b/i.test(c.value || '')
+          );
+          if (comments.length > 0) {
             doc = comments
               .map((c) => c.value.replace(/^\s*\* ?/gm, '').trim())
               .filter(Boolean)
@@ -327,7 +330,17 @@ function generateMarkdown() {
   return lines.join('\n');
 }
 
-// Generate and write documentation
+// Generate and write documentation only when AST content actually changed
 const content = generateMarkdown();
-fs.writeFileSync(outputPath, content, 'utf-8');
-console.log('✔ [SUCCESS] Living docs/GUTENBERG_PARSER.md generated successfully from AST.');
+const normalizeDoc = (text) =>
+  String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/^>\s*\*\*Last Synchronized\*\*:\s*`?\d{4}-\d{2}-\d{2}`?.*$/m, '')
+    .trim();
+const existing = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf-8') : '';
+if (existing && normalizeDoc(content) === normalizeDoc(existing)) {
+  console.log('✔ [IDEMPOTENT] docs/GUTENBERG_PARSER.md AST unchanged. Preserving existing specification.');
+} else {
+  fs.writeFileSync(outputPath, content, 'utf-8');
+  console.log('✔ [SUCCESS] Living docs/GUTENBERG_PARSER.md generated successfully from AST.');
+}

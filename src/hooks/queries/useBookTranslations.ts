@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Two-tier edition discovery hook (`useBookTranslations`) resolving alternate language editions
+ *        via relational `/api/books/translations` links with root-title + author-surname fallback lookup.
+ * @invariant Normalize titles and author surnames (`extractRootTitle`, `extractAuthorSurname`) while ignoring placeholder authors (`isPlaceholderAuthor`) when constructing fallback search queries.
+ * @invariant Deduplicate Tier-1 relational DB translations and Tier-2 `/api/books` fallback candidates against `currentBookId`, preserving ISO-639-1 human-readable language labels via `resolveLanguageLabel`.
+ * @rationale Combines exact Wikidata FRBR links from Supabase with deterministic catalog search fallback so unseeded or locally tested books still surface sibling translations reliably.
+ * @adr ADR-010, ADR-038
+ */
+
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CATALOG_LANGUAGES } from '@/config/catalog-filters';

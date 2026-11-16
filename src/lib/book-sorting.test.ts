@@ -7,6 +7,7 @@ import {
   BOOKSHELF_SORT_OPTIONS,
   FAVORITES_SORT_OPTIONS,
   BOOKSHELF_BASE_SORT_OPTIONS,
+  BOOKSHELF_DRAWER_SORT_OPTIONS,
   FAVORITES_BASE_SORT_OPTIONS,
   resolveBookSortKey,
   decomposeBookSortKey,
@@ -236,6 +237,13 @@ describe('book-sorting utility', () => {
         'progress',
         'downloaded',
         'favorites',
+      ]);
+      expect(BOOKSHELF_DRAWER_SORT_OPTIONS.map((o) => o.value)).toEqual([
+        'recent',
+        'title',
+        'author',
+        'progress',
+        'downloaded',
       ]);
       expect(FAVORITES_BASE_SORT_OPTIONS.map((o) => o.value)).toEqual([
         'recent',

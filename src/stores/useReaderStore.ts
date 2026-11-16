@@ -1,3 +1,13 @@
+/**
+ * @module src/stores/useReaderStore
+ * @scope Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
+ * @invariant Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses.
+ * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`).
+ * @invariant Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
+ * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, and prevents stale tabs from resurrecting deleted bookmarks.
+ * @adr ADR-003, ADR-014, ADR-068, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GutendexBook, Book, Author } from '@/types/book.types';

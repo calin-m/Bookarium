@@ -1,3 +1,12 @@
+/**
+ * @module
+ * @scope DOM `Range` row-geometry engine measuring per-line bookmark placement (`extractRowTextFromElement`) and duplicate-line reflow resolution (`resolveTextRowSpanInElement`).
+ * @invariant Exclude injected `[data-testid="fellow-highlight-badge"]` DOM superscripts inside `collectContentTextSegments` (`TreeWalker`) so character offsets stay aligned with pure canonical page text.
+ * @invariant Binary-search rendered character bounding rectangles (`measureCharRect`) and disambiguate duplicate phrases on the same page by shortest row distance to `fallbackRow` with relative ratio tiebreaking.
+ * @rationale Separating pure DOM `Range` geometry from React components allows reflow-resilient multi-row bookmark snapping to remain fast and deterministically unit-tested.
+ * @adr ADR-068
+ */
+
 import { findAllCanonicalTextSpans } from './reader-annotator';
 
 export interface TextNodeSegment {

@@ -1,3 +1,12 @@
+/**
+ * @module
+ * @scope Virtual page-spread slicer (`paginateChapterContent`, `calculateVolumePageSpread`) and reading-time estimator (`calculateReadingTime`).
+ * @invariant Snap page splits strictly to paragraph (`\n\n`), sentence (`[.!?]`), or whole-word whitespace boundaries (`>= 75%` window) so words are never torn across pages.
+ * @invariant Bound `paginationCache` via `MAX_PAGINATION_CACHE_ENTRIES` (`500`) FIFO eviction keyed on length, `charsPerPage`, head, and tail samples.
+ * @rationale Bounded memoization eliminates redundant O(N) text re-slicing during rapid chapter/font-size adjustments while keeping browser memory flat on omnibus editions.
+ * @adr ADR-001, ADR-017
+ */
+
 import { GUTENBERG_PARSER_CONFIG, type ChapterSection } from './types';
 
 const paginationCache = new Map<string, string[]>();

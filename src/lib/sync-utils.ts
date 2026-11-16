@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/sync-utils
+ * @scope Cross-store Supabase cloud synchronization coordinator and session-validity re-export hub.
+ * @invariant Reject empty `userId` and coalesce overlapping sync calls per `userId` via `coalesceInFlightByUser` so concurrent mount/focus events share one Promise identity (`p1 === p2`).
+ * @invariant Verify an active authenticated cookie/session via `verifyActiveCloudSession` before dispatching PostgREST queries across the 7 syncable stores, executing all stores under `Promise.allSettled` for partial-failure isolation.
+ * @rationale Without pre-sync token verification, stale tabs whose `sb-*-auth-token` cookies were cleared emit bursts of PostgreSQL `42501` RLS write violations and overwrite state with false empty `SELECT` arrays.
+ * @adr ADR-005, ADR-035, ADR-069, ADR-080
+ */
+
 import { createClient } from '@/lib/supabase/client';
 import {
   useAuthStore,
@@ -38,6 +47,9 @@ export interface CloudSyncable {
  * `SELECT` (`data: []`) or `42501` RLS errors after browser cookie clearance.
  * Uses Promise.allSettled to guarantee that failure or network error in one store
  * does not block or abort synchronization in other stores.
+ *
+ * @scope Fans out unified 7-store cloud synchronization for a verified `userId`.
+ * @invariant Must execute `verifyActiveCloudSession` inside the coalesced per-user flight before calling `syncWithCloud` / `fetchFellowshipData`.
  */
 export function syncAllStoresWithCloud(userId: string): Promise<void> {
   if (!userId) return Promise.resolve();

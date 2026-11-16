@@ -1,3 +1,12 @@
+/**
+ * @module
+ * @scope Dynamic literary passage and dialogue extractor (`extractDynamicBookPassages`) filtering raw Gutenberg texts into clean spreads.
+ * @invariant Bound scan windows via `PASSAGE_SCAN_BYTES` (or `900 KB` when `maxPassages > 5`), exclude preamble/license/Distributed Proofreading/ASCII dividers/copyright colophons, and enforce `MIN_PASSAGE_LETTERS` (`25`) + `MIN_ALPHABETIC_DENSITY` (`50%`).
+ * @invariant Truncate long quotes inside `safeCleanQuote` strictly at sentence endings or whole-word whitespace boundaries without mid-word clipping.
+ * @rationale Bounded scanning keeps extraction instantaneous in browser modals and CLI quote ingestion alike while blocking proofreader banners and separator art from appearing as literary excerpts.
+ * @adr ADR-074
+ */
+
 import { GUTENBERG_PARSER_CONFIG, type ChapterSection, type DynamicBookPassage } from './types';
 import { parseGutenbergChapters } from './segmentation';
 

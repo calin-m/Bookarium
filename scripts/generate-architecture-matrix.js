@@ -1,9 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const {
+  resolveImportPath,
   analyzeDependencyGraph,
   detectCircularDependencies,
+  detectLayerViolations,
   detectOrphanedModules,
+  analyzeScriptsDependencyGraph,
+  extractCrossBoundaryCouplingCatalog,
   extractComponentCatalog,
   extractStoreCatalog,
   extractApiAndHookCatalog,
@@ -12,6 +16,7 @@ const {
   extractTypeCatalog,
   extractServiceWorkerMetadata,
   extractWorkerCatalog,
+  extractSqlSchemaEntities,
   extractTestHarnessCatalog,
   extractTestHarnessAstDependencies,
   extractPublicAssetsCatalog,
@@ -35,9 +40,10 @@ function extractDatabaseCatalog(rootDirPath) {
     };
   }
   const content = fs.readFileSync(schemaPath, 'utf-8');
+  const sqlEntities = extractSqlSchemaEntities(content);
 
   const tables = [];
-  if (content.includes('CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations')) {
+  if (sqlEntities.hasMigrationLedger) {
     tables.push({
       name: 'supabase_migrations.schema_migrations',
       rls: 'Enabled (`No Client Access`)',
@@ -46,9 +52,6 @@ function extractDatabaseCatalog(rootDirPath) {
       description: 'Internal Supabase migration ledger preventing `42P01` dashboard warnings and tracking applied DDL versions with RLS enabled.',
     });
   }
-
-  const tableRegex = /CREATE TABLE IF NOT EXISTS public\.(\w+)\s*\(([\s\S]*?)\);/g;
-  let match;
 
   const storeMap = {
     profiles: '`useAuthStore` / `usePreferencesStore` / `useFellowshipStore` (`fellowship-cloud-sync.ts`) / `/u/[username]` (`page.tsx`, `profile-layout-utils.ts`)',
@@ -89,8 +92,7 @@ function extractDatabaseCatalog(rootDirPath) {
     symposium_sessions: 'Dual-reading Literary Symposium sessions tracking shared volume progress and chapter coordinates for two fellows.',
   };
 
-  while ((match = tableRegex.exec(content)) !== null) {
-    const tableName = match[1];
+  for (const tableName of sqlEntities.tableNames) {
     tables.push({
       name: `public.${tableName}`,
       rls: tableName === 'books' || tableName === 'book_translations' ? 'Enabled (`Public Read`)' : 'Enabled (`auth.uid()`)',
@@ -125,47 +127,13 @@ function extractDatabaseCatalog(rootDirPath) {
     idx_symposium_sessions_book: 'B-Tree index on `(book_id)` for volume-scoped Symposium session and shared annotation lookups.',
   };
 
-  const indexes = [];
-  const idxRegex = /CREATE\s+(UNIQUE\s+)?INDEX\s+IF\s+NOT\s+EXISTS\s+(\w+)\s+ON\s+(public\.\w+)\s*(?:USING\s+(GIN)\s*)?\(([^;]+?)\)(?:\s+WHERE\s+([^;]+?))?;/gi;
-  let idxMatch;
-  while ((idxMatch = idxRegex.exec(content)) !== null) {
-    const isUnique = Boolean(idxMatch[1]);
-    const idxName = idxMatch[2];
-    const targetTable = idxMatch[3];
-    const isGin = Boolean(idxMatch[4]);
-    const expr = idxMatch[5].replace(/\s+/g, ' ').trim();
-    const whereClause = idxMatch[6] ? ` WHERE ${idxMatch[6].replace(/\s+/g, ' ').trim()}` : '';
-    let idxType = 'B-Tree Index';
-    if (isGin) idxType = 'GIN Index';
-    else if (isUnique && whereClause) idxType = 'Partial Unique Index';
-    else if (isUnique) idxType = 'Unique B-Tree Index';
-    else if (whereClause) idxType = 'Partial B-Tree Index';
+  const indexes = sqlEntities.indexes.map((idx) => ({
+    ...idx,
+    description: indexDescMap[idx.name] || `Index on \`${idx.table}\`.`,
+  }));
 
-    indexes.push({
-      name: idxName,
-      type: idxType,
-      table: targetTable,
-      definition: `\`(${expr})${whereClause}\``,
-      description: indexDescMap[idxName] || `Index on \`${targetTable}\`.`,
-    });
-  }
-
-  // Extract triggers and map them by target function name
-  const triggers = [];
-  const triggersByFunction = new Map();
-  const triggerRegex =
-    /CREATE\s+TRIGGER\s+(\w+)\s+[\s\S]*?ON\s+([\w.]+)\s+FOR\s+EACH\s+ROW\s+EXECUTE\s+FUNCTION\s+public\.(\w+)\s*\(\);/gi;
-  let trgMatch;
-  while ((trgMatch = triggerRegex.exec(content)) !== null) {
-    const trgName = trgMatch[1];
-    const trgTable = trgMatch[2];
-    const fnName = trgMatch[3];
-    triggers.push({ name: trgName, table: trgTable, functionName: fnName });
-    if (!triggersByFunction.has(fnName)) {
-      triggersByFunction.set(fnName, []);
-    }
-    triggersByFunction.get(fnName).push({ name: trgName, table: trgTable });
-  }
+  const triggers = sqlEntities.triggers;
+  const triggersByFunction = sqlEntities.triggersByFunction;
 
   // Extract stored functions / trigger procedures from CREATE OR REPLACE FUNCTION public.<name>
   const functionMetaMap = {
@@ -211,24 +179,18 @@ function extractDatabaseCatalog(rootDirPath) {
     },
   };
 
-  const functions = [];
-  const fnRegex =
-    /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.(\w+)\s*\([^)]*\)\s*RETURNS\s+([\s\S]+?)\s+LANGUAGE/gi;
-  let fnMatch;
-  while ((fnMatch = fnRegex.exec(content)) !== null) {
-    const fnName = fnMatch[1];
-    const returnType = fnMatch[2].replace(/\s+/g, ' ').trim().toUpperCase();
-    const attachedTriggers = triggersByFunction.get(fnName) || [];
+  const functions = sqlEntities.functions.map(({ rawName, returnType }) => {
+    const attachedTriggers = triggersByFunction.get(rawName) || [];
     const triggerNames = attachedTriggers.map((t) => `\`${t.name}\``).join(', ');
     const fnType =
       returnType === 'TRIGGER' || attachedTriggers.length > 0
         ? `Trigger / Function (${triggerNames || 'Row Trigger'})`
         : 'RPC Function';
-    const meta = functionMetaMap[fnName];
+    const meta = functionMetaMap[rawName];
 
-    functions.push({
-      name: `public.${fnName}()`,
-      rawName: fnName,
+    return {
+      name: `public.${rawName}()`,
+      rawName,
       type: fnType,
       targetTables:
         meta?.targetTables ||
@@ -236,10 +198,10 @@ function extractDatabaseCatalog(rootDirPath) {
           ? attachedTriggers.map((t) => `\`${t.table}\``).join(', ')
           : '`public.*`'),
       description: meta?.description || 'Stored database function or trigger.',
-    });
-  }
+    };
+  });
 
-  if (content.includes("p.proname = 'rls_auto_enable'")) {
+  if (sqlEntities.hasRlsAutoEnable) {
     functions.push({
       name: 'public.rls_auto_enable() (Guard)',
       rawName: 'rls_auto_enable',
@@ -250,8 +212,8 @@ function extractDatabaseCatalog(rootDirPath) {
     });
   }
 
-  const policyCount = (content.match(/CREATE\s+POLICY\s+/gi) || []).length;
-  const checkConstraintCount = (content.match(/ADD\s+CONSTRAINT\s+chk_\w+/gi) || []).length;
+  const policyCount = sqlEntities.policyCount;
+  const checkConstraintCount = sqlEntities.checkConstraintCount;
 
   const seedCandidates = [
     {
@@ -409,138 +371,165 @@ function getSecurityPluginRuleCount() {
   }
 }
 
-function extractNodeScriptsCatalog() {
+function extractNodeScriptsCatalog(rootDirPath = rootDir) {
   const securityRuleCount = getSecurityPluginRuleCount();
-  return [
-    {
+  const scriptMetaMap = {
+    'scripts/verify-build.js': {
       name: 'verify-build.js',
-      file: 'scripts/verify-build.js',
       npmCommand: '`npm run verify`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env-parity across \`src/\` & \`scripts/\`/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 direct generator docs sync, Pass 5 ADR/checklist/schema-parity/graph/1:1-test-co-location across \`src/app/**\` & CLI scripts/advisory-sync/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env-parity across \`src/\` & \`scripts/\`/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 direct generator docs sync, Pass 5 ADR/checklist/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/1:1-test-co-location across \`src/app/**\` & CLI/AST scripts/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
     },
-    {
+    'scripts/eslint-rules/bookarium-security.js': {
       name: 'eslint-rules/bookarium-security.js',
-      file: 'scripts/eslint-rules/bookarium-security.js',
       npmCommand: '`npm run lint` & `npm run security:audit`',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
         `In-repo custom ESLint & Babel AST security plugin enforcing ${securityRuleCount} rules: unsafe fetch, unvalidated redirects, client/server boundary isolation, dangerous execution primitives, DOM XSS injection, intra-procedural request taint analysis (including Prototype Pollution guards), secret env/public route guards, test anti-tautology checks, and Project Gutenberg & copyright policy enforcement.`,
     },
-    {
+    'scripts/lib/ast-parser.js': {
       name: 'lib/ast-parser.js',
-      file: 'scripts/lib/ast-parser.js',
       npmCommand: '_Internal Generator Engine_',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
-        'Babel AST parsing engine extracting module dependency graphs, component catalogs, stores, hooks, utilities, and detecting circular dependencies with zero bloat.',
+        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges), CommonJS `scripts/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
     },
-    {
+    'scripts/generate-architecture-matrix.js': {
       name: 'generate-architecture-matrix.js',
-      file: 'scripts/generate-architecture-matrix.js',
       npmCommand: '`npm run matrix:generate` (in `docs:sync`)',
       nodeApis: '`fs`, `path`, `scripts/lib/ast-parser.js`',
       responsibility:
-        'Programmatically compiles docs/ARCHITECTURE.md directly from source AST, mapping topology, databases, Node.js packages, and CLI automation scripts.',
+        'Programmatically compiles content-idempotent docs/ARCHITECTURE.md directly from source AST, mapping topology, databases, Node.js packages, dynamic workflow counts, and CLI automation scripts.',
     },
-    {
+    'scripts/generate-changelog.js': {
       name: 'generate-changelog.js',
-      file: 'scripts/generate-changelog.js',
       npmCommand: '`npm run changelog:generate` (in `docs:sync`)',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Compiles CHANGELOG.md from SemVer release ledgers and synchronizes package.json, package-lock.json, SECURITY.md, .github/workflows/release.yml, .github/ISSUE_TEMPLATE/bug_report.yml, docs/GITHUB_ACTIONS.md, and README.md Latest Release section.',
+        'Compiles content-idempotent CHANGELOG.md from SemVer release ledgers and synchronizes package.json, package-lock.json, SECURITY.md, .github/workflows/release.yml, .github/ISSUE_TEMPLATE/bug_report.yml, docs/GITHUB_ACTIONS.md, and README.md Latest Release section.',
     },
-    {
+    'scripts/generate-parser-docs.js': {
       name: 'generate-parser-docs.js',
-      file: 'scripts/generate-parser-docs.js',
       npmCommand: '`npm run docs:parser` (in `docs:sync`)',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
-        'Analyzes src/lib/gutenberg-parser.ts AST to generate living docs/GUTENBERG_PARSER.md.',
+        'Analyzes src/lib/gutenberg-parser.ts AST (excluding `@module`/`@scope` contract tags) to generate content-idempotent living docs/GUTENBERG_PARSER.md.',
     },
-    {
+    'scripts/generate-contracts-docs.js': {
+      name: 'generate-contracts-docs.js',
+      npmCommand: '`npm run docs:contracts` (in `docs:sync`)',
+      nodeApis: '`fs`, `path`, `scripts/lib/ast-parser.js`',
+      responsibility:
+        'Compiles content-idempotent docs/SYSTEM_CONTRACTS.md from Babel AST `@scope`, `@invariant`, `@rationale`, and `@adr` JSDoc annotations, Tier-1..Tier-4 protection badges, blast-radius callers, cross-boundary touchpoints, and co-located test contracts across all `src/` and `scripts/` modules.',
+    },
+    'scripts/generate-quality-report.js': {
       name: 'generate-quality-report.js',
-      file: 'scripts/generate-quality-report.js',
       npmCommand: '`npm run audit:quality` (in `docs:sync`)',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
         'Collects test coverage, suite catalogs, ADR counts, and ESLint/Knip metrics, synchronizes README.md framework/engine version badges (`Next.js`, `React`, `TypeScript`, `Tailwind CSS`, `Node.js`) from `package.json`, and generates docs/QUALITY_AUDIT_REPORT.md and docs/quality-audit-results.json.',
     },
-    {
+    'scripts/generate-roadmap.js': {
       name: 'generate-roadmap.js',
-      file: 'scripts/generate-roadmap.js',
       npmCommand: '`npm run roadmap:generate` (in `docs:sync`)',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Scans source files and AST features to generate living ROADMAP.md with 0% drift.',
+        'Scans source files and AST features to generate content-idempotent living ROADMAP.md with 0% drift.',
     },
-    {
+    'scripts/generate-pwa-icons.js': {
       name: 'generate-pwa-icons.js',
-      file: 'scripts/generate-pwa-icons.js',
       npmCommand: '`node scripts/generate-pwa-icons.js`',
       nodeApis: '`fs`, `path`, `zlib`',
       responsibility:
         'Compiles standards-compliant 32-bit RGBA binary multi-resolution .ico (16, 32, 48) and vector squircle PWA icons with alpha anti-aliasing.',
     },
-    {
+    'scripts/sync-gutenberg-catalog.js': {
       name: 'sync-gutenberg-catalog.js',
-      file: 'scripts/sync-gutenberg-catalog.js',
       npmCommand: '`npm run catalog:sync`',
       nodeApis: '`fs`, `path`, `zlib`, `https`, `child_process`',
       responsibility:
         'Streams Project Gutenberg\'s official `rdf-files.tar.bz2` archive (`streamGutenbergRdfDownloadCounts`) and `pg_catalog.csv.gz` feed across 3 official Gutenberg mirrors (`www.gutenberg.org`, `aleph.gutenberg.org`, `gutenberg.pglaf.org`), resolves portable `Bookarium-Catalog-Sync/1.0` User-Agent headers (`resolveCatalogUserAgent`, `resolveRepositoryOrSiteUrl`, `resolveSiteOriginFallback`), diffs all 78,461 volumes in RAM against `--cache-file=gutenberg-catalog-cache.json.gz` (`catalog-cache` GitHub Release asset with cold-start Primary-Key batch fallback) while preserving `quotes`, upserts only new/changed rows with sticky dynamic write pacing (`[25, 100]`), reconciles and prunes withdrawn volumes (`reconcileWithdrawnCatalogBooks`), and emits `--diff-output=quote-diff.json` (`topPopularIds`, `recentIds`) for zero-scan downstream quote sync.',
     },
-    {
+    'scripts/ingest-catalog.js': {
       name: 'ingest-catalog.js',
-      file: 'scripts/ingest-catalog.js',
       npmCommand: '`npm run catalog:ingest`',
-      nodeApis: '`fs`, `path`, `readline`',
+      nodeApis: '`fs`, `path`, `https`, `child_process`',
       responsibility:
-        'Direct CLI tool (`require.main === module` guarded) for batch ingesting local Gutenberg CSV/JSON metadata dumps into Supabase, resolving portable origin/User-Agent headers (`resolveSiteOriginFallback`, `resolveRepositoryOrSiteUrl`, `resolveIngestUserAgent`) and exporting pure SQL/URL helpers verified by `ingest-catalog.test.ts`.',
+        'Offline CLI seed generator (`require.main === module` guarded) compiling idempotent `supabase/seed_books.sql` (and optional `--with-content` plain-text `seed_books_content.sql` updates) from `CURATED_CLASSICS`, resolving portable origin/User-Agent headers (`resolveSiteOriginFallback`, `resolveRepositoryOrSiteUrl`, `resolveIngestUserAgent`) and exporting pure SQL/URL helpers verified by `ingest-catalog.test.ts`.',
     },
-    {
+    'scripts/ingest-translations.js': {
       name: 'ingest-translations.js',
-      file: 'scripts/ingest-translations.js',
       npmCommand: '`npm run translations:sync`',
       nodeApis: '`fs`, `path`, `https`',
       responsibility:
         'Queries Wikidata SPARQL endpoint with portable `Bookarium-Gatekeeper/1.0` headers (`resolveUserAgent`, `resolveSiteOriginFallback`) for multilingual FRBR work clusters and populates `public.book_translations` with zero false positives.',
     },
-    {
+    'scripts/sync-featured-quotes.js': {
       name: 'sync-featured-quotes.js',
-      file: 'scripts/sync-featured-quotes.js',
       npmCommand: '`npm run quotes:sync`',
       nodeApis: '`fs`, `path`',
       responsibility:
         'Maintains a Two-Tier Bounded Quote Pool (`Top 500 Popular` by `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`) in `public.books.quotes`, identifying outbound Gutenberg mirror fetches via portable origin/repo headers (`resolveSiteOriginFallback`, `resolveRepositoryUrl`, `buildDescriptiveUserAgent`), consuming `--diff-file=quote-diff.json` from `sync-gutenberg-catalog.js` (or `idx_books_download_count` + `books_pkey` on standalone runs), scanning all currently quoted rows via partial B-Tree index `idx_books_with_quotes_popular` (`fetchAllQuotedBookIds` + `resolveBookMetadataByIds` + `computeOutOfWindowPrunePlan`) to apply Option-A `1-for-1` sliding-window pruning across surplus demoted Popular & oldest > 64 Recent volumes up to `--max-prune=<N>` (`DEFAULT_MAX_PRUNE_PER_RUN = 2000` with `50ms` inter-chunk yield past `500` IDs), blending `40 Popular + 10 Recent` unpopulated English volumes per 50-book batch with cross-tier backfill across selectable PGLAF mirrors (`gutenberg.pglaf.org` default, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent 8.0s–16.0s randomized float delays, single-line console progress (`formatConsoleSummary` with `• Purge Status:` / `• Out-of-Window:`), and Markdown job summary reporting (`formatRunReport` with `Out-of-Window (Pruned)` and `🧹 Pruned` rows).',
     },
-    {
+    'scripts/purge-vercel-cache.js': {
       name: 'purge-vercel-cache.js',
-      file: 'scripts/purge-vercel-cache.js',
       npmCommand: 'CLI / CI Workflow Step',
       nodeApis: '`fs` (`$GITHUB_STEP_SUMMARY`)',
       responsibility:
         'Invalidates Vercel Edge Data/CDN cache tags (`POST https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags?projectIdOrName={projectId}[&teamId={teamId}]`) via `--tags=...` at the end of non-dry-run `catalog-sync.yml` (`catalog,quotes,translations`), `quotes-sync.yml` (`quotes`), and `translations-sync.yml` (`translations`) workflows—or selectively on demand via manual `cache-purge.yml` (`catalog`/`quotes`/`translations` checkboxes, `--target`, `--dry-run`)—with bounded `429`/`5xx`/network backoff retries, `Retry-After` support, clean `exit 0` skip when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset, and `$GITHUB_STEP_SUMMARY` reporting.',
     },
-    {
+    'scripts/approval-gate.js': {
       name: 'approval-gate.js',
-      file: 'scripts/approval-gate.js',
       npmCommand: '`npm run gate:approve`',
       nodeApis: '`fs`, `path`',
       responsibility:
         'Pre-commit governance gate validating `.agents/hooks.json` command definitions against `package.json` scripts prior to commit.',
     },
-    {
+    'scripts/open-browser.js': {
       name: 'open-browser.js',
-      file: 'scripts/open-browser.js',
       npmCommand: '`npm run dev:open`',
       nodeApis: '`child_process`',
       responsibility:
         'Cross-platform development utility spawning default system browser with connection wait delay.',
     },
-  ];
+  };
+
+  const preferredOrder = Object.keys(scriptMetaMap);
+  const discoveredFiles = new Set(['scripts/eslint-rules/bookarium-security.js', 'scripts/lib/ast-parser.js']);
+  const scriptsDir = path.join(rootDirPath, 'scripts');
+  if (fs.existsSync(scriptsDir)) {
+    for (const entry of fs.readdirSync(scriptsDir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith('.js')) {
+        discoveredFiles.add(`scripts/${entry.name}`);
+      }
+    }
+  }
+
+  const orderedFiles = Array.from(discoveredFiles)
+    .filter((f) => fs.existsSync(path.join(rootDirPath, f)))
+    .sort((a, b) => {
+      const ia = preferredOrder.indexOf(a);
+      const ib = preferredOrder.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+  return orderedFiles.map((fileRel) => {
+    const meta = scriptMetaMap[fileRel];
+    if (meta) {
+      return { file: fileRel, ...meta };
+    }
+    return {
+      name: fileRel.replace(/^scripts\//, ''),
+      file: fileRel,
+      npmCommand: '_Node.js Script_',
+      nodeApis: '`fs`, `path`',
+      responsibility: 'Node.js automation or maintenance script.',
+    };
+  });
 }
 
 function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
@@ -718,12 +707,12 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`, `handlers.test.ts`, fail-closed `handleUnhandledMswRequest`) and JSDOM test environment bootstrap (`setup.ts`).' },
     { path: 'public/', role: `Progressive Web App Service Worker (\`public/sw.js\` \`${counts.swVersionLabel || 'v7'}\`) and multi-resolution soaring open book brand emblem icons (\`favicon.ico\`, \`icon.svg\`, \`public/icons/*.png\`).` },
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 47} RLS policies, ${counts.dbFunctionCount || 9} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
-    { path: 'scripts/', role: `${counts.nodeScriptCount || 15} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
-    { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser specification (\`GUTENBERG_PARSER.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
+    { path: 'scripts/', role: `${counts.nodeScriptCount || 17} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
+    { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser & behavioral contract specifications (\`GUTENBERG_PARSER.md\`, \`SYSTEM_CONTRACTS.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
     { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance & cache purge workflows (`translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
   ];
 
-  let auditTotals = { suites: counts.totalSuites || 257, tests: '2,629' };
+  let auditTotals = { suites: counts.totalSuites || 258, tests: '2,645' };
   const auditJsonPath = path.join(rootDirPath, 'docs', 'quality-audit-results.json');
   if (fs.existsSync(auditJsonPath)) {
     try {
@@ -755,6 +744,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated', generator: '`scripts/generate-architecture-matrix.js`', role: 'Complete 360° full-repository C4 architecture map, event/state-flow bus, temporal sequence workflows, external integration boundaries, failure/retry topology, edge deployment & 5-layer caching hierarchy, AST-verified environment variable bindings, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology.' },
     { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`_Append-Only Ledger_ (Validated in Pass 5)`', role: `Sequential Architectural Decision Records (ADR-001 through ${adrRangeEnd}) documenting context, trade-offs, and consequences.` },
     { file: 'docs/GUTENBERG_PARSER.md', mode: '100% AST-Generated', generator: '`scripts/generate-parser-docs.js`', role: 'Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine.' },
+    { file: 'docs/SYSTEM_CONTRACTS.md', mode: '100% AST-Generated', generator: '`scripts/generate-contracts-docs.js`', role: 'Code-level `@scope`, `@invariant`, `@rationale`, and `@adr` behavioral contracts, AST blast radius, cross-boundary touchpoints, and priority contract queue across all `src/` and `scripts/` modules.' },
     { file: 'docs/QUALITY_AUDIT_REPORT.md', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: `Human-readable 7-Gateway audit summary, V8 coverage metrics, and collapsible catalog of all ${auditTotals.suites} test suites and ${auditTotals.tests} tests.` },
     { file: 'docs/quality-audit-results.json', mode: '100% Telemetry-Generated', generator: '`scripts/generate-quality-report.js`', role: 'Machine-readable JSON telemetry of all 7 gateway passes, coverage percentages, ESLint/Knip counts, and suite totals.' },
     { file: 'ROADMAP.md', mode: '100% AST-Generated', generator: '`scripts/generate-roadmap.js`', role: `Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–${maxMilestoneIdx}.` },
@@ -775,7 +765,10 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
 function generateMarkdown() {
   const graph = analyzeDependencyGraph(srcDir, rootDir);
   const circularHealth = detectCircularDependencies(graph);
+  const layerViolations = detectLayerViolations(graph);
   const orphans = detectOrphanedModules(graph);
+  const crossBoundary = extractCrossBoundaryCouplingCatalog(srcDir, rootDir);
+  const scriptsGraph = analyzeScriptsDependencyGraph(rootDir);
   const components = extractComponentCatalog(graph);
   const stores = extractStoreCatalog(srcDir);
   const { routes, appPages, hooks } = extractApiAndHookCatalog(srcDir);
@@ -790,7 +783,7 @@ function generateMarkdown() {
   const workspaceConfigs = extractWorkspaceConfigAndGovernanceCatalog(rootDir);
   const envCatalog = extractEnvironmentDependencyCatalog(rootDir, srcDir);
   const dbCatalog = extractDatabaseCatalog(rootDir);
-  const nodeScripts = extractNodeScriptsCatalog();
+  const nodeScripts = extractNodeScriptsCatalog(rootDir);
   const repoTopology = extractRepositoryTopologyAndDocsCatalog(rootDir, {
     componentCount: components.length,
     storeCount: stores.length,
@@ -819,13 +812,13 @@ function generateMarkdown() {
     '',
     '> **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  ',
     `> **Last Synchronized**: \`${timestamp}\`  `,
-    `> **Topology Health**: \`${graph.size}\` Modules Analyzed • \`${totalLinks}\` Static Linkages • \`${circularHealth.cycleCount}\` Circular Dependencies • \`${orphans.length}\` Orphaned Modules`,
+    `> **Topology Health**: \`${graph.size}\` Modules Analyzed • \`${totalLinks}\` Static Linkages • \`${circularHealth.cycleCount}\` Circular Dependencies • \`${layerViolations.length}\` Layer Violations • \`${orphans.length}\` Orphaned Modules`,
     '',
     '---',
     '',
     '## 🏛️ System Architecture & Data Flow',
     '',
-    'Bookarium is built on a **100% Pure Live API Architecture** with real-time telemetry, zero local mock archives, and deterministic state isolation.',
+    'Bookarium runs on a **Zero-API-Key Public Domain Architecture** powered by Supabase PostgreSQL, zero-network bundled Curated Archive fallback (`curated-fallback.ts`), real-time telemetry, and deterministic state isolation.',
     '',
     '### 1. End-to-End System Context & Data Flow',
     '',
@@ -846,8 +839,8 @@ function generateMarkdown() {
     '        LiteraryQuotes["LiteraryQuotes.tsx\\n(Words That Shaped Humanity, Safe Shuffling & isPoolSettled Guard)"]',
     '        CopyrightBanner["CopyrightNoticeBanner.tsx\\n(Declarative Territorial Restriction & Public Domain Notice)"]',
     '        ContentAdvisory["ContentAdvisoryBanner.tsx\\n(Non-blocking Mature/Historical Context Advisory)"]',
-    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Single-Row Mobile Layout, Search, Compact Icon Sort & View Mode Toggles)"]',
-    '        CollectionBottomDockNode["CollectionBottomDock.tsx • CollectionFloatingSearch.tsx • CollectionFilterDrawer.tsx\\n(Universal Ambient Dock, Animated Light Aura, Floating Search & Bottom Sliding Drawer)"]',
+    '        CollectionToolbarNode["CollectionToolbar.tsx\\n(Responsive Workbench: Single-Row Mobile Layout, Search, Desktop Favorites Preset, Sort & View Mode Toggles)"]',
+    '        CollectionBottomDockNode["CollectionBottomDock.tsx • CollectionFloatingSearch.tsx • CollectionFilterDrawer.tsx\\n(Universal Ambient Dock, Animated Light Aura, Floating Search & Bottom Sliding Drawer with Shelf, Monochrome Filter & Sort Controls)"]',
     '        CollectionEmptyStateNode["CollectionEmptyState.tsx\\n(Unified Collection Empty State Card: p-12 Editorial Card, Section Icon Badge, Explore Catalog & Iconless Sign-in Actions)"]',
     '        PaginationNode["Pagination.tsx\\n(Accessible Numeric Page Navigation)"]',
     '        BookPreviewModalNode["BookPreviewModal.tsx & NotablePassagesSpread.tsx\\n(3D Open-Book Preview Spread, Notable Passages & Jurisdictional Protection)"]',
@@ -1306,7 +1299,8 @@ function generateMarkdown() {
     '    subgraph BrowserEvents ["Browser, DOM & Auth Event Emitters"]',
     '        EvtAuth["🔐 supabase.auth.onAuthStateChange\\n(SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT)"]',
     '        EvtOnline["📡 window online / offline Events\\n(useNetworkStatus • useSyncExternalStore)"]',
-    '        EvtIDB["📦 CustomEvent: bookarium-offline-books-updated\\n& bookarium-offline-downloading"]',
+    '        EvtIDB["📦 CustomEvent: bookarium:offline-updated\\n& bookarium:offline-downloading"]',
+    '        EvtCopyLink["📋 CustomEvent: bookarium:book-link-copied\\n(CursorTooltip Copy Feedback Sync)"]',
     '        EvtSessionSync["🔄 BroadcastChannel: bookarium-sessions-sync\\n& CustomEvent: bookarium:auth-token-refreshed"]',
     '        EvtVis["👁️ document.visibilitychange & window focus/blur\\n(2-Minute Active Immersion Guard & Visible Poll)"]',
     '        EvtSpeech["🔊 speechSynthesis.onvoiceschanged & boundary\\n(Web Speech Neural Voice & Word Sync)"]',
@@ -1375,10 +1369,62 @@ function generateMarkdown() {
     '',
     '| Event / Signal Channel | Emitter Module | Subscriber Module(s) | Payload Contract | Architectural Side-Effect |',
     '| :--- | :--- | :--- | :--- | :--- |',
-    '| **`bookarium-offline-books-updated`** | [`src/lib/offline-storage.ts`](src/lib/offline-storage.ts) | [`src/hooks/useOfflineBooks.ts`](src/hooks/useOfflineBooks.ts), [`src/components/presentation/BookshelfRack.tsx`](src/components/presentation/BookshelfRack.tsx) | `CustomEvent<void>` | Re-enumerates IndexedDB keys/metadata and updates `Downloaded (N)` smart shelf & offline badges across all mounted components. |',
-    '| **`bookarium-offline-downloading`** | [`src/hooks/useOfflineBooks.ts`](src/hooks/useOfflineBooks.ts) | [`src/hooks/useOfflineBooks.ts`](src/hooks/useOfflineBooks.ts) (all instances) | `CustomEvent<{ bookId: number; isDownloading: boolean }>` | Synchronizes spinner/downloading button states across BookCard, BookmarkCard, BookshelfSpine, and DownloadDrawer. |',
-    '| **`bookarium:auth-token-refreshed`** | [`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts) | [`src/app/providers.tsx`](src/app/providers.tsx), [`src/hooks/useAccountSecurityActions.ts`](src/hooks/useAccountSecurityActions.ts) | `CustomEvent<void>` | Bypasses the `15,000ms` sync cooldown to re-trigger `syncAllStoresWithCloud()` immediately after background JWT `TOKEN_REFRESHED` recovery and refreshes active session IP/UA metadata when the Account Security tab is open. |',
-    '| **`BroadcastChannel: bookarium-sessions-sync`** | [`src/hooks/useAccountSecurityActions.ts`](src/hooks/useAccountSecurityActions.ts) | [`src/hooks/useAccountSecurityActions.ts`](src/hooks/useAccountSecurityActions.ts) (sibling tabs) | `{ type: "sessions-changed", userId, senderId }` | Synchronizes the Active Device Sessions list across open same-origin tabs (filtering own `senderId` echoes) immediately after single-device revocation or Sign Out Other Devices. |',
+  );
+
+  const signalMetaMap = {
+    'CustomEvent:bookarium:offline-updated': {
+      payload: '`CustomEvent<void>`',
+      effect:
+        'Re-enumerates IndexedDB keys/metadata (`useOfflineBooks`) and updates `Downloaded (N)` smart shelf & offline badges across mounted components.',
+    },
+    'CustomEvent:bookarium:offline-downloading': {
+      payload: '`CustomEvent<{ bookId: number | null }>`',
+      effect:
+        'Synchronizes active download progress indicators across BookCard, BookmarkCard, BookshelfSpine, and DownloadDrawer.',
+    },
+    'CustomEvent:bookarium:auth-token-refreshed': {
+      payload: '`CustomEvent<{ userId: string }>`',
+      effect:
+        'Bypasses the `15,000ms` sync cooldown to re-trigger `syncAllStoresWithCloud()` immediately after background JWT `TOKEN_REFRESHED` recovery and refreshes active session IP/UA metadata when the Account Security tab is open.',
+    },
+    'CustomEvent:bookarium:book-link-copied': {
+      payload: '`CustomEvent<{ bookId: string; url: string }>`',
+      effect:
+        'Synchronizes `Copied!` inline indicators and floating `CursorTooltip` feedback (`1,800ms`) across concurrent `[data-copy-book-id]` surfaces.',
+    },
+    'BroadcastChannel:bookarium-sessions-sync': {
+      payload: '`{ type: "sessions-changed", userId, senderId }`',
+      effect:
+        'Synchronizes the Active Device Sessions list across open same-origin sibling tabs (filtering own `senderId` echoes) immediately after single-device revocation or Sign Out Other Devices.',
+    },
+  };
+
+  for (const sig of crossBoundary.signalChannels) {
+    if (!sig.isCustomSignal) continue;
+    const key = `${sig.kind}:${sig.name}`;
+    const meta = signalMetaMap[key];
+    const emittersCell =
+      sig.emitters.length > 0
+        ? sig.emitters.map((e) => `[\`${e}\`](${e})`).join(', ')
+        : '_Dynamic Runtime Emitter_';
+    const subscribersCell =
+      sig.subscribers.length > 0
+        ? sig.subscribers.map((s) => `[\`${s}\`](${s})`).join(', ')
+        : '_Broadcast Receiver_';
+    const displayName =
+      sig.kind === 'BroadcastChannel' ? `BroadcastChannel: ${sig.name}` : sig.name;
+    const payloadStr =
+      meta?.payload ||
+      (sig.detailKeys.length > 0
+        ? `\`${sig.kind}<{ ${sig.detailKeys.join(', ')} }>\``
+        : `\`${sig.kind}<void>\``);
+    const effectStr = meta?.effect || 'Cross-boundary runtime signal channel.';
+    lines.push(
+      `| **\`${displayName}\`** | ${emittersCell} | ${subscribersCell} | ${payloadStr} | ${effectStr} |`
+    );
+  }
+
+  lines.push(
     '| **`window` `online` / `offline`** | Browser Network Stack | [`src/hooks/useNetworkStatus.ts`](src/hooks/useNetworkStatus.ts), [`src/app/providers.tsx`](src/app/providers.tsx) | `Event` (`navigator.onLine`) | Switches UI to offline restriction parity (`isUnavailableOffline`), activates IndexedDB catalog fallback, and flushes all 7 cloud-synced store outboxes upon reconnect. |',
     '| **`supabase.auth.onAuthStateChange`** | [`src/app/providers.tsx`](src/app/providers.tsx) | [`src/stores/useAuthStore.ts`](src/stores/useAuthStore.ts), [`src/lib/sync-utils.ts`](src/lib/sync-utils.ts) | `(event, session)` | Hydrates scholar profile, verifies active JWT session (`verifyActiveCloudSession`), triggers `syncAllStoresWithCloud`, and reconciles `public.profiles.preferences` JSONB. |',
     '| **`setReadingStatus(id, "finished")`** | [`src/stores/useBookshelfStore.ts`](src/stores/useBookshelfStore.ts) | [`src/stores/useReaderStore.ts`](src/stores/useReaderStore.ts), [`src/stores/useHabitsStore.ts`](src/stores/useHabitsStore.ts), [`src/stores/useAccoladesStore.ts`](src/stores/useAccoladesStore.ts) | `(bookId: number, status: ReadingStatus)` | Clears `bookmarkRow` (`0`) and `bookmarkText` (`undefined`), updates `completed_books_count`, and evaluates Ex-Libris accolades. |',
@@ -1617,7 +1663,7 @@ function generateMarkdown() {
     useMobileViewportCardFocus: 'Shared single-column (`< 1024px`) viewport scroll focus band (`0.22–0.62` viewport ratio) and outside-tap dismissal hook for `BookmarkCard` and `NotebookQuoteCard`.',
     useOfflineCoverImage: 'Shared IndexedDB offline book cover Blob hydration (`getOfflineBookCover`) and automatic `URL.createObjectURL` / `URL.revokeObjectURL` lifecycle cleanup hook (`BookCard`, `BookPreviewModal`, `HeroFeaturedBook3D`).',
     usePersonalCollectionsController:
-      'Centralized controller hook for Bookshelf and Favorites filtering (`!is_default` drawer shelf deduplication, `shelfSortBy === \'favorites\'` / `\'downloaded\'` presets & contextual empty states), bidirectional sorting, custom shelf resolution, pagination reset, and clear-confirmation modal state (`src/app/page.tsx`).',
+      'Centralized controller hook for Bookshelf and Favorites filtering (`!is_default` drawer shelf deduplication, unified top-bar `Favorites` dropdown preset + orthogonal monochrome drawer `shelfFavoritesOnly` switch composable with sort & direction, and contextual empty states), bidirectional sorting, custom shelf resolution, pagination reset, and clear-confirmation modal state (`src/app/page.tsx`).',
     useReaderAnnotationActions: 'Encapsulated Focus Reader text-selection popover state, overlapping fellow/own annotation matching (`matchedPopoverAnnotations`), and highlight/note CRUD handlers (`src/app/read/[id]/page.tsx`).',
     useReaderExitBookmark: 'Encapsulated reader exit interception, cross-device `findCanonicalTextSpan` bookmark-ahead reflow resolution (`hasBookmarkAhead`), layered drawer-first & `Escape` key dismissal, 3-page activation threshold modal gating, and line-1 bookmark placement (`src/app/read/[id]/page.tsx`).',
     useDialogFocusTrap: 'Shared accessible overlay focus-trap, Escape-key dismissal, and trigger-element focus-restoration hook (`autoFocus?: boolean`, `{ preventScroll: true }`) used across `Modal`, `AuthModal`, `BottomSheetDrawerShell`, and `AccoladeCelebrationModal`.',
@@ -1711,7 +1757,7 @@ function generateMarkdown() {
     'sync-utils':
       'Unified bidirectional cloud synchronization coordinator (`syncAllStoresWithCloud`, `clearLocalUserStores`, re-exported `coalesceInFlightByUser`) returning active per-user in-flight Promises directly (`p1 === p2`), enforcing pre-sync active JWT session verification (`hasSupabaseAuthCookie`, `shouldVerifyCloudSession`, `verifyActiveCloudSession`), and coordinating 10-store local teardown parity.',
     'book-sorting':
-      'Deterministic multi-attribute book sorting algorithms, Bookshelf & Favorites sort/preset filter options (including `downloaded` and Bookshelf `favorites`), and shared offline volume filtering (`filterBooksByOfflineState`) for title, author, year, downloads, reading progress, and recency.',
+      'Deterministic multi-attribute book sorting algorithms, Bookshelf & Favorites sort/preset filter options (`BOOKSHELF_BASE_SORT_OPTIONS` & `BOOKSHELF_DRAWER_SORT_OPTIONS`), and shared offline volume filtering (`filterBooksByOfflineState`) for title, author, year, downloads, reading progress, and recency.',
     'book-tags':
       'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':
@@ -1768,13 +1814,14 @@ function generateMarkdown() {
     'cache-purge.yml':
       'Manual-only (`workflow_dispatch`, zero `npm ci`) GitHub Actions utility workflow (`concurrency: cache-purge`, `permissions: contents: read`) allowing operators to selectively invalidate Vercel Edge CDN cache tags (`purge_catalog`, `purge_quotes`, `purge_translations` defaulting unchecked with a fail-fast guard requiring at least one checkbox selected), choose `target` (`production` / `preview`), and run `dry_run` diagnostics via `scripts/purge-vercel-cache.js`.',
     'ci.yml':
-      'Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, and production build verification on Node 22.',
+      'Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, production build verification, and deterministic `git diff --exit-code` living-documentation sync enforcement on Node 22.',
     'release.yml':
       'Automated GitHub Release publisher triggered on `v*` tags or manual `workflow_dispatch`, executing the full 7-Gateway Quality Engine and extracting release notes from `CHANGELOG.md`.',
   };
 
   const workflowsDir = path.join(rootDir, '.github', 'workflows');
   const dynamicWorkflowRows = [];
+  let workflowCount = 0;
   if (fs.existsSync(workflowsDir)) {
     const wfOrder = [
       'catalog-sync.yml',
@@ -1795,6 +1842,7 @@ function generateMarkdown() {
         if (ib !== -1) return 1;
         return a.localeCompare(b);
       });
+    workflowCount = wfFiles.length;
 
     for (const wfFile of wfFiles) {
       const wfText = fs.readFileSync(path.join(workflowsDir, wfFile), 'utf-8');
@@ -1802,11 +1850,10 @@ function generateMarkdown() {
       let triggerDesc = '`push` / `pull_request` (`master`)';
       if (cronMatch && cronMatch[1]) {
         const cronExpr = cronMatch[1].trim();
-        if (wfFile === 'quotes-sync.yml') {
-          triggerDesc = `\`cron: ${cronExpr}\` (Every 2 Hours) / On-Demand`;
-        } else {
-          triggerDesc = `\`cron: ${cronExpr}\` (Sundays) / On-Demand`;
-        }
+        const isWeeklySundayCron = /^\S+\s+\S+\s+\*\s+\*\s+(?:0|7|SUN)$/i.test(cronExpr);
+        triggerDesc = isWeeklySundayCron
+          ? `\`cron: ${cronExpr}\` (Sundays) / On-Demand`
+          : `\`cron: ${cronExpr}\` / On-Demand`;
       } else if (wfFile === 'release.yml') {
         triggerDesc = '`push` (`tags: v*`) / On-Demand (`workflow_dispatch`)';
       } else if (wfFile === 'cache-purge.yml') {
@@ -1883,7 +1930,7 @@ function generateMarkdown() {
     '',
     '### 2. CLI Pipelines & GitHub Actions Workflows Inventory',
     '',
-    '> **Operator Runbook**: For complete trigger schedules, `workflow_dispatch` inputs, required/optional GitHub Secrets, `catalog-cache` release bootstrap behavior, and copy-paste local CLI commands across all 6 workflows, see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md).',
+    `> **Operator Runbook**: For complete trigger schedules, \`workflow_dispatch\` inputs, required/optional GitHub Secrets, \`catalog-cache\` release bootstrap behavior, and copy-paste local CLI commands across all ${workflowCount} workflows, see [\`docs/GITHUB_ACTIONS.md\`](docs/GITHUB_ACTIONS.md).`,
     '',
     '| Pipeline / Tool | Execution Mode | Source File | Schedule / Trigger | Architectural Responsibility & Database Index Contract |',
     '| :--- | :--- | :--- | :--- | :--- |',
@@ -2088,7 +2135,7 @@ function generateMarkdown() {
     '        Tier1["Tier 1: Pure Domain, Security & AST Suites\\n• copyright-engine, url-validator, redirect-sanitizer, rate-limiter, password\\n• gutenberg/* (segmentation, reflow, pagination, passages, metadata)\\n• reader-annotator, accolades-engine, reading-analytics, book-sorting"]',
     '        Tier2["Tier 2: API Route & TanStack Query Suites (Pass 2)\\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\\n• useBooks, useBookContent, useBookTranslations\\n• supabase-provider, curated-fallback"]',
     '        Tier3["Tier 3: Zustand Store, IndexedDB & Outbox Sync Suites\\n• 10 Zustand Stores (useBookshelfStore, useReaderStore, useAuthStore, etc.)\\n• bookshelf-cloud-sync, sync-utils, offline-storage"]',
-    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI & Security Pipelines (ingest-catalog.test.ts, sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts, purge-vercel-cache.test.ts, bookarium-security.test.ts)"]`,
+    `        Tier4["Tier 4: React 19 UI Component, Page & CLI Suites (Pass 3)\\n• @testing-library/react + userEvent (getByRole, WCAG 2.2 focus traps)\\n• ${components.length} UI Components + App Router Pages/Layouts + Web Worker\\n• CLI, AST & Security Pipelines (ingest-catalog.test.ts, sync-gutenberg-catalog.test.ts, ingest-translations.test.ts, sync-featured-quotes.test.ts, purge-vercel-cache.test.ts, ast-parser.test.ts, bookarium-security.test.ts)"]`,
     '    end',
     '',
     '    subgraph CoverageGate ["Tiered V8 Coverage Gate & Telemetry Output"]',
@@ -2121,24 +2168,42 @@ function generateMarkdown() {
     lines.push(`| **\`${tm.name}\`** | [\`${tm.file}\`](${tm.file}) | ${tm.layer} | ${tm.role} |`);
   }
 
+  const scriptSuiteMetaMap = {
+    'ingest-catalog.test.ts': {
+      layer: 'CLI Data Pipeline Test Suite',
+      role: 'Hermetic unit tests verifying `ingest-catalog.js` URL/User-Agent resolvers, `CURATED_CLASSICS` SQL seed generation, `computeLifespanBounds`, and incremental content update SQL without running the CLI entrypoint.',
+    },
+    'ingest-translations.test.ts': {
+      layer: 'CLI Data Pipeline Test Suite',
+      role: 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.',
+    },
+    'sync-featured-quotes.test.ts': {
+      layer: 'CLI Data Pipeline Test Suite',
+      role: 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), `--diff-file=quote-diff.json` zero-scan pool consumption, partial-index out-of-window discovery (`fetchAllQuotedBookIds`), Option-A `1-for-1` pruning up to `2,000` (`computeOutOfWindowPrunePlan`, `--max-prune`, `50ms` inter-chunk yield), single-line console progress (`formatConsoleSummary` with `• Purge Status:` / `• Out-of-Window:`) and Markdown summary reporting (`formatRunReport` with `Out-of-Window (Pruned)` & `🧹 Pruned`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.',
+    },
+    'purge-vercel-cache.test.ts': {
+      layer: 'CLI Data Pipeline Test Suite',
+      role: 'Hermetic unit tests verifying Vercel Edge cache tag purging (`parsePurgeCliArgs`, `buildVercelCachePurgeUrl`, `appendPurgeStepSummary`, `purgeVercelEdgeCache`), `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / optional `VERCEL_TEAM_ID` handling, clean skip behavior (`exit 0`), `429`/`Retry-After`/`5xx` retry backoff, and `$GITHUB_STEP_SUMMARY` reporting.',
+    },
+    'sync-gutenberg-catalog.test.ts': {
+      layer: 'CLI Data Pipeline Test Suite',
+      role: 'Hermetic unit & integration tests verifying Project Gutenberg `rdf-files.tar.bz2` and `pg_catalog.csv.gz` streaming decompression across 3 mirrors, CSV RFC 4180 parsing, author lifespan extraction, in-RAM `--cache-file=gutenberg-catalog-cache.json.gz` snapshot diffing and `--diff-output=quote-diff.json` emission (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and sticky dynamic Supabase batch upserts.',
+    },
+    'ast-parser.test.ts': {
+      layer: 'AST & SQL Analysis Engine Suite',
+      role: 'Hermetic fixture & live-repo tests verifying Babel AST dependency graphs, `hasCycles` static circular detection, fail-closed `getAstParseErrors`, architectural `detectLayerViolations`, inherited/intersected `Props` extraction, AST `persist` key & HTTP verb resolution, balanced `extractSqlSchemaEntities` parsing, and un-truncated `extractTestsFromSourceAst`.',
+    },
+    'bookarium-security.test.ts': {
+      layer: 'AST & Request-Taint Security Suite',
+      role: `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`,
+    },
+  };
+
   for (const scriptSuite of testHarness.scriptSuites) {
     const baseName = path.basename(scriptSuite);
-    const scriptSuiteLayer =
-      baseName === 'bookarium-security.test.ts'
-        ? 'AST & Request-Taint Security Suite'
-        : 'CLI Data Pipeline Test Suite';
-    const scriptSuiteRole =
-      baseName === 'ingest-catalog.test.ts'
-        ? 'Hermetic unit tests verifying `ingest-catalog.js` URL/User-Agent resolvers, `CURATED_CLASSICS` SQL seed generation, `computeLifespanBounds`, and incremental content update SQL without running the CLI entrypoint.'
-        : baseName === 'ingest-translations.test.ts'
-          ? 'Hermetic unit & integration tests verifying Wikidata SPARQL FRBR work clustering, 5 Pipeline Blockers, 7 Hardening Defenses, and SQL seed generation.'
-          : baseName === 'sync-featured-quotes.test.ts'
-            ? 'Hermetic unit & integration tests verifying Two-Tier Bounded Quote Pool blending (`Top 500 Popular + Rolling 64 Most Recent`, `40 + 10` split with backfill), `--diff-file=quote-diff.json` zero-scan pool consumption, partial-index out-of-window discovery (`fetchAllQuotedBookIds`), Option-A `1-for-1` pruning up to `2,000` (`computeOutOfWindowPrunePlan`, `--max-prune`, `50ms` inter-chunk yield), single-line console progress (`formatConsoleSummary` with `• Purge Status:` / `• Out-of-Window:`) and Markdown summary reporting (`formatRunReport` with `Out-of-Window (Pruned)` & `🧹 Pruned`), per-mirror PGLAF workers (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`), and `public.books.quotes` JSONB upserts.'
-            : baseName === 'purge-vercel-cache.test.ts'
-              ? 'Hermetic unit tests verifying Vercel Edge cache tag purging (`parsePurgeCliArgs`, `buildVercelCachePurgeUrl`, `appendPurgeStepSummary`, `purgeVercelEdgeCache`), `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / optional `VERCEL_TEAM_ID` handling, clean skip behavior (`exit 0`), `429`/`Retry-After`/`5xx` retry backoff, and `$GITHUB_STEP_SUMMARY` reporting.'
-              : baseName === 'bookarium-security.test.ts'
-              ? `Unit & codebase-wide AST verification tests for all ${getSecurityPluginRuleCount()} \`bookarium-security\` ESLint rules and intra-procedural request taint analysis (\`Sources -> Sanitizers -> Sinks\`).`
-              : 'Hermetic unit & integration tests verifying Project Gutenberg `rdf-files.tar.bz2` and `pg_catalog.csv.gz` streaming decompression across 3 mirrors, CSV RFC 4180 parsing, author lifespan extraction, in-RAM `--cache-file=gutenberg-catalog-cache.json.gz` snapshot diffing and `--diff-output=quote-diff.json` emission (`hasCatalogMetadataChanged`, `filterChangedOrNewBooks` preserving `quotes`), withdrawn-book reconciliation (`reconcileWithdrawnCatalogBooks`), and sticky dynamic Supabase batch upserts.';
+    const meta = scriptSuiteMetaMap[baseName];
+    const scriptSuiteLayer = meta ? meta.layer : 'CLI Data Pipeline Test Suite';
+    const scriptSuiteRole = meta ? meta.role : 'Standalone CLI or verification test suite.';
     lines.push(
       `| **\`${baseName}\`** | [\`${scriptSuite}\`](${scriptSuite}) | ${scriptSuiteLayer} | ${scriptSuiteRole} |`
     );
@@ -2200,9 +2265,89 @@ function generateMarkdown() {
     '',
     '## 🔗 AST Module Interconnection & Topology Matrix',
     '',
-    'Every source file is analyzed for upstream imports, downstream consumers, and its co-located Vitest suite to guarantee zero orphaned or untested code:',
+    'Every source file is analyzed for upstream imports, downstream consumers, Babel AST parse integrity (`getAstParseErrors`), static circular dependencies (`hasCycles`), enforced architectural layer boundaries (`detectLayerViolations`: `src/components/ui/**` isolated from `stores/`, `app/`, and feature component folders; `src/lib/**` isolated from `components/`, `hooks/`, and `app/`, with `import type` exempted), runtime cross-boundary callers, and its co-located Vitest suite to guarantee zero broken, circular, boundary-violating, orphaned, or untested code:',
     '',
-    '| Module / Component | Upstream Dependencies (Imports) | Downstream Consumers (Consumed By) | Co-Located Test Suite | Role & Responsibilities |',
+    '### 1. Client & SSR ↔ Internal API Route Callers (AST-Extracted)',
+    '',
+    '| Endpoint Route | Route Handler | AST-Verified Client / SSR Callers |',
+    '| :--- | :--- | :--- |',
+  );
+
+  const routeFileByPath = new Map(routes.map((rt) => [rt.path, rt.file]));
+  for (const apiItem of crossBoundary.apiRouteCallers) {
+    const handlerFile = routeFileByPath.get(apiItem.route);
+    const handlerCell = handlerFile ? `[\`${handlerFile}\`](${handlerFile})` : '_Handler_';
+    const callersCell = apiItem.callers.map((c) => `[\`${c}\`](${c})`).join(', ');
+    lines.push(`| **\`${apiItem.route}\`** | ${handlerCell} | ${callersCell} |`);
+  }
+
+  lines.push(
+    '',
+    '### 2. Supabase PostgreSQL Tables & RPC Caller Topology (AST-Extracted)',
+    '',
+    '| Database Entity / RPC | Kind | AST-Verified `src/` & `scripts/*.js` Callers |',
+    '| :--- | :--- | :--- |'
+  );
+
+  for (const tp of crossBoundary.dbTouchpoints) {
+    const callersCell = tp.callers.map((c) => `[\`${c}\`](${c})`).join(', ');
+    lines.push(`| **\`${tp.table}\`** | PostgreSQL Table | ${callersCell} |`);
+  }
+  for (const rpc of crossBoundary.rpcCallers) {
+    const callersCell = rpc.callers.map((c) => `[\`${c}\`](${c})`).join(', ');
+    lines.push(`| **\`${rpc.rpc}\`** | \`SECURITY DEFINER\` RPC | ${callersCell} |`);
+  }
+
+  lines.push(
+    '',
+    '### 3. Cross-Layer Storage Keys, Caches & SSR Cookies (AST-Extracted)',
+    '',
+    '| Storage Key / Cookie / DB | Zustand Persist Store | AST-Verified Writers | AST-Verified Readers |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const st of crossBoundary.storageKeyBindings) {
+    const persistCell =
+      st.persistedBy.length > 0
+        ? st.persistedBy.map((f) => `[\`${f}\`](${f})`).join(', ')
+        : '_None_';
+    const fallbackIoLabel =
+      st.persistedBy.length > 0 ? '_Managed by Persist Middleware_' : '_None_';
+    const writersCell =
+      st.writers.length > 0 ? st.writers.map((f) => `[\`${f}\`](${f})`).join(', ') : fallbackIoLabel;
+    const readersCell =
+      st.readers.length > 0 ? st.readers.map((f) => `[\`${f}\`](${f})`).join(', ') : fallbackIoLabel;
+    lines.push(`| **\`${st.key}\`** | ${persistCell} | ${writersCell} | ${readersCell} |`);
+  }
+
+  lines.push(
+    '',
+    '### 4. CLI, AST & Security Script Dependency Matrix (`scripts/`)',
+    '',
+    '| Script Module | Internal `scripts/` Requires | Downstream Script Consumers | DB Tables (`.from()`) |',
+    '| :--- | :--- | :--- | :--- |'
+  );
+
+  for (const sNode of scriptsGraph.nodes) {
+    const sLabel = sNode.file.replace(/^scripts\//, '');
+    const reqCell =
+      sNode.requires.length > 0
+        ? sNode.requires.map((r) => `[\`${r.replace(/^scripts\//, '')}\`](${r})`).join(', ')
+        : '_Standalone_';
+    const consCell =
+      sNode.consumedBy.length > 0
+        ? sNode.consumedBy.map((c) => `[\`${c.replace(/^scripts\//, '')}\`](${c})`).join(', ')
+        : '_CLI / Workflow Entrypoint_';
+    const dbCell =
+      sNode.dbTables.length > 0 ? sNode.dbTables.map((t) => `\`${t}\``).join(', ') : '_None_';
+    lines.push(`| [\`${sLabel}\`](${sNode.file}) | ${reqCell} | ${consCell} | ${dbCell} |`);
+  }
+
+  lines.push(
+    '',
+    '### 5. Source Module AST Topology Matrix (`src/`)',
+    '',
+    '| Module / Component | Upstream Dependencies (`_(type)_` = type-only) | Downstream Consumers (`_(type)_` = type-only) | Co-Located Test Suite | Role & Responsibilities |',
     '| :--- | :--- | :--- | :--- | :--- |'
   );
 
@@ -2285,19 +2430,47 @@ function generateMarkdown() {
     return 'Production Module';
   };
 
+  const srcFileSet = new Set(graph.keys());
   for (const file of sortedFiles) {
     const data = graph.get(file);
     const label = formatModuleLabel(file);
-    const uniqueImports = Array.from(new Set(data.imports.map((i) => i.replace('@/', ''))));
+    const typeOnlyResolvedSet = new Set(data.typeOnlyImports || []);
+    const uniqueImportsMap = new Map();
+    for (const rawImp of data.imports) {
+      const display = rawImp.replace(/^@\//, '');
+      const resolved = resolveImportPath(rawImp, file, srcFileSet);
+      const isTypeOnly = Boolean(resolved && typeOnlyResolvedSet.has(resolved));
+      if (!uniqueImportsMap.has(display)) {
+        uniqueImportsMap.set(display, isTypeOnly);
+      } else if (!isTypeOnly) {
+        uniqueImportsMap.set(display, false);
+      }
+    }
     const importsStr =
-      uniqueImports.length > 0
-        ? uniqueImports.map((i) => `\`${i}\``).join(', ')
+      uniqueImportsMap.size > 0
+        ? Array.from(uniqueImportsMap.entries())
+            .map(([disp, isTypeOnly]) => (isTypeOnly ? `\`${disp}\` _(type)_` : `\`${disp}\``))
+            .join(', ')
         : '_Root Primitive_';
 
-    const uniqueConsumers = Array.from(new Set(data.consumedBy.map((c) => formatModuleLabel(c))));
+    const typeOnlyConsumerSet = new Set(data.typeOnlyConsumedBy || []);
+    const uniqueConsumersMap = new Map();
+    for (const consumerRel of data.consumedBy) {
+      const cLabel = formatModuleLabel(consumerRel);
+      const isTypeOnly = typeOnlyConsumerSet.has(consumerRel);
+      if (!uniqueConsumersMap.has(cLabel)) {
+        uniqueConsumersMap.set(cLabel, isTypeOnly);
+      } else if (!isTypeOnly) {
+        uniqueConsumersMap.set(cLabel, false);
+      }
+    }
     const consumersStr =
-      uniqueConsumers.length > 0
-        ? uniqueConsumers.map((c) => `\`${c}\``).join(', ')
+      uniqueConsumersMap.size > 0
+        ? Array.from(uniqueConsumersMap.entries())
+            .map(([cLabel, isTypeOnly]) =>
+              isTypeOnly ? `\`${cLabel}\` _(type)_` : `\`${cLabel}\``
+            )
+            .join(', ')
         : file.includes('page.tsx') || file.includes('route.ts') || file.includes('layout.tsx')
           ? '_App Route Entry_'
           : '_Direct Root Consumer_';
@@ -2684,8 +2857,8 @@ function generateMarkdown() {
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
     '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |',
-    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
-    '| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 17 mandatory governance docs, semantic command/metric parity, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites |',
+    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
+    '| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 18 mandatory governance docs, `@scope`/`@invariant`/`@adr` behavioral contracts across Tier-1..Tier-4 protected modules, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |',
     `| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | \`eslint . --max-warnings 0\` (\`bookarium-security\`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and ${getSecurityPluginRuleCount()} custom AST/taint security rules; zero dead files/exports |`,
     '| **Pass 7** | Production Application Build | `next build` | Optimized production bundle compilation within byte budget |',
     '',
@@ -2769,6 +2942,17 @@ function syncReadmeArchitectureDiagrams(architectureMarkdown) {
 
 const outputPath = path.join(rootDir, 'docs', 'ARCHITECTURE.md');
 const content = generateMarkdown();
-fs.writeFileSync(outputPath, content, 'utf-8');
-syncReadmeArchitectureDiagrams(content);
-console.log('✔ [SUCCESS] Comprehensive AST-driven docs/ARCHITECTURE.md generated successfully.');
+const normalizeArchDoc = (text) =>
+  String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/^>\s*\*\*Last Synchronized\*\*:\s*`?\d{4}-\d{2}-\d{2}`?.*$/m, '')
+    .trim();
+const existingArch = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf-8') : '';
+if (existingArch && normalizeArchDoc(content) === normalizeArchDoc(existingArch)) {
+  syncReadmeArchitectureDiagrams(existingArch);
+  console.log('✔ [IDEMPOTENT] docs/ARCHITECTURE.md AST unchanged. Preserving existing matrix.');
+} else {
+  fs.writeFileSync(outputPath, content, 'utf-8');
+  syncReadmeArchitectureDiagrams(content);
+  console.log('✔ [SUCCESS] Comprehensive AST-driven docs/ARCHITECTURE.md generated successfully.');
+}

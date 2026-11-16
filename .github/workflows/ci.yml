@@ -30,3 +30,17 @@ jobs:
       - name: Run 7-Gateway Quality Engine
         run: npm run verify:build
 
+      - name: Enforce Deterministic Living Documentation Sync (Zero Unsynced PR Drift)
+        run: |
+          git diff --exit-code -- \
+            docs/ARCHITECTURE.md \
+            docs/GUTENBERG_PARSER.md \
+            docs/SYSTEM_CONTRACTS.md \
+            CHANGELOG.md \
+            ROADMAP.md \
+            package.json \
+            package-lock.json \
+            SECURITY.md \
+            .github/workflows/release.yml \
+            .github/ISSUE_TEMPLATE/bug_report.yml
+

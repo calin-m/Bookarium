@@ -160,39 +160,86 @@ describe('usePersonalCollectionsController', () => {
       'Interested In',
     ]);
     expect(result.current.shelfSortBy).toBe('recent');
+    expect(result.current.isShelfFavoritesActive).toBe(false);
+    expect(result.current.shelfFavoritesCount).toBe(1);
+    expect(result.current.toolbarShelfSortBase).toBe('recent');
+    expect(result.current.drawerShelfSortBase).toBe('recent');
     expect(result.current.bookshelfActiveFilterCount).toBe(0);
     expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([1342, 84]);
 
-    // Select Favorites preset via Bookshelf Sort dropdown / Sort By chips
+    // 1. Desktop top-bar Favorites dropdown selection keeps direction locked on toolbar,
+    // while mapping drawer state cleanly to Favorites=ON + Date Added with Direction unlocked
     act(() => {
-      result.current.setShelfSortBy('favorites');
+      result.current.handleToolbarShelfSortChange('favorites');
     });
     expect(result.current.shelfSortBy).toBe('favorites');
-    expect(result.current.shelfSortBase).toBe('favorites');
-    expect(result.current.isShelfDirDisabled).toBe(true);
+    expect(result.current.toolbarShelfSortBase).toBe('favorites');
+    expect(result.current.isToolbarShelfDirDisabled).toBe(true);
+    expect(result.current.drawerShelfSortBase).toBe('recent');
+    expect(result.current.isDrawerShelfDirDisabled).toBe(false);
+    expect(result.current.isShelfFavoritesActive).toBe(true);
     expect(result.current.bookshelfActiveFilterCount).toBe(1);
     expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([1342]);
 
-    // Switch to custom shelf ('Interested In', containing only Frankenstein #84 which is not favorited)
+    // 2. Flipping Sort Direction in the drawer promotes 'favorites' into orthogonal shelfFavoritesOnly + 'recent_asc'
     act(() => {
+      result.current.handleDrawerShelfDirectionChange('asc');
+    });
+    expect(result.current.shelfFavoritesOnly).toBe(true);
+    expect(result.current.shelfSortBy).toBe('recent_asc');
+    expect(result.current.toolbarShelfSortBase).toBe('recent');
+    expect(result.current.isToolbarShelfDirDisabled).toBe(false);
+    expect(result.current.bookshelfActiveFilterCount).toBe(2);
+
+    // Reset back to top-bar 'favorites' then combine in drawer with Title sorting
+    act(() => {
+      result.current.handleToolbarShelfSortChange('favorites');
+    });
+    act(() => {
+      result.current.handleDrawerShelfSortChange('title');
+    });
+    expect(result.current.shelfFavoritesOnly).toBe(true);
+    expect(result.current.shelfSortBy).toBe('title_asc');
+    expect(result.current.toolbarShelfSortBase).toBe('title');
+    expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([1342]);
+
+    // 3. Toggling drawer Favorites switch off restores all books sorted alphabetically by Title
+    act(() => {
+      result.current.handleDrawerFavoritesToggle(false);
+    });
+    expect(result.current.isShelfFavoritesActive).toBe(false);
+    expect(result.current.shelfSortBy).toBe('title_asc');
+    expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([84, 1342]);
+
+    // 4. Custom shelf ('Interested In', containing only Frankenstein #84) + Favorites + Downloaded sort empty states
+    act(() => {
+      result.current.handleDrawerFavoritesToggle(true);
       result.current.handleDrawerSelectShelf('custom-shelf');
     });
-    expect(result.current.bookshelfActiveFilterCount).toBe(2);
+    expect(result.current.shelfFavoritesCount).toBe(0);
+    expect(result.current.bookshelfActiveFilterCount).toBe(3);
     expect(result.current.paginatedSavedBooks).toEqual([]);
     expect(result.current.emptyStateCopy.title).toBe('No favorited volumes on this shelf');
 
-    // Downloaded virtual tab + Favorites preset retains offline favorited volume
+    act(() => {
+      result.current.handleDrawerShelfSortChange('downloaded');
+    });
+    expect(result.current.isDrawerShelfDirDisabled).toBe(true);
+    expect(result.current.emptyStateCopy.title).toBe('No downloaded favorites on this shelf');
+
+    // 5. Downloaded virtual tab retains offline favorited volume (#1342) and clearShelfFavoritesFilter restores cleanly
     act(() => {
       result.current.handleDrawerSelectShelf(DOWNLOADED_SHELF_ID);
     });
     expect(result.current.isViewingDownloaded).toBe(true);
     expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([1342]);
 
-    // Resetting back to 'all' and default sort clears active filters
     act(() => {
+      result.current.clearShelfFavoritesFilter();
       result.current.handleDrawerSelectShelf('all');
-      result.current.setShelfSortBy('recent');
+      result.current.handleToolbarShelfSortChange('recent');
     });
+    expect(result.current.isShelfFavoritesActive).toBe(false);
     expect(result.current.paginatedSavedBooks.map((b) => b.id)).toEqual([1342, 84]);
   });
 });

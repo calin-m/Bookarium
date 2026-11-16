@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useHabitsStore
+ * @scope Reading streak telemetry (`MIN_STREAK_DURATION_SECONDS = 300`), daily activity calendar, annual reading goal tracking, and dual reading vs. listening immersion counters.
+ * @invariant Require `>= 300` active daily immersion seconds to unlock a streak day, coalesce syncs via `coalesceInFlightByUser`, and skip redundant `user_reading_habits` upserts when `isRemoteAlreadyConverged` holds.
+ * @invariant Bypass the `15,000ms` passive mount cooldown (`lastHabitsSyncByUser`) whenever debounce timers or dirty updates are pending, resetting timers cleanly on factory resets.
+ * @rationale Skipping converged no-op upserts cuts redundant Postgres writes across navigation/account mounts while preserving monotonically merged dates and active immersion totals.
+ * @adr ADR-027, ADR-029, ADR-032, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';

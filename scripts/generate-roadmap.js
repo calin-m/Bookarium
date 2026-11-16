@@ -559,8 +559,13 @@ This document is generated programmatically by \`scripts/generate-roadmap.js\` d
 if (require.main === module) {
   const roadmapContent = generateRoadmapMarkdown();
   const outputPath = path.join(rootDir, 'ROADMAP.md');
-  fs.writeFileSync(outputPath, roadmapContent, 'utf-8');
-  console.log(`✔ [SUCCESS] Living ROADMAP.md generated successfully (0% drift).`);
+  const existing = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf-8') : '';
+  if (existing && existing.replace(/\r\n/g, '\n') === roadmapContent.replace(/\r\n/g, '\n')) {
+    console.log('✔ [IDEMPOTENT] ROADMAP.md unchanged (0% drift). Preserving existing file.');
+  } else {
+    fs.writeFileSync(outputPath, roadmapContent, 'utf-8');
+    console.log(`✔ [SUCCESS] Living ROADMAP.md generated successfully (0% drift).`);
+  }
 }
 
 module.exports = {

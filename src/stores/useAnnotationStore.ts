@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useAnnotationStore
+ * @scope Personal Commonplace highlights/notes, Fellow Marginalia feed, chapter Spoiler Shield state, and queued annotation outbox sync.
+ * @invariant Prune flushed deletion `tombstones` after cloud delete confirmation while advancing `lastAnnotationSyncAt` so stale local tombstones never block restored annotations or resurrect remotely deleted highlights.
+ * @invariant Exclude internal `upsertError` retries from marking `dirty*Users` retry loops, enforce `MAX_ANNOTATION_TEXT_LENGTH` / `MAX_ANNOTATION_NOTE_LENGTH` bounds, and coalesce reads via `coalesceInFlightByUser` (`15,000ms` passive cooldowns).
+ * @rationale Separating persisted LWW `lastAnnotationSyncAt` anchors from ephemeral passive cooldowns prevents multi-device highlight count divergence without re-fetching unchanged marginalia on drawer switches.
+ * @adr ADR-019, ADR-055, ADR-059, ADR-080
+ */
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '@/config/site-config';

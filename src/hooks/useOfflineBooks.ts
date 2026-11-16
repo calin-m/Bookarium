@@ -1,5 +1,15 @@
 'use client';
 
+/**
+ * @module
+ * @scope Client hook orchestrating IndexedDB offline book downloads, storage quota reporting,
+ *        background idle cover backfill, and cross-component custom event synchronization.
+ * @invariant Normalize offline authors via `isPlaceholderAuthor`, Zustand Bookshelf state, and `FEATURED_HERO_BOOKS` before `saveOfflineBook` so offline records never regress to `"Anonymous"` or trigger false `HTTP 451` blocks.
+ * @invariant Pre-warm dynamic Reader/Preview/Download JS bundles after persisting an offline download and broadcast `OFFLINE_BOOKS_UPDATED_EVENT` / `OFFLINE_DOWNLOADING_EVENT` so sibling hooks stay synchronized.
+ * @rationale Static pre-warming avoids `ChunkLoadError` when opening a downloaded volume offline, while `syncEpochRef` and signature diffs prevent stale IndexedDB snapshots from overwriting newer updates.
+ * @adr ADR-020, ADR-069, ADR-070
+ */
+
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { QueryClientContext } from '@tanstack/react-query';
 import type { GutendexBook, Book, Author } from '@/types/book.types';

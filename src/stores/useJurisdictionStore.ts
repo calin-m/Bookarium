@@ -1,3 +1,12 @@
+/**
+ * @module src/stores/useJurisdictionStore
+ * @scope Client-side regional copyright jurisdiction state (`country`, `rule`, `overrideCountry`) synchronized with `bookarium-geo-country` cookie context.
+ * @invariant Normalize every ISO country code through `normalizeCountryCode`, resolve initial territory synchronously from `GEO_COOKIE_NAME` (or dev timezone / `'US'` default), and recompute `rule` via `getJurisdictionRule`.
+ * @invariant Never persist `overrideCountry` across reloads or allow stale cookie drift to bypass copyright gating.
+ * @rationale Synchronous initial country resolution avoids client hydration flicker on regional availability badges while matching server edge-proxy `bookarium-geo-country` headers.
+ * @adr ADR-036, ADR-042, ADR-044
+ */
+
 import { create } from 'zustand';
 import { getJurisdictionRule, type JurisdictionRule, normalizeCountryCode } from '@/lib/copyright-engine';
 import { getCountryFromTimezone } from '@/lib/country-resolver';

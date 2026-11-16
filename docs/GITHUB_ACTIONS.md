@@ -200,7 +200,8 @@ Continuous integration quality gate verifying every branch push and pull request
 - **Required Secrets**: **None** (runs hermetically with MSW v2 network mocks and bundled test fixtures)
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@v4`), setup Node `22` with npm cache (`actions/setup-node@v4`), run `npm ci`.
-  2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity $\to$ Pass 5 ADR, 17 governance docs, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build).
+  2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity $\to$ Pass 5 ADR, 18 governance docs, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build).
+  3. Execute `git diff --exit-code` across the `10` deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
 - **Local CLI Equivalents**:
   ```bash
   # Exact CI command (full 7-Gateway Quality Engine)
@@ -218,7 +219,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.38'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.43'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:

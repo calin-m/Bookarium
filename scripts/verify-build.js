@@ -1199,6 +1199,7 @@ function pass4DocsSync() {
     require('./generate-quality-report.js');
     require('./generate-architecture-matrix.js');
     require('./generate-parser-docs.js');
+    require('./generate-contracts-docs.js');
     const {
       syncReleaseVersionFiles,
       generateChangelog,
@@ -1209,7 +1210,7 @@ function pass4DocsSync() {
     syncReadmeLatestRelease();
     const { generateRoadmapMarkdown } = require('./generate-roadmap.js');
     fs.writeFileSync(path.join(rootDir, 'ROADMAP.md'), generateRoadmapMarkdown(), 'utf-8');
-    logPass('docs/QUALITY_AUDIT_REPORT.md, docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, CHANGELOG.md, and ROADMAP.md synced successfully from source AST.');
+    logPass('docs/QUALITY_AUDIT_REPORT.md, docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, docs/SYSTEM_CONTRACTS.md, CHANGELOG.md, and ROADMAP.md synced successfully from source AST.');
     return true;
   } catch (err) {
     logFail(`Documentation synchronization failed: ${err.message}`);
@@ -1239,6 +1240,7 @@ function pass5AdrValidation() {
     'docs/DECISIONS.md',
     'docs/GITHUB_ACTIONS.md',
     'docs/GUTENBERG_PARSER.md',
+    'docs/SYSTEM_CONTRACTS.md',
     'docs/QUALITY_AUDIT_REPORT.md',
     'ROADMAP.md',
     'CHANGELOG.md',
@@ -1269,10 +1271,14 @@ function pass5AdrValidation() {
 
   const adrBlocks = content.split(/(?=^## ADR-\d+:)/m).filter((b) => /^## ADR-\d+:/.test(b));
   const requiredAdrFields = ['- **Status**:', '- **Context**:', '- **Decision**:', '- **Consequences**:'];
+  const validAdrSet = new Set();
 
   adrBlocks.forEach((block, index) => {
     const idMatch = block.match(/^## ADR-(\d+):/);
     const num = idMatch ? parseInt(idMatch[1], 10) : -1;
+    if (num > 0) {
+      validAdrSet.add(`ADR-${String(num).padStart(3, '0')}`);
+    }
     const expectedNum = index + 1;
     if (num !== expectedNum) {
       docViolations.push(
@@ -1359,6 +1365,7 @@ function pass5AdrValidation() {
     'scripts/purge-vercel-cache.js',
     'scripts/sync-featured-quotes.js',
     'scripts/sync-gutenberg-catalog.js',
+    'scripts/lib/ast-parser.js',
     'scripts/eslint-rules/bookarium-security.js',
   ];
   for (const relScript of requiredPipelineScriptTests) {
@@ -1458,26 +1465,144 @@ function pass5AdrValidation() {
     }
   }
 
-  // 5. Zero Circular Dependencies & Zero Orphaned Modules Gate (Rule 2)
+  // 5. Zero Circular Dependencies, Zero Parse Blindness, Layer Boundaries & Zero Orphaned Modules Gate (Rule 2)
   let depGraph = null;
+  let crossBoundaryCatalog = null;
+  const contractedFilesSet = new Set();
   try {
     const {
       analyzeDependencyGraph,
       detectCircularDependencies,
+      getAstParseErrors,
+      detectLayerViolations,
       detectOrphanedModules,
+      analyzeScriptsDependencyGraph,
+      extractCrossBoundaryCouplingCatalog,
+      extractSqlSchemaEntities,
+      TIER_1_CONTRACTED_MODULES,
+      TIER_2_CONTRACTED_MODULES,
+      TIER_3_CONTRACTED_MODULES,
+      PROTECTED_CONTRACTED_MODULES,
+      extractBehavioralContractsCatalog,
+      findOrphanedGeneratorLookupKeys,
     } = require('./lib/ast-parser');
     depGraph = analyzeDependencyGraph(path.join(rootDir, 'src'), rootDir);
     const circularHealth = detectCircularDependencies(depGraph);
+    const astParseErrors = getAstParseErrors(depGraph);
+    const layerViolations = detectLayerViolations(depGraph);
     const orphanedModules = detectOrphanedModules(depGraph);
+    const scriptsGraph = analyzeScriptsDependencyGraph(rootDir);
+    crossBoundaryCatalog = extractCrossBoundaryCouplingCatalog(path.join(rootDir, 'src'), rootDir);
+    const contractsCatalog = extractBehavioralContractsCatalog(path.join(rootDir, 'src'), rootDir);
+    const orphanLookupKeys = findOrphanedGeneratorLookupKeys(rootDir, path.join(rootDir, 'src'));
 
-    if (circularHealth.hasCycles) {
+    if (circularHealth.hasCycles || circularHealth.cycleCount > 0) {
       for (const cycle of circularHealth.cycles) {
         docViolations.push(`Circular module dependency detected: ${cycle.join(' -> ')}`);
+      }
+    }
+    if (astParseErrors.length > 0) {
+      for (const parseErr of astParseErrors) {
+        docViolations.push(
+          `Babel AST parse failure in "${parseErr.file}" (blinds static cycle/props analysis): ${parseErr.error}`
+        );
+      }
+    }
+    for (const sParseErr of [...scriptsGraph.parseErrors, ...crossBoundaryCatalog.parseErrors]) {
+      docViolations.push(
+        `Babel AST parse failure in cross-boundary/script scan "${sParseErr.file}": ${sParseErr.error}`
+      );
+    }
+    for (const cParseErr of contractsCatalog.parseErrors) {
+      docViolations.push(
+        `Babel AST parse failure in system contracts scan "${cParseErr.file}": ${cParseErr.error}`
+      );
+    }
+    for (const cIssue of contractsCatalog.validationIssues) {
+      docViolations.push(
+        `Invalid JSDoc contract tag in "${cIssue.file}": ${cIssue.message}`
+      );
+    }
+
+    const contractsByFile = new Map(contractsCatalog.modules.map((m) => [m.file, m]));
+    const tier1Set = new Set(TIER_1_CONTRACTED_MODULES);
+    const tier2Set = new Set(TIER_2_CONTRACTED_MODULES);
+    const tier3Set = new Set(TIER_3_CONTRACTED_MODULES);
+    for (const protectedFile of PROTECTED_CONTRACTED_MODULES) {
+      const entry = contractsByFile.get(protectedFile);
+      if (
+        !entry ||
+        !entry.hasContract ||
+        !entry.moduleContract ||
+        !entry.moduleContract.scope ||
+        entry.moduleContract.invariants.length === 0
+      ) {
+        const tierLabel = tier1Set.has(protectedFile)
+          ? 'Tier-1'
+          : tier2Set.has(protectedFile)
+            ? 'Tier-2'
+            : tier3Set.has(protectedFile)
+              ? 'Tier-3'
+              : 'Tier-4';
+        docViolations.push(
+          `${tierLabel} protected module "${protectedFile}" is missing required @scope + @invariant JSDoc contract annotations.`
+        );
+      }
+    }
+
+    const contractsDocPath = path.join(rootDir, 'docs', 'SYSTEM_CONTRACTS.md');
+    const contractsDocContent = fs.existsSync(contractsDocPath)
+      ? fs.readFileSync(contractsDocPath, 'utf-8')
+      : null;
+    for (const mod of contractsCatalog.modules) {
+      if (!mod.hasContract) continue;
+      contractedFilesSet.add(mod.file);
+      const allAdrs = [
+        ...(mod.moduleContract?.adrs || []),
+        ...mod.symbolContracts.flatMap((s) => s.adrs || []),
+      ];
+      for (const adrId of allAdrs) {
+        if (!validAdrSet.has(adrId)) {
+          docViolations.push(
+            `Unknown @adr reference "${adrId}" in "${mod.file}" (not found in docs/DECISIONS.md).`
+          );
+        }
+      }
+      if (contractsDocContent !== null && !contractsDocContent.includes(mod.file)) {
+        docViolations.push(
+          `Contracted module "${mod.file}" is missing from docs/SYSTEM_CONTRACTS.md (run "npm run docs:contracts" or "npm run docs:sync").`
+        );
+      }
+    }
+    for (const orphanKey of orphanLookupKeys) {
+      docViolations.push(
+        `Orphaned generator lookup key "${orphanKey.key}" in ${orphanKey.mapName} (${orphanKey.file}): ${orphanKey.reason}`
+      );
+    }
+    if (layerViolations.length > 0) {
+      for (const violation of layerViolations) {
+        docViolations.push(
+          `Architectural layer boundary violation in "${violation.file}" -> "${violation.target}": ${violation.rule}`
+        );
       }
     }
     if (orphanedModules.length > 0) {
       for (const orphan of orphanedModules) {
         docViolations.push(`Orphaned unreferenced module detected in src/: ${orphan}`);
+      }
+    }
+    if (fs.existsSync(schemaPath)) {
+      const schemaTablesSet = new Set(
+        extractSqlSchemaEntities(fs.readFileSync(schemaPath, 'utf-8')).tableNames.map(
+          (t) => `public.${t}`
+        )
+      );
+      for (const tp of crossBoundaryCatalog.dbTouchpoints) {
+        if (!schemaTablesSet.has(tp.table)) {
+          docViolations.push(
+            `Unknown Supabase table reference "${tp.table}" in [${tp.callers.join(', ')}] (missing from supabase/schema.sql).`
+          );
+        }
       }
     }
   } catch (err) {
@@ -1540,6 +1665,30 @@ function pass5AdrValidation() {
       if (validNpmScripts.size > 0 && !validNpmScripts.has(cmdName)) {
         docViolations.push(
           `Stale or invalid command reference "npm run ${cmdName}" in ${relDoc} (not found in package.json scripts).`
+        );
+      }
+    }
+  }
+
+  // Verify explicit src/... and scripts/... file paths across governance docs & runbooks exist on disk
+  for (const relDoc of [...semanticDocFiles, 'docs/SYSTEM_CONTRACTS.md']) {
+    const fullDoc = path.join(rootDir, relDoc);
+    if (!fs.existsSync(fullDoc)) continue;
+    let docText = fs.readFileSync(fullDoc, 'utf-8');
+    if (relDoc === 'README.md') {
+      docText = docText.replace(
+        /<!-- BEGIN:latest-release -->[\s\S]*?<!-- END:latest-release -->/,
+        ''
+      );
+    }
+    const pathMatches = docText.matchAll(
+      /\b((?:src|scripts)\/[A-Za-z0-9_./-]+\.(?:ts|tsx|js|jsx|css))\b/g
+    );
+    for (const m of pathMatches) {
+      const relRef = m[1];
+      if (!fs.existsSync(path.join(rootDir, relRef))) {
+        docViolations.push(
+          `Stale or non-existent source/script path "${relRef}" referenced in ${relDoc} (update doc or remove dead reference).`
         );
       }
     }
@@ -1639,13 +1788,35 @@ function pass5AdrValidation() {
       'Stored database function or trigger.',
       'Application custom hook.',
       'Domain utility module.',
+      'Next.js App Router entrypoint.',
+      'Automated GitHub Actions CI/CD workflow.',
+      'Application environment configuration parameter.',
+      'Static public asset served at root edge path.',
+      'Background Web Worker script.',
+      'Node.js automation or maintenance script.',
+      'Standalone CLI or verification test suite.',
+      'Cross-boundary runtime signal channel.',
     ];
     for (const placeholder of genericPlaceholders) {
       if (archContent.includes(placeholder)) {
         docViolations.push(
-          `Unmapped generic fallback description "${placeholder}" in docs/ARCHITECTURE.md (update lookup map in scripts/generate-architecture-matrix.js).`
+          `Unmapped generic fallback description "${placeholder}" in docs/ARCHITECTURE.md (update lookup map in scripts/generate-architecture-matrix.js or scripts/lib/ast-parser.js).`
         );
       }
+    }
+    if (crossBoundaryCatalog && Array.isArray(crossBoundaryCatalog.signalChannels)) {
+      for (const sig of crossBoundaryCatalog.signalChannels) {
+        if (sig.isCustomSignal && !archContent.includes(sig.name)) {
+          docViolations.push(
+            `Cross-boundary signal channel "${sig.name}" (${sig.kind}) is missing from docs/ARCHITECTURE.md (update signalMetaMap in scripts/generate-architecture-matrix.js and run "npm run docs:sync").`
+          );
+        }
+      }
+    }
+    if (/\|\s*Index on `public\.[^`]+`\.\s*\|/.test(archContent)) {
+      docViolations.push(
+        'Unmapped SQL index description ("Index on `public.<table_name>`.") in docs/ARCHITECTURE.md (update indexDescMap in scripts/generate-architecture-matrix.js).'
+      );
     }
 
     // Verify 1:1 SQL Stored Function Parity against docs/ARCHITECTURE.md
@@ -1828,6 +1999,52 @@ function pass5AdrValidation() {
           }
         }
       }
+
+      // Reverse Dead Workflow File & Live Count Parity across docs/guides
+      const activeWfSet = new Set(wfFiles.map((f) => `.github/workflows/${f}`));
+      const wfAuditDocs = [
+        'docs/ARCHITECTURE.md',
+        'docs/GITHUB_ACTIONS.md',
+        'docs/PIPELINE_GUIDE.md',
+        'README.md',
+        'AGENTS.md',
+        '.agents/AGENTS.md',
+      ];
+      for (const relDoc of wfAuditDocs) {
+        const absDoc = path.join(rootDir, relDoc);
+        if (!fs.existsSync(absDoc)) continue;
+        let docTxt = fs.readFileSync(absDoc, 'utf-8');
+        if (relDoc === 'README.md') {
+          docTxt = docTxt.replace(
+            /<!-- BEGIN:latest-release -->[\s\S]*?<!-- END:latest-release -->/,
+            ''
+          );
+        }
+        const deadWfRefs = docTxt.matchAll(/\b(\.github\/workflows\/[A-Za-z0-9_.-]+\.ya?ml)\b/g);
+        for (const m of deadWfRefs) {
+          if (!activeWfSet.has(m[1])) {
+            docViolations.push(
+              `Stale or removed workflow reference "${m[1]}" in ${relDoc} (file no longer exists in .github/workflows/).`
+            );
+          }
+        }
+        if (
+          relDoc === 'README.md' ||
+          relDoc === 'docs/PIPELINE_GUIDE.md' ||
+          relDoc === 'docs/GITHUB_ACTIONS.md' ||
+          relDoc === 'docs/ARCHITECTURE.md'
+        ) {
+          const wfCountMatches = docTxt.matchAll(/\ball (\d+) (?:GitHub Actions )?workflows\b/gi);
+          for (const cm of wfCountMatches) {
+            const declaredCount = parseInt(cm[1], 10);
+            if (declaredCount !== wfFiles.length) {
+              docViolations.push(
+                `Stale workflow count "all ${declaredCount} workflows" in ${relDoc} (expected ${wfFiles.length} matching .github/workflows/*.yml).`
+              );
+            }
+          }
+        }
+      }
     }
 
     // Architecture Diagrams & Directory Parity Check between docs/ARCHITECTURE.md and README.md
@@ -1904,6 +2121,7 @@ function pass5AdrValidation() {
       .filter(Boolean);
 
     const dirtyFiles = new Set();
+    const modifiedContractedFiles = [];
     let hasNewProductionOrSchemaChange = false;
     let hasEditedExistingBehavior = false;
     for (const line of statusLines) {
@@ -1913,6 +2131,9 @@ function pass5AdrValidation() {
       dirtyFiles.add(cleanPath);
 
       const isNewFile = statusCode === '??' || statusCode.includes('A');
+      if (!isNewFile && contractedFilesSet.has(cleanPath)) {
+        modifiedContractedFiles.push(cleanPath);
+      }
       const isProductionCode =
         cleanPath.startsWith('src/') &&
         !cleanPath.includes('.test.') &&
@@ -1926,6 +2147,17 @@ function pass5AdrValidation() {
       } else if (!isNewFile && (isProductionCode || /^scripts\/generate-.*\.js$/.test(cleanPath))) {
         hasEditedExistingBehavior = true;
       }
+    }
+
+    if (
+      modifiedContractedFiles.length > 0 &&
+      !dirtyFiles.has('docs/SYSTEM_CONTRACTS.md') &&
+      !dirtyFiles.has('docs/DECISIONS.md') &&
+      !dirtyFiles.has('scripts/generate-changelog.js')
+    ) {
+      console.log(
+        `${colors.yellow}⚠ [ADVISORY] Contracted/Tier-1 module(s) modified (${modifiedContractedFiles.join(', ')}) — verify adjacent @scope/@invariant/@rationale JSDoc contracts and run "npm run docs:sync".${colors.reset}`
+      );
     }
 
     if (
@@ -2179,7 +2411,7 @@ function pass5AdrValidation() {
   }
 
   logPass(
-    `Validated ${matches.length} sequential ADRs, ${requiredDocs.length} governance docs, semantic command/metric parity, 1:1 SQL<->TS schema parity, 0 circular/orphan modules, and 100% co-located tests.`
+    `Validated ${matches.length} sequential ADRs, ${requiredDocs.length} governance docs, semantic command/metric parity, placeholder guards, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% co-located tests.`
   );
   return true;
 }

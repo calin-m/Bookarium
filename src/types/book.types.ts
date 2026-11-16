@@ -1,5 +1,5 @@
 /**
- * Canonical Domain Types for Project Gutenberg & Gutendex Entities
+ * Canonical Domain Types for Project Gutenberg Catalog Entities (retaining GutendexBook DTO aliases non-breaking)
  */
 
 export interface Author {

@@ -43,8 +43,9 @@ npm run verify
 # Standalone pre-commit security, SAST, AST taint & governance audit
 npm run security:audit
 
-# Sync Living Documentation (AST Matrix, Gutenberg Parser docs, Quality Report, Roadmap, and Changelog)
+# Sync Living Documentation (AST Matrix, System Contracts `@scope`/`@invariant`, Gutenberg Parser docs, Quality Report, Roadmap, and Changelog)
 npm run docs:sync
+npm run docs:contracts
 
 # Quality audit report (Pass 4 engine audit)
 npm run report

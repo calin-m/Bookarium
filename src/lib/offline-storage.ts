@@ -1,6 +1,13 @@
 /**
  * Native, zero-dependency IndexedDB storage engine for offline book content.
  * Allows storing full text of classic literature beyond localStorage's 5MB quota.
+ *
+ * @module src/lib/offline-storage
+ * @scope Browser IndexedDB persistence (`BookariumOfflineDB` / `offline_books`), `coverBlob` object-URL caching, and non-regressive author metadata healing.
+ * @invariant Never overwrite authentic author metadata with placeholder names (`isPlaceholderAuthor`, e.g., `"Anonymous"`); heal missing contributor lifespans via `patchOfflineBookAuthors`.
+ * @invariant Fetch covers via same-origin `/api/books/content?id=...&type=cover`, manage `coverObjectUrlCache` revocation on removal/clear, and broadcast changes exclusively through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
+ * @rationale Cross-origin Service Worker image caching triggers CSP/CORS failures, and reverting offline authors to `"Anonymous"` causes false `HTTP 451` copyright blocks outside US jurisdictions.
+ * @adr ADR-020, ADR-069, ADR-070, ADR-080
  */
 
 import type { Author, GutendexBook } from '@/types/book.types';

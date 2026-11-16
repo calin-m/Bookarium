@@ -1,3 +1,13 @@
+/**
+ * @module
+ * @scope Stateless API route handler (`GET /api/books/translations`) serving FRBR-linked alternate language
+ *        editions filtered by resolved client copyright jurisdiction.
+ * @invariant Enforce IP rate limiting (`booksApiRateLimiter`), reject unknown query keys outside `id` (plus dev-only `country`), and validate numeric `bookId` within `1..MAX_BOOK_ID` (`10_000_000`).
+ * @invariant Emit `Cache-Control` with `Vary: x-vercel-ip-country` and `Vercel-Cache-Tag: translations` on `200` responses, and fail closed with `Cache-Control: no-store` (`createNoStoreErrorResponse`) on `400`/`500` errors.
+ * @rationale Varying Edge caches strictly by Geo-IP country prevents cross-jurisdiction public-domain leakage while pinning error responses to `no-store` prevents Edge caching transient failures.
+ * @adr ADR-010, ADR-016, ADR-022
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { booksApiRateLimiter } from '@/lib/rate-limiter';
 import {
