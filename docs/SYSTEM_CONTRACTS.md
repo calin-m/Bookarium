@@ -806,11 +806,11 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Wikidata SPARQL (`P2034` / `P407`) FRBR work-clustering CLI populating idempotent cross-language edition links in `public.book_translations`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` foreign-key presence via `filterValidCatalogBookIds` before executing Supabase upserts.
+  - Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`) before persisting links.
   - Support offline `--dry-run` / `--output=...` atomic SQL seed generation (`generateAtomicSeedSql`) cleanly even when Supabase env credentials are absent.
 - **Design Rationale (`@rationale`)**:
-  - Strict anthology rejection and catalog FK pre-validation eliminate spurious cross-author translation links and foreign-key upsert failures during scheduled weekly runs.
-- **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md)
+  - Strict anthology rejection, catalog FK pre-validation, and public-domain `copyright !== true` filtering eliminate spurious cross-author translation links, copyrighted volume associations, and foreign-key upsert failures during scheduled weekly runs.
+- **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books`
 - **Test Contract**: [`scripts/ingest-translations.test.ts`](../scripts/ingest-translations.test.ts) (16 tests)
@@ -845,7 +845,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
+  - Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
   - Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
 - **Design Rationale (`@rationale`)**:
   - Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), respects Project Gutenberg mirror politeness rules, and avoids 78k-row PostgreSQL statement timeouts.

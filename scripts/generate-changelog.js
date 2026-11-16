@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.47',
+    date: '2026-11-16',
+    title: 'Public Copyright Governance Clarity & CLI Public-Domain Defense-in-Depth',
+    sections: {
+      Fixed: [
+        '**`/copyright` & `README.md` Governance Clarity and Manual `--ids` / Translation `copyright !== true` Guards (`src/app/copyright/page.tsx`, `src/app/copyright/page.test.tsx`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`, `scripts/ingest-translations.js`, `scripts/ingest-translations.test.ts`, `README.md`)**: Clarified `/copyright` Sections 1/3/4 and `README.md` Section 6 to distinguish internal per-entry RDF `<dcterms:rights>` indexing suppression (`rdf-files.tar.bz2`) from `copyright=false` display/delivery and global US + international `HTTP 451` enforcement, while adding `copyright !== true` checks to manual `--ids` `sync-featured-quotes.js` runs (`🚫 Copyrighted (skipped)`) and `ingest-translations.js` (`filterValidCatalogBookIds` + `WHERE b.copyright = false` SQL seeds) (`ADR-010`, `ADR-074`, `ADR-080`).',
+        '**Local-Noon Fake-Timer Pinning Against Midnight Rollover Flakiness (`src/hooks/useReadingTimer.test.ts`, `src/stores/useHabitsStore.test.ts`)**: Pinned fake timers to local noon (`new Date(2026, 10, 16, 12, 0, 0)`) right after `vi.useFakeTimers()` so `305s` streak accumulation and daily immersion assertions stay within a single local calendar day regardless of when verification executes (`ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.46',
     date: '2026-11-16',
     title: 'RDF Copyright Rights Extraction, PGLAF-First Catalog Feeds & Unified HTTP 451 Enforcement',

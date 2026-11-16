@@ -271,18 +271,26 @@ describe('sync-featured-quotes pipeline', () => {
       from: vi.fn(() => ({
         select: vi.fn(() => ({
           in: vi.fn().mockResolvedValue({
-            data: [{ id: 1342, title: 'Pride and Prejudice', quotes: [] }],
+            data: [
+              { id: 1342, title: 'Pride and Prejudice', copyright: false, quotes: [] },
+              { id: 90123, title: 'Copyrighted Title', copyright: true, quotes: [] },
+            ],
             error: null,
           }),
         })),
       })),
     };
-    const connectedIds = await quotesSync.fetchCandidateBooksFromSupabase(connectedByIdSupabase, {
-      ids: [1342, 999999],
+    const manualOptions: Record<string, unknown> = {
+      ids: [1342, 90123, 999999],
       limit: 10,
-    });
+    };
+    const connectedIds = await quotesSync.fetchCandidateBooksFromSupabase(
+      connectedByIdSupabase,
+      manualOptions
+    );
     expect(connectedIds).toHaveLength(1);
     expect(connectedIds[0].id).toBe(1342);
+    expect(manualOptions._skippedCopyrightIds).toEqual([90123]);
   });
 
   it('computes randomized float delays and 1.0h–2.0h float schedule windows', async () => {
@@ -1092,6 +1100,26 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       expect(forcedLines.some((l) => l.startsWith('[Recent 1/1] #75012 "A New Release": refreshed 12 → '))).toBe(true);
       expect(forced.report).toContain('🔄 Refreshed');
       expect(pruneInMock).not.toHaveBeenCalled();
+
+      // Copyrighted book targeted manually via --ids is skipped and reported cleanly without mirror downloads
+      const copyrightedRow = catalogRow({
+        id: 90123,
+        title: 'Copyrighted Modern Donation',
+        copyright: true,
+        download_count: 500,
+      });
+      const copyrightedEnv = createCatalogSupabase([...allRows, copyrightedRow], [pride, frankenstein, moby], [newerRelease, newRelease]);
+      logger.log.mockClear();
+      const skippedSummary = await quotesSync.runFeaturedQuotesSync(
+        { ids: [90123], limit: 10 },
+        { env: {}, supabaseClient: copyrightedEnv.client, logger, writeSeedFile: false }
+      );
+      expect(skippedSummary.processed).toBe(0);
+      expect(skippedSummary.books[0]).toMatchObject({ id: 90123, outcome: 'copyrighted' });
+      expect(skippedSummary.report).toContain('🚫 Copyrighted (skipped)');
+      expect(logger.log.mock.calls.map((c) => String(c[0]))).toContain(
+        '[Copyrighted] #90123 "Copyrighted Modern Donation" is flagged as copyrighted — skipped.'
+      );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -11,7 +11,7 @@
  *
  * @module scripts/sync-featured-quotes
  * @scope Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
- * @invariant Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
+ * @invariant Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
  * @invariant Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
  * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), respects Project Gutenberg mirror politeness rules, and avoids 78k-row PostgreSQL statement timeouts.
  * @adr ADR-074, ADR-080
@@ -1489,6 +1489,7 @@ const OUTCOME_LABELS = {
   'no-quotes': '⚪ No quotes found (placeholder)',
   pruned: '🧹 Pruned',
   'not-found': '❓ Not in catalog',
+  copyrighted: '🚫 Copyrighted (skipped)',
   failed: '❌ Failed',
 };
 
@@ -1834,13 +1835,25 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     const requestedIds = options.ids.slice(0, options.limit);
     const { data, error } = await supabase
       .from('books')
-      .select('id, title, authors, translators, subjects, languages, quotes, content, download_count')
+      .select('id, title, authors, translators, subjects, languages, copyright, quotes, content, download_count')
       .in('id', requestedIds);
     if (error) throw new Error(error.message);
     const byId = new Map((data || []).map((row) => [row.id, row]));
     options._missingIds = requestedIds.filter((id) => !byId.has(id));
+    options._skippedCopyrightRows = requestedIds
+      .filter((id) => {
+        const row = byId.get(id);
+        return Boolean(row && row.copyright === true);
+      })
+      .map((id) => byId.get(id));
+    options._skippedCopyrightIds = options._skippedCopyrightRows.map((row) => row.id);
     await resolveManualRunTiers(supabase, options, requestedIds);
-    return requestedIds.filter((id) => byId.has(id)).map((id) => byId.get(id));
+    return requestedIds
+      .filter((id) => {
+        const row = byId.get(id);
+        return Boolean(row && row.copyright !== true);
+      })
+      .map((id) => byId.get(id));
   }
 
   let popularData = null;
@@ -2106,6 +2119,12 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     recordBook({ id: missingId, title: `Gutenberg Volume #${missingId}` }, { outcome: 'not-found' });
   }
 
+  for (const skippedRow of options._skippedCopyrightRows || []) {
+    const title = skippedRow.title || `Gutenberg Volume #${skippedRow.id}`;
+    logger.log(`[Copyrighted] #${skippedRow.id} "${title}" is flagged as copyrighted — skipped.`);
+    recordBook(skippedRow, { outcome: 'copyrighted' });
+  }
+
   const shouldPrune = () => Boolean(options._popularPoolIds && supabase && !options._manualRun);
 
   const executePostBatchPrune = async () => {
@@ -2174,7 +2193,11 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     await executePostBatchPrune();
     logger.log(
       options._manualRun
-        ? 'None of the requested IDs exist in public.books — nothing to sync.'
+        ? options._skippedCopyrightRows &&
+          options._skippedCopyrightRows.length > 0 &&
+          (!options._missingIds || options._missingIds.length === 0)
+          ? 'All requested IDs are flagged as copyrighted — nothing to sync.'
+          : 'None of the requested IDs are eligible or present in public.books — nothing to sync.'
         : 'All eligible books in the Two-Tier pool already have quotes — nothing to sync.'
     );
     return finalizeRun();

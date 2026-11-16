@@ -47,6 +47,7 @@ describe('CopyrightPage', () => {
 
     expect(screen.getByText(/1\. 100% CC0 & Public Domain Manifesto/i)).toBeInTheDocument();
     expect(screen.getByText(/copyright=false/i)).toBeInTheDocument();
+    expect(screen.getByText(/block copyrighted entries at the API boundary/i)).toBeInTheDocument();
     expect(screen.getByText(/Universal Reading Liberty:/i)).toBeInTheDocument();
   });
 
@@ -79,6 +80,8 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/Decoupled Architecture:/i)).toBeInTheDocument();
     expect(screen.getByText(/Bandwidth Shielding & Edge Caching:/i)).toBeInTheDocument();
     expect(screen.getByText(/pg_catalog\.csv\.gz/i)).toBeInTheDocument();
+    expect(screen.getByText(/rdf-files\.tar\.bz2/i)).toBeInTheDocument();
+    expect(screen.getByText(/<dcterms:rights>/i)).toBeInTheDocument();
   });
 
   it('displays the email-free PUBLIC_USER_AGENT dynamically derived from SITE_CONFIG without stale legacy strings', async () => {
@@ -96,6 +99,7 @@ describe('CopyrightPage', () => {
     render(<CopyrightPage />);
 
     expect(screen.getByText(/4\. HTTP 451: Unavailable For Legal Reasons/i)).toBeInTheDocument();
+    expect(screen.getByText(/blocked globally, including in the United States/i)).toBeInTheDocument();
     expect(screen.getByText(/Privacy-First Functional Verification:/i)).toBeInTheDocument();
     expect(screen.getByText(/bookarium-geo-country/i)).toBeInTheDocument();
     expect(

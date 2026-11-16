@@ -200,6 +200,7 @@ describe('scripts/ingest-translations Engine', () => {
       expect(sql).toContain('COMMIT;');
       expect(sql).toContain('INSERT INTO public.book_translations');
       expect(sql).toContain('JOIN public.books b ON b.id = v.book_id');
+      expect(sql).toContain('WHERE b.copyright = false');
       expect(sql).toContain('ON CONFLICT (work_id, book_id) DO UPDATE');
       expect(sql).toContain("('Q170583', 1342, 'en', true, 1.00, 'authority_wikidata')");
     });
@@ -225,8 +226,16 @@ describe('scripts/ingest-translations Engine', () => {
               return {
                 in: async (col: string, ids: number[]) => {
                   capturedInCol = col;
-                  // Simulate only IDs 1342 and 43647 existing in catalog, while 999999 is missing
-                  const valid = ids.filter((id) => id !== 999999).map((id) => ({ id }));
+                  // Simulate IDs 1342 and 43647 cleared, 90123 copyrighted, and 999999 missing
+                  const valid = ids
+                    .filter((id) => id !== 999999)
+                    .map((id) =>
+                      id === 90123
+                        ? { id, copyright: true }
+                        : id === 43647
+                          ? { id, copyright: false }
+                          : { id }
+                    );
                   return { data: valid, error: null };
                 },
               };
@@ -235,13 +244,14 @@ describe('scripts/ingest-translations Engine', () => {
         },
       };
 
-      const candidates = [1342, 43647, 999999];
+      const candidates = [1342, 43647, 90123, 999999];
       const result = await filterValidCatalogBookIds(mockSupabase, candidates);
       expect(capturedTable).toBe('books');
-      expect(capturedSelect).toBe('id');
+      expect(capturedSelect).toBe('id, copyright');
       expect(capturedInCol).toBe('id');
       expect(result.has(1342)).toBe(true);
       expect(result.has(43647)).toBe(true);
+      expect(result.has(90123)).toBe(false);
       expect(result.has(999999)).toBe(false);
       expect(result.size).toBe(2);
     });

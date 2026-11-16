@@ -65,8 +65,8 @@ export default function CopyrightPage() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
-              Every volume indexed in Bookarium is part of the global cultural commons. We strictly query and ingest catalog data with{' '}
-              <code className="font-mono text-primary font-semibold">copyright=false</code>. There are zero digital rights management (DRM) restrictions, zero paywalls, zero advertisements, and zero reader subscriptions.
+              Every volume presented to readers on Bookarium belongs to the public domain. While our catalog index tracks per-entry rights metadata to block copyrighted entries at the API boundary, we strictly query, display, quote, and serve only volumes verified with{' '}
+              <code className="font-mono text-primary font-semibold">copyright=false</code> and cleared in your jurisdiction. There are zero digital rights management (DRM) restrictions, zero paywalls, zero advertisements, and zero reader subscriptions.
             </p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">
               <p>
@@ -195,7 +195,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Decoupled Architecture:</strong> All user catalog browsing, keyword searches, and subject facets are served via our dedicated Supabase PostgreSQL catalog and regional Edge cache, completely shielding Gutenberg origin servers from discovery traffic.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Official Bulk Data Feeds:</strong> Catalog indexes are synchronized using Gutenberg&apos;s authorized weekly catalog archives (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code>).
+                <strong className="text-foreground font-medium">Official Bulk Data Feeds:</strong> Catalog indexes are synchronized mirror-first using Gutenberg&apos;s authorized weekly archives (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code> and <code className="font-mono text-primary font-semibold">rdf-files.tar.bz2</code>), reading <code className="font-mono">&lt;dcterms:rights&gt;</code> notices to flag and suppress copyrighted donations globally.
               </li>
               <li>
                 <strong className="text-foreground font-medium">Bandwidth Shielding &amp; Edge Caching:</strong> Masterwork text and EPUB packages are cached at the Vercel Edge CDN for 24 hours (<code className="font-mono">s-maxage=86400, stale-while-revalidate=604800</code>) and locally in browser IndexedDB for offline reading. Direct downloads are strictly human-initiated.
@@ -223,7 +223,7 @@ export default function CopyrightPage() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
-              When a title cleared in the United States remains under copyright protection in your country (such as an author who died between 1956 and 1970 in an EU Life+70 state), Bookarium halts the reader and returns standard{' '}
+              When an entry carries an active copyright notice in Project Gutenberg metadata (blocked globally, including in the United States) or when a title cleared in the US remains protected in your country (such as an author deceased within local <code className="font-mono">Life+70</code>, <code className="font-mono">Life+80</code>, or <code className="font-mono">Life+100</code> terms), Bookarium halts streaming and card/text delivery and returns standard{' '}
               <code className="font-mono text-primary font-semibold">HTTP 451: Unavailable For Legal Reasons</code>.
             </p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">

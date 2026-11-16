@@ -259,6 +259,7 @@ describe('useHabitsStore', () => {
 
   it('covers authenticated debounced sync on duration/goal/activity, error handling, getTodayImmersionSeconds, and useHydratedHabits', async () => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 16, 12, 0, 0));
     const { renderHook } = await import('@testing-library/react');
     const { useHydratedHabits } = await import('./useHabitsStore');
 
@@ -449,6 +450,7 @@ describe('useHabitsStore', () => {
 
   it('respects minSyncIntervalMs passive cooldown and invalidates cooldown after goal mutations', async () => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 16, 12, 0, 0));
     try {
       const syncedAt = '2026-10-16T10:00:00.000Z';
       useHabitsStore.setState({

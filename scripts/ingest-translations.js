@@ -9,10 +9,10 @@
  *
  * @module scripts/ingest-translations
  * @scope Wikidata SPARQL (`P2034` / `P407`) FRBR work-clustering CLI populating idempotent cross-language edition links in `public.book_translations`.
- * @invariant Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` foreign-key presence via `filterValidCatalogBookIds` before executing Supabase upserts.
+ * @invariant Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`) before persisting links.
  * @invariant Support offline `--dry-run` / `--output=...` atomic SQL seed generation (`generateAtomicSeedSql`) cleanly even when Supabase env credentials are absent.
- * @rationale Strict anthology rejection and catalog FK pre-validation eliminate spurious cross-author translation links and foreign-key upsert failures during scheduled weekly runs.
- * @adr ADR-010, ADR-038
+ * @rationale Strict anthology rejection, catalog FK pre-validation, and public-domain `copyright !== true` filtering eliminate spurious cross-author translation links, copyrighted volume associations, and foreign-key upsert failures during scheduled weekly runs.
+ * @adr ADR-010, ADR-038, ADR-080
  * 
  * Usage:
  *   node scripts/ingest-translations.js --dry-run
@@ -325,14 +325,18 @@ async function filterValidCatalogBookIds(supabase, candidateIds = []) {
     const chunk = uniqueIds.slice(i, i + chunkSize);
     const { data, error } = await supabase
       .from('books')
-      .select('id')
+      .select('id, copyright')
       .in('id', chunk);
 
     if (error) {
       console.warn(`  ⚠ Foreign-key catalog pre-check warning: ${error.message}`);
       return new Set(candidateIds);
     } else if (data) {
-      data.forEach((r) => validIds.add(r.id));
+      data.forEach((r) => {
+        if (r && Number.isInteger(r.id) && r.copyright !== true) {
+          validIds.add(r.id);
+        }
+      });
     }
   }
 
@@ -359,6 +363,7 @@ function generateAtomicSeedSql(translations = []) {
   sql += rows.join(',\n');
   sql += `\n) AS v(work_id, book_id, language, is_original, confidence_score, source)\n`;
   sql += `JOIN public.books b ON b.id = v.book_id\n`;
+  sql += `WHERE b.copyright = false\n`;
   sql += `ON CONFLICT (work_id, book_id) DO UPDATE\n`;
   sql += `SET language = EXCLUDED.language, confidence_score = EXCLUDED.confidence_score, source = EXCLUDED.source;\n\n`;
   sql += `COMMIT;\n`;

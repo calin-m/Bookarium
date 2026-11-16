@@ -6,6 +6,7 @@ import { useHabitsStore } from '@/stores/useHabitsStore';
 describe('useReadingTimer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 16, 12, 0, 0));
     localStorage.clear();
     useHabitsStore.getState().resetHabits();
   });
@@ -214,6 +215,7 @@ describe('useReadingTimer', () => {
     unmount();
 
     expect(useHabitsStore.getState().activeDates.length).toBe(1);
+    expect(useHabitsStore.getState().activeDates).toEqual(['2026-11-16']);
     expect(useHabitsStore.getState().getStreakStats().hasReadToday).toBe(true);
   });
 });
