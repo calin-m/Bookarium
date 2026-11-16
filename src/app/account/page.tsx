@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   User as UserIcon,
-  Sparkles,
-  ArrowLeft,
   Trophy,
   Globe,
   Users,
@@ -683,21 +681,6 @@ function AccountDashboardContent() {
           }
         }}
       >
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between">
-          <Link
-            href={ROUTES.HOME}
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Library</span>
-          </Link>
-          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-primary/10 text-primary border border-border">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Bookarium Account</span>
-          </div>
-        </div>
-
         {/* Offline Mode Banner */}
         {isOffline && (
           <div

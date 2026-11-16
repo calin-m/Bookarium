@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-257%20Suites%20%7C%202629%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.22%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-257%20Suites%20%7C%202633%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.26%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2629 tests across 257 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2633 tests across 257 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -109,10 +109,11 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.37)
+## 🛠️ Latest Improvements (v2.9.38)
 
-- **Global V8 Statement Coverage Margin Hardening (`95.04%` -> `95.98%`, `257` Suites / `2,629` Tests)**: Expanded 8 existing 1:1 co-located Vitest suites (`session-device-parser.test.ts`, `notebook-sorting.test.ts`, `ReaderShareModal.test.tsx`, `BookmarksView.test.tsx`, `NotebookView.test.tsx`, `useAuthStore.test.ts`, `supabase-provider.test.ts`, `useAccountSecurityActions.test.ts`) with zero runtime or threshold modifications, adding `+165` covered statements (`16,888 / 17,595` statements, `97.20%` lines, `95.12%` functions, `88.34%` branches) covering auth reload cleanup/token refresh, catalog LRU/TTL/backfill/translation error recovery, mobile dock/drawer controls, share/clipboard fallbacks, and cross-tab session BroadcastChannel guards (`ADR-071`, `ADR-073`, `ADR-080`).
-- **Automated `docs/GITHUB_ACTIONS.md` Release Tag Sync & Live Quality Telemetry (`scripts/generate-changelog.js`, `scripts/generate-architecture-matrix.js`, `docs/PIPELINE_GUIDE.md`)**: Extended `syncReleaseVersionFiles()` in `scripts/generate-changelog.js` to keep the `docs/GITHUB_ACTIONS.md` `workflow_dispatch` default `tag` synchronized with `RELEASES[0].version`, updated `generate-architecture-matrix.js` fallback counts and `purposeMap`, and recompiled all living quality/coverage badges and reports via `npm run docs:sync` (`ADR-080`).
+- **Sort-Integrated Bookshelf `Favorites` Preset & Filter-Placement Policy (`src/lib/book-sorting.ts`, `src/hooks/usePersonalCollectionsController.ts`, `src/components/presentation/BookGrid.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/app/page.tsx`, `docs/DECISIONS.md`)**: Added `'favorites'` to `BOOKSHELF_SORT_OPTIONS` and `BOOKSHELF_BASE_SORT_OPTIONS` alongside `'downloaded'` (`isDirectionDisabled: true`), filtering the active shelf (`General`, `Downloaded`, or custom shelf) to favorited volumes (`Saved ∩ Favorited`) via both desktop `Sort bookshelf` and mobile `CollectionFilterDrawer` `Sort By` chips with zero extra toolbar chrome, contextual `"No favorited volumes on ..."` / `"Show All Shelf Books"` recovery, and a documented Filter Placement & Conflict-Notification Policy (`ADR-066`, `ADR-071`, `ADR-080`).
+- **Bookshelf Filter Drawer Default-Shelf Leak (`src/hooks/usePersonalCollectionsController.ts`)**: Filtered `shelf.is_default` rows out of `bookshelfDrawerShelves` so raw database default-shelf labels (e.g. a legacy `"Favorites"` name on `is_default: true`) no longer duplicate `All Books` or snap back to `General` when tapped (`ADR-066`, `ADR-080`).
+- **GitHub Issue Template YAML Quoting & Missing Cross-Platform Domains (`.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/feature_request.yml`, `.github/ISSUE_TEMPLATE/good_first_issue.yml`)**: Quoted `: ` device strings in `bug_report.yml` to prevent YAML map rendering (`{"PC / Laptop (Desktop Browser" => ...}`), added `All Devices / Platform-Agnostic`, `All Orientations / Not Layout-Specific`, and `Affected Area / View`, and expanded `feature_request.yml` (`Proposal Category`, Global UI, Account `/account`, Personal Collections, CI/Docs) and `good_first_issue.yml` (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

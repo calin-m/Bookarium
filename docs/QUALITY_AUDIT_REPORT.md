@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 15 Nov 2026 23:00:27 GMT  
+**Last Generated**: Mon, 16 Nov 2026 09:46:05 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 257 passed  
-**Total Verified Tests**: 2629 passed  
+**Total Verified Tests**: 2633 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **257/257 test suites passed** (2629 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **257/257 test suites passed** (2633 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | `docs/ARCHITECTURE.md`, `CHANGELOG.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 80 sequential ADRs, 17 governance docs, 1:1 SQL<->TS schema parity, 0 circular/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.22%** (15680/16127) — *Target: $\ge$ 95%*
-- **Statements**: **96.01%** (16893/17595) — *Target: $\ge$ 95%*
-- **Functions**: **95.23%** (3378/3547) — *Target: $\ge$ 92%*
-- **Branches**: **88.32%** (15621/17686) — *Target: $\ge$ 85%*
+- **Lines**: **97.26%** (15692/16134) — *Target: $\ge$ 95%*
+- **Statements**: **96.03%** (16904/17602) — *Target: $\ge$ 95%*
+- **Functions**: **95.2%** (3379/3549) — *Target: $\ge$ 92%*
+- **Branches**: **88.39%** (15664/17721) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (257 Suites / 2629 Tests)
+## 🧪 Comprehensive Test Suite Catalog (257 Suites / 2633 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 325 Tests)
+### 🚀 App Routes & Pages (31 Suites · 326 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -308,7 +308,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/page.test.tsx</code></b> (55 tests)</summary>
+<summary><b><code>src/app/page.test.tsx</code></b> (56 tests)</summary>
 
 - ✔ `should render catalog, hero search, sticky toolbar, and books list`
 - ✔ `should handle search, topic, and language change interactions`
@@ -365,6 +365,7 @@
 - ✔ `allows searching the catalog mid-scroll via the floating capsule dock search button`
 - ✔ `updates catalog section heading dynamically across Recent, Popular, Oldest, and Search states`
 - ✔ `skips phantom empty trailing sub-pages when advancing from a partial catalog batch and auto-clamps deep-linked empty sub-pages`
+- ✔ `filters Bookshelf by favorited books via the Sort dropdown and mobile filter drawer while hiding leaked default shelves`
 
 </details>
 
@@ -548,7 +549,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 578 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 580 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -615,7 +616,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/components/presentation/BookGrid.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `should render loading skeletons when isLoading is true and match pageSize`
 - ✔ `should render error state with retry button`
@@ -627,7 +628,8 @@
 - ✔ `should forward onPreviewClick to BookCard`
 - ✔ `applies responsive active preview classes when activePreviewBookId matches`
 - ✔ `omits personal shelf management buttons in shelf view when in catalog mode`
-- ✔ `renders personal shelf management buttons in shelf view when activeView is bookshelf`
+- ✔ `renders personal shelf management buttons without shelf-bar Sign In when activeView is bookshelf`
+- ✔ `forwards favoritesOnly empty state reset action to BookshelfRack when shelf has 0 favorited matches`
 - ✔ `applies tightened 2-column mobile grid gap classes to prevent grid blowout`
 - ✔ `applies responsive container and pagination bar spacing classes`
 - ✔ `keeps pagination controls accessible on empty pages beyond page 1 so users can navigate back`
@@ -774,7 +776,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (61 tests)</summary>
+<summary><b><code>src/components/presentation/BookshelfRack.test.tsx</code></b> (62 tests)</summary>
 
 - ✔ `renders shelf with books and invariant minimum shelf height to prevent layout shifts`
 - ✔ `renders empty message when no books are provided`
@@ -784,7 +786,7 @@
 - ✔ `opens mobile/tablet modal when book spine is clicked on mobile, portrait tablet (<1024px), or landscape tablet (touch >=1024px)`
 - ✔ `opens modal on desktop when a copyright-restricted book spine is clicked without navigating to reader`
 - ✔ `handles quick action download and bookmark clicks`
-- ✔ `renders guest mode sync prompt without decorative icon and triggers auth modal`
+- ✔ `omits redundant Guest Mode text and shelf-bar Sign In button when unauthenticated`
 - ✔ `displays rounded integer percentage for reading progress`
 - ✔ `displays 0% read for opened books on page 1`
 - ✔ `renders cloud shelves and allows switching active shelf`
@@ -793,7 +795,8 @@
 - ✔ `opens create shelf modal and submits a new custom shelf`
 - ✔ `displays private shelf indicator on shelf pills when is_public is false`
 - ✔ `renders unified empty shelf state without bottom rack padding and allows exploring catalog`
-- ✔ `calls onBrowseCatalog and opens AuthModal via iconless Sign In buttons in guest empty state`
+- ✔ `calls onBrowseCatalog and opens AuthModal via iconless Sign In button in guest empty state`
+- ✔ `renders contextual empty copy and Show All Shelf Books CTA when favoritesOnly matches 0 books`
 - ✔ `allows moving a book between shelves when user has multiple shelves`
 - ✔ `triggers onBookClick when Read button is clicked on hover card`
 - ✔ `triggers onDownloadClick when Download button is clicked on hover card`
@@ -2991,7 +2994,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 335 Tests)
+### 🔄 Hooks & React Query (36 Suites · 336 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3483,9 +3486,10 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (1 tests)</summary>
+<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `filters, sorts, paginates, and clears bookshelf and favorites collections`
+- ✔ `excludes is_default shelves from bookshelfDrawerShelves and supports Favorites preset sorting in Bookshelf`
 
 </details>
 

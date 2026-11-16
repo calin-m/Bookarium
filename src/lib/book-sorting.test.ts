@@ -75,6 +75,7 @@ describe('book-sorting utility', () => {
     expect(FAVORITES_SORT_OPTIONS.length).toBeGreaterThan(0);
     expect(BOOKSHELF_SORT_OPTIONS.some((o) => o.value === 'recent')).toBe(true);
     expect(BOOKSHELF_SORT_OPTIONS.some((o) => o.value === 'downloaded')).toBe(true);
+    expect(BOOKSHELF_SORT_OPTIONS.some((o) => o.value === 'favorites')).toBe(true);
     expect(FAVORITES_SORT_OPTIONS.some((o) => o.value === 'downloads_desc')).toBe(true);
     expect(FAVORITES_SORT_OPTIONS.some((o) => o.value === 'downloaded')).toBe(true);
   });
@@ -234,6 +235,7 @@ describe('book-sorting utility', () => {
         'author',
         'progress',
         'downloaded',
+        'favorites',
       ]);
       expect(FAVORITES_BASE_SORT_OPTIONS.map((o) => o.value)).toEqual([
         'recent',
@@ -254,6 +256,8 @@ describe('book-sorting utility', () => {
       expect(resolveBookSortKey('popularity', 'asc')).toBe('downloads_asc');
       expect(resolveBookSortKey('popularity', 'desc')).toBe('downloads_desc');
       expect(resolveBookSortKey('downloaded', 'asc')).toBe('downloaded');
+      expect(resolveBookSortKey('favorites', 'asc')).toBe('favorites');
+      expect(resolveBookSortKey('favorites', 'desc')).toBe('favorites');
       expect(resolveBookSortKey('recent', 'asc')).toBe('recent_asc');
       expect(resolveBookSortKey('recent', 'desc')).toBe('recent');
     });
@@ -271,6 +275,11 @@ describe('book-sorting utility', () => {
       });
       expect(decomposeBookSortKey('downloaded')).toEqual({
         baseField: 'downloaded',
+        direction: 'desc',
+        isDirectionDisabled: true,
+      });
+      expect(decomposeBookSortKey('favorites')).toEqual({
+        baseField: 'favorites',
         direction: 'desc',
         isDirectionDisabled: true,
       });

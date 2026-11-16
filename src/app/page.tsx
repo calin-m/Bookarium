@@ -813,6 +813,8 @@ function HomeContent() {
                 onClearSearch={collectionSearchQuery.trim() ? () => setCollectionSearchQuery('') : undefined}
                 activeView={activeView}
                 totalBooksCount={savedBooks.length}
+                favoritesOnly={isShelf && shelfSortBase === 'favorites'}
+                onClearFavoritesOnly={() => setShelfSortBy('recent')}
                 onTopicClick={(topicName) => {
                   handleTopicChange(topicName);
                   if (activeView !== 'catalog') {

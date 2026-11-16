@@ -655,21 +655,21 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: '.github/ISSUE_TEMPLATE/bug_report.yml',
       layer: 'Version-Synced Issue Intake Form (Bug Report)',
       responsibility:
-        'Structured YAML issue form automatically synchronized with `RELEASES[0].version` (`e.g. vX.Y.Z`) during `npm run docs:sync`.',
+        'Structured YAML issue form with quoted environment choices, `Affected Area / View`, platform-agnostic/orientation-agnostic defaults, and automatic `RELEASES[0].version` (`e.g. vX.Y.Z`) sync during `npm run docs:sync`.',
     },
     {
       name: '.github/ISSUE_TEMPLATE/feature_request.yml',
       file: '.github/ISSUE_TEMPLATE/feature_request.yml',
       layer: 'Public-Domain Aligned Feature Intake Form',
       responsibility:
-        'Structured feature proposal form guarding zero-API-key, offline-first PWA, and Project Gutenberg compliance boundaries.',
+        'Structured proposal form (`Proposal Category`, expanded domains including Global UI, `/account`, Collections, and CI/Docs) guarding zero-API-key, offline-first PWA, and Project Gutenberg boundaries.',
     },
     {
       name: '.github/ISSUE_TEMPLATE/good_first_issue.yml',
       file: '.github/ISSUE_TEMPLATE/good_first_issue.yml',
       layer: 'Contributor Onboarding Issue Template',
       responsibility:
-        'Curated starter-task template enforcing `95%` V8 coverage and co-located testing standards for new contributors.',
+        'Curated starter-task template spanning UI, state, Supabase/API routes, tests, and docs while enforcing the `95%` V8 coverage floor.',
     },
     {
       name: '.github/ISSUE_TEMPLATE/config.yml',
@@ -1616,7 +1616,8 @@ function generateMarkdown() {
     useAmbientDockScrollState: 'Shared scroll-idle dimming (`opacity-30`), top-threshold (`isAtTop`), and pointer wake (`onPointerEnter` / `onPointerLeave`) state machine for floating bottom capsule docks (`CatalogMobileBottomDock`, `CollectionBottomDock`).',
     useMobileViewportCardFocus: 'Shared single-column (`< 1024px`) viewport scroll focus band (`0.22–0.62` viewport ratio) and outside-tap dismissal hook for `BookmarkCard` and `NotebookQuoteCard`.',
     useOfflineCoverImage: 'Shared IndexedDB offline book cover Blob hydration (`getOfflineBookCover`) and automatic `URL.createObjectURL` / `URL.revokeObjectURL` lifecycle cleanup hook (`BookCard`, `BookPreviewModal`, `HeroFeaturedBook3D`).',
-    usePersonalCollectionsController: 'Centralized controller hook for Bookshelf and Favorites filtering, bidirectional sorting, custom shelf resolution, pagination reset, and clear-confirmation modal state (`src/app/page.tsx`).',
+    usePersonalCollectionsController:
+      'Centralized controller hook for Bookshelf and Favorites filtering (`!is_default` drawer shelf deduplication, `shelfSortBy === \'favorites\'` / `\'downloaded\'` presets & contextual empty states), bidirectional sorting, custom shelf resolution, pagination reset, and clear-confirmation modal state (`src/app/page.tsx`).',
     useReaderAnnotationActions: 'Encapsulated Focus Reader text-selection popover state, overlapping fellow/own annotation matching (`matchedPopoverAnnotations`), and highlight/note CRUD handlers (`src/app/read/[id]/page.tsx`).',
     useReaderExitBookmark: 'Encapsulated reader exit interception, cross-device `findCanonicalTextSpan` bookmark-ahead reflow resolution (`hasBookmarkAhead`), layered drawer-first & `Escape` key dismissal, 3-page activation threshold modal gating, and line-1 bookmark placement (`src/app/read/[id]/page.tsx`).',
     useDialogFocusTrap: 'Shared accessible overlay focus-trap, Escape-key dismissal, and trigger-element focus-restoration hook (`autoFocus?: boolean`, `{ preventScroll: true }`) used across `Modal`, `AuthModal`, `BottomSheetDrawerShell`, and `AccoladeCelebrationModal`.',
@@ -1710,7 +1711,7 @@ function generateMarkdown() {
     'sync-utils':
       'Unified bidirectional cloud synchronization coordinator (`syncAllStoresWithCloud`, `clearLocalUserStores`, re-exported `coalesceInFlightByUser`) returning active per-user in-flight Promises directly (`p1 === p2`), enforcing pre-sync active JWT session verification (`hasSupabaseAuthCookie`, `shouldVerifyCloudSession`, `verifyActiveCloudSession`), and coordinating 10-store local teardown parity.',
     'book-sorting':
-      'Deterministic multi-attribute book sorting algorithms, collection sort/filter options, and shared offline volume filtering (`filterBooksByOfflineState`) for title, author, year, downloads, reading progress, and recency.',
+      'Deterministic multi-attribute book sorting algorithms, Bookshelf & Favorites sort/preset filter options (including `downloaded` and Bookshelf `favorites`), and shared offline volume filtering (`filterBooksByOfflineState`) for title, author, year, downloads, reading progress, and recency.',
     'book-tags':
       'Semantic book tag normalizer mapping verbose Library of Congress subjects and Gutenberg bookshelves to canonical zero-truncation badges (<= 14 chars) with responsive mobile/desktop allocation and administrative prefix sanitization.',
     'scroll-utils':

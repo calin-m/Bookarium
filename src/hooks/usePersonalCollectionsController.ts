@@ -150,7 +150,7 @@ export function usePersonalCollectionsController({
     setCollectionSearchQuery('');
   }
 
-  // Reset shelf page when view, search, sort, or active shelf changes
+  // Reset shelf page when view, search, sort, active shelf, or favorites filter changes
   const effectiveShelfKeyId = isViewingGeneral
     ? 'general'
     : currentActiveShelfId || 'general';
@@ -188,12 +188,15 @@ export function usePersonalCollectionsController({
         count: resolvedOfflineBooks.length,
       },
     ];
-    const custom = cloudBookshelves.map((shelf) => ({
-      id: shelf.id,
-      label: shelf.name,
-      count: cloudBookshelfItems.filter((item) => item.bookshelf_id === shelf.id)
-        .length,
-    }));
+    // Skip `is_default` shelves so the raw DB name never duplicates `All Books` / `General`
+    const custom = cloudBookshelves
+      .filter((shelf) => !shelf.is_default)
+      .map((shelf) => ({
+        id: shelf.id,
+        label: shelf.name,
+        count: cloudBookshelfItems.filter((item) => item.bookshelf_id === shelf.id)
+          .length,
+      }));
     return [...standard, ...custom];
   }, [
     savedBooks.length,
@@ -276,8 +279,11 @@ export function usePersonalCollectionsController({
     if (shelfSortBy === 'downloaded') {
       return currentShelfBooks.filter((b) => isBookOffline(b.id));
     }
+    if (shelfSortBy === 'favorites') {
+      return currentShelfBooks.filter((b) => favoriteBookIds.includes(b.id));
+    }
     return currentShelfBooks;
-  }, [currentShelfBooks, shelfSortBy, isBookOffline]);
+  }, [currentShelfBooks, shelfSortBy, favoriteBookIds, isBookOffline]);
 
   const filteredSavedBooks = useMemo(
     () => filterBooksSmart(baseShelfBooks, collectionSearchQuery),
@@ -381,6 +387,15 @@ export function usePersonalCollectionsController({
         title: `No volumes found matching "${collectionSearchQuery}"`,
         description:
           'Try adjusting your search terms, author name, or clear the search query.',
+      }
+    : isShelf && shelfSortBy === 'favorites'
+    ? {
+        title: isViewingDownloaded
+          ? 'No downloaded favorites yet'
+          : 'No favorited volumes on this shelf',
+        description: isViewingDownloaded
+          ? 'Volumes saved for offline reading and marked as favorites will appear here.'
+          : 'Click the heart icon on any volume on this shelf to mark it as a favorite.',
       }
     : isShelf && (shelfSortBy === 'downloaded' || isViewingDownloaded)
     ? {

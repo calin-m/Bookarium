@@ -1854,6 +1854,112 @@ describe('Home page integration', () => {
     const clampedBars = screen.getAllByTestId('catalog-pagination-bar');
     expect(within(clampedBars[clampedBars.length - 1]).getByText('Page 1')).toBeInTheDocument();
   });
+
+  it('filters Bookshelf by favorited books via the Sort dropdown and mobile filter drawer while hiding leaked default shelves', () => {
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: pageMockBooks.slice(0, 2),
+        favoriteBooks: [pageMockBooks[0]],
+        favoriteBookIds: [pageMockBooks[0].id],
+        activeBookshelfId: null,
+        cloudBookshelves: [
+          {
+            id: 'shelf-default',
+            user_id: 'u-shelf',
+            name: 'Favorites', // Simulated legacy raw DB default shelf name
+            is_default: true,
+            created_at: '',
+            updated_at: '',
+          },
+          {
+            id: 'shelf-interest',
+            user_id: 'u-shelf',
+            name: 'Interested In',
+            is_default: false,
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+        cloudBookshelfItems: [
+          {
+            id: 'ci-1',
+            bookshelf_id: 'shelf-default',
+            user_id: 'u-shelf',
+            book_id: pageMockBooks[0].id,
+            book_title: pageMockBooks[0].title,
+            book_authors: [],
+            cover_url: null,
+            added_at: '',
+          },
+          {
+            id: 'ci-2',
+            bookshelf_id: 'shelf-interest',
+            user_id: 'u-shelf',
+            book_id: pageMockBooks[1].id,
+            book_title: pageMockBooks[1].title,
+            book_authors: [],
+            cover_url: null,
+            added_at: '',
+          },
+        ],
+      });
+    });
+
+    renderHome();
+
+    const banner = screen.getByRole('banner');
+    fireEvent.click(within(banner).getByRole('button', { name: /^Bookshelf/i }));
+
+    // Both shelved books start visible and standalone toolbar Favorites button is absent (Option A)
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId('bookshelf-favorites-filter-btn')).not.toBeInTheDocument();
+
+    // Desktop Sort bookshelf dropdown filters to Favorites and toggles back to Date Added
+    const sortSelect = screen.getByRole('combobox', { name: 'Sort bookshelf' });
+    fireEvent.change(sortSelect, { target: { value: 'favorites' } });
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`shelf-book-${pageMockBooks[1].id}`)).not.toBeInTheDocument();
+
+    fireEvent.change(sortSelect, { target: { value: 'recent' } });
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
+
+    // Open mobile filter drawer: leaked raw DB default shelf ('Favorites') and separate Curation switch are absent
+    fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
+    expect(screen.queryByTestId('filter-shelf-shelf-default')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filter-favorites-only-btn')).not.toBeInTheDocument();
+    expect(screen.getByTestId('filter-shelf-all')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-shelf-shelf-interest')).toBeInTheDocument();
+
+    // Selecting Favorites inside Sort By hides Sort Direction and applies cleanly
+    const drawerFavChip = screen.getByTestId('filter-sort-favorites');
+    expect(drawerFavChip).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(drawerFavChip);
+    expect(drawerFavChip).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('radiogroup', { name: 'Sort Direction' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
+
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`shelf-book-${pageMockBooks[1].id}`)).not.toBeInTheDocument();
+    expect(sortSelect).toHaveValue('favorites');
+
+    // Switching to custom shelf ('Interested In') with 0 favorited books + active Favorites preset shows reset CTA
+    fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
+    fireEvent.click(screen.getByTestId('filter-shelf-shelf-interest'));
+    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
+    expect(screen.getByText(/No favorited volumes on "Interested In"/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Show All Shelf Books/i }));
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
+
+    // Drawer Reset All clears both custom shelf selection and Favorites sort preset
+    fireEvent.click(screen.getByTestId('collection-dock-filters-btn'));
+    fireEvent.click(screen.getByTestId('filter-sort-favorites'));
+    fireEvent.click(screen.getByTestId('collection-filter-reset-btn'));
+    fireEvent.click(screen.getByTestId('collection-filter-apply-btn'));
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[0].id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`shelf-book-${pageMockBooks[1].id}`)).toBeInTheDocument();
+  });
 });
 
 

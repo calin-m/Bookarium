@@ -37,6 +37,8 @@ export interface BookshelfRackProps {
   onClearSearch?: () => void;
   showShelfControls?: boolean;
   totalBooksCount?: number;
+  favoritesOnly?: boolean;
+  onClearFavoritesOnly?: () => void;
 }
 
 /**
@@ -65,6 +67,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   onClearSearch,
   showShelfControls = true,
   totalBooksCount,
+  favoritesOnly = false,
+  onClearFavoritesOnly,
 }) => {
   const router = useRouter();
   const {
@@ -443,21 +447,6 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
           )}
         </div>
 
-        {/* Guest Mode Sync Prompt */}
-        {!user && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-muted-foreground hidden sm:inline">Guest Mode</span>
-            <Button
-              variant="primary"
-              size="chip"
-              onClick={() => openAuthModal('sign_in')}
-              className="text-xs font-mono"
-            >
-              <span>Sign In</span>
-            </Button>
-          </div>
-        )}
-
         {/* Actions Cluster: Shelf Management (Edit/Delete) & Offline Downloads */}
         {((user && activeShelf && !activeShelf.is_default && !isViewingDownloaded) || effectiveShelfBooks.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap" data-testid="shelf-action-controls">
@@ -525,6 +514,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                 ? !showShelfControls
                   ? `No volumes found matching "${searchQuery}"`
                   : `No books found matching "${searchQuery}" on "${activeShelfDisplayName}"`
+                : showShelfControls && favoritesOnly
+                ? `No favorited volumes on "${activeShelfDisplayName}"`
                 : !showShelfControls
                 ? 'No volumes found'
                 : `No books found on "${activeShelfDisplayName}"`
@@ -534,6 +525,8 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                 ? !showShelfControls
                   ? 'Try searching for different keywords or clear the search filter.'
                   : 'Try searching for different keywords or clear the search query to see all books on this shelf.'
+                : showShelfControls && favoritesOnly
+                ? 'Click the heart icon on any shelved volume, or turn off the Favorites filter to see every book on this shelf.'
                 : !showShelfControls
                 ? 'Try adjusting your search criteria or explore other categories in the catalog.'
                 : isViewingGeneral
@@ -541,7 +534,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                 : 'Add books to this shelf using the "Move to Shelf" selector on book spine hover cards.'
             }
             onExploreCatalog={
-              !(searchQuery?.trim() && onClearSearch) && showShelfControls
+              !(searchQuery?.trim() && onClearSearch) &&
+              !(showShelfControls && favoritesOnly && onClearFavoritesOnly) &&
+              showShelfControls
                 ? () => {
                     if (onBrowseCatalog) {
                       onBrowseCatalog();
@@ -552,7 +547,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                 : undefined
             }
             actions={
-              (searchQuery?.trim() && onClearSearch) || (showShelfControls && !user) ? (
+              (searchQuery?.trim() && onClearSearch) ||
+              (showShelfControls && favoritesOnly && onClearFavoritesOnly) ||
+              (showShelfControls && !user) ? (
                 <>
                   {searchQuery?.trim() && onClearSearch && (
                     <Button
@@ -562,6 +559,16 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
                       className={COLLECTION_EMPTY_ACTION_CLASS}
                     >
                       <span>Clear Search</span>
+                    </Button>
+                  )}
+                  {showShelfControls && favoritesOnly && onClearFavoritesOnly && (
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={onClearFavoritesOnly}
+                      className={COLLECTION_EMPTY_ACTION_CLASS}
+                    >
+                      <span>Show All Shelf Books</span>
                     </Button>
                   )}
                   {showShelfControls && !user && (

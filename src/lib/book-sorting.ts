@@ -12,7 +12,8 @@ export type BookshelfSortOption =
   | 'author_desc'
   | 'progress_desc'
   | 'progress_asc'
-  | 'downloaded';
+  | 'downloaded'
+  | 'favorites';
 
 export type FavoritesSortOption =
   | 'recent'
@@ -35,6 +36,7 @@ export const BOOKSHELF_SORT_OPTIONS: SortOption[] = [
   { value: 'progress_desc', label: 'Progress (High → Low)' },
   { value: 'progress_asc', label: 'Progress (Low → High)' },
   { value: 'downloaded', label: 'Downloaded' },
+  { value: 'favorites', label: 'Favorites' },
 ];
 
 export const FAVORITES_SORT_OPTIONS: SortOption[] = [
@@ -55,7 +57,8 @@ export type BookSortBaseField =
   | 'author'
   | 'progress'
   | 'popularity'
-  | 'downloaded';
+  | 'downloaded'
+  | 'favorites';
 
 export const BOOKSHELF_BASE_SORT_OPTIONS: SortOption[] = [
   { value: 'recent', label: 'Date Added' },
@@ -63,6 +66,7 @@ export const BOOKSHELF_BASE_SORT_OPTIONS: SortOption[] = [
   { value: 'author', label: 'Author' },
   { value: 'progress', label: 'Progress' },
   { value: 'downloaded', label: 'Downloaded' },
+  { value: 'favorites', label: 'Favorites' },
 ];
 
 export const FAVORITES_BASE_SORT_OPTIONS: SortOption[] = [
@@ -91,6 +95,8 @@ export function resolveBookSortKey(
       return direction === 'asc' ? 'downloads_asc' : 'downloads_desc';
     case 'downloaded':
       return 'downloaded';
+    case 'favorites':
+      return 'favorites';
     case 'recent':
     default:
       return direction === 'asc' ? 'recent_asc' : 'recent';
@@ -113,6 +119,9 @@ export function decomposeBookSortKey(sortKey: string): {
   }
   if (sortKey === 'downloaded') {
     return { baseField: 'downloaded', direction: 'desc', isDirectionDisabled: true };
+  }
+  if (sortKey === 'favorites') {
+    return { baseField: 'favorites', direction: 'desc', isDirectionDisabled: true };
   }
   if (sortKey === 'downloads_desc') {
     return { baseField: 'popularity', direction: 'desc', isDirectionDisabled: false };
@@ -209,6 +218,7 @@ export function sortBooks(
       return list.reverse();
 
     case 'downloaded':
+    case 'favorites':
     case 'recent':
     default:
       return list;

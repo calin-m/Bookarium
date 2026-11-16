@@ -9,6 +9,23 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.38',
+    date: '2026-11-16',
+    title: 'Bookshelf Favorites Filter, UI Decluttering & GitHub Issue Template Fixes',
+    sections: {
+      Fixed: [
+        '**Bookshelf Filter Drawer Default-Shelf Leak (`src/hooks/usePersonalCollectionsController.ts`)**: Filtered `shelf.is_default` rows out of `bookshelfDrawerShelves` so raw database default-shelf labels (e.g. a legacy `"Favorites"` name on `is_default: true`) no longer duplicate `All Books` or snap back to `General` when tapped (`ADR-066`, `ADR-080`).',
+        '**GitHub Issue Template YAML Quoting & Missing Cross-Platform Domains (`.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/feature_request.yml`, `.github/ISSUE_TEMPLATE/good_first_issue.yml`)**: Quoted `: ` device strings in `bug_report.yml` to prevent YAML map rendering (`{"PC / Laptop (Desktop Browser" => ...}`), added `All Devices / Platform-Agnostic`, `All Orientations / Not Layout-Specific`, and `Affected Area / View`, and expanded `feature_request.yml` (`Proposal Category`, Global UI, Account `/account`, Personal Collections, CI/Docs) and `good_first_issue.yml` (`ADR-080`).',
+      ],
+      Added: [
+        '**Sort-Integrated Bookshelf `Favorites` Preset & Filter-Placement Policy (`src/lib/book-sorting.ts`, `src/hooks/usePersonalCollectionsController.ts`, `src/components/presentation/BookGrid.tsx`, `src/components/presentation/BookshelfRack.tsx`, `src/app/page.tsx`, `docs/DECISIONS.md`)**: Added `\'favorites\'` to `BOOKSHELF_SORT_OPTIONS` and `BOOKSHELF_BASE_SORT_OPTIONS` alongside `\'downloaded\'` (`isDirectionDisabled: true`), filtering the active shelf (`General`, `Downloaded`, or custom shelf) to favorited volumes (`Saved ∩ Favorited`) via both desktop `Sort bookshelf` and mobile `CollectionFilterDrawer` `Sort By` chips with zero extra toolbar chrome, contextual `"No favorited volumes on ..."` / `"Show All Shelf Books"` recovery, and a documented Filter Placement & Conflict-Notification Policy (`ADR-066`, `ADR-071`, `ADR-080`).',
+      ],
+      Removed: [
+        '**Redundant Bookshelf `Guest Mode` Bar & `/account` Breadcrumb Row (`src/components/presentation/BookshelfRack.tsx`, `src/app/account/page.tsx`)**: Removed the inline shelf-bar `Guest Mode` + `Sign In` chip in `BookshelfRack` (retaining empty-shelf `"Sign In"` and global `Navbar` `Sign In`) and removed the redundant `Back to Library` link + `Bookarium Account` pill directly beneath `<Navbar activeView="account" />` on `/account` (`ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.37',
     date: '2026-11-16',
     title: 'Statement Coverage Margin Hardening & Living Telemetry Sync',

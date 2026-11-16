@@ -25,11 +25,13 @@ body:
       label: Primary Technology & Domain
       description: What is the primary area of the codebase involved?
       options:
-        - React 19 / TypeScript (UI Components & Pages)
-        - Tailwind CSS & Responsive Layout (Mobile / Tablet / Desktop)
-        - Zustand State, IndexedDB & Web Workers
-        - Testing & Verification (Vitest, @testing-library/react, MSW v2)
-        - Documentation & Developer Tooling
+        - "Entire App / Cross-Stack"
+        - "React 19 / TypeScript (UI Components & Pages)"
+        - "Tailwind CSS & Responsive Layout (Mobile / Tablet / Desktop)"
+        - "Zustand State, IndexedDB & Web Workers"
+        - "Backend / Supabase Schema & Next.js API Routes"
+        - "Testing & Verification (Vitest, @testing-library/react, MSW v2)"
+        - "Documentation & Developer Tooling"
     validations:
       required: true
 

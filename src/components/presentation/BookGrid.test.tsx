@@ -156,15 +156,34 @@ describe('BookGrid component', () => {
     expect(screen.queryByRole('button', { name: /^Sign In$/i })).not.toBeInTheDocument();
   });
 
-  it('renders personal shelf management buttons in shelf view when activeView is bookshelf', async () => {
+  it('renders personal shelf management buttons without shelf-bar Sign In when activeView is bookshelf', async () => {
     await act(async () => {
       render(<BookGrid books={mockBooks} viewMode="shelf" activeView="bookshelf" />);
     });
 
     expect(screen.getByTestId('bookshelf-rack')).toBeInTheDocument();
     expect(screen.getByText('General')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Sign In$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Sign In$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /download all books on this shelf/i })).not.toBeInTheDocument();
+  });
+
+  it('forwards favoritesOnly empty state reset action to BookshelfRack when shelf has 0 favorited matches', async () => {
+    const handleClearFavorites = vi.fn();
+    await act(async () => {
+      render(
+        <BookGrid
+          books={[]}
+          viewMode="shelf"
+          activeView="bookshelf"
+          favoritesOnly={true}
+          onClearFavoritesOnly={handleClearFavorites}
+        />
+      );
+    });
+
+    expect(screen.getByText(/No favorited volumes on "General"/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Show All Shelf Books/i }));
+    expect(handleClearFavorites).toHaveBeenCalledTimes(1);
   });
 
   it('applies tightened 2-column mobile grid gap classes to prevent grid blowout', () => {

@@ -201,13 +201,11 @@ describe('BookshelfRack Component', () => {
     expect(useBookshelfStore.getState().isBookFavorite(mockBooks[0].id)).toBe(true);
   });
 
-  it('renders guest mode sync prompt without decorative icon and triggers auth modal', () => {
+  it('omits redundant Guest Mode text and shelf-bar Sign In button when unauthenticated', () => {
     render(<BookshelfRack books={mockBooks} />);
-    expect(screen.getByText('Guest Mode')).toBeInTheDocument();
+    expect(screen.queryByText('Guest Mode')).not.toBeInTheDocument();
     expect(screen.queryByText(/\(Local\)/i)).not.toBeInTheDocument();
-    const syncButton = screen.getByRole('button', { name: /^Sign In$/i });
-    expect(syncButton).toBeInTheDocument();
-    expect(syncButton.querySelector('svg')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Sign In$/i })).not.toBeInTheDocument();
   });
 
   it('displays rounded integer percentage for reading progress', () => {
@@ -385,17 +383,15 @@ describe('BookshelfRack Component', () => {
     expect(pushMock).toHaveBeenCalledWith('/');
   });
 
-  it('calls onBrowseCatalog and opens AuthModal via iconless Sign In buttons in guest empty state', () => {
+  it('calls onBrowseCatalog and opens AuthModal via iconless Sign In button in guest empty state', () => {
     const handleBrowse = vi.fn();
     render(<BookshelfRack books={[]} onBrowseCatalog={handleBrowse} />);
 
     const syncButtons = screen.getAllByRole('button', { name: /^Sign In$/i });
-    expect(syncButtons).toHaveLength(2);
-    syncButtons.forEach((btn) => {
-      expect(btn.querySelector('svg')).toBeNull();
-    });
+    expect(syncButtons).toHaveLength(1);
+    expect(syncButtons[0].querySelector('svg')).toBeNull();
 
-    fireEvent.click(syncButtons[1]);
+    fireEvent.click(syncButtons[0]);
     expect(useAuthStore.getState().isAuthModalOpen).toBe(true);
     expect(useAuthStore.getState().authModalView).toBe('sign_in');
     useAuthStore.getState().closeAuthModal();
@@ -403,6 +399,24 @@ describe('BookshelfRack Component', () => {
     const browseBtn = screen.getByRole('button', { name: /Explore Catalog/i });
     fireEvent.click(browseBtn);
     expect(handleBrowse).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders contextual empty copy and Show All Shelf Books CTA when favoritesOnly matches 0 books', () => {
+    const handleClearFavorites = vi.fn();
+    render(
+      <BookshelfRack
+        books={[]}
+        favoritesOnly={true}
+        onClearFavoritesOnly={handleClearFavorites}
+      />
+    );
+
+    expect(screen.getByText(/No favorited volumes on "General"/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Explore Catalog/i })).not.toBeInTheDocument();
+
+    const showAllBtn = screen.getByRole('button', { name: /Show All Shelf Books/i });
+    fireEvent.click(showAllBtn);
+    expect(handleClearFavorites).toHaveBeenCalledTimes(1);
   });
 
   it('allows moving a book between shelves when user has multiple shelves', () => {

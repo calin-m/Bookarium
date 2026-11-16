@@ -14,7 +14,7 @@ body:
     attributes:
       label: Bookarium Version / Release
       description: What version or release of Bookarium are you using?
-      placeholder: "e.g. v2.9.37, latest master, or your deployed URL"
+      placeholder: "e.g. v2.9.38, latest master, or your deployed URL"
     validations:
       required: true
 
@@ -41,20 +41,41 @@ body:
       required: false
 
   - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area / View
+      description: Which part of Bookarium does this issue affect?
+      options:
+        - "Entire Website / General UI"
+        - "Catalog Discovery & Hero"
+        - "Bookshelf (3D Rack & Filters)"
+        - "Favorites"
+        - "Commonplace Notebook"
+        - "Bookmarks Ledger"
+        - "Account Sanctuary (/account)"
+        - "In-Browser Reader (/read/[id])"
+        - "Auth & Cloud Sync"
+        - "Offline PWA & Service Worker"
+        - "CI Pipelines, Scripts & Documentation"
+    validations:
+      required: true
+
+  - type: dropdown
     id: environment
     attributes:
       label: Device Category & Environment
       description: Which device category and environment did this issue occur on?
       options:
-        - PC / Laptop (Desktop Browser: Chrome / Edge / Brave)
-        - PC / Laptop (Desktop Browser: Firefox)
-        - PC / Laptop (Desktop Browser: Safari / macOS)
-        - Tablet / iPad (Browser: Safari / Chrome)
-        - Mobile / Smartphone (Browser: iOS Safari)
-        - Mobile / Smartphone (Browser: Android Chrome)
-        - Installed PWA (Desktop PC / Mac)
-        - Installed PWA (Tablet / iPad)
-        - Installed PWA (Mobile Phone)
+        - "All Devices / Platform-Agnostic (Cross-Device or Logic Bug)"
+        - "PC / Laptop (Desktop Browser: Chrome / Edge / Brave)"
+        - "PC / Laptop (Desktop Browser: Firefox)"
+        - "PC / Laptop (Desktop Browser: Safari / macOS)"
+        - "Tablet / iPad (Browser: Safari / Chrome)"
+        - "Mobile / Smartphone (Browser: iOS Safari)"
+        - "Mobile / Smartphone (Browser: Android Chrome)"
+        - "Installed PWA (Desktop PC / Mac)"
+        - "Installed PWA (Tablet / iPad)"
+        - "Installed PWA (Mobile Phone)"
     validations:
       required: true
 
@@ -64,6 +85,7 @@ body:
       label: Screen Orientation & Aspect Ratio
       description: What is the screen orientation and approximate aspect ratio of the device?
       options:
+        - "All Orientations / Not Layout-Specific"
         - "Horizontal / Landscape (16:9, 16:10, 21:9 Widescreen PC or Tablet)"
         - "Vertical / Portrait (9:16, 9:19.5, 9:20 Mobile Phone or Vertical Monitor)"
         - "Square / Near-Square (4:3 Tablet / iPad, 3:2 Laptop, ~1:1 Foldable Display)"

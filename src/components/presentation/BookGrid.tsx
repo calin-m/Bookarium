@@ -36,6 +36,8 @@ export interface BookGridProps {
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   showShelfControls?: boolean;
   totalBooksCount?: number;
+  favoritesOnly?: boolean;
+  onClearFavoritesOnly?: () => void;
   onTopicClick?: (topic: string) => void;
   pageSize?: number;
 }
@@ -64,6 +66,8 @@ export const BookGrid: React.FC<BookGridProps> = ({
   activeView,
   showShelfControls,
   totalBooksCount,
+  favoritesOnly = false,
+  onClearFavoritesOnly,
   onTopicClick,
   pageSize = 16,
 }) => {
@@ -286,6 +290,8 @@ export const BookGrid: React.FC<BookGridProps> = ({
             onClearSearch={onClearSearch}
             showShelfControls={shouldShowShelfControls}
             totalBooksCount={totalBooksCount}
+            favoritesOnly={favoritesOnly}
+            onClearFavoritesOnly={onClearFavoritesOnly}
           />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-6">

@@ -71,6 +71,8 @@ describe('AccountPage', () => {
 
     expect(screen.getByText('Guest Reader')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sign In \/ Sign Up/i })).toBeInTheDocument();
+    expect(screen.queryByText('Back to Library')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bookarium Account')).not.toBeInTheDocument();
 
     // Scroll to top behavior
     expect(screen.queryByRole('button', { name: /Back to top/i })).not.toBeInTheDocument();
@@ -121,6 +123,9 @@ describe('AccountPage', () => {
     // Profile Identity
     expect(screen.getAllByText('Jane Austen').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('austen@bookarium.test').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Back to Library')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bookarium Account')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Jane Austen' })).toBeInTheDocument();
 
     // Display Name edit
     const input = screen.getByLabelText('Display Name');

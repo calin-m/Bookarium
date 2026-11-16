@@ -28,24 +28,40 @@ body:
       required: true
 
   - type: dropdown
+    id: proposal_category
+    attributes:
+      label: Proposal Category
+      description: What kind of change is this proposal requesting?
+      options:
+        - "New Feature / Enhancement"
+        - "UI Simplification / Deprecation"
+        - "Reliability & Edge Cases"
+        - "Refactor / Developer Experience"
+    validations:
+      required: true
+
+  - type: dropdown
     id: architectural_layer
     attributes:
       label: Architectural Domain
       description: Which architectural domain does this feature primarily touch?
       options:
-        - In-Browser Focus Reader (/read/[id])
-        - Text Highlighting & Annotations Engine
-        - Commonplace Notebook & Reading Journal
-        - Scholar Fellowship & Reader Circles (Symposium, Marginalia Sync)
-        - Catalog Discovery & Editorial Treasury (Words That Shaped Humanity, 3D Hero Book)
-        - 3D Bookcase & Shelf Organization
-        - Audio & Text-to-Speech (Web Speech API)
-        - Language Editions & Parallel Translations (Wikidata SPARQL / Gutenberg)
-        - Reading Habits, Streaks & Accolades System
-        - Multi-Jurisdictional Copyright & Public Domain Engine
-        - Offline Storage & PWA Service Worker (IndexedDB)
-        - Cloud Synchronization & Auth (Supabase)
-        - Performance, Accessibility (a11y), or Core Web Vitals
+        - "Global UI, Navigation & Layout (Navbar, Theme, Entire Website)"
+        - "In-Browser Focus Reader (/read/[id])"
+        - "Text Highlighting & Annotations Engine"
+        - "Commonplace Notebook & Reading Journal"
+        - "Scholar Fellowship & Reader Circles (Symposium, Marginalia Sync)"
+        - "Catalog Discovery & Editorial Treasury (Words That Shaped Humanity, 3D Hero Book)"
+        - "Personal Collections (3D Bookshelf, Favorites, Bookmarks)"
+        - "Account Sanctuary, Profile & Preferences (/account)"
+        - "Audio & Text-to-Speech (Web Speech API)"
+        - "Language Editions & Parallel Translations (Wikidata SPARQL / Gutenberg)"
+        - "Reading Habits, Streaks & Accolades System"
+        - "Multi-Jurisdictional Copyright & Public Domain Engine"
+        - "Offline Storage & PWA Service Worker (IndexedDB)"
+        - "Cloud Synchronization & Auth (Supabase)"
+        - "CI/CD Pipelines, Sync Scripts & Documentation"
+        - "Performance, Accessibility (a11y), or Core Web Vitals"
     validations:
       required: true
 
