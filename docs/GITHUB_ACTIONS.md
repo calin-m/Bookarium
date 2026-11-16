@@ -68,19 +68,20 @@ Consolidates all scheduled database synchronization into a single deterministic 
 | `limit` | `string` | No | `""` *(blank)* | Optional max books to ingest (e.g. `100` for smoke tests). Leave blank to process all ~78,000+ books and refresh the `catalog-cache` release asset. |
 | `update_existing` | `boolean` | No | `false` | Pass `--update-existing` to force full row overwrites on `sync-gutenberg-catalog.js` and `ingest-translations.js` (default diffs field-by-field and preserves existing `quotes`). |
 | `dry_run` | `boolean` | No | `false` | Simulate all 3 ingestion stages without mutating Supabase, uploading `catalog-cache`, or purging Vercel Edge cache. |
+| `feed_source` | `choice` | No | `'auto'` | Download location for `rdf-files.tar.bz2` & `pg_catalog.csv.gz`: `'auto'` (`gutenberg.pglaf.org` -> `aleph.gutenberg.org` -> `www.gutenberg.org`), or pin to `'gutenberg.pglaf.org'`, `'aleph.gutenberg.org'`, or `'www.gutenberg.org'` (`--feed-source=...`). |
 
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@v4`), setup Node `22` with npm cache (`actions/setup-node@v4`), and run `npm ci`.
   2. Download `gutenberg-catalog-cache.json.gz` from release `catalog-cache` (`gh release download catalog-cache -p "gutenberg-catalog-cache.json.gz" --clobber` with `GH_TOKEN`).
-  3. Run `node scripts/sync-gutenberg-catalog.js --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json` (+ `--dry-run`, `--update-existing`, `--limit=N` per inputs).
+  3. Run `node scripts/sync-gutenberg-catalog.js --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json` (+ `--dry-run`, `--update-existing`, `--feed-source=HOST`, `--limit=N` per inputs).
   4. When `dry_run != 'true'`, `limit == ''`, and `gutenberg-catalog-cache.json.gz` exists: upload updated snapshot to `catalog-cache` release (`--clobber`, creating the release if absent).
   5. Run `node scripts/ingest-translations.js` (+ `--dry-run`, `--update-existing`, and `--limit=N` or `--all` when `limit` is blank).
   6. Run `node scripts/sync-featured-quotes.js --mirrors=pglaf` (+ `--diff-file=quote-diff.json` if emitted, `--dry-run`, `--limit=N`).
   7. When `dry_run != 'true'`: run `node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations`.
 - **Local CLI Equivalents**:
   ```bash
-  # Dry-run catalog diff + inspect options
-  npm run catalog:sync -- --dry-run --limit=100
+  # Dry-run catalog diff + inspect options (pin a specific feed mirror if needed)
+  npm run catalog:sync -- --dry-run --limit=100 --feed-source=gutenberg.pglaf.org
   node scripts/sync-gutenberg-catalog.js --help
 
   # Live full chain matching Sunday CI
@@ -219,7 +220,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.45'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.46'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:

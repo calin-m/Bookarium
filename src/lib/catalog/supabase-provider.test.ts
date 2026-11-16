@@ -897,6 +897,68 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results[0].quotes![0].quoteExcerpt).toBe('P&P Quote 1');
       expect(result.results[0].quotes![1].quoteExcerpt).toBe('P&P Quote 2');
     });
+
+    it('excludes books flagged with copyright === true from pool === "quotes"', async () => {
+      const mixedPoolRows = [
+        {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: ['Romance'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 65000,
+          quote0: { chapterLabel: 'Passage I', openingLine: 'Line 1', quoteExcerpt: 'Quote 1' },
+        },
+        {
+          id: 90123,
+          title: 'Copyrighted Donation Title',
+          authors: [{ name: 'Living Author', birth_year: 1965, death_year: null }],
+          translators: [],
+          subjects: ['Sci-Fi'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: true,
+          download_count: 90000,
+          quote0: { chapterLabel: 'Chapter 1', openingLine: 'Protected', quoteExcerpt: 'Blocked quote' },
+        },
+      ];
+
+      const client = {
+        from: vi.fn().mockImplementation(() => ({
+          select: vi.fn().mockImplementation((cols: string) => {
+            if (cols === 'id') {
+              return {
+                order: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue({ data: [{ id: 1342 }, { id: 90123 }] }),
+                }),
+              };
+            }
+            return {
+              in: vi.fn().mockReturnValue({
+                neq: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: mixedPoolRows, error: null }),
+                  }),
+                }),
+              }),
+            };
+          }),
+        })),
+      };
+
+      const provider = new SupabaseCatalogProvider(client as any);
+      const result = await provider.searchBooks({
+        page: 1,
+        limit: 48,
+        pool: 'quotes',
+        country: 'US',
+      });
+
+      expect(result.results.map((b) => b.id)).toEqual([1342]);
+    });
   });
 
   describe('getBookTranslations', () => {

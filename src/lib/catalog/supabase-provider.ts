@@ -598,6 +598,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       const books: GutendexBook[] = [];
       for (const row of data) {
         if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
+        if (row.copyright === true) continue;
         const rowWithQuotes = row as { quotes?: unknown; quote0?: unknown; quote1?: unknown };
         const rawQuotes = Array.isArray(rowWithQuotes.quotes)
           ? rowWithQuotes.quotes

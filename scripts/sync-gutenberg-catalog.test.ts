@@ -15,10 +15,17 @@ const {
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  resolveFeedMirrors,
+  isHtmlContentType,
   isAllowedRdfFeedUrl,
   isAllowedCsvFeedUrl,
+  isRdfCopyrightedNotice,
+  parseRdfCatalogSignalsStream,
   parseRdfDownloadCountsStream,
+  streamRdfMirrorOnce,
+  streamGutenbergRdfCatalogSignals,
   streamGutenbergRdfDownloadCounts,
+  streamCatalogMirrorOnce,
   streamGutenbergCatalog,
   areStringArraysEqual,
   areContributorArraysEqual,
@@ -751,26 +758,52 @@ describe('sync-gutenberg-catalog parser', () => {
     });
   });
 
-  describe('Unified RDF Download Counts Stream & Single-Batch Diff Integration', () => {
-    it('extracts bookId and download_count pairs from a multi-chunk RDF XML stream', async () => {
+  describe('Unified RDF Download Counts & Rights Stream, Mirror Failover & Single-Batch Diff Integration', () => {
+    it('extracts bookId, download_count, and <dcterms:rights> copyrighted IDs from multi-chunk RDF XML streams', async () => {
       const rdfChunks = [
         '<?xml version="1.0" encoding="utf-8"?>\n<rdf:RDF>\n  <pgterms:ebook rdf:about="ebooks/1342">\n',
-        '    <dcterms:title>Pride and Prejudice</dcterms:title>\n    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">55420</pgt',
-        'erms:downloads>\n  </pgterms:ebook>\n</rdf:RDF>\n<rdf:RDF>\n  <pgterms:ebook rdf:about="ebooks/84">\n    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">85210</pgterms:downloads>\n  </pgterms:ebook>\n</rdf:RDF>',
+        '    <dcterms:title>Pride and Prejudice</dcterms:title>\n    <dcterms:rights>Public domain in the USA.</dcterms:rights>\n    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">55420</pgt',
+        'erms:downloads>\n  </pgterms:ebook>\n</rdf:RDF>\n<rdf:RDF>\n  <pgterms:ebook rdf:about="ebooks/90123">\n    <dcterms:rights>\n      Copyrighted. Read the copyright notice inside this book for details.\n    </dcterms:rights>\n    <pgterms:downloads rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">120</pgterms:downloads>\n  </pgterms:ebook>\n</rdf:RDF>',
       ];
 
-      const readable = Readable.from(rdfChunks);
-      const countsMap = await parseRdfDownloadCountsStream(readable);
+      expect(isRdfCopyrightedNotice('Copyrighted. Read the copyright notice inside this book for details.')).toBe(true);
+      expect(isRdfCopyrightedNotice('Public domain in the USA.')).toBe(false);
+      expect(isRdfCopyrightedNotice('Not copyrighted in any territory.')).toBe(false);
+      expect(isRdfCopyrightedNotice('')).toBe(false);
 
+      const signals = await parseRdfCatalogSignalsStream(Readable.from(rdfChunks));
+      expect(signals.downloadCounts.get(1342)).toBe(55420);
+      expect(signals.downloadCounts.get(90123)).toBe(120);
+      expect(signals.downloadCounts.size).toBe(2);
+      expect(signals.copyrightedIds.has(90123)).toBe(true);
+      expect(signals.copyrightedIds.has(1342)).toBe(false);
+
+      const countsMap = await parseRdfDownloadCountsStream(Readable.from(rdfChunks));
       expect(countsMap.get(1342)).toBe(55420);
-      expect(countsMap.get(84)).toBe(85210);
-      expect(countsMap.size).toBe(2);
+      expect(countsMap.get(90123)).toBe(120);
     });
 
-    it('enforces RDF feed mirror allowlist, prioritizes Fastly CDN feed, and fails over to the next official mirror when one fails', async () => {
-      expect(GUTENBERG_RDF_FEED_MIRRORS[0]).toBe(
-        'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2'
+    it('enforces PGLAF-first mirror priority, resolves --feed-source pinning, rejects HTML outage responses, and fails over cleanly', async () => {
+      expect(GUTENBERG_RDF_FEED_MIRRORS).toEqual([
+        'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
+        'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+        'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+      ]);
+      expect(resolveFeedMirrors(GUTENBERG_RDF_FEED_MIRRORS, 'auto')).toEqual(GUTENBERG_RDF_FEED_MIRRORS);
+      expect(resolveFeedMirrors(GUTENBERG_CSV_FEED_MIRRORS, 'aleph.gutenberg.org')).toEqual([
+        'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
+      ]);
+      expect(resolveFeedMirrors(GUTENBERG_RDF_FEED_MIRRORS, 'gutenberg.pglaf.org')).toEqual([
+        'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
+      ]);
+      expect(() => resolveFeedMirrors(GUTENBERG_CSV_FEED_MIRRORS, 'evil.example.com')).toThrow(
+        /Unsupported --feed-source/
       );
+
+      expect(isHtmlContentType('text/html; charset=utf-8')).toBe(true);
+      expect(isHtmlContentType('application/xhtml+xml')).toBe(true);
+      expect(isHtmlContentType('application/x-gzip')).toBe(false);
+
       expect(isAllowedRdfFeedUrl('https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
         true
       );
@@ -785,21 +818,48 @@ describe('sync-gutenberg-catalog parser', () => {
       );
       expect(isAllowedRdfFeedUrl('https://evil.example.com/rdf-files.tar.bz2')).toBe(false);
 
+      const makeHtmlResponseHttpsGet = () => (_url: string, _opts: unknown, cb: (res: Readable) => void) => {
+        const res = Readable.from(['<!DOCTYPE html><html>Maintenance</html>']) as Readable & {
+          statusCode?: number;
+          statusMessage?: string;
+          headers?: Record<string, string>;
+        };
+        res.statusCode = 200;
+        res.statusMessage = 'OK';
+        res.headers = { 'content-type': 'text/html; charset=utf-8' };
+        queueMicrotask(() => cb(res));
+        const reqStub = Readable.from([]) as Readable & { setTimeout?: () => void };
+        return reqStub;
+      };
+
+      await expect(
+        streamRdfMirrorOnce(GUTENBERG_RDF_FEED_MIRRORS[0], {
+          httpsGet: makeHtmlResponseHttpsGet(),
+        })
+      ).rejects.toThrow(/HTML outage response/);
+
+      await expect(
+        streamCatalogMirrorOnce(vi.fn(), GUTENBERG_CSV_FEED_MIRRORS[0], {
+          httpsGet: makeHtmlResponseHttpsGet(),
+        })
+      ).rejects.toThrow(/HTML outage response/);
+
       const silentLogger = { log: vi.fn(), warn: vi.fn() };
       const streamMirrorFn = vi
         .fn()
         .mockRejectedValueOnce(new Error('Mirror 1 connection reset'))
-        .mockResolvedValueOnce(
-          new Map([
+        .mockResolvedValueOnce({
+          downloadCounts: new Map([
             [1342, 55420],
-            [84, 85210],
-          ])
-        );
+            [90123, 120],
+          ]),
+          copyrightedIds: new Set([90123]),
+        });
 
-      const countsMap = await streamGutenbergRdfDownloadCounts({
+      const rdfSignals = await streamGutenbergRdfCatalogSignals({
         mirrors: [
           'https://evil.example.com/ignored.tar.bz2',
-          'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+          'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
           'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
         ],
         streamMirrorFn,
@@ -807,11 +867,19 @@ describe('sync-gutenberg-catalog parser', () => {
       });
 
       expect(streamMirrorFn).toHaveBeenCalledTimes(2);
-      expect(countsMap.get(1342)).toBe(55420);
-      expect(countsMap.get(84)).toBe(85210);
+      expect(rdfSignals.hasRightsData).toBe(true);
+      expect(rdfSignals.downloadCounts.get(1342)).toBe(55420);
+      expect(rdfSignals.copyrightedIds?.has(90123)).toBe(true);
+
+      const legacyCountsMap = await streamGutenbergRdfDownloadCounts({
+        mirrors: [GUTENBERG_RDF_FEED_MIRRORS[0]],
+        streamMirrorFn: vi.fn().mockResolvedValueOnce(new Map([[1342, 55420]])),
+        logger: silentLogger,
+      });
+      expect(legacyCountsMap.get(1342)).toBe(55420);
     });
 
-    it('attaches download_count in normalizeCsvRow when downloadCountsMap is provided and detects download_count diffs', () => {
+    it('attaches download_count and RDF copyright flags in normalizeCsvRow, preserves cached flags on outage, and detects copyright diffs', () => {
       const sampleRow = [
         '1342',
         'Text',
@@ -823,11 +891,57 @@ describe('sync-gutenberg-catalog parser', () => {
         'PR',
         'Best Books Ever',
       ];
+      const copyrightedRow = [
+        '90123',
+        'Text',
+        '2025-01-01',
+        'Donated Copyrighted Work',
+        'en',
+        'Author, Modern, 1965-',
+        'Fiction',
+        'PS',
+        '',
+      ];
+      const rdfSignals = {
+        downloadCounts: new Map([
+          [1342, 55420],
+          [90123, 120],
+        ]),
+        copyrightedIds: new Set([90123]),
+      };
+
+      const withSignals = normalizeCsvRow(sampleRow, rdfSignals);
+      expect(withSignals.download_count).toBe(55420);
+      expect(withSignals.copyright).toBe(false);
+
+      const flaggedCopyrighted = normalizeCsvRow(copyrightedRow, rdfSignals);
+      expect(flaggedCopyrighted.download_count).toBe(120);
+      expect(flaggedCopyrighted.copyright).toBe(true);
+
+      // Old snapshot cache row with copyright: false upgrades automatically via hasCatalogMetadataChanged
+      expect(
+        hasCatalogMetadataChanged({ ...flaggedCopyrighted, copyright: false }, flaggedCopyrighted)
+      ).toBe(true);
+
+      // On --no-rdf / failed RDF outage, cached copyright: true is preserved rather than wiped to false
+      const preservedDuringOutage = normalizeCsvRow(
+        copyrightedRow,
+        { downloadCounts: new Map(), copyrightedIds: null },
+        { id: 90123, copyright: true }
+      );
+      expect(preservedDuringOutage.copyright).toBe(true);
+      expect(preservedDuringOutage).not.toHaveProperty('download_count');
+
+      // Quote pool diff excludes copyrighted volumes from both popular and recent tiers
+      const quoteDiff = computeCatalogQuotePoolDiff(
+        new Map([
+          [1342, extractCacheableBookRecord(withSignals)],
+          [90123, extractCacheableBookRecord(flaggedCopyrighted)],
+        ])
+      );
+      expect(quoteDiff.candidatePoolIds).toEqual([1342]);
+
       const countsMap = new Map([[1342, 55420]]);
-
-      const withCount = normalizeCsvRow(sampleRow, countsMap);
-      expect(withCount.download_count).toBe(55420);
-
       const defaultedZero = normalizeCsvRow(
         ['84', 'Text', '1993-10-01', 'Frankenstein', 'en', 'Shelley, Mary, 1797-1851', '', 'PR', ''],
         countsMap
@@ -837,20 +951,20 @@ describe('sync-gutenberg-catalog parser', () => {
       const withoutMap = normalizeCsvRow(sampleRow, null);
       expect(withoutMap).not.toHaveProperty('download_count');
 
-      // hasCatalogMetadataChanged detects download_count delta when incomingBook includes download_count
-      const existingRow = { ...withCount, download_count: 54000 };
-      expect(hasCatalogMetadataChanged(existingRow, withCount)).toBe(true);
-      expect(hasCatalogMetadataChanged({ ...withCount, download_count: 55420 }, withCount)).toBe(
+      const existingRow = { ...withSignals, download_count: 54000 };
+      expect(hasCatalogMetadataChanged(existingRow, withSignals)).toBe(true);
+      expect(hasCatalogMetadataChanged({ ...withSignals, download_count: 55420 }, withSignals)).toBe(
         false
       );
-      // When incomingBook omits download_count (e.g. --no-rdf mode), existing download_count is ignored
       expect(hasCatalogMetadataChanged(existingRow, withoutMap)).toBe(false);
     });
 
-    it('supports 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch', async () => {
-      expect(GUTENBERG_CSV_FEED_MIRRORS[0]).toBe(
-        'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz'
-      );
+    it('supports PGLAF-first 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch', async () => {
+      expect(GUTENBERG_CSV_FEED_MIRRORS).toEqual([
+        'https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv.gz',
+        'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
+        'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
+      ]);
       expect(isAllowedCsvFeedUrl('https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz')).toBe(
         true
       );

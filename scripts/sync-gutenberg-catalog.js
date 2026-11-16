@@ -8,9 +8,10 @@
  *
  * @module scripts/sync-gutenberg-catalog
  * @scope Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
+ * @invariant Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
  * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
  * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
- * @rationale Prevents weekly catalog refreshes from overwriting curated multi-quote arrays, exhausting Supabase read egress on 78,461 unchanged rows, or wiping catalog rows during partial upstream feed outages.
+ * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress or wiping catalog rows during partial upstream feed outages.
  * @adr ADR-040, ADR-080
  *
  * Usage:
@@ -243,7 +244,7 @@ function buildStandardFormats(bookId) {
 }
 
 // 5. Parse Raw CSV Row into Normalized Book Record
-function normalizeCsvRow(row, downloadCountsMap = null) {
+function normalizeCsvRow(row, rdfSignalsOrCountsMap = null, cachedBook = null) {
   if (!row || row.length < 5) return null;
 
   const id = parseInt(row[0], 10);
@@ -271,6 +272,24 @@ function normalizeCsvRow(row, downloadCountsMap = null) {
     .map((b) => b.trim())
     .filter(Boolean);
 
+  let downloadCountsMap = null;
+  let copyrightedIdsSet = null;
+  if (rdfSignalsOrCountsMap instanceof Map) {
+    downloadCountsMap = rdfSignalsOrCountsMap;
+  } else if (rdfSignalsOrCountsMap && typeof rdfSignalsOrCountsMap === 'object') {
+    if (rdfSignalsOrCountsMap.downloadCounts instanceof Map) {
+      downloadCountsMap = rdfSignalsOrCountsMap.downloadCounts;
+    }
+    if (rdfSignalsOrCountsMap.copyrightedIds instanceof Set) {
+      copyrightedIdsSet = rdfSignalsOrCountsMap.copyrightedIds;
+    }
+  }
+
+  const isCopyrighted =
+    copyrightedIdsSet instanceof Set
+      ? copyrightedIdsSet.has(id)
+      : Boolean(cachedBook && cachedBook.copyright === true);
+
   const record = {
     id,
     title,
@@ -279,7 +298,7 @@ function normalizeCsvRow(row, downloadCountsMap = null) {
     subjects,
     bookshelves,
     languages,
-    copyright: false,
+    copyright: isCopyrighted,
     media_type: 'Text',
     formats: buildStandardFormats(id),
     max_author_death_year: maxDeath,
@@ -294,18 +313,48 @@ function normalizeCsvRow(row, downloadCountsMap = null) {
   return record;
 }
 
-// 5b. Streaming RDF Archive Consumer for Full-Catalog Download Counts (rdf-files.tar.bz2)
+// 5b. Streaming RDF Archive Consumer for Full-Catalog Download Counts & Rights (rdf-files.tar.bz2)
 const GUTENBERG_RDF_FEED_MIRRORS = [
-  'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
-  'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
   'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
+  'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
+  'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
 ];
 
 const GUTENBERG_CSV_FEED_MIRRORS = [
-  'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
-  'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
   'https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv.gz',
+  'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
+  'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
 ];
+
+const FEED_SOURCE_OPTIONS = new Set([
+  'auto',
+  'gutenberg.pglaf.org',
+  'aleph.gutenberg.org',
+  'www.gutenberg.org',
+]);
+
+function resolveFeedMirrors(defaultMirrors = GUTENBERG_CSV_FEED_MIRRORS, feedSource = 'auto') {
+  const normalized = String(feedSource || 'auto').trim().toLowerCase() || 'auto';
+  if (!FEED_SOURCE_OPTIONS.has(normalized)) {
+    throw new Error(
+      `Unsupported --feed-source "${feedSource}". Expected auto, gutenberg.pglaf.org, aleph.gutenberg.org, or www.gutenberg.org.`
+    );
+  }
+  if (normalized === 'auto') {
+    return [...defaultMirrors];
+  }
+  const matched = defaultMirrors.filter((mirrorUrl) => {
+    try {
+      return new URL(mirrorUrl).hostname.toLowerCase() === normalized;
+    } catch {
+      return false;
+    }
+  });
+  if (matched.length === 0) {
+    throw new Error(`No feed mirror URL configured for host "${normalized}".`);
+  }
+  return matched;
+}
 
 const ALLOWED_RDF_FEED_HOSTS = new Set([
   'gutenberg.pglaf.org',
@@ -314,6 +363,11 @@ const ALLOWED_RDF_FEED_HOSTS = new Set([
   'www.gutenberg.org',
   'gutenberg.org',
 ]);
+
+function isHtmlContentType(contentType) {
+  const normalized = String(contentType || '').trim().toLowerCase();
+  return normalized.includes('text/html') || normalized.includes('application/xhtml+xml');
+}
 
 function isAllowedRdfFeedUrl(rawUrl) {
   try {
@@ -331,20 +385,36 @@ function isAllowedCsvFeedUrl(rawUrl) {
   return isAllowedRdfFeedUrl(rawUrl);
 }
 
-function parseRdfDownloadCountsStream(readableStream, onProgress = null) {
+function isRdfCopyrightedNotice(rawRightsText) {
+  if (!rawRightsText || typeof rawRightsText !== 'string') return false;
+  const normalized = rawRightsText.replace(/\s+/g, ' ').trim();
+  if (!normalized) return false;
+  if (/\b(?:public domain|not copyrighted)\b/i.test(normalized)) {
+    return false;
+  }
+  return /\bcopyrighted\b/i.test(normalized);
+}
+
+function parseRdfCatalogSignalsStream(readableStream, onProgress = null) {
   return new Promise((resolve, reject) => {
     const countsMap = new Map();
+    const copyrightedIds = new Set();
     let currentBookId = null;
+    let activeRightsCapture = null;
     let remainder = '';
 
     const ebookTagRegex = /<pgterms:ebook\s+rdf:about="ebooks\/(\d+)"/i;
     const downloadsTagRegex = /<pgterms:downloads[^>]*>(\d+)<\/pgterms:downloads>/i;
+    const inlineRightsRegex = /<dcterms:rights[^>]*>([\s\S]*?)<\/dcterms:rights>/i;
+    const openRightsRegex = /<dcterms:rights[^>]*>([\s\S]*)$/i;
+    const closeRightsRegex = /<\/dcterms:rights>/i;
 
     const processLine = (line) => {
       const ebookMatch = line.match(ebookTagRegex);
       if (ebookMatch) {
         const parsedId = parseInt(ebookMatch[1], 10);
         currentBookId = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
+        activeRightsCapture = null;
       }
 
       if (currentBookId !== null) {
@@ -358,10 +428,36 @@ function parseRdfDownloadCountsStream(readableStream, onProgress = null) {
             }
           }
         }
+
+        if (activeRightsCapture !== null) {
+          const closeMatch = line.match(closeRightsRegex);
+          if (closeMatch) {
+            const fullRights = `${activeRightsCapture} ${line.slice(0, closeMatch.index)}`;
+            activeRightsCapture = null;
+            if (isRdfCopyrightedNotice(fullRights)) {
+              copyrightedIds.add(currentBookId);
+            }
+          } else if (activeRightsCapture.length < 4096) {
+            activeRightsCapture = `${activeRightsCapture} ${line}`;
+          }
+        } else {
+          const inlineRightsMatch = line.match(inlineRightsRegex);
+          if (inlineRightsMatch) {
+            if (isRdfCopyrightedNotice(inlineRightsMatch[1])) {
+              copyrightedIds.add(currentBookId);
+            }
+          } else {
+            const openRightsMatch = line.match(openRightsRegex);
+            if (openRightsMatch) {
+              activeRightsCapture = openRightsMatch[1];
+            }
+          }
+        }
       }
 
       if (line.includes('</pgterms:ebook>')) {
         currentBookId = null;
+        activeRightsCapture = null;
       }
     };
 
@@ -379,11 +475,16 @@ function parseRdfDownloadCountsStream(readableStream, onProgress = null) {
         processLine(remainder);
         remainder = '';
       }
-      resolve(countsMap);
+      resolve({ downloadCounts: countsMap, copyrightedIds });
     });
 
     readableStream.on('error', reject);
   });
+}
+
+async function parseRdfDownloadCountsStream(readableStream, onProgress = null) {
+  const { downloadCounts } = await parseRdfCatalogSignalsStream(readableStream, onProgress);
+  return downloadCounts;
 }
 
 function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
@@ -395,7 +496,8 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
       return reject(new Error(`Exceeded maximum redirect hops for RDF feed: ${feedUrl}`));
     }
 
-    const req = https.get(
+    const httpsGet = typeof options.httpsGet === 'function' ? options.httpsGet : https.get;
+    const req = httpsGet(
       feedUrl,
       {
         headers: {
@@ -408,7 +510,7 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
         if (
           res.statusCode &&
           [301, 302, 303, 307, 308].includes(res.statusCode) &&
-          res.headers.location
+          res.headers?.location
         ) {
           res.resume();
           try {
@@ -429,7 +531,15 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
           );
         }
 
-        const totalBytes = parseInt(res.headers['content-length'] || '0', 10) || 0;
+        const contentType = res.headers?.['content-type'];
+        if (isHtmlContentType(contentType)) {
+          res.resume();
+          return reject(
+            new Error(`RDF feed mirror returned HTML outage response (${contentType})`)
+          );
+        }
+
+        const totalBytes = parseInt(res.headers?.['content-length'] || '0', 10) || 0;
         let downloadedBytes = 0;
         let parsedBookCount = 0;
         let lastReportMs = 0;
@@ -462,20 +572,20 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
         res.pipe(tarProc.stdin);
         tarProc.stdin.on('error', () => {});
 
-        parseRdfDownloadCountsStream(tarProc.stdout, (count) => {
+        parseRdfCatalogSignalsStream(tarProc.stdout, (count) => {
           parsedBookCount = count;
           emitProgress(false);
         })
-          .then((countsMap) => {
-            parsedBookCount = countsMap.size;
+          .then((signals) => {
+            parsedBookCount = signals.downloadCounts.size;
             emitProgress(true);
             tarProc.on('close', (code) => {
-              if (code !== 0 && countsMap.size === 0) {
+              if (code !== 0 && signals.downloadCounts.size === 0) {
                 reject(
                   new Error(`tar exited with code ${code}: ${tarStderr.trim() || 'unknown error'}`)
                 );
               } else {
-                resolve(countsMap);
+                resolve(signals);
               }
             });
           })
@@ -502,7 +612,7 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
   });
 }
 
-async function streamGutenbergRdfDownloadCounts(options = {}) {
+async function streamGutenbergRdfCatalogSignals(options = {}) {
   const rawMirrors = Array.isArray(options.mirrors) && options.mirrors.length > 0
     ? options.mirrors
     : GUTENBERG_RDF_FEED_MIRRORS;
@@ -516,9 +626,9 @@ async function streamGutenbergRdfDownloadCounts(options = {}) {
     try {
       const startMs = Date.now();
       logger.log(
-        `\n📦 Streaming full-catalog download counts [Mirror ${idx + 1}/${validMirrors.length}: ${host}] (${mirrorUrl})...`
+        `\n📦 Streaming full-catalog RDF signals [Mirror ${idx + 1}/${validMirrors.length}: ${host}] (${mirrorUrl})...`
       );
-      const countsMap = await streamMirrorFn(mirrorUrl, {
+      const result = await streamMirrorFn(mirrorUrl, {
         onProgress: (count, downloadedBytes = 0, totalBytes = 0) => {
           if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
             const elapsedSec = Math.max(0.1, (Date.now() - startMs) / 1000);
@@ -536,12 +646,28 @@ async function streamGutenbergRdfDownloadCounts(options = {}) {
           }
         },
       });
-      if (countsMap instanceof Map && countsMap.size > 0) {
+      if (result instanceof Map && result.size > 0) {
         const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
         logger.log(
-          `\n  ✔ Extracted 30-day download_count for ${countsMap.size.toLocaleString()} books from ${host} (${elapsed}s).`
+          `\n  ✔ Extracted 30-day download_count for ${result.size.toLocaleString()} books from ${host} (${elapsed}s).`
         );
-        return countsMap;
+        return { downloadCounts: result, copyrightedIds: null, hasRightsData: false };
+      }
+      if (result && result.downloadCounts instanceof Map && result.downloadCounts.size > 0) {
+        const copyrightedIds = result.copyrightedIds instanceof Set ? result.copyrightedIds : null;
+        const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+        const rightsSummary =
+          copyrightedIds !== null
+            ? ` and ${copyrightedIds.size.toLocaleString()} copyrighted rights notice(s)`
+            : '';
+        logger.log(
+          `\n  ✔ Extracted 30-day download_count for ${result.downloadCounts.size.toLocaleString()} books${rightsSummary} from ${host} (${elapsed}s).`
+        );
+        return {
+          downloadCounts: result.downloadCounts,
+          copyrightedIds,
+          hasRightsData: copyrightedIds instanceof Set,
+        };
       }
     } catch (err) {
       logger.warn(
@@ -551,9 +677,14 @@ async function streamGutenbergRdfDownloadCounts(options = {}) {
   }
 
   logger.warn(
-    '  ⚠ Warning: All RDF feed mirrors failed; skipping RDF download_count hydration and preserving existing counts.'
+    '  ⚠ Warning: All RDF feed mirrors failed; preserving existing counts and cached copyright flags.'
   );
-  return new Map();
+  return { downloadCounts: new Map(), copyrightedIds: null, hasRightsData: false };
+}
+
+async function streamGutenbergRdfDownloadCounts(options = {}) {
+  const { downloadCounts } = await streamGutenbergRdfCatalogSignals(options);
+  return downloadCounts;
 }
 
 // 6. Streaming RFC 4180 CSV Consumer with Multi-line Quoted Field Support, Mirror Failover & Download Progress
@@ -567,7 +698,8 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
     }
 
     const startMs = Date.now();
-    const req = https.get(
+    const httpsGet = typeof options.httpsGet === 'function' ? options.httpsGet : https.get;
+    const req = httpsGet(
       catalogUrl,
       {
         headers: {
@@ -580,7 +712,7 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
         if (
           res.statusCode &&
           [301, 302, 303, 307, 308].includes(res.statusCode) &&
-          res.headers.location
+          res.headers?.location
         ) {
           res.resume();
           try {
@@ -601,7 +733,15 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
           );
         }
 
-        const totalBytes = parseInt(res.headers['content-length'] || '0', 10) || 0;
+        const contentType = res.headers?.['content-type'];
+        if (isHtmlContentType(contentType)) {
+          res.resume();
+          return reject(
+            new Error(`CSV feed mirror returned HTML outage response (${contentType})`)
+          );
+        }
+
+        const totalBytes = parseInt(res.headers?.['content-length'] || '0', 10) || 0;
         let downloadedBytes = 0;
 
         res.on('data', (chunk) => {
@@ -1495,6 +1635,10 @@ async function main() {
   const cacheFilePath = cacheFileArg ? cacheFileArg.slice('--cache-file='.length).trim() : null;
   const diffOutputArg = args.find((a) => a.startsWith('--diff-output='));
   const diffOutputPath = diffOutputArg ? diffOutputArg.slice('--diff-output='.length).trim() : null;
+  const feedSourceArg = args.find((a) => a.startsWith('--feed-source='));
+  const feedSource = feedSourceArg
+    ? feedSourceArg.slice('--feed-source='.length).trim().toLowerCase() || 'auto'
+    : 'auto';
 
   if (isHelp) {
     console.log(`
@@ -1509,13 +1653,24 @@ Options:
   --batch-size=N        Number of books per Supabase upsert (default: 200)
   --cache-file=PATH     Load/save compressed catalog snapshot cache (.json.gz) for in-RAM diffing
   --diff-output=PATH    Write Two-Tier quote pool diff JSON (quote-diff.json) for sync-featured-quotes.js
+  --feed-source=HOST    Feed source: auto (pglaf -> aleph -> www), gutenberg.pglaf.org, aleph.gutenberg.org, or www.gutenberg.org
   --update-existing     Force full overwrite of all existing records (default: smart exact-diff update preserving quotes)
   --no-prune            Skip withdrawn-book reconciliation at the end of a full sync
   --force-prune         Override the 500-book per-run safety cap during withdrawn-book pruning
-  --no-rdf              Skip streaming rdf-files.tar.bz2 full-catalog download counts
+  --no-rdf              Skip streaming rdf-files.tar.bz2 full-catalog download counts and rights notices
   --help, -h            Show this help guide
 `);
     process.exit(0);
+  }
+
+  let rdfMirrors;
+  let csvMirrors;
+  try {
+    rdfMirrors = resolveFeedMirrors(GUTENBERG_RDF_FEED_MIRRORS, feedSource);
+    csvMirrors = resolveFeedMirrors(GUTENBERG_CSV_FEED_MIRRORS, feedSource);
+  } catch (err) {
+    console.error(`✖ Error: ${err.message}`);
+    process.exit(1);
   }
 
   const env = loadEnv();
@@ -1528,6 +1683,7 @@ Options:
   console.log(
     `• Strategy:    ${shouldUpdateExisting ? 'FORCE OVERWRITE (Rebuild all records)' : 'SMART EXACT-DIFF (Insert new + update changed metadata & download_count, preserving quotes)'}`
   );
+  console.log(`• Feed Source: ${feedSource}`);
   console.log(`• Batch Size:  ${batchSize} books/request`);
   if (cacheFilePath) console.log(`• Cache File:  ${cacheFilePath}`);
   if (diffOutputPath) console.log(`• Diff Output: ${diffOutputPath}`);
@@ -1560,9 +1716,12 @@ Options:
       ? loadCatalogSnapshotCache(cacheFilePath, { logger: console })
       : { loaded: false, booksById: new Map(), candidatePoolIds: new Set() };
 
-  let rdfDownloadCounts = new Map();
+  let rdfSignals = { downloadCounts: new Map(), copyrightedIds: null, hasRightsData: false };
   if (!noRdf && !limit) {
-    rdfDownloadCounts = await streamGutenbergRdfDownloadCounts({ logger: console });
+    rdfSignals = await streamGutenbergRdfCatalogSignals({
+      mirrors: rdfMirrors,
+      logger: console,
+    });
   }
 
   const startTime = Date.now();
@@ -1642,7 +1801,12 @@ Options:
         if (isAborted) return;
 
         totalParsed++;
-        const book = normalizeCsvRow(row, rdfDownloadCounts);
+        const rawId = parseInt(row?.[0], 10);
+        const cachedRow =
+          cachedSnapshot.loaded && Number.isInteger(rawId) && rawId > 0
+            ? cachedSnapshot.booksById.get(rawId) || null
+            : null;
+        const book = normalizeCsvRow(row, rdfSignals, cachedRow);
         if (!book) return;
 
         activeCatalogIds.add(book.id);
@@ -1664,6 +1828,7 @@ Options:
         }
       },
       {
+        mirrors: csvMirrors,
         logger: console,
         onDownloadProgress: ({ downloadedBytes, totalBytes, speedMBps, elapsedSec }) => {
           if (hasPrintedCsvSummary) return;
@@ -1755,6 +1920,7 @@ module.exports = {
   CATALOG_DIFF_SELECT_COLUMNS,
   GUTENBERG_RDF_FEED_MIRRORS,
   GUTENBERG_CSV_FEED_MIRRORS,
+  FEED_SOURCE_OPTIONS,
   MIN_ACTIVE_CATALOG_FOR_PRUNE,
   MAX_WITHDRAWN_PRUNE_PER_RUN,
   PROTECTED_HERO_BOOK_IDS,
@@ -1763,10 +1929,17 @@ module.exports = {
   computeLifespanBounds,
   buildStandardFormats,
   normalizeCsvRow,
+  resolveFeedMirrors,
+  isHtmlContentType,
   isAllowedRdfFeedUrl,
   isAllowedCsvFeedUrl,
+  isRdfCopyrightedNotice,
+  parseRdfCatalogSignalsStream,
   parseRdfDownloadCountsStream,
+  streamRdfMirrorOnce,
+  streamGutenbergRdfCatalogSignals,
   streamGutenbergRdfDownloadCounts,
+  streamCatalogMirrorOnce,
   streamGutenbergCatalog,
   areStringArraysEqual,
   areContributorArraysEqual,

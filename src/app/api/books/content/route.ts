@@ -2,9 +2,9 @@
  * @module src/app/api/books/content/route
  * @scope Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), Project Gutenberg cover JPEG proxies (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
  * @invariant Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlUpstreamPayload`), and bound payloads (`15 MB` text / `2 MB` cover).
- * @invariant Enforce multi-jurisdictional `HTTP 451` gatekeeping on plain-text and `type=card` requests in non-US jurisdictions while bypassing `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
+ * @invariant Enforce `HTTP 451` gatekeeping whenever resolved metadata restricts a volume in the caller's jurisdiction (including US `copyright === true` blocks) on plain-text and `type=card` requests, fail closed with `503` for non-US requests when metadata is unavailable, and bypass `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
  * @invariant Coalesce concurrent upstream mirror fetches per `bookId` inside `inFlightMirrorFetches` and cache Tier 0 resolved text in `bookContentLruCache`.
- * @rationale Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
+ * @rationale Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement across US or international jurisdictions, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
  * @adr ADR-016, ADR-022, ADR-039, ADR-080
  */
 
@@ -129,24 +129,24 @@ export async function GET(request: NextRequest) {
   const country = resolveClientCountry(request, searchParams);
 
   // Jurisdictional Copyright Gatekeeper:
-  // In international jurisdictions, verify book public domain status before streaming text or social cards
-  if (country !== 'US' && typeParam !== 'cover') {
-    const metadata = await resolveBookMetadata(bookId);
+  // Verify public domain status across US (`copyright === true` -> 451) and international jurisdictions (`503` fail-closed when metadata unavailable), while bypassing metadata lookups on `type=cover`.
+  const resolvedMetadata = typeParam !== 'cover' ? await resolveBookMetadata(bookId) : null;
 
-    if (!metadata) {
-      // Fail-closed: Cannot stream unverified titles to non-US users
-      return createNoStoreErrorResponse(
-        'Unable to verify copyright clearance for your jurisdiction at this time.',
-        503,
-        {
-          country,
-          reason:
-            'Upstream metadata verification is unavailable. Streaming withheld under international fail-closed protocol.',
-        }
-      );
-    }
+  if (country !== 'US' && typeParam !== 'cover' && !resolvedMetadata) {
+    // Fail-closed: Cannot stream unverified titles to non-US users
+    return createNoStoreErrorResponse(
+      'Unable to verify copyright clearance for your jurisdiction at this time.',
+      503,
+      {
+        country,
+        reason:
+          'Upstream metadata verification is unavailable. Streaming withheld under international fail-closed protocol.',
+      }
+    );
+  }
 
-    const evaluation = isBookPublicDomainInJurisdiction(metadata, country);
+  if (typeParam !== 'cover' && resolvedMetadata) {
+    const evaluation = isBookPublicDomainInJurisdiction(resolvedMetadata, country);
     if (!evaluation.isAllowed) {
       // Return HTTP 451 (Unavailable For Legal Reasons)
       return NextResponse.json(
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
   // Stateless On-the-Fly OpenGraph Social Reading Card (1200x630 PNG)
   // ==========================================================================
   if (typeParam === 'card') {
-    const metadata = await resolveBookMetadata(bookId);
+    const metadata = resolvedMetadata;
     const rawTitle = metadata?.title || `Project Gutenberg Volume #${bookId}`;
     const firstAuthor = metadata?.authors?.[0];
     const rawAuthor = firstAuthor

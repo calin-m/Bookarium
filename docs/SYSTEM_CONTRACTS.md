@@ -28,7 +28,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Total Scanned Executable Modules**: `272` (`src/**` + `scripts/*.js`)
 - **Annotated Contract Modules**: `61` (**22.4%** coverage; `12` Tier-1 + `17` Tier-2 + `17` Tier-3 + `15` Tier-4 = `61` Protected)
-- **Extracted Module Invariants**: `122`
+- **Extracted Module Invariants**: `123`
 - **Symbol-Level Contracts**: `1`
 - **Pending Annotation Queue**: `211` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
@@ -68,14 +68,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), Project Gutenberg cover JPEG proxies (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
 - **Behavioral Invariants (`@invariant`)**:
   - Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlUpstreamPayload`), and bound payloads (`15 MB` text / `2 MB` cover).
-  - Enforce multi-jurisdictional `HTTP 451` gatekeeping on plain-text and `type=card` requests in non-US jurisdictions while bypassing `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
+  - Enforce `HTTP 451` gatekeeping whenever resolved metadata restricts a volume in the caller's jurisdiction (including US `copyright === true` blocks) on plain-text and `type=card` requests, fail closed with `503` for non-US requests when metadata is unavailable, and bypass `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
   - Coalesce concurrent upstream mirror fetches per `bookId` inside `inFlightMirrorFetches` and cache Tier 0 resolved text in `bookContentLruCache`.
 - **Design Rationale (`@rationale`)**:
-  - Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
+  - Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement across US or international jurisdictions, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`src/app/api/books/content/route.test.ts`](../src/app/api/books/content/route.test.ts) (39 tests) + [`src/app/api/books/content/route.security.test.ts`](../src/app/api/books/content/route.security.test.ts) (14)
+- **Test Contract**: [`src/app/api/books/content/route.test.ts`](../src/app/api/books/content/route.test.ts) (40 tests) + [`src/app/api/books/content/route.security.test.ts`](../src/app/api/books/content/route.security.test.ts) (14)
 
 #### [`src/app/api/books/content/url-validator.ts`](../src/app/api/books/content/url-validator.ts) *(Tier-2 Protected)*
 
@@ -210,7 +210,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
-- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (38 tests)
+- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (39 tests)
 
 #### [`src/lib/copyright-engine.ts`](../src/lib/copyright-engine.ts) *(Tier-1 Protected)*
 
@@ -650,7 +650,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
-- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (21 tests)
+- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (22 tests)
 
 #### [`src/hooks/reader/useContinueReadingLedger.ts`](../src/hooks/reader/useContinueReadingLedger.ts) *(Tier-4 Protected)*
 
@@ -858,10 +858,11 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
 - **Behavioral Invariants (`@invariant`)**:
+  - Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
   - Diff in RAM against `gutenberg-catalog-cache.json.gz` (preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
   - Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
 - **Design Rationale (`@rationale`)**:
-  - Prevents weekly catalog refreshes from overwriting curated multi-quote arrays, exhausting Supabase read egress on 78,461 unchanged rows, or wiping catalog rows during partial upstream feed outages.
+  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress or wiping catalog rows during partial upstream feed outages.
 - **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`

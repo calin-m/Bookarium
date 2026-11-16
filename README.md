@@ -13,7 +13,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202655%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202658%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-97.39%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2655 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2658 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,10 +110,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.45)
+## 🛠️ Latest Improvements (v2.9.46)
 
-- **Cross-OS Deterministic AST Consumer Ordering & LF-Normalized File Sizing (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Added binary `compareCodepoint()` directory/caller sorting across `getAllSourceFiles` and `analyzeDependencyGraph` (`consumedBy`, `runtimeConsumedBy`, `typeOnlyConsumedBy`) and `getDeterministicTextOrBinaryBytes()` LF byte normalization for text seed/public assets so Windows and Ubuntu CI generate byte-for-byte identical `docs/ARCHITECTURE.md` and `docs/SYSTEM_CONTRACTS.md` outputs (`ADR-081`).
-- **Mirror-First Online Cover Fallback, CSP `img-src` Allowlisting & HTML Outage Guard (`next.config.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/app/api/books/content/route.ts`)**: Upgraded online book cards (`BookCard`, `BookmarkCard`, `BookPreviewModal`) to resolve Gutenberg cover artwork mirror-first (`aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`) via `resolveGutenbergCoverCandidates` and expanded `next.config.ts` `img-src`/`remotePatterns`, while rejecting HTTP `200` `text/html` outage pages inside `/api/books/content` (`ADR-070`, `ADR-080`).
+- **PGLAF-First Catalog Feed Failover, HTML Outage Rejection & Manual `feed_source` Selector (`.github/workflows/catalog-sync.yml`, `scripts/sync-gutenberg-catalog.js`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Prioritized `gutenberg.pglaf.org` -> `aleph.gutenberg.org` -> `www.gutenberg.org` for `rdf-files.tar.bz2` and `pg_catalog.csv.gz` with fast `isHtmlContentType` rejection on outage pages, added `--feed-source` CLI host pinning (`resolveFeedMirrors`), and exposed a `workflow_dispatch` `feed_source` dropdown (`auto`, `gutenberg.pglaf.org`, `aleph.gutenberg.org`, `www.gutenberg.org`) in `catalog-sync.yml` (`ADR-040`, `ADR-080`).
+- **RDF `<dcterms:rights>` Copyright Tagging, Unified US `HTTP 451` Gatekeeping & Quote-Pool Exclusion (`scripts/sync-gutenberg-catalog.js`, `scripts/sync-gutenberg-catalog.test.ts`, `src/app/api/books/content/route.ts`, `src/app/api/books/content/route.test.ts`, `src/lib/catalog/supabase-provider.ts`, `src/hooks/queries/useBooks.ts`)**: Upgraded `sync-gutenberg-catalog.js` (`parseRdfCatalogSignalsStream`, `isRdfCopyrightedNotice`) to extract `<dcterms:rights>` alongside `<pgterms:downloads>` from `rdf-files.tar.bz2` (flagging copyrighted PG titles as `copyright: true` while preserving cached flags on `--no-rdf`/outages), enabled `copyright === true -> HTTP 451` checks for US + non-US `/api/books/content` text and `type=card` requests, and excluded `copyright === true` entries from `fetchQuoteEnrichedPool`, `readCachedQuoteEnrichedBooks`, `fetchFeaturedQuotesMap`, and `fetchQuoteEnrichedBooks` (`ADR-002`, `ADR-040`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

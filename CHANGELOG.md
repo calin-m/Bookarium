@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.46] - 2026-11-16
+### *RDF Copyright Rights Extraction, PGLAF-First Catalog Feeds & Unified HTTP 451 Enforcement*
+
+### Fixed
+- **RDF `<dcterms:rights>` Copyright Tagging, Unified US `HTTP 451` Gatekeeping & Quote-Pool Exclusion (`scripts/sync-gutenberg-catalog.js`, `scripts/sync-gutenberg-catalog.test.ts`, `src/app/api/books/content/route.ts`, `src/app/api/books/content/route.test.ts`, `src/lib/catalog/supabase-provider.ts`, `src/hooks/queries/useBooks.ts`)**: Upgraded `sync-gutenberg-catalog.js` (`parseRdfCatalogSignalsStream`, `isRdfCopyrightedNotice`) to extract `<dcterms:rights>` alongside `<pgterms:downloads>` from `rdf-files.tar.bz2` (flagging copyrighted PG titles as `copyright: true` while preserving cached flags on `--no-rdf`/outages), enabled `copyright === true -> HTTP 451` checks for US + non-US `/api/books/content` text and `type=card` requests, and excluded `copyright === true` entries from `fetchQuoteEnrichedPool`, `readCachedQuoteEnrichedBooks`, `fetchFeaturedQuotesMap`, and `fetchQuoteEnrichedBooks` (`ADR-002`, `ADR-040`, `ADR-080`).
+
+### Changed
+- **PGLAF-First Catalog Feed Failover, HTML Outage Rejection & Manual `feed_source` Selector (`.github/workflows/catalog-sync.yml`, `scripts/sync-gutenberg-catalog.js`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Prioritized `gutenberg.pglaf.org` -> `aleph.gutenberg.org` -> `www.gutenberg.org` for `rdf-files.tar.bz2` and `pg_catalog.csv.gz` with fast `isHtmlContentType` rejection on outage pages, added `--feed-source` CLI host pinning (`resolveFeedMirrors`), and exposed a `workflow_dispatch` `feed_source` dropdown (`auto`, `gutenberg.pglaf.org`, `aleph.gutenberg.org`, `www.gutenberg.org`) in `catalog-sync.yml` (`ADR-040`, `ADR-080`).
+
+
 ## [2.9.45] - 2026-11-16
 ### *Cross-OS Deterministic AST Doc-Sync & Mirror-First Online Cover Resilience*
 

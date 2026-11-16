@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 16 Nov 2026 20:32:14 GMT  
+**Last Generated**: Mon, 16 Nov 2026 21:31:40 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 258 passed  
-**Total Verified Tests**: 2655 passed  
+**Total Verified Tests**: 2658 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2655 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2658 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.39%** (15796/16219) — *Target: $\ge$ 95%*
-- **Statements**: **96.2%** (17021/17692) — *Target: $\ge$ 95%*
+- **Lines**: **97.39%** (15802/16225) — *Target: $\ge$ 95%*
+- **Statements**: **96.19%** (17030/17704) — *Target: $\ge$ 95%*
 - **Functions**: **95.22%** (3392/3562) — *Target: $\ge$ 92%*
-- **Branches**: **88.53%** (15784/17828) — *Target: $\ge$ 85%*
+- **Branches**: **88.54%** (15801/17846) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2655 Tests)
+## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2658 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 328 Tests)
+### 🚀 App Routes & Pages (31 Suites · 329 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -114,7 +114,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (39 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (40 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -126,6 +126,7 @@
 - ✔ `should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK`
 - ✔ `should return HTTP 451 in local development via ?country=GB query parameter without headers`
 - ✔ `should return HTTP 451 when book is protected in Mexico (Life + 100)`
+- ✔ `should return HTTP 451 for US requests when catalog metadata flags copyright: true`
 - ✔ `should return HTTP 503 fail-closed when metadata cannot be retrieved for international user`
 - ✔ `should fetch and return book text for valid public domain id in US`
 - ✔ `should stream public domain book to GB user when metadata confirms death year <= 1955`
@@ -2059,7 +2060,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (52 Suites · 646 Tests)
+### 📚 Gutenberg Parsers & Metadata (52 Suites · 647 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2258,7 +2259,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (38 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (39 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2289,6 +2290,7 @@
 - ✔ `automatically backfills toward limit + 1 when runtime copyright filtering withholds rows and SQL has not reached EOF`
 - ✔ `handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically`
 - ✔ `handles pool === "quotes" with native PostgREST quote0 and quote1 aliased projection`
+- ✔ `excludes books flagged with copyright === true from pool === "quotes"`
 - ✔ `returns empty array for invalid bookId`
 - ✔ `returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC`
 - ✔ `gracefully returns empty array on database error`
@@ -3007,10 +3009,10 @@
 - ✔ `scans public.books via keyset pagination, protects Hero classics, and deletes withdrawn book IDs`
 - ✔ `triggers the maxPrunePerRun safety circuit breaker when candidate removals exceed cap`
 - ✔ `retries keyset scan and delete chunks in place when encountering transient connection pool timeouts`
-- ✔ `extracts bookId and download_count pairs from a multi-chunk RDF XML stream`
-- ✔ `enforces RDF feed mirror allowlist, prioritizes Fastly CDN feed, and fails over to the next official mirror when one fails`
-- ✔ `attaches download_count in normalizeCsvRow when downloadCountsMap is provided and detects download_count diffs`
-- ✔ `supports 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch`
+- ✔ `extracts bookId, download_count, and <dcterms:rights> copyrighted IDs from multi-chunk RDF XML streams`
+- ✔ `enforces PGLAF-first mirror priority, resolves --feed-source pinning, rejects HTML outage responses, and fails over cleanly`
+- ✔ `attaches download_count and RDF copyright flags in normalizeCsvRow, preserves cached flags on outage, and detects copyright diffs`
+- ✔ `supports PGLAF-first 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch`
 - ✔ `saves and loads compressed .json.gz snapshot caches and enforces the minCatalogSize safety floor`
 - ✔ `diffs incoming batches and reconciles withdrawn books 100% in RAM without querying Supabase when cachedBooksById is provided`
 - ✔ `computes Two-Tier quote pool promotedIds, demotedIds, and candidatePoolIds and writes quote-diff.json`
@@ -3019,7 +3021,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 339 Tests)
+### 🔄 Hooks & React Query (36 Suites · 340 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3046,7 +3048,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -3069,6 +3071,7 @@
 - ✔ `stays false with a cold cache while the fetch is pending, then settles via the timeout safety net`
 - ✔ `settles with a cold cache once the fetch completes, including when the fetch fails`
 - ✔ `forwards all optional query parameters in usePrefetchNextPage and sorts cached quote-enriched books deterministically`
+- ✔ `excludes copyright === true entries from fetchQuoteEnrichedBooks and fetchFeaturedQuotesMap`
 
 </details>
 

@@ -1365,7 +1365,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` streaming decompression, RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 

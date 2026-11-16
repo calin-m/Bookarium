@@ -278,6 +278,50 @@ describe('GET /api/books/content', () => {
     }
   });
 
+  it('should return HTTP 451 for US requests when catalog metadata flags copyright: true', async () => {
+    const copyrightedMeta = {
+      id: 90123,
+      title: 'Copyrighted Modern Contribution',
+      authors: [{ name: 'Modern Author', birth_year: 1960, death_year: null }],
+      translators: [],
+      copyright: true,
+    };
+
+    const { clientSpy, mockFrom, mockSelect, mockEq } = await mockSupabaseBookQuery(copyrightedMeta);
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    try {
+      const textReq = new NextRequest('http://localhost:3000/api/books/content?id=90123', {
+        headers: {
+          'x-vercel-ip-country': 'US',
+        },
+      });
+      const textRes = await GET(textReq);
+
+      expect(textRes.status).toBe(451);
+      expect(mockFrom).toHaveBeenCalledWith('books');
+      expect(mockSelect).toHaveBeenCalledWith('id, title, authors, translators, copyright');
+      expect(mockEq).toHaveBeenCalledWith('id', 90123);
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      const textJson = await textRes.json();
+      expect(textJson.country).toBe('US');
+      expect(textJson.rule).toBe('US_PUBLIC_DOMAIN');
+
+      const cardReq = new NextRequest('http://localhost:3000/api/books/content?id=90123&type=card', {
+        headers: {
+          'x-vercel-ip-country': 'US',
+        },
+      });
+      const cardRes = await GET(cardReq);
+      expect(cardRes.status).toBe(451);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      clientSpy.mockRestore();
+      fetchSpy.mockRestore();
+    }
+  });
+
   it('should return HTTP 503 fail-closed when metadata cannot be retrieved for international user', async () => {
     // Non-featured book 9999 with unconfigured Supabase fails closed without outbound HTTP lookups
     const fetchSpy = vi.spyOn(global, 'fetch');

@@ -280,6 +280,7 @@ export async function fetchFeaturedQuotesMap(
   if (Array.isArray(cachedPool) && cachedPool.length > 0) {
     const cachedById = new Map<number, BookPassage[]>();
     for (const book of cachedPool) {
+      if (book.copyright === true) continue;
       const validPassages = filterValidBookPassages(book.quotes);
       if (validPassages.length > 0) {
         cachedById.set(book.id, validPassages);
@@ -314,6 +315,7 @@ export async function fetchFeaturedQuotesMap(
         for (const item of json.results) {
           if (item && typeof item === 'object' && typeof (item as GutendexBook).id === 'number') {
             const b = item as GutendexBook;
+            if (b.copyright === true) continue;
             const validPassages = filterValidBookPassages(b.quotes);
             if (validPassages.length > 0) {
               quotesMap[b.id] = validPassages;
@@ -337,7 +339,7 @@ export async function fetchFeaturedQuotesMap(
     const supabase = createClient();
     const { data, error } = await supabase
       .from('books')
-      .select('id, quotes')
+      .select('id, quotes, copyright')
       .in('id', remainingIds);
 
     if (error || !Array.isArray(data)) {
@@ -346,6 +348,7 @@ export async function fetchFeaturedQuotesMap(
 
     for (const row of data) {
       if (row && typeof row.id === 'number') {
+        if ((row as { copyright?: boolean | null }).copyright === true) continue;
         const validPassages = filterValidBookPassages(row.quotes);
         if (validPassages.length > 0) {
           quotesMap[row.id] = validPassages;
@@ -375,7 +378,7 @@ export function readCachedQuoteEnrichedBooks(
     }
     const validBooks = sortQuoteEnrichedBooksDeterministically(
       (parsed.books as GutendexBook[]).filter(
-        (b) => b && typeof b.id === 'number' && typeof b.title === 'string'
+        (b) => b && typeof b.id === 'number' && typeof b.title === 'string' && b.copyright !== true
       )
     ).slice(0, Math.max(1, Math.min(DEFAULT_QUOTE_POOL_LIMIT, limit)));
     if (validBooks.length === 0) return undefined;
@@ -442,6 +445,7 @@ export async function fetchQuoteEnrichedBooks(
         for (const item of json.results) {
           if (item && typeof item === 'object' && typeof (item as GutendexBook).id === 'number') {
             const b = item as GutendexBook;
+            if (b.copyright === true) continue;
             const validPassages = filterValidBookPassages(b.quotes);
             if (validPassages.length > 0) {
               books.push({
@@ -526,6 +530,7 @@ export async function fetchQuoteEnrichedBooks(
     const books: GutendexBook[] = [];
     for (const row of data) {
       if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
+      if (row.copyright === true) continue;
       const rowWithQuotes = row as { quotes?: unknown; quote0?: unknown; quote1?: unknown };
       const rawQuotes = Array.isArray(rowWithQuotes.quotes)
         ? rowWithQuotes.quotes

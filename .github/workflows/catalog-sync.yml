@@ -20,6 +20,16 @@ on:
         required: false
         type: boolean
         default: false
+      feed_source:
+        description: 'Feed source mirror for rdf-files.tar.bz2 & pg_catalog.csv.gz (auto = pglaf -> aleph -> www fallback)'
+        required: false
+        type: choice
+        default: 'auto'
+        options:
+          - auto
+          - gutenberg.pglaf.org
+          - aleph.gutenberg.org
+          - www.gutenberg.org
 
 permissions:
   contents: write
@@ -61,6 +71,7 @@ jobs:
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_UPDATE_EXISTING: ${{ github.event.inputs.update_existing }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_FEED_SOURCE: ${{ github.event.inputs.feed_source }}
         run: |
           CMD_ARGS="--cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json"
           if [ "$INPUT_DRY_RUN" = "true" ]; then
@@ -68,6 +79,17 @@ jobs:
           fi
           if [ "$INPUT_UPDATE_EXISTING" = "true" ]; then
             CMD_ARGS="$CMD_ARGS --update-existing"
+          fi
+          if [ -n "${INPUT_FEED_SOURCE:-}" ] && [ "$INPUT_FEED_SOURCE" != "auto" ]; then
+            case "$INPUT_FEED_SOURCE" in
+              gutenberg.pglaf.org|aleph.gutenberg.org|www.gutenberg.org)
+                CMD_ARGS="$CMD_ARGS --feed-source=$INPUT_FEED_SOURCE"
+                ;;
+              *)
+                echo "Error: Unsupported feed_source '$INPUT_FEED_SOURCE'." >&2
+                exit 1
+                ;;
+            esac
           fi
           if [ -n "$INPUT_LIMIT" ]; then
             if [[ ! "$INPUT_LIMIT" =~ ^[0-9]+$ ]]; then

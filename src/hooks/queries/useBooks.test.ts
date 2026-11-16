@@ -936,6 +936,92 @@ describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
     expect(cached).toBeDefined();
     expect(cached?.books.map((b) => b.id)).toEqual([1342, 84, 99991, 99992]);
     expect(cached?.isFresh).toBe(true);
+
+    // Excludes entries flagged with copyright: true from localStorage, Edge /api/books?pool=quotes, and Supabase quote maps
+    window.localStorage.setItem(
+      QUOTE_ENRICHED_BOOKS_CACHE_KEY,
+      JSON.stringify({
+        updatedAt: Date.now(),
+        books: [
+          { ...baseBook, id: 1342, title: 'Pride and Prejudice', copyright: false },
+          { ...baseBook, id: 90123, title: 'Copyrighted Title', copyright: true },
+        ],
+      })
+    );
+    const filteredCached = readCachedQuoteEnrichedBooks(10);
+    expect(filteredCached?.books.map((b) => b.id)).toEqual([1342]);
+    window.localStorage.removeItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY);
+  });
+
+  it('excludes copyright === true entries from fetchQuoteEnrichedBooks and fetchFeaturedQuotesMap', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+
+    const onLineGetter = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+    try {
+      server.use(
+        http.get('/api/books', ({ request }) => {
+          const url = new URL(request.url, 'http://localhost:3000');
+          if (url.searchParams.get('pool') === 'quotes') {
+            return HttpResponse.json({
+              count: 2,
+              source: 'supabase',
+              results: [
+                {
+                  id: 1342,
+                  title: 'Pride and Prejudice',
+                  copyright: false,
+                  quotes: [{ chapterLabel: 'Ch 1', openingLine: 'Open', quoteExcerpt: 'Allowed quote' }],
+                },
+                {
+                  id: 90123,
+                  title: 'Copyrighted Title',
+                  copyright: true,
+                  quotes: [{ chapterLabel: 'Ch 1', openingLine: 'Locked', quoteExcerpt: 'Blocked quote' }],
+                },
+              ],
+            });
+          }
+          return HttpResponse.json({ count: 0, results: [] });
+        })
+      );
+
+      const poolBooks = await fetchQuoteEnrichedBooks(10);
+      expect(poolBooks.map((b) => b.id)).toEqual([1342]);
+
+      const inMock = vi.fn().mockResolvedValueOnce({
+        data: [
+          {
+            id: 1342,
+            copyright: false,
+            quotes: [{ chapterLabel: 'Ch 1', openingLine: 'Open', quoteExcerpt: 'Allowed quote' }],
+          },
+          {
+            id: 90123,
+            copyright: true,
+            quotes: [{ chapterLabel: 'Ch 1', openingLine: 'Locked', quoteExcerpt: 'Blocked quote' }],
+          },
+        ],
+        error: null,
+      });
+      vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            in: inMock,
+          })),
+        })),
+      } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+      vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Edge unavailable'));
+      window.localStorage.removeItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY);
+
+      const featuredMap = await fetchFeaturedQuotesMap([1342, 90123]);
+      expect(featuredMap[1342]).toHaveLength(1);
+      expect(featuredMap[90123]).toBeUndefined();
+    } finally {
+      onLineGetter.mockRestore();
+    }
   });
 });
 
