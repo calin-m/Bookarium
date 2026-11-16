@@ -67,7 +67,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), Project Gutenberg cover JPEG proxies (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
 - **Behavioral Invariants (`@invariant`)**:
-  - Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), and bound payloads (`15 MB` text / `2 MB` cover).
+  - Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlUpstreamPayload`), and bound payloads (`15 MB` text / `2 MB` cover).
   - Enforce multi-jurisdictional `HTTP 451` gatekeeping on plain-text and `type=card` requests in non-US jurisdictions while bypassing `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
   - Coalesce concurrent upstream mirror fetches per `bookId` inside `inFlightMirrorFetches` and cache Tier 0 resolved text in `bookContentLruCache`.
 - **Design Rationale (`@rationale`)**:
@@ -75,7 +75,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`src/app/api/books/content/route.test.ts`](../src/app/api/books/content/route.test.ts) (37 tests) + [`src/app/api/books/content/route.security.test.ts`](../src/app/api/books/content/route.security.test.ts) (14)
+- **Test Contract**: [`src/app/api/books/content/route.test.ts`](../src/app/api/books/content/route.test.ts) (39 tests) + [`src/app/api/books/content/route.security.test.ts`](../src/app/api/books/content/route.security.test.ts) (14)
 
 #### [`src/app/api/books/content/url-validator.ts`](../src/app/api/books/content/url-validator.ts) *(Tier-2 Protected)*
 
@@ -500,7 +500,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Separating persisted LWW `lastAnnotationSyncAt` anchors from ephemeral passive cooldowns prevents multi-device highlight count divergence without re-fetching unchanged marginalia on drawer switches.
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-055](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 11 runtime, 11 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, [`src/components/presentation/notebook/QuickColorSwatchPopover.tsx`](../src/components/presentation/notebook/QuickColorSwatchPopover.tsx) *(type)*, …)
+- **AST Blast Radius**: 11 runtime, 11 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.user_annotations` · Storage/Cookies: `bookarium-annotations-storage`
 - **Test Contract**: [`src/stores/useAnnotationStore.test.ts`](../src/stores/useAnnotationStore.test.ts) (38 tests)
 
@@ -626,19 +626,6 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content`
 - **Test Contract**: [`src/hooks/queries/useBookContent.test.ts`](../src/hooks/queries/useBookContent.test.ts) (18 tests)
 
-#### [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts) *(Tier-3 Protected)*
-
-- **Intended Scope (`@scope`)**: TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`), featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
-- **Behavioral Invariants (`@invariant`)**:
-  - Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
-  - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place.
-- **Design Rationale (`@rationale`)**:
-  - Client-side copyright filtering and deterministic quote sorting prevent regional or visual flash regressions across hydration and partial network failures.
-- **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), …)
-- **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
-- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (21 tests)
-
 #### [`src/hooks/queries/useBookTranslations.ts`](../src/hooks/queries/useBookTranslations.ts) *(Tier-3 Protected)*
 
 - **Intended Scope (`@scope`)**: Two-tier edition discovery hook (`useBookTranslations`) resolving alternate language editions via relational `/api/books/translations` links with root-title + author-surname fallback lookup.
@@ -651,6 +638,19 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: 1 runtime, 2 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderHeader.tsx`](../src/components/reader/ReaderHeader.tsx) *(type)*, [`src/components/reader/ReaderLanguageDrawer.tsx`](../src/components/reader/ReaderLanguageDrawer.tsx) *(type)*)
 - **Cross-Boundary Coupling**: API Calls: `/api/books`, `/api/books/translations`
 - **Test Contract**: [`src/hooks/queries/useBookTranslations.test.ts`](../src/hooks/queries/useBookTranslations.test.ts) (18 tests)
+
+#### [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`), featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
+- **Behavioral Invariants (`@invariant`)**:
+  - Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
+  - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place.
+- **Design Rationale (`@rationale`)**:
+  - Client-side copyright filtering and deterministic quote sorting prevent regional or visual flash regressions across hydration and partial network failures.
+- **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), …)
+- **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
+- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (21 tests)
 
 #### [`src/hooks/reader/useContinueReadingLedger.ts`](../src/hooks/reader/useContinueReadingLedger.ts) *(Tier-4 Protected)*
 
@@ -819,14 +819,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, and `17`-map generator orphan checks.
 - **Behavioral Invariants (`@invariant`)**:
-  - Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
+  - Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
   - Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
 - **Design Rationale (`@rationale`)**:
   - Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
 - **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
 - **AST Blast Radius**: 4 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (13 tests)
+- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (14 tests)
 
 #### [`scripts/purge-vercel-cache.js`](../scripts/purge-vercel-cache.js) *(Tier-4 Protected)*
 

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   resolveImportPath,
+  getDeterministicTextOrBinaryBytes,
   analyzeDependencyGraph,
   detectCircularDependencies,
   detectLayerViolations,
@@ -241,10 +242,13 @@ function extractDatabaseCatalog(rootDirPath) {
   const seedArtifacts = seedCandidates
     .filter((s) => fs.existsSync(path.join(rootDirPath, s.file)))
     .map((s) => {
-      const stat = fs.statSync(path.join(rootDirPath, s.file));
+      const byteSize = getDeterministicTextOrBinaryBytes(
+        path.join(rootDirPath, s.file),
+        s.file
+      );
       return {
         ...s,
-        size: `${(stat.size / 1024).toFixed(1)} KB`,
+        size: `${(byteSize / 1024).toFixed(1)} KB`,
       };
     });
 
@@ -393,7 +397,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '_Internal Generator Engine_',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
-        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges), CommonJS `scripts/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
+        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges with OS-independent `compareCodepoint` ordering and `getDeterministicTextOrBinaryBytes` LF-normalized asset sizing), CommonJS `scripts/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
     },
     'scripts/generate-architecture-matrix.js': {
       name: 'generate-architecture-matrix.js',
@@ -539,7 +543,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: 'next.config.ts',
       layer: 'Next.js 16 Build, Rewrites & OWASP Headers',
       responsibility:
-        'Configures Next.js 16 App Router image remote patterns (`gutenberg.org`), clean path Edge rewrites (`/bookshelf`, `/favorites`, `/notebook`, `/bookmarks` -> `/?view=*`), and all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy` with production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`).',
+        'Configures Next.js 16 App Router image remote patterns and CSP `img-src` allowlists (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, `www.gutenberg.org`, `gutenberg.org`), clean path Edge rewrites (`/bookshelf`, `/favorites`, `/notebook`, `/bookmarks` -> `/?view=*`), and all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy` with production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`).',
     },
     {
       name: 'vercel.json',
@@ -1661,7 +1665,7 @@ function generateMarkdown() {
     useBookshelfCapacity: 'Hydration-safe physical shelf spine capacity hook (`useSyncExternalStore`) dynamically coupling Bookshelf page size (2 shelves x capacity) and row limits across mobile (6), tablet (10), laptop (14), and desktop (18).',
     useAmbientDockScrollState: 'Shared scroll-idle dimming (`opacity-30`), top-threshold (`isAtTop`), and pointer wake (`onPointerEnter` / `onPointerLeave`) state machine for floating bottom capsule docks (`CatalogMobileBottomDock`, `CollectionBottomDock`).',
     useMobileViewportCardFocus: 'Shared single-column (`< 1024px`) viewport scroll focus band (`0.22–0.62` viewport ratio) and outside-tap dismissal hook for `BookmarkCard` and `NotebookQuoteCard`.',
-    useOfflineCoverImage: 'Shared IndexedDB offline book cover Blob hydration (`getOfflineBookCover`) and automatic `URL.createObjectURL` / `URL.revokeObjectURL` lifecycle cleanup hook (`BookCard`, `BookPreviewModal`, `HeroFeaturedBook3D`).',
+    useOfflineCoverImage: 'Shared mirror-first online Project Gutenberg cover fallback (`resolveGutenbergCoverCandidates`: `aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`), IndexedDB offline book cover Blob hydration (`getOfflineBookCover`), and automatic `URL.createObjectURL` / `URL.revokeObjectURL` lifecycle cleanup hook (`BookCard`, `BookmarkCard`, `BookPreviewModal`).',
     usePersonalCollectionsController:
       'Centralized controller hook for Bookshelf and Favorites filtering (`!is_default` drawer shelf deduplication, unified top-bar `Favorites` dropdown preset + orthogonal monochrome drawer `shelfFavoritesOnly` switch composable with sort & direction, and contextual empty states), bidirectional sorting, custom shelf resolution, pagination reset, and clear-confirmation modal state (`src/app/page.tsx`).',
     useReaderAnnotationActions: 'Encapsulated Focus Reader text-selection popover state, overlapping fellow/own annotation matching (`matchedPopoverAnnotations`), and highlight/note CRUD handlers (`src/app/read/[id]/page.tsx`).',

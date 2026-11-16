@@ -178,6 +178,7 @@ const astParser = require('./ast-parser.js') as {
   extractApiAndHookCatalog: (srcDir: string) => { routes: RouteCatalogEntry[] };
   extractSqlSchemaEntities: (schemaSql: string) => SqlSchemaEntities;
   extractTestsFromSourceAst: (content: string) => string[];
+  getDeterministicTextOrBinaryBytes: (absPath: string, relPath: string) => number;
 };
 
 const tempDirs: string[] = [];
@@ -791,5 +792,45 @@ describe('ast-parser architectural & SQL verification engine', () => {
       'workflowResponsibilityMap:deleted-wf.yml',
       'writeAuthMap:retired_write',
     ]);
+  });
+
+  it('produces deterministic codepoint-sorted consumer lists and LF-normalized text asset sizes regardless of CRLF', () => {
+    const { rootDir, srcDir } = createTempProject({
+      'src/shared/Button.tsx': 'export function Button() { return null; }',
+      'src/components/presentation/BookPreviewModal.tsx':
+        "import { Button } from '@/shared/Button'; export const A = Button;",
+      'src/components/presentation/BookmarkCard.tsx':
+        "import { Button } from '@/shared/Button'; export const B = Button;",
+      'src/components/presentation/notebook/NotebookFilterStrip.tsx':
+        "import type { Button as BtnType } from '@/shared/Button'; export type T = typeof BtnType;",
+      'src/components/presentation/NotebookQuoteCard.tsx':
+        "import { Button } from '@/shared/Button'; export const C = Button;",
+      'public/sw.js': 'const CACHE_NAME = "v1";\r\nconsole.log(CACHE_NAME);\r\n',
+    });
+
+    const graph = astParser.analyzeDependencyGraph(srcDir, rootDir);
+    const buttonNode = graph.get('src/shared/Button.tsx');
+    expect(buttonNode?.consumedBy).toEqual([
+      'src/components/presentation/BookPreviewModal.tsx',
+      'src/components/presentation/BookmarkCard.tsx',
+      'src/components/presentation/NotebookQuoteCard.tsx',
+      'src/components/presentation/notebook/NotebookFilterStrip.tsx',
+    ]);
+    expect(buttonNode?.runtimeConsumedBy).toEqual([
+      'src/components/presentation/BookPreviewModal.tsx',
+      'src/components/presentation/BookmarkCard.tsx',
+      'src/components/presentation/NotebookQuoteCard.tsx',
+    ]);
+    expect(buttonNode?.typeOnlyConsumedBy).toEqual([
+      'src/components/presentation/notebook/NotebookFilterStrip.tsx',
+    ]);
+
+    const swAbs = path.join(rootDir, 'public', 'sw.js');
+    const crlfBytes = fs.statSync(swAbs).size;
+    const lfBytes = astParser.getDeterministicTextOrBinaryBytes(swAbs, 'public/sw.js');
+    expect(crlfBytes).toBe(lfBytes + 2);
+
+    fs.writeFileSync(swAbs, 'const CACHE_NAME = "v1";\nconsole.log(CACHE_NAME);\n', 'utf-8');
+    expect(astParser.getDeterministicTextOrBinaryBytes(swAbs, 'public/sw.js')).toBe(lfBytes);
   });
 });

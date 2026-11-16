@@ -193,12 +193,34 @@ describe('BookCard component', () => {
     vi.useRealTimers();
   });
 
-  it('renders fallback cover when image error occurs', () => {
+  it('tries Gutenberg cover mirrors first and renders fallback cover after all mirrors fail', async () => {
     const book = mockBooks[0];
     render(<BookCard book={book} onPreviewClick={vi.fn()} />);
 
     const coverImg = screen.getByAltText(`Cover of ${book.title}`);
-    fireEvent.error(coverImg);
+    expect(coverImg).toHaveAttribute('src', expect.stringContaining('https://aleph.gutenberg.org/'));
+
+    await act(async () => {
+      fireEvent.error(coverImg);
+    });
+    expect(coverImg).toHaveAttribute('src', expect.stringContaining('https://gutenberg.pglaf.org/'));
+
+    await act(async () => {
+      fireEvent.error(coverImg);
+    });
+    expect(coverImg).toHaveAttribute(
+      'src',
+      expect.stringContaining('https://gutenberg.readingroo.ms/')
+    );
+
+    await act(async () => {
+      fireEvent.error(coverImg);
+    });
+    expect(coverImg).toHaveAttribute('src', expect.stringContaining('https://www.gutenberg.org/'));
+
+    await act(async () => {
+      fireEvent.error(coverImg);
+    });
 
     expect(screen.getByText(/Public Domain/i)).toBeInTheDocument();
     expect(screen.getAllByText(book.title).length).toBeGreaterThanOrEqual(1);

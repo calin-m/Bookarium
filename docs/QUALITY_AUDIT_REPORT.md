@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 16 Nov 2026 19:39:00 GMT  
+**Last Generated**: Mon, 16 Nov 2026 20:32:14 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 258 passed  
-**Total Verified Tests**: 2649 passed  
+**Total Verified Tests**: 2655 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2649 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2655 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.38%** (15757/16180) — *Target: $\ge$ 95%*
-- **Statements**: **96.19%** (16980/17651) — *Target: $\ge$ 95%*
-- **Functions**: **95.22%** (3388/3558) — *Target: $\ge$ 92%*
-- **Branches**: **88.51%** (15745/17787) — *Target: $\ge$ 85%*
+- **Lines**: **97.39%** (15796/16219) — *Target: $\ge$ 95%*
+- **Statements**: **96.2%** (17021/17692) — *Target: $\ge$ 95%*
+- **Functions**: **95.22%** (3392/3562) — *Target: $\ge$ 92%*
+- **Branches**: **88.53%** (15784/17828) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2649 Tests)
+## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2655 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 326 Tests)
+### 🚀 App Routes & Pages (31 Suites · 328 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -114,7 +114,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (37 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (39 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -137,6 +137,7 @@
 - ✔ `follows up to 3 trusted redirect hops and skips mirrors that redirect to untrusted origins`
 - ✔ `Tier 1: serves directly from aleph.gutenberg.org when available`
 - ✔ `Tier 2: falls back to gutenberg.pglaf.org when aleph.gutenberg.org returns 503`
+- ✔ `skips mirrors returning HTTP 200 HTML outage pages and succeeds on the next plain-text mirror`
 - ✔ `Tier 3: falls back to gutenberg.readingroo.ms when aleph and pglaf mirrors fail`
 - ✔ `Tier 4: falls back to www.gutenberg.org/cache/epub when all 3 harvest mirrors fail`
 - ✔ `Tier 5: falls back to www.gutenberg.org/files/{id}/{id}-0.txt when all /cache/epub endpoints return 404`
@@ -150,6 +151,7 @@
 - ✔ `returns 502 when all mirrors fail or return error`
 - ✔ `skips oversized cover responses exceeding 2MB threshold`
 - ✔ `skips copyright metadata lookup for type=cover in non-US jurisdictions and emits max-age browser caching headers`
+- ✔ `skips mirrors returning HTTP 200 text/html outage pages on type=cover requests`
 - ✔ `serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity`
 - ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
 - ✔ `renders the canonical SITE_CONFIG.SITE_HOST domain footer in the type=card OpenGraph JSX tree`
@@ -549,7 +551,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 581 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 582 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -595,7 +597,7 @@
 - ✔ `should call onPreviewClick on mobile when activeView is favorites`
 - ✔ `applies responsive active styling (desktop hide, mobile highlight) when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
-- ✔ `renders fallback cover when image error occurs`
+- ✔ `tries Gutenberg cover mirrors first and renders fallback cover after all mirrors fail`
 - ✔ `falls back to offline IndexedDB cover blob when image error occurs while offline`
 - ✔ `triggers preview on Enter or Space key press on cover`
 - ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
@@ -637,7 +639,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (25 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (26 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -664,6 +666,7 @@
 - ✔ `toggles Favorite and Bookshelf state via header action buttons with full metadata preservation and without triggering card activation`
 - ✔ `applies status-tinted border and focus ring to the status selector while keeping neutral text and 1080p compact footer sizing`
 - ✔ `renders the compact text-only status pill without icons or truncation popovers`
+- ✔ `prioritizes Gutenberg mirrors for coverUrl and falls back on repeated image errors`
 
 </details>
 
@@ -2056,7 +2059,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (52 Suites · 645 Tests)
+### 📚 Gutenberg Parsers & Metadata (52 Suites · 646 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2918,7 +2921,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
 - ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
@@ -2933,6 +2936,7 @@
 - ✔ `verifies all Tier-1, Tier-2, Tier-3, and Tier-4 protected modules in the live repository maintain valid @scope/@invariant contracts`
 - ✔ `verifies zero orphaned lookup keys exist across all 17 live generator registries`
 - ✔ `detects orphaned lookup keys across all generator registries when modules, deps, workflows, SQL entities, signals, workers, or env vars are removed`
+- ✔ `produces deterministic codepoint-sorted consumer lists and LF-normalized text asset sizes regardless of CRLF`
 
 </details>
 
@@ -3015,7 +3019,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 337 Tests)
+### 🔄 Hooks & React Query (36 Suites · 339 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3491,9 +3495,11 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (4 tests)</summary>
 
+- ✔ `orders official Gutenberg mirrors ahead of www.gutenberg.org and preserves non-Gutenberg URLs`
 - ✔ `sets imageError when not offline or when no cached cover blob exists`
+- ✔ `steps through Gutenberg mirror candidates on repeated errors and resets on prop change`
 - ✔ `loads a blob URL from IndexedDB when offline cover blob is available and revokes it on unmount`
 
 </details>

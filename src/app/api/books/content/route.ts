@@ -1,7 +1,7 @@
 /**
  * @module src/app/api/books/content/route
  * @scope Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), Project Gutenberg cover JPEG proxies (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
- * @invariant Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), and bound payloads (`15 MB` text / `2 MB` cover).
+ * @invariant Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlUpstreamPayload`), and bound payloads (`15 MB` text / `2 MB` cover).
  * @invariant Enforce multi-jurisdictional `HTTP 451` gatekeeping on plain-text and `type=card` requests in non-US jurisdictions while bypassing `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
  * @invariant Coalesce concurrent upstream mirror fetches per `bookId` inside `inFlightMirrorFetches` and cache Tier 0 resolved text in `bookContentLruCache`.
  * @rationale Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
@@ -44,6 +44,21 @@ import { createClient } from '@/lib/supabase/client';
 
 const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
 const MAX_COVER_BYTES = 2 * 1024 * 1024; // 2 MB threshold for Gutenberg cover images
+
+function isHtmlUpstreamPayload(contentType: string | null | undefined, bodySnippet?: string): boolean {
+  const normalizedType = (contentType || '').trim().toLowerCase();
+  if (normalizedType.includes('text/html') || normalizedType.includes('application/xhtml+xml')) {
+    return true;
+  }
+  if (!bodySnippet) return false;
+  const trimmed = bodySnippet.trimStart().toLowerCase();
+  return (
+    trimmed.startsWith('<p>the document has moved') ||
+    trimmed.startsWith('<!doctype html') ||
+    trimmed.startsWith('<html') ||
+    trimmed.startsWith('<head')
+  );
+}
 const ALLOWED_CONTENT_QUERY_KEYS = new Set(['id', 'url', 'type', 's']);
 const DEV_ONLY_CONTENT_QUERY_KEYS = new Set(['country']);
 const SUPPORTED_CONTENT_TYPES = new Set(['', 'cover', 'card']);
@@ -479,6 +494,11 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
+        const coverContentType = response.headers?.get('content-type');
+        if (isHtmlUpstreamPayload(coverContentType)) {
+          continue;
+        }
+
         const contentLength = response.headers?.get('content-length');
         if (contentLength && parseInt(contentLength, 10) > MAX_COVER_BYTES) {
           continue;
@@ -634,6 +654,11 @@ export async function GET(request: NextRequest) {
           }
 
           if (response.ok) {
+            const upstreamContentType = response.headers?.get('content-type');
+            if (isHtmlUpstreamPayload(upstreamContentType)) {
+              continue;
+            }
+
             const contentLength = response.headers?.get('content-length');
             if (contentLength && parseInt(contentLength, 10) > MAX_BOOK_BYTES) {
               continue;
@@ -671,8 +696,8 @@ export async function GET(request: NextRequest) {
               text = await response.text();
             }
 
-            // Verify it's not a redirect HTML page
-            if (text && !text.trim().startsWith('<p>The document has moved')) {
+            // Verify upstream payload is genuine plain text rather than an HTML redirect/outage page
+            if (text && !isHtmlUpstreamPayload(upstreamContentType, text.slice(0, 512))) {
               resolvedText = text;
               resolvedSuccess = true;
               break;

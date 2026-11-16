@@ -53,9 +53,10 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 }) => {
   const router = useRouter();
   const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
-  const { imageError, offlineCoverUrl, handleImageError } = useOfflineCoverImage(
+  const { imageError, activeCoverUrl, handleImageError } = useOfflineCoverImage(
     book.id,
-    isOffline
+    isOffline,
+    book.coverUrl
   );
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<CollectionRemovalType | null>(null);
@@ -151,9 +152,9 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
               isRestricted || isUnavailableOffline ? 'cursor-not-allowed' : ''
             }`}
           >
-            {book.coverUrl && !imageError ? (
+            {activeCoverUrl && !imageError ? (
               <img
-                src={offlineCoverUrl || book.coverUrl}
+                src={activeCoverUrl}
                 alt={`Cover of ${book.title}`}
                 loading="lazy"
                 onError={handleImageError}

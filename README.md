@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202649%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.38%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202655%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.39%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2649 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2655 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,11 +110,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.44)
+## 🛠️ Latest Improvements (v2.9.45)
 
-- **Collections Controller & Canonical Annotator Edge Coverage (`src/hooks/usePersonalCollectionsController.test.ts`, `src/lib/reader-annotator.test.ts`)**: Added behavioral tests for desktop toolbar direction promotion on `favorites`, drawer/clear preset reset edges, downloaded-favorites empty copy, page-overflow clamping, curly single-quote canonical matching, trimmed-needle fallback, and overlap containment guards (`ADR-019`, `ADR-080`).
-- **Zero-Debt Doc-Sync Regex Fix & Static Prose Deduplication (`scripts/generate-quality-report.js`, `scripts/generate-contracts-docs.js`, `README.md`, `docs/PIPELINE_GUIDE.md`, `docs/DECISIONS.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Fixed the backticked README ADR-count auto-sync regex in `scripts/generate-quality-report.js`, trimmed stale hardcoded tier/ADR prose in `README.md` and duplicate CLI parameter tables in `README.md` & `docs/PIPELINE_GUIDE.md` to canonical runbook links, and documented the symbol-anchored `@invariant` authoring rule (`ADR-081`).
-- **CI Full-Repo AST Test Splitting & Pass 5 Cross-Boundary Reuse (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/verify-build.js`, `docs/DECISIONS.md`)**: Split live Tier-1..Tier-4 contract validation and 17-map `findOrphanedGeneratorLookupKeys` checks into independent tests with `45_000`ms per-test timeouts across all 4 live AST scans to prevent shared GitHub Actions `15_000`ms runner timeouts, and added `{ crossBoundaryCatalog }` reuse inside Pass 5 (`ADR-081`).
+- **Cross-OS Deterministic AST Consumer Ordering & LF-Normalized File Sizing (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Added binary `compareCodepoint()` directory/caller sorting across `getAllSourceFiles` and `analyzeDependencyGraph` (`consumedBy`, `runtimeConsumedBy`, `typeOnlyConsumedBy`) and `getDeterministicTextOrBinaryBytes()` LF byte normalization for text seed/public assets so Windows and Ubuntu CI generate byte-for-byte identical `docs/ARCHITECTURE.md` and `docs/SYSTEM_CONTRACTS.md` outputs (`ADR-081`).
+- **Mirror-First Online Cover Fallback, CSP `img-src` Allowlisting & HTML Outage Guard (`next.config.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/app/api/books/content/route.ts`)**: Upgraded online book cards (`BookCard`, `BookmarkCard`, `BookPreviewModal`) to resolve Gutenberg cover artwork mirror-first (`aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`) via `resolveGutenbergCoverCandidates` and expanded `next.config.ts` `img-src`/`remotePatterns`, while rejecting HTTP `200` `text/html` outage pages inside `/api/books/content` (`ADR-070`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

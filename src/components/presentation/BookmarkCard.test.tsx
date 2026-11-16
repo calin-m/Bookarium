@@ -647,5 +647,55 @@ describe('BookmarkCard', () => {
     expect(badge.querySelector('svg')).toBeNull();
     expect(screen.queryByTestId('bookmark-card-status-indicator')).not.toBeInTheDocument();
   });
+
+  it('prioritizes Gutenberg mirrors for coverUrl and falls back on repeated image errors', async () => {
+    render(
+      <BookmarkCard
+        volume={{
+          ...mockVolume,
+          book: {
+            ...mockVolume.book,
+            coverUrl: 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+          },
+        }}
+      />
+    );
+
+    const img = screen.getByAltText('Cover of Pride and Prejudice');
+    expect(img).toHaveAttribute(
+      'src',
+      'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg'
+    );
+
+    await act(async () => {
+      fireEvent.error(img);
+    });
+    expect(img).toHaveAttribute(
+      'src',
+      'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg'
+    );
+
+    await act(async () => {
+      fireEvent.error(img);
+    });
+    expect(img).toHaveAttribute(
+      'src',
+      'https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.cover.medium.jpg'
+    );
+
+    await act(async () => {
+      fireEvent.error(img);
+    });
+    expect(img).toHaveAttribute(
+      'src',
+      'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg'
+    );
+
+    await act(async () => {
+      fireEvent.error(img);
+    });
+    const cover = screen.getByTestId('bookmark-card-cover');
+    expect(within(cover).getByText('Pride and Prejudice')).toBeInTheDocument();
+  });
 });
 

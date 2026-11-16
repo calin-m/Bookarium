@@ -58,9 +58,11 @@ export const BookCard: React.FC<BookCardProps> = ({
 }) => {
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
-  const { imageError, offlineCoverUrl, handleImageError } = useOfflineCoverImage(
+  const formats = extractBookFormats(book.formats, book.id);
+  const { imageError, activeCoverUrl, handleImageError } = useOfflineCoverImage(
     book.id,
-    isOffline
+    isOffline,
+    formats.coverImage
   );
   const [pendingRemoval, setPendingRemoval] = React.useState<CollectionRemovalType | null>(null);
   const [isRemoveOfflineModalOpen, setIsRemoveOfflineModalOpen] = React.useState(false);
@@ -77,7 +79,6 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const { country, evaluation, isRestricted } = useBookCopyright(book);
 
-  const formats = extractBookFormats(book.formats, book.id);
   const authorNames = formatAuthorNames(book.authors) || 'Anonymous';
   const tagSet = React.useMemo(() => {
     return resolveBookTags(book.subjects, book.bookshelves);
@@ -191,10 +192,10 @@ export const BookCard: React.FC<BookCardProps> = ({
           onPreviewClick ? 'cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary' : ''
         }`}
       >
-        {formats.coverImage && !imageError ? (
+        {activeCoverUrl && !imageError ? (
           <div className="relative w-full h-full flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-300">
             <img
-              src={offlineCoverUrl || formats.coverImage}
+              src={activeCoverUrl}
               alt={`Cover of ${book.title}`}
               className={`max-w-full max-h-full w-auto h-auto object-contain rounded-sm shadow-md transition-opacity duration-300 ${
                 isRestricted

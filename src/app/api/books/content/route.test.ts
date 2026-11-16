@@ -526,6 +526,33 @@ describe('GET /api/books/content', () => {
       expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
     });
 
+    it('skips mirrors returning HTTP 200 HTML outage pages and succeeds on the next plain-text mirror', async () => {
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('<!DOCTYPE html><html><body>Outage Maintenance</body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(sampleBookText, {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      const body = await res.text();
+      expect(body).toContain('Pride and Prejudice');
+
+      fetchSpy.mockRestore();
+    });
+
     it('Tier 3: falls back to gutenberg.readingroo.ms when aleph and pglaf mirrors fail', async () => {
       const fetchSpy = vi.spyOn(global, 'fetch')
         .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
@@ -792,6 +819,35 @@ describe('GET /api/books/content', () => {
       );
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(String(fetchSpy.mock.calls[0][0])).toContain('pg863.cover.medium.jpg');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('skips mirrors returning HTTP 200 text/html outage pages on type=cover requests', async () => {
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('<!DOCTYPE html><html><body>Maintenance</body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(fakeJpegBytes, {
+            status: 200,
+            headers: { 'Content-Type': 'image/jpeg', 'Content-Length': String(fakeJpegBytes.byteLength) },
+          })
+        );
+
+      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
+      const res = await GET(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('image/jpeg');
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy.mock.calls[1][0]).toBe(
+        'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg'
+      );
 
       fetchSpy.mockRestore();
     });

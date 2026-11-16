@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.45',
+    date: '2026-11-16',
+    title: 'Cross-OS Deterministic AST Doc-Sync & Mirror-First Online Cover Resilience',
+    sections: {
+      Fixed: [
+        '**Cross-OS Deterministic AST Consumer Ordering & LF-Normalized File Sizing (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Added binary `compareCodepoint()` directory/caller sorting across `getAllSourceFiles` and `analyzeDependencyGraph` (`consumedBy`, `runtimeConsumedBy`, `typeOnlyConsumedBy`) and `getDeterministicTextOrBinaryBytes()` LF byte normalization for text seed/public assets so Windows and Ubuntu CI generate byte-for-byte identical `docs/ARCHITECTURE.md` and `docs/SYSTEM_CONTRACTS.md` outputs (`ADR-081`).',
+        '**Mirror-First Online Cover Fallback, CSP `img-src` Allowlisting & HTML Outage Guard (`next.config.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/app/api/books/content/route.ts`)**: Upgraded online book cards (`BookCard`, `BookmarkCard`, `BookPreviewModal`) to resolve Gutenberg cover artwork mirror-first (`aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`) via `resolveGutenbergCoverCandidates` and expanded `next.config.ts` `img-src`/`remotePatterns`, while rejecting HTTP `200` `text/html` outage pages inside `/api/books/content` (`ADR-070`, `ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.44',
     date: '2026-11-16',
     title: 'CI Live AST Timeout Fix, Coverage Hardening & Zero-Debt Doc-Sync Polish',

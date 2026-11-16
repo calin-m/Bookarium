@@ -7,7 +7,7 @@
  *
  * @module scripts/lib/ast-parser
  * @scope Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, and `17`-map generator orphan checks.
- * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
+ * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
  * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
  * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
  * @adr ADR-078, ADR-079, ADR-081
@@ -20,11 +20,30 @@ const traverseModule = require('@babel/traverse');
 const traverse = traverseModule.default || traverseModule;
 
 /**
+ * OS-independent UTF-16 codepoint string comparator ensuring identical ordering
+ * across Windows NTFS and Linux ext4/overlay filesystems regardless of locale.
+ */
+function compareCodepoint(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Computes LF-normalized UTF-8 byte length for text files (preventing CRLF vs LF
+ * byte drift across Windows and Linux CI checkouts) while using raw byte size for binaries.
+ */
+function getDeterministicTextOrBinaryBytes(absPath, relPath) {
+  if (/\.(sql|json|js|ts|tsx|mjs|cjs|css|md|svg|webmanifest|yml|yaml|txt)$/i.test(relPath)) {
+    return Buffer.byteLength(fs.readFileSync(absPath, 'utf-8').replace(/\r\n/g, '\n'), 'utf-8');
+  }
+  return fs.statSync(absPath).size;
+}
+
+/**
  * Recursively retrieves all TypeScript/TSX source files, excluding test and mock suites.
  */
 function getAllSourceFiles(dir, fileList = []) {
   if (!fs.existsSync(dir)) return fileList;
-  const files = fs.readdirSync(dir);
+  const files = fs.readdirSync(dir).sort(compareCodepoint);
   for (const file of files) {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
@@ -354,6 +373,9 @@ function analyzeDependencyGraph(srcDir, rootDir) {
     data.typeOnlyConsumedBy = data.consumedBy.filter(
       (consumer) => !data.runtimeConsumedBy.includes(consumer)
     );
+    data.consumedBy.sort(compareCodepoint);
+    data.runtimeConsumedBy.sort(compareCodepoint);
+    data.typeOnlyConsumedBy.sort(compareCodepoint);
   }
 
   return graph;
@@ -1486,15 +1508,17 @@ function extractPublicAssetsCatalog(rootDir) {
   };
 
   function scanPublic(dir) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = fs
+      .readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => compareCodepoint(a.name, b.name));
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         scanPublic(full);
       } else {
         const rel = path.relative(rootDir, full).replace(/\\/g, '/');
-        const stat = fs.statSync(full);
-        const sizeKb = (stat.size / 1024).toFixed(1) + ' KB';
+        const sizeBytes = getDeterministicTextOrBinaryBytes(full, rel);
+        const sizeKb = (sizeBytes / 1024).toFixed(1) + ' KB';
         const ext = path.extname(entry.name).replace('.', '').toUpperCase() || 'ASSET';
         assets.push({
           name: entry.name,
@@ -1509,7 +1533,7 @@ function extractPublicAssetsCatalog(rootDir) {
 
   scanPublic(publicDir);
 
-  return assets.sort((a, b) => a.file.localeCompare(b.file));
+  return assets.sort((a, b) => compareCodepoint(a.file, b.file));
 }
 
 /**
@@ -1630,7 +1654,9 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
 
   const scriptsDir = path.join(rootDir, 'scripts');
   if (fs.existsSync(scriptsDir)) {
-    for (const entry of fs.readdirSync(scriptsDir, { withFileTypes: true })) {
+    for (const entry of fs
+      .readdirSync(scriptsDir, { withFileTypes: true })
+      .sort((a, b) => compareCodepoint(a.name, b.name))) {
       if (entry.isFile() && entry.name.endsWith('.js')) {
         scanTargets.push({
           abs: path.join(scriptsDir, entry.name),
@@ -1643,7 +1669,9 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
 
   const workflowsDir = path.join(rootDir, '.github', 'workflows');
   if (fs.existsSync(workflowsDir)) {
-    for (const entry of fs.readdirSync(workflowsDir, { withFileTypes: true })) {
+    for (const entry of fs
+      .readdirSync(workflowsDir, { withFileTypes: true })
+      .sort((a, b) => compareCodepoint(a.name, b.name))) {
       if (entry.isFile() && (entry.name.endsWith('.yml') || entry.name.endsWith('.yaml'))) {
         scanTargets.push({
           abs: path.join(workflowsDir, entry.name),
@@ -1735,7 +1763,7 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       fallback: 'Optional runtime configuration override.',
       purpose: 'Application environment configuration parameter.',
     };
-    const consumers = consumersMap.get(name) || [];
+    const consumers = (consumersMap.get(name) || []).slice().sort(compareCodepoint);
     return {
       name,
       scope: meta.scope,
@@ -1862,7 +1890,9 @@ function collectScriptFiles(rootDir) {
   ];
   for (const dir of subdirs) {
     if (!fs.existsSync(dir)) continue;
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    for (const entry of fs
+      .readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => compareCodepoint(a.name, b.name))) {
       if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
         const abs = path.join(dir, entry.name);
         results.push({
@@ -1872,7 +1902,7 @@ function collectScriptFiles(rootDir) {
       }
     }
   }
-  return results.sort((a, b) => a.rel.localeCompare(b.rel));
+  return results.sort((a, b) => compareCodepoint(a.rel, b.rel));
 }
 
 function resolveScriptRequirePath(specifier, fromRel, scriptRelSet) {
@@ -1972,11 +2002,11 @@ function analyzeScriptsDependencyGraph(rootDir) {
     }
   }
   for (const data of nodesMap.values()) {
-    data.consumedBy.sort();
+    data.consumedBy.sort(compareCodepoint);
   }
 
   return {
-    nodes: Array.from(nodesMap.values()),
+    nodes: Array.from(nodesMap.values()).sort((a, b) => compareCodepoint(a.file, b.file)),
     nodesMap,
     parseErrors,
   };
@@ -2971,7 +3001,7 @@ function extractBehavioralContractsCatalog(srcDir, rootDir) {
     rel: path.relative(rootDir, abs).replace(/\\/g, '/'),
   }));
   const scriptFiles = collectScriptFiles(rootDir);
-  const allTargets = [...srcFiles, ...scriptFiles].sort((a, b) => a.rel.localeCompare(b.rel));
+  const allTargets = [...srcFiles, ...scriptFiles].sort((a, b) => compareCodepoint(a.rel, b.rel));
 
   const modules = [];
   const parseErrors = [];
@@ -3338,11 +3368,13 @@ function findOrphanedGeneratorLookupKeys(rootDir, srcDir, options = {}) {
   }
 
   return orphans.sort(
-    (a, b) => a.mapName.localeCompare(b.mapName) || a.key.localeCompare(b.key)
+    (a, b) => compareCodepoint(a.mapName, b.mapName) || compareCodepoint(a.key, b.key)
   );
 }
 
 module.exports = {
+  compareCodepoint,
+  getDeterministicTextOrBinaryBytes,
   getAllSourceFiles,
   resolveImportPath,
   analyzeDependencyGraph,
