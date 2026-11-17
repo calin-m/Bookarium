@@ -34,43 +34,60 @@ describe('offline-storage (IndexedDB engine)', () => {
   function createMockObjectStore<T extends { bookId: number }>(map: Map<number, T>) {
     return {
       put: vi.fn((record: T) => {
-        map.set(record.bookId, record);
         const req: any = { onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        setTimeout(() => {
+          map.set(record.bookId, record);
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
       get: vi.fn((key: number) => {
-        const record = map.get(key);
-        const req: any = { result: record, onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        const req: any = { result: undefined, onsuccess: null, onerror: null };
+        setTimeout(() => {
+          req.result = map.get(key);
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
       count: vi.fn((range: any) => {
-        const hasKey = map.has(range?._key ?? range);
-        const req: any = { result: hasKey ? 1 : 0, onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        const req: any = { result: 0, onsuccess: null, onerror: null };
+        setTimeout(() => {
+          const hasKey = map.has(range?._key ?? range);
+          req.result = hasKey ? 1 : 0;
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
       delete: vi.fn((key: number) => {
-        map.delete(key);
         const req: any = { onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        setTimeout(() => {
+          map.delete(key);
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
       getAllKeys: vi.fn(() => {
-        const req: any = { result: Array.from(map.keys()), onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        const req: any = { result: undefined, onsuccess: null, onerror: null };
+        setTimeout(() => {
+          req.result = Array.from(map.keys());
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
       getAll: vi.fn(() => {
-        const req: any = { result: Array.from(map.values()), onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        const req: any = { result: undefined, onsuccess: null, onerror: null };
+        setTimeout(() => {
+          req.result = Array.from(map.values());
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
       clear: vi.fn(() => {
-        map.clear();
         const req: any = { onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
+        setTimeout(() => {
+          map.clear();
+          req.onsuccess?.();
+        }, 0);
         return req;
       }),
     };
@@ -84,39 +101,36 @@ describe('offline-storage (IndexedDB engine)', () => {
     const bookObjectStore = createMockObjectStore(store);
     const coverCacheObjectStore = createMockObjectStore(coverCacheStore);
 
-    const mockTransaction = {
-      objectStore: vi.fn((name: string) =>
-        name === 'cover_cache' ? coverCacheObjectStore : bookObjectStore
-      ),
-      oncomplete: null as (() => void) | null,
-      onerror: null as (() => void) | null,
-    };
-
     const mockDB = {
-      transaction: vi.fn(() => mockTransaction),
+      transaction: vi.fn(() => ({
+        objectStore: vi.fn((name: string) =>
+          name === 'cover_cache' ? coverCacheObjectStore : bookObjectStore
+        ),
+        oncomplete: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+      })),
       objectStoreNames: { contains: vi.fn(() => true) },
       createObjectStore: vi.fn(),
       close: vi.fn(),
       onversionchange: null as (() => void) | null,
     };
 
-    const mockOpenRequest: any = {
-      result: mockDB,
-      onsuccess: null,
-      onerror: null,
-      onupgradeneeded: null,
-      onblocked: null,
-    };
-
     (globalThis as any).indexedDB = {
       open: vi.fn(() => {
+        const openRequest: any = {
+          result: mockDB,
+          onsuccess: null,
+          onerror: null,
+          onupgradeneeded: null,
+          onblocked: null,
+        };
         setTimeout(() => {
-          if (mockOpenRequest.onupgradeneeded) {
-            mockOpenRequest.onupgradeneeded({ target: mockOpenRequest });
+          if (openRequest.onupgradeneeded) {
+            openRequest.onupgradeneeded({ target: openRequest });
           }
-          mockOpenRequest.onsuccess?.();
+          openRequest.onsuccess?.();
         }, 0);
-        return mockOpenRequest;
+        return openRequest;
       }),
     };
 
@@ -797,7 +811,9 @@ describe('offline-storage (IndexedDB engine)', () => {
           byteSize: 11,
         });
         expect(await getOfflineBookCover(778)).toBeNull();
-        expect(coverCacheStore.has(778)).toBe(false);
+        await vi.waitFor(() => {
+          expect(coverCacheStore.has(778)).toBe(false);
+        });
 
         // Enforce bounded LRU eviction above MAX_CACHED_COVERS (300)
         const now = Date.now();
@@ -836,6 +852,8 @@ describe('offline-storage (IndexedDB engine)', () => {
           await vi.waitFor(
             () => {
               expect(coverCacheStore.has(555)).toBe(true);
+              expect(coverCacheStore.has(1002)).toBe(false);
+              expect(coverCacheStore.size).toBeLessThanOrEqual(MAX_CACHED_COVERS);
             },
             { timeout: 5000 }
           );

@@ -22,10 +22,16 @@ jobs:
       - name: Advance catalog-cache Git Tag In Place
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          if ! gh release view catalog-cache >/dev/null 2>&1; then
-            echo "catalog-cache release does not exist yet; skipping tag advancement."
-            exit 0
+          set -euo pipefail
+          if ! RELEASE_ERR="$(gh release view catalog-cache --repo "${GITHUB_REPOSITORY}" 2>&1 >/dev/null)"; then
+            if printf '%s' "$RELEASE_ERR" | grep -qiE 'release not found|HTTP 404'; then
+              echo "catalog-cache release does not exist yet; skipping tag advancement."
+              exit 0
+            fi
+            echo "::error::Failed to inspect catalog-cache release: $RELEASE_ERR" >&2
+            exit 1
           fi
           gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/catalog-cache" -f "sha=${GITHUB_SHA}" -F "force=true"
           echo "Advanced refs/tags/catalog-cache to ${GITHUB_SHA}."

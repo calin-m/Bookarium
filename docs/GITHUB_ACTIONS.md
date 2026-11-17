@@ -224,7 +224,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.54'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.55'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -277,7 +277,7 @@ Lightweight zero-checkout automation keeping the `catalog-cache` Release's auto-
 - **Concurrency & Permissions**: `concurrency: catalog-cache-tag-sync` (`cancel-in-progress: true`), `permissions: contents: write`, `timeout-minutes: 5`
 - **Dependencies**: Zero `npm ci`, zero `actions/checkout` (runs directly with GitHub's pre-installed `gh` CLI)
 - **CI Execution Sequence**:
-  1. Verify `catalog-cache` Release exists via `gh release view catalog-cache` (`exit 0` cleanly if absent on fresh forks).
+  1. Inspect whether the `catalog-cache` Release exists via `gh release view catalog-cache --repo "${GITHUB_REPOSITORY}"` with `GH_REPO: ${{ github.repository }}` (exiting `0` cleanly only when stderr reports `release not found` / `HTTP 404` on fresh forks, and failing loudly via `::error::` on unexpected CLI/API errors).
   2. Call `gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/catalog-cache" -f "sha=${GITHUB_SHA}" -F "force=true"` to advance the existing tag ref in place (never deleting the tag, preserving uploaded catalog assets).
 
 ---

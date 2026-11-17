@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.55',
+    date: '2026-11-17',
+    title: 'Zero-Checkout GH_REPO Tag Sync Resolution & SAST Workflow Guard',
+    sections: {
+      Fixed: [
+        '**Zero-Checkout `gh release view` Repository Scoping & SAST Workflow Guard (`.github/workflows/catalog-tag-sync.yml`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Bound `GH_REPO` / `--repo "${GITHUB_REPOSITORY}"` and scoped release-absence skips strictly to `release not found` / `HTTP 404` stderr inside `.github/workflows/catalog-tag-sync.yml` (so missing `.git` workspaces no longer mask live `catalog-cache` releases), and extended `validateGitHubWorkflowSecurity` (`Pass 0.75` Pillar 1) with adversarial tests rejecting zero-checkout workflows that call context-dependent `gh` CLI commands without `GH_REPO:` or `--repo`/`-R` (`ADR-073`, `ADR-080`).',
+        '**Concurrent IndexedDB Mock Isolation in Cover Cache Tests (`src/lib/offline-storage.test.ts`)**: Replaced singleton `mockOpenRequest` / `mockTransaction` objects in `beforeEach` with per-call request and transaction instances, deferred `put`/`delete`/`clear` store mutations inside async `setTimeout` callbacks to match IndexedDB commit timing, and awaited background TTL cleanup and `555` LRU eviction completion before starting `warmCoverCache(556)` so overlapping `openDB()` calls never drop callbacks (`ADR-073`, `ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.54',
     date: '2026-11-17',
     title: 'Automated catalog-cache Tag Synchronization & 9-Workflow Parity',

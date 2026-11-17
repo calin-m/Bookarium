@@ -173,6 +173,56 @@ contents: write
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
     });
+
+    it('rejects zero-checkout workflows calling context-dependent gh CLI commands without GH_REPO or --repo', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bookarium-wf-gh-'));
+      try {
+        const missingRepoWf = path.join(tmpDir, 'no-checkout-missing-repo.yml');
+        fs.writeFileSync(
+          missingRepoWf,
+          `name: Zero Checkout Missing Repo
+on:
+  push:
+    branches: [master]
+permissions:
+  contents: write
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release view catalog-cache
+`,
+          'utf-8'
+        );
+
+        const safeZeroCheckoutWf = path.join(tmpDir, 'no-checkout-safe.yml');
+        fs.writeFileSync(
+          safeZeroCheckoutWf,
+          `name: Zero Checkout Safe Repo
+on:
+  push:
+    branches: [master]
+permissions:
+  contents: write
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_REPO: \${{ github.repository }}
+        run: gh release view catalog-cache --repo "\${GITHUB_REPOSITORY}"
+`,
+          'utf-8'
+        );
+
+        const violations = sastValidators.validateGitHubWorkflowSecurity(tmpDir, tmpDir);
+        expect(violations).toEqual([
+          expect.stringContaining('no-checkout-missing-repo.yml: Zero-checkout workflow runs "gh release" without "GH_REPO:" or "--repo"/"-R"'),
+        ]);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('validatePackageLockAndLifecycle', () => {

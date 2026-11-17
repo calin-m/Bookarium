@@ -13,7 +13,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-259%20Suites%20%7C%202704%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-259%20Suites%20%7C%202705%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-97.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2704 tests across 259 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2705 tests across 259 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,9 +110,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.54)
+## 🛠️ Latest Improvements (v2.9.55)
 
-- **In-Place `catalog-cache` Release Tag Advancement (`.github/workflows/catalog-tag-sync.yml`, `.github/workflows/catalog-sync.yml`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Added the lightweight zero-checkout `catalog-tag-sync.yml` workflow (`push` to `master` + `workflow_dispatch`, `permissions: contents: write`) and updated `catalog-sync.yml` live uploads to force-advance `refs/tags/catalog-cache` in place (`PATCH` API with `force: true` when the release exists), keeping `catalog-cache` `Source code (zip)`/`(tar.gz)` synced with `master` without mutating `gutenberg-catalog-cache.json.gz` or `.sha256` outside live catalog syncs (`ADR-080`).
+- **Zero-Checkout `gh release view` Repository Scoping & SAST Workflow Guard (`.github/workflows/catalog-tag-sync.yml`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Bound `GH_REPO` / `--repo "${GITHUB_REPOSITORY}"` and scoped release-absence skips strictly to `release not found` / `HTTP 404` stderr inside `.github/workflows/catalog-tag-sync.yml` (so missing `.git` workspaces no longer mask live `catalog-cache` releases), and extended `validateGitHubWorkflowSecurity` (`Pass 0.75` Pillar 1) with adversarial tests rejecting zero-checkout workflows that call context-dependent `gh` CLI commands without `GH_REPO:` or `--repo`/`-R` (`ADR-073`, `ADR-080`).
+- **Concurrent IndexedDB Mock Isolation in Cover Cache Tests (`src/lib/offline-storage.test.ts`)**: Replaced singleton `mockOpenRequest` / `mockTransaction` objects in `beforeEach` with per-call request and transaction instances, deferred `put`/`delete`/`clear` store mutations inside async `setTimeout` callbacks to match IndexedDB commit timing, and awaited background TTL cleanup and `555` LRU eviction completion before starting `warmCoverCache(556)` so overlapping `openDB()` calls never drop callbacks (`ADR-073`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

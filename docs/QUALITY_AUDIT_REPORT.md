@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 17 Nov 2026 12:28:16 GMT  
+**Last Generated**: Tue, 17 Nov 2026 14:33:54 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 259 passed  
-**Total Verified Tests**: 2704 passed  
+**Total Verified Tests**: 2705 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **259/259 test suites passed** (2704 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **259/259 test suites passed** (2705 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -33,7 +33,7 @@
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (259 Suites / 2704 Tests)
+## 🧪 Comprehensive Test Suite Catalog (259 Suites / 2705 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 333 Tests)
 
@@ -2066,7 +2066,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (53 Suites · 679 Tests)
+### 📚 Gutenberg Parsers & Metadata (53 Suites · 680 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2963,13 +2963,14 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `passes the repository next.config.ts without header or CSP violations`
 - ✔ `flags SAMEORIGIN clickjacking regression, ungated unsafe-eval, missing object-src, missing (!isDev) HSTS guard, and syntax errors`
 - ✔ `accepts valid compiled production routes-manifest headers and flags tampered manifests`
 - ✔ `passes all repository .github/workflows/*.yml files cleanly`
 - ✔ `catches missing permissions, pull_request_target write escalation, mutable @v4 uses:, and shell context injections`
+- ✔ `rejects zero-checkout workflows calling context-dependent gh CLI commands without GH_REPO or --repo`
 - ✔ `validates real repo package.json / package-lock.json and rejects tampered lockfiles or lifecycle hooks`
 - ✔ `passes live public/sw.js and flags missing cross-origin, CACHE_URLS, auth, eval, or comment-spoofed guards`
 - ✔ `passes live repository config/client files and detects bracket, destructured, aliased, and client privilege leaks`

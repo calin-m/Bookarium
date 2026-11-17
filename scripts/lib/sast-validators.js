@@ -7,7 +7,7 @@
  *
  * @module scripts/lib/sast-validators
  * @scope Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
- * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning, banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
+ * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
  * @rationale Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
  * @adr ADR-073, ADR-080, ADR-081
  */
@@ -632,6 +632,20 @@ function validateGitHubWorkflowSecurity(workflowsDir, rootDir = path.resolve(__d
       workflowViolations.push(
         `${relWf}: Combining "pull_request_target" with "contents: write" risks untrusted fork write escalation.`
       );
+    }
+
+    const hasCheckout = /\buses\s*:\s*actions\/checkout@/i.test(wfContent);
+    if (!hasCheckout) {
+      const ghContextCmdMatch = wfContent.match(/\bgh\s+(release|issue|pr|run|workflow|cache)\b/i);
+      if (
+        ghContextCmdMatch &&
+        !/\bGH_REPO\s*:/.test(wfContent) &&
+        !/(?:^|\s)(?:--repo|-R)(?:\s|=)/m.test(wfContent)
+      ) {
+        workflowViolations.push(
+          `${relWf}: Zero-checkout workflow runs "gh ${ghContextCmdMatch[1]}" without "GH_REPO:" or "--repo"/"-R" (fails outside a .git workspace).`
+        );
+      }
     }
 
     const usesMatches = [...wfContent.matchAll(/^\s*-?\s*uses:\s*([^\s#]+)/gm)];
