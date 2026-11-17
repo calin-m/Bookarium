@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-259%20Suites%20%7C%202705%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-260%20Suites%20%7C%202714%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.27%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2705 tests across 259 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2714 tests across 260 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,10 +110,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.55)
+## 🛠️ Latest Improvements (v2.9.56)
 
-- **Zero-Checkout `gh release view` Repository Scoping & SAST Workflow Guard (`.github/workflows/catalog-tag-sync.yml`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Bound `GH_REPO` / `--repo "${GITHUB_REPOSITORY}"` and scoped release-absence skips strictly to `release not found` / `HTTP 404` stderr inside `.github/workflows/catalog-tag-sync.yml` (so missing `.git` workspaces no longer mask live `catalog-cache` releases), and extended `validateGitHubWorkflowSecurity` (`Pass 0.75` Pillar 1) with adversarial tests rejecting zero-checkout workflows that call context-dependent `gh` CLI commands without `GH_REPO:` or `--repo`/`-R` (`ADR-073`, `ADR-080`).
-- **Concurrent IndexedDB Mock Isolation in Cover Cache Tests (`src/lib/offline-storage.test.ts`)**: Replaced singleton `mockOpenRequest` / `mockTransaction` objects in `beforeEach` with per-call request and transaction instances, deferred `put`/`delete`/`clear` store mutations inside async `setTimeout` callbacks to match IndexedDB commit timing, and awaited background TTL cleanup and `555` LRU eviction completion before starting `warmCoverCache(556)` so overlapping `openDB()` calls never drop callbacks (`ADR-073`, `ADR-080`).
+- **Context-Aware `/account` Bottom Capsule Dock (`src/components/account/AccountBottomDock.tsx`, `AccountBottomDock.test.tsx`, `src/app/account/page.tsx`)**: Replaced standalone `BackToTop` on `/account` with an ambient floating capsule dock built on `AmbientCapsuleDock` + `useAmbientDockScrollState`, exposing per-tab section anchors, an interactive upward Accolades category filter popover, a `Preferences` theme cycler, online active-session refresh, Guest Offline workspace toggles, and Scroll-to-Top muting (`ADR-080`).
+- **Explicit `run-name` Template for `Sync catalog-cache Tag` (`.github/workflows/catalog-tag-sync.yml`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Added top-level `run-name: 'Refresh catalog-cache Source Archives (${{ github.event_name }} on ${{ github.ref_name }})'` beneath `name: Sync catalog-cache Tag` (matching `codeql.yml` and `dependency-review.yml`) so each GitHub Actions run renders its exact tag/source-archive refresh action rather than inheriting the commit message (`ADR-073`, `ADR-080`).
+- **Streamlined 4-Tab `Scholar Profile`-First `/account` Workspace & `PublicProfileView`-Styled Identity Header (`src/app/account/page.tsx`, `AccountIdentityCard.tsx`, `AccountPublicProfileSection.tsx`, `AccountSymposiumSection.tsx`, `AccountHabitsCard.tsx`, `AccountAccoladesCard.tsx`, `AccountPreferencesSection.tsx`, `AccountNarrationSubPanel.tsx`, `useAccountSecurityActions.ts`)**: Applied `PublicProfileView` hero styling to `AccountIdentityCard` (gradient 2-letter monogram, ambient glows, `Joined` date sub-row, streak & Sign Out actions without duplicate links), promoted View/Edit `Scholar Profile` (`Public View` header CTA, `Edit` ↔ `Cancel` + `Save`) + stacked Fellowships to Tab 1, unified `Habits` & `Accolades` to `rounded-3xl shadow-xs`, flattened sub-tabs, and pruned dead name state from `TIER_3` `useAccountSecurityActions` (`ADR-055`, `ADR-080`).
+- **Zero-Shift Unified `EditorialUnderlineTabs` (`recessed-capsule`), Swipe Guard, Compact Mobile Labels, Legacy `?tab=symposiums` & Guest Offline Tabs (`src/components/ui/EditorialUnderlineTabs.tsx`, `src/components/ui/EditorialUnderlineTabs.test.tsx`, `src/app/account/page.tsx`, `src/app/account/page.test.tsx`)**: Unified `/account`'s 4-tab `ACCOUNT_TABS` and 2-tab Guest Offline switcher under `EditorialUnderlineTabs` (`variant="recessed-capsule"`) with a recessed `bg-muted/55` track, GPU `translate3d` sliding `bg-card` capsule (`usePerformanceTier` + `ResizeObserver`), fixed equal-column slots (`grid-cols-4`/`grid-cols-2`), identical active/inactive button padding, compact stacked `< md` `mobileLabel`s (`Profile`, `Habits`, `Prefs`, `Security`), `data-no-swipe="true"`, and `?tab=symposiums` smooth scrolling (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -224,14 +226,14 @@ flowchart TD
             FavView["Favorites View (/favorites)\n(Dedicated Cover Grid, Star Ratings & Personal Curation)"]
             MarksView["Bookmarks View (/bookmarks)\n(Tactile Reading Ledger, 2-Col Archival Grid, Status Filter, Direction-Aware Sort & Dedicated Resume CTA)"]
             NoteView["Commonplace Notebook (/notebook)\n(Highlights, Reflections, Tags, 2-Col Archival Grid, Tactile Scroll Focus (<1024px) & View Mode Scrubber)"]
-            AccView["Account Hub (/account)\n(Library Stats, Cloud Sync & Preferences)"]
+            AccView["Account Hub (/account)\n(4-Tab Scholar Profile-First Layout, AccountBottomDock & Cloud Sync)"]
             PrivacyView["Privacy Architecture (/privacy)\n(Zero-Tracker Manifesto, 3-Tier Data Erasure, COPPA & Geo-Cookies)"]
             CopyrightView["Copyright Governance (/copyright)\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]
-            HabitsCard["AccountHabitsCard.tsx\n(Reading Streaks, Daily Progress, Annual Challenge)"]
-            AccoladesCard["AccountAccoladesCard.tsx\n(Literary Honors, Showcase & Ex-Libris Bookplates)"]
-            SymposiumCard["AccountSymposiumSection.tsx\n(Reader Circles & Literary Symposiums)"]
+            ProfileCard["AccountPublicProfileSection.tsx & AccountSymposiumSection.tsx\n(View/Edit Scholar Profile Indicators, Footer Edit/Cancel/Save, Reader Circles & Symposium Pacts)"]
+            AccountDockNode["AccountBottomDock.tsx\n(Context-Aware Ambient Capsule: Section Jumps, Accolades Filter Popover & Theme Cycler)"]
+            HabitsCard["AccountHabitsCard.tsx & AccountAccoladesCard.tsx\n(Reading Streaks, Annual Challenge, Showcase & Ex-Libris Bookplates)"]
             SecurityCard["AccountSecuritySection.tsx\n(Active Device Sessions, Duplicate-Origin Hints, Turnstile Recovery, Google Disconnect & Confirm-Guarded Sign-Out)"]
-            PrefsCard["AccountPreferencesSection.tsx\n(AccountTypographySubPanel • AccountNarrationSubPanel • Two-Tier Custom Defaults)"]
+            PrefsCard["AccountPreferencesSection.tsx\n(Unified Appearance, AccountTypographySubPanel, AccountNarrationSubPanel & Custom Defaults)"]
             ProfilePage["Public Scholar Sanctuary (/u/[username])\n(Public Profile, Pinned Accolades & Fellowship CTA)"]
             ReaderPage["Focus Reader Page (/read/[id])\n(Continuous Pagination, Subtitles, AST)"]
         end
@@ -366,17 +368,16 @@ flowchart TD
     ShelfView --> HookAutoHeal
     MarksView --> HookAutoHeal
     NoteView --> HookAutoHeal
-    SymposiumCard --> HookAutoHeal
     HookCopyright --> EngineCore
     ContentAdvisory --> ContentScanner
     DownDrawer --> ContentAdvisory
+    AccView --> ProfileCard
+    AccView --> AccountDockNode
     AccView --> HabitsCard
-    AccView --> AccoladesCard
-    AccoladesCard --> AccoladesEngine
-    AccView --> SymposiumCard
+    HabitsCard --> AccoladesEngine
     AccView --> SecurityCard
     AccView --> PrefsCard
-    SymposiumCard --> StoreFellowship
+    ProfileCard --> StoreFellowship
     ProfilePage --> PublicSanctuaryNodes
     PublicSanctuaryNodes --> StoreFellowship
     SyncCoordinator --> StoreShelf
@@ -441,7 +442,7 @@ flowchart TD
     
     Views --> StateStores
     HabitsCard --> StoreHabits
-    AccoladesCard --> StoreAccolades
+    HabitsCard --> StoreAccolades
     TimerHook --> StoreHabits
     ReaderEngine --> StateStores
     StoreShelf -->|Cloud Sync via RLS| SupabaseCloud

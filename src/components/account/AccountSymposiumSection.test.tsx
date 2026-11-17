@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AccountSymposiumSection } from './AccountSymposiumSection';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
@@ -24,7 +24,7 @@ describe('AccountSymposiumSection', () => {
     });
   });
 
-  it('switches between Active Symposiums, Reader Circle, and Invitations sub-tabs', async () => {
+  it('renders un-tabbed Active Symposiums, Reader Circle, and conditional Pending Invitations simultaneously', async () => {
     useFellowshipStore.setState({
       circles: [
         {
@@ -76,36 +76,26 @@ describe('AccountSymposiumSection', () => {
 
     render(<AccountSymposiumSection userId="u1" />);
 
-    // Default sub-tab: Active Symposiums
+    const section = screen.getByTestId('account-symposium-section');
+    expect(section.innerHTML).not.toContain('border-border/60');
+    expect(section.innerHTML).not.toContain('border-primary/20');
+    expect(section.querySelector('.xl\\:grid-cols-12')).toBeNull();
+    expect(section.querySelector('.md\\:grid-cols-2')).toBeNull();
+    expect(section.querySelector('.sm\\:grid-cols-2')).toBeNull();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+
+    // Symposium Pacts visible
     expect(screen.getByText('Pride and Prejudice')).toBeInTheDocument();
     expect(screen.getByText('35%')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('Charlotte Brontë (Sec. 5)')).toBeInTheDocument();
 
-    const section = screen.getByTestId('account-symposium-section');
-    expect(section.innerHTML).not.toContain('border-border/60');
-    expect(section.innerHTML).not.toContain('border-primary/20');
-
-    // Assert editorial underline sub-tab bar
-    const tablist = screen.getByRole('tablist', { name: /Symposium and Reader Circle sections/i });
-    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
-    const tabs = screen.getAllByRole('tab');
-    tabs.forEach((tab) => {
-      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    });
-
-    const activeSympTab = screen.getByRole('tab', { name: /Active Symposiums/i });
-    const circleTab = screen.getByRole('tab', { name: /Reader Circle/i });
-    expect(within(activeSympTab).getByText('Active Symposiums')).toHaveClass('inline-block', 'max-w-[220px]');
-    expect(within(circleTab).getByText('Reader Circle')).toHaveClass('inline-block', 'max-w-[88px]', 'sm:inline');
-
-    // Switch to Reader Circle sub-tab
-    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+    // Reader Circle visible simultaneously
     expect(screen.getByText('Charlotte Brontë')).toBeInTheDocument();
     expect(screen.getByText('@bronte')).toBeInTheDocument();
 
-    // Switch to Invitations sub-tab and accept incoming request
-    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+    // Conditional Pending Invitations card visible with amber badge
+    expect(screen.getByTestId('symposium-pending-badge')).toHaveTextContent('1');
     expect(screen.getByText(/Mary Shelley \(@shelley\)/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Accept Fellow/i }));
 
@@ -114,26 +104,17 @@ describe('AccountSymposiumSection', () => {
     });
   });
 
-  it('renders empty states when there are zero symposiums, circle fellows, or invitations', () => {
+  it('hides the Invitations card when pendingCount is 0 and renders clean empty states for symposiums and circle', () => {
     render(<AccountSymposiumSection userId="u1" />);
 
-    // Empty symposiums
     expect(screen.getByText('No Active Literary Symposiums')).toBeInTheDocument();
-
-    // Switch to Reader Circle -> Empty
-    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
     expect(screen.getByText(/No connected Fellow Scholars yet/i)).toBeInTheDocument();
-
-    // Switch to Invitations -> Empty
-    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
-    expect(screen.getByText(/No pending Reader Circle or Symposium invitations/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('symposium-pending-badge')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Pending Invitations/i)).not.toBeInTheDocument();
   });
 
   it('handles fellow invitation form submission with error and success banners', async () => {
     render(<AccountSymposiumSection userId="u1" />);
-
-    // Switch to Reader Circle
-    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
 
     const input = screen.getByLabelText(/Invite Fellow Scholar/i);
     const submitBtn = screen.getByRole('button', { name: /Send Circle Invitation/i });
@@ -194,7 +175,6 @@ describe('AccountSymposiumSection', () => {
 
     render(<AccountSymposiumSection userId="u1" />);
 
-    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
     expect(screen.getByText(/Charles Dickens \(@dickens\)/i)).toBeInTheDocument();
 
     const declineBtn = screen.getByRole('button', { name: /^Decline$/i });
@@ -350,8 +330,7 @@ describe('AccountSymposiumSection', () => {
 
     render(<AccountSymposiumSection userId="u1" />);
 
-    // Switch to Reader Circle and trigger Symposium button + Remove button
-    fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+    // Trigger Symposium button + Remove button directly in Reader Circle column
     fireEvent.click(screen.getByRole('button', { name: /^Symposium$/i }));
     expect(await screen.findByTestId('symposium-invite-modal')).toBeInTheDocument();
 
@@ -366,8 +345,7 @@ describe('AccountSymposiumSection', () => {
     fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(removeFellowSpy).toHaveBeenCalledWith('c-accepted-fellow');
 
-    // Switch to Invitations sub-tab
-    fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+    // Pending Invitations panel rendered simultaneously above card
     expect(screen.getByText('Sent Circle Request')).toBeInTheDocument();
     expect(screen.getByText('Incoming Symposium Pact')).toBeInTheDocument();
     expect(screen.getByText('Volume #2701')).toBeInTheDocument();
@@ -398,8 +376,6 @@ describe('AccountSymposiumSection', () => {
     fireEvent.click(screen.getByTestId('confirm-fellowship-action-btn'));
     expect(leaveSymposiumSpy).toHaveBeenCalledWith('sym-outgoing');
 
-    // Switch back to Active Symposiums tab
-    fireEvent.click(screen.getByRole('tab', { name: /Active Symposiums/i }));
     expect(screen.getByText('No Active Literary Symposiums')).toBeInTheDocument();
   });
 
@@ -540,12 +516,11 @@ describe('AccountSymposiumSection', () => {
       expect(screen.queryByTestId('symposium-offline-badge-84')).toBeNull();
       expect(screen.getByRole('link', { name: /^Read$/i })).toHaveAttribute('href', '/read/84');
 
-      // Leave symposium buttons are disabled when offline
+      // Leave symposium -> wait for buttons
       const leaveButtons = screen.getAllByRole('button', { name: /Leave Symposium/i });
       leaveButtons.forEach((btn) => expect(btn).toBeDisabled());
 
-      // Reader Circle sub-tab checks
-      fireEvent.click(screen.getByRole('tab', { name: /Reader Circle/i }));
+      // Reader Circle checks
       expect(screen.getByLabelText(/Invite Fellow Scholar/i)).toBeDisabled();
       expect(screen.getByRole('button', { name: /Send Circle Invitation/i })).toBeDisabled();
       expect(screen.getByTestId('circle-invite-offline-hint')).toHaveTextContent(
@@ -554,8 +529,7 @@ describe('AccountSymposiumSection', () => {
       expect(screen.getByRole('button', { name: /^Symposium$/i })).toBeDisabled();
       expect(screen.getByRole('button', { name: /Remove @bronte from Reader Circle/i })).toBeDisabled();
 
-      // Invitations sub-tab checks
-      fireEvent.click(screen.getByRole('tab', { name: /Invitations/i }));
+      // Invitations checks
       expect(screen.getByRole('button', { name: /Accept Fellow/i })).toBeDisabled();
       const declineButtons = screen.getAllByRole('button', { name: /^Decline$/i });
       expect(declineButtons).toHaveLength(2);

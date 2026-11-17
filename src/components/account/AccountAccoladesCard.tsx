@@ -7,11 +7,8 @@ import {
   Sparkles,
   Pin,
   AlertCircle,
-  Flame,
-  Clock,
-  Compass,
-  BookOpen,
-  Library,
+  Filter,
+  X,
 } from 'lucide-react';
 import { ACCOLADES_CATALOG, ACCOLADE_CATEGORIES } from '@/config/accolades-config';
 import { AccoladeCategory, AccoladeId } from '@/types/accolades.types';
@@ -26,7 +23,6 @@ import { useHydratedAnnotations } from '@/stores/useAnnotationStore';
 import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
-import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { Alert } from '@/components/ui/Alert';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
 
@@ -37,10 +33,28 @@ const AccoladeCelebrationModal = dynamic(
 
 export interface AccountAccoladesCardProps {
   userId?: string;
+  activeCategory?: AccoladeCategory;
+  onCategoryChange?: (category: AccoladeCategory) => void;
+  onOpenFilter?: () => void;
 }
 
-export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
-  const [activeCategory, setActiveCategory] = useState<AccoladeCategory>('all');
+export function AccountAccoladesCard({
+  userId,
+  activeCategory: controlledCategory,
+  onCategoryChange,
+  onOpenFilter,
+}: AccountAccoladesCardProps) {
+  const [internalCategory, setInternalCategory] = useState<AccoladeCategory>('all');
+  const activeCategory = controlledCategory ?? internalCategory;
+  const setActiveCategory = useCallback(
+    (category: AccoladeCategory) => {
+      onCategoryChange?.(category);
+      if (controlledCategory === undefined) {
+        setInternalCategory(category);
+      }
+    },
+    [controlledCategory, onCategoryChange]
+  );
   const [pinLimitWarning, setPinLimitWarning] = useState<string | null>(null);
 
   const {
@@ -177,9 +191,13 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
     [pinnedAccoladeIds, togglePin, userId]
   );
 
+  const activeCategoryLabel =
+    ACCOLADE_CATEGORIES.find((cat) => cat.id === activeCategory)?.label || 'All Bookplates';
+
   return (
     <section
-      className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 space-y-6 shadow-booksaw relative overflow-hidden"
+      id="account-accolades-card"
+      className="bg-card border border-border rounded-3xl p-5 sm:p-6 lg:p-8 space-y-6 shadow-xs"
       aria-label="Literary Accolades and Ex-Libris Bookplates"
       data-testid="account-accolades-card"
     >
@@ -250,45 +268,53 @@ export function AccountAccoladesCard({ userId }: AccountAccoladesCardProps) {
         )}
       </div>
 
-      {/* Category Tabs */}
+      {/* Compendium Header & Subtle Filter Indicator (Bottom Capsule Controlled) */}
       <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-            Accolade Compendium
-          </h3>
-        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+              Accolade Compendium
+            </h3>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              ({filteredCatalog.length})
+            </span>
+          </div>
 
-        {/* Centered Editorial Underline Category Sub-Tabs */}
-        <EditorialUnderlineTabs<AccoladeCategory>
-          tabs={ACCOLADE_CATEGORIES.map((category) => ({
-            id: category.id,
-            label: category.label,
-            count:
-              category.id === 'all'
-                ? ACCOLADES_CATALOG.length
-                : ACCOLADES_CATALOG.filter((item) => item.category === category.id).length,
-            icon:
-              category.id === 'streaks' ? (
-                <Flame className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-              ) : category.id === 'immersion' ? (
-                <Clock className="w-3.5 h-3.5 shrink-0 text-sky-500" />
-              ) : category.id === 'exploration' ? (
-                <Compass className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
-              ) : category.id === 'scholarship' ? (
-                <BookOpen className="w-3.5 h-3.5 shrink-0 text-purple-500" />
-              ) : category.id === 'curation' ? (
-                <Library className="w-3.5 h-3.5 shrink-0 text-amber-600" />
-              ) : (
-                <Award className="w-3.5 h-3.5 shrink-0" />
-              ),
-          }))}
-          activeTab={activeCategory}
-          onSelectTab={setActiveCategory}
-          ariaLabel="Accolade categories"
-          inactiveLabelClass="hidden md:inline"
-          hideInactiveCountOnMobile
-          compactPadding
-        />
+          <div className="flex items-center gap-2">
+            {onOpenFilter ? (
+              <button
+                type="button"
+                onClick={onOpenFilter}
+                data-testid="accolades-open-filter-btn"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-border bg-muted/40 hover:bg-muted text-foreground transition-colors cursor-pointer"
+                aria-label={`Filter accolades (${activeCategoryLabel})`}
+              >
+                <Filter className="w-3 h-3 text-primary shrink-0" />
+                <span>{activeCategoryLabel}</span>
+              </button>
+            ) : (
+              <span
+                data-testid="accolades-active-category-badge"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border border-border bg-muted/40 text-muted-foreground"
+              >
+                <Filter className="w-3 h-3 text-primary shrink-0" />
+                <span>{activeCategoryLabel}</span>
+              </span>
+            )}
+            {activeCategory !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setActiveCategory('all')}
+                data-testid="accolades-reset-filter-btn"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono border border-border text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                aria-label="Reset accolade category filter"
+              >
+                <X className="w-3 h-3" />
+                <span>Show all</span>
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Bookplate Grid */}
         <div

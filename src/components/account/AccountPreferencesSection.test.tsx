@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { AccountPreferencesSection } from './AccountPreferencesSection';
 
@@ -20,7 +20,7 @@ describe('AccountPreferencesSection', () => {
     onResetSpeechPreferences: vi.fn(),
   };
 
-  it('handles theme switching and sticky scroll toggle', () => {
+  it('handles theme switching and sticky scroll toggle without nested sub-tabs', () => {
     const handleThemeChange = vi.fn();
     const handleStickyScrollChange = vi.fn();
 
@@ -34,18 +34,7 @@ describe('AccountPreferencesSection', () => {
 
     expect(screen.getByText('Reading & Navigation Preferences')).toBeInTheDocument();
     expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
-
-    const tablist = screen.getByRole('tablist', { name: /Preferences sub-sections/i });
-    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
-    const tabs = screen.getAllByRole('tab');
-    tabs.forEach((tab) => {
-      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    });
-
-    const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
-    const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
-    expect(within(appearanceTab).getByText('Appearance & Scroll')).toHaveClass('inline');
-    expect(within(narrationTab).getByText('Read-Aloud Studio')).toHaveClass('inline');
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
     const sepiaBtn = screen.getByRole('button', { name: /Sepia/i });
     fireEvent.click(sepiaBtn);
@@ -250,7 +239,7 @@ describe('AccountPreferencesSection', () => {
     expect(screen.getByRole('button', { name: 'Test voice' })).toBeInTheDocument();
   });
 
-  it('switches between Appearance & Scroll and Read-Aloud Studio sub-tabs and enables Smart Auto-Hide', () => {
+  it('renders Appearance & Scroll and Read-Aloud Studio simultaneously without sub-tab hiding and enables Smart Auto-Hide', () => {
     const handleStickyScrollChange = vi.fn();
     render(
       <AccountPreferencesSection
@@ -260,23 +249,12 @@ describe('AccountPreferencesSection', () => {
       />
     );
 
-    const appearanceTab = screen.getByRole('tab', { name: /Appearance & Scroll/i });
-    const narrationTab = screen.getByRole('tab', { name: /Read-Aloud Studio/i });
-
-    expect(appearanceTab).toHaveAttribute('aria-selected', 'true');
     expect(document.getElementById('preferences-subpanel-appearance')).not.toHaveClass('hidden');
+    expect(document.getElementById('preferences-subpanel-narration')).not.toHaveClass('hidden');
 
     const smartAutoHideBtn = screen.getByRole('button', { name: /Smart Auto-Hide/i });
     fireEvent.click(smartAutoHideBtn);
     expect(handleStickyScrollChange).toHaveBeenCalledWith(true);
-
-    fireEvent.click(narrationTab);
-    expect(narrationTab).toHaveAttribute('aria-selected', 'true');
-    expect(document.getElementById('preferences-subpanel-narration')).not.toHaveClass('hidden');
-
-    fireEvent.click(appearanceTab);
-    expect(appearanceTab).toHaveAttribute('aria-selected', 'true');
-    expect(document.getElementById('preferences-subpanel-appearance')).not.toHaveClass('hidden');
   });
 
   it('uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60', () => {

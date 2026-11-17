@@ -57,7 +57,7 @@ describe('AccountPage', () => {
     });
   });
 
-  it('renders guest prompt when unauthenticated and handles scroll to top', () => {
+  it('renders guest prompt when unauthenticated and handles scroll to top via AccountBottomDock', () => {
     const scrollToMock = vi.fn();
     window.scrollTo = scrollToMock;
 
@@ -74,17 +74,17 @@ describe('AccountPage', () => {
     expect(screen.queryByText('Back to Library')).not.toBeInTheDocument();
     expect(screen.queryByText('Bookarium Account')).not.toBeInTheDocument();
 
-    // Scroll to top behavior
-    expect(screen.queryByRole('button', { name: /Back to top/i })).not.toBeInTheDocument();
+    // Guest dock hidden at scrollY = 0, revealed when scrolled down
+    expect(screen.queryByRole('button', { name: /Scroll to top/i })).not.toBeInTheDocument();
     window.scrollY = 400;
     fireEvent.scroll(window);
-    const backToTopBtn = screen.getByRole('button', { name: /Back to top/i });
-    expect(backToTopBtn).toBeInTheDocument();
-    fireEvent.click(backToTopBtn);
+    const scrollTopBtn = screen.getByRole('button', { name: /Scroll to top/i });
+    expect(scrollTopBtn).toBeInTheDocument();
+    fireEvent.click(scrollTopBtn);
     expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
   });
 
-  it('renders authenticated dashboard with profile identity, library statistics, and accolades', async () => {
+  it('renders Scholar Profile by default with serene identity ribbon, streak badge jump, and un-tabbed Habits & Accolades', async () => {
     useAnnotationStore.setState({
       annotations: [
         {
@@ -103,7 +103,7 @@ describe('AccountPage', () => {
 
     useAuthStore.setState({
       user: { id: 'u1', email: 'austen@bookarium.test', created_at: '2026-01-01T00:00:00Z' } as any,
-      profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+      profile: { id: 'u1', display_name: 'Jane Austen', is_public: false } as any,
       isLoading: false,
       updateProfile: mockUpdateProfile,
     });
@@ -120,51 +120,59 @@ describe('AccountPage', () => {
 
     render(<AccountPage />);
 
-    // Profile Identity
-    expect(screen.getAllByText('Jane Austen').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('austen@bookarium.test').length).toBeGreaterThanOrEqual(1);
+    // Serene top identity ribbon (no Edit Name toggle on top card, no email leaked on ribbon)
+    const ribbon = screen.getByTestId('scholar-identity-ribbon');
+    expect(within(ribbon).getByRole('heading', { level: 1, name: 'Jane Austen' })).toBeInTheDocument();
+    expect(within(ribbon).queryByRole('button', { name: /Edit display name/i })).not.toBeInTheDocument();
+    expect(within(ribbon).queryByText('austen@bookarium.test')).not.toBeInTheDocument();
     expect(screen.queryByText('Back to Library')).not.toBeInTheDocument();
     expect(screen.queryByText('Bookarium Account')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Jane Austen' })).toBeInTheDocument();
 
-    // Display Name edit
-    const input = screen.getByLabelText('Display Name');
+    // Display Name edit now lives inside default Scholar Profile card alongside read-only private email
+    const profilePanel = document.getElementById('account-tabpanel-profile')!;
+    expect(profilePanel).not.toHaveClass('hidden');
+    expect(
+      within(profilePanel).getByTestId('scholar-private-email-indicator')
+    ).toHaveTextContent('austen@bookarium.test');
+    fireEvent.click(within(profilePanel).getByRole('button', { name: /^edit$/i }));
+    expect(within(profilePanel).getByLabelText(/Account Email \(Private\)/i)).toHaveValue(
+      'austen@bookarium.test'
+    );
+    const input = within(profilePanel).getByLabelText('Display Name');
     fireEvent.change(input, { target: { value: 'Jane Austen CBE' } });
-    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+    fireEvent.click(within(profilePanel).getByRole('button', { name: /^save$/i }));
     await waitFor(() => {
-      expect(mockUpdateProfile).toHaveBeenCalledWith({ display_name: 'Jane Austen CBE' });
+      expect(mockUpdateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ display_name: 'Jane Austen CBE' })
+      );
     });
 
-    // Verify Collection stats in Slim Scholar Identity Ribbon
-    const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
-    const shelvedLink = within(statStrip).getByRole('link', { name: /1 Shelved/i });
-    expect(shelvedLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
+    // Verify duplicate collection stat strip is absent from top ribbon while keeping streak pill
+    expect(screen.queryByTestId('identity-ribbon-stat-strip')).not.toBeInTheDocument();
+    expect(within(ribbon).queryByRole('link', { name: /Shelved/i })).not.toBeInTheDocument();
+    expect(within(ribbon).queryByRole('link', { name: /Favorites/i })).not.toBeInTheDocument();
 
-    const favoritesLink = within(statStrip).getByRole('link', { name: /3 Favorites/i });
-    expect(favoritesLink).toHaveAttribute('href', ROUTES.FAVORITES);
-
-    const notesLink = within(statStrip).getByRole('link', { name: /1 Notes/i });
-    expect(notesLink).toHaveAttribute('href', ROUTES.NOTEBOOK);
-
-    const shelvesLink = within(statStrip).getByRole('link', { name: /2 Shelves/i });
-    expect(shelvesLink).toHaveAttribute('href', ROUTES.BOOKSHELF);
-
-    // Switch to Accolades Compendium sub-tab and verify Accolades Showcase
-    fireEvent.click(screen.getByRole('tab', { name: /Accolades Compendium/i }));
+    // Clicking the Streak badge switches directly to Habits & Accolades (un-tabbed)
+    const streakPillBtn = screen.getByRole('button', { name: /🔥 \d+d Streak/i });
+    fireEvent.click(streakPillBtn);
+    expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
+    expect(screen.getByText('Reading Habits & Challenges')).toBeInTheDocument();
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
 
-    // Clicking the Streak badge in AccountIdentityCard switches back to Habits -> Streaks & Challenge
-    const streakPillBtn = screen.getByRole('button', { name: /🔥 \d+d Streak/i });
-    fireEvent.click(streakPillBtn);
-    expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
+    // Filter accolades via AccountBottomDock category popover
+    fireEvent.click(screen.getByTestId('account-dock-filter-btn'));
+    fireEvent.click(screen.getByTestId('account-dock-category-streaks'));
+    expect(screen.getByTestId('accolades-open-filter-btn')).toHaveTextContent('Streaks');
+    expect(screen.getByText('Seven-Day Sage')).toBeInTheDocument();
+    expect(screen.queryByText('The Marathon Reader')).not.toBeInTheDocument();
 
     act(() => {
       useAnnotationStore.setState({ annotations: [] });
     });
   }, 15000);
 
-  it('renders segmented sub-tabs navigation and switches active tabs', async () => {
+  it('renders 4 segmented tabs led by Scholar Profile with swipe guard, tablet md:inline labels, and tab switching', async () => {
     useAuthStore.setState({
       user: { id: 'u1', email: 'austen@bookarium.test' } as any,
       profile: { id: 'u1', display_name: 'Jane' } as any,
@@ -173,129 +181,148 @@ describe('AccountPage', () => {
 
     render(<AccountPage />);
 
-    // Check tablist exists with accessible label and single-row container
+    // Check tablist exists with data-no-swipe="true" and single-row container
     const tablist = screen.getByRole('tablist', { name: /Account sections/i });
     expect(tablist).toBeInTheDocument();
-    expect(tablist).toHaveClass('flex', 'w-full');
+    expect(tablist).toHaveAttribute('data-no-swipe', 'true');
+    expect(tablist).toHaveClass('relative', 'grid', 'grid-cols-4', 'w-full', 'bg-muted/55', 'rounded-2xl');
 
+    const tabs = within(tablist).getAllByRole('tab');
+    expect(tabs).toHaveLength(4);
+
+    const profileTab = within(tablist).getByRole('tab', { name: /Scholar Profile/i });
     const habitsTab = within(tablist).getByRole('tab', { name: /Habits & Accolades/i });
-    const profileTab = within(tablist).getByRole('tab', { name: /Public Scholar/i });
-    const symposiumsTab = within(tablist).getByRole('tab', { name: /Symposiums & Circle/i });
     const preferencesTab = within(tablist).getByRole('tab', { name: /Preferences/i });
     const securityTab = within(tablist).getByRole('tab', { name: /Security/i });
 
-    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
-    expect(profileTab).toHaveAttribute('aria-selected', 'false');
-    expect(symposiumsTab).toHaveAttribute('aria-selected', 'false');
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
+    expect(habitsTab).toHaveAttribute('aria-selected', 'false');
     expect(preferencesTab).toHaveAttribute('aria-selected', 'false');
     expect(securityTab).toHaveAttribute('aria-selected', 'false');
 
-    // Verify title tooltips for mobile/desktop discovery
+    expect(profileTab).toHaveAttribute('title', 'Scholar Profile');
     expect(habitsTab).toHaveAttribute('title', 'Habits & Accolades');
-    expect(profileTab).toHaveAttribute('title', 'Public Scholar');
-    expect(symposiumsTab).toHaveAttribute('title', 'Symposiums & Circle');
     expect(preferencesTab).toHaveAttribute('title', 'Preferences');
     expect(securityTab).toHaveAttribute('title', 'Security');
 
-    // Verify adaptive mobile classes: active tab expands with text, inactive tabs collapse to icons
-    expect(habitsTab).toHaveClass('flex-[1.8]', 'font-semibold', 'whitespace-nowrap', 'border');
-    expect(profileTab).toHaveClass('flex-[1.15]', 'font-semibold', 'whitespace-nowrap', 'border');
-    expect(symposiumsTab).toHaveClass('flex-1', 'font-semibold', 'whitespace-nowrap', 'border');
-    expect(preferencesTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
-    expect(securityTab).toHaveClass('shrink-0', 'font-semibold', 'whitespace-nowrap', 'border');
+    // Locked equal-width padding & stacked mobile labels prevent active-tab shifting across screens
+    expect(profileTab).toHaveClass('w-full', 'min-w-0', 'px-1.5', 'sm:px-2.5', 'md:px-3', 'font-semibold', 'whitespace-nowrap', 'border', 'bg-card', 'border-primary');
+    expect(habitsTab).toHaveClass('w-full', 'min-w-0', 'px-1.5', 'sm:px-2.5', 'md:px-3', 'font-semibold', 'whitespace-nowrap', 'border', 'border-transparent');
+    expect(preferencesTab).toHaveClass('w-full', 'min-w-0', 'px-1.5', 'sm:px-2.5', 'md:px-3', 'font-semibold', 'whitespace-nowrap', 'border', 'border-transparent');
+    expect(securityTab).toHaveClass('w-full', 'min-w-0', 'px-1.5', 'sm:px-2.5', 'md:px-3', 'font-semibold', 'whitespace-nowrap', 'border', 'border-transparent');
 
-    // Verify persistent outward border arrows on the active tab (first tab has right arrow only)
-    expect(habitsTab.querySelector('[data-scrub-chevron="left"]')).toBeNull();
-    expect(habitsTab.querySelector('[data-scrub-chevron="right"]')).not.toBeNull();
-    expect(profileTab.querySelector('[data-scrub-chevron="left"]')).toBeNull();
-    expect(profileTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
+    // Pointy SVG border chevrons omitted cleanly on recessed track
+    expect(tablist.querySelector('[data-scrub-chevron]')).toBeNull();
 
-    // Verify distance-graded accordion truncation and visibility contracts on the text labels
-    const habitsLabel = habitsTab.querySelector('span');
-    const profileLabel = profileTab.querySelector('span');
-    const symposiumsLabel = symposiumsTab.querySelector('span');
-    const preferencesLabel = preferencesTab.querySelector('span');
-    expect(habitsLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-[220px]', 'opacity-100');
-    expect(profileLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-[88px]', 'opacity-85', 'lg:inline');
-    expect(symposiumsLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-[44px]', 'opacity-65', 'lg:inline');
-    expect(preferencesLabel).toHaveClass('min-w-0', 'inline-block', 'max-w-0', 'opacity-0', 'lg:inline');
+    expect(within(profileTab).getByText('Profile')).toHaveClass('md:hidden');
+    expect(within(profileTab).getByText('Scholar Profile')).toHaveClass('hidden', 'md:inline');
+    expect(within(habitsTab).getByText('Habits')).toHaveClass('md:hidden');
+    expect(within(habitsTab).getByText('Habits & Accolades')).toHaveClass('hidden', 'md:inline');
+    expect(within(preferencesTab).getByText('Prefs')).toHaveClass('md:hidden');
+    expect(within(preferencesTab).getByText('Preferences')).toHaveClass('hidden', 'md:inline');
+    expect(within(securityTab).getAllByText('Security')).toHaveLength(2);
 
-    // Verify Tier-2 Sub-Tabs inside Habits & Accolades (2 tabs: Streaks & Challenge, Accolades Compendium)
-    const habitsSubTablist = screen.getByRole('tablist', { name: /Habits and library sub-sections/i });
-    expect(habitsSubTablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
-
-    const streaksSubTab = within(habitsSubTablist).getByRole('tab', { name: /Streaks & Challenge/i });
-    const accoladesSubTab = within(habitsSubTablist).getByRole('tab', { name: /Accolades Compendium/i });
-    expect(within(habitsSubTablist).queryByRole('tab', { name: /Library Breakdown/i })).not.toBeInTheDocument();
-
-    expect(streaksSubTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    expect(accoladesSubTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-
-    // Verify fit-first 2-tab sub-bar label contract (both labels fit and stay inline across all viewports)
-    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('inline');
-    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('inline');
-
-    expect(document.getElementById('habits-subpanel-streaks')).not.toHaveClass('hidden');
-    expect(document.getElementById('habits-subpanel-streaks')).not.toHaveAttribute('hidden');
-    expect(document.getElementById('habits-subpanel-accolades')).toHaveClass('hidden');
-    expect(document.getElementById('habits-subpanel-accolades')).toHaveAttribute('hidden');
-    fireEvent.click(accoladesSubTab);
-    expect(within(accoladesSubTab).getByText('Accolades Compendium')).toHaveClass('inline');
-    expect(within(streaksSubTab).getByText('Streaks & Challenge')).toHaveClass('inline');
-    expect(document.getElementById('habits-subpanel-accolades')).not.toHaveClass('hidden');
-    expect(document.getElementById('habits-subpanel-accolades')).not.toHaveAttribute('hidden');
-
-    // Tab panels
-    expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-habits')).not.toHaveAttribute('hidden');
-    expect(document.getElementById('account-tabpanel-profile')).toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-profile')).toHaveAttribute('hidden');
-
-    // Switch to Public Scholar
-    fireEvent.click(profileTab);
-    expect(profileTab).toHaveAttribute('aria-selected', 'true');
-    expect(habitsTab).toHaveAttribute('aria-selected', 'false');
-    expect(profileTab).toHaveClass('flex-[1.8]', 'justify-center');
-    expect(habitsTab).toHaveClass('flex-[1.15]', 'justify-center');
-    expect(profileTab.querySelector('[data-scrub-chevron="left"]')).not.toBeNull();
-    expect(profileTab.querySelector('[data-scrub-chevron="right"]')).not.toBeNull();
-    expect(habitsTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
-    expect(profileTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[220px]', 'opacity-100');
-    expect(habitsTab.querySelector('span')).toHaveClass('inline-block', 'max-w-[88px]', 'opacity-85', 'lg:inline');
+    // Zero Tier-2 underline sub-tabs anywhere in Scholar Profile or Habits
     expect(document.getElementById('account-tabpanel-profile')).not.toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-profile')).not.toHaveAttribute('hidden');
     expect(document.getElementById('account-tabpanel-habits')).toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-habits')).toHaveAttribute('hidden');
+    expect(screen.getAllByRole('tablist')).toHaveLength(1);
 
-    // Switch to Symposiums & Circle
-    fireEvent.click(symposiumsTab);
-    expect(symposiumsTab).toHaveAttribute('aria-selected', 'true');
-    expect(document.getElementById('account-tabpanel-symposiums')).not.toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-symposiums')).not.toHaveAttribute('hidden');
+    // Switch to Habits & Accolades
+    fireEvent.click(habitsTab);
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+    expect(habitsTab).toHaveClass('bg-card', 'border-primary');
+    expect(profileTab).toHaveAttribute('aria-selected', 'false');
+    expect(tablist.querySelector('[data-scrub-chevron]')).toBeNull();
+    expect(document.getElementById('account-tabpanel-habits')).not.toHaveClass('hidden');
+    expect(document.getElementById('account-tabpanel-profile')).toHaveClass('hidden');
 
     // Switch to Preferences
     fireEvent.click(preferencesTab);
     expect(preferencesTab).toHaveAttribute('aria-selected', 'true');
-    expect(preferencesTab).toHaveClass('flex-[1.8]', 'justify-center');
-    expect(profileTab).toHaveClass('justify-center');
+    expect(preferencesTab).toHaveClass('bg-card', 'border-primary');
     expect(document.getElementById('account-tabpanel-preferences')).not.toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-preferences')).not.toHaveAttribute('hidden');
 
     // Switch to Security
     fireEvent.click(securityTab);
     expect(securityTab).toHaveAttribute('aria-selected', 'true');
-    expect(securityTab).toHaveClass('flex-[1.8]', 'justify-center');
-    expect(securityTab.querySelector('[data-scrub-chevron="left"]')).not.toBeNull();
-    expect(securityTab.querySelector('[data-scrub-chevron="right"]')).toBeNull();
-    expect(preferencesTab).toHaveClass('flex-[1.15]', 'justify-center');
+    expect(securityTab).toHaveClass('bg-card', 'border-primary');
+    expect(tablist.querySelector('[data-scrub-chevron]')).toBeNull();
     expect(document.getElementById('account-tabpanel-security')).not.toHaveClass('hidden');
-    expect(document.getElementById('account-tabpanel-security')).not.toHaveAttribute('hidden');
     await waitFor(() => {
       expect(useAuthStore.getState().listActiveSessions).toHaveBeenCalled();
     });
   });
 
-  it('supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft', () => {
+  it('glides GPU active tab capsule smoothly via translate3d when tab layout geometry is measurable', () => {
+    const origLeft = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetLeft');
+    const origTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetTop');
+    const origWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+    const origHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+
+    Object.defineProperty(HTMLElement.prototype, 'offsetLeft', {
+      configurable: true,
+      get(this: HTMLElement) {
+        if (this.id === 'account-tab-profile') return 6;
+        if (this.id === 'account-tab-habits') return 220;
+        return 0;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'offsetTop', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.id.startsWith('account-tab-') ? 6 : 0;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get(this: HTMLElement) {
+        if (this.id === 'account-tab-profile') return 208;
+        if (this.id === 'account-tab-habits') return 196;
+        return 0;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.id.startsWith('account-tab-') ? 42 : 0;
+      },
+    });
+
+    try {
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+      });
+
+      const { unmount } = render(<AccountPage />);
+
+      const capsule = screen.getByTestId('account-tab-active-capsule');
+      expect(capsule).toHaveClass('bg-card', 'border-primary', 'shadow-xs', 'rounded-xl');
+      expect(capsule).toHaveStyle({
+        transform: 'translate3d(6px, 6px, 0)',
+        width: '208px',
+        height: '42px',
+      });
+
+      fireEvent.click(screen.getByRole('tab', { name: /Habits & Accolades/i }));
+
+      expect(screen.getByTestId('account-tab-active-capsule')).toHaveStyle({
+        transform: 'translate3d(220px, 6px, 0)',
+        width: '196px',
+        height: '42px',
+      });
+
+      unmount();
+    } finally {
+      if (origLeft) Object.defineProperty(HTMLElement.prototype, 'offsetLeft', origLeft);
+      if (origTop) Object.defineProperty(HTMLElement.prototype, 'offsetTop', origTop);
+      if (origWidth) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', origWidth);
+      if (origHeight) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', origHeight);
+    }
+  });
+
+  it('supports keyboard navigation across 4 tabs with ArrowRight and ArrowLeft', () => {
     useAuthStore.setState({
       user: { id: 'u1', email: 'austen@bookarium.test' } as any,
       profile: { id: 'u1', display_name: 'Jane' } as any,
@@ -305,19 +332,19 @@ describe('AccountPage', () => {
     render(<AccountPage />);
 
     const tablist = screen.getByRole('tablist', { name: /Account sections/i });
+    const profileTab = screen.getByRole('tab', { name: /Scholar Profile/i });
     const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
-    const profileTab = screen.getByRole('tab', { name: /Public Scholar/i });
     const securityTab = screen.getByRole('tab', { name: /Security/i });
 
-    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
-
-    // ArrowRight -> Public Scholar
-    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
     expect(profileTab).toHaveAttribute('aria-selected', 'true');
 
-    // ArrowLeft -> Habits & Accolades
-    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    // ArrowRight -> Habits & Accolades
+    fireEvent.keyDown(tablist, { key: 'ArrowRight' });
     expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+
+    // ArrowLeft -> Scholar Profile
+    fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
 
     // ArrowLeft wraps around to Security
     fireEvent.keyDown(tablist, { key: 'ArrowLeft' });
@@ -333,7 +360,7 @@ describe('AccountPage', () => {
     tablist.dispatchEvent(touchEvent);
     expect(stopPropagationSpy).toHaveBeenCalled();
 
-    vi.spyOn(profileTab, 'getBoundingClientRect').mockReturnValue({
+    vi.spyOn(habitsTab, 'getBoundingClientRect').mockReturnValue({
       left: 100,
       right: 200,
       width: 100,
@@ -347,10 +374,11 @@ describe('AccountPage', () => {
     fireEvent.touchStart(tablist, { touches: [{ clientX: 20, clientY: 20 }] });
     fireEvent.touchMove(tablist, { touches: [{ clientX: 150, clientY: 20 }] });
     fireEvent.touchEnd(tablist);
-    expect(profileTab).toHaveAttribute('aria-selected', 'true');
+    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits', () => {
+  it('initializes active tab from URL search parameters (?tab=preferences), maps ?tab=symposiums to Scholar Profile, and deletes tab param on profile return', () => {
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
     mockSearchParams = new URLSearchParams('tab=preferences');
 
     useAuthStore.setState({
@@ -359,19 +387,28 @@ describe('AccountPage', () => {
       isLoading: false,
     });
 
-    render(<AccountPage />);
+    const { unmount } = render(<AccountPage />);
 
     const preferencesTab = screen.getByRole('tab', { name: /Preferences/i });
     expect(preferencesTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Smart Auto-Hide Active')).toBeInTheDocument();
 
-    // Switch back to habits
-    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
-    fireEvent.click(habitsTab);
-    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+    // Switch back to default Scholar Profile clears ?tab= from URL
+    const profileTab = screen.getByRole('tab', { name: /Scholar Profile/i });
+    fireEvent.click(profileTab);
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, '', expect.not.stringContaining('?tab='));
+    unmount();
+
+    // Legacy ?tab=symposiums resolves cleanly into Scholar Profile with Fellowships visible
+    mockSearchParams = new URLSearchParams('tab=symposiums');
+    render(<AccountPage />);
+    expect(screen.getByRole('tab', { name: /Scholar Profile/i })).toHaveAttribute('aria-selected', 'true');
+    expect(document.getElementById('account-symposium-section')).toBeInTheDocument();
+    replaceStateSpy.mockRestore();
   });
 
-  it('falls back to habits tab when search param has invalid value', () => {
+  it('falls back to Scholar Profile tab when search param has invalid value', () => {
     mockSearchParams = new URLSearchParams('tab=invalid_tab_name');
 
     useAuthStore.setState({
@@ -382,8 +419,8 @@ describe('AccountPage', () => {
 
     render(<AccountPage />);
 
-    const habitsTab = screen.getByRole('tab', { name: /Habits & Accolades/i });
-    expect(habitsTab).toHaveAttribute('aria-selected', 'true');
+    const profileTab = screen.getByRole('tab', { name: /Scholar Profile/i });
+    expect(profileTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('handles user preferences: atmosphere themes and catalog sticky scroll navigation', async () => {
@@ -445,11 +482,10 @@ describe('AccountPage', () => {
     fireEvent.click(within(preferencesPanel).getByTestId('exit-bookmark-prompt-enabled-btn'));
     expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(true);
 
-    // Switch to Audio & Read Aloud sub-tab inside Preferences and exercise speech callbacks
+    // Read-Aloud Studio sits directly below Typography in the un-tabbed Preferences Studio
     act(() => {
       usePreferencesStore.setState({ speechVoiceURI: 'en-GB-voice' });
     });
-    fireEvent.click(within(preferencesPanel).getByTitle('Read-Aloud Studio'));
     fireEvent.click(within(preferencesPanel).getByText('1.25x'));
     expect(usePreferencesStore.getState().speechRate).toBe(1.25);
 
@@ -469,7 +505,9 @@ describe('AccountPage', () => {
     fireEvent.click(screen.getByTestId('confirm-reset-speech-btn'));
     expect(usePreferencesStore.getState().speechRate).toBe(1);
 
-    fireEvent.click(within(preferencesPanel).getByTitle('Appearance & Scroll'));
+    // Cycle theme directly from AccountBottomDock Preferences quick toggle
+    fireEvent.click(screen.getByTestId('account-dock-cycle-theme-btn'));
+    expect(useThemeStore.getState().theme).toBe('dark');
 
     // Save current as custom default preset
     fireEvent.click(within(preferencesPanel).getByTestId('save-custom-defaults-btn'));
@@ -708,7 +746,7 @@ describe('AccountPage', () => {
     }
   });
 
-  it('renders Public Scholar Profile section and handles saving public preferences', async () => {
+  it('renders Scholar Profile section on default tab and handles saving public preferences', async () => {
     const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
 
     useAuthStore.setState({
@@ -729,20 +767,22 @@ describe('AccountPage', () => {
 
     render(<AccountPage />);
 
-    // Switch to Public Scholar sub-tab
-    fireEvent.click(screen.getByRole('tab', { name: /Public Scholar/i }));
     const profilePanel = document.getElementById('account-tabpanel-profile')!;
+    expect(profilePanel).not.toHaveClass('hidden');
+    expect(within(profilePanel).getByRole('region', { name: /scholar profile settings/i })).toBeInTheDocument();
+    expect(within(profilePanel).getByTestId('scholar-username-indicator')).toHaveTextContent('scholar_one');
+    expect(within(profilePanel).getByTestId('scholar-bio-indicator')).toHaveTextContent(
+      'Devoted scholar of classical literature.'
+    );
 
-    expect(within(profilePanel).getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
-    expect(within(profilePanel).getByDisplayValue('scholar_one')).toBeInTheDocument();
-    expect(within(profilePanel).getByDisplayValue('Devoted scholar of classical literature.')).toBeInTheDocument();
-
-    const submitBtn = within(profilePanel).getByRole('button', { name: /save public settings/i });
+    fireEvent.click(within(profilePanel).getByRole('button', { name: /^edit$/i }));
+    const submitBtn = within(profilePanel).getByRole('button', { name: /^save$/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(mockUpdateProfile).toHaveBeenCalledWith(
         expect.objectContaining({
+          display_name: 'Scholar Reader',
           username: 'scholar_one',
           is_public: true,
         })
@@ -823,7 +863,7 @@ describe('AccountPage', () => {
       }
     });
 
-    it('enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs', () => {
+    it('enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-1 tab', () => {
       useAuthStore.setState({
         user: { id: 'u1', email: 'austen@bookarium.test' } as any,
         profile: { id: 'u1', display_name: 'Jane Austen' } as any,
@@ -837,9 +877,9 @@ describe('AccountPage', () => {
       const root = main.parentElement;
       expect(root).toHaveClass('overflow-x-clip');
 
-      const streaksTab = screen.getByRole('tab', { name: 'Streaks & Challenge' });
-      expect(streaksTab).toHaveClass('border-primary');
-      expect(streaksTab).not.toHaveClass('border-primary/30');
+      const activeProfileTab = screen.getByRole('tab', { name: /Scholar Profile/i });
+      expect(activeProfileTab).toHaveClass('border-primary');
+      expect(activeProfileTab).not.toHaveClass('border-primary/30');
     });
 
     it('covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)', () => {
@@ -922,17 +962,17 @@ describe('AccountPage', () => {
 
       render(<AccountPage />);
 
-      // Switch between Accolades Compendium and Streaks & Challenge sub-tabs
-      fireEvent.click(screen.getByRole('tab', { name: /Accolades Compendium/i }));
-      fireEvent.click(screen.getByRole('tab', { name: /Streaks & Challenge/i }));
+      // Verify pending invite count pill surfaces cleanly on Scholar Profile tab and Bottom Dock
+      expect(within(screen.getByRole('tab', { name: /Scholar Profile/i })).getByText('1')).toBeInTheDocument();
+      expect(screen.getByTestId('account-dock-invites-badge')).toHaveTextContent('1');
 
-      // Profile save error & catch (open quick profile editor first)
-      fireEvent.click(screen.getByRole('button', { name: /Edit display name/i }));
-      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      // Profile save error & catch via Scholar Profile form
+      fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
       expect(await screen.findByText('Profile save error')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
       expect(
-        await screen.findByText('An unexpected error occurred while saving your profile.')
+        await screen.findByText('Failed to update scholar profile. Please try again.')
       ).toBeInTheDocument();
 
       // Resend verification error & catch
@@ -1136,6 +1176,13 @@ describe('AccountPage', () => {
         const guestWorkspace = screen.getByTestId('guest-offline-workspace');
         const guestSignInCard = screen.getByTestId('guest-signin-card');
         expect(guestWorkspace).toBeInTheDocument();
+        expect(screen.getByText('Reading & Navigation Preferences')).toBeInTheDocument();
+        expect(screen.queryByTestId('account-habits-card')).not.toBeInTheDocument();
+
+        // Switch Guest Offline Workspace tab to Local Habits & Accolades via inline or bottom pill
+        fireEvent.click(screen.getByRole('tab', { name: /Local Habits & Accolades/i }));
+        expect(screen.getByTestId('account-habits-card')).toBeInTheDocument();
+        expect(screen.getByTestId('account-accolades-card')).toBeInTheDocument();
         expect(
           guestWorkspace.compareDocumentPosition(guestSignInCard) & Node.DOCUMENT_POSITION_FOLLOWING
         ).toBeTruthy();

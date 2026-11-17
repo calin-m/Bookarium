@@ -401,7 +401,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
+    <div className="bg-card border border-border rounded-3xl p-5 sm:p-6 lg:p-8 shadow-xs space-y-6">
       {/* Master Card Header */}
       <div className="flex items-center gap-3 border-b border-border pb-4">
         <div className="p-2 rounded-xl bg-primary/10 text-primary border border-border shrink-0">
@@ -419,7 +419,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column (7 cols): Password Form */}
-        <div className="lg:col-span-7 space-y-4">
+        <div id="security-password-card" className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-mono uppercase tracking-wider text-foreground font-bold">
               {hasPasswordIdentity ? 'Update Account Password' : 'Set Account Password'}
@@ -759,7 +759,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
           </div>
 
           {/* Section 2: Active Device Sessions */}
-          <div className="p-5 rounded-xl border border-border bg-muted/20 space-y-3">
+          <div id="security-sessions-card" className="p-5 rounded-xl border border-border bg-muted/20 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-mono font-bold text-foreground uppercase tracking-wider">
                 Active Device Sessions
@@ -992,7 +992,7 @@ export const AccountSecuritySection: React.FC<AccountSecuritySectionProps> = ({
           )}
 
           {/* Section 3: Danger Zone (Framed Inset Callout) */}
-          <div className="rounded-xl border border-destructive/40 dark:border-destructive/50 bg-destructive/5 p-5 space-y-3">
+          <div id="security-danger-card" className="rounded-xl border border-destructive/40 dark:border-destructive/50 bg-destructive/5 p-5 space-y-3">
             <div className="flex items-center gap-2 text-destructive font-mono text-xs font-bold uppercase tracking-wider">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>Danger Zone: Delete Account</span>

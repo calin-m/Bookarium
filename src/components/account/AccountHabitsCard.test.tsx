@@ -16,7 +16,7 @@ describe('AccountHabitsCard', () => {
 
     render(<AccountHabitsCard completedBooksCount={5} />);
 
-    expect(screen.getByTestId('account-habits-card')).toHaveClass('p-4', 'sm:p-6', 'lg:p-7');
+    expect(screen.getByTestId('account-habits-card')).toHaveClass('rounded-3xl', 'p-5', 'sm:p-6', 'lg:p-8', 'shadow-xs');
     expect(screen.getByRole('heading', { level: 2, name: /Reading Habits & Challenges/i })).toBeInTheDocument();
     expect(screen.getByTestId('reading-streak-metric')).toBeInTheDocument();
     expect(screen.getByTestId('reading-time-metric')).toBeInTheDocument();

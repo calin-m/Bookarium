@@ -6,8 +6,6 @@ import {
   Coffee,
   Moon,
   Check,
-  Headphones,
-  Sliders,
   BookmarkCheck,
   RotateCcw,
   Undo2,
@@ -19,7 +17,6 @@ import type {
   ReaderReadingMode,
   ReaderColumnWidth,
 } from '@/stores/useReaderStore';
-import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { AccountNarrationSubPanel } from './AccountNarrationSubPanel';
 import { AccountTypographySubPanel } from './AccountTypographySubPanel';
@@ -68,8 +65,6 @@ export interface AccountPreferencesSectionProps {
   onResetToFactoryDefaults?: () => void;
 }
 
-type PreferencesSubTabId = 'appearance' | 'narration';
-
 export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps> = ({
   theme,
   onThemeChange,
@@ -107,7 +102,6 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
   onRevertToCustomDefaults,
   onResetToFactoryDefaults,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<PreferencesSubTabId>('appearance');
   const [isFactoryResetModalOpen, setIsFactoryResetModalOpen] = useState(false);
   const [savedNoticeVisible, setSavedNoticeVisible] = useState(false);
 
@@ -127,28 +121,12 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
         : 'Custom Modified';
 
   return (
-    <div className="space-y-4">
-      {/* Centered Editorial Underline Sub-Tab Bar (Outside & Above Card) */}
-      <EditorialUnderlineTabs<PreferencesSubTabId>
-        tabs={[
-          {
-            id: 'appearance',
-            label: 'Appearance & Scroll',
-            icon: <Sliders className="w-3.5 h-3.5 shrink-0" />,
-          },
-          {
-            id: 'narration',
-            label: 'Read-Aloud Studio',
-            icon: <Headphones className="w-3.5 h-3.5 shrink-0" />,
-          },
-        ]}
-        activeTab={activeSubTab}
-        onSelectTab={setActiveSubTab}
-        ariaLabel="Preferences sub-sections"
-      />
-
-      {/* Main Preferences Card */}
-      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
+    <div className="space-y-6">
+      {/* Unified Studio Header & Custom Preset Toolbar + Appearance & Typography Card */}
+      <div
+        id="preferences-subpanel-appearance"
+        className="bg-card border border-border rounded-3xl p-5 sm:p-6 lg:p-8 shadow-xs space-y-6"
+      >
         {/* Header & Two-Tier Preset / Factory Reset Toolbar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -211,11 +189,7 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
           </div>
         </div>
 
-        {/* Sub-Tab 1: Appearance, Typography & Scroll */}
-        <div
-          id="preferences-subpanel-appearance"
-          className={activeSubTab === 'appearance' ? 'space-y-6 animate-in fade-in duration-150' : 'hidden'}
-        >
+        <div className="space-y-6">
           {/* Theme Atmosphere */}
           <div className="space-y-3">
             <label className="text-xs font-mono text-foreground font-bold block">
@@ -336,10 +310,12 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
             onExitBookmarkReminderChange={onExitBookmarkReminderChange}
           />
         </div>
+      </div>
 
-        {/* Sub-Tab 2: Read-Aloud Studio */}
+      {/* Standalone Card: Read-Aloud Studio */}
+      <div className="bg-card border border-border rounded-3xl p-5 sm:p-6 lg:p-8 shadow-xs">
         <AccountNarrationSubPanel
-          isActive={activeSubTab === 'narration'}
+          isActive
           speechRate={speechRate}
           onSpeechRateChange={onSpeechRateChange}
           speechVoiceURI={speechVoiceURI}
@@ -350,25 +326,25 @@ export const AccountPreferencesSection: React.FC<AccountPreferencesSectionProps>
           onSpeechHighlightEnabledChange={onSpeechHighlightEnabledChange}
           onResetSpeechPreferences={onResetSpeechPreferences}
         />
-
-        <ConfirmActionModal
-          isOpen={isFactoryResetModalOpen}
-          onClose={() => setIsFactoryResetModalOpen(false)}
-          onConfirm={() => {
-            setIsFactoryResetModalOpen(false);
-            onResetToFactoryDefaults?.();
-          }}
-          title="Reset All Preferences"
-          heading="Reset all reading & navigation preferences to factory defaults?"
-          description="This will restore Bookarium's original defaults (Light theme, Serif 18px, 1.75x line spacing, 100% brightness, Paged flow, Wide column, Smart Auto-Hide, Spoiler Shield On, and 1x speech settings)."
-          confirmLabel="Reset to Factory Defaults"
-          icon={<RotateCcw className="w-5 h-5" />}
-          modalTestId="reset-factory-preferences-modal"
-          dialogTestId="reset-factory-preferences-dialog"
-          cancelTestId="cancel-reset-factory-preferences-btn"
-          confirmTestId="confirm-reset-factory-preferences-btn"
-        />
       </div>
+
+      <ConfirmActionModal
+        isOpen={isFactoryResetModalOpen}
+        onClose={() => setIsFactoryResetModalOpen(false)}
+        onConfirm={() => {
+          setIsFactoryResetModalOpen(false);
+          onResetToFactoryDefaults?.();
+        }}
+        title="Reset All Preferences"
+        heading="Reset all reading & navigation preferences to factory defaults?"
+        description="This will restore Bookarium's original defaults (Light theme, Serif 18px, 1.75x line spacing, 100% brightness, Paged flow, Wide column, Smart Auto-Hide, Spoiler Shield On, and 1x speech settings)."
+        confirmLabel="Reset to Factory Defaults"
+        icon={<RotateCcw className="w-5 h-5" />}
+        modalTestId="reset-factory-preferences-modal"
+        dialogTestId="reset-factory-preferences-dialog"
+        cancelTestId="cancel-reset-factory-preferences-btn"
+        confirmTestId="confirm-reset-factory-preferences-btn"
+      />
     </div>
   );
 };

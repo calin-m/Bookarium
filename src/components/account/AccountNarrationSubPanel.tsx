@@ -21,7 +21,7 @@ import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { Select } from '@/components/ui/Select';
 
 export interface AccountNarrationSubPanelProps {
-  isActive: boolean;
+  isActive?: boolean;
   speechRate: number;
   onSpeechRateChange: (rate: number) => void;
   speechVoiceURI: string | null;
@@ -36,7 +36,7 @@ export interface AccountNarrationSubPanelProps {
 const SPEED_PRESETS = [0.85, 1.0, 1.15, 1.25, 1.5, 2.0] as const;
 
 export const AccountNarrationSubPanel: React.FC<AccountNarrationSubPanelProps> = ({
-  isActive,
+  isActive = true,
   speechRate,
   onSpeechRateChange,
   speechVoiceURI,

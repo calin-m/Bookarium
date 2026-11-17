@@ -26,11 +26,11 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `273` (`src/**` + `scripts/*.js`)
-- **Annotated Contract Modules**: `63` (**23.1%** coverage; `12` Tier-1 + `17` Tier-2 + `18` Tier-3 + `16` Tier-4 = `63` Protected)
+- **Total Scanned Executable Modules**: `274` (`src/**` + `scripts/*.js`)
+- **Annotated Contract Modules**: `63` (**23%** coverage; `12` Tier-1 + `17` Tier-2 + `18` Tier-3 + `16` Tier-4 = `63` Protected)
 - **Extracted Module Invariants**: `126`
 - **Symbol-Level Contracts**: `1`
-- **Pending Annotation Queue**: `210` *(auto-ranked below by AST blast radius & external boundary exposure)*
+- **Pending Annotation Queue**: `211` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
@@ -40,7 +40,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 | **React Hooks & Queries** | `36` | `11` | `25` | 30.6% |
 | **Web Workers** | `1` | `1` | `0` | 100.0% |
 | **App Router Pages & Layouts** | `25` | `1` | `24` | 4.0% |
-| **UI & Feature Components** | `113` | `0` | `113` | 0.0% |
+| **UI & Feature Components** | `114` | `0` | `114` | 0.0% |
 | **Config & Type Contracts** | `17` | `0` | `17` | 0.0% |
 | **CLI Pipelines & Governance** | `18` | `8` | `10` | 44.4% |
 
@@ -606,7 +606,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Synchronizing the theme cookie lets `src/app/layout.tsx` server-render the exact theme class on initial HTML response, guaranteeing 0.00 CLS and zero white-flash on dark/sepia loads.
 - **Governing Decisions (`@adr`)**: [ADR-001](DECISIONS.md), [ADR-042](DECISIONS.md), [ADR-079](DECISIONS.md)
-- **AST Blast Radius**: 7 runtime, 4 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/app/layout.tsx`](../src/app/layout.tsx) *(type)*, [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, …)
+- **AST Blast Radius**: 7 runtime, 5 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/app/layout.tsx`](../src/app/layout.tsx) *(type)*, [`src/components/account/AccountBottomDock.tsx`](../src/components/account/AccountBottomDock.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-theme-preference`
 - **Test Contract**: [`src/stores/useThemeStore.test.ts`](../src/stores/useThemeStore.test.ts) (8 tests)
 
@@ -680,7 +680,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/hooks/useAccountSecurityActions.ts`](../src/hooks/useAccountSecurityActions.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: Headless Account Security controller managing profile names, current-password verified updates, email verification resends, OAuth identity linking/unlinking, deletion requests, and multi-device sessions.
+- **Intended Scope (`@scope`)**: Headless Account Security controller managing current-password verified updates, email verification resends, OAuth identity linking/unlinking, deletion requests, and multi-device sessions.
 - **Behavioral Invariants (`@invariant`)**:
   - Guard OAuth unlinking behind `canUnlinkGoogle` (`hasGoogleIdentity && hasPasswordIdentity`), require `currentPassword` validation on password updates, and synchronize session revocations across tabs via `BroadcastChannel('bookarium-sessions-sync')` plus `bookarium:auth-token-refreshed`.
   - Suppress session and security mutations cleanly when `isOffline` or `isPreviewMode`, preserving clear recovery/verification cooldown timers without orphaned network actions.
@@ -895,7 +895,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ---
 
-## 📋 AST-Prioritized Pending Contract Queue (210 Modules)
+## 📋 AST-Prioritized Pending Contract Queue (211 Modules)
 
 Unannotated modules ranked automatically by AST **fan-in blast radius** and **cross-boundary exposure** (`Supabase DB`, `RPC`, `/api/*`, `CustomEvent`/`BroadcastChannel`, `localStorage`/Cookies, `process.env.*`):
 
@@ -906,7 +906,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `90` | [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx) | UI & Feature Components | `45` / `0` | Pure / internal |
 | `88` | [`src/config/site-config.ts`](../src/config/site-config.ts) | Config & Type Contracts | `32` / `0` | Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_LEGAL_CONTACT_FORM`, `NEXT_PUBLIC_SITE_URL` |
 | `66` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `31` / `0` | Pure / internal |
-| `62` | [`src/config/routes.ts`](../src/config/routes.ts) | Config & Type Contracts | `31` / `0` | Pure / internal |
+| `60` | [`src/config/routes.ts`](../src/config/routes.ts) | Config & Type Contracts | `30` / `0` | Pure / internal |
 | `43` | [`src/types/book.types.ts`](../src/types/book.types.ts) | Config & Type Contracts | `0` / `43` | Pure / internal |
 | `37` | [`src/hooks/useHasMounted.ts`](../src/hooks/useHasMounted.ts) | React Hooks & Queries | `17` / `0` | Pure / internal |
 | `34` | [`src/config/featured-books.ts`](../src/config/featured-books.ts) | Config & Type Contracts | `16` / `2` | Pure / internal |
@@ -914,29 +914,28 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `30` | [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) | UI & Feature Components | `11` / `0` | Signals: emits `CustomEvent:bookarium:book-link-copied`; listens `CustomEvent:bookarium:book-link-copied` |
 | `28` | [`src/components/ui/Modal.tsx`](../src/components/ui/Modal.tsx) | UI & Feature Components | `14` / `0` | Pure / internal |
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
-| `23` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `23` | Pure / internal |
 | `22` | [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx) | App Router Pages & Layouts | `0` / `0` | DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.user_accolades`, `public.user_reading_habits` |
+| `22` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `22` | Pure / internal |
 | `20` | [`src/lib/api-utils.ts`](../src/lib/api-utils.ts) | Domain Engines & Adapters | `6` / `0` | Env Vars: `NODE_ENV` |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `15` | [`src/hooks/useBookCopyright.ts`](../src/hooks/useBookCopyright.ts) | React Hooks & Queries | `6` / `0` | Pure / internal |
+| `15` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `3` | Pure / internal |
 | `14` | [`src/app/layout.tsx`](../src/app/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Storage/Cookies: `bookarium-auth-hint`, `bookarium-theme-preference` · Env Vars: `NEXT_PUBLIC_SUPABASE_URL` |
 | `14` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `7` / `0` | Pure / internal |
+| `14` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
-| `13` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `1` | Pure / internal |
 | `12` | [`src/components/auth/TurnstileWidget.tsx`](../src/components/auth/TurnstileWidget.tsx) | UI & Feature Components | `4` / `0` | Env Vars: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` |
-| `12` | [`src/components/motion/ContentCrossfade.tsx`](../src/components/motion/ContentCrossfade.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
 | `12` | [`src/components/presentation/Footer.tsx`](../src/components/presentation/Footer.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
 | `12` | [`src/components/reader/ReaderDrawerShell.tsx`](../src/components/reader/ReaderDrawerShell.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
-| `12` | [`src/components/ui/Input.tsx`](../src/components/ui/Input.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
-| `12` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `6` / `0` | Pure / internal |
 | `11` | [`src/config/catalog-filters.ts`](../src/config/catalog-filters.ts) | Config & Type Contracts | `5` / `1` | Pure / internal |
 | `11` | [`src/hooks/useDialogFocusTrap.ts`](../src/hooks/useDialogFocusTrap.ts) | React Hooks & Queries | `4` / `0` | Pure / internal |
 | `10` | [`src/app/providers.tsx`](../src/app/providers.tsx) | App Router Pages & Layouts | `2` / `0` | Signals: listens `CustomEvent:bookarium:auth-token-refreshed` |
-| `10` | [`src/components/ui/EditorialUnderlineTabs.tsx`](../src/components/ui/EditorialUnderlineTabs.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
+| `10` | [`src/components/motion/ContentCrossfade.tsx`](../src/components/motion/ContentCrossfade.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
+| `10` | [`src/components/ui/Input.tsx`](../src/components/ui/Input.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/RemoveOfflineBookModal.tsx`](../src/components/ui/RemoveOfflineBookModal.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/SegmentedControl.tsx`](../src/components/ui/SegmentedControl.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/StarRating.tsx`](../src/components/ui/StarRating.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
@@ -947,19 +946,20 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `10` | [`src/lib/reading-card-export.ts`](../src/lib/reading-card-export.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/smart-search.ts`](../src/lib/smart-search.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/speech-utils.ts`](../src/lib/speech-utils.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
+| `9` | [`src/hooks/useAmbientDockScrollState.ts`](../src/hooks/useAmbientDockScrollState.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useCursorTooltip.ts`](../src/hooks/useCursorTooltip.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
+| `9` | [`src/hooks/usePerformanceTier.ts`](../src/hooks/usePerformanceTier.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useTouchDevice.ts`](../src/hooks/useTouchDevice.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `8` | [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx) | App Router Pages & Layouts | `3` / `0` | Pure / internal |
 | `8` | [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts) | App Router Pages & Layouts | `1` / `0` | DB Tables: `public.books` |
 | `8` | [`src/app/u/[username]/profile-layout-utils.ts`](../src/app/u/[username]/profile-layout-utils.ts) | App Router Pages & Layouts | `1` / `0` | DB Tables: `public.profiles` |
-| `8` | [`src/components/presentation/CollectionEmptyState.tsx`](../src/components/presentation/CollectionEmptyState.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 
 <details><summary>Remaining 9 high-coupling candidates</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
+| `8` | [`src/components/presentation/CollectionEmptyState.tsx`](../src/components/presentation/CollectionEmptyState.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/Alert.tsx`](../src/components/ui/Alert.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
-| `8` | [`src/components/ui/BackToTop.tsx`](../src/components/ui/BackToTop.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/RemoveCollectionBookModal.tsx`](../src/components/ui/RemoveCollectionBookModal.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/Textarea.tsx`](../src/components/ui/Textarea.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/config/api-endpoints.ts`](../src/config/api-endpoints.ts) | Config & Type Contracts | `4` / `0` | Pure / internal |
@@ -970,16 +970,14 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 
 </details>
 
-<details><summary>Standard & Leaf Modules Pending Optional Annotation (151 Modules)</summary>
+<details><summary>Standard & Leaf Modules Pending Optional Annotation (152 Modules)</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
 | `7` | [`scripts/generate-roadmap.js`](../scripts/generate-roadmap.js) | CLI Pipelines & Governance | `2` / `0` | Leaf / pure |
-| `7` | [`src/hooks/useAmbientDockScrollState.ts`](../src/hooks/useAmbientDockScrollState.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useCatalogFilters.ts`](../src/hooks/useCatalogFilters.ts) | React Hooks & Queries | `1` / `2` | Leaf / pure |
 | `7` | [`src/hooks/useMobileViewportCardFocus.ts`](../src/hooks/useMobileViewportCardFocus.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useMobileViewSwipe.ts`](../src/hooks/useMobileViewSwipe.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
-| `7` | [`src/hooks/usePerformanceTier.ts`](../src/hooks/usePerformanceTier.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useScrollDirection.ts`](../src/hooks/useScrollDirection.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `6` | [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | API Calls: `/api/books/content` |
 | `6` | [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
@@ -993,6 +991,8 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `6` | [`src/components/pwa/ServiceWorkerRegister.tsx`](../src/components/pwa/ServiceWorkerRegister.tsx) | UI & Feature Components | `1` / `0` | Env Vars: `NODE_ENV` |
 | `6` | [`src/components/reader/DeleteAnnotationModal.tsx`](../src/components/reader/DeleteAnnotationModal.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/symposium/SymposiumInviteModal.tsx`](../src/components/symposium/SymposiumInviteModal.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
+| `6` | [`src/components/ui/AmbientCapsuleDock.tsx`](../src/components/ui/AmbientCapsuleDock.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
+| `6` | [`src/components/ui/BackToTop.tsx`](../src/components/ui/BackToTop.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/ui/BrandLogo.tsx`](../src/components/ui/BrandLogo.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/ui/Pagination.tsx`](../src/components/ui/Pagination.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/ui/SectionHeader.tsx`](../src/components/ui/SectionHeader.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
@@ -1034,7 +1034,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `4` | [`src/components/presentation/OpenBookLeftPageSpread.tsx`](../src/components/presentation/OpenBookLeftPageSpread.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/profile/PrivateProfileNotice.tsx`](../src/components/profile/PrivateProfileNotice.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/reader/ReaderLoadingView.tsx`](../src/components/reader/ReaderLoadingView.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
-| `4` | [`src/components/ui/AmbientCapsuleDock.tsx`](../src/components/ui/AmbientCapsuleDock.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/ui/Badge.tsx`](../src/components/ui/Badge.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/ui/BottomSheetDrawerShell.tsx`](../src/components/ui/BottomSheetDrawerShell.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/ui/PasswordStrengthMeter.tsx`](../src/components/ui/PasswordStrengthMeter.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
@@ -1063,6 +1062,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/components/accolades/AccoladeCelebrationModal.tsx`](../src/components/accolades/AccoladeCelebrationModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/account/AccountBottomDock.tsx`](../src/components/account/AccountBottomDock.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountDeleteModal.tsx`](../src/components/account/AccountDeleteModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountHabitsCard.tsx`](../src/components/account/AccountHabitsCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountIdentityCard.tsx`](../src/components/account/AccountIdentityCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
@@ -1122,6 +1122,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/reader/TextHighlightPopover.tsx`](../src/components/reader/TextHighlightPopover.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/VolumeCompletionModal.tsx`](../src/components/reader/VolumeCompletionModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/ui/Card.tsx`](../src/components/ui/Card.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/ui/EditorialUnderlineTabs.tsx`](../src/components/ui/EditorialUnderlineTabs.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/config/translation-languages.ts`](../src/config/translation-languages.ts) | Config & Type Contracts | `1` / `0` | Leaf / pure |
 | `0` | [`src/components/motion/MotionReveal.tsx`](../src/components/motion/MotionReveal.tsx) | UI & Feature Components | `0` / `0` | Leaf / pure |
 | `0` | [`src/components/motion/StaggerGroup.tsx`](../src/components/motion/StaggerGroup.tsx) | UI & Feature Components | `0` / `0` | Leaf / pure |

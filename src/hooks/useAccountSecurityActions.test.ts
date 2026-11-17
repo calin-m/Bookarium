@@ -2,7 +2,6 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { useAccountSecurityActions } from './useAccountSecurityActions';
 import type { User } from '@supabase/supabase-js';
-import type { Profile } from '@/types/database.types';
 import type { ActiveUserSession } from '@/lib/session-device-parser';
 
 describe('useAccountSecurityActions', () => {
@@ -12,13 +11,7 @@ describe('useAccountSecurityActions', () => {
     user_metadata: { display_name: 'Initial Scholar' },
   } as unknown as User;
 
-  const mockProfile = {
-    id: 'user-1',
-    display_name: 'Dr. Scholar',
-  } as unknown as Profile;
-
-  it('manages profile display name updates, password validation/updates, verification resend, and account deletion state', async () => {
-    const updateProfile = vi.fn().mockResolvedValue({ error: null });
+  it('manages password validation/updates, verification resend, and account deletion state', async () => {
     const updatePassword = vi.fn().mockResolvedValue({ error: null });
     const resetPasswordForEmail = vi.fn().mockResolvedValue({ error: null });
     const requestAccountDeletion = vi.fn().mockResolvedValue({ error: null });
@@ -28,29 +21,14 @@ describe('useAccountSecurityActions', () => {
     const { result } = renderHook(() =>
       useAccountSecurityActions({
         user: mockUser,
-        profile: mockProfile,
         isRecoveryMode: false,
         onClearRecoveryParam,
-        updateProfile,
         updatePassword,
         resetPasswordForEmail,
         requestAccountDeletion,
         resendVerificationEmail,
       })
     );
-
-    expect(result.current.displayName).toBe('Dr. Scholar');
-
-    act(() => {
-      result.current.setCustomName('New Scholar Name');
-    });
-    expect(result.current.displayName).toBe('New Scholar Name');
-
-    await act(async () => {
-      await result.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
-    });
-    expect(updateProfile).toHaveBeenCalledWith({ display_name: 'New Scholar Name' });
-    expect(result.current.saveSuccess).toBe(true);
 
     // Password mismatch validation
     act(() => {
@@ -104,7 +82,6 @@ describe('useAccountSecurityActions', () => {
   });
 
   it('enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors', async () => {
-    const updateProfile = vi.fn().mockResolvedValue({ error: new Error('Profile update failed') });
     const updatePassword = vi
       .fn()
       .mockResolvedValueOnce({ error: new Error('Invalid recovery token') })
@@ -125,11 +102,9 @@ describe('useAccountSecurityActions', () => {
       (props: { isRecoveryMode: boolean }) =>
         useAccountSecurityActions({
           user: mockUser,
-          profile: mockProfile,
           isRecoveryMode: props.isRecoveryMode,
           onClearRecoveryParam,
           clearPasswordRecovery,
-          updateProfile,
           updatePassword,
           resetPasswordForEmail,
           requestAccountDeletion,
@@ -190,14 +165,12 @@ describe('useAccountSecurityActions', () => {
     expect(result.current.passwordSuccess).toBe(true);
     expect(clearPasswordRecovery).toHaveBeenCalledTimes(1);
 
-    // 5. Error propagation across profile, verification, reset, and deletion actions
+    // 5. Error propagation across verification, reset, and deletion actions
     await act(async () => {
-      await result.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
       await result.current.handleResendVerification();
       await result.current.handleRequestPasswordReset();
       await result.current.handleRequestDeletion();
     });
-    expect(result.current.saveError).toBe('Profile update failed');
     expect(result.current.resendError).toBe('Verification email throttled');
     expect(result.current.resetEmailError).toBe('Rate limit exceeded');
     expect(result.current.deleteError).toBe('Deletion service unavailable');
@@ -211,7 +184,6 @@ describe('useAccountSecurityActions', () => {
       configurable: true,
     });
 
-    const updateProfile = vi.fn().mockResolvedValueOnce({ error: null }).mockRejectedValueOnce(new Error('Crash'));
     const updatePassword = vi.fn().mockRejectedValueOnce(new Error('Crash'));
     const resetPasswordForEmail = vi.fn().mockResolvedValueOnce({ error: null }).mockRejectedValueOnce(new Error('Crash'));
     const requestAccountDeletion = vi.fn().mockRejectedValueOnce(new Error('Crash'));
@@ -221,10 +193,8 @@ describe('useAccountSecurityActions', () => {
     const { result: unauthResult } = renderHook(() =>
       useAccountSecurityActions({
         user: null,
-        profile: null,
         isRecoveryMode: false,
         onClearRecoveryParam: vi.fn(),
-        updateProfile,
         updatePassword,
         resetPasswordForEmail,
         requestAccountDeletion,
@@ -235,20 +205,17 @@ describe('useAccountSecurityActions', () => {
     await act(async () => {
       await unauthResult.current.handleResendVerification();
       await unauthResult.current.handleRequestPasswordReset();
-      await unauthResult.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
       await unauthResult.current.handleUpdatePassword({ preventDefault: vi.fn() } as unknown as React.FormEvent);
       await unauthResult.current.handleRequestDeletion();
     });
-    expect(updateProfile).not.toHaveBeenCalled();
+    expect(updatePassword).not.toHaveBeenCalled();
 
     // 2. Cooldown timers and clipboard copy with authenticated user
     const { result } = renderHook(() =>
       useAccountSecurityActions({
         user: mockUser,
-        profile: mockProfile,
         isRecoveryMode: true,
         onClearRecoveryParam: vi.fn(),
-        updateProfile,
         updatePassword,
         resetPasswordForEmail,
         requestAccountDeletion,
@@ -265,7 +232,6 @@ describe('useAccountSecurityActions', () => {
     await act(async () => {
       await result.current.handleResendVerification();
       await result.current.handleRequestPasswordReset();
-      await result.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
     });
 
     expect(result.current.resendSuccess).toBe(true);
@@ -279,7 +245,6 @@ describe('useAccountSecurityActions', () => {
 
     expect(result.current.copiedPassword).toBe(false);
     expect(result.current.resendSuccess).toBe(false);
-    expect(result.current.saveSuccess).toBe(false);
     expect(result.current.resendCooldown).toBe(55);
     expect(result.current.resetCooldown).toBe(55);
 
@@ -293,14 +258,12 @@ describe('useAccountSecurityActions', () => {
     await act(async () => {
       await result.current.handleResendVerification();
       await result.current.handleRequestPasswordReset();
-      await result.current.handleSaveProfile({ preventDefault: vi.fn() } as unknown as React.FormEvent);
       await result.current.handleUpdatePassword({ preventDefault: vi.fn() } as unknown as React.FormEvent);
       await result.current.handleRequestDeletion();
     });
 
     expect(result.current.resendError).toContain('Failed to resend');
     expect(result.current.resetEmailError).toContain('Failed to send');
-    expect(result.current.saveError).toContain('unexpected error');
     expect(result.current.passwordError).toContain('unexpected error');
     expect(result.current.deleteError).toContain('unexpected error');
 
@@ -338,10 +301,8 @@ describe('useAccountSecurityActions', () => {
       ({ activeUser }) =>
         useAccountSecurityActions({
           user: activeUser,
-          profile: null,
           isRecoveryMode: false,
           onClearRecoveryParam: vi.fn(),
-          updateProfile: vi.fn().mockResolvedValue({ error: null }),
           updatePassword,
           resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
           requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -432,10 +393,8 @@ describe('useAccountSecurityActions', () => {
     const { result: firstHook } = renderHook(() =>
       useAccountSecurityActions({
         user: mockUser,
-        profile: mockProfile,
         isRecoveryMode: false,
         onClearRecoveryParam: vi.fn(),
-        updateProfile: vi.fn().mockResolvedValue({ error: null }),
         updatePassword: vi.fn().mockResolvedValue({ error: null }),
         resetPasswordForEmail,
         requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -455,10 +414,8 @@ describe('useAccountSecurityActions', () => {
     const { result: secondHook } = renderHook(() =>
       useAccountSecurityActions({
         user: mockUser,
-        profile: mockProfile,
         isRecoveryMode: false,
         onClearRecoveryParam: vi.fn(),
-        updateProfile: vi.fn().mockResolvedValue({ error: null }),
         updatePassword: vi.fn().mockResolvedValue({ error: null }),
         resetPasswordForEmail,
         requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -524,10 +481,8 @@ describe('useAccountSecurityActions', () => {
       ({ activeUser, tab }: { activeUser: User | null; tab: string }) =>
         useAccountSecurityActions({
           user: activeUser,
-          profile: mockProfile,
           isRecoveryMode: false,
           onClearRecoveryParam: vi.fn(),
-          updateProfile: vi.fn().mockResolvedValue({ error: null }),
           updatePassword: vi.fn().mockResolvedValue({ error: null }),
           resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
           requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -692,10 +647,8 @@ describe('useAccountSecurityActions', () => {
         ({ activeUser, tab }: { activeUser: User | null; tab: string }) =>
           useAccountSecurityActions({
             user: activeUser,
-            profile: mockProfile,
             isRecoveryMode: false,
             onClearRecoveryParam: vi.fn(),
-            updateProfile: vi.fn().mockResolvedValue({ error: null }),
             updatePassword: vi.fn().mockResolvedValue({ error: null }),
             resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
             requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -806,10 +759,8 @@ describe('useAccountSecurityActions', () => {
       const unmountTest = renderHook(() =>
         useAccountSecurityActions({
           user: mockUser,
-          profile: mockProfile,
           isRecoveryMode: false,
           onClearRecoveryParam: vi.fn(),
-          updateProfile: vi.fn().mockResolvedValue({ error: null }),
           updatePassword: vi.fn().mockResolvedValue({ error: null }),
           resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
           requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -837,10 +788,8 @@ describe('useAccountSecurityActions', () => {
         ({ activeUser }: { activeUser: User | null }) =>
           useAccountSecurityActions({
             user: activeUser,
-            profile: mockProfile,
             isRecoveryMode: false,
             onClearRecoveryParam: vi.fn(),
-            updateProfile: vi.fn().mockResolvedValue({ error: null }),
             updatePassword: vi.fn().mockResolvedValue({ error: null }),
             resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
             requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -889,10 +838,8 @@ describe('useAccountSecurityActions', () => {
         ({ tab, offline }: { tab: string; offline: boolean }) =>
           useAccountSecurityActions({
             user: mockUser,
-            profile: mockProfile,
             isRecoveryMode: false,
             onClearRecoveryParam: vi.fn(),
-            updateProfile: vi.fn().mockResolvedValue({ error: null }),
             updatePassword: vi.fn().mockResolvedValue({ error: null }),
             resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
             requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -977,10 +924,8 @@ describe('useAccountSecurityActions', () => {
         const { result: oauthResult } = renderHook(() =>
           useAccountSecurityActions({
             user: dualUser,
-            profile: mockProfile,
             isRecoveryMode: false,
             onClearRecoveryParam: vi.fn(),
-            updateProfile: vi.fn().mockResolvedValue({ error: null }),
             updatePassword: vi.fn().mockResolvedValue({ error: null }),
             resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
             requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),
@@ -1008,10 +953,8 @@ describe('useAccountSecurityActions', () => {
       const { result: noUnlinkResult } = renderHook(() =>
         useAccountSecurityActions({
           user: mockUser,
-          profile: mockProfile,
           isRecoveryMode: false,
           onClearRecoveryParam: vi.fn(),
-          updateProfile: vi.fn().mockResolvedValue({ error: null }),
           updatePassword: vi.fn().mockResolvedValue({ error: null }),
           resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
           requestAccountDeletion: vi.fn().mockResolvedValue({ error: null }),

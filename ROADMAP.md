@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.55-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.56-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-42_of_47-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -132,8 +132,8 @@
 
 - [x] **Reader Circles & Fellow Scholar Invitations (`public.reader_circles`)** `✅ VERIFIED`
   Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, companion identity RLS resolution across Private Sanctuaries (`is_public = false`), automatic profile identity sync (`handle_profile_identity_sync`), and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).
-- [x] **Literary Symposium Sessions, Per-Volume Pacts & Two-Tier Account Hub (`public.symposium_sessions`)** `✅ VERIFIED`
-  Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and Two-Tier Account Sub-Tab management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).
+- [x] **Literary Symposium Sessions, Per-Volume Pacts & Unified Account Hub (`public.symposium_sessions`)** `✅ VERIFIED`
+  Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and unified `Scholar Profile` Fellowship management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).
 - [x] **Shared Symposium Marginalia, Source Filters & Spoiler Guard** `✅ VERIFIED`
   Resolution-independent rendering of Fellows' Marginalia in `ReaderSurface.tsx` (dashed archival underlines, monogram badges, and palette-matched overlap rings), unified overlapping marginalia cards (`You + @username`) in `All` mode, 1-click fellow passage saving (`TextHighlightPopover.tsx`, `ReaderAnnotationsDrawer.tsx`, `NotebookQuoteCard.tsx`), chapter-bound Spoiler Guard (Up to My Chapter vs. All Chapters), and `All | Mine | Fellows` source filters across `ReaderAnnotationsDrawer.tsx` and `NotebookView.tsx`.
 - [x] **Companion Progress Telemetry & Chapter-Milestone Dispatches** `✅ VERIFIED`
@@ -177,7 +177,7 @@
 
 ---
 
-### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.55)`)
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.56)`)
 `[██████████░░░░░░░░░░]` **2/4 (50%)**
 
 > Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.

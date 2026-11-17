@@ -252,8 +252,8 @@ const ROADMAP_MILESTONES = [
           fileExists('src/stores/useFellowshipStore.ts'),
       },
       {
-        title: 'Literary Symposium Sessions, Per-Volume Pacts & Two-Tier Account Hub (`public.symposium_sessions`)',
-        description: 'Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and Two-Tier Account Sub-Tab management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).',
+        title: 'Literary Symposium Sessions, Per-Volume Pacts & Unified Account Hub (`public.symposium_sessions`)',
+        description: 'Per-book Symposium invitations ("Invite Fellow to Symposium"), active shared reading sessions scoped to specific volumes (`book_id`), and unified `Scholar Profile` Fellowship management (`AccountSymposiumSection.tsx` & `SymposiumInviteModal.tsx`).',
         check: () =>
           fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.symposium_sessions') &&
           (fileExists('src/components/symposium/SymposiumInviteModal.tsx') ||

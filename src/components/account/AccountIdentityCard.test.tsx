@@ -25,70 +25,40 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     preferred_theme: 'light',
   } as any;
 
-  it('renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor', () => {
-    const handleDisplayNameChange = vi.fn();
-    const handleSaveProfile = vi.fn((e) => e.preventDefault());
-
+  it('renders PublicProfileView-styled hero identity header without inline name form or duplicate collection links', () => {
     render(
       <AccountIdentityCard
         user={mockVerifiedUser}
-        profile={mockProfile}
+        profile={{ ...mockProfile, is_public: true }}
         formattedDate="January 2026"
-        displayName="Test Reader"
-        onDisplayNameChange={handleDisplayNameChange}
-        onSaveProfile={handleSaveProfile}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
-        stats={{
-          savedCount: 12,
-          favoriteCount: 4,
-          annotationCount: 9,
-          customShelvesCount: 2,
-          bookmarksCount: 3,
-          readingStreak: 7,
-        }}
+        readingStreak={7}
       />
     );
 
     const ribbon = screen.getByTestId('scholar-identity-ribbon');
     expect(ribbon).toBeInTheDocument();
-    expect(ribbon).toHaveClass('pt-4', 'sm:pt-5', 'px-4', 'sm:px-5', 'pb-1.5', 'sm:pb-2');
+    expect(ribbon).toHaveClass('rounded-3xl', 'p-6', 'sm:p-8', 'shadow-booksaw');
+    expect(screen.getByTestId('identity-monogram-seal')).toHaveTextContent('TR');
     expect(screen.getByText('Test Reader')).toBeInTheDocument();
-    expect(screen.getByText('test_scholar')).toBeInTheDocument();
+    expect(screen.queryByText('@test_scholar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Public at /u/test_scholar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Private Account')).not.toBeInTheDocument();
     expect(screen.queryByText('reader@bookarium.test')).not.toBeInTheDocument();
     expect(screen.getByText('Joined January 2026')).toBeInTheDocument();
     expect(screen.getByText('Verified Reader')).toBeInTheDocument();
-    const statStrip = screen.getByTestId('identity-ribbon-stat-strip');
-    expect(statStrip).toBeInTheDocument();
-    expect(statStrip).toHaveClass('grid', 'grid-cols-5', 'divide-x', 'border-t', 'border-border', 'pt-2', 'sm:pt-2.5');
-    expect(statStrip).not.toHaveClass('overflow-x-auto', 'border-border/70');
-    const shelvedLink = screen.getByRole('link', { name: /Shelved/i });
-    expect(shelvedLink).toHaveClass('py-0.5', 'sm:py-1');
+    expect(screen.queryByRole('button', { name: /Edit display name/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Display Name')).not.toBeInTheDocument();
+
+    expect(screen.queryByTestId('identity-ribbon-stat-strip')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Shelved/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Favorites/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Bookmarks/i })).not.toBeInTheDocument();
+
     expect(screen.getByText('🔥 7d Streak')).toBeInTheDocument();
     expect(screen.getByTestId('identity-streak-badge')).toBeInTheDocument();
-
-    // Open quick name editor
-    const editBtn = screen.getByRole('button', {
-      name: /Edit display name/i,
-    });
-    fireEvent.click(editBtn);
-
-    const input = screen.getByLabelText('Display Name');
-    fireEvent.change(input, { target: { value: 'Updated Reader' } });
-    expect(handleDisplayNameChange).toHaveBeenCalledWith('Updated Reader');
-
-    const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
-    fireEvent.click(saveBtn);
-    expect(handleSaveProfile).toHaveBeenCalled();
-
-    // Cancel button resets display name
-    const cancelBtn = screen.getByRole('button', { name: /Cancel editing display name/i });
-    fireEvent.click(cancelBtn);
-    expect(handleDisplayNameChange).toHaveBeenCalledWith('Test Reader');
   });
 
-  it('always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS', () => {
+  it('always renders a neutral 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS', () => {
     const onOpenLibraryBreakdown = vi.fn();
 
     render(
@@ -96,20 +66,7 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
         user={mockVerifiedUser}
         profile={mockProfile}
         formattedDate="January 2026"
-        displayName="Test Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
-        stats={{
-          savedCount: 0,
-          favoriteCount: 0,
-          annotationCount: 0,
-          customShelvesCount: 0,
-          bookmarksCount: 0,
-          readingStreak: 0,
-        }}
+        readingStreak={0}
         onOpenLibraryBreakdown={onOpenLibraryBreakdown}
       />
     );
@@ -130,12 +87,6 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
         user={mockUnverifiedUser}
         profile={null}
         formattedDate="February 2026"
-        displayName="New Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
         onResendVerification={onResendVerification}
         isResendingVerification={false}
         resendCooldown={0}
@@ -157,12 +108,6 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
         user={mockUnverifiedUser}
         profile={null}
         formattedDate="February 2026"
-        displayName="New Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
         onResendVerification={vi.fn()}
         isResendingVerification={true}
         resendCooldown={0}
@@ -175,12 +120,6 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
         user={mockUnverifiedUser}
         profile={null}
         formattedDate="February 2026"
-        displayName="New Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
         onResendVerification={vi.fn()}
         isResendingVerification={false}
         resendCooldown={45}
@@ -189,25 +128,17 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('Resend in 45s')).toBeInTheDocument();
   });
 
-  it('displays save error and save success alert banners', () => {
+  it('displays resend error and resend success feedback banners', () => {
     render(
       <AccountIdentityCard
         user={mockUnverifiedUser}
         profile={mockProfile}
         formattedDate="January 2026"
-        displayName="Test Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={true}
-        saveError="Failed to save changes"
         resendSuccess={true}
         resendError="Rate limit exceeded"
       />
     );
 
-    expect(screen.getByText('Failed to save changes')).toBeInTheDocument();
-    expect(screen.getByText('Changes saved to cloud')).toBeInTheDocument();
     expect(screen.getByText('Verification link sent! Check your inbox.')).toBeInTheDocument();
     expect(screen.getByText('Rate limit exceeded')).toBeInTheDocument();
   });
@@ -218,20 +149,7 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
         user={mockVerifiedUser}
         profile={mockProfile}
         formattedDate="January 2026"
-        displayName="Test Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
-        stats={{
-          savedCount: 1,
-          favoriteCount: 0,
-          annotationCount: 0,
-          customShelvesCount: 0,
-          bookmarksCount: 0,
-          readingStreak: 0,
-        }}
+        readingStreak={0}
       />
     );
 
@@ -241,7 +159,7 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     expect(screen.getByText('🔥 0d Streak')).toBeInTheDocument();
   });
 
-  it('falls back gracefully to user_metadata display name or Scholar monogram S when name is missing', () => {
+  it('falls back gracefully to 2-letter monogram initials across metadata, single-word, username, and BS defaults', () => {
     const userWithMeta = {
       ...mockVerifiedUser,
       user_metadata: { display_name: 'Scholar User' },
@@ -251,19 +169,24 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
         user={userWithMeta}
         profile={null}
         formattedDate="January 2026"
-        displayName="Scholar User"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
       />
     );
 
     expect(screen.getByText('Scholar User')).toBeInTheDocument();
-    expect(screen.getByText('S')).toBeInTheDocument();
+    expect(screen.getByTestId('identity-monogram-seal')).toHaveTextContent('SU');
+    expect(screen.queryByText('Private Account')).not.toBeInTheDocument();
 
-    // When both profile and metadata are empty, defaults to 'Reader' with monogram 'R'
+    // Single-word display name uses first two letters
+    rerender(
+      <AccountIdentityCard
+        user={mockVerifiedUser}
+        profile={{ ...mockProfile, display_name: 'Aristotle', username: 'aristotle' }}
+        formattedDate="January 2026"
+      />
+    );
+    expect(screen.getByTestId('identity-monogram-seal')).toHaveTextContent('AR');
+
+    // Blank display name falls back to @username initials
     const minimalUser = {
       ...mockVerifiedUser,
       user_metadata: {},
@@ -271,39 +194,43 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
     rerender(
       <AccountIdentityCard
         user={minimalUser}
-        profile={null}
+        profile={{ ...mockProfile, display_name: '   ', username: 'austen' }}
         formattedDate="January 2026"
-        displayName="Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
       />
     );
     expect(screen.getByText('Reader')).toBeInTheDocument();
-    expect(screen.getByText('R')).toBeInTheDocument();
+    expect(screen.getByTestId('identity-monogram-seal')).toHaveTextContent('AU');
+
+    // When profile & metadata are empty, defaults to 'Reader' with 'BS' seal
+    rerender(
+      <AccountIdentityCard
+        user={minimalUser}
+        profile={null}
+        formattedDate="January 2026"
+      />
+    );
+    expect(screen.getByText('Reader')).toBeInTheDocument();
+    expect(screen.getByTestId('identity-monogram-seal')).toHaveTextContent('BS');
   });
 
-  it('renders top-level Sign Out pill button when onSignOut is provided and requires confirmation before invoking it', () => {
+  it('renders Sign Out aligned to the right on narrow stacked rows alongside Streak and requires confirmation before invoking it', () => {
     const handleSignOut = vi.fn();
     render(
       <AccountIdentityCard
         user={mockVerifiedUser}
         profile={mockProfile}
         formattedDate="January 2026"
-        displayName="Test Reader"
-        onDisplayNameChange={vi.fn()}
-        onSaveProfile={vi.fn()}
-        isSaving={false}
-        saveSuccess={false}
-        saveError={null}
+        readingStreak={3}
         onSignOut={handleSignOut}
       />
     );
 
+    const actionsRow = screen.getByTestId('identity-actions-row');
+    expect(actionsRow).toHaveClass('w-full', 'md:w-auto', 'justify-between', 'md:justify-end');
+
     const signOutBtn = screen.getByTestId('identity-sign-out-button');
     expect(signOutBtn).toBeInTheDocument();
+    expect(signOutBtn).toHaveClass('ml-auto', 'md:ml-0');
     fireEvent.click(signOutBtn);
 
     const dialog = screen.getByTestId('identity-sign-out-dialog');
@@ -341,12 +268,6 @@ describe('AccountIdentityCard (Slim Scholar Identity Ribbon)', () => {
           user={mockUnverifiedUser}
           profile={null}
           formattedDate="February 2026"
-          displayName="New Reader"
-          onDisplayNameChange={vi.fn()}
-          onSaveProfile={vi.fn()}
-          isSaving={false}
-          saveSuccess={false}
-          saveError={null}
           onResendVerification={onResendVerification}
         />
       );

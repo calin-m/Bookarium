@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.56] - 2026-11-17
+### *Scholar Profile Account Reorganization, AccountBottomDock & catalog-tag-sync Run-Name Clarity*
+
+### Added
+- **Context-Aware `/account` Bottom Capsule Dock (`src/components/account/AccountBottomDock.tsx`, `AccountBottomDock.test.tsx`, `src/app/account/page.tsx`)**: Replaced standalone `BackToTop` on `/account` with an ambient floating capsule dock built on `AmbientCapsuleDock` + `useAmbientDockScrollState`, exposing per-tab section anchors, an interactive upward Accolades category filter popover, a `Preferences` theme cycler, online active-session refresh, Guest Offline workspace toggles, and Scroll-to-Top muting (`ADR-080`).
+
+### Changed
+- **Explicit `run-name` Template for `Sync catalog-cache Tag` (`.github/workflows/catalog-tag-sync.yml`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Added top-level `run-name: 'Refresh catalog-cache Source Archives (${{ github.event_name }} on ${{ github.ref_name }})'` beneath `name: Sync catalog-cache Tag` (matching `codeql.yml` and `dependency-review.yml`) so each GitHub Actions run renders its exact tag/source-archive refresh action rather than inheriting the commit message (`ADR-073`, `ADR-080`).
+- **Streamlined 4-Tab `Scholar Profile`-First `/account` Workspace & `PublicProfileView`-Styled Identity Header (`src/app/account/page.tsx`, `AccountIdentityCard.tsx`, `AccountPublicProfileSection.tsx`, `AccountSymposiumSection.tsx`, `AccountHabitsCard.tsx`, `AccountAccoladesCard.tsx`, `AccountPreferencesSection.tsx`, `AccountNarrationSubPanel.tsx`, `useAccountSecurityActions.ts`)**: Applied `PublicProfileView` hero styling to `AccountIdentityCard` (gradient 2-letter monogram, ambient glows, `Joined` date sub-row, streak & Sign Out actions without duplicate links), promoted View/Edit `Scholar Profile` (`Public View` header CTA, `Edit` ↔ `Cancel` + `Save`) + stacked Fellowships to Tab 1, unified `Habits` & `Accolades` to `rounded-3xl shadow-xs`, flattened sub-tabs, and pruned dead name state from `TIER_3` `useAccountSecurityActions` (`ADR-055`, `ADR-080`).
+
+### Fixed
+- **Zero-Shift Unified `EditorialUnderlineTabs` (`recessed-capsule`), Swipe Guard, Compact Mobile Labels, Legacy `?tab=symposiums` & Guest Offline Tabs (`src/components/ui/EditorialUnderlineTabs.tsx`, `src/components/ui/EditorialUnderlineTabs.test.tsx`, `src/app/account/page.tsx`, `src/app/account/page.test.tsx`)**: Unified `/account`'s 4-tab `ACCOUNT_TABS` and 2-tab Guest Offline switcher under `EditorialUnderlineTabs` (`variant="recessed-capsule"`) with a recessed `bg-muted/55` track, GPU `translate3d` sliding `bg-card` capsule (`usePerformanceTier` + `ResizeObserver`), fixed equal-column slots (`grid-cols-4`/`grid-cols-2`), identical active/inactive button padding, compact stacked `< md` `mobileLabel`s (`Profile`, `Habits`, `Prefs`, `Security`), `data-no-swipe="true"`, and `?tab=symposiums` smooth scrolling (`ADR-080`).
+
+
 ## [2.9.55] - 2026-11-17
 ### *Zero-Checkout GH_REPO Tag Sync Resolution & SAST Workflow Guard*
 
@@ -1415,7 +1429,7 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-052: Full-Surface Tactile Mobile Swiping, Unbiased Button/Link Gesture Tracking & Synthetic Click Cancellation**
 - **ADR-053: Semantic Book Tag Normalization, Zero-Truncation Single-Row Card Protection & Interactive Unabridged Taxonomy Popovers**
 - **ADR-054: Root Body Modal Portaling, Clean Transform Keyframes, Transparent Collection Modals & Dual-Surface Speech Bar Isolation**
-- **ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Two-Tier Account Workspace Architecture**
+- **ADR-055: Reader Circles, Literary Symposiums (Dual Reading), Filter-First Shared Marginalia & Evolved 4-Tab Account Workspace Architecture**
 - **ADR-056: Non-Breaking Tailwind CSS v4 Oxide Migration & Zero-Vulnerability Supply-Chain Overrides (`tinyglobby`)**
 - **ADR-057: App Router Route Handler Type Isolation, Upstream Mirror Header Defensiveness, and Webpack Build Stability**
 - **ADR-058: WCAG 2.2 AA Modal Focus Management, TypeScript Strictness (no-explicit-any), RSC Static Architecture, Overlay Code-Splitting, and Phase 5 Monolith Decomposition**

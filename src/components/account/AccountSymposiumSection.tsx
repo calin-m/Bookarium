@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Users,
-  BookOpen,
   Mail,
   Trash2,
 } from 'lucide-react';
@@ -12,8 +11,6 @@ import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
-import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
-import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { SymposiumPactsSubTab } from './symposium/SymposiumPactsSubTab';
 import { ReaderCircleSubTab } from './symposium/ReaderCircleSubTab';
 import { FellowshipInvitationsSubTab } from './symposium/FellowshipInvitationsSubTab';
@@ -26,8 +23,6 @@ const SymposiumInviteModal = dynamic(
 export interface AccountSymposiumSectionProps {
   userId: string;
 }
-
-type SymposiumSubTabId = 'symposiums' | 'circle' | 'invitations';
 
 type PendingFellowshipConfirmAction =
   | {
@@ -78,7 +73,6 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
     getPendingInviteCount,
   } = useHydratedFellowship();
 
-  const [activeSubTab, setActiveSubTab] = useState<SymposiumSubTabId>('symposiums');
   const { isOffline } = useNetworkStatus();
   const { isBookOffline } = useOfflineBooks();
   const [inviteHandle, setInviteHandle] = useState('');
@@ -199,53 +193,90 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
 
   return (
     <div
-      className="space-y-4"
+      id="account-symposium-section"
+      className="space-y-6"
       data-testid="account-symposium-section"
     >
-      {/* Centered Editorial Underline Sub-Tab Bar (Outside & Above Card) */}
-      <EditorialUnderlineTabs<SymposiumSubTabId>
-        tabs={[
-          {
-            id: 'symposiums',
-            label: 'Active Symposiums',
-            ariaLabel: `Active Symposiums (${activeSymposiums.length})`,
-            title: `Active Symposiums (${activeSymposiums.length})`,
-            icon: <BookOpen className="w-3.5 h-3.5 shrink-0" />,
-            count: activeSymposiums.length,
-          },
-          {
-            id: 'circle',
-            label: 'Reader Circle',
-            ariaLabel: `Reader Circle (${acceptedFellows.length})`,
-            title: `Reader Circle (${acceptedFellows.length})`,
-            icon: <Users className="w-3.5 h-3.5 shrink-0" />,
-            count: acceptedFellows.length,
-          },
-          {
-            id: 'invitations',
-            label: 'Invitations',
-            icon: <Mail className="w-3.5 h-3.5 shrink-0" />,
-            count: pendingCount,
-            countVariant: 'amber',
-            countTestId: 'symposium-pending-badge',
-            hideZeroCount: true,
-          },
-        ]}
-        activeTab={activeSubTab}
-        onSelectTab={setActiveSubTab}
-        ariaLabel="Symposium and Reader Circle sections"
-      />
+      {/* Conditional Pending Invitations Card (Collapsed completely when count === 0) */}
+      {pendingCount > 0 && (
+        <section
+          aria-label="Pending Fellowship Invitations"
+          className="bg-card border border-amber-500/40 dark:border-amber-500/50 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4"
+        >
+          <div className="flex items-center justify-between gap-3 border-b border-border pb-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-border text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-serif font-bold text-foreground">
+                  Pending Invitations
+                </h3>
+                <p className="text-xs text-muted-foreground font-sans">
+                  Incoming and sent Reader Circle and Literary Symposium requests.
+                </p>
+              </div>
+            </div>
+            <span
+              data-testid="symposium-pending-badge"
+              className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-border shrink-0"
+            >
+              {pendingCount}
+            </span>
+          </div>
 
-      {/* Main Symposium Card */}
-      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 shadow-booksaw space-y-6">
+          <FellowshipInvitationsSubTab
+            userId={userId}
+            pendingCircles={pendingCircles}
+            pendingSymposiums={pendingSymposiums}
+            isOffline={isOffline}
+            onAcceptCircleInvite={(circleId) => {
+              void respondToCircleInvite(circleId, 'accept');
+            }}
+            onDeclineCircleInvite={(payload) =>
+              setPendingConfirmAction({
+                type: 'decline-circle',
+                ...payload,
+              })
+            }
+            onCancelCircleInvite={(payload) =>
+              setPendingConfirmAction({
+                type: 'cancel-circle',
+                ...payload,
+              })
+            }
+            onAcceptSymposiumInvite={(sessionId) => {
+              void respondToSymposiumInvite(sessionId, 'accept');
+            }}
+            onDeclineSymposiumInvite={(payload) =>
+              setPendingConfirmAction({
+                type: 'decline-symposium',
+                ...payload,
+              })
+            }
+            onCancelSymposiumInvite={(payload) =>
+              setPendingConfirmAction({
+                type: 'cancel-symposium',
+                ...payload,
+              })
+            }
+          />
+        </section>
+      )}
+
+      {/* Main Un-Tabbed Symposium & Reader Circle Card */}
+      <section
+        aria-label="Literary Symposiums and Reader Circle"
+        className="bg-card border border-border rounded-3xl p-5 sm:p-6 lg:p-8 shadow-xs space-y-6"
+      >
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-border text-primary flex items-center justify-center shadow-xs shrink-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-border text-primary flex items-center justify-center shadow-xs shrink-0">
                 <Users className="w-4 h-4" />
               </div>
-              <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground">
+              <h2 className="text-xl font-serif font-bold text-foreground">
                 Literary Symposiums & Reader Circle
               </h2>
             </div>
@@ -253,12 +284,20 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
               Connect with Fellow Scholars and read public domain volumes together with shared marginalia.
             </p>
           </div>
+
+          <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground self-start sm:self-center shrink-0">
+            <span className="px-2.5 py-1 rounded-full bg-muted border border-border">
+              {activeSymposiums.length} {activeSymposiums.length === 1 ? 'Pact' : 'Pacts'}
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-muted border border-border">
+              {acceptedFellows.length} {acceptedFellows.length === 1 ? 'Fellow' : 'Fellows'}
+            </span>
+          </div>
         </div>
 
-        {/* Sub-Tabs Animated Container */}
-        <ContentCrossfade transitionKey={`symposium-subtab-${activeSubTab}`}>
-          {/* Sub-Tab 1: Active & Completed Symposiums */}
-          {activeSubTab === 'symposiums' && (
+        <div className="space-y-8">
+          {/* Active & Completed Symposium Pacts */}
+          <div>
             <SymposiumPactsSubTab
               userId={userId}
               activeSymposiums={activeSymposiums}
@@ -275,10 +314,10 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                 })
               }
             />
-          )}
+          </div>
 
-          {/* Sub-Tab 2: Reader Circle (Fellow Scholars & Handle Invite) */}
-          {activeSubTab === 'circle' && (
+          {/* Reader Circle Connections & @username Invites */}
+          <div className="pt-8 border-t border-border">
             <ReaderCircleSubTab
               acceptedFellows={acceptedFellows}
               inviteHandle={inviteHandle}
@@ -299,49 +338,9 @@ export const AccountSymposiumSection: React.FC<AccountSymposiumSectionProps> = (
                 })
               }
             />
-          )}
-
-          {/* Sub-Tab 3: Pending Invitations (Reader Circle & Symposiums) */}
-          {activeSubTab === 'invitations' && (
-            <FellowshipInvitationsSubTab
-              userId={userId}
-              pendingCircles={pendingCircles}
-              pendingSymposiums={pendingSymposiums}
-              isOffline={isOffline}
-              onAcceptCircleInvite={(circleId) => {
-                void respondToCircleInvite(circleId, 'accept');
-              }}
-              onDeclineCircleInvite={(payload) =>
-                setPendingConfirmAction({
-                  type: 'decline-circle',
-                  ...payload,
-                })
-              }
-              onCancelCircleInvite={(payload) =>
-                setPendingConfirmAction({
-                  type: 'cancel-circle',
-                  ...payload,
-                })
-              }
-              onAcceptSymposiumInvite={(sessionId) => {
-                void respondToSymposiumInvite(sessionId, 'accept');
-              }}
-              onDeclineSymposiumInvite={(payload) =>
-                setPendingConfirmAction({
-                  type: 'decline-symposium',
-                  ...payload,
-                })
-              }
-              onCancelSymposiumInvite={(payload) =>
-                setPendingConfirmAction({
-                  type: 'cancel-symposium',
-                  ...payload,
-                })
-              }
-            />
-          )}
-        </ContentCrossfade>
-      </div>
+          </div>
+        </div>
+      </section>
 
       <SymposiumInviteModal
         isOpen={isSymposiumModalOpen}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AccountAccoladesCard } from './AccountAccoladesCard';
 import { useAccoladesStore } from '@/stores/useAccoladesStore';
 import { useHabitsStore } from '@/stores/useHabitsStore';
@@ -24,25 +24,15 @@ describe('AccountAccoladesCard', () => {
     useHabitsStore.getState().resetHabits();
   });
 
-  it('renders card title, subtitle, and category tabs', () => {
+  it('renders card title, subtitle, and subtle category indicator without inline tab strip', () => {
     render(<AccountAccoladesCard />);
 
-    expect(screen.getByTestId('account-accolades-card')).toHaveClass('p-4', 'sm:p-6', 'lg:p-7');
+    expect(screen.getByTestId('account-accolades-card')).toHaveClass('rounded-3xl', 'p-5', 'sm:p-6', 'lg:p-8', 'shadow-xs');
     expect(screen.getByText('Ex-Libris Bookplates & Accolades')).toBeInTheDocument();
     expect(screen.getByText(/Classical honors for scholarly streaks/i)).toBeInTheDocument();
-    const allTab = screen.getByRole('tab', { name: 'All Bookplates' });
-    const streaksTab = screen.getByRole('tab', { name: 'Streaks' });
-    const immersionTab = screen.getByRole('tab', { name: 'Immersion' });
-
-    expect(allTab).toBeInTheDocument();
-    expect(streaksTab).toBeInTheDocument();
-    expect(immersionTab).toBeInTheDocument();
-
-    expect(allTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    expect(streaksTab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    expect(within(allTab).getByText('All Bookplates')).toHaveClass('inline-block', 'max-w-[220px]');
-    expect(within(streaksTab).getByText('Streaks')).toHaveClass('inline-block', 'max-w-[88px]', 'md:inline');
-    expect(within(immersionTab).getByText('Immersion')).toHaveClass('inline-block', 'max-w-[44px]', 'md:inline');
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.getByTestId('accolades-active-category-badge')).toHaveTextContent('All Bookplates');
+    expect(screen.queryByTestId('accolades-reset-filter-btn')).not.toBeInTheDocument();
   });
 
   it('shows empty showcase message when no bookplates are pinned', () => {
@@ -53,23 +43,40 @@ describe('AccountAccoladesCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('filters bookplates when clicking category tabs', () => {
-    render(<AccountAccoladesCard />);
+  it('supports controlled activeCategory filtering, open filter trigger, and Show all reset pill', () => {
+    const onCategoryChange = vi.fn();
+    const onOpenFilter = vi.fn();
+
+    const { rerender } = render(
+      <AccountAccoladesCard
+        activeCategory="all"
+        onCategoryChange={onCategoryChange}
+        onOpenFilter={onOpenFilter}
+      />
+    );
 
     // In 'All Bookplates', multiple accolades from different categories are visible
     expect(screen.getByText('Seven-Day Sage')).toBeInTheDocument();
     expect(screen.getByText('The Marathon Reader')).toBeInTheDocument();
 
-    // Click 'Streaks' tab
-    const allTab = screen.getByRole('tab', { name: 'All Bookplates' });
-    const streaksTab = screen.getByRole('tab', { name: 'Streaks' });
-    fireEvent.click(streaksTab);
+    fireEvent.click(screen.getByTestId('accolades-open-filter-btn'));
+    expect(onOpenFilter).toHaveBeenCalledTimes(1);
 
-    expect(within(streaksTab).getByText('Streaks')).toHaveClass('inline-block', 'max-w-[220px]');
-    expect(within(allTab).getByText('All Bookplates')).toHaveClass('inline-block', 'max-w-[88px]', 'md:inline');
+    // Filtered to Streaks
+    rerender(
+      <AccountAccoladesCard
+        activeCategory="streaks"
+        onCategoryChange={onCategoryChange}
+        onOpenFilter={onOpenFilter}
+      />
+    );
+
+    expect(screen.getByTestId('accolades-open-filter-btn')).toHaveTextContent('Streaks');
     expect(screen.getByText('Seven-Day Sage')).toBeInTheDocument();
-    // 'The Marathon Reader' is in Immersion category, should not be in the compendium grid
     expect(screen.queryByText('The Marathon Reader')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('accolades-reset-filter-btn'));
+    expect(onCategoryChange).toHaveBeenCalledWith('all');
   });
 
   it('renders pinned bookplate in showcase when pinned', async () => {

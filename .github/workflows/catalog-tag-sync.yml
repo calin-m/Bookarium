@@ -1,4 +1,5 @@
 name: Sync catalog-cache Tag
+run-name: 'Refresh catalog-cache Source Archives (${{ github.event_name }} on ${{ github.ref_name }})'
 
 on:
   push:

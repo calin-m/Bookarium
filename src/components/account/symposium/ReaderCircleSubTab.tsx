@@ -36,7 +36,7 @@ export interface ReaderCircleSubTabProps {
 }
 
 /**
- * Sub-Tab 2 (`circle`) of `AccountSymposiumSection`: renders the `@username`
+ * Reader Circle panel of `AccountSymposiumSection`: renders the `@username`
  * Fellow Scholar invitation form and connected Reader Circle companions grid.
  */
 export const ReaderCircleSubTab: React.FC<ReaderCircleSubTabProps> = ({
@@ -116,7 +116,7 @@ export const ReaderCircleSubTab: React.FC<ReaderCircleSubTabProps> = ({
           your Reader Circle.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-3">
           {acceptedFellows.map((fellow) => (
             <div
               key={fellow.circleId}

@@ -44,32 +44,85 @@ describe('AccountPublicProfileSection', () => {
     });
   });
 
-  it('renders public scholar profile section with profile data', () => {
+  it('defaults to read-only View Mode data indicators with two 2-column identity rows, full-width bio, and footer Edit button', () => {
+    const { container } = render(
+      <AccountPublicProfileSection user={mockUser} profile={mockProfile} />
+    );
+
+    expect(screen.getByRole('region', { name: /scholar profile settings/i })).toBeInTheDocument();
+    expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+
+    // Two md:grid-cols-2 rows (Display Name + Email; Handle + Sanctuary URL) and no outer lg:grid-cols-12 split
+    expect(container.querySelector('.lg\\:grid-cols-12')).toBeNull();
+    expect(container.querySelectorAll('.md\\:grid-cols-2')).toHaveLength(2);
+
+    // View mode renders calm read-only data indicators instead of inputs, switch, or checkboxes
+    expect(screen.getByTestId('scholar-display-name-indicator')).toHaveTextContent('Jane Austen');
+    expect(screen.getByTestId('scholar-private-email-indicator')).toHaveTextContent(
+      'scholar@bookarium.test'
+    );
+    expect(screen.getByTestId('scholar-username-indicator')).toHaveTextContent('jane_austen');
+    expect(screen.getByTestId('scholar-bio-indicator')).toHaveTextContent(
+      'A passionate reader of 19th-century literature.'
+    );
+    expect(screen.getByTestId('public-profile-status-indicator')).toHaveTextContent(
+      'Publicly Visible'
+    );
+
+    const visibilityIndicators = screen.getByTestId('sanctuary-visibility-indicators');
+    expect(within(visibilityIndicators).getAllByText('Visible')).toHaveLength(4);
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^cancel$/i })).not.toBeInTheDocument();
+
+    // Footer Edit button + header Public View link + Copy URL stay directly accessible in View Mode
+    expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^public view$/i })).toHaveAttribute(
+      'href',
+      '/u/jane_austen'
+    );
+  });
+
+  it('renders Private Shield and Hidden indicators plus empty fallbacks when profile fields are unset or hidden', () => {
     render(
       <AccountPublicProfileSection
-        user={mockUser}
-        profile={mockProfile}
+        user={{ ...mockUser, email: '' } as any}
+        profile={{
+          ...mockProfile,
+          display_name: '   ',
+          username: null,
+          bio: null,
+          is_public: false,
+          show_streak: false,
+          show_challenge: false,
+          show_saved_books: false,
+          show_custom_shelves: false,
+        }}
       />
     );
 
-    expect(screen.getByRole('region', { name: /public scholar profile settings/i })).toBeInTheDocument();
-    expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
-
-    const tablist = screen.getByRole('tablist', { name: /scholar profile sub-sections/i });
-    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
-    const tabs = screen.getAllByRole('tab');
-    tabs.forEach((tab) => {
-      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    });
-
-    const usernameInput = screen.getByLabelText(/scholar handle/i);
-    expect(usernameInput).toHaveValue('jane_austen');
-
-    const bioInput = screen.getByLabelText(/scholar bio & literary motto/i);
-    expect(bioInput).toHaveValue('A passionate reader of 19th-century literature.');
+    expect(screen.getByText('Private Sanctuary')).toBeInTheDocument();
+    expect(screen.getByTestId('scholar-display-name-indicator')).toHaveTextContent('Not set');
+    expect(screen.getByTestId('scholar-private-email-indicator')).toHaveTextContent(
+      'No email linked'
+    );
+    expect(screen.getByTestId('scholar-username-indicator')).toHaveTextContent(
+      'No handle claimed yet'
+    );
+    expect(screen.getByTestId('scholar-bio-indicator')).toHaveTextContent(
+      'No literary motto or scholar bio added yet.'
+    );
+    expect(screen.getByTestId('public-profile-status-indicator')).toHaveTextContent(
+      'Private Shield'
+    );
+    expect(within(screen.getByTestId('sanctuary-visibility-indicators')).getAllByText('Hidden')).toHaveLength(4);
   });
 
-  it('toggles master public profile switch and updates badge', () => {
+  it('enters Edit Mode cleanly with Cancel left of Save, allows toggling public switch, and discards drafts on Cancel', () => {
     render(
       <AccountPublicProfileSection
         user={mockUser}
@@ -77,31 +130,47 @@ describe('AccountPublicProfileSection', () => {
       />
     );
 
-    expect(screen.getByText('Private Sanctuary')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    // Footer shows Cancel left of Save
+    const cancelBtn = screen.getByRole('button', { name: /^cancel$/i });
+    const saveBtn = screen.getByRole('button', { name: /^save$/i });
+    const footerButtons = cancelBtn.parentElement!.querySelectorAll('button');
+    expect(footerButtons[0]).toBe(cancelBtn);
+    expect(footerButtons[1]).toBe(saveBtn);
+
+    // Edit Mode renders editable controls including disabled email input and toggle switch
+    expect(screen.getByLabelText(/account email \(private\)/i)).toBeDisabled();
+
+    const displayNameInput = screen.getByLabelText(/display name/i);
+    fireEvent.change(displayNameInput, { target: { value: 'Unsaved Name' } });
+
+    const bioInput = screen.getByLabelText(/scholar bio & literary motto/i);
+    fireEvent.change(bioInput, { target: { value: 'Unsaved temporary motto' } });
 
     const toggle = screen.getByRole('switch', { name: /enable public scholar profile/i });
     expect(toggle).not.toBeChecked();
-
     fireEvent.click(toggle);
     expect(toggle).toBeChecked();
     expect(screen.getByText('Public Sanctuary')).toBeInTheDocument();
 
-    const tablist = screen.getByRole('tablist', { name: /scholar profile sub-sections/i });
-    expect(tablist).toHaveClass('flex', 'items-center', 'overflow-x-auto');
-    const tabs = screen.getAllByRole('tab');
-    tabs.forEach((tab) => {
-      expect(tab).toHaveClass('border-b-2', 'whitespace-nowrap', 'shrink-0');
-    });
+    // Cancel discards draft changes and returns to View Mode
+    fireEvent.click(cancelBtn);
+
+    expect(screen.getByTestId('scholar-display-name-indicator')).toHaveTextContent('Jane Austen');
+    expect(screen.getByTestId('scholar-bio-indicator')).toHaveTextContent(
+      'A passionate reader of 19th-century literature.'
+    );
+    expect(screen.getByTestId('public-profile-status-indicator')).toHaveTextContent(
+      'Private Shield'
+    );
+    expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
   });
 
-  it('validates username format and displays descriptive error', () => {
-    render(
-      <AccountPublicProfileSection
-        user={mockUser}
-        profile={mockProfile}
-      />
-    );
+  it('validates username format in Edit Mode and displays descriptive error', () => {
+    render(<AccountPublicProfileSection user={mockUser} profile={mockProfile} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
     const usernameInput = screen.getByLabelText(/scholar handle/i);
 
     // Too short
@@ -118,22 +187,18 @@ describe('AccountPublicProfileSection', () => {
     expect(screen.queryByText(/username can only contain/i)).not.toBeInTheDocument();
   });
 
-  it('copies shareable link to clipboard when clicked', async () => {
-    render(
-      <AccountPublicProfileSection
-        user={mockUser}
-        profile={mockProfile}
-      />
-    );
+  it('copies shareable link to clipboard directly from View Mode without entering Edit Mode', async () => {
+    render(<AccountPublicProfileSection user={mockUser} profile={mockProfile} />);
 
     const copyBtn = screen.getByRole('button', { name: /copy public profile url/i });
     fireEvent.click(copyBtn);
 
     expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining('/u/jane_austen'));
     expect(await screen.findByText('Copied!')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
   });
 
-  it('submits updated profile settings and handles success', async () => {
+  it('submits updated display_name and public sanctuary settings cleanly on Save and returns to View Mode', async () => {
     const onUpdateProfileMock = vi.fn().mockResolvedValue({ error: null });
 
     render(
@@ -144,14 +209,20 @@ describe('AccountPublicProfileSection', () => {
       />
     );
 
-    const bioInput = screen.getByLabelText(/scholar bio & literary motto/i);
-    fireEvent.change(bioInput, { target: { value: 'Updated literary motto.' } });
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
 
-    const submitBtn = screen.getByRole('button', { name: /save public settings/i });
-    fireEvent.click(submitBtn);
+    fireEvent.change(screen.getByLabelText(/display name/i), {
+      target: { value: 'Jane Austen CBE' },
+    });
+    fireEvent.change(screen.getByLabelText(/scholar bio & literary motto/i), {
+      target: { value: 'Updated literary motto.' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
       expect(onUpdateProfileMock).toHaveBeenCalledWith({
+        display_name: 'Jane Austen CBE',
         username: 'jane_austen',
         bio: 'Updated literary motto.',
         is_public: true,
@@ -163,10 +234,17 @@ describe('AccountPublicProfileSection', () => {
       });
     });
 
-    expect(await screen.findByText(/scholar profile preferences saved successfully/i)).toBeInTheDocument();
+    expect(await screen.findByText(/scholar profile saved successfully/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
+    expect(screen.getByTestId('scholar-display-name-indicator')).toHaveTextContent(
+      'Jane Austen CBE'
+    );
+    expect(screen.getByTestId('scholar-bio-indicator')).toHaveTextContent(
+      'Updated literary motto.'
+    );
   });
 
-  it('blocks submission and displays error when public is enabled without username', async () => {
+  it('blocks submission, keeps Edit Mode open, and displays errors when public is enabled without username or display name is empty', async () => {
     const onUpdateProfileMock = vi.fn();
 
     render(
@@ -177,14 +255,26 @@ describe('AccountPublicProfileSection', () => {
       />
     );
 
-    const submitBtn = screen.getByRole('button', { name: /save public settings/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
 
-    expect(await screen.findByText(/a username is required to publish your scholar profile/i)).toBeInTheDocument();
+    const saveBtn = screen.getByRole('button', { name: /^save$/i });
+    fireEvent.click(saveBtn);
+
+    expect(
+      await screen.findByText(/a username is required to publish your scholar profile/i)
+    ).toBeInTheDocument();
     expect(onUpdateProfileMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
+
+    const displayNameInput = screen.getByLabelText(/display name/i);
+    fireEvent.change(displayNameInput, { target: { value: '   ' } });
+    fireEvent.submit(displayNameInput.closest('form')!);
+    expect(await screen.findByText(/display name is required/i)).toBeInTheDocument();
+    expect(onUpdateProfileMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
   });
 
-  it('displays error message if update fails', async () => {
+  it('stays in Edit Mode and displays error message if update fails', async () => {
     const onUpdateProfileMock = vi.fn().mockResolvedValue({
       error: new Error('Username already taken.'),
     });
@@ -197,13 +287,15 @@ describe('AccountPublicProfileSection', () => {
       />
     );
 
-    const submitBtn = screen.getByRole('button', { name: /save public settings/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect(await screen.findByText('Username already taken.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
   });
 
-  it('allows toggling Saved Works and Custom Shelves independently', async () => {
+  it('allows toggling Saved Works and Custom Shelves independently inside Edit Mode', async () => {
     const onUpdateProfileMock = vi.fn().mockResolvedValue({ error: null });
 
     render(
@@ -213,6 +305,8 @@ describe('AccountPublicProfileSection', () => {
         onUpdateProfile={onUpdateProfileMock}
       />
     );
+
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
 
     const savedWorksCheckbox = screen.getByRole('checkbox', { name: /saved works/i });
     const customShelvesCheckbox = screen.getByRole('checkbox', { name: /custom shelves/i });
@@ -224,8 +318,7 @@ describe('AccountPublicProfileSection', () => {
     fireEvent.click(savedWorksCheckbox);
     expect(savedWorksCheckbox).not.toBeChecked();
 
-    const submitBtn = screen.getByRole('button', { name: /save public settings/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
       expect(onUpdateProfileMock).toHaveBeenCalledWith(
@@ -236,33 +329,20 @@ describe('AccountPublicProfileSection', () => {
         })
       );
     });
+
+    expect(screen.getByTestId('visibility-indicator-saved_books')).toHaveTextContent('Hidden');
+    expect(screen.getByTestId('visibility-indicator-custom_shelves')).toHaveTextContent('Visible');
   });
 
-  it('switches between Identity & Bio and Sanctuary & Privacy sub-tabs', () => {
-    render(<AccountPublicProfileSection user={mockUser} profile={mockProfile} />);
-
-    const identityTab = screen.getByRole('tab', { name: /Identity & Bio/i });
-    const privacyTab = screen.getByRole('tab', { name: /Sanctuary & Privacy/i });
-
-    expect(identityTab).toHaveAttribute('aria-selected', 'true');
-    expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('inline');
-    expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('inline');
-    expect(document.getElementById('profile-subpanel-identity')).not.toHaveClass('hidden');
-    expect(document.getElementById('profile-subpanel-privacy')).toHaveClass('hidden');
-
-    fireEvent.click(privacyTab);
-    expect(privacyTab).toHaveAttribute('aria-selected', 'true');
-    expect(within(privacyTab).getByText('Sanctuary & Privacy')).toHaveClass('inline');
-    expect(within(identityTab).getByText('Identity & Bio')).toHaveClass('inline');
-    expect(document.getElementById('profile-subpanel-privacy')).not.toHaveClass('hidden');
-    expect(document.getElementById('profile-subpanel-identity')).toHaveClass('hidden');
-  });
-
-  it('uses solid border-border on header icon box and Public Sanctuary badge without fractional borders', () => {
+  it('uses solid border-border without fractional borders in both View Mode and Edit Mode', () => {
     const { container } = render(
       <AccountPublicProfileSection user={mockUser} profile={{ ...mockProfile, is_public: true }} />
     );
 
+    expect(container.innerHTML).not.toContain('border-primary/20');
+    expect(container.innerHTML).not.toContain('border-success/20');
+
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
     expect(container.innerHTML).not.toContain('border-primary/20');
     expect(container.innerHTML).not.toContain('border-success/20');
   });
@@ -272,12 +352,15 @@ describe('AccountPublicProfileSection', () => {
 
     const { rerender } = render(
       <AccountPublicProfileSection
-        user={mockUser}
+        user={{ ...mockUser, user_metadata: { display_name: 'Fallback Name' } } as any}
         profile={null}
         onUpdateProfile={onUpdateProfileMock}
       />
     );
 
+    expect(screen.getByTestId('scholar-display-name-indicator')).toHaveTextContent(
+      'Fallback Name'
+    );
     expect(screen.getByText(/Set a handle to generate link/i)).toBeInTheDocument();
 
     // Update profile prop to trigger reactive prevProfile sync
@@ -286,6 +369,7 @@ describe('AccountPublicProfileSection', () => {
         user={mockUser}
         profile={{
           ...mockProfile,
+          display_name: 'Emily Brontë',
           username: 'emily_bronte',
           bio: 'Wuthering Heights',
           show_saved_books: undefined,
@@ -295,6 +379,12 @@ describe('AccountPublicProfileSection', () => {
       />
     );
 
+    expect(screen.getByTestId('scholar-display-name-indicator')).toHaveTextContent('Emily Brontë');
+    expect(screen.getByTestId('scholar-username-indicator')).toHaveTextContent('emily_bronte');
+
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    expect(screen.getByLabelText(/display name/i)).toHaveValue('Emily Brontë');
     const usernameInput = screen.getByLabelText(/scholar handle/i);
     expect(usernameInput).toHaveValue('emily_bronte');
 
@@ -305,28 +395,27 @@ describe('AccountPublicProfileSection', () => {
     expect(screen.queryByText(/at least 3 characters/i)).not.toBeInTheDocument();
     fireEvent.change(usernameInput, { target: { value: 'emily_bronte' } });
 
-    // Switch to Sanctuary & Privacy sub-tab and toggle Streak, Annual Goal, and Custom Shelves
-    fireEvent.click(screen.getByRole('tab', { name: /Sanctuary & Privacy/i }));
+    // Toggle Streak, Annual Goal, and Custom Shelves directly in Edit Mode
     fireEvent.click(screen.getByRole('checkbox', { name: /reading streak/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /annual goal/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /custom shelves/i }));
 
-    // Switch back to Identity & Bio tab
-    fireEvent.click(screen.getByRole('tab', { name: /Identity & Bio/i }));
-
-    // Submit -> triggers catch block on first call
-    fireEvent.click(screen.getByRole('button', { name: /save public settings/i }));
+    // Submit -> triggers catch block while staying in Edit Mode
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     expect(
-      await screen.findByText('Failed to update public profile. Please try again.')
+      await screen.findByText('Failed to update scholar profile. Please try again.')
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
   });
 
-  it('disables @username input and shows offline hint when offline while keeping bio and privacy editable', () => {
+  it('disables @username input and shows offline hint when entering Edit Mode offline while keeping bio and privacy editable', () => {
     const originalOnLine = navigator.onLine;
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
 
     try {
       render(<AccountPublicProfileSection user={mockUser} profile={mockProfile} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
 
       const usernameInput = screen.getByLabelText(/scholar handle/i);
       expect(usernameInput).toBeDisabled();

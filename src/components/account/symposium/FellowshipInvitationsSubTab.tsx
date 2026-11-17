@@ -34,7 +34,7 @@ export interface FellowshipInvitationsSubTabProps {
 }
 
 /**
- * Sub-Tab 3 (`invitations`) of `AccountSymposiumSection`: renders incoming and sent
+ * Invitations panel of `AccountSymposiumSection`: renders incoming and sent
  * Reader Circle requests and Literary Symposium pact invitations.
  */
 export const FellowshipInvitationsSubTab: React.FC<

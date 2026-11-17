@@ -224,7 +224,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.55'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.56'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -271,6 +271,7 @@ Automated pull-request supply-chain firewall backed by GitHub's Dependency Graph
 
 Lightweight zero-checkout automation keeping the `catalog-cache` Release's auto-generated `Source code (zip)` and `Source code (tar.gz)` aligned with `master` without altering `gutenberg-catalog-cache.json.gz` or `.sha256` snapshots or modifying [`ci.yml`](../.github/workflows/ci.yml)'s read-only permissions.
 
+- **Run Title (`run-name`)**: `'Refresh catalog-cache Source Archives (${{ github.event_name }} on ${{ github.ref_name }})'` (visually distinguishes tag/archive refreshes from commit-titled `CI Pipeline` runs in the Actions feed)
 - **Triggers**:
   - `push` on `master`
   - `workflow_dispatch`

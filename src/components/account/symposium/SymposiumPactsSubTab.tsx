@@ -28,7 +28,7 @@ export interface SymposiumPactsSubTabProps {
 }
 
 /**
- * Sub-Tab 1 (`symposiums`) of `AccountSymposiumSection`: renders active and completed
+ * Shared Reading Pacts panel of `AccountSymposiumSection`: renders active and completed
  * shared reading pacts with dual progress bars and offline availability guards.
  */
 export const SymposiumPactsSubTab: React.FC<SymposiumPactsSubTabProps> = ({
@@ -70,7 +70,7 @@ export const SymposiumPactsSubTab: React.FC<SymposiumPactsSubTabProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
           {activeSymposiums.map((session) => {
             const isHost = session.host_id === userId;
             const myProgress = isHost

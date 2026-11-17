@@ -2,7 +2,7 @@
 
 /**
  * @module
- * @scope Headless Account Security controller managing profile names, current-password verified updates,
+ * @scope Headless Account Security controller managing current-password verified updates,
  *        email verification resends, OAuth identity linking/unlinking, deletion requests, and multi-device sessions.
  * @invariant Guard OAuth unlinking behind `canUnlinkGoogle` (`hasGoogleIdentity && hasPasswordIdentity`), require `currentPassword` validation on password updates, and synchronize session revocations across tabs via `BroadcastChannel('bookarium-sessions-sync')` plus `bookarium:auth-token-refreshed`.
  * @invariant Suppress session and security mutations cleanly when `isOffline` or `isPreviewMode`, preserving clear recovery/verification cooldown timers without orphaned network actions.
@@ -12,7 +12,6 @@
 
 import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import type { User } from '@supabase/supabase-js';
-import type { Profile } from '@/types/database.types';
 import {
   generateStrongPassword as generatePasswordUtil,
   evaluatePasswordStrength,
@@ -45,11 +44,9 @@ function broadcastSessionsChanged(
 
 export interface UseAccountSecurityActionsParams {
   user: User | null;
-  profile: Profile | null;
   isRecoveryMode: boolean;
   onClearRecoveryParam: () => void;
   clearPasswordRecovery?: () => void;
-  updateProfile: (updates: { display_name?: string }) => Promise<{ error: Error | null }>;
   updatePassword: (
     newPassword: string,
     currentPassword?: string
@@ -75,18 +72,16 @@ export interface UseAccountSecurityActionsParams {
 
 export function useAccountSecurityActions({
   user,
-  profile,
   isRecoveryMode,
   onClearRecoveryParam,
   clearPasswordRecovery,
-  updateProfile,
   updatePassword,
   resetPasswordForEmail,
   requestAccountDeletion,
   resendVerificationEmail,
   linkOAuthIdentity,
   unlinkOAuthIdentity,
-  activeTab = 'habits',
+  activeTab = 'profile',
   isOffline = false,
   isPreviewMode = false,
   signOut,
@@ -121,14 +116,6 @@ export function useAccountSecurityActions({
   const googleIdentityEmail =
     (googleIdentityRecord?.identity_data as { email?: string } | undefined)?.email ||
     (hasGoogleIdentity ? user?.email : undefined);
-  const defaultName =
-    profile?.display_name || user?.user_metadata?.display_name || '';
-  const [customName, setCustomName] = useState<string | null>(null);
-  const displayName = customName !== null ? customName : defaultName;
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Email verification state
   const [isResendingVerification, setIsResendingVerification] = useState(false);
@@ -224,32 +211,6 @@ export function useAccountSecurityActions({
   const [isSendingDeletionEmail, setIsSendingDeletionEmail] = useState(false);
   const [deletionEmailSent, setDeletionEmailSent] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setIsSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-
-    try {
-      const { error } = await updateProfile({
-        display_name: displayName.trim(),
-      });
-
-      if (error) {
-        setSaveError(error.message);
-      } else {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      }
-    } catch {
-      setSaveError('An unexpected error occurred while saving your profile.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const generateStrongPassword = () => {
     const generated = generatePasswordUtil();
@@ -678,12 +639,6 @@ export function useAccountSecurityActions({
   };
 
   return {
-    displayName,
-    setCustomName,
-    isSaving,
-    saveSuccess,
-    saveError,
-    handleSaveProfile,
     isResendingVerification,
     resendSuccess,
     resendError,

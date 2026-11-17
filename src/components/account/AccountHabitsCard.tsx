@@ -96,7 +96,8 @@ export const AccountHabitsCard: React.FC<AccountHabitsCardProps> = ({
 
   return (
     <section
-      className="bg-card border border-border rounded-2xl p-4 sm:p-6 lg:p-7 space-y-5 shadow-booksaw relative overflow-hidden"
+      id="account-habits-card"
+      className="bg-card border border-border rounded-3xl p-5 sm:p-6 lg:p-8 space-y-5 shadow-xs"
       aria-label="Reading Habits and Annual Goal"
       data-testid="account-habits-card"
     >

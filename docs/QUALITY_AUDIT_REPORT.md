@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 17 Nov 2026 14:33:54 GMT  
+**Last Generated**: Tue, 17 Nov 2026 19:24:53 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 259 passed  
-**Total Verified Tests**: 2705 passed  
+**Total Test Suites**: 260 passed  
+**Total Verified Tests**: 2714 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **259/259 test suites passed** (2705 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **260/260 test suites passed** (2714 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.34%** (15992/16429) — *Target: $\ge$ 95%*
-- **Statements**: **96.1%** (17231/17929) — *Target: $\ge$ 95%*
-- **Functions**: **95.07%** (3420/3597) — *Target: $\ge$ 92%*
-- **Branches**: **88.52%** (15954/18022) — *Target: $\ge$ 85%*
+- **Lines**: **97.27%** (16100/16551) — *Target: $\ge$ 95%*
+- **Statements**: **96.02%** (17350/18069) — *Target: $\ge$ 95%*
+- **Functions**: **95.04%** (3473/3654) — *Target: $\ge$ 92%*
+- **Branches**: **88.49%** (16121/18216) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (259 Suites / 2705 Tests)
+## 🧪 Comprehensive Test Suite Catalog (260 Suites / 2714 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 333 Tests)
+### 🚀 App Routes & Pages (31 Suites · 334 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,26 +46,27 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (27 tests)</summary>
 
-- ✔ `renders guest prompt when unauthenticated and handles scroll to top`
-- ✔ `renders authenticated dashboard with profile identity, library statistics, and accolades`
-- ✔ `renders segmented sub-tabs navigation and switches active tabs`
-- ✔ `supports keyboard navigation across sub-tabs with ArrowRight and ArrowLeft`
-- ✔ `initializes active tab from URL search parameters (?tab=preferences) and handles tab delete when switching back to habits`
-- ✔ `falls back to habits tab when search param has invalid value`
+- ✔ `renders guest prompt when unauthenticated and handles scroll to top via AccountBottomDock`
+- ✔ `renders Scholar Profile by default with serene identity ribbon, streak badge jump, and un-tabbed Habits & Accolades`
+- ✔ `renders 4 segmented tabs led by Scholar Profile with swipe guard, tablet md:inline labels, and tab switching`
+- ✔ `glides GPU active tab capsule smoothly via translate3d when tab layout geometry is measurable`
+- ✔ `supports keyboard navigation across 4 tabs with ArrowRight and ArrowLeft`
+- ✔ `initializes active tab from URL search parameters (?tab=preferences), maps ?tab=symposiums to Scholar Profile, and deletes tab param on profile return`
+- ✔ `falls back to Scholar Profile tab when search param has invalid value`
 - ✔ `handles user preferences: atmosphere themes and catalog sticky scroll navigation`
 - ✔ `handles password security lifecycle: current password validation, mismatch validation, strong password generation, forgot-password reset link, and password update`
 - ✔ `supports verified email recovery mode (?tab=security&recovery=true) without requiring current password`
 - ✔ `handles account deletion modal lifecycle: opening, cancellation, submission, and confirmation dismissal`
 - ✔ `handles resending email verification on unverified account`
 - ✔ `navigates back to bookmarks when swiping right on mobile`
-- ✔ `renders Public Scholar Profile section and handles saving public preferences`
+- ✔ `renders Scholar Profile section on default tab and handles saving public preferences`
 - ✔ `applies animate-view-slide-left when ?dir=forward is present and settles on animationEnd`
 - ✔ `applies animate-view-slide-right when ?dir=backward is present and settles on animationEnd`
 - ✔ `swipes left on Account to wrap forward to Catalog with ?dir=forward`
 - ✔ `swipes right on Account to return backward to Bookmarks with ?dir=backward`
-- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-2 Habits sub-tabs`
+- ✔ `enforces overflow-x-clip on root and main layout containers and solid border-primary on active Tier-1 tab`
 - ✔ `covers guest modal trigger, Navbar navigation, and preview mode (?preview=true)`
 - ✔ `covers sign out, completedBooksCount, and error/catch recovery across profile, password, and deletion actions`
 - ✔ `manages Active Device Sessions revocation, Sign Out Other Devices, and confirmed Sign Out All Devices on Security tab`
@@ -3322,7 +3323,7 @@
 <details>
 <summary><b><code>src/hooks/useAccountSecurityActions.test.ts</code></b> (8 tests)</summary>
 
-- ✔ `manages profile display name updates, password validation/updates, verification resend, and account deletion state`
+- ✔ `manages password validation/updates, verification resend, and account deletion state`
 - ✔ `enforces password validation rules, supports recovery mode without currentPassword, and propagates action errors`
 - ✔ `handles cooldown timers, clipboard password copy, unauthenticated guard clauses, and unexpected exceptions`
 - ✔ `resolves Google-only vs dual-identity states, allows password creation without currentPassword, and handles link/unlink actions`
@@ -3629,7 +3630,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (64 Suites · 295 Tests)
+### 🧩 UI Primitives & Motion (65 Suites · 303 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3662,13 +3663,25 @@
 <details>
 <summary><b><code>src/components/account/AccountAccoladesCard.test.tsx</code></b> (7 tests)</summary>
 
-- ✔ `renders card title, subtitle, and category tabs`
+- ✔ `renders card title, subtitle, and subtle category indicator without inline tab strip`
 - ✔ `shows empty showcase message when no bookplates are pinned`
-- ✔ `filters bookplates when clicking category tabs`
+- ✔ `supports controlled activeCategory filtering, open filter trigger, and Show all reset pill`
 - ✔ `renders pinned bookplate in showcase when pinned`
 - ✔ `displays warning when trying to pin more than 3 bookplates`
 - ✔ `invokes cloud sync on mount with passive cooldown if userId is provided`
 - ✔ `applies theme-aware solid borders without vanishing fractional opacities`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/AccountBottomDock.test.tsx</code></b> (6 tests)</summary>
+
+- ✔ `renders ambient capsule with data-no-swipe, muted scroll-to-top at scrollY=0, and active scroll-to-top when scrolled`
+- ✔ `supports profile mode section quick jumps and pending invite badge without public showcase link`
+- ✔ `supports habits mode jumps, accolade category filter popover selection, Escape, and outside click dismissal`
+- ✔ `supports preferences quick theme cycler and narration/display jumps`
+- ✔ `supports security anchors, online session refresh, guest-offline switcher, and guest top-hiding`
+- ✔ `computes smooth target scroll coordinates when using default section jump handler`
 
 </details>
 
@@ -3698,14 +3711,14 @@
 <details>
 <summary><b><code>src/components/account/AccountIdentityCard.test.tsx</code></b> (9 tests)</summary>
 
-- ✔ `renders slim scholar identity ribbon with inline clickable stat pills and toggles quick name editor`
-- ✔ `always renders a neutral 6th 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS`
+- ✔ `renders PublicProfileView-styled hero identity header without inline name form or duplicate collection links`
+- ✔ `always renders a neutral 🔥 0d Streak pill when readingStreak is 0 to prevent hydration CLS`
 - ✔ `renders unverified badge and handles resend verification click`
 - ✔ `renders sending spinner and cooldown timer during resend verification states`
-- ✔ `displays save error and save success alert banners`
+- ✔ `displays resend error and resend success feedback banners`
 - ✔ `renders muted streak badge when readingStreak is 0`
-- ✔ `falls back gracefully to user_metadata display name or Scholar monogram S when name is missing`
-- ✔ `renders top-level Sign Out pill button when onSignOut is provided and requires confirmation before invoking it`
+- ✔ `falls back gracefully to 2-letter monogram initials across metadata, single-word, username, and BS defaults`
+- ✔ `renders Sign Out aligned to the right on narrow stacked rows alongside Streak and requires confirmation before invoking it`
 - ✔ `reveals inline Turnstile challenge before resending verification email when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set`
 
 </details>
@@ -3722,13 +3735,13 @@
 <details>
 <summary><b><code>src/components/account/AccountPreferencesSection.test.tsx</code></b> (10 tests)</summary>
 
-- ✔ `handles theme switching and sticky scroll toggle`
+- ✔ `handles theme switching and sticky scroll toggle without nested sub-tabs`
 - ✔ `renders read-aloud section and handles speed selection`
 - ✔ `handles auto-page advance and sentence highlight toggles`
 - ✔ `handles voice preview audio playback and toggle`
 - ✔ `triggers onThemeChange when clicking Light and Dark theme buttons`
 - ✔ `handles speech synthesis voice preview completion and error callbacks`
-- ✔ `switches between Appearance & Scroll and Read-Aloud Studio sub-tabs and enables Smart Auto-Hide`
+- ✔ `renders Appearance & Scroll and Read-Aloud Studio simultaneously without sub-tab hiding and enables Smart Auto-Hide`
 - ✔ `uses solid border-border across Read-Aloud Studio icon box and footer divider without border-border/60`
 - ✔ `handles Save as My Default, Revert to My Default, and Factory Reset confirmation modal`
 - ✔ `passes exit bookmark prompt settings through to typography subpanel`
@@ -3738,18 +3751,18 @@
 <details>
 <summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (12 tests)</summary>
 
-- ✔ `renders public scholar profile section with profile data`
-- ✔ `toggles master public profile switch and updates badge`
-- ✔ `validates username format and displays descriptive error`
-- ✔ `copies shareable link to clipboard when clicked`
-- ✔ `submits updated profile settings and handles success`
-- ✔ `blocks submission and displays error when public is enabled without username`
-- ✔ `displays error message if update fails`
-- ✔ `allows toggling Saved Works and Custom Shelves independently`
-- ✔ `switches between Identity & Bio and Sanctuary & Privacy sub-tabs`
-- ✔ `uses solid border-border on header icon box and Public Sanctuary badge without fractional borders`
+- ✔ `defaults to read-only View Mode data indicators with two 2-column identity rows, full-width bio, and footer Edit button`
+- ✔ `renders Private Shield and Hidden indicators plus empty fallbacks when profile fields are unset or hidden`
+- ✔ `enters Edit Mode cleanly with Cancel left of Save, allows toggling public switch, and discards drafts on Cancel`
+- ✔ `validates username format in Edit Mode and displays descriptive error`
+- ✔ `copies shareable link to clipboard directly from View Mode without entering Edit Mode`
+- ✔ `submits updated display_name and public sanctuary settings cleanly on Save and returns to View Mode`
+- ✔ `blocks submission, keeps Edit Mode open, and displays errors when public is enabled without username or display name is empty`
+- ✔ `stays in Edit Mode and displays error message if update fails`
+- ✔ `allows toggling Saved Works and Custom Shelves independently inside Edit Mode`
+- ✔ `uses solid border-border without fractional borders in both View Mode and Edit Mode`
 - ✔ `syncs reactive state when profile prop updates, toggles all privacy checkboxes, and recovers from thrown errors`
-- ✔ `disables @username input and shows offline hint when offline while keeping bio and privacy editable`
+- ✔ `disables @username input and shows offline hint when entering Edit Mode offline while keeping bio and privacy editable`
 
 </details>
 
@@ -3770,8 +3783,8 @@
 <details>
 <summary><b><code>src/components/account/AccountSymposiumSection.test.tsx</code></b> (7 tests)</summary>
 
-- ✔ `switches between Active Symposiums, Reader Circle, and Invitations sub-tabs`
-- ✔ `renders empty states when there are zero symposiums, circle fellows, or invitations`
+- ✔ `renders un-tabbed Active Symposiums, Reader Circle, and conditional Pending Invitations simultaneously`
+- ✔ `hides the Invitations card when pendingCount is 0 and renders clean empty states for symposiums and circle`
 - ✔ `handles fellow invitation form submission with error and success banners`
 - ✔ `allows declining an incoming circle invitation`
 - ✔ `renders completed companion symposium cards, opens New Symposium Pact modal, and handles leaving a symposium with confirmation`
@@ -4007,11 +4020,13 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/EditorialUnderlineTabs.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/components/ui/EditorialUnderlineTabs.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders tabs with active underline, responsive label visibility, count badges, and handles selection`
 - ✔ `supports aria-pressed selection mode when selectionAttr is aria-pressed`
 - ✔ `displays all tab labels inline by default when tabs.length <= 2`
+- ✔ `renders zero-shift fixed grid columns, uniform active/inactive padding, compact mobile labels, and roving keyboard navigation`
+- ✔ `renders inline 2-tab capsule layout, supports aria-pressed & >4 tabs fallback, and glides GPU capsule when measurable`
 
 </details>
 
