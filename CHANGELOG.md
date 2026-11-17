@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.52] - 2026-11-17
+### *Tier-3 Cover Cache Contract Protection & Architecture Parity Polish*
+
+### Fixed
+- **Tier-3 `useOfflineCoverImage` Contract & Living Documentation Parity (`src/hooks/useOfflineCoverImage.ts`, `scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `AGENTS.md`, `docs/DECISIONS.md`)**: Annotated `src/hooks/useOfflineCoverImage.ts` with `@scope`/`@invariant`/`@rationale`/`@adr` behavioral contracts and added it to `TIER_3_CONTRACTED_MODULES` (`63` guarded modules across `docs/SYSTEM_CONTRACTS.md`), updated Matrix `3` IndexedDB store names to `BookariumOfflineDB` (`v2`: `offline_books` + `cover_cache`), and added `sast-validators.test.ts` to Diagram `9`, `layerDefs`, and `AGENTS.md` (`ADR-070`, `ADR-073`, `ADR-081`).
+
+
+## [2.9.51] - 2026-11-17
+### *Architecture Diagrams 14 & 15: Auth/Recovery Security & Fellowship/Symposium Guard Topology*
+
+### Added
+- **Dedicated Auth, Recovery, Session Revocation & Fellowship Guard Architecture Diagrams (`scripts/generate-architecture-matrix.js`, `docs/ARCHITECTURE.md`, `README.md`)**: Added Diagram `14` mapping Edge proxy refresh exclusions (`src/proxy.ts`, `updateSession`), `/auth/callback` PKCE/OTP origin sanitization, fail-closed `isRecoverySessionAmrVerified` + single-use consumption (`src/lib/auth-recovery.ts`), IP/UA reconciliation, multi-tab session revocation (`BroadcastChannel`, `get_active_sessions`, `revoke_user_session`), and `PENDING_STORE_CLEANUP` teardowns, plus Diagram `15` mapping Reader Circles, Symposiums, Cross-Fellow Marginalia pruning, `/u/[username]` LRU anti-enumeration, and PostgreSQL row triggers (`lookup_scholar_by_username`, `handle_profile_identity_sync`, `enforce_fellowship_update_guard`), expanding `README.md` to `15` interactive diagrams (`ADR-072`, `ADR-073`, `ADR-081`).
+- **Pass 5 `15`-Diagram Governance Gate (`scripts/verify-build.js`, `AGENTS.md`, `.agents/AGENTS.md`, `docs/DECISIONS.md`)**: Required both new architecture sections inside `requiredArchSections`, bumped `archMermaidCount` minimum to `15`, and synchronized `1`–`15` diagram range references across governance guides (`ADR-073`, `ADR-081`).
+
+
+## [2.9.50] - 2026-11-17
+### *Critical Test Suite Hardening, SW VM Coverage & SAST Validator Extraction*
+
+### Added
+- **Extracted Stateless SAST Validator Library & Adversarial Unit Suite (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`)**: Decoupled `validateNextConfigSecurityHeadersAst`, `validateNextBuildHeaderManifest`, `validatePackageLockAndLifecycle`, `validateGitHubWorkflowSecurity`, and `validateServiceWorkerSecurity` into a Tier-4 contracted library backed by adversarial negative and live-repo clean fixture tests (`ADR-073`, `ADR-081`).
+- **Sandboxed `public/sw.js` Runtime Execution Suite (`src/components/pwa/ServiceWorkerRegister.test.tsx`)**: Added sandboxed Node `vm` `ServiceWorkerGlobalScope` tests exercising `install` `/_next/static/` and Flight chunk extraction, `activate` stale cache eviction, `CACHE_URLS` origin/`100`-URL sanitization, `/api/` offline `503`, `/read/*` offline shell fallback, and `_rsc`/`RSC: 1` anti-HTML-poisoning guards without loosening `public/**` lint/Knip rules (`ADR-069`, `ADR-081`).
+- **API, SSR Hook & Cloud Outbox Edge Hardening (`src/app/api/books/route.test.ts`, `src/app/api/books/content/url-validator.test.ts`, `src/app/api/books/content/route.test.ts`, `src/hooks/useNetworkStatus.test.ts`, `src/hooks/useBookshelfCapacity.test.ts`, `src/hooks/usePerformanceTier.test.ts`, `src/lib/annotation-cloud-sync.test.ts`, `src/lib/bookshelf-cloud-sync.test.ts`)**: Added `isHealthy()` rejection fallback (`200` cache / `503` `pool=quotes`), URL canonicalization and mirror `AbortError`/HTML/`15 MB` stream cascade tests, SSR/listener cleanup checks, and cloud session-expiry/sole-shelf deletion tests (`ADR-069`, `ADR-081`).
+
+
+## [2.9.49] - 2026-11-17
+### *Mirror-Agnostic Local Cover Caching & Descriptive Security Workflow Naming*
+
+### Fixed
+- **Mirror-Agnostic Local IndexedDB Cover Cache, Pre-Mirror Lookup & Global Edge `type=cover` `Vary` (`src/lib/offline-storage.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/components/presentation/BookCard.tsx`, `src/components/presentation/BookmarkCard.tsx`, `src/app/api/books/content/route.ts`)**: Upgraded `BookariumOfflineDB` to `DB_VERSION = 2` with a bounded `cover_cache` LRU store (`300` covers / `30d` TTL), synchronous in-memory `coverObjectUrlCache` reuse, eager pre-mirror IndexedDB lookup before starting the 4-host Gutenberg mirror fallback (`aleph` -> `pglaf` -> `readingroo.ms` -> `www.gutenberg.org`), `429`-resilient background warming on `onLoad`, multi-tab `onversionchange` safety, and `Vary: Accept-Encoding` on `type=cover` (`ADR-070`, `ADR-080`).
+
+### Changed
+- **Distinct Security Workflow Run Names (`.github/workflows/codeql.yml`, `.github/workflows/dependency-review.yml`, `docs/GITHUB_ACTIONS.md`)**: Added top-level `run-name:` templates (`CodeQL SAST (<event> on <branch>)` and `Dependency & License Review (PR #<number>)`) so GitHub Actions security runs stay visually distinct from `CI Pipeline` commit titles in workflow feeds (`ADR-073`, `ADR-080`).
+
+
 ## [2.9.48] - 2026-11-17
 ### *Comprehensive Runtime, AST & Supply-Chain Security Hardening*
 

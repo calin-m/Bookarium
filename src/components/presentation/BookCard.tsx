@@ -59,7 +59,13 @@ export const BookCard: React.FC<BookCardProps> = ({
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const formats = extractBookFormats(book.formats, book.id);
-  const { imageError, activeCoverUrl, handleImageError } = useOfflineCoverImage(
+  const {
+    imageError,
+    activeCoverUrl,
+    isCheckingLocalCache,
+    handleImageError,
+    handleImageLoad,
+  } = useOfflineCoverImage(
     book.id,
     isOffline,
     formats.coverImage
@@ -205,9 +211,16 @@ export const BookCard: React.FC<BookCardProps> = ({
                   : ''
               }`}
               loading="lazy"
+              onLoad={handleImageLoad}
               onError={handleImageError}
             />
           </div>
+        ) : isCheckingLocalCache ? (
+          <div
+            aria-hidden="true"
+            data-testid={`book-card-cover-loading-${book.id}`}
+            className="w-full h-full rounded-md bg-muted/60 animate-pulse"
+          />
         ) : (
           <div className="w-full h-full rounded-md bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 text-white p-4 flex flex-col justify-between shadow-xs border border-stone-700">
             <div>

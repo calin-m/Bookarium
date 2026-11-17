@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202666%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.38%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-259%20Suites%20%7C%202690%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.36%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2666 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2690 tests across 259 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -110,12 +110,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.48)
+## 🛠️ Latest Improvements (v2.9.52)
 
-- **Expanded 9-Rule AST SAST, Client Taint & Pillar 1/7 Verifier Gates (`scripts/eslint-rules/bookarium-security.js`, `scripts/eslint-rules/bookarium-security.test.ts`, `scripts/verify-build.js`, `SECURITY.md`)**: Extended Rule 3 (`@/lib/server-rsc-nav`, `node:http(s)`), Rule 4 (constant `new RegExp()` ReDoS), Rule 5 & Pillar 3 (concat/conditional/logical/template/TS-cast/folded JSX `href`/`src`, `data:text/html,`, imperative `setAttribute()`, & `window.open(..., '_blank')` `noopener`), Rule 6 (client `useSearchParams()`/`document.referrer` -> `router.push`/`replace` taint exempting static `/path` & `ROUTES.*`, `sanitizeBookFormatUrl`/`stripRecoveryFromRedirectPath` sinks, & `getNodeSanitizedSinks` fix), Rule 7 (arrow/function API handler `buildApiSecurityHeaders()` & `sameSite`/`secure` cookies), standalone `public/sw.js` + `next.config.ts` audits with explicit `ast-parse-error` diagnostics, Babel/manifest header audits, & Pillar 1 workflow gates (`ADR-067`, `ADR-073`, `ADR-080`).
-- **SHA-Pinned GitHub Actions Workflows, CodeQL & Dependency Review (`.github/workflows/*.yml`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Pinned all workflow `uses:` steps across all `8` workflows to immutable 40-char commit SHAs and added scheduled/PR CodeQL (`javascript-typescript` + `actions` SARIF) and PR Dependency Review (`high` CVE + `GPL`/`AGPL` license block) workflows (`ADR-073`, `ADR-080`).
-- **Anti-Clickjacking Header Alignment, CSP `object-src 'none'` & Strict HTTPS Format URL Sanitization (`next.config.ts`, `src/lib/utils.ts`, `src/lib/utils.test.ts`)**: Aligned `X-Frame-Options` to `DENY` matching CSP `frame-ancestors 'none'`, added explicit `object-src 'none'` to CSP without blocking local HTTP `next start`, and exported `sanitizeBookFormatUrl` routing `extractBookFormats` through strict `https:` allowlisting with opt-in `allowBlob: true` for offline cover previews (`ADR-073`, `ADR-080`).
-- **Service Worker `CACHE_URLS` Sanitization & Protocol-Aware `Secure` Cookies (`public/sw.js`, `src/lib/api-utils.ts`, `src/app/auth/callback/route.ts`, `src/lib/supabase/middleware.ts`, `src/proxy.ts`, `src/lib/api-utils.test.ts`, `src/app/auth/callback/route.test.ts`, `src/lib/supabase/middleware.test.ts`, `src/proxy.test.ts`)**: Added `sanitizePrecacheUrl` + `100`-URL cap restricting `CACHE_URLS` precaching to same-origin non-`/auth/`/non-`/api/` paths, and exported `isHttpsRequest` setting protocol-aware `secure` flags on `AUTH_HINT`, `CLIENT_IP_SYNC`, `GEO_COOKIE_NAME`, and `DEV_OVERRIDE_COOKIE_NAME` cookies (`ADR-080`).
+- **Tier-3 `useOfflineCoverImage` Contract & Living Documentation Parity (`src/hooks/useOfflineCoverImage.ts`, `scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `AGENTS.md`, `docs/DECISIONS.md`)**: Annotated `src/hooks/useOfflineCoverImage.ts` with `@scope`/`@invariant`/`@rationale`/`@adr` behavioral contracts and added it to `TIER_3_CONTRACTED_MODULES` (`63` guarded modules across `docs/SYSTEM_CONTRACTS.md`), updated Matrix `3` IndexedDB store names to `BookariumOfflineDB` (`v2`: `offline_books` + `cover_cache`), and added `sast-validators.test.ts` to Diagram `9`, `layerDefs`, and `AGENTS.md` (`ADR-070`, `ADR-073`, `ADR-081`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -166,7 +163,7 @@ Bookarium is structured around six core engineering pillars:
 * **Synchronized W3C Voice Read-Aloud (Text-to-Speech)**: Offline-first narration (`window.speechSynthesis`, `useReaderSpeech.ts`) with automatic language-voice pairing, amber sentence highlight tracking, speed presets (`0.85x–2.0x`), and OS MediaSession lockscreen controls, plus native browser translation guidance.
 
 ### 4. ⚡ Offline-First Persistence, Cloud Sync & Data Sovereignty
-* **Native IndexedDB Offline Storage, Cover Blob Cache & Adaptive Offline Catalog**: Persists unabridged book texts and binary cover `Blob`s (`BookariumOfflineDB`, `useOfflineCoverImage.ts` via `/api/books/content?type=cover`) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
+* **Native IndexedDB Offline Storage, Mirror-Agnostic Cover LRU & Adaptive Offline Catalog**: Persists unabridged book texts (`offline_books`) and mirror-agnostic binary cover `Blob`s (`BookariumOfflineDB` v2: downloaded `offline_books` + bounded `300`-entry / `30d` `cover_cache` LRU, resolved via `useOfflineCoverImage.ts` before mirror fallback for `< 5ms` refreshes) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: 2-column archival reading ledger with silk ribbon markers, live progress percentages, multi-attribute sorting, status filtering, completed book progress latching (`Read Again` flow), and 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails).
 * **In-Reader Highlighting, Dual-State Marginalia & Commonplace Notebook (`/notebook`)**: 4 pastel highlighters with page-boundary partial span matching, a **Dual-State Read/Edit Marginalia Popover** (`TextHighlightPopover.tsx`), composite union cards for overlapping personal + Fellow Scholar highlights (`pairOverlappingAnnotations`), and 1-click academic citation export.
 * **7-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, fellowships, and unified `profiles.preferences` JSONB (`usePreferencesStore` / `useThemeStore`) with `TOKEN_REFRESHED` wake-up re-sync, paired with `{ count: 'estimated' }` planner scans, 11-column selective projection, `(select auth.uid())` RLS `InitPlan` policies (`47` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
@@ -456,7 +453,7 @@ flowchart TD
 
 ---
 
-### 📚 Living Architecture Directory (13 Interactive Diagrams)
+### 📚 Living Architecture Directory (15 Interactive Diagrams)
 
 | # | Architectural Diagram | Primary Layer & Subsystem | Living Architecture Specification |
 |---|---|---|---|
@@ -473,6 +470,8 @@ flowchart TD
 | **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Mirror Cascades & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |
 | **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/ARCHITECTURE.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/ARCHITECTURE.md) |
 | **13** | **Multi-Tier Caching, Egress Shielding & Cover/Text Waterfall** | 5-Layer Cache Hierarchy, Edge TTLs & Gutenberg Cover/Text Proxy | [docs/ARCHITECTURE.md#2-multi-tier-caching-supabase-egress-shielding--gutenberg-mirror-covertext-waterfall](docs/ARCHITECTURE.md) |
+| **14** | **Auth, Password Recovery, Session Revocation & Origin Flow** | Edge Refresh Bypass, PKCE/OTP, JWT AMR & Pre-Null Teardown | [docs/ARCHITECTURE.md#3-authentication-password-recovery-session-revocation--origin-security-flow](docs/ARCHITECTURE.md) |
+| **15** | **Literary Fellowship, Symposium & Marginalia Guard Topology** | Reader Circles, Symposiums, Fellow Highlights & DB Triggers | [docs/ARCHITECTURE.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards](docs/ARCHITECTURE.md) |
 <!-- END:architecture-diagrams -->
 
 ---

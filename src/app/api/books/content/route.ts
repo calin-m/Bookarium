@@ -514,7 +514,7 @@ export async function GET(request: NextRequest) {
           headers: {
             'Content-Type': 'image/jpeg',
             'Cache-Control': 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000',
-            'Vary': 'x-vercel-ip-country, Accept-Encoding',
+            'Vary': 'Accept-Encoding',
             ...buildApiSecurityHeaders('same-origin'),
           },
         });

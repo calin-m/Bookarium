@@ -212,6 +212,18 @@ describe('BookmarkCard', () => {
     createUrlSpy.mockRestore();
   });
 
+  it('triggers background local cover warming when online cover image loads', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const warmSpy = vi.spyOn(offlineStorage, 'warmCoverCache').mockImplementation(() => {});
+
+    render(<BookmarkCard volume={mockVolume} />);
+    const img = screen.getByAltText('Cover of Pride and Prejudice');
+    fireEvent.load(img);
+    expect(warmSpy).toHaveBeenCalledWith(1342);
+
+    warmSpy.mockRestore();
+  });
+
   it('applies solid border and canonical booksaw shadow styling', () => {
     render(<BookmarkCard volume={mockVolume} />);
     const article = screen.getByRole('article', { name: /Reading ledger entry for Pride and Prejudice/i });

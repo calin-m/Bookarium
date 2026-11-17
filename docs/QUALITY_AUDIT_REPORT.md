@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 17 Nov 2026 00:15:15 GMT  
+**Last Generated**: Tue, 17 Nov 2026 09:51:18 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 258 passed  
-**Total Verified Tests**: 2666 passed  
+**Total Test Suites**: 259 passed  
+**Total Verified Tests**: 2690 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2666 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **259/259 test suites passed** (2690 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.38%** (15826/16251) — *Target: $\ge$ 95%*
-- **Statements**: **96.18%** (17059/17735) — *Target: $\ge$ 95%*
-- **Functions**: **95.23%** (3394/3564) — *Target: $\ge$ 92%*
-- **Branches**: **88.53%** (15824/17873) — *Target: $\ge$ 85%*
+- **Lines**: **97.36%** (15996/16429) — *Target: $\ge$ 95%*
+- **Statements**: **96.13%** (17236/17929) — *Target: $\ge$ 95%*
+- **Functions**: **95.19%** (3424/3597) — *Target: $\ge$ 92%*
+- **Branches**: **88.5%** (15951/18022) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2666 Tests)
+## 🧪 Comprehensive Test Suite Catalog (259 Suites / 2690 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 329 Tests)
+### 🚀 App Routes & Pages (31 Suites · 333 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -114,7 +114,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (40 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (42 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -146,6 +146,8 @@
 - ✔ `resolves relative Location redirect paths against the active mirror origin`
 - ✔ `coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch`
 - ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
+- ✔ `degrades gracefully from Tier 1 Supabase abortSignal timeout to Tier 2 mirror fetch`
+- ✔ `cascades past AbortError timeouts, HTML outage pages, and oversized streaming payloads across mirrors`
 - ✔ `streams cover image successfully from mirror with Content-Type: image/jpeg and CDN cache headers`
 - ✔ `falls back through mirrors when primary aleph mirror returns 404`
 - ✔ `safely follows trusted redirect hops when fetching cover image`
@@ -160,7 +162,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/url-validator.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/api/books/content/url-validator.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `accepts legitimate Project Gutenberg URLs`
 - ✔ `rejects foreign and untrusted domains`
@@ -170,12 +172,13 @@
 - ✔ `handles malformed URLs safely without throwing`
 - ✔ `sanitizes standard Gutenberg URLs to canonical cache paths`
 - ✔ `preserves files-0 and files paths for older legacy Gutenberg mirrors`
+- ✔ `rejects custom ports, unsupported schemes, credential userinfo, and unsafe path characters`
 - ✔ `returns null for unsafe or invalid URLs`
 
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `should reject unsupported query params and production ?country= overrides with 400 no-store and same-origin CORP`
 - ✔ `should return 429 when client exceeds max request rate limit`
@@ -185,6 +188,7 @@
 - ✔ `should query Supabase directly when configured and return source supabase without falling back on error`
 - ✔ `should return 503 with no-store when pool=quotes and Supabase is unavailable`
 - ✔ `should apply 12h global Edge cache for pool=quotes and 7d global Edge cache for jurisdiction-independent quote/ID lookups`
+- ✔ `gracefully handles supabaseCatalogProvider.isHealthy() rejections for both curated fallback and pool=quotes`
 
 </details>
 
@@ -552,7 +556,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 582 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 584 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -584,7 +588,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (29 tests)</summary>
+<summary><b><code>src/components/presentation/BookCard.test.tsx</code></b> (30 tests)</summary>
 
 - ✔ `should render book title, author, and formats with invariant title budget`
 - ✔ `should render multiple separate subject tag pills in the card body`
@@ -600,6 +604,7 @@
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
 - ✔ `tries Gutenberg cover mirrors first and renders fallback cover after all mirrors fail`
 - ✔ `falls back to offline IndexedDB cover blob when image error occurs while offline`
+- ✔ `triggers background local cover warming when online mirror image loads`
 - ✔ `triggers preview on Enter or Space key press on cover`
 - ✔ `updates cursor tooltip to Add to Favorites and Add to Bookshelf when hovering action buttons`
 - ✔ `opens confirmation modal when removing from favorites and removes only when confirmed`
@@ -640,7 +645,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -652,6 +657,7 @@
 - ✔ `triggers onClear when delete action is clicked`
 - ✔ `renders fallback state when cover image triggers onError`
 - ✔ `falls back to offline IndexedDB cover blob when image errors while offline`
+- ✔ `triggers background local cover warming when online cover image loads`
 - ✔ `applies solid border and canonical booksaw shadow styling`
 - ✔ `rounds floating-point progress to the nearest integer and applies rounded-full pill styling`
 - ✔ `displays relative time formatted via canonical formatRelativeTime`
@@ -2060,7 +2066,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (52 Suites · 655 Tests)
+### 📚 Gutenberg Parsers & Metadata (53 Suites · 665 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2113,12 +2119,13 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/lib/annotation-cloud-sync.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `retains real scholar handles over placeholder handles in setOrUpdateFellowMapEntry and buildFellowScholarsMap`
 - ✔ `maps database rows to FellowAnnotation and converts Annotation to db row payload`
 - ✔ `dispatches DELETE_ANNOTATION and UPSERT_ANNOTATION with exact Supabase table, column, and conflict arguments`
 - ✔ `resolves missing and placeholder fellow scholar profiles via Supabase while skipping currentUserId and known handles`
+- ✔ `builds fellow scholars map from circles and symposiums, skips Supabase when all IDs resolve locally, and handles syncAnnotationMutation success and outbox fallback`
 - ✔ `generates valid RFC 4122 v4 UUID with native crypto.randomUUID`
 - ✔ `generates valid RFC 4122 v4 UUID when crypto.randomUUID is unavailable using getRandomValues`
 - ✔ `generates valid RFC 4122 v4 UUID when global crypto is completely unavailable`
@@ -2216,7 +2223,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
@@ -2230,6 +2237,7 @@
 - ✔ `handles subsequent cloud sync (authoritative mode), __downloaded__ active shelf preservation, and query error branches`
 - ✔ `preserves rich local metadata in mergeCloudBookWithLocal, deduplicates multi-shelf books, and coalesces concurrent syncs`
 - ✔ `enforces minSyncIntervalMs cooldown on passive syncs and flushes mid-flight dirty outbox mutations cleanly`
+- ✔ `exits offline cloud sync cleanly, skips flush/sync when session verification fails, and deletes orphaned shelf items when no default shelf remains`
 
 </details>
 
@@ -2493,7 +2501,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -2514,6 +2522,7 @@
 - ✔ `covers database upgrade, transaction/request error handlers, and missing IndexedDB fallbacks`
 - ✔ `updates offline book authors when stored record has missing or placeholder authors`
 - ✔ `persists and retrieves coverBlobs with patch and self-healing support`
+- ✔ `persists mirror-agnostic cover_cache LRU entries, expires stale TTL entries, warms cleanly with 429 cooldown, and clears on wipe`
 
 </details>
 
@@ -2951,6 +2960,19 @@
 </details>
 
 <details>
+<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (7 tests)</summary>
+
+- ✔ `passes the repository next.config.ts without header or CSP violations`
+- ✔ `flags SAMEORIGIN clickjacking regression, ungated unsafe-eval, missing object-src, missing (!isDev) HSTS guard, and syntax errors`
+- ✔ `accepts valid compiled production routes-manifest headers and flags tampered manifests`
+- ✔ `passes all repository .github/workflows/*.yml files cleanly`
+- ✔ `catches missing permissions, pull_request_target write escalation, mutable @v4 uses:, and shell context injections`
+- ✔ `validates real repo package.json / package-lock.json and rejects tampered lockfiles or lifecycle hooks`
+- ✔ `passes live public/sw.js and flags missing cross-origin, CACHE_URLS, auth, or eval guards`
+
+</details>
+
+<details>
 <summary><b><code>scripts/purge-vercel-cache.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `parses --tags, --target, --dry-run, and --max-retries flags with deduplication and validation`
@@ -3029,7 +3051,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 340 Tests)
+### 🔄 Hooks & React Query (36 Suites · 345 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3325,13 +3347,14 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useBookshelfCapacity.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/hooks/useBookshelfCapacity.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `returns default capacity of 18 on wide desktop viewports (>= 1280px)`
 - ✔ `returns calculated capacity of 14 on small desktop / laptop viewports (1024px)`
 - ✔ `returns calculated capacity of 10 on tablet viewports (768px)`
 - ✔ `returns clamped minimum capacity of 6 on mobile viewports (< 640px)`
 - ✔ `updates capacity dynamically when window resize event is triggered`
+- ✔ `removes the window resize listener on unmount and provides a deterministic SSR snapshot`
 
 </details>
 
@@ -3458,11 +3481,12 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useNetworkStatus.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/hooks/useNetworkStatus.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `returns online status when navigator.onLine is true`
 - ✔ `returns offline status when navigator.onLine is false`
 - ✔ `reactively updates when window offline and online events fire`
+- ✔ `defaults to online when navigator lacks onLine, supports SSR snapshot, and removes event listeners on unmount`
 
 </details>
 
@@ -3506,20 +3530,23 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `orders official Gutenberg mirrors ahead of www.gutenberg.org and preserves non-Gutenberg URLs`
 - ✔ `sets imageError when not offline or when no cached cover blob exists`
 - ✔ `steps through Gutenberg mirror candidates on repeated errors and resets on prop change`
 - ✔ `loads a blob URL from IndexedDB when offline cover blob is available and revokes it on unmount`
+- ✔ `serves in-memory cached blob URL synchronously and avoids remote warming on blob URLs`
+- ✔ `checks IndexedDB before firing mirror URLs when indexedDB is present and warms cache on mirror load miss`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/usePerformanceTier.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/hooks/usePerformanceTier.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `classifies high, medium, and low hardware tiers and caches frozen snapshots`
 - ✔ `should respect reduced motion preference and clean up matchMedia listeners on unmount`
+- ✔ `reactively updates allowHeavyMotion on matchMedia change events and handles missing matchMedia safely`
 
 </details>
 
@@ -3587,7 +3614,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (64 Suites · 292 Tests)
+### 🧩 UI Primitives & Motion (64 Suites · 295 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3849,13 +3876,16 @@
 </details>
 
 <details>
-<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (5 tests)</summary>
+<summary><b><code>src/components/pwa/ServiceWorkerRegister.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders null without throwing`
 - ✔ `attempts registration immediately in production when document.readyState is complete and posts CACHE_URLS`
 - ✔ `falls back to navigator.serviceWorker.controller when active/waiting/installing are null and handles registration rejection`
 - ✔ `registers on window load event when document.readyState is loading`
 - ✔ `does not attempt registration in development mode`
+- ✔ `handles install static precache + HTML asset discovery and activate stale cache cleanup`
+- ✔ `sanitizes CACHE_URLS messages (dropping //, cross-origin, /auth/, /api/ and enforcing 100-URL cap)`
+- ✔ `enforces cross-origin & /auth/ pass-through, /api/ 503 offline fallback, /read/* offline shell fallback, and _rsc anti-HTML guard`
 
 </details>
 

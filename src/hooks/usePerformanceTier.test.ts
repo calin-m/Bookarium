@@ -116,5 +116,57 @@ describe('usePerformanceTier', () => {
     unmount();
     expect(removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
   });
+
+  it('reactively updates allowHeavyMotion on matchMedia change events and handles missing matchMedia safely', async () => {
+    const { act } = await import('@testing-library/react');
+    setHardwareProfile(8, 8);
+    let matches = false;
+    let changeHandler: (() => void) | null = null;
+
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        get matches() {
+          return matches;
+        },
+        media: '(prefers-reduced-motion: reduce)',
+        addEventListener: (_event: string, cb: () => void) => {
+          changeHandler = cb;
+        },
+        removeEventListener: vi.fn(),
+      })),
+    });
+
+    const { result, unmount } = renderHook(() => usePerformanceTier());
+    expect(result.current.allowHeavyMotion).toBe(true);
+    expect(result.current.tier).toBe('high');
+    expect(changeHandler).not.toBeNull();
+
+    act(() => {
+      matches = true;
+      changeHandler?.();
+    });
+    expect(result.current.allowHeavyMotion).toBe(false);
+    expect(result.current.tier).toBe('high');
+
+    act(() => {
+      matches = false;
+      changeHandler?.();
+    });
+    expect(result.current.allowHeavyMotion).toBe(true);
+    expect(result.current.tier).toBe('high');
+    unmount();
+
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+    const noMatchMediaResult = renderHook(() => usePerformanceTier());
+    expect(noMatchMediaResult.result.current.allowHeavyMotion).toBe(true);
+    expect(noMatchMediaResult.result.current.tier).toBe('high');
+    noMatchMediaResult.unmount();
+  });
 });
 

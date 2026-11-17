@@ -734,6 +734,84 @@ describe('GET /api/books/content', () => {
 
       fetchSpy.mockRestore();
     });
+
+    it('degrades gracefully from Tier 1 Supabase abortSignal timeout to Tier 2 mirror fetch', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+      const mockMaybeSingle = vi
+        .fn()
+        .mockRejectedValue(new DOMException('Signal timed out', 'TimeoutError'));
+      const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+      const supabaseClientModule = await import('@/lib/supabase/client');
+      const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+        from: mockFrom,
+      } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+
+      try {
+        const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(await res.text()).toContain('Pride and Prejudice');
+      } finally {
+        clientSpy.mockRestore();
+        fetchSpy.mockRestore();
+      }
+    });
+
+    it('cascades past AbortError timeouts, HTML outage pages, and oversized streaming payloads across mirrors', async () => {
+      const oversizedStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(15 * 1024 * 1024 + 64));
+          controller.close();
+        },
+      });
+
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        // Mirror 1: AbortError timeout
+        .mockRejectedValueOnce(new DOMException('Aborted', 'AbortError'))
+        // Mirror 2: 200 OK HTML maintenance page (outage interstitial)
+        .mockResolvedValueOnce(
+          new Response('<!DOCTYPE html><html><body>Mirror maintenance</body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          })
+        )
+        // Mirror 3: Streaming payload exceeding MAX_BOOK_BYTES (15 MB)
+        .mockResolvedValueOnce(
+          new Response(oversizedStream, {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        )
+        // Mirror 4: Clean unabridged text payload
+        .mockResolvedValueOnce(
+          new Response(sampleBookText, {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        );
+
+      try {
+        const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
+        const res = await GET(req);
+        expect(res.status).toBe(200);
+        expect(fetchSpy).toHaveBeenCalledTimes(4);
+        expect(await res.text()).toContain('Pride and Prejudice');
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    });
   });
 
   describe('Binary Cover Image Streaming (type=cover)', () => {
@@ -753,6 +831,7 @@ describe('GET /api/books/content', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('image/jpeg');
       expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
+      expect(res.headers.get('Vary')).toBe('Accept-Encoding');
       expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
       expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
       const buffer = await res.arrayBuffer();

@@ -3,10 +3,10 @@
  * Allows storing full text of classic literature beyond localStorage's 5MB quota.
  *
  * @module src/lib/offline-storage
- * @scope Browser IndexedDB persistence (`BookariumOfflineDB` / `offline_books`), `coverBlob` object-URL caching, and non-regressive author metadata healing.
+ * @scope Browser IndexedDB persistence (`BookariumOfflineDB` / `offline_books` + bounded `cover_cache` LRU), `coverObjectUrlCache` reuse, background cover warming, and non-regressive author metadata healing.
  * @invariant Never overwrite authentic author metadata with placeholder names (`isPlaceholderAuthor`, e.g., `"Anonymous"`); heal missing contributor lifespans via `patchOfflineBookAuthors`.
- * @invariant Fetch covers via same-origin `/api/books/content?id=...&type=cover`, manage `coverObjectUrlCache` revocation on removal/clear, and broadcast changes exclusively through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
- * @rationale Cross-origin Service Worker image caching triggers CSP/CORS failures, and reverting offline authors to `"Anonymous"` causes false `HTTP 451` copyright blocks outside US jurisdictions.
+ * @invariant Lookup cover art in-memory (`getMemoryCachedCoverUrl`) and across IndexedDB (`offline_books.coverBlob` -> non-expired `cover_cache.blob`, capped at `MAX_CACHED_COVERS` and `COVER_CACHE_TTL_MS`), populate via same-origin `/api/books/content?id=...&type=cover`, manage `coverObjectUrlCache` revocation on eviction/removal/clear, clear both stores in `clearAllOfflineBooks`, and broadcast changes through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
+ * @rationale Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache prevents slow mirror re-downloads on page refreshes regardless of which Gutenberg mirror succeeded while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
  * @adr ADR-020, ADR-069, ADR-070, ADR-080
  */
 
@@ -17,10 +17,54 @@ import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 
 const DB_NAME = 'BookariumOfflineDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'offline_books';
+const COVER_CACHE_STORE = 'cover_cache';
+export const MAX_CACHED_COVERS = 300;
+export const COVER_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_COVER_CACHE_BYTES = 2 * 1024 * 1024;
+const MAX_CONCURRENT_COVER_WARMS = 2;
+const DEFAULT_COVER_WARM_COOLDOWN_MS = 60_000;
+
+interface CoverCacheRecord {
+  bookId: number;
+  blob: Blob;
+  cachedAt: number;
+  byteSize: number;
+}
 
 const coverObjectUrlCache = new Map<number, { size: number; url: string }>();
+const inFlightCoverWarms = new Set<number>();
+const warmedCoverIds = new Set<number>();
+const coverWarmQueue: number[] = [];
+let activeCoverWarmCount = 0;
+let coverWarmCooldownUntil = 0;
+
+/**
+ * Synchronously resolves an already-hydrated in-memory cover object URL for a book ID.
+ */
+export function getMemoryCachedCoverUrl(bookId: number): string | null {
+  return coverObjectUrlCache.get(bookId)?.url || null;
+}
+
+/**
+ * Registers (or reuses) a cached object URL for a cover blob in the shared in-memory lookup map.
+ */
+export function getOrCreateMemoryCoverUrl(bookId: number, blob: Blob): string | null {
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function' || !blob) {
+    return null;
+  }
+  const existing = coverObjectUrlCache.get(bookId);
+  if (existing && existing.size === blob.size) {
+    return existing.url;
+  }
+  if (existing) {
+    revokeCachedCoverObjectUrl(bookId);
+  }
+  const url = URL.createObjectURL(blob);
+  coverObjectUrlCache.set(bookId, { size: blob.size, url });
+  return url;
+}
 
 function revokeCachedCoverObjectUrl(bookId: number): void {
   const cached = coverObjectUrlCache.get(bookId);
@@ -130,9 +174,23 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'bookId' });
       }
+      if (!db.objectStoreNames.contains(COVER_CACHE_STORE)) {
+        db.createObjectStore(COVER_CACHE_STORE, { keyPath: 'bookId' });
+      }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onblocked = () => reject(new Error('IndexedDB upgrade blocked by another open tab.'));
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        try {
+          db.close?.();
+        } catch {
+          // Ignore close errors during multi-tab version upgrades
+        }
+      };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error || new Error('Failed to open IndexedDB.'));
   });
 }
@@ -239,12 +297,223 @@ export async function getOfflineBook(bookId: number): Promise<string | null> {
   return record ? record.text : null;
 }
 
+async function getCachedCoverFromStore(bookId: number): Promise<Blob | null> {
+  try {
+    const db = await openDB();
+    if (!db.objectStoreNames.contains(COVER_CACHE_STORE)) {
+      return null;
+    }
+
+    const record = await new Promise<CoverCacheRecord | null>((resolve) => {
+      try {
+        const transaction = db.transaction(COVER_CACHE_STORE, 'readonly');
+        const store = transaction.objectStore(COVER_CACHE_STORE);
+        const request = store.get(bookId);
+        request.onsuccess = () => resolve((request.result as CoverCacheRecord | undefined) || null);
+        request.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+
+    if (!record || !record.blob) return null;
+
+    if (Date.now() - record.cachedAt > COVER_CACHE_TTL_MS) {
+      try {
+        const cleanupTxn = db.transaction(COVER_CACHE_STORE, 'readwrite');
+        cleanupTxn.objectStore(COVER_CACHE_STORE).delete(bookId);
+      } catch {
+        // Non-blocking TTL cleanup
+      }
+      return null;
+    }
+
+    return record.blob;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Retrieves the stored cover image Blob for an offline book if available.
+ * Persists a cover image Blob in the bounded `cover_cache` LRU IndexedDB store.
+ */
+export async function saveCachedCoverBlob(bookId: number, blob: Blob): Promise<void> {
+  if (!Number.isInteger(bookId) || bookId <= 0 || !blob || blob.size <= 0 || blob.size > MAX_COVER_CACHE_BYTES) {
+    return;
+  }
+
+  getOrCreateMemoryCoverUrl(bookId, blob);
+
+  try {
+    const db = await openDB();
+    if (!db.objectStoreNames.contains(COVER_CACHE_STORE)) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      try {
+        const transaction = db.transaction(COVER_CACHE_STORE, 'readwrite');
+        const store = transaction.objectStore(COVER_CACHE_STORE);
+        const entry: CoverCacheRecord = {
+          bookId,
+          blob,
+          cachedAt: Date.now(),
+          byteSize: blob.size,
+        };
+        const req = store.put(entry);
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve();
+        transaction.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+
+    // Enforce bounded LRU eviction above MAX_CACHED_COVERS entries
+    const allCached = await new Promise<CoverCacheRecord[]>((resolve) => {
+      try {
+        const transaction = db.transaction(COVER_CACHE_STORE, 'readonly');
+        const store = transaction.objectStore(COVER_CACHE_STORE);
+        const req = store.getAll();
+        req.onsuccess = () => resolve((req.result as CoverCacheRecord[]) || []);
+        req.onerror = () => resolve([]);
+      } catch {
+        resolve([]);
+      }
+    });
+
+    if (allCached.length > MAX_CACHED_COVERS) {
+      allCached.sort((a, b) => a.cachedAt - b.cachedAt);
+      const overflow = allCached.slice(0, allCached.length - MAX_CACHED_COVERS);
+      const offlineBookIds = new Set(await getOfflineBookIds());
+
+      await new Promise<void>((resolve) => {
+        try {
+          const transaction = db.transaction(COVER_CACHE_STORE, 'readwrite');
+          const store = transaction.objectStore(COVER_CACHE_STORE);
+          for (const evicted of overflow) {
+            store.delete(evicted.bookId);
+            if (!offlineBookIds.has(evicted.bookId)) {
+              revokeCachedCoverObjectUrl(evicted.bookId);
+            }
+          }
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => resolve();
+          // Support simplified synchronous-timeout JSDOM mocks lacking oncomplete
+          setTimeout(resolve, 0);
+        } catch {
+          resolve();
+        }
+      });
+    }
+  } catch {
+    // Non-blocking cache persistence fallback
+  }
+}
+
+function drainCoverWarmQueue(): void {
+  if (typeof window === 'undefined' || !navigator.onLine) {
+    coverWarmQueue.length = 0;
+    return;
+  }
+
+  while (
+    activeCoverWarmCount < MAX_CONCURRENT_COVER_WARMS &&
+    coverWarmQueue.length > 0 &&
+    Date.now() >= coverWarmCooldownUntil
+  ) {
+    const nextId = coverWarmQueue.shift();
+    if (!nextId || inFlightCoverWarms.has(nextId)) continue;
+
+    inFlightCoverWarms.add(nextId);
+    activeCoverWarmCount++;
+
+    void (async () => {
+      try {
+        const existing = await getOfflineBookCover(nextId);
+        if (existing) {
+          getOrCreateMemoryCoverUrl(nextId, existing);
+          warmedCoverIds.add(nextId);
+          return;
+        }
+
+        const safeId = encodeURIComponent(String(Math.trunc(nextId)));
+        const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${safeId}&type=cover`);
+        if (res.status === 429) {
+          const retryAfterRaw = res.headers?.get('Retry-After');
+          const retrySeconds = retryAfterRaw ? parseInt(retryAfterRaw, 10) : NaN;
+          coverWarmCooldownUntil =
+            Date.now() +
+            (Number.isFinite(retrySeconds) && retrySeconds > 0
+              ? retrySeconds * 1000
+              : DEFAULT_COVER_WARM_COOLDOWN_MS);
+          coverWarmQueue.length = 0;
+          return;
+        }
+        if (res.ok) {
+          const ct = (res.headers?.get('content-type') || '').toLowerCase();
+          if (!ct.includes('text/html')) {
+            const blob = await res.blob();
+            if (blob && blob.size > 0 && blob.size <= MAX_COVER_CACHE_BYTES) {
+              await saveCachedCoverBlob(nextId, blob);
+              warmedCoverIds.add(nextId);
+            }
+          }
+        }
+      } catch {
+        // Non-blocking background cover warming fallback
+      } finally {
+        inFlightCoverWarms.delete(nextId);
+        activeCoverWarmCount = Math.max(0, activeCoverWarmCount - 1);
+        drainCoverWarmQueue();
+      }
+    })();
+  }
+}
+
+/**
+ * Queues a deduplicated, concurrency-bounded background fetch to persist a cover Blob locally
+ * into `cover_cache` so future refreshes load from IndexedDB regardless of upstream mirror.
+ */
+export function warmCoverCache(bookId: number): void {
+  if (
+    typeof window === 'undefined' ||
+    (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+    !Number.isInteger(bookId) ||
+    bookId <= 0 ||
+    Date.now() < coverWarmCooldownUntil ||
+    warmedCoverIds.has(bookId) ||
+    inFlightCoverWarms.has(bookId) ||
+    coverWarmQueue.includes(bookId)
+  ) {
+    return;
+  }
+
+  coverWarmQueue.push(bookId);
+  drainCoverWarmQueue();
+}
+
+/**
+ * Resets internal background cover-warming queues (primarily for clean test isolation and account wipes).
+ */
+export function resetCoverWarmState(): void {
+  warmedCoverIds.clear();
+  inFlightCoverWarms.clear();
+  coverWarmQueue.length = 0;
+  activeCoverWarmCount = 0;
+  coverWarmCooldownUntil = 0;
+}
+
+/**
+ * Retrieves the stored cover image Blob for a book from `offline_books` first,
+ * falling back to the bounded LRU `cover_cache` store when not downloaded as full text.
  */
 export async function getOfflineBookCover(bookId: number): Promise<Blob | null> {
   const record = await getOfflineBookRecord(bookId);
-  return record?.coverBlob || null;
+  if (record?.coverBlob) {
+    return record.coverBlob;
+  }
+  return getCachedCoverFromStore(bookId);
 }
 
 /**
@@ -536,21 +805,41 @@ export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
  * Purges all offline downloaded books.
  */
 export async function clearAllOfflineBooks(): Promise<void> {
+  resetCoverWarmState();
   revokeAllCachedCoverObjectUrls();
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.clear();
 
       request.onsuccess = () => {
-        notifyOfflineStorageChanged();
         resolve();
       };
       request.onerror = () => reject(request.error || new Error('Failed to clear offline books.'));
     });
-  } catch {
+
+    if (db.objectStoreNames.contains(COVER_CACHE_STORE)) {
+      await new Promise<void>((resolve) => {
+        try {
+          const coverTxn = db.transaction(COVER_CACHE_STORE, 'readwrite');
+          const coverStore = coverTxn.objectStore(COVER_CACHE_STORE);
+          const clearReq = coverStore.clear();
+          clearReq.onsuccess = () => resolve();
+          clearReq.onerror = () => resolve();
+          coverTxn.onerror = () => resolve();
+        } catch {
+          resolve();
+        }
+      });
+    }
+
+    notifyOfflineStorageChanged();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Failed to clear offline books')) {
+      throw error;
+    }
     // Non-blocking fallback
   }
 }

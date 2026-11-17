@@ -247,6 +247,20 @@ describe('BookCard component', () => {
     createUrlSpy.mockRestore();
   });
 
+  it('triggers background local cover warming when online mirror image loads', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const warmSpy = vi.spyOn(offlineStorage, 'warmCoverCache').mockImplementation(() => {});
+
+    const book = mockBooks[0];
+    render(<BookCard book={book} onPreviewClick={vi.fn()} />);
+
+    const coverImg = screen.getByAltText(`Cover of ${book.title}`);
+    fireEvent.load(coverImg);
+    expect(warmSpy).toHaveBeenCalledWith(book.id);
+
+    warmSpy.mockRestore();
+  });
+
   it('triggers preview on Enter or Space key press on cover', () => {
     const handlePreview = vi.fn();
     const book = mockBooks[0];

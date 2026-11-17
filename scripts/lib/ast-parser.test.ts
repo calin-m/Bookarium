@@ -652,7 +652,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
     const catalog = astParser.extractBehavioralContractsCatalog(repoSrc, repoRoot);
     expect(catalog.parseErrors).toEqual([]);
     expect(catalog.validationIssues).toEqual([]);
-    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(61);
+    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(63);
 
     const byFile = new Map(catalog.modules.map((m) => [m.file, m]));
     const tier1Set = new Set(astParser.TIER_1_CONTRACTED_MODULES);

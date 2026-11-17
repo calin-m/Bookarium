@@ -53,7 +53,13 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
 }) => {
   const router = useRouter();
   const { book, progressPercent, chapterIndex, globalPage, bookmarkRow, lastReadAt, status } = volume;
-  const { imageError, activeCoverUrl, handleImageError } = useOfflineCoverImage(
+  const {
+    imageError,
+    activeCoverUrl,
+    isCheckingLocalCache,
+    handleImageError,
+    handleImageLoad,
+  } = useOfflineCoverImage(
     book.id,
     isOffline,
     book.coverUrl
@@ -157,6 +163,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                 src={activeCoverUrl}
                 alt={`Cover of ${book.title}`}
                 loading="lazy"
+                onLoad={handleImageLoad}
                 onError={handleImageError}
                 className={`w-full h-full object-cover transition-transform duration-300 ${
                   isRestricted
@@ -165,6 +172,12 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                     ? 'opacity-65 grayscale-[35%]'
                     : 'group-hover/cover:scale-105'
                 }`}
+              />
+            ) : isCheckingLocalCache ? (
+              <div
+                aria-hidden="true"
+                data-testid={`bookmark-card-cover-loading-${book.id}`}
+                className="w-full h-full bg-muted/60 animate-pulse"
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-primary-900/10 to-primary-800/20 text-center">

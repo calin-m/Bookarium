@@ -53,6 +53,24 @@ describe('url-validator', () => {
       expect(sanitizeUpstreamUrl('https://gutenberg.org/files/1342/1342.txt')).toBe(
         'https://gutenberg.org/files/1342/1342.txt'
       );
+      expect(sanitizeUpstreamUrl('https://aleph.gutenberg.org/epub/pg64317.txt')).toBe(
+        'https://www.gutenberg.org/cache/epub/64317/pg64317.txt'
+      );
+    });
+
+    it('rejects custom ports, unsupported schemes, credential userinfo, and unsafe path characters', () => {
+      expect(isSafeUpstreamUrl('https://www.gutenberg.org:8443/cache/epub/1342/pg1342.txt')).toBe(false);
+      expect(isSafeUpstreamUrl('ftp://www.gutenberg.org/cache/epub/1342/pg1342.txt')).toBe(false);
+      expect(isSafeUpstreamUrl('javascript:alert(1)')).toBe(false);
+      expect(isSafeUpstreamUrl('data:text/plain,hello')).toBe(false);
+      expect(isSafeUpstreamUrl('file:///etc/passwd')).toBe(false);
+      expect(isSafeUpstreamUrl('https://www.gutenberg.org@evil.com/cache/epub/1342/pg1342.txt')).toBe(false);
+      expect(isSafeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg$1342.txt')).toBe(false);
+      expect(sanitizeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt?token=1')).toBe(
+        'https://www.gutenberg.org/cache/epub/1342/pg1342.txt'
+      );
+      expect(sanitizeUpstreamUrl('https://www.gutenberg.org:8443/cache/epub/1342/pg1342.txt')).toBeNull();
+      expect(sanitizeUpstreamUrl('https://www.gutenberg.org@evil.com/cache/epub/1342/pg1342.txt')).toBeNull();
     });
 
     it('returns null for unsafe or invalid URLs', () => {

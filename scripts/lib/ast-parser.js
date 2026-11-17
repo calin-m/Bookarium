@@ -1365,7 +1365,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 
@@ -2461,6 +2461,7 @@ const TIER_3_CONTRACTED_MODULES = [
   'src/hooks/useNetworkStatus.ts',
   'src/hooks/useBookPassageShuffle.ts',
   'src/hooks/useCollectionAutoHeal.ts',
+  'src/hooks/useOfflineCoverImage.ts',
   'src/lib/supabase/client.ts',
   'src/lib/supabase/server.ts',
   'src/lib/supabase/middleware.ts',
@@ -2488,6 +2489,7 @@ const TIER_4_CONTRACTED_MODULES = [
   'scripts/purge-vercel-cache.js',
   'scripts/eslint-rules/bookarium-security.js',
   'scripts/lib/ast-parser.js',
+  'scripts/lib/sast-validators.js',
 ];
 
 const PROTECTED_CONTRACTED_MODULES = [

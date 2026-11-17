@@ -164,6 +164,94 @@ describe('annotation-cloud-sync', () => {
     });
   });
 
+  it('builds fellow scholars map from circles and symposiums, skips Supabase when all IDs resolve locally, and handles syncAnnotationMutation success and outbox fallback', async () => {
+    const { buildFellowScholarsMap, resolveFellowIdentityMap, syncAnnotationMutation } = await import(
+      './annotation-cloud-sync'
+    );
+    const { useFellowshipStore } = await import('@/stores/useFellowshipStore');
+
+    useFellowshipStore.setState({
+      circles: [
+        {
+          id: 'circle-1',
+          requester_id: 'fellow-host',
+          requester_username: 'fellow_scholar',
+          requester_display_name: null,
+          recipient_id: 'fellow-guest',
+          recipient_username: 'mary_shelley',
+          recipient_display_name: 'Mary Shelley',
+          status: 'accepted',
+          created_at: '',
+          updated_at: '',
+        } as never,
+      ],
+      symposiums: [
+        {
+          id: 'sym-1',
+          book_id: 84,
+          host_id: 'fellow-host',
+          host_username: 'percy_shelley',
+          host_display_name: 'Percy Bysshe Shelley',
+          fellow_id: 'fellow-guest',
+          fellow_username: 'mary_shelley',
+          fellow_display_name: 'M. Shelley',
+          status: 'active',
+        } as never,
+      ],
+    });
+
+    const mergedMap = buildFellowScholarsMap({
+      'fellow-host': { username: 'scholar', display_name: null },
+      'explicit-user': { username: 'keats', display_name: 'John Keats' },
+    });
+    expect(mergedMap['fellow-host']).toEqual({
+      username: 'percy_shelley',
+      display_name: 'Percy Bysshe Shelley',
+    });
+    expect(mergedMap['fellow-guest']).toEqual({
+      username: 'mary_shelley',
+      display_name: 'M. Shelley',
+    });
+    expect(mergedMap['explicit-user']).toEqual({
+      username: 'keats',
+      display_name: 'John Keats',
+    });
+
+    const supabaseSpy = vi.fn();
+    const fullyResolved = await resolveFellowIdentityMap(
+      [{ user_id: 'fellow-host' }, { user_id: 'fellow-guest' }],
+      'viewer-id',
+      mergedMap,
+      { from: supabaseSpy } as never
+    );
+    expect(supabaseSpy).not.toHaveBeenCalled();
+    expect(fullyResolved['fellow-host'].username).toBe('percy_shelley');
+
+    const sampleAnn = {
+      id: 'ann-sync-1',
+      userId: 'u1',
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'amber' as const,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+
+    const queued: unknown[] = [];
+    const executeSpy = vi.fn().mockResolvedValue({ error: null });
+    await syncAnnotationMutation(sampleAnn, 'u1', executeSpy, (action) => queued.push(action));
+    expect(executeSpy).toHaveBeenCalledTimes(1);
+    expect(queued).toHaveLength(0);
+
+    const failingExecute = vi.fn().mockResolvedValue({ error: new Error('RLS timeout') });
+    await syncAnnotationMutation(sampleAnn, 'u1', failingExecute, (action) => queued.push(action));
+    expect(queued).toHaveLength(1);
+  });
+
   describe('generateValidAnnotationUuid', () => {
     const RFC4122_V4_REGEX =
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

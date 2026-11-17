@@ -288,4 +288,28 @@ describe('GET /api/books route handler', () => {
     isHealthySpy.mockRestore();
     searchBooksSpy.mockRestore();
   });
+
+  it('gracefully handles supabaseCatalogProvider.isHealthy() rejections for both curated fallback and pool=quotes', async () => {
+    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
+    const isHealthySpy = vi
+      .spyOn(supabaseCatalogProvider, 'isHealthy')
+      .mockRejectedValue(new Error('Healthcheck timeout'));
+
+    const fallbackReq = new NextRequest('http://localhost:3000/api/books?search=Austen');
+    const fallbackRes = await GET(fallbackReq);
+    expect(fallbackRes.status).toBe(200);
+    const fallbackJson = await fallbackRes.json();
+    expect(fallbackJson.source).toBe('cache');
+    expect(fallbackJson.results.some((b: { id: number }) => b.id === 1342)).toBe(true);
+
+    const quotesReq = new NextRequest('http://localhost:3000/api/books?pool=quotes');
+    const quotesRes = await GET(quotesReq);
+    expect(quotesRes.status).toBe(503);
+    expect(quotesRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    const quotesJson = await quotesRes.json();
+    expect(typeof quotesJson.error).toBe('string');
+    expect(quotesJson.error.length).toBeGreaterThan(0);
+
+    isHealthySpy.mockRestore();
+  });
 });

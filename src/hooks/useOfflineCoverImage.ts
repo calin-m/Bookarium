@@ -1,4 +1,19 @@
+/**
+ * @module src/hooks/useOfflineCoverImage
+ * @scope Local-first book cover image resolution (`coverObjectUrlCache` -> IndexedDB `offline_books`/`cover_cache`), mirror-first Gutenberg fallback, and background cache warming.
+ * @invariant Resolve synchronous `getMemoryCachedCoverUrl` hits first and check IndexedDB (`getOfflineBookCover`) before trying online `resolveGutenbergCoverCandidates` (`aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> original host).
+ * @invariant Trigger `warmCoverCache` on successful online `handleImageLoad` (`!blob:`) and strictly revoke only `isOwned` fallback `blob:` URLs via `URL.revokeObjectURL` on unmount while leaving shared pooled `getOrCreateMemoryCoverUrl` URLs intact.
+ * @rationale Holding mirror requests while checking device IndexedDB eliminates redundant mirror downloads across catalog/shelf refreshes regardless of which Gutenberg host succeeded, and separating owned vs. pooled object URLs prevents premature image revocation across virtualized cards.
+ * @adr ADR-070, ADR-080
+ */
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  getOfflineBookCover,
+  getMemoryCachedCoverUrl,
+  getOrCreateMemoryCoverUrl,
+  warmCoverCache,
+} from '@/lib/offline-storage';
 
 const GUTENBERG_COVER_MIRROR_ORIGINS = [
   'https://aleph.gutenberg.org',
@@ -39,14 +54,17 @@ export interface OfflineCoverImageState {
   imageError: boolean;
   offlineCoverUrl: string | null;
   activeCoverUrl: string | null;
+  isCheckingLocalCache: boolean;
   handleImageError: () => Promise<void>;
+  handleImageLoad: () => void;
 }
 
 /**
- * Shared hook coordinating mirror-first Gutenberg online cover fallback (`aleph.gutenberg.org`
- * -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`), IndexedDB
- * offline cover blob hydration (`getOfflineBookCover`), and automatic `URL.revokeObjectURL`
- * cleanup on unmount. Used by `BookCard` and `BookmarkCard`.
+ * Shared hook coordinating local cover cache hydration (`coverObjectUrlCache` -> IndexedDB
+ * `offline_books`/`cover_cache`), mirror-first Gutenberg online cover fallback (`aleph.gutenberg.org`
+ * -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`), background
+ * cache warming on successful online loads, and owned `URL.revokeObjectURL` cleanup on unmount.
+ * Used by `BookCard` and `BookmarkCard`.
  */
 export function useOfflineCoverImage(
   bookId: number,
@@ -59,6 +77,12 @@ export function useOfflineCoverImage(
     [primaryCoverUrl]
   );
 
+  const canCheckIndexedDb =
+    typeof window !== 'undefined' && typeof (window as { indexedDB?: unknown }).indexedDB !== 'undefined';
+  const memoryCachedUrl =
+    typeof getMemoryCachedCoverUrl === 'function' ? getMemoryCachedCoverUrl(bookId) : null;
+  const isBlobPrimaryUrl = Boolean(primaryCoverUrl && primaryCoverUrl.trim().startsWith('blob:'));
+
   const [mirrorState, setMirrorState] = useState<{
     key: string;
     index: number;
@@ -67,32 +91,121 @@ export function useOfflineCoverImage(
   const [offlineState, setOfflineState] = useState<{
     bookId: number;
     url: string;
+    isOwned: boolean;
   } | null>(null);
+  const [localLookupState, setLocalLookupState] = useState<{
+    key: string;
+    url: string | null;
+    isOwned: boolean;
+  }>({ key: '', url: null, isOwned: false });
   const [offlineLookupTriedKey, setOfflineLookupTriedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      !canCheckIndexedDb ||
+      memoryCachedUrl ||
+      isBlobPrimaryUrl ||
+      localLookupState.key === sourceKey ||
+      typeof getOfflineBookCover !== 'function'
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void Promise.resolve(getOfflineBookCover(bookId))
+      .then((blob) => {
+        if (cancelled) return;
+        if (
+          blob &&
+          typeof URL !== 'undefined' &&
+          typeof URL.createObjectURL === 'function'
+        ) {
+          const sharedUrl =
+            typeof getOrCreateMemoryCoverUrl === 'function'
+              ? getOrCreateMemoryCoverUrl(bookId, blob)
+              : null;
+          if (sharedUrl) {
+            setLocalLookupState({ key: sourceKey, url: sharedUrl, isOwned: false });
+            return;
+          }
+          const ownedUrl = URL.createObjectURL(blob);
+          setLocalLookupState({ key: sourceKey, url: ownedUrl, isOwned: true });
+          return;
+        }
+        setLocalLookupState({ key: sourceKey, url: null, isOwned: false });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocalLookupState({ key: sourceKey, url: null, isOwned: false });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookId, canCheckIndexedDb, memoryCachedUrl, isBlobPrimaryUrl, localLookupState.key, sourceKey]);
 
   const effectiveIndex = mirrorState.key === sourceKey ? mirrorState.index : 0;
   const imageError = mirrorState.key === sourceKey ? mirrorState.error : false;
-  const offlineCoverUrl = offlineState && offlineState.bookId === bookId ? offlineState.url : null;
+  const matchedLocalUrl =
+    localLookupState.key === sourceKey ? localLookupState.url : null;
+  const offlineCoverUrl =
+    (offlineState && offlineState.bookId === bookId ? offlineState.url : null) ||
+    memoryCachedUrl ||
+    matchedLocalUrl;
+
+  const isCheckingLocalCache =
+    !offlineCoverUrl &&
+    !isBlobPrimaryUrl &&
+    canCheckIndexedDb &&
+    localLookupState.key !== sourceKey;
+
   const currentCandidateUrl =
-    candidates.length > 0 && effectiveIndex < candidates.length
+    !isCheckingLocalCache && candidates.length > 0 && effectiveIndex < candidates.length
       ? candidates[effectiveIndex]
       : null;
   const activeCoverUrl = offlineCoverUrl || currentCandidateUrl;
 
   useEffect(() => {
-    const urlToRevoke = offlineCoverUrl;
+    const ownedOfflineUrl =
+      offlineState && offlineState.bookId === bookId && offlineState.isOwned
+        ? offlineState.url
+        : null;
+    const ownedLocalUrl =
+      localLookupState.key === sourceKey && localLookupState.isOwned
+        ? localLookupState.url
+        : null;
+
     return () => {
-      if (urlToRevoke && urlToRevoke.startsWith('blob:')) {
-        URL.revokeObjectURL(urlToRevoke);
+      if (ownedOfflineUrl && ownedOfflineUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(ownedOfflineUrl);
+      }
+      if (ownedLocalUrl && ownedLocalUrl !== ownedOfflineUrl && ownedLocalUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(ownedLocalUrl);
       }
     };
-  }, [offlineCoverUrl]);
+  }, [bookId, offlineState, localLookupState, sourceKey]);
+
+  const handleImageLoad = useCallback(() => {
+    if (
+      activeCoverUrl &&
+      !activeCoverUrl.startsWith('blob:') &&
+      typeof warmCoverCache === 'function'
+    ) {
+      warmCoverCache(bookId);
+    }
+  }, [activeCoverUrl, bookId]);
 
   const handleImageError = useCallback(async () => {
-    if (!offlineCoverUrl && isOffline && offlineLookupTriedKey !== sourceKey) {
+    if (
+      !offlineCoverUrl &&
+      isOffline &&
+      offlineLookupTriedKey !== sourceKey &&
+      typeof getOfflineBookCover === 'function'
+    ) {
       setOfflineLookupTriedKey(sourceKey);
       try {
-        const { getOfflineBookCover } = await import('@/lib/offline-storage');
         const blob = await getOfflineBookCover(bookId);
         if (
           blob &&
@@ -100,7 +213,7 @@ export function useOfflineCoverImage(
           typeof URL.createObjectURL === 'function'
         ) {
           const blobUrl = URL.createObjectURL(blob);
-          setOfflineState({ bookId, url: blobUrl });
+          setOfflineState({ bookId, url: blobUrl, isOwned: true });
           return;
         }
       } catch {
@@ -128,6 +241,8 @@ export function useOfflineCoverImage(
     imageError,
     offlineCoverUrl,
     activeCoverUrl,
+    isCheckingLocalCache,
     handleImageError,
+    handleImageLoad,
   };
 }

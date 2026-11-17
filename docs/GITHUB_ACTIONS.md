@@ -222,7 +222,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.48'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.52'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -244,6 +244,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 Continuous inter-procedural GitHub CodeQL SAST scanning both TypeScript/JavaScript source code and GitHub Actions workflow definitions, publishing SARIF findings directly to GitHub's **Security $\to$ Code scanning** tab on public repositories.
 
+- **Run Title (`run-name`)**: `'CodeQL SAST (${{ github.event_name }} on ${{ github.ref_name }})'` (visually distinguishes CodeQL runs from commit-titled `CI Pipeline` runs in the Actions feed)
 - **Triggers**:
   - `push` and `pull_request` on `main`, `master`, `dev`
   - Scheduled: `cron: 30 1 * * 1` (Every Monday at `01:30 UTC`, staggered away from Sunday `catalog-sync.yml`)
@@ -257,6 +258,7 @@ Continuous inter-procedural GitHub CodeQL SAST scanning both TypeScript/JavaScri
 
 Automated pull-request supply-chain firewall backed by GitHub's Dependency Graph, blocking newly introduced `high` or `critical` vulnerabilities and incompatible copyleft (`GPL-2.0`, `GPL-3.0`, `AGPL-3.0`) transitive dependencies before merge.
 
+- **Run Title (`run-name`)**: `'Dependency & License Review (PR #${{ github.event.pull_request.number }})'` (visually distinguishes dependency gates from commit-titled `CI Pipeline` runs on pull requests)
 - **Triggers**: `pull_request` on `main`, `master`, `dev`
 - **Permissions**: `contents: read` (`timeout-minutes: 10`)
 - **Policy Configuration**: `fail-on-severity: high`, `deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0` (powered automatically on public repositories by GitHub Dependency Graph).

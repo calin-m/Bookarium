@@ -89,4 +89,29 @@ describe('useBookshelfCapacity hook', () => {
 
     expect(result.current).toBe(6);
   });
+
+  it('removes the window resize listener on unmount and provides a deterministic SSR snapshot', async () => {
+    const { vi } = await import('vitest');
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    const { unmount } = renderHook(() => useBookshelfCapacity());
+    expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function), { passive: true });
+    const registeredListener = addSpy.mock.calls.find((call) => call[0] === 'resize')?.[1];
+    unmount();
+    expect(removeSpy).toHaveBeenCalledWith('resize', registeredListener);
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+
+    const React = await import('react');
+    const { renderToString } = await import('react-dom/server');
+    function SsrCapacityProbe() {
+      const cap = useBookshelfCapacity();
+      return React.createElement('span', null, String(cap));
+    }
+    const html = renderToString(React.createElement(SsrCapacityProbe));
+    expect(html).toMatch(/<span>\d+<\/span>/);
+    const match = html.match(/<span>(\d+)<\/span>/);
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(6);
+  });
 });

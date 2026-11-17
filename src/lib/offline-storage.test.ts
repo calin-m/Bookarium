@@ -11,66 +11,93 @@ import {
   getOfflineBookCover,
   patchOfflineBookCover,
   fetchAndPatchOfflineCover,
+  saveCachedCoverBlob,
+  warmCoverCache,
+  resetCoverWarmState,
+  getMemoryCachedCoverUrl,
+  MAX_CACHED_COVERS,
+  COVER_CACHE_TTL_MS,
   type OfflineBookRecord,
 } from './offline-storage';
 
+interface MockCoverCacheRecord {
+  bookId: number;
+  blob: Blob;
+  cachedAt: number;
+  byteSize: number;
+}
+
 describe('offline-storage (IndexedDB engine)', () => {
   const store = new Map<number, OfflineBookRecord>();
+  const coverCacheStore = new Map<number, MockCoverCacheRecord>();
 
-  beforeEach(() => {
-    store.clear();
-
-    const mockObjectStore = {
-      put: vi.fn((record: OfflineBookRecord) => {
-        store.set(record.bookId, record);
+  function createMockObjectStore<T extends { bookId: number }>(map: Map<number, T>) {
+    return {
+      put: vi.fn((record: T) => {
+        map.set(record.bookId, record);
         const req: any = { onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
       get: vi.fn((key: number) => {
-        const record = store.get(key);
+        const record = map.get(key);
         const req: any = { result: record, onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
       count: vi.fn((range: any) => {
-        const hasKey = store.has(range?._key ?? range);
+        const hasKey = map.has(range?._key ?? range);
         const req: any = { result: hasKey ? 1 : 0, onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
       delete: vi.fn((key: number) => {
-        store.delete(key);
+        map.delete(key);
         const req: any = { onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
       getAllKeys: vi.fn(() => {
-        const req: any = { result: Array.from(store.keys()), onsuccess: null, onerror: null };
+        const req: any = { result: Array.from(map.keys()), onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
       getAll: vi.fn(() => {
-        const req: any = { result: Array.from(store.values()), onsuccess: null, onerror: null };
+        const req: any = { result: Array.from(map.values()), onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
       clear: vi.fn(() => {
-        store.clear();
+        map.clear();
         const req: any = { onsuccess: null, onerror: null };
         setTimeout(() => req.onsuccess?.(), 0);
         return req;
       }),
     };
+  }
+
+  beforeEach(() => {
+    store.clear();
+    coverCacheStore.clear();
+    resetCoverWarmState();
+
+    const bookObjectStore = createMockObjectStore(store);
+    const coverCacheObjectStore = createMockObjectStore(coverCacheStore);
 
     const mockTransaction = {
-      objectStore: vi.fn(() => mockObjectStore),
+      objectStore: vi.fn((name: string) =>
+        name === 'cover_cache' ? coverCacheObjectStore : bookObjectStore
+      ),
+      oncomplete: null as (() => void) | null,
+      onerror: null as (() => void) | null,
     };
 
     const mockDB = {
       transaction: vi.fn(() => mockTransaction),
       objectStoreNames: { contains: vi.fn(() => true) },
       createObjectStore: vi.fn(),
+      close: vi.fn(),
+      onversionchange: null as (() => void) | null,
     };
 
     const mockOpenRequest: any = {
@@ -78,6 +105,7 @@ describe('offline-storage (IndexedDB engine)', () => {
       onsuccess: null,
       onerror: null,
       onupgradeneeded: null,
+      onblocked: null,
     };
 
     (globalThis as any).indexedDB = {
@@ -746,6 +774,84 @@ describe('offline-storage (IndexedDB engine)', () => {
       expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=402&type=cover');
       expect(store.get(402)?.coverBlob).toBeDefined();
       fetchSpy.mockRestore();
+    });
+
+    it('persists mirror-agnostic cover_cache LRU entries, expires stale TTL entries, warms cleanly with 429 cooldown, and clears on wipe', async () => {
+      const createUrlSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+        return `blob:cover-${(blob as Blob).size}-${Math.random()}`;
+      });
+      const revokeUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      const cachedBlob = new Blob(['browsed-cover'], { type: 'image/jpeg' });
+      await saveCachedCoverBlob(777, cachedBlob);
+      expect(coverCacheStore.get(777)?.blob).toBe(cachedBlob);
+      expect(getMemoryCachedCoverUrl(777)).toMatch(/^blob:cover-/);
+      expect(await getOfflineBookCover(777)).toBe(cachedBlob);
+
+      // Expired cover_cache entries (> 30d TTL) are evicted and return null
+      coverCacheStore.set(778, {
+        bookId: 778,
+        blob: new Blob(['stale-cover'], { type: 'image/jpeg' }),
+        cachedAt: Date.now() - COVER_CACHE_TTL_MS - 10_000,
+        byteSize: 11,
+      });
+      expect(await getOfflineBookCover(778)).toBeNull();
+      expect(coverCacheStore.has(778)).toBe(false);
+
+      // Enforce bounded LRU eviction above MAX_CACHED_COVERS (300)
+      const now = Date.now();
+      for (let i = 1; i <= MAX_CACHED_COVERS; i++) {
+        coverCacheStore.set(1000 + i, {
+          bookId: 1000 + i,
+          blob: new Blob([`cover-${i}`], { type: 'image/jpeg' }),
+          cachedAt: now - (MAX_CACHED_COVERS + 50 - i) * 1000,
+          byteSize: 8,
+        });
+      }
+      await saveCachedCoverBlob(9999, new Blob(['newest-cover'], { type: 'image/jpeg' }));
+      expect(coverCacheStore.size).toBeLessThanOrEqual(MAX_CACHED_COVERS);
+      expect(coverCacheStore.has(9999)).toBe(true);
+      expect(coverCacheStore.has(1001)).toBe(false);
+
+      // Background warmer hits internal cover proxy once per ID and backs off cleanly on HTTP 429
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(new Blob(['warmed-jpeg'], { type: 'image/jpeg' }), {
+            status: 200,
+            headers: { 'Content-Type': 'image/jpeg' },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response('Rate limited', {
+            status: 429,
+            headers: { 'Retry-After': '30' },
+          })
+        );
+
+      warmCoverCache(555);
+      warmCoverCache(555); // Duplicate queued ID is ignored
+      await vi.waitFor(() => {
+        expect(coverCacheStore.has(555)).toBe(true);
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=555&type=cover');
+
+      warmCoverCache(556);
+      await vi.waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalledTimes(2);
+      });
+      warmCoverCache(557); // Suppressed during 429 cooldown
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+      // clearAllOfflineBooks clears both offline_books and cover_cache
+      await clearAllOfflineBooks();
+      expect(coverCacheStore.size).toBe(0);
+      expect(getMemoryCachedCoverUrl(777)).toBeNull();
+
+      fetchSpy.mockRestore();
+      createUrlSpy.mockRestore();
+      revokeUrlSpy.mockRestore();
     });
   });
 });

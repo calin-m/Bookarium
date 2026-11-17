@@ -952,4 +952,94 @@ describe('bookshelf-cloud-sync', () => {
       vi.useRealTimers();
     }
   });
+
+  it('exits offline cloud sync cleanly, skips flush/sync when session verification fails, and deletes orphaned shelf items when no default shelf remains', async () => {
+    const authStoreModule = await import('@/stores/useAuthStore');
+    const shouldVerifySpy = vi.spyOn(authStoreModule, 'shouldVerifyCloudSession');
+    const verifySessionSpy = vi.spyOn(authStoreModule, 'verifyActiveCloudSession');
+
+    // 1. Offline early exit skips Supabase entirely
+    const onLineSpy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      await executeBookshelfCloudSync('u-offline', get, set);
+      expect(mockFrom).not.toHaveBeenCalled();
+      expect(state.isSyncing).toBe(false);
+    } finally {
+      onLineSpy.mockRestore();
+    }
+
+    // 2. Active session check failing skips both flushOutbox and cloud sync writes
+    state.outbox = [
+      {
+        id: 'pending-1',
+        timestamp: '',
+        type: 'DELETE_BOOK',
+        payload: { bookshelf_id: 's-1', book_id: 1342 },
+      },
+    ];
+    shouldVerifySpy.mockReturnValue(true);
+    verifySessionSpy.mockResolvedValue(false);
+    try {
+      await executeFlushOutbox('u-expired', get, set);
+      expect(mockFrom).not.toHaveBeenCalled();
+      expect(state.outbox).toHaveLength(1);
+
+      await executeBookshelfCloudSync('u-expired', get, set);
+      expect(mockFrom).not.toHaveBeenCalled();
+      expect(state.isSyncing).toBe(false);
+    } finally {
+      shouldVerifySpy.mockRestore();
+      verifySessionSpy.mockRestore();
+    }
+
+    // 3. Deleting the sole shelf with no remaining defaultShelf deletes its bookshelf_items instead of reassigning
+    state.cloudBookshelves = [
+      { id: 's-sole', user_id: 'u-del', name: 'Temporary', is_default: false, created_at: '', updated_at: '' },
+    ];
+    state.activeBookshelfId = 's-sole';
+    state.cloudBookshelfItems = [
+      {
+        id: 'item-sole',
+        bookshelf_id: 's-sole',
+        user_id: 'u-del',
+        book_id: 1342,
+        book_title: 'Pride and Prejudice',
+        book_authors: ['Jane Austen'],
+        cover_url: null,
+        added_at: '',
+      },
+    ];
+
+    const deletedTables: string[] = [];
+    const deleteFilters: Array<[string, string]> = [];
+    const updateSpy = vi.fn();
+    mockFrom.mockImplementation((table: string) => {
+      deletedTables.push(table);
+      return {
+        update: updateSpy,
+        delete: () => ({
+          eq: (col1: string, val1: string) => ({
+            eq: (col2: string, val2: string) => {
+              deleteFilters.push([col1, val1], [col2, val2]);
+              return Promise.resolve({ error: null });
+            },
+          }),
+        }),
+      };
+    });
+
+    const deleted = await executeDeleteCloudBookshelf('s-sole', 'u-del', get, set);
+    expect(deleted).toBe(true);
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(deletedTables).toContain('bookshelf_items');
+    expect(deletedTables).toContain('bookshelves');
+    expect(deleteFilters).toEqual([
+      ['bookshelf_id', 's-sole'],
+      ['user_id', 'u-del'],
+      ['id', 's-sole'],
+      ['user_id', 'u-del'],
+    ]);
+    expect(state.cloudBookshelves).toHaveLength(0);
+    expect(state.activeBookshelfId).toBeNull();
+  });
 });
