@@ -114,6 +114,7 @@ jobs:
             fi
             if gh release view catalog-cache >/dev/null 2>&1; then
               gh release upload catalog-cache $UPLOAD_FILES --clobber
+              gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/catalog-cache" -f "sha=${GITHUB_SHA}" -F "force=true"
             else
               gh release create catalog-cache $UPLOAD_FILES \
                 --title "Gutenberg Catalog Snapshot Cache" \

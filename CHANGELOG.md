@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.54] - 2026-11-17
+### *Automated catalog-cache Tag Synchronization & 9-Workflow Parity*
+
+### Added
+- **In-Place `catalog-cache` Release Tag Advancement (`.github/workflows/catalog-tag-sync.yml`, `.github/workflows/catalog-sync.yml`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Added the lightweight zero-checkout `catalog-tag-sync.yml` workflow (`push` to `master` + `workflow_dispatch`, `permissions: contents: write`) and updated `catalog-sync.yml` live uploads to force-advance `refs/tags/catalog-cache` in place (`PATCH` API with `force: true` when the release exists), keeping `catalog-cache` `Source code (zip)`/`(tar.gz)` synced with `master` without mutating `gutenberg-catalog-cache.json.gz` or `.sha256` outside live catalog syncs (`ADR-080`).
+
+
 ## [2.9.53] - 2026-11-17
 ### *Non-Breaking Babel AST SAST Transposition, CLI/Archive Integrity, License SCA & Pass 7 Live HTTP Probes*
 

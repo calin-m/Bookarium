@@ -1,0 +1,31 @@
+name: Sync catalog-cache Tag
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalog-cache-tag-sync
+  cancel-in-progress: true
+
+jobs:
+  sync_tag:
+    name: Advance catalog-cache Tag Ref
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Advance catalog-cache Git Tag In Place
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view catalog-cache >/dev/null 2>&1; then
+            echo "catalog-cache release does not exist yet; skipping tag advancement."
+            exit 0
+          fi
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/catalog-cache" -f "sha=${GITHUB_SHA}" -F "force=true"
+          echo "Advanced refs/tags/catalog-cache to ${GITHUB_SHA}."

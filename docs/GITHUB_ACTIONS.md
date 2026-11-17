@@ -11,11 +11,12 @@ Complete operator reference for every workflow under [`.github/workflows/`](../.
 
 ## 📋 1. Workflow Matrix at a Glance
 
-Bookarium maintains **8** GitHub Actions workflows (validated 1:1 against [`.github/workflows/`](../.github/workflows) by **Pass 5** in [`scripts/verify-build.js`](../scripts/verify-build.js)):
+Bookarium maintains **9** GitHub Actions workflows (validated 1:1 against [`.github/workflows/`](../.github/workflows) by **Pass 5** in [`scripts/verify-build.js`](../scripts/verify-build.js)):
 
 | Workflow Name | File | Triggers & Exact Schedule | Permissions | Concurrency Lock | Timeout | `npm ci` | Required Secrets | Optional Secrets |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Unified Gutenberg Catalog Sync** | [`.github/workflows/catalog-sync.yml`](../.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays 02:00 UTC)<br>+ `workflow_dispatch` | `contents: write` | `gutenberg-catalog-sync` | `45m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY`<br>+ built-in `GITHUB_TOKEN` | `GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
+| **Sync catalog-cache Tag** | [`.github/workflows/catalog-tag-sync.yml`](../.github/workflows/catalog-tag-sync.yml) | `push` on `master`<br>+ `workflow_dispatch` | `contents: write` | `catalog-cache-tag-sync` | `5m` | **No** *(~5s)* | Built-in `GITHUB_TOKEN` | — |
 | **Featured Quotes Sync** | [`.github/workflows/quotes-sync.yml`](../.github/workflows/quotes-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `featured-quotes-sync` | `30m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Gutenberg Translations Sync** | [`.github/workflows/translations-sync.yml`](../.github/workflows/translations-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `gutenberg-translations-sync` | `20m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Manual Cache Purge** | [`.github/workflows/cache-purge.yml`](../.github/workflows/cache-purge.yml) | `workflow_dispatch` only *(Selective Purge)* | `contents: read` | `cache-purge` | `5m` | **No** *(~5s)* | `VERCEL_API_TOKEN`\*<br>`VERCEL_PROJECT_ID`\* | `VERCEL_TEAM_ID` |
@@ -41,11 +42,12 @@ Configure repository secrets under **GitHub Repository $\to$ Settings $\to$ Secr
 | **`VERCEL_API_TOKEN`** | `catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml` | *Optional* *(Required for live CDN purge)* | **Vercel Dashboard $\to$ Account Settings $\to$ Tokens**. Bearer token used by [`scripts/purge-vercel-cache.js`](../scripts/purge-vercel-cache.js) (`POST https://api.vercel.com/v1/edge-cache/dangerously-delete-by-tags`). |
 | **`VERCEL_PROJECT_ID`** | `catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml` | *Optional* *(Required for live CDN purge)* | **Vercel Dashboard $\to$ Project $\to$ Settings $\to$ General $\to$ Project ID** (`prj_...`). Passed as `projectIdOrName`. |
 | **`VERCEL_TEAM_ID`** | `catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml` | *Optional* *(Team scope only)* | **Vercel Dashboard $\to$ Team Settings $\to$ General $\to$ Team ID** (`team_...`). Appends `&teamId=...` for Vercel Team or Hobby personal team scopes. |
-| **`GITHUB_TOKEN`** | `catalog-sync.yml`, `release.yml` | **Automatic** *(Built-in)* | Provisioned automatically by GitHub Actions; requires no manual secret creation. Must remain allowed to write releases (`contents: write`) in repository workflow permissions. |
+| **`GITHUB_TOKEN`** | `catalog-sync.yml`, `catalog-tag-sync.yml`, `release.yml` | **Automatic** *(Built-in)* | Provisioned automatically by GitHub Actions; requires no manual secret creation. Must remain allowed to write releases and move tags (`contents: write`) in repository workflow permissions. |
 
 ### 2.2 Permanent Release Snapshot Asset (`catalog-cache`)
-- [`catalog-sync.yml`](../.github/workflows/catalog-sync.yml) persists `gutenberg-catalog-cache.json.gz` (~4.5 MB) and its companion `gutenberg-catalog-cache.json.gz.sha256` checksum sidecar inside a permanent GitHub Release tagged `catalog-cache` instead of short-lived GitHub Actions caches.
+- [`catalog-sync.yml`](../.github/workflows/catalog-sync.yml) persists `gutenberg-catalog-cache.json.gz` (~4.5–6.4 MB) and its companion `gutenberg-catalog-cache.json.gz.sha256` checksum sidecar inside a permanent GitHub Release tagged `catalog-cache` instead of short-lived GitHub Actions caches.
 - **Zero manual bootstrap needed & fail-closed checksum verification**: on restore, `loadCatalogSnapshotCache` verifies `gutenberg-catalog-cache.json.gz` against `gutenberg-catalog-cache.json.gz.sha256` via `crypto.timingSafeEqual` (falling back safely to live Supabase diff queries if corrupt or tampered, and gracefully tolerating a missing `.sha256` sidecar on legacy pre-upgrade snapshots); on the first full non-dry-run run (`dry_run: false` with blank `limit`), `catalog-sync.yml` automatically creates or updates the `catalog-cache` release (`gh release upload ... --clobber`) with both files, guarded by a `>= 50,000`-book safety floor.
+- **Snapshot vs. auto-generated Source Archives**: `gutenberg-catalog-cache.json.gz` and `.sha256` update **only** on live `catalog-sync.yml` runs, whereas GitHub auto-generates `Source code (zip)` / `(tar.gz)` from the `catalog-cache` Git tag (`.../archive/refs/tags/catalog-cache.zip`). Both [`catalog-tag-sync.yml`](../.github/workflows/catalog-tag-sync.yml) (on `push` to `master`) and live `catalog-sync.yml` uploads advance `refs/tags/catalog-cache` in place (`PATCH` API with `force: true`), keeping source archives current with `master` without touching the catalog snapshot assets.
 
 ### 2.3 Vercel Edge Cache Tag Invalidation (`Vercel-Cache-Tag`)
 - Live database responses attach semantic CDN tags (`catalog`, `quotes`, or `catalog,quotes` on `GET /api/books`, and `translations` on `GET /api/books/translations`), while fallback `"cache"` and `no-store` error responses omit tags.
@@ -222,7 +224,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.53'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.54'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -265,18 +267,33 @@ Automated pull-request supply-chain firewall backed by GitHub's Dependency Graph
 
 ---
 
+### 3.9 `Sync catalog-cache Tag` ([`.github/workflows/catalog-tag-sync.yml`](../.github/workflows/catalog-tag-sync.yml))
+
+Lightweight zero-checkout automation keeping the `catalog-cache` Release's auto-generated `Source code (zip)` and `Source code (tar.gz)` aligned with `master` without altering `gutenberg-catalog-cache.json.gz` or `.sha256` snapshots or modifying [`ci.yml`](../.github/workflows/ci.yml)'s read-only permissions.
+
+- **Triggers**:
+  - `push` on `master`
+  - `workflow_dispatch`
+- **Concurrency & Permissions**: `concurrency: catalog-cache-tag-sync` (`cancel-in-progress: true`), `permissions: contents: write`, `timeout-minutes: 5`
+- **Dependencies**: Zero `npm ci`, zero `actions/checkout` (runs directly with GitHub's pre-installed `gh` CLI)
+- **CI Execution Sequence**:
+  1. Verify `catalog-cache` Release exists via `gh release view catalog-cache` (`exit 0` cleanly if absent on fresh forks).
+  2. Call `gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/catalog-cache" -f "sha=${GITHUB_SHA}" -F "force=true"` to advance the existing tag ref in place (never deleting the tag, preserving uploaded catalog assets).
+
+---
+
 ## 🛠️ 4. Related GitHub Automation & Marketplace Actions
 
 | Component | Configuration / Pin | Scope & Schedule |
 | :--- | :--- | :--- |
 | **Dependabot** | [`.github/dependabot.yml`](../.github/dependabot.yml) | Automated `monthly` PRs targeting `master` for `npm` dependencies (`open-pull-requests-limit: 5`, `chore(deps)`) and `github-actions` commit-SHA updates (`open-pull-requests-limit: 3`, `chore(ci)`). |
-| **Checkout Action** | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` (`v4.4.0`) | Used across all 8 workflows (`fetch-depth: 0` in `release.yml` for tag/changelog extraction). |
+| **Checkout Action** | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` (`v4.4.0`) | Used across `8` workflows (`fetch-depth: 0` in `release.yml` for tag/changelog extraction; omitted in `catalog-tag-sync.yml`). |
 | **Node.js Setup** | `actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020` (`v4.4.0`) | Pins `node-version: '22'` across 6 Node.js workflows (enables `cache: 'npm'` except `cache-purge.yml`, which needs zero npm dependencies). |
 | **CodeQL Action (`init` / `analyze`)** | `github/codeql-action/*@33d7b85da1a04171e211befe2c739303b9a4c066` (`v4.39.3`) | Executes multi-target `javascript-typescript` and `actions` SARIF analysis inside `codeql.yml`. |
 | **Dependency Review Action** | `actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48` (`v4.9.0`) | Enforces `high` CVE and `GPL`/`AGPL` license checks on PR dependency changes inside `dependency-review.yml`. |
 | **Release Publisher** | `softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65` (`v2.6.2`) | Publishes GitHub Releases from extracted `CHANGELOG.md` notes inside `release.yml`. |
 
-> **Workflow Security Posture (Pass 0.75 Enforced)**: All 8 workflows declare explicit least-privilege `permissions:`, pin every external `uses:` step to a 40-character immutable commit SHA (`/@[0-9a-f]{40}$/`), forbid combining `pull_request_target` with `contents: write`, and bind inputs via `env:` instead of directly interpolating `${{ github.event.* }}` inside `run:` shell scripts.
+> **Workflow Security Posture (Pass 0.75 Enforced)**: All 9 workflows declare explicit least-privilege `permissions:`, pin every external `uses:` step to a 40-character immutable commit SHA (`/@[0-9a-f]{40}$/`), forbid combining `pull_request_target` with `contents: write`, and bind inputs via `env:` instead of directly interpolating `${{ github.event.* }}` inside `run:` shell scripts.
 
 ---
 

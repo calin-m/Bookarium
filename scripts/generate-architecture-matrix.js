@@ -722,7 +722,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 47} RLS policies, ${counts.dbFunctionCount || 9} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 17} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser & behavioral contract specifications (\`GUTENBERG_PARSER.md\`, \`SYSTEM_CONTRACTS.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD, security scanning & release publisher (`ci.yml`, `codeql.yml`, `dependency-review.yml`, `release.yml`, all 40-char commit-SHA pinned), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance & cache purge workflows (`translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD, security scanning & release publisher (`ci.yml`, `codeql.yml`, `dependency-review.yml`, `release.yml`, all 40-char commit-SHA pinned), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), automated `catalog-cache` Git tag advancement (`catalog-tag-sync.yml`), on-demand manual maintenance & cache purge workflows (`translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
   ];
 
   let auditTotals = { suites: counts.totalSuites || 258, tests: '2,645' };
@@ -1827,6 +1827,8 @@ function generateMarkdown() {
       'On-demand (`workflow_dispatch`) GitHub Actions workflow (`concurrency: featured-quotes-sync`) populating `10–16` multi-quote spreads per book across the Two-Tier Bounded Quote Pool (`500 Popular + 64 Recent`) or specific `--ids` via selectable PGLAF mirrors, applying full partial-index Option-A out-of-window pruning (`--max-prune`, default `2000`), and invalidating Vercel Edge `quotes` cache tags via `scripts/purge-vercel-cache.js` when `dry_run != \'true\'` (scheduled Sunday execution is unified inside `catalog-sync.yml` via `quote-diff.json`).',
     'cache-purge.yml':
       'Manual-only (`workflow_dispatch`, zero `npm ci`) GitHub Actions utility workflow (`concurrency: cache-purge`, `permissions: contents: read`) allowing operators to selectively invalidate Vercel Edge CDN cache tags (`purge_catalog`, `purge_quotes`, `purge_translations` defaulting unchecked with a fail-fast guard requiring at least one checkbox selected), choose `target` (`production` / `preview`), and run `dry_run` diagnostics via `scripts/purge-vercel-cache.js`.',
+    'catalog-tag-sync.yml':
+      'Lightweight (`on: push: branches: [master]` + `workflow_dispatch`, zero `npm ci`, zero checkout, `concurrency: catalog-cache-tag-sync`, `permissions: contents: write`) workflow that advances `refs/tags/catalog-cache` in place (`PATCH` with `force: true` when `catalog-cache` exists) so GitHub Release `Source code (zip)` and `(tar.gz)` stay aligned with `master` without touching `gutenberg-catalog-cache.json.gz` or `.sha256` snapshots.',
     'ci.yml':
       'Continuous Integration pipeline (SHA-pinned actions, `permissions: contents: read`) executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, production build verification, and deterministic `git diff --exit-code` living-documentation sync enforcement on Node 22.',
     'codeql.yml':
@@ -1843,6 +1845,7 @@ function generateMarkdown() {
   if (fs.existsSync(workflowsDir)) {
     const wfOrder = [
       'catalog-sync.yml',
+      'catalog-tag-sync.yml',
       'translations-sync.yml',
       'quotes-sync.yml',
       'cache-purge.yml',
@@ -1882,6 +1885,8 @@ function generateMarkdown() {
         triggerDesc = '`push` (`tags: v*`) / On-Demand (`workflow_dispatch`)';
       } else if (wfFile === 'cache-purge.yml') {
         triggerDesc = 'On-Demand (`workflow_dispatch`) • Standalone Manual Cache Purge';
+      } else if (wfFile === 'catalog-tag-sync.yml') {
+        triggerDesc = '`push` (`master`) / On-Demand (`workflow_dispatch`)';
       } else if (wfText.includes('workflow_dispatch')) {
         triggerDesc = 'On-Demand (`workflow_dispatch`) • Chained in `catalog-sync.yml`';
       }
@@ -1911,6 +1916,7 @@ function generateMarkdown() {
     '        TransTrigger["🎛️ translations-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: gutenberg-translations-sync"]',
     '        QuotesTrigger["🎛️ quotes-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: featured-quotes-sync"]',
     '        PurgeTrigger["🧹 cache-purge.yml (Manual Cache Purge)\\n• On-Demand (workflow_dispatch • Unchecked Defaults)\\n• concurrency: cache-purge"]',
+    '        TagTrigger["🔖 catalog-tag-sync.yml (Snapshot Tag Refresher)\\n• push: master / workflow_dispatch • contents: write\\n• Advances refs/tags/catalog-cache in place"]',
     '        CITrigger["✅ ci.yml, codeql.yml, dependency-review.yml & release.yml\\n• SHA-Pinned Actions • CodeQL (cron: 30 1 * * 1) & Dependency Review\\n• Node 22 + 7-Gateway Quality Engine"]',
     '    end',
     '',
@@ -2569,7 +2575,7 @@ function generateMarkdown() {
     '    subgraph BookariumRuntime ["Bookarium Execution Tiers"]',
     `        BrowserTier["🖥️ Browser Client\\n(React 19 SPA, Service Worker ${swMeta.versionLabel}, IndexedDB)"]`,
     '        EdgeTier["⚡ Vercel Edge & Serverless (iad1)\\n(src/proxy.ts, /api/books/**, /auth/callback)"]',
-    '        CLITier["🛠️ GitHub Actions & Node.js CLI\\n(catalog-sync.yml, translations-sync.yml, quotes-sync.yml, cache-purge.yml)"]',
+    '        CLITier["🛠️ GitHub Actions & Node.js CLI\\n(catalog-sync.yml, catalog-tag-sync.yml, translations-sync.yml, quotes-sync.yml, cache-purge.yml)"]',
     '    end',
     '',
     '    subgraph ExternalSystems ["External Public Domain & Cloud Infrastructure"]',
@@ -2706,6 +2712,7 @@ function generateMarkdown() {
     '        TransCron["🎛️ .github/workflows/translations-sync.yml\\n(On-Demand workflow_dispatch -> ingest-translations.js + Edge Tag Purge)"]',
     '        QuotesCron["🎛️ .github/workflows/quotes-sync.yml\\n(On-Demand workflow_dispatch -> sync-featured-quotes.js + Edge Tag Purge)"]',
     '        PurgeManual["🧹 .github/workflows/cache-purge.yml\\n(Manual-Only workflow_dispatch -> Selective Tag Purge + Target)"]',
+    '        CatalogTagSync["🔖 .github/workflows/catalog-tag-sync.yml\\n(Push to master -> Advance refs/tags/catalog-cache in place)"]',
     '    end',
     '',
     '    Client --> EdgeProxy',
