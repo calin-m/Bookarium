@@ -1,13 +1,14 @@
 /**
  * @module src/proxy
  * @scope Edge middleware proxy coordinating jurisdiction resolution (`x-vercel-ip-country` / `bookarium-geo-country`), share token forwarding (`?s=`), and conditional Supabase SSR session refresh.
- * @invariant Never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches.
+ * @invariant Never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches; configure browser-readable geo/override cookies with `sameSite: 'lax'` and protocol-aware `secure: isHttpsRequest(request)`.
  * @invariant Bypass SSR token rotation on App Router RSC navigations (`rsc: 1`) outside `/account` and `/account/*`; only set `x-middleware-override-headers` when `validShareToken` is present.
  * @rationale Skipping cookies and `x-middleware-override-headers` on public API and RSC requests unblocks Vercel Edge CDN `s-maxage` caching while preventing concurrent prefetch/callback tabs from racing single-use OAuth refresh tokens.
  * @adr ADR-035, ADR-042, ADR-080
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { isHttpsRequest } from '@/lib/api-utils';
 import { updateSession } from '@/lib/supabase/middleware';
 
 import {
@@ -96,6 +97,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isPublicBookApi && !isSwPrecache) {
+    const secureCookie = isHttpsRequest(request);
     // If in development and the user passed ?country=XX, persist it to dev override cookie
     const isDev = process.env.NODE_ENV !== 'production';
     const queryOverride = isDev ? request.nextUrl.searchParams.get('country') : null;
@@ -106,6 +108,7 @@ export async function proxy(request: NextRequest) {
           path: '/',
           sameSite: 'lax',
           httpOnly: false,
+          secure: secureCookie,
           maxAge: 60 * 60 * 24 * 7,
         });
       }
@@ -116,6 +119,7 @@ export async function proxy(request: NextRequest) {
       path: '/',
       sameSite: 'lax',
       httpOnly: false, // Must be readable by client React hooks
+      secure: secureCookie,
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
   }

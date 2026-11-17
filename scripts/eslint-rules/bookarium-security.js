@@ -7,11 +7,11 @@
  * and CI/Pre-Commit pipelines (`npm run lint`, `npm run security:audit`, `npm run verify`).
  *
  * @module scripts/eslint-rules/bookarium-security
- * @scope Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS sinks.
- * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/` and `scripts/`.
- * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers.
- * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, and weak assertions in real time before commit.
- * @adr ADR-067, ADR-073
+ * @scope Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting & security header parity, cookie flags, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS/tabnabbing sinks.
+ * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly).
+ * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers or static single-slash client routes.
+ * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, and weak assertions in real time before commit.
+ * @adr ADR-067, ADR-073, ADR-080
  */
 
 const fs = require('fs');
@@ -20,10 +20,12 @@ const path = require('path');
 const SERVER_ONLY_IMPORT_PATTERNS = [
   /^@\/lib\/supabase\/server$/,
   /^@\/lib\/supabase\/middleware$/,
+  /^@\/lib\/server-rsc-nav$/,
   /^\.\.?\/.*supabase\/server$/,
   /^\.\.?\/.*supabase\/middleware$/,
+  /^\.\.?\/.*server-rsc-nav$/,
   /^next\/headers$/,
-  /^(?:node:)?(?:fs|fs\/promises|child_process|net|tls|dgram|cluster|worker_threads|zlib|dns)$/,
+  /^(?:node:)?(?:fs|fs\/promises|child_process|net|tls|dgram|cluster|worker_threads|zlib|dns|http|https)$/,
   /^(?:@\/|\.\.?\/).*scripts\//,
 ];
 
@@ -39,14 +41,18 @@ const UNIVERSAL_SANITIZER_FUNCTIONS = new Set([
 
 const FETCH_SANITIZER_FUNCTIONS = new Set([
   'isSafeUpstreamUrl',
+  'sanitizeUpstreamUrl',
   'sanitizeSupabaseUrl',
+  'sanitizeBookFormatUrl',
 ]);
 
 const REDIRECT_SANITIZER_FUNCTIONS = new Set([
   'sanitizeRedirectPath',
+  'stripRecoveryFromRedirectPath',
   'resolveCanonicalAuthOrigin',
   'buildAuthRedirectUrl',
   'buildShareUrl',
+  'sanitizeBookFormatUrl',
 ]);
 
 const DB_AND_QUERY_SANITIZER_FUNCTIONS = new Set([
@@ -241,7 +247,7 @@ function detectDirectTaintSource(node) {
   if (node.type === 'CallExpression') {
     const { objectName, methodName, fullName } = getCalleeName(node);
 
-    // searchParams.get(...) / req.nextUrl.searchParams.get(...) / new URL(...).searchParams.get(...)
+    // searchParams.get(...) / useSearchParams().get(...) / req.nextUrl.searchParams.get(...) / new URL(...).searchParams.get(...)
     if (
       methodName === 'get' &&
       (objectName === 'searchParams' ||
@@ -249,7 +255,11 @@ function detectDirectTaintSource(node) {
         (node.callee.type === 'MemberExpression' &&
           node.callee.object &&
           node.callee.object.type === 'MemberExpression' &&
-          getPropertyName(node.callee.object) === 'searchParams'))
+          getPropertyName(node.callee.object) === 'searchParams') ||
+        (node.callee.type === 'MemberExpression' &&
+          node.callee.object &&
+          node.callee.object.type === 'CallExpression' &&
+          getCalleeName(node.callee.object).methodName === 'useSearchParams'))
     ) {
       return 'URL searchParams.get()';
     }
@@ -313,6 +323,11 @@ function detectDirectTaintSource(node) {
       return `request.${prop}`;
     }
 
+    // document.referrer
+    if (objName === 'document' && prop === 'referrer') {
+      return 'document.referrer';
+    }
+
     // params.<key> / context.params.<key>
     if (objName === 'params' && prop) {
       return `request params.${prop}`;
@@ -335,6 +350,7 @@ function detectDirectTaintSource(node) {
  */
 function getNodeSanitizedSinks(node, sanitizedVarMap = null, taintedVarMap = null) {
   if (!node) return null;
+  if (detectDirectTaintSource(node)) return null;
 
   if (node.type === 'Literal' || node.type === 'StringLiteral') {
     return new Set(['*']);
@@ -996,6 +1012,18 @@ const rules = {
         }
       }
 
+      function getStaticRegexString(argNode) {
+        if (!argNode) return null;
+        if ((argNode.type === 'Literal' || argNode.type === 'StringLiteral') && typeof argNode.value === 'string') {
+          return argNode.value;
+        }
+        if (argNode.type === 'TemplateLiteral' && (!argNode.expressions || argNode.expressions.length === 0)) {
+          const q0 = argNode.quasis && argNode.quasis[0];
+          return q0 && q0.value ? String(q0.value.cooked ?? q0.value.raw ?? '') : '';
+        }
+        return null;
+      }
+
       return {
         Literal(node) {
           if (node.regex && typeof node.regex.pattern === 'string') {
@@ -1009,6 +1037,19 @@ const rules = {
         },
         CallExpression(node) {
           const { objectName, methodName } = getCalleeName(node);
+
+          if (
+            methodName === 'RegExp' &&
+            (objectName === null ||
+              objectName === 'window' ||
+              objectName === 'globalThis')
+          ) {
+            const patternArg = node.arguments && node.arguments[0];
+            const staticPattern = getStaticRegexString(patternArg);
+            if (staticPattern !== null) {
+              checkRegexPattern(patternArg, staticPattern);
+            }
+          }
 
           if (
             methodName === 'eval' &&
@@ -1077,6 +1118,20 @@ const rules = {
               node,
               message: 'Dynamic new Function() constructor is strictly forbidden.',
             });
+            return;
+          }
+
+          if (
+            methodName === 'RegExp' &&
+            (objectName === null ||
+              objectName === 'window' ||
+              objectName === 'globalThis')
+          ) {
+            const patternArg = node.arguments && node.arguments[0];
+            const staticPattern = getStaticRegexString(patternArg);
+            if (staticPattern !== null) {
+              checkRegexPattern(patternArg, staticPattern);
+            }
           }
         },
       };
@@ -1102,6 +1157,80 @@ const rules = {
       const filename = normalizeFilename(context);
       if (isTestOrMockFile(filename)) return {};
 
+      function unwrapTsExpr(expr) {
+        let cur = expr;
+        while (
+          cur &&
+          (cur.type === 'TSAsExpression' ||
+            cur.type === 'TSTypeAssertion' ||
+            cur.type === 'TSNonNullExpression' ||
+            cur.type === 'ParenthesizedExpression')
+        ) {
+          cur = cur.expression;
+        }
+        return cur;
+      }
+
+      function resolveConstantStringExpr(expr) {
+        const cur = unwrapTsExpr(expr);
+        if (!cur) return null;
+        if ((cur.type === 'Literal' || cur.type === 'StringLiteral') && typeof cur.value === 'string') {
+          return cur.value;
+        }
+        if (cur.type === 'TemplateLiteral' && (!cur.expressions || cur.expressions.length === 0)) {
+          const q0 = cur.quasis && cur.quasis[0];
+          return q0 && q0.value ? String(q0.value.cooked ?? q0.value.raw ?? '') : '';
+        }
+        if (cur.type === 'BinaryExpression' && cur.operator === '+') {
+          const leftVal = resolveConstantStringExpr(cur.left);
+          const rightVal = resolveConstantStringExpr(cur.right);
+          if (leftVal !== null && rightVal !== null) {
+            return leftVal + rightVal;
+          }
+        }
+        return null;
+      }
+
+      function extractExprLeadingStrings(expr) {
+        const cur = unwrapTsExpr(expr);
+        if (!cur) return [];
+        const constant = resolveConstantStringExpr(cur);
+        if (constant !== null) {
+          return [constant];
+        }
+        if (cur.type === 'TemplateLiteral' && cur.quasis && cur.quasis[0] && cur.quasis[0].value) {
+          return [String(cur.quasis[0].value.cooked ?? cur.quasis[0].value.raw ?? '')];
+        }
+        if (cur.type === 'BinaryExpression' && cur.operator === '+') {
+          const leftConst = resolveConstantStringExpr(cur.left);
+          if (leftConst !== null) {
+            const rightStrings = extractExprLeadingStrings(cur.right);
+            if (rightStrings.length > 0) {
+              return rightStrings.map((s) => `${leftConst}${s}`);
+            }
+            return leftConst.trim().length > 0 ? [leftConst] : [];
+          }
+          const leftStrings = extractExprLeadingStrings(cur.left);
+          if (leftStrings.some((s) => s.trim().length > 0)) {
+            return leftStrings;
+          }
+          return extractExprLeadingStrings(cur.right);
+        }
+        if (cur.type === 'ConditionalExpression') {
+          return [
+            ...extractExprLeadingStrings(cur.consequent),
+            ...extractExprLeadingStrings(cur.alternate),
+          ];
+        }
+        if (cur.type === 'LogicalExpression') {
+          return [
+            ...extractExprLeadingStrings(cur.left),
+            ...extractExprLeadingStrings(cur.right),
+          ];
+        }
+        return [];
+      }
+
       function getJsxAttrStaticString(attrNode) {
         if (!attrNode || !attrNode.value) return null;
         const val = attrNode.value;
@@ -1109,23 +1238,22 @@ const rules = {
           return val.value;
         }
         if (val.type === 'JSXExpressionContainer' && val.expression) {
-          const expr = val.expression;
-          if (
-            (expr.type === 'Literal' || expr.type === 'StringLiteral') &&
-            typeof expr.value === 'string'
-          ) {
-            return expr.value;
-          }
-          if (
-            expr.type === 'TemplateLiteral' &&
-            expr.quasis &&
-            expr.quasis[0] &&
-            expr.quasis[0].value
-          ) {
-            return String(expr.quasis[0].value.cooked || expr.quasis[0].value.raw || '');
-          }
+          const candidates = extractExprLeadingStrings(val.expression);
+          return candidates.length > 0 ? candidates[0] : null;
         }
         return null;
+      }
+
+      function getJsxAttrCandidateStrings(attrNode) {
+        if (!attrNode || !attrNode.value) return [];
+        const val = attrNode.value;
+        if ((val.type === 'Literal' || val.type === 'StringLiteral') && typeof val.value === 'string') {
+          return [val.value];
+        }
+        if (val.type === 'JSXExpressionContainer' && val.expression) {
+          return extractExprLeadingStrings(val.expression);
+        }
+        return [];
       }
 
       return {
@@ -1141,15 +1269,18 @@ const rules = {
             return;
           }
           if (attrName === 'href' || attrName === 'src') {
-            const rawVal = getJsxAttrStaticString(node);
-            if (
-              typeof rawVal === 'string' &&
-              /^\s*(?:javascript|vbscript|data\s*:\s*text\/html)\s*:/i.test(rawVal)
-            ) {
-              context.report({
-                node,
-                message: `DOM XSS sink: dangerous "${attrName}" URI scheme (${rawVal.trim().slice(0, 24)}) is forbidden.`,
-              });
+            const candidates = getJsxAttrCandidateStrings(node);
+            for (const rawVal of candidates) {
+              if (
+                typeof rawVal === 'string' &&
+                /^\s*(?:javascript\s*:|vbscript\s*:|data\s*:\s*text\/html)/i.test(rawVal)
+              ) {
+                context.report({
+                  node,
+                  message: `DOM XSS sink: dangerous "${attrName}" URI scheme (${rawVal.trim().slice(0, 24)}) is forbidden.`,
+                });
+                break;
+              }
             }
           }
         },
@@ -1217,6 +1348,76 @@ const rules = {
               message: `Unsafe HTML parsing sink ".${methodName}()" is forbidden.`,
             });
             return;
+          }
+          if (
+            methodName === 'setAttribute' &&
+            node.arguments &&
+            node.arguments.length >= 2
+          ) {
+            const attrArg = node.arguments[0];
+            const attrKey =
+              attrArg &&
+              (attrArg.type === 'Literal' || attrArg.type === 'StringLiteral') &&
+              typeof attrArg.value === 'string'
+                ? attrArg.value.trim().toLowerCase()
+                : null;
+            if (attrKey === 'srcdoc') {
+              context.report({
+                node,
+                message: 'Unsafe DOM injection sink ".setAttribute(\'srcdoc\', ...)" is forbidden.',
+              });
+              return;
+            }
+            if (attrKey === 'href' || attrKey === 'src') {
+              const candidates = extractExprLeadingStrings(node.arguments[1]);
+              for (const rawVal of candidates) {
+                if (
+                  typeof rawVal === 'string' &&
+                  /^\s*(?:javascript\s*:|vbscript\s*:|data\s*:\s*text\/html)/i.test(rawVal)
+                ) {
+                  context.report({
+                    node: node.arguments[1],
+                    message: `DOM XSS sink: dangerous "${attrKey}" URI scheme (${rawVal.trim().slice(0, 24)}) in setAttribute() is forbidden.`,
+                  });
+                  break;
+                }
+              }
+            }
+          }
+          if (
+            methodName === 'open' &&
+            (objectName === 'window' || objectName === 'globalThis' || objectName === 'self') &&
+            node.arguments &&
+            node.arguments.length >= 2
+          ) {
+            const targetStrings = extractExprLeadingStrings(node.arguments[1]);
+            const targetsBlank = targetStrings.some(
+              (s) => typeof s === 'string' && s.trim().toLowerCase() === '_blank'
+            );
+            if (targetsBlank) {
+              const featuresArg = node.arguments[2];
+              if (!featuresArg) {
+                context.report({
+                  node,
+                  message:
+                    'Reverse Tabnabbing risk (CWE-1022): window.open(..., "_blank") must specify "noopener,noreferrer" in windowFeatures.',
+                });
+              } else {
+                const featureStrings = extractExprLeadingStrings(featuresArg);
+                if (
+                  featureStrings.length > 0 &&
+                  !featureStrings.some(
+                    (s) => typeof s === 'string' && /\b(?:noopener|noreferrer)\b/i.test(s)
+                  )
+                ) {
+                  context.report({
+                    node: featuresArg,
+                    message:
+                      'Reverse Tabnabbing risk (CWE-1022): window.open(..., "_blank", features) must include "noopener" or "noreferrer".',
+                  });
+                }
+              }
+            }
           }
           if (
             methodName === 'postMessage' &&
@@ -1574,6 +1775,59 @@ const rules = {
             return;
           }
 
+          // 6b. SINK: Client router navigation (router.push, router.replace) — skip static relative single-slash / ROUTES prefixes
+          if (
+            objectName === 'router' &&
+            (methodName === 'push' || methodName === 'replace') &&
+            arg0
+          ) {
+            let safeClientPrefix = false;
+            let unwrapped = arg0;
+            while (
+              unwrapped &&
+              (unwrapped.type === 'TSAsExpression' ||
+                unwrapped.type === 'TSTypeAssertion' ||
+                unwrapped.type === 'TSNonNullExpression' ||
+                unwrapped.type === 'ParenthesizedExpression')
+            ) {
+              unwrapped = unwrapped.expression;
+            }
+            if (unwrapped && unwrapped.type === 'TemplateLiteral') {
+              const q0 = unwrapped.quasis && unwrapped.quasis[0] && unwrapped.quasis[0].value
+                ? String(unwrapped.quasis[0].value.cooked ?? unwrapped.quasis[0].value.raw ?? '')
+                : '';
+              if (/^\/[^\/\\]/.test(q0)) {
+                safeClientPrefix = true;
+              } else if (q0 === '' && unwrapped.expressions && unwrapped.expressions[0]) {
+                const firstExprInfo = getCalleeName({ callee: unwrapped.expressions[0] });
+                const firstObj =
+                  unwrapped.expressions[0].type === 'MemberExpression' &&
+                  unwrapped.expressions[0].object &&
+                  unwrapped.expressions[0].object.type === 'Identifier'
+                    ? unwrapped.expressions[0].object.name
+                    : firstExprInfo.objectName;
+                if (firstObj === 'ROUTES') {
+                  safeClientPrefix = true;
+                }
+              }
+            }
+            if (!safeClientPrefix) {
+              const taint = evaluateNodeTaint(
+                arg0,
+                scope.taintedVars,
+                scope.sanitizedVars,
+                'navigation'
+              );
+              if (taint) {
+                context.report({
+                  node: arg0,
+                  message: `Tainted data from ${taint} reaches client navigation sink (${objectName}.${methodName}()) without sanitization.`,
+                });
+              }
+            }
+            return;
+          }
+
           // 7. SINK: PostgREST filter string injection (.or(), .filter()) (CWE-943)
           if (
             (methodName === 'or' || methodName === 'filter') &&
@@ -1671,6 +1925,7 @@ const rules = {
       const isPublicApiRoute = isApiRouteFile(filename);
       let hasHttpHandlerExport = false;
       let hasRateLimiterCheck = false;
+      let hasApiSecurityHeaders = false;
       let exportedHandlerNode = null;
 
       return {
@@ -1685,6 +1940,21 @@ const rules = {
           ) {
             hasHttpHandlerExport = true;
             exportedHandlerNode = node.declaration;
+          } else if (node.declaration.type === 'VariableDeclaration') {
+            for (const decl of node.declaration.declarations || []) {
+              if (
+                decl &&
+                decl.id &&
+                decl.id.type === 'Identifier' &&
+                ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(decl.id.name) &&
+                decl.init &&
+                (decl.init.type === 'ArrowFunctionExpression' ||
+                  decl.init.type === 'FunctionExpression')
+              ) {
+                hasHttpHandlerExport = true;
+                exportedHandlerNode = decl;
+              }
+            }
           }
         },
 
@@ -1714,7 +1984,7 @@ const rules = {
         CallExpression(node) {
           const { objectName, methodName } = getCalleeName(node);
 
-          // Track RateLimiter.check() in public API routes
+          // Track RateLimiter.check() & buildApiSecurityHeaders() in public API routes
           if (
             isPublicApiRoute &&
             methodName === 'check' &&
@@ -1722,6 +1992,66 @@ const rules = {
             objectName.toLowerCase().includes('ratelimiter')
           ) {
             hasRateLimiterCheck = true;
+          }
+          if (
+            isPublicApiRoute &&
+            (methodName === 'buildApiSecurityHeaders' ||
+              methodName === 'createNoStoreErrorResponse' ||
+              methodName === 'createRateLimitErrorResponse')
+          ) {
+            hasApiSecurityHeaders = true;
+          }
+
+          // Project Rule 5c: Enforce explicit sameSite and protocol-aware secure flags on response cookie writes
+          if (
+            methodName === 'set' &&
+            node.callee &&
+            node.callee.type === 'MemberExpression' &&
+            node.callee.object
+          ) {
+            const calleeObj = node.callee.object;
+            const isResponseCookiesProp =
+              calleeObj.type === 'MemberExpression' &&
+              getPropertyName(calleeObj) === 'cookies' &&
+              !(
+                calleeObj.object &&
+                calleeObj.object.type === 'Identifier' &&
+                /^(?:req|request)$/i.test(calleeObj.object.name)
+              );
+            const isCookieStoreVar =
+              calleeObj.type === 'Identifier' && calleeObj.name === 'cookieStore';
+
+            if (isResponseCookiesProp || isCookieStoreVar) {
+              const args = node.arguments || [];
+              if (args.length < 3) {
+                context.report({
+                  node,
+                  message:
+                    'Response cookies.set() must provide explicit security options ({ sameSite, secure }).',
+                });
+              } else if (args[2] && args[2].type === 'ObjectExpression') {
+                const props = args[2].properties || [];
+                const hasSpread = props.some((p) => p.type === 'SpreadElement');
+                if (!hasSpread) {
+                  const keyNames = new Set(
+                    props
+                      .map((p) =>
+                        p && p.type !== 'SpreadElement' && p.key
+                          ? String(p.key.name || p.key.value || '').toLowerCase()
+                          : ''
+                      )
+                      .filter(Boolean)
+                  );
+                  if (!keyNames.has('samesite') || !keyNames.has('secure')) {
+                    context.report({
+                      node: args[2],
+                      message:
+                        'Response cookies.set() options must declare explicit "sameSite" and protocol-aware "secure" attributes.',
+                    });
+                  }
+                }
+              }
+            }
           }
 
           // Project Rule 2: No hardcoded JWT / secret keys passed to createClient / createBrowserClient / createServerClient
@@ -1769,6 +2099,13 @@ const rules = {
               node: exportedHandlerNode,
               message:
                 'Public API route handler must enforce rate limiting via RateLimiter.check() before processing requests.',
+            });
+          }
+          if (isPublicApiRoute && hasHttpHandlerExport && !hasApiSecurityHeaders) {
+            context.report({
+              node: exportedHandlerNode,
+              message:
+                'Public API route handler must enforce buildApiSecurityHeaders() (X-Content-Type-Options & Cross-Origin-Resource-Policy).',
             });
           }
         },
@@ -2247,7 +2584,10 @@ function runStandaloneAstSecurityAudit(rootDir) {
   }
 
   const scriptsDir = path.join(rootDir, 'scripts');
-  const files = [...collectFiles(srcDir), ...collectFiles(scriptsDir)];
+  const rootTargets = ['next.config.ts', path.join('public', 'sw.js')]
+    .map((rel) => path.join(rootDir, rel))
+    .filter((abs) => fs.existsSync(abs));
+  const files = [...collectFiles(srcDir), ...collectFiles(scriptsDir), ...rootTargets];
 
   for (const filePath of files) {
     const relPath = path.relative(rootDir, filePath).replace(/\\/g, '/');
@@ -2255,10 +2595,17 @@ function runStandaloneAstSecurityAudit(rootDir) {
     let ast;
     try {
       ast = parser.parse(code, {
-        sourceType: 'module',
+        sourceType: 'unambiguous',
+        allowReturnOutsideFunction: true,
         plugins: ['typescript', 'jsx'],
       });
-    } catch (_err) {
+    } catch (err) {
+      violations.push({
+        file: relPath,
+        line: err && err.loc && err.loc.line ? err.loc.line : 1,
+        ruleId: 'bookarium-security/ast-parse-error',
+        message: `Failed to parse AST for security inspection: ${err && err.message ? err.message : 'syntax error'}`,
+      });
       continue;
     }
 

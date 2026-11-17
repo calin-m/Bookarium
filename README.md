@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202658%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.41%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-258%20Suites%20%7C%202666%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.38%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2658 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2666 tests across 258 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -80,7 +80,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
 | 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
-| ⚡ **GitHub Actions Operator Runbook** | Complete triggers, schedules, secrets, `workflow_dispatch` inputs, and local CLI parity for all 6 workflows. | [`docs/GITHUB_ACTIONS.md`](docs/GITHUB_ACTIONS.md) |
+| ⚡ **GitHub Actions Operator Runbook** | Complete triggers, schedules, secrets, `workflow_dispatch` inputs, SHA pins, and local CLI parity for all 8 workflows. | [`docs/GITHUB_ACTIONS.md`](docs/GITHUB_ACTIONS.md) |
 | 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
 
 ---
@@ -110,10 +110,12 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.47)
+## 🛠️ Latest Improvements (v2.9.48)
 
-- **`/copyright` & `README.md` Governance Clarity and Manual `--ids` / Translation `copyright !== true` Guards (`src/app/copyright/page.tsx`, `src/app/copyright/page.test.tsx`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`, `scripts/ingest-translations.js`, `scripts/ingest-translations.test.ts`, `README.md`)**: Clarified `/copyright` Sections 1/3/4 and `README.md` Section 6 to distinguish internal per-entry RDF `<dcterms:rights>` indexing suppression (`rdf-files.tar.bz2`) from `copyright=false` display/delivery and global US + international `HTTP 451` enforcement, while adding `copyright !== true` checks to manual `--ids` `sync-featured-quotes.js` runs (`🚫 Copyrighted (skipped)`) and `ingest-translations.js` (`filterValidCatalogBookIds` + `WHERE b.copyright = false` SQL seeds) (`ADR-010`, `ADR-074`, `ADR-080`).
-- **Local-Noon Fake-Timer Pinning Against Midnight Rollover Flakiness (`src/hooks/useReadingTimer.test.ts`, `src/stores/useHabitsStore.test.ts`)**: Pinned fake timers to local noon (`new Date(2026, 10, 16, 12, 0, 0)`) right after `vi.useFakeTimers()` so `305s` streak accumulation and daily immersion assertions stay within a single local calendar day regardless of when verification executes (`ADR-080`).
+- **Expanded 9-Rule AST SAST, Client Taint & Pillar 1/7 Verifier Gates (`scripts/eslint-rules/bookarium-security.js`, `scripts/eslint-rules/bookarium-security.test.ts`, `scripts/verify-build.js`, `SECURITY.md`)**: Extended Rule 3 (`@/lib/server-rsc-nav`, `node:http(s)`), Rule 4 (constant `new RegExp()` ReDoS), Rule 5 & Pillar 3 (concat/conditional/logical/template/TS-cast/folded JSX `href`/`src`, `data:text/html,`, imperative `setAttribute()`, & `window.open(..., '_blank')` `noopener`), Rule 6 (client `useSearchParams()`/`document.referrer` -> `router.push`/`replace` taint exempting static `/path` & `ROUTES.*`, `sanitizeBookFormatUrl`/`stripRecoveryFromRedirectPath` sinks, & `getNodeSanitizedSinks` fix), Rule 7 (arrow/function API handler `buildApiSecurityHeaders()` & `sameSite`/`secure` cookies), standalone `public/sw.js` + `next.config.ts` audits with explicit `ast-parse-error` diagnostics, Babel/manifest header audits, & Pillar 1 workflow gates (`ADR-067`, `ADR-073`, `ADR-080`).
+- **SHA-Pinned GitHub Actions Workflows, CodeQL & Dependency Review (`.github/workflows/*.yml`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Pinned all workflow `uses:` steps across all `8` workflows to immutable 40-char commit SHAs and added scheduled/PR CodeQL (`javascript-typescript` + `actions` SARIF) and PR Dependency Review (`high` CVE + `GPL`/`AGPL` license block) workflows (`ADR-073`, `ADR-080`).
+- **Anti-Clickjacking Header Alignment, CSP `object-src 'none'` & Strict HTTPS Format URL Sanitization (`next.config.ts`, `src/lib/utils.ts`, `src/lib/utils.test.ts`)**: Aligned `X-Frame-Options` to `DENY` matching CSP `frame-ancestors 'none'`, added explicit `object-src 'none'` to CSP without blocking local HTTP `next start`, and exported `sanitizeBookFormatUrl` routing `extractBookFormats` through strict `https:` allowlisting with opt-in `allowBlob: true` for offline cover previews (`ADR-073`, `ADR-080`).
+- **Service Worker `CACHE_URLS` Sanitization & Protocol-Aware `Secure` Cookies (`public/sw.js`, `src/lib/api-utils.ts`, `src/app/auth/callback/route.ts`, `src/lib/supabase/middleware.ts`, `src/proxy.ts`, `src/lib/api-utils.test.ts`, `src/app/auth/callback/route.test.ts`, `src/lib/supabase/middleware.test.ts`, `src/proxy.test.ts`)**: Added `sanitizePrecacheUrl` + `100`-URL cap restricting `CACHE_URLS` precaching to same-origin non-`/auth/`/non-`/api/` paths, and exported `isHttpsRequest` setting protocol-aware `secure` flags on `AUTH_HINT`, `CLIENT_IP_SYNC`, `GEO_COOKIE_NAME`, and `DEV_OVERRIDE_COOKIE_NAME` cookies (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -311,6 +313,7 @@ flowchart TD
         SyncTranslations["🔄 Relational Translations Sync\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]
         SyncQuotes["🔄 Featured Quotes Sync Engine\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]
         PurgeVercel["🧹 Edge Cache Tag Purge CLI\n(scripts/purge-vercel-cache.js • .github/workflows/cache-purge.yml)"]
+        CISecurity["🛡️ SHA-Pinned CI, CodeQL & Dependency Review\n(.github/workflows/ci.yml • codeql.yml • dependency-review.yml • release.yml)"]
         VercelEdge["⚡ Vercel Edge Platform\n(Edge CDN SWR, Cookie-less Analytics & Speed Insights)"]
     end
 
@@ -555,7 +558,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 | `public.books_search_vector_trigger()` | Trigger | Maintains `search_vector` across `title`, `subjects`, and `bookshelves` with an `IS DISTINCT FROM` guard that skips recomputation on `download_count`-only updates. |
 
 ### Step 3: Populate Public Domain Book Catalog (Optional)
-To activate the dedicated PostgreSQL book catalog and bypass third-party rate limits, choose any of the four ingestion workflows below (see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for all 6 workflow triggers, secrets, `workflow_dispatch` inputs, `catalog-cache` setup, and manual tag purging, plus [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md#-autonomous-ingestion-pipelines--telemetry-reference) for console telemetry banners and run-report formats):
+To activate the dedicated PostgreSQL book catalog and bypass third-party rate limits, choose any of the four ingestion workflows below (see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for all 8 workflow triggers, secrets, `workflow_dispatch` inputs, `catalog-cache` setup, security scans, and manual tag purging, plus [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md#-autonomous-ingestion-pipelines--telemetry-reference) for console telemetry banners and run-report formats):
 
 #### Option A: Autonomous Full-Catalog Sync (78,000+ Titles — Recommended)
 ```bash
@@ -656,7 +659,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run quotes:sync` | Maintains the Two-Tier bounded quote pool in `public.books.quotes` with mirror pacing and CI Run Reports ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
 | `npm run build` | Compiles optimized Next.js 16 production bundle |
 
-> ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands execute across `.github/workflows/catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, and `release.yml` (including dry-run flags and required secrets).
+> ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands and security checks execute across all **8** workflows (`.github/workflows/catalog-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, `codeql.yml`, `dependency-review.yml`, and `release.yml`, including dry-run flags and required secrets).
 
 ---
 

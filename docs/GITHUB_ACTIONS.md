@@ -11,7 +11,7 @@ Complete operator reference for every workflow under [`.github/workflows/`](../.
 
 ## 📋 1. Workflow Matrix at a Glance
 
-Bookarium maintains **6** GitHub Actions workflows (validated 1:1 against [`.github/workflows/`](../.github/workflows) by **Pass 5** in [`scripts/verify-build.js`](../scripts/verify-build.js)):
+Bookarium maintains **8** GitHub Actions workflows (validated 1:1 against [`.github/workflows/`](../.github/workflows) by **Pass 5** in [`scripts/verify-build.js`](../scripts/verify-build.js)):
 
 | Workflow Name | File | Triggers & Exact Schedule | Permissions | Concurrency Lock | Timeout | `npm ci` | Required Secrets | Optional Secrets |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -20,6 +20,8 @@ Bookarium maintains **6** GitHub Actions workflows (validated 1:1 against [`.git
 | **Gutenberg Translations Sync** | [`.github/workflows/translations-sync.yml`](../.github/workflows/translations-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `gutenberg-translations-sync` | `20m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Manual Cache Purge** | [`.github/workflows/cache-purge.yml`](../.github/workflows/cache-purge.yml) | `workflow_dispatch` only *(Selective Purge)* | `contents: read` | `cache-purge` | `5m` | **No** *(~5s)* | `VERCEL_API_TOKEN`\*<br>`VERCEL_PROJECT_ID`\* | `VERCEL_TEAM_ID` |
 | **Bookarium CI** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `push` & `pull_request` on `main`, `master`, `dev` | `contents: read` | — | Runner default | Yes | **None** *(Zero keys)* | — |
+| **CodeQL SAST Analysis** | [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) | `push` & `pull_request` on `main`, `master`, `dev`<br>+ `cron: 30 1 * * 1` (Mondays 01:30 UTC) | Top: `contents: read`<br>Job: `actions: read`, `contents: read`, `security-events: write` | `codeql-${{ github.ref }}` | `20m` | **No** *(Native CodeQL)* | **None** *(Public Repo)* | — |
+| **Dependency Review** | [`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) | `pull_request` on `main`, `master`, `dev` | `contents: read` | `dependency-review-${{ github.ref }}` | `10m` | **No** *(GitHub Graph)* | **None** *(Public Repo)* | — |
 | **Create Release** | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | `push` tags `v*`<br>+ `workflow_dispatch` (`tag`) | Top: `contents: read`<br>Job: `contents: write` | — | Runner default | Yes | Built-in `GITHUB_TOKEN` | — |
 
 \* *Safety Fallback*: `scripts/purge-vercel-cache.js` exits cleanly (`exit 0`) with a skip notice when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset so community forks and dry-runs never fail on missing Vercel credentials. In `cache-purge.yml`, configure both secrets in GitHub Settings if you want live CDN invalidations to execute.
@@ -200,7 +202,7 @@ Continuous integration quality gate verifying every branch push and pull request
 - **Permissions**: `contents: read`
 - **Required Secrets**: **None** (runs hermetically with MSW v2 network mocks and bundled test fixtures)
 - **CI Execution Sequence**:
-  1. Checkout repo (`actions/checkout@v4`), setup Node `22` with npm cache (`actions/setup-node@v4`), run `npm ci`.
+  1. Checkout repo (`actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0`), setup Node `22` with npm cache (`actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0`), run `npm ci`.
   2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity $\to$ Pass 5 ADR, 18 governance docs, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build).
   3. Execute `git diff --exit-code` across the `10` deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
 - **Local CLI Equivalents**:
@@ -220,14 +222,14 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.47'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.48'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
   1. Checkout repo with `fetch-depth: 0`, setup Node `22` with npm cache, run `npm ci`.
   2. Run `npm run verify` (full 7-Gateway verification before release publication).
   3. Extract the exact section matching the active release version from [`CHANGELOG.md`](../CHANGELOG.md) into `RELEASE_NOTES.md`.
-  4. Publish the GitHub Release via `softprops/action-gh-release@v2` (`generate_release_notes: true`).
+  4. Publish the GitHub Release via `softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2` (`generate_release_notes: true`).
 - **Local Pre-Release Checklist**:
   ```bash
   # Sync versioned docs & run pre-commit approval + security/governance gates
@@ -238,16 +240,41 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 ---
 
+### 3.7 `CodeQL SAST Analysis` ([`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml))
+
+Continuous inter-procedural GitHub CodeQL SAST scanning both TypeScript/JavaScript source code and GitHub Actions workflow definitions, publishing SARIF findings directly to GitHub's **Security $\to$ Code scanning** tab on public repositories.
+
+- **Triggers**:
+  - `push` and `pull_request` on `main`, `master`, `dev`
+  - Scheduled: `cron: 30 1 * * 1` (Every Monday at `01:30 UTC`, staggered away from Sunday `catalog-sync.yml`)
+- **Permissions**: Top-level `contents: read`; job-level `actions: read`, `contents: read`, `security-events: write`
+- **Language Matrix**: `javascript-typescript`, `actions` (`fail-fast: false`, `timeout-minutes: 20`)
+- **GitHub Repository Settings Note**: Because Bookarium configures CodeQL via `.github/workflows/codeql.yml` (Advanced Setup), keep GitHub UI **Settings $\to$ Code security $\to$ CodeQL analysis** *Default setup* disabled so the two modes never conflict.
+
+---
+
+### 3.8 `Dependency Review` ([`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml))
+
+Automated pull-request supply-chain firewall backed by GitHub's Dependency Graph, blocking newly introduced `high` or `critical` vulnerabilities and incompatible copyleft (`GPL-2.0`, `GPL-3.0`, `AGPL-3.0`) transitive dependencies before merge.
+
+- **Triggers**: `pull_request` on `main`, `master`, `dev`
+- **Permissions**: `contents: read` (`timeout-minutes: 10`)
+- **Policy Configuration**: `fail-on-severity: high`, `deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0` (powered automatically on public repositories by GitHub Dependency Graph).
+
+---
+
 ## 🛠️ 4. Related GitHub Automation & Marketplace Actions
 
 | Component | Configuration / Pin | Scope & Schedule |
 | :--- | :--- | :--- |
-| **Dependabot** | [`.github/dependabot.yml`](../.github/dependabot.yml) | Automated `monthly` PRs targeting `master` for `npm` dependencies (`open-pull-requests-limit: 5`, `chore(deps)`) and `github-actions` versions (`open-pull-requests-limit: 3`, `chore(ci)`). |
-| **Checkout Action** | `actions/checkout@v4` | Used across all 6 workflows (`fetch-depth: 0` in `release.yml` for tag/changelog extraction). |
-| **Node.js Setup** | `actions/setup-node@v4` | Pins `node-version: '22'` across all 6 workflows (enables `cache: 'npm'` except `cache-purge.yml`, which needs zero npm dependencies). |
-| **Release Publisher** | `softprops/action-gh-release@v2` | Publishes GitHub Releases from extracted `CHANGELOG.md` notes inside `release.yml`. |
+| **Dependabot** | [`.github/dependabot.yml`](../.github/dependabot.yml) | Automated `monthly` PRs targeting `master` for `npm` dependencies (`open-pull-requests-limit: 5`, `chore(deps)`) and `github-actions` commit-SHA updates (`open-pull-requests-limit: 3`, `chore(ci)`). |
+| **Checkout Action** | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` (`v4.4.0`) | Used across all 8 workflows (`fetch-depth: 0` in `release.yml` for tag/changelog extraction). |
+| **Node.js Setup** | `actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020` (`v4.4.0`) | Pins `node-version: '22'` across 6 Node.js workflows (enables `cache: 'npm'` except `cache-purge.yml`, which needs zero npm dependencies). |
+| **CodeQL Action (`init` / `analyze`)** | `github/codeql-action/*@33d7b85da1a04171e211befe2c739303b9a4c066` (`v4.39.3`) | Executes multi-target `javascript-typescript` and `actions` SARIF analysis inside `codeql.yml`. |
+| **Dependency Review Action** | `actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48` (`v4.9.0`) | Enforces `high` CVE and `GPL`/`AGPL` license checks on PR dependency changes inside `dependency-review.yml`. |
+| **Release Publisher** | `softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65` (`v2.6.2`) | Publishes GitHub Releases from extracted `CHANGELOG.md` notes inside `release.yml`. |
 
-> **Workflow Security Posture (Pass 0.75 Enforced)**: All workflows use explicit least-privilege `permissions:`, pinned major action tags (never `@main`/`@master`), and `env:` environment variable binding instead of directly interpolating `${{ github.event.* }}` inside `run:` shell scripts to prevent command injection.
+> **Workflow Security Posture (Pass 0.75 Enforced)**: All 8 workflows declare explicit least-privilege `permissions:`, pin every external `uses:` step to a 40-character immutable commit SHA (`/@[0-9a-f]{40}$/`), forbid combining `pull_request_target` with `contents: write`, and bind inputs via `env:` instead of directly interpolating `${{ github.event.* }}` inside `run:` shell scripts.
 
 ---
 

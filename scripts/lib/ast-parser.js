@@ -1081,7 +1081,7 @@ function extractWorkerCatalog(srcDir) {
     workers.push({
       name: 'sw',
       file: 'public/sw.js',
-      role: `Progressive Web App (PWA) Service Worker (\`${swMeta.cacheName}\`) providing offline App Shell caching (\`/\` + \`/account\` + \`/read/1342\`), HTML-embedded \`/_next/static/\` chunk extraction, \`_rsc\` Flight isolation, cross-origin pass-through, and \`/read/*\` navigation fallback for 100% offline reading.`,
+      role: `Progressive Web App (PWA) Service Worker (\`${swMeta.cacheName}\`) providing offline App Shell caching (\`/\` + \`/account\` + \`/read/1342\`), bounded same-origin \`CACHE_URLS\` sanitization (\`<= 100\`, excluding \`/auth/\` and \`/api/\`), HTML-embedded \`/_next/static/\` chunk extraction, \`_rsc\` Flight isolation, cross-origin pass-through, and \`/read/*\` navigation fallback for 100% offline reading.`,
     });
   }
 
@@ -1496,7 +1496,7 @@ function extractPublicAssetsCatalog(rootDir) {
   const swMeta = extractServiceWorkerMetadata(rootDir);
   const assets = [];
   const roleMap = {
-    'public/sw.js': `PWA Service Worker (\`${swMeta.cacheName}\`) managing App Shell caching, static asset discovery, and offline route navigation fallback.`,
+    'public/sw.js': `PWA Service Worker (\`${swMeta.cacheName}\`) managing bounded same-origin \`CACHE_URLS\` App Shell precaching, static asset discovery, and offline route navigation fallback.`,
     'public/favicon.ico': 'Multi-resolution 32-bit RGBA binary icon container (`16×16`, `32×32`, `48×48`) with soaring book brand emblem for browser tabs.',
     'public/icon.svg': 'Scalable vector soaring book brand emblem with 3-tiered page depths, sunlit amber peaks, core terracotta arches, and deep burnt outer wings.',
     'public/icons/apple-touch-icon.png': 'High-DPI iOS / iPadOS Home Screen Web Clip icon (`512×512` PNG).',

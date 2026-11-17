@@ -121,7 +121,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Edge middleware proxy coordinating jurisdiction resolution (`x-vercel-ip-country` / `bookarium-geo-country`), share token forwarding (`?s=`), and conditional Supabase SSR session refresh.
 - **Behavioral Invariants (`@invariant`)**:
-  - Never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches.
+  - Never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches; configure browser-readable geo/override cookies with `sameSite: 'lax'` and protocol-aware `secure: isHttpsRequest(request)`.
   - Bypass SSR token rotation on App Router RSC navigations (`rsc: 1`) outside `/account` and `/account/*`; only set `x-middleware-override-headers` when `validShareToken` is present.
 - **Design Rationale (`@rationale`)**:
   - Skipping cookies and `x-middleware-override-headers` on public API and RSC requests unblocks Vercel Edge CDN `s-maxage` caching while preventing concurrent prefetch/callback tabs from racing single-use OAuth refresh tokens.
@@ -436,10 +436,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Edge Proxy session refresh helper (`updateSession`) synchronizing Supabase Auth cookies and propagating the short-lived `CLIENT_IP_SYNC` trigger cookie on rotated tokens.
 - **Behavioral Invariants (`@invariant`)**:
   - Short-circuit immediately when Supabase env vars or `SUPABASE_AUTH_COOKIE_PATTERN` cookies are absent, and ignore `setAll` calls containing solely empty cookie values (`Max-Age=0` deletion protection) so raced server refreshes never wipe active sessions.
-  - Stamp `STORAGE_KEYS.CLIENT_IP_SYNC` (`120s` TTL) whenever a non-empty auth token cookie rotates, and swallow transient `supabase.auth.getUser()` network errors without blocking navigation.
+  - Stamp `STORAGE_KEYS.CLIENT_IP_SYNC` (`120s` TTL, `sameSite: 'lax'`, `secure: isHttpsRequest(request)`) whenever a non-empty auth token cookie rotates, and swallow transient `supabase.auth.getUser()` network errors without blocking navigation.
 - **Design Rationale (`@rationale`)**:
   - Concurrent SSR requests can race single-use Supabase refresh tokens; refusing empty cookie deletions preserves valid browser sessions while allowing explicit client sign-out to clear credentials deterministically.
-- **Governing Decisions (`@adr`)**: [ADR-035](DECISIONS.md), [ADR-072](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-035](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/proxy.ts`](../src/proxy.ts))
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-client-ip-sync` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
 - **Test Contract**: [`src/lib/supabase/middleware.test.ts`](../src/lib/supabase/middleware.test.ts) (5 tests)
@@ -765,10 +765,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: OAuth PKCE code exchange and email OTP verification callback route (`GET /auth/callback`).
 - **Behavioral Invariants (`@invariant`)**:
   - Validate origins via `resolveCanonicalAuthOrigin`, constrain `?next=` targets via `sanitizeRedirectPath`, strip recovery query routes on non-recovery flows (`stripRecoveryFromRedirectPath`), and allowlist strictly known `VALID_OTP_TYPES`.
-  - Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies on successful authentication.
+  - Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies with `sameSite: 'lax'` and `secure: isHttpsRequest(request)` on successful authentication.
 - **Design Rationale (`@rationale`)**:
   - Prevents open redirects, accidental recovery-mode entry via normal logins, and confusing error screens when users confirm signup links on a secondary mobile mail client.
-- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-034](DECISIONS.md), [ADR-072](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-034](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`, `bookarium-client-ip-sync`
 - **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (12 tests)
@@ -778,16 +778,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS sinks.
+- **Intended Scope (`@scope`)**: Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting & security header parity, cookie flags, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS/tabnabbing sinks.
 - **Behavioral Invariants (`@invariant`)**:
-  - Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/` and `scripts/`.
-  - Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers.
+  - Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly).
+  - Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers or static single-slash client routes.
 - **Design Rationale (`@rationale`)**:
-  - Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, and weak assertions in real time before commit.
-- **Governing Decisions (`@adr`)**: [ADR-067](DECISIONS.md), [ADR-073](DECISIONS.md)
+  - Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, and weak assertions in real time before commit.
+- **Governing Decisions (`@adr`)**: [ADR-067](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 3 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (21 tests)
+- **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (25 tests)
 
 #### [`scripts/ingest-catalog.js`](../scripts/ingest-catalog.js) *(Tier-4 Protected)*
 
@@ -891,6 +891,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
 | `23` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `23` | Pure / internal |
 | `22` | [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx) | App Router Pages & Layouts | `0` / `0` | DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.user_accolades`, `public.user_reading_habits` |
+| `20` | [`src/lib/api-utils.ts`](../src/lib/api-utils.ts) | Domain Engines & Adapters | `6` / `0` | Env Vars: `NODE_ENV` |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
@@ -898,7 +899,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `14` | [`src/app/layout.tsx`](../src/app/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Storage/Cookies: `bookarium-auth-hint`, `bookarium-theme-preference` · Env Vars: `NEXT_PUBLIC_SUPABASE_URL` |
 | `14` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
-| `14` | [`src/lib/api-utils.ts`](../src/lib/api-utils.ts) | Domain Engines & Adapters | `3` / `0` | Env Vars: `NODE_ENV` |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `13` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `1` | Pure / internal |

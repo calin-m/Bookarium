@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.48] - 2026-11-17
+### *Comprehensive Runtime, AST & Supply-Chain Security Hardening*
+
+### Added
+- **Expanded 9-Rule AST SAST, Client Taint & Pillar 1/7 Verifier Gates (`scripts/eslint-rules/bookarium-security.js`, `scripts/eslint-rules/bookarium-security.test.ts`, `scripts/verify-build.js`, `SECURITY.md`)**: Extended Rule 3 (`@/lib/server-rsc-nav`, `node:http(s)`), Rule 4 (constant `new RegExp()` ReDoS), Rule 5 & Pillar 3 (concat/conditional/logical/template/TS-cast/folded JSX `href`/`src`, `data:text/html,`, imperative `setAttribute()`, & `window.open(..., '_blank')` `noopener`), Rule 6 (client `useSearchParams()`/`document.referrer` -> `router.push`/`replace` taint exempting static `/path` & `ROUTES.*`, `sanitizeBookFormatUrl`/`stripRecoveryFromRedirectPath` sinks, & `getNodeSanitizedSinks` fix), Rule 7 (arrow/function API handler `buildApiSecurityHeaders()` & `sameSite`/`secure` cookies), standalone `public/sw.js` + `next.config.ts` audits with explicit `ast-parse-error` diagnostics, Babel/manifest header audits, & Pillar 1 workflow gates (`ADR-067`, `ADR-073`, `ADR-080`).
+- **SHA-Pinned GitHub Actions Workflows, CodeQL & Dependency Review (`.github/workflows/*.yml`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Pinned all workflow `uses:` steps across all `8` workflows to immutable 40-char commit SHAs and added scheduled/PR CodeQL (`javascript-typescript` + `actions` SARIF) and PR Dependency Review (`high` CVE + `GPL`/`AGPL` license block) workflows (`ADR-073`, `ADR-080`).
+
+### Fixed
+- **Anti-Clickjacking Header Alignment, CSP `object-src 'none'` & Strict HTTPS Format URL Sanitization (`next.config.ts`, `src/lib/utils.ts`, `src/lib/utils.test.ts`)**: Aligned `X-Frame-Options` to `DENY` matching CSP `frame-ancestors 'none'`, added explicit `object-src 'none'` to CSP without blocking local HTTP `next start`, and exported `sanitizeBookFormatUrl` routing `extractBookFormats` through strict `https:` allowlisting with opt-in `allowBlob: true` for offline cover previews (`ADR-073`, `ADR-080`).
+- **Service Worker `CACHE_URLS` Sanitization & Protocol-Aware `Secure` Cookies (`public/sw.js`, `src/lib/api-utils.ts`, `src/app/auth/callback/route.ts`, `src/lib/supabase/middleware.ts`, `src/proxy.ts`, `src/lib/api-utils.test.ts`, `src/app/auth/callback/route.test.ts`, `src/lib/supabase/middleware.test.ts`, `src/proxy.test.ts`)**: Added `sanitizePrecacheUrl` + `100`-URL cap restricting `CACHE_URLS` precaching to same-origin non-`/auth/`/non-`/api/` paths, and exported `isHttpsRequest` setting protocol-aware `secure` flags on `AUTH_HINT`, `CLIENT_IP_SYNC`, `GEO_COOKIE_NAME`, and `DEV_OVERRIDE_COOKIE_NAME` cookies (`ADR-080`).
+
+
 ## [2.9.47] - 2026-11-16
 ### *Public Copyright Governance Clarity & CLI Public-Domain Defense-in-Depth*
 

@@ -31,6 +31,7 @@ describe('GET /auth/callback', () => {
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('http://localhost:3000/account');
     expect(response.cookies.get('bookarium-auth-hint')?.value).toBe('authenticated');
+    expect(Boolean(response.cookies.get('bookarium-auth-hint')?.secure)).toBe(false);
   });
 
   it('normalizes Vercel preview deployment origins to the canonical production domain', async () => {
@@ -97,6 +98,8 @@ describe('GET /auth/callback', () => {
     expect(response.headers.get('location')).toBe(
       'https://bookarium.vercel.app/bookshelf'
     );
+    expect(response.cookies.get('bookarium-auth-hint')?.secure).toBe(true);
+    expect(response.cookies.get('bookarium-client-ip-sync')?.secure).toBe(true);
   });
 
   it('redirects to /?auth_error=verification_failed when upstream error query param is present', async () => {

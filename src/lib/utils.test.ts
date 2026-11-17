@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   cn,
   extractBookFormats,
+  sanitizeBookFormatUrl,
   formatDownloadCount,
   calculateReadingTime,
   truncate,
@@ -58,6 +59,60 @@ describe('lib/utils', () => {
       expect(extracted.txt).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
       expect(extracted.mobi).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
       expect(extracted.coverImage).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
+    });
+
+    it('should reject unsafe or non-HTTPS format URLs and fall back cleanly when bookId is provided', () => {
+      const sanitizedOnly = extractBookFormats({
+        'application/epub+zip': 'javascript:alert(1)',
+        'text/html': 'data:text/html,<script>',
+        'text/plain': 'vbscript:msgbox',
+        'application/x-mobipocket-ebook': 'http://www.gutenberg.org/ebooks/1342.kindle.images',
+        'image/jpeg': 'http://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+      });
+      expect(sanitizedOnly.epub).toBeUndefined();
+      expect(sanitizedOnly.html).toBeUndefined();
+      expect(sanitizedOnly.txt).toBeUndefined();
+      expect(sanitizedOnly.mobi).toBeUndefined();
+      expect(sanitizedOnly.coverImage).toBeUndefined();
+
+      const withFallback = extractBookFormats(
+        {
+          'application/epub+zip': 'blob:https://bookarium.app/not-allowed-for-epub',
+          'text/html': 'javascript:alert(1)',
+          'text/plain': 'data:text/html,<script>',
+          'application/x-mobipocket-ebook': 'vbscript:msgbox',
+          'image/jpeg': 'blob:https://bookarium.app/offline-cover-1342',
+        },
+        1342
+      );
+      expect(withFallback.epub).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
+      expect(withFallback.html).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
+      expect(withFallback.txt).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
+      expect(withFallback.mobi).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
+      expect(withFallback.coverImage).toBe('blob:https://bookarium.app/offline-cover-1342');
+    });
+  });
+
+  describe('sanitizeBookFormatUrl', () => {
+    it('should allow valid https URLs and reject dangerous or plain http schemes', () => {
+      expect(sanitizeBookFormatUrl('  https://www.gutenberg.org/ebooks/1342.epub3.images  ')).toBe(
+        'https://www.gutenberg.org/ebooks/1342.epub3.images'
+      );
+      expect(sanitizeBookFormatUrl('javascript:alert(1)')).toBeUndefined();
+      expect(sanitizeBookFormatUrl('data:text/html,<script>')).toBeUndefined();
+      expect(sanitizeBookFormatUrl('vbscript:msgbox')).toBeUndefined();
+      expect(sanitizeBookFormatUrl('http://www.gutenberg.org/ebooks/1342.epub3.images')).toBeUndefined();
+      expect(sanitizeBookFormatUrl('not a url')).toBeUndefined();
+      expect(sanitizeBookFormatUrl(null)).toBeUndefined();
+      expect(sanitizeBookFormatUrl(undefined)).toBeUndefined();
+      expect(sanitizeBookFormatUrl('   ')).toBeUndefined();
+    });
+
+    it('should permit blob URLs only when allowBlob is explicitly enabled', () => {
+      const offlineBlob = 'blob:https://bookarium.app/offline-cover-1342';
+      expect(sanitizeBookFormatUrl(offlineBlob)).toBeUndefined();
+      expect(sanitizeBookFormatUrl(offlineBlob, { allowBlob: false })).toBeUndefined();
+      expect(sanitizeBookFormatUrl(offlineBlob, { allowBlob: true })).toBe(offlineBlob);
     });
   });
 

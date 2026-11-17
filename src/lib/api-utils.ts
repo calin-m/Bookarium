@@ -104,6 +104,32 @@ export function getClientIp(request: Request | { headers: Headers }): string {
 }
 
 /**
+ * Determines whether the incoming request arrived over HTTPS (either via the outermost
+ * `x-forwarded-proto` proxy header or directly via `request.url`) so cookie writers set
+ * `Secure` on HTTPS deployments while preserving plain HTTP `localhost` / `127.0.0.1` testing.
+ */
+export function isHttpsRequest(
+  request: Request | { url?: string; headers: Pick<Headers, 'get'> }
+): boolean {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedProto) {
+    const primaryProto = forwardedProto.split(',')[0]?.trim().toLowerCase();
+    if (primaryProto === 'https') return true;
+    if (primaryProto === 'http') return false;
+  }
+
+  if (typeof request.url === 'string' && request.url.trim().length > 0) {
+    try {
+      return new URL(request.url, 'http://localhost').protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Generates a standard HTTP 429 Too Many Requests response with appropriate rate-limiting headers.
  */
 export function createRateLimitErrorResponse(

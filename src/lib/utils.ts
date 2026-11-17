@@ -38,8 +38,38 @@ export interface BookFormatInfo {
   pdf?: string;
 }
 
+export interface SanitizeBookFormatUrlOptions {
+  allowBlob?: boolean;
+}
+
 /**
- * Normalizes catalog format dictionaries to canonical format URLs.
+ * Validates external book format URLs against a strict protocol allowlist (`https:`,
+ * plus local `blob:` only when explicitly enabled for offline cover previews),
+ * rejecting dangerous pseudo-protocols (`javascript:`, `data:`, `vbscript:`) and plain `http:`.
+ */
+export function sanitizeBookFormatUrl(
+  rawUrl?: string | null,
+  options: SanitizeBookFormatUrlOptions = {}
+): string | undefined {
+  if (typeof rawUrl !== 'string') return undefined;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return undefined;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'https:') {
+      return trimmed;
+    }
+    if (options.allowBlob && parsed.protocol === 'blob:') {
+      return trimmed;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Normalizes catalog format dictionaries to canonical HTTPS format URLs.
  */
 export function extractBookFormats(
   formats: Record<string, string> = {},
@@ -47,7 +77,11 @@ export function extractBookFormats(
 ): BookFormatInfo {
   const result: BookFormatInfo = {};
 
-  for (const [key, url] of Object.entries(formats)) {
+  for (const [key, rawUrl] of Object.entries(formats || {})) {
+    const isCoverKey = key.includes('image/jpeg') || key.includes('image/png');
+    const url = sanitizeBookFormatUrl(rawUrl, isCoverKey ? { allowBlob: true } : undefined);
+    if (!url) continue;
+
     if (key.includes('epub')) {
       result.epub = url;
     } else if (key.includes('text/html')) {
@@ -56,7 +90,7 @@ export function extractBookFormats(
       result.txt = url;
     } else if (key.includes('x-mobipocket-ebook') || key.includes('mobi')) {
       result.mobi = url;
-    } else if (key.includes('image/jpeg') || key.includes('image/png')) {
+    } else if (isCoverKey) {
       result.coverImage = url;
     } else if (key.includes('pdf')) {
       result.pdf = url;

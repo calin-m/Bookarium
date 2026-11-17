@@ -433,6 +433,248 @@ function pass05SecretScanner() {
   return true;
 }
 
+function getAstStringLiteralValue(node) {
+  if (!node) return null;
+  if ((node.type === 'StringLiteral' || node.type === 'Literal') && typeof node.value === 'string') {
+    return node.value;
+  }
+  if (node.type === 'TemplateLiteral' && Array.isArray(node.quasis) && node.expressions.length === 0) {
+    return node.quasis.map((q) => String(q.value.cooked ?? q.value.raw ?? '')).join('');
+  }
+  return null;
+}
+
+function validateNextConfigSecurityHeadersAst(nextConfigCode) {
+  const violations = [];
+  let ast;
+  try {
+    const parser = require('@babel/parser');
+    ast = parser.parse(nextConfigCode, {
+      sourceType: 'module',
+      plugins: ['typescript'],
+    });
+  } catch (err) {
+    violations.push(`Failed to parse next.config.ts AST for Pillar 7 header verification: ${err.message}`);
+    return violations;
+  }
+
+  const traverse = require('@babel/traverse').default;
+  let foundHeadersMethod = false;
+  let hasGlobalCatchAllSource = false;
+  let cspStaticJoined = '';
+  let hasUngatedUnsafeEval = false;
+  const headerEntries = new Map();
+
+  function recordHeaderPair(objNode, isConditionalNonDev = false) {
+    if (!objNode || objNode.type !== 'ObjectExpression') return;
+    let hdrKey = null;
+    let hdrValNode = null;
+    for (const prop of objNode.properties) {
+      if (prop.type !== 'ObjectProperty' || !prop.key) continue;
+      const propName = prop.key.name || prop.key.value;
+      if (propName === 'key') {
+        hdrKey = getAstStringLiteralValue(prop.value);
+      } else if (propName === 'value') {
+        hdrValNode = prop.value;
+      }
+    }
+    if (!hdrKey) return;
+    const hdrValStr = getAstStringLiteralValue(hdrValNode);
+    const hdrIdentifier = hdrValNode && hdrValNode.type === 'Identifier' ? hdrValNode.name : null;
+    headerEntries.set(hdrKey, {
+      value: hdrValStr,
+      identifier: hdrIdentifier,
+      isConditionalNonDev,
+    });
+  }
+
+  function inspectCspTemplateNode(node) {
+    if (!node) return;
+    if (node.type === 'TemplateLiteral') {
+      cspStaticJoined = node.quasis
+        .map((q) => String(q.value.cooked ?? q.value.raw ?? ''))
+        .join(' ');
+      for (const expr of node.expressions || []) {
+        if (expr.type === 'ConditionalExpression') {
+          const testIsDev =
+            expr.test && expr.test.type === 'Identifier' && expr.test.name === 'isDev';
+          const consVal = getAstStringLiteralValue(expr.consequent) || '';
+          const altVal = getAstStringLiteralValue(expr.alternate) || '';
+          if ((consVal.includes("'unsafe-eval'") || altVal.includes("'unsafe-eval'")) && (!testIsDev || altVal.includes("'unsafe-eval'"))) {
+            hasUngatedUnsafeEval = true;
+          }
+        } else {
+          const exprText = getAstStringLiteralValue(expr) || '';
+          if (exprText.includes("'unsafe-eval'")) {
+            hasUngatedUnsafeEval = true;
+          }
+        }
+      }
+      if (cspStaticJoined.includes("'unsafe-eval'")) {
+        hasUngatedUnsafeEval = true;
+      }
+    }
+  }
+
+  traverse(ast, {
+    ObjectMethod(pathNode) {
+      if (pathNode.node.key && (pathNode.node.key.name || pathNode.node.key.value) === 'headers') {
+        foundHeadersMethod = true;
+        pathNode.traverse({
+          VariableDeclarator(varPath) {
+            if (varPath.node.id && varPath.node.id.name === 'cspHeader') {
+              let init = varPath.node.init;
+              while (init && init.type === 'CallExpression' && init.callee && init.callee.type === 'MemberExpression') {
+                init = init.callee.object;
+              }
+              inspectCspTemplateNode(init);
+            }
+          },
+          ObjectExpression(objPath) {
+            for (const prop of objPath.node.properties) {
+              if (prop.type === 'ObjectProperty' && prop.key && (prop.key.name || prop.key.value) === 'source') {
+                if (getAstStringLiteralValue(prop.value) === '/(.*)') {
+                  hasGlobalCatchAllSource = true;
+                }
+              }
+            }
+            const inNonDevIf = Boolean(
+              objPath.findParent(
+                (p) =>
+                  p.isIfStatement() &&
+                  p.node.test &&
+                  p.node.test.type === 'UnaryExpression' &&
+                  p.node.test.operator === '!' &&
+                  p.node.test.argument &&
+                  p.node.test.argument.name === 'isDev'
+              )
+            );
+            recordHeaderPair(objPath.node, inNonDevIf);
+          },
+        });
+      }
+    },
+  });
+
+  if (!foundHeadersMethod) {
+    violations.push('next.config.ts must export async headers() returning OWASP HTTP security headers.');
+    return violations;
+  }
+  if (!hasGlobalCatchAllSource) {
+    violations.push('next.config.ts headers() must apply global security headers to wildcard source "/(.*)".');
+  }
+
+  const requiredHeaders = [
+    'Content-Security-Policy',
+    'Strict-Transport-Security',
+    'X-Content-Type-Options',
+    'X-Frame-Options',
+    'Referrer-Policy',
+    'Permissions-Policy',
+    'Cross-Origin-Opener-Policy',
+  ];
+  for (const hdr of requiredHeaders) {
+    if (!headerEntries.has(hdr)) {
+      violations.push(`Missing mandatory OWASP HTTP security header: ${hdr}`);
+    }
+  }
+
+  const xFrame = headerEntries.get('X-Frame-Options');
+  if (xFrame && xFrame.value !== 'DENY') {
+    violations.push(
+      `Clickjacking policy violation: X-Frame-Options must be "DENY" to match frame-ancestors 'none' (found "${xFrame.value || 'dynamic'}").`
+    );
+  }
+  const nosniff = headerEntries.get('X-Content-Type-Options');
+  if (nosniff && nosniff.value !== 'nosniff') {
+    violations.push(`X-Content-Type-Options must be "nosniff" (found "${nosniff.value || 'dynamic'}").`);
+  }
+  const coop = headerEntries.get('Cross-Origin-Opener-Policy');
+  if (coop && coop.value !== 'same-origin') {
+    violations.push(`Cross-Origin-Opener-Policy must be "same-origin" (found "${coop.value || 'dynamic'}").`);
+  }
+  const hsts = headerEntries.get('Strict-Transport-Security');
+  if (hsts && (!hsts.isConditionalNonDev || !String(hsts.value || '').includes('max-age=63072000'))) {
+    violations.push('Strict-Transport-Security must enforce max-age=63072000; includeSubDomains; preload inside (!isDev).');
+  }
+
+  if (
+    !cspStaticJoined.includes("default-src 'self'") ||
+    !cspStaticJoined.includes("object-src 'none'") ||
+    !cspStaticJoined.includes("frame-ancestors 'none'") ||
+    !cspStaticJoined.includes("form-action 'self'") ||
+    !cspStaticJoined.includes("base-uri 'self'")
+  ) {
+    violations.push(
+      "CSP header must enforce \"default-src 'self'\", \"object-src 'none'\", \"frame-ancestors 'none'\", \"form-action 'self'\", and \"base-uri 'self'\"."
+    );
+  }
+  if (hasUngatedUnsafeEval) {
+    violations.push("CSP 'unsafe-eval' must be strictly gated behind isDev (never active in production).");
+  }
+
+  return violations;
+}
+
+function validateNextBuildHeaderManifest(manifestPath) {
+  const violations = [];
+  if (!fs.existsSync(manifestPath)) {
+    violations.push(`Missing compiled Next.js routes manifest at ${path.relative(rootDir, manifestPath)}.`);
+    return violations;
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  } catch (err) {
+    violations.push(`Failed to parse ${path.relative(rootDir, manifestPath)}: ${err.message}`);
+    return violations;
+  }
+
+  const catchAllRule = Array.isArray(manifest.headers)
+    ? manifest.headers.find((entry) => entry && entry.source === '/(.*)')
+    : null;
+  if (!catchAllRule || !Array.isArray(catchAllRule.headers)) {
+    violations.push('Compiled .next/routes-manifest.json is missing global source "/(.*)" security headers rule.');
+    return violations;
+  }
+
+  const headerMap = new Map();
+  for (const h of catchAllRule.headers) {
+    if (h && typeof h.key === 'string') {
+      headerMap.set(h.key.toLowerCase(), String(h.value || ''));
+    }
+  }
+
+  if (headerMap.get('x-frame-options') !== 'DENY') {
+    violations.push(`Compiled manifest X-Frame-Options must be "DENY" (got "${headerMap.get('x-frame-options') || 'missing'}").`);
+  }
+  if (headerMap.get('x-content-type-options') !== 'nosniff') {
+    violations.push(`Compiled manifest X-Content-Type-Options must be "nosniff".`);
+  }
+  if (headerMap.get('cross-origin-opener-policy') !== 'same-origin') {
+    violations.push(`Compiled manifest Cross-Origin-Opener-Policy must be "same-origin".`);
+  }
+  if (!String(headerMap.get('strict-transport-security') || '').includes('max-age=63072000')) {
+    violations.push('Compiled manifest must include production Strict-Transport-Security (max-age=63072000).');
+  }
+  const csp = String(headerMap.get('content-security-policy') || '');
+  if (
+    !csp.includes("default-src 'self'") ||
+    !csp.includes("object-src 'none'") ||
+    !csp.includes("frame-ancestors 'none'") ||
+    !csp.includes("form-action 'self'") ||
+    !csp.includes("base-uri 'self'")
+  ) {
+    violations.push("Compiled manifest CSP is missing required default-src/object-src/frame-ancestors/form-action/base-uri directives.");
+  }
+  if (csp.includes("'unsafe-eval'")) {
+    violations.push("Compiled production manifest CSP must not contain 'unsafe-eval'.");
+  }
+
+  return violations;
+}
+
 // -------------------------------------------------------------
 // PASS 0.75: Pre-Commit SAST & OWASP Security Suite
 // -------------------------------------------------------------
@@ -528,13 +770,25 @@ function pass075SecurityAndSastAudit() {
         const relWf = `.github/workflows/${wfEntry}`;
         const wfContent = fs.readFileSync(wfPath, 'utf-8');
 
-        // 1. Check for floating/mutable branch tags in `uses:` declarations
+        // 1. Enforce explicit least-privilege permissions & full 40-char commit SHA pinning on external `uses:` references
+        if (!/^\s*permissions\s*:/m.test(wfContent)) {
+          workflowViolations.push(
+            `${relWf}: Missing explicit top-level "permissions:" block (least-privilege GitHub token scope required).`
+          );
+        }
+        if (/\bpull_request_target\b/.test(wfContent) && /contents:\s*write\b/i.test(wfContent)) {
+          workflowViolations.push(
+            `${relWf}: Combining "pull_request_target" with "contents: write" risks untrusted fork write escalation.`
+          );
+        }
+
         const usesMatches = [...wfContent.matchAll(/^\s*-?\s*uses:\s*([^\s#]+)/gm)];
         for (const m of usesMatches) {
           const actionRef = m[1];
-          if (/@(?:main|master|latest|HEAD)$/i.test(actionRef)) {
+          if (actionRef.startsWith('./') || actionRef.startsWith('.\\')) continue;
+          if (!/@[0-9a-f]{40}$/i.test(actionRef)) {
             workflowViolations.push(
-              `${relWf}: Unpinned mutable GitHub Action reference "${actionRef}" in uses:. Pin to a major version tag or commit SHA.`
+              `${relWf}: Unpinned mutable GitHub Action reference "${actionRef}" in uses:. Pin to an immutable 40-character commit SHA.`
             );
           }
         }
@@ -686,8 +940,11 @@ function pass075SecurityAndSastAudit() {
         if (/new\s+Function\s*\(/.test(code)) {
           xssViolations.push({ file: relFile, issue: 'Forbidden dynamic Function constructor detected.' });
         }
-        if (/href\s*=\s*['"]\s*javascript:/i.test(code)) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden javascript: pseudoprotocol link detected.' });
+        if (
+          /(?:href|src)\s*=\s*['"]\s*(?:javascript\s*:|vbscript\s*:|data\s*:\s*text\/html)/i.test(code) ||
+          /(?:href|src)\s*=\s*\{\s*['"`]\s*(?:javascript\s*:|vbscript\s*:|data\s*:\s*text\/html)/i.test(code)
+        ) {
+          xssViolations.push({ file: relFile, issue: 'Forbidden dangerous href/src URI scheme detected.' });
         }
         if (/\.(?:innerHTML|outerHTML)\s*=/.test(code)) {
           xssViolations.push({ file: relFile, issue: 'Forbidden direct DOM innerHTML/outerHTML assignment detected.' });
@@ -1065,32 +1322,12 @@ function pass075SecurityAndSastAudit() {
     logPass(`Pillar 6: Verified Row-Level Security across all ${dbTables.length} database tables (${publicTableCount} public tables + ${migrationTableCount} migration ledger), 100% DDL/policy/trigger idempotency, (select auth.uid()) InitPlan & single-permissive-policy invariants, write-policy isolation, account-deletion parity, trigger RPC revocation, and search_path/REVOKE hardening on all SECURITY DEFINER functions.`);
   }
 
-  // Pillar 7: HTTP Security Headers, Production CSP & Service Worker Cache Guard
-  console.log(`${colors.dim}Pillar 7: Auditing next.config.ts for mandatory OWASP HTTP security headers, CSP hardening, and Service Worker safety...${colors.reset}`);
+  // Pillar 7: HTTP Security Headers (Babel AST), Compiled Production Manifest & Service Worker Cache Guard
+  console.log(`${colors.dim}Pillar 7: Auditing next.config.ts AST for mandatory OWASP HTTP security headers, CSP hardening, and Service Worker safety...${colors.reset}`);
   const nextConfigPath = path.join(rootDir, 'next.config.ts');
   if (fs.existsSync(nextConfigPath)) {
     const nextConfigCode = fs.readFileSync(nextConfigPath, 'utf-8');
-    const requiredHeaders = [
-      'Content-Security-Policy',
-      'Strict-Transport-Security',
-      'X-Content-Type-Options',
-      'X-Frame-Options',
-      'Referrer-Policy',
-      'Permissions-Policy',
-      'Cross-Origin-Opener-Policy',
-    ];
-    const headerViolations = [];
-    for (const hdr of requiredHeaders) {
-      if (!nextConfigCode.includes(hdr)) {
-        headerViolations.push(`Missing mandatory OWASP HTTP security header: ${hdr}`);
-      }
-    }
-    if (!nextConfigCode.includes("default-src 'self'") || !nextConfigCode.includes("frame-ancestors 'none'")) {
-      headerViolations.push("CSP header must enforce \"default-src 'self'\" and \"frame-ancestors 'none'\".");
-    }
-    if (nextConfigCode.includes("'unsafe-eval'") && !/isDev\s*\?\s*["']'unsafe-eval'\s*["']/.test(nextConfigCode)) {
-      headerViolations.push("CSP 'unsafe-eval' must be strictly gated behind isDev (never active in production).");
-    }
+    const headerViolations = validateNextConfigSecurityHeadersAst(nextConfigCode);
 
     const swPath = path.join(rootDir, 'public', 'sw.js');
     if (fs.existsSync(swPath)) {
@@ -1106,6 +1343,16 @@ function pass075SecurityAndSastAudit() {
           'Service Worker (public/sw.js) must enforce strict cross-origin pass-through (url.origin !== self.location.origin).'
         );
       }
+      if (
+        !swCode.includes('MAX_MESSAGE_PRECACHE_URLS') ||
+        !swCode.includes('parsed.origin !== self.location.origin') ||
+        !swCode.includes("parsed.pathname.startsWith('/auth/')") ||
+        !swCode.includes("parsed.pathname.startsWith('/api/')")
+      ) {
+        headerViolations.push(
+          'Service Worker (public/sw.js) CACHE_URLS handler must sanitize URLs to bounded same-origin non-/auth/ non-/api/ paths.'
+        );
+      }
       if (/\b(?:importScripts|eval)\s*\(/.test(swCode)) {
         headerViolations.push(
           'Service Worker (public/sw.js) must never invoke importScripts() or eval().'
@@ -1118,7 +1365,7 @@ function pass075SecurityAndSastAudit() {
       headerViolations.forEach((v) => console.error(`  - ${v}`));
       return false;
     }
-    logPass(`Pillar 7: All ${requiredHeaders.length} OWASP HTTP security headers, production CSP directives, and Service Worker cache boundaries verified.`);
+    logPass('Pillar 7: All 7 OWASP HTTP security headers (Babel AST verified including X-Frame-Options: DENY, frame-ancestors \'none\', object-src \'none\'), production CSP directives, and Service Worker cache boundaries verified.');
   }
 
   return true;
@@ -2484,7 +2731,15 @@ function pass7ProductionBuild() {
     }
   }
 
-  logPass('Production build compiled cleanly within performance budget.');
+  const routesManifestPath = path.join(rootDir, '.next', 'routes-manifest.json');
+  const compiledHeaderViolations = validateNextBuildHeaderManifest(routesManifestPath);
+  if (compiledHeaderViolations.length > 0) {
+    logFail('Compiled Next.js production security header manifest violation(s):');
+    compiledHeaderViolations.forEach((v) => console.error(`  - ${v}`));
+    return false;
+  }
+
+  logPass('Production build & compiled security headers (.next/routes-manifest.json) verified within performance budget.');
   return true;
 }
 

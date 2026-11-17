@@ -2,15 +2,16 @@
  * @module
  * @scope OAuth PKCE code exchange and email OTP verification callback route (`GET /auth/callback`).
  * @invariant Validate origins via `resolveCanonicalAuthOrigin`, constrain `?next=` targets via `sanitizeRedirectPath`, strip recovery query routes on non-recovery flows (`stripRecoveryFromRedirectPath`), and allowlist strictly known `VALID_OTP_TYPES`.
- * @invariant Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies on successful authentication.
+ * @invariant Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies with `sameSite: 'lax'` and `secure: isHttpsRequest(request)` on successful authentication.
  * @rationale Prevents open redirects, accidental recovery-mode entry via normal logins, and confusing error screens when users confirm signup links on a secondary mobile mail client.
- * @adr ADR-005, ADR-022, ADR-034, ADR-072
+ * @adr ADR-005, ADR-022, ADR-034, ADR-072, ADR-080
  */
 
 import { NextResponse } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { STORAGE_KEYS } from '@/config/site-config';
+import { isHttpsRequest } from '@/lib/api-utils';
 import {
   sanitizeRedirectPath,
   resolveCanonicalAuthOrigin,
@@ -47,19 +48,25 @@ function isCrossDevicePkceVerifierError(
   );
 }
 
-function applyClientIpSyncCookie(response: NextResponse, shouldSync: boolean): void {
+function applyClientIpSyncCookie(
+  response: NextResponse,
+  shouldSync: boolean,
+  secure: boolean
+): void {
   if (!shouldSync) return;
   response.cookies.set(STORAGE_KEYS.CLIENT_IP_SYNC, '1', {
     path: '/',
     maxAge: 120,
     sameSite: 'lax',
     httpOnly: false,
+    secure,
   });
 }
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const targetOrigin = resolveCanonicalAuthOrigin(origin);
+  const secureCookie = isHttpsRequest(request);
   const forwardedUserAgent = request.headers.get('user-agent');
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
@@ -99,10 +106,12 @@ export async function GET(request: Request) {
         path: '/',
         maxAge: 2592000,
         sameSite: 'lax',
+        secure: secureCookie,
       });
       applyClientIpSyncCookie(
         response,
-        !isRecoveryFlow && !isRecoveryRedirectPath(destination)
+        !isRecoveryFlow && !isRecoveryRedirectPath(destination),
+        secureCookie
       );
       return response;
     }
@@ -125,10 +134,12 @@ export async function GET(request: Request) {
         path: '/',
         maxAge: 2592000,
         sameSite: 'lax',
+        secure: secureCookie,
       });
       applyClientIpSyncCookie(
         response,
-        !isRecoveryFlow && !isRecoveryRedirectPath(destination)
+        !isRecoveryFlow && !isRecoveryRedirectPath(destination),
+        secureCookie
       );
       return response;
     }

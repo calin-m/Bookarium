@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 16 Nov 2026 22:16:30 GMT  
+**Last Generated**: Tue, 17 Nov 2026 00:15:15 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 258 passed  
-**Total Verified Tests**: 2658 passed  
+**Total Verified Tests**: 2666 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2658 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **258/258 test suites passed** (2666 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.41%** (15806/16225) — *Target: $\ge$ 95%*
-- **Statements**: **96.22%** (17035/17704) — *Target: $\ge$ 95%*
-- **Functions**: **95.33%** (3396/3562) — *Target: $\ge$ 92%*
-- **Branches**: **88.52%** (15798/17846) — *Target: $\ge$ 85%*
+- **Lines**: **97.38%** (15826/16251) — *Target: $\ge$ 95%*
+- **Statements**: **96.18%** (17059/17735) — *Target: $\ge$ 95%*
+- **Functions**: **95.23%** (3394/3564) — *Target: $\ge$ 92%*
+- **Branches**: **88.53%** (15824/17873) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2658 Tests)
+## 🧪 Comprehensive Test Suite Catalog (258 Suites / 2666 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 329 Tests)
 
@@ -2060,7 +2060,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (52 Suites · 647 Tests)
+### 📚 Gutenberg Parsers & Metadata (52 Suites · 655 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2126,7 +2126,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/api-utils.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>src/lib/api-utils.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `prioritizes x-vercel-forwarded-for when present`
 - ✔ `prioritizes cf-connecting-ip when vercel header is missing`
@@ -2139,6 +2139,7 @@
 - ✔ `creates a no-store JSON error response with hardened headers`
 - ✔ `accepts allowlisted params and allows dev-only params outside production`
 - ✔ `rejects unknown params and rejects dev-only params in production`
+- ✔ `detects HTTPS from x-forwarded-proto proxy headers or request URLs while allowing HTTP localhost`
 
 </details>
 
@@ -2827,13 +2828,16 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (28 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `resolves Tailwind v4 shadow-xs/2xs and custom design-token shadows without duplicate shadow classes`
 - ✔ `should extract standard Gutenberg format keys`
 - ✔ `should handle empty or undefined formats gracefully`
 - ✔ `should generate canonical Project Gutenberg fallback URLs when bookId is provided`
+- ✔ `should reject unsafe or non-HTTPS format URLs and fall back cleanly when bookId is provided`
+- ✔ `should allow valid https URLs and reject dangerous or plain http schemes`
+- ✔ `should permit blob URLs only when allowBlob is explicitly enabled`
 - ✔ `should format numbers with k and M suffix`
 - ✔ `should estimate reading time based on word counts`
 - ✔ `should truncate strings with ellipsis`
@@ -2858,7 +2862,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
 - ✔ `permits HTTPS and relative internal API fetch() calls`
@@ -2866,21 +2870,25 @@
 - ✔ `permits NextResponse.redirect() when path and origin are sanitized via redirect-sanitizer`
 - ✔ `flags server-only module imports and secret process.env access in client components`
 - ✔ `permits NEXT_PUBLIC_* and NODE_ENV in client-reachable modules`
-- ✔ `flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals`
-- ✔ `permits function-reference setTimeout(), setInterval(), and RegExp.prototype.exec()`
+- ✔ `flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals or static new RegExp() patterns`
+- ✔ `permits function-reference setTimeout(), setInterval(), RegExp.prototype.exec(), and dynamic template new RegExp()`
 - ✔ `flags dangerouslySetInnerHTML, .innerHTML, document.write, insertAdjacentHTML, JSX javascript: href, Reverse Tabnabbing target="_blank", and wildcard postMessage("*")`
 - ✔ `permits <a target="_blank" rel="noopener noreferrer"> and explicit origin postMessage`
+- ✔ `flags dynamic JSX href/src expressions with concatenated, conditional, logical, template, TS-cast, or split-constant dangerous URI schemes`
+- ✔ `flags imperative setAttribute("srcdoc"|"href"|"src") XSS sinks and window.open(..., "_blank") missing noopener`
 - ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, external URLs, PostgREST .or(), and new RegExp()`
 - ✔ `clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards`
 - ✔ `enforces sink-scoped sanitization and catches cross-sink sanitizer misuse`
-- ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, and missing RateLimiter`
-- ✔ `passes compliant public API route handlers that invoke RateLimiter.check()`
+- ✔ `tracks client useSearchParams() and document.referrer taint into router.push()/replace() while allowing static path prefixes, ROUTES builders, and sanitized paths`
+- ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, missing RateLimiter, missing API security headers, and unsafe response cookie writes`
+- ✔ `passes compliant public API route handlers that invoke RateLimiter.check(), apply buildApiSecurityHeaders(), and set sameSite + secure cookies`
+- ✔ `flags arrow-function export const GET/POST API route handlers missing RateLimiter or buildApiSecurityHeaders while permitting compliant arrow handlers`
 - ✔ `flags describe.only, it.only, expect(true).toBe(true), and zero-assertion test blocks in test files`
 - ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
 - ✔ `permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries`
 - ✔ `flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")`
 - ✔ `flags external gutendex.com runtime URLs in production code while permitting DTO types and test fixtures (ADR-080)`
-- ✔ `verifies zero AST or taint violations across the entire production src/ directory`
+- ✔ `verifies zero AST, parse, or taint violations across src/, scripts/, public/sw.js, and next.config.ts`
 
 </details>
 

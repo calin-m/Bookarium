@@ -5,10 +5,29 @@
  */
 
 const CACHE_NAME = 'bookarium-app-shell-v7';
+const MAX_MESSAGE_PRECACHE_URLS = 100;
 
 const SW_PRECACHE_HEADERS = {
   'x-bookarium-sw-precache': '1',
 };
+
+function sanitizePrecacheUrl(rawUrl) {
+  if (typeof rawUrl !== 'string') return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed.startsWith('//')) return null;
+
+  try {
+    const parsed = new URL(trimmed, self.location.origin);
+    if (parsed.origin !== self.location.origin) return null;
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    if (parsed.pathname.startsWith('/auth/') || parsed.pathname.startsWith('/api/')) {
+      return null;
+    }
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
 
 async function fetchPrecacheAsset(rawUrl) {
   return fetch(rawUrl, {
@@ -131,6 +150,15 @@ self.addEventListener('message', (event) => {
     return;
   }
 
+  const sanitizedUrls = data.urls
+    .slice(0, MAX_MESSAGE_PRECACHE_URLS)
+    .map(sanitizePrecacheUrl)
+    .filter(Boolean);
+
+  if (sanitizedUrls.length === 0) {
+    return;
+  }
+
   // Purge any legacy cover cache if present
   void caches.delete('bookarium-covers-v1').catch(() => {});
 
@@ -138,7 +166,7 @@ self.addEventListener('message', (event) => {
     caches
       .open(CACHE_NAME)
       .then(async (cache) => {
-        for (const rawUrl of data.urls) {
+        for (const rawUrl of sanitizedUrls) {
           try {
             const existing = await cache.match(rawUrl);
             if (!existing) {

@@ -134,16 +134,20 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         'no-client-server-boundary-violation',
         `'use client';
         import { createClient } from '@/lib/supabase/server';
+        import { isClientSideNavigation } from '@/lib/server-rsc-nav';
         import fs from 'fs';
+        import http from 'node:http';
         const loadMiddleware = () => import('@/lib/supabase/middleware');
         const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const { DATABASE_URL } = process.env;`,
         'src/components/reader/ReaderSurface.tsx'
       );
-      expect(violations.length).toBeGreaterThanOrEqual(5);
+      expect(violations.length).toBeGreaterThanOrEqual(7);
       expect(violations.some((v) => v.message.includes('@/lib/supabase/server'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('@/lib/server-rsc-nav'))).toBe(true);
       expect(violations.some((v) => v.message.includes('@/lib/supabase/middleware'))).toBe(true);
       expect(violations.some((v) => v.message.includes('"fs" is a server-only module'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('"node:http" is a server-only module'))).toBe(true);
       expect(violations.some((v) => v.message.includes('SUPABASE_SERVICE_ROLE_KEY'))).toBe(true);
       expect(violations.some((v) => v.message.includes('DATABASE_URL'))).toBe(true);
     });
@@ -162,7 +166,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('4. no-dangerous-execution', () => {
-    it('flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals', () => {
+    it('flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals or static new RegExp() patterns', () => {
       const violations = runRuleOnCode(
         'no-dangerous-execution',
         `import { execSync } from 'child_process';
@@ -170,21 +174,26 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         const fn = new Function('a', 'return a');
         setTimeout('alert(1)', 100);
         execSync('ls -la');
-        const redos = /(\\w+)+/;`,
+        const redos = /(\\w+)+/;
+        const staticStringRedos = new RegExp('(a+)+');`,
         'src/lib/unsafe-helper.ts'
       );
-      expect(violations).toHaveLength(5);
+      expect(violations).toHaveLength(6);
       expect(violations[4].message).toContain('Catastrophic backtracking ReDoS pattern (CWE-1333)');
+      expect(violations[5].message).toContain('Catastrophic backtracking ReDoS pattern (CWE-1333)');
     });
 
-    it('permits function-reference setTimeout(), setInterval(), and RegExp.prototype.exec()', () => {
+    it('permits function-reference setTimeout(), setInterval(), RegExp.prototype.exec(), and dynamic template new RegExp()', () => {
       const clean = runRuleOnCode(
         'no-dangerous-execution',
         `setTimeout(() => {}, 250);
         setInterval(function tick() {}, 1000);
         const chapterRegex = /^CHAPTER\\s+([IVXLCDM]+|\\d+)/im;
         chapterRegex.exec('CHAPTER I');
-        /^Title:\\s*(.+)$/im.exec('Title: Pride and Prejudice');`,
+        /^Title:\\s*(.+)$/im.exec('Title: Pride and Prejudice');
+        const query = 'pride';
+        const dyn = new RegExp(\`\\\\b\${query}\`, 'i');
+        dyn.test('Pride');`,
         'src/hooks/useNetworkStatus.ts'
       );
       expect(clean).toHaveLength(0);
@@ -219,13 +228,58 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
     it('permits <a target="_blank" rel="noopener noreferrer"> and explicit origin postMessage', () => {
       const clean = runRuleOnCode(
         'no-unsafe-dom-injection',
-        `export function SafeComponent() {
+        `export function SafeComponent({ id }: { id: number }) {
           window.postMessage({ type: 'PING' }, window.location.origin);
-          return <a href="https://www.gutenberg.org" target="_blank" rel="noopener noreferrer">Safe</a>;
+          return (
+            <div>
+              <a href="https://www.gutenberg.org" target="_blank" rel="noopener noreferrer">Safe</a>
+              <a href={'https://www.gutenberg.org/ebooks/' + id}>Safe Concat</a>
+            </div>
+          );
         }`,
         'src/components/presentation/Footer.tsx'
       );
       expect(clean).toHaveLength(0);
+    });
+
+    it('flags dynamic JSX href/src expressions with concatenated, conditional, logical, template, TS-cast, or split-constant dangerous URI schemes', () => {
+      const violations = runRuleOnCode(
+        'no-unsafe-dom-injection',
+        `export function DynamicUriComponent({ path, ok, custom, payload }: { path: string; ok: boolean; custom: string; payload: string }) {
+          return (
+            <div>
+              <a href={'javascript:' + path}>Concat Link</a>
+              <img src={ok ? '/cover.jpg' : 'javascript:alert(1)'} alt="Conditional" />
+              <a href={custom || 'vbscript:msgbox(1)'}>Logical Link</a>
+              <iframe src={\`data:text/html,\${payload}\`} title="Template Frame" />
+              <a href={('ja' + 'vascript:alert(1)') as string}>Split Cast Link</a>
+            </div>
+          );
+        }`,
+        'src/components/reader/ReaderSurface.tsx'
+      );
+      expect(violations).toHaveLength(5);
+      expect(violations.filter((v) => v.message.includes('dangerous "href" URI scheme'))).toHaveLength(3);
+      expect(violations.filter((v) => v.message.includes('dangerous "src" URI scheme'))).toHaveLength(2);
+    });
+
+    it('flags imperative setAttribute("srcdoc"|"href"|"src") XSS sinks and window.open(..., "_blank") missing noopener', () => {
+      const violations = runRuleOnCode(
+        'no-unsafe-dom-injection',
+        `export function ImperativeDomComponent(el: HTMLElement, url: string) {
+          el.setAttribute('srcdoc', '<script>alert(1)</script>');
+          el.setAttribute('href', 'javascript:alert(1)');
+          window.open(url, '_blank');
+          window.open(url, '_blank', 'width=600,height=400');
+          window.open(url, '_blank', 'noopener,noreferrer');
+          el.setAttribute('href', 'https://www.gutenberg.org/ebooks/1342');
+        }`,
+        'src/components/reader/ReaderSurface.tsx'
+      );
+      expect(violations).toHaveLength(4);
+      expect(violations.some((v) => v.message.includes(".setAttribute('srcdoc'"))).toBe(true);
+      expect(violations.some((v) => v.message.includes('dangerous "href" URI scheme') && v.message.includes('setAttribute()'))).toBe(true);
+      expect(violations.filter((v) => v.message.includes('Reverse Tabnabbing risk (CWE-1022)'))).toHaveLength(2);
     });
   });
 
@@ -324,60 +378,139 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(crossSinkViolations[1].message).toContain('reaches redirect() sink');
       expect(crossSinkViolations[2].message).toContain('PostgREST Filter Injection CWE-943');
 
-      // 2. Correct sink usage: parseCatalogQuery in .or() and sanitizeRedirectPath in redirect()
+      // 2. Correct sink usage: parseCatalogQuery in .or(), sanitizeRedirectPath / stripRecoveryFromRedirectPath in redirect(), and sanitizeBookFormatUrl in fetch()
       const correctSink = runRuleOnCode(
         'no-tainted-request-sink',
         `import { NextResponse } from 'next/server';
         import { parseCatalogQuery } from '@/lib/catalog-query-parser';
-        import { sanitizeRedirectPath, resolveCanonicalAuthOrigin } from '@/lib/redirect-sanitizer';
+        import { sanitizeRedirectPath, resolveCanonicalAuthOrigin, stripRecoveryFromRedirectPath } from '@/lib/redirect-sanitizer';
+        import { sanitizeBookFormatUrl } from '@/lib/utils';
         export async function GET(request: Request) {
           const { searchParams, origin } = new URL(request.url);
           const rawQ = searchParams.get('q') || '';
           const cleanQuery = parseCatalogQuery(rawQ);
           const safePath = sanitizeRedirectPath(searchParams.get('next'));
           const safeOrigin = resolveCanonicalAuthOrigin(origin);
+          const stripped = stripRecoveryFromRedirectPath(searchParams.get('next') || '');
+          const safeBookUrl = sanitizeBookFormatUrl(searchParams.get('bookUrl') || '');
 
           await supabase.from('books').select('*').or(\`title.ilike.%\${cleanQuery}%\`);
+          await fetch(safeBookUrl);
+          if (stripped) {
+            return NextResponse.redirect(new URL(stripped, safeOrigin));
+          }
           return NextResponse.redirect(new URL(safePath, safeOrigin));
         }`,
         'src/app/api/books/route.ts'
       );
       expect(correctSink).toHaveLength(0);
     });
+
+    it('tracks client useSearchParams() and document.referrer taint into router.push()/replace() while allowing static path prefixes, ROUTES builders, and sanitized paths', () => {
+      const unsafeClientNav = runRuleOnCode(
+        'no-tainted-request-sink',
+        `'use client';
+        import { useRouter, useSearchParams } from 'next/navigation';
+        export function UnsafeRedirect({ router }: { router: ReturnType<typeof useRouter> }) {
+          const rawNext = useSearchParams().get('next') || '/';
+          const protocolRelativeRisk = \`/\${rawNext}\`;
+          router.push(rawNext);
+          router.replace(protocolRelativeRisk);
+          router.push(document.referrer);
+        }`,
+        'src/components/auth/UnsafeRedirect.tsx'
+      );
+      expect(unsafeClientNav).toHaveLength(3);
+      expect(unsafeClientNav.every((v) => v.message.includes('client navigation sink'))).toBe(true);
+
+      const safeClientNav = runRuleOnCode(
+        'no-tainted-request-sink',
+        `'use client';
+        import { useRouter, useSearchParams } from 'next/navigation';
+        import { ROUTES } from '@/config/routes';
+        import { sanitizeRedirectPath } from '@/lib/redirect-sanitizer';
+        export function SafeRedirect({ router }: { router: ReturnType<typeof useRouter> }) {
+          const searchParams = useSearchParams();
+          const rawNext = searchParams.get('next') || '';
+          const safePath = sanitizeRedirectPath(rawNext);
+          router.push(safePath);
+          router.replace(\`/read/\${rawNext}?page=1\`);
+          router.push(\`\${ROUTES.ACCOUNT}?dir=\${rawNext}\`);
+          router.push(ROUTES.VIEW(rawNext));
+        }`,
+        'src/components/auth/SafeRedirect.tsx'
+      );
+      expect(safeClientNav).toHaveLength(0);
+    });
   });
 
   describe('7. no-secret-env-or-public-route-leak (Project Security Rules)', () => {
-    it('flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, and missing RateLimiter', () => {
+    it('flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, missing RateLimiter, missing API security headers, and unsafe response cookie writes', () => {
       const violations = runRuleOnCode(
         'no-secret-env-or-public-route-leak',
         `import { NextResponse } from 'next/server';
-        export async function GET() {
+        export async function GET(req: { url: string; cookies: { set: (n: string, v: string) => void } }) {
           const badPublicSecret = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
           const srvRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          return NextResponse.json(process.env);
+          const res = NextResponse.json(process.env);
+          res.cookies.set('flag', '1', { path: '/' });
+          req.cookies.set('inbound', '1');
+          return res;
         }`,
         'src/app/api/books/route.ts'
       );
-      expect(violations).toHaveLength(4);
+      expect(violations).toHaveLength(6);
       expect(violations.some((v) => v.message.includes('never prefix secret'))).toBe(true);
       expect(violations.some((v) => v.message.includes('must not reference SUPABASE_SERVICE_ROLE_KEY'))).toBe(true);
       expect(violations.some((v) => v.message.includes('Exposing raw process.env'))).toBe(true);
       expect(violations.some((v) => v.message.includes('must enforce rate limiting'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('must enforce buildApiSecurityHeaders()'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('Response cookies.set() options must declare explicit "sameSite" and protocol-aware "secure"'))).toBe(true);
     });
 
-    it('passes compliant public API route handlers that invoke RateLimiter.check()', () => {
+    it('passes compliant public API route handlers that invoke RateLimiter.check(), apply buildApiSecurityHeaders(), and set sameSite + secure cookies', () => {
       const clean = runRuleOnCode(
         'no-secret-env-or-public-route-leak',
         `import { NextRequest, NextResponse } from 'next/server';
         import { booksApiRateLimiter } from '@/lib/rate-limiter';
+        import { buildApiSecurityHeaders, isHttpsRequest } from '@/lib/api-utils';
         export async function GET(request: NextRequest) {
           const limit = booksApiRateLimiter.check('127.0.0.1');
           if (!limit.success) return NextResponse.json({ error: 'Rate limited' }, { status: 429 });
-          return NextResponse.json({ ok: true });
+          const res = NextResponse.json({ ok: true }, { headers: buildApiSecurityHeaders('same-origin') });
+          res.cookies.set('ok', '1', { path: '/', sameSite: 'lax', secure: isHttpsRequest(request) });
+          return res;
         }`,
         'src/app/api/books/route.ts'
       );
       expect(clean).toHaveLength(0);
+    });
+
+    it('flags arrow-function export const GET/POST API route handlers missing RateLimiter or buildApiSecurityHeaders while permitting compliant arrow handlers', () => {
+      const badArrow = runRuleOnCode(
+        'no-secret-env-or-public-route-leak',
+        `import { NextResponse } from 'next/server';
+        export const maxDuration = 30;
+        export const GET = async () => NextResponse.json({ ok: true });`,
+        'src/app/api/books/route.ts'
+      );
+      expect(badArrow).toHaveLength(2);
+      expect(badArrow.some((v) => v.message.includes('must enforce rate limiting'))).toBe(true);
+      expect(badArrow.some((v) => v.message.includes('must enforce buildApiSecurityHeaders()'))).toBe(true);
+
+      const cleanArrow = runRuleOnCode(
+        'no-secret-env-or-public-route-leak',
+        `import { NextResponse } from 'next/server';
+        import { booksApiRateLimiter } from '@/lib/rate-limiter';
+        import { buildApiSecurityHeaders } from '@/lib/api-utils';
+        export const maxDuration = 30;
+        export const GET = async () => {
+          booksApiRateLimiter.check('127.0.0.1');
+          return NextResponse.json({ ok: true }, { headers: buildApiSecurityHeaders('same-origin') });
+        };`,
+        'src/app/api/books/route.ts'
+      );
+      expect(cleanArrow).toHaveLength(0);
     });
   });
 
@@ -482,7 +615,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('Full Codebase Standalone AST Security Audit', () => {
-    it('verifies zero AST or taint violations across the entire production src/ directory', () => {
+    it('verifies zero AST, parse, or taint violations across src/, scripts/, public/sw.js, and next.config.ts', () => {
       const rootDir = path.resolve(__dirname, '../..');
       const violations = bookariumSecurity.runStandaloneAstSecurityAudit(rootDir);
       expect(violations).toEqual([]);

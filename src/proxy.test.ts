@@ -42,6 +42,7 @@ describe('Root Proxy (Next.js 16)', () => {
 
     const geoCookie = res.cookies.get(GEO_COOKIE_NAME);
     expect(geoCookie?.value).toBe('FR');
+    expect(Boolean(geoCookie?.secure)).toBe(false);
     expect(res.headers.get('x-bookarium-country')).toBe('FR');
     expect(req.headers.get('x-bookarium-country')).toBe('FR');
   });
@@ -71,6 +72,7 @@ describe('Root Proxy (Next.js 16)', () => {
 
     const geoCookie = res.cookies.get(GEO_COOKIE_NAME);
     expect(geoCookie?.value).toBe('GB');
+    expect(geoCookie?.secure).toBe(true);
     expect(res.headers.get('x-bookarium-country')).toBe('GB');
 
     vi.unstubAllEnvs();

@@ -383,14 +383,14 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '`npm run verify`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env-parity across \`src/\` & \`scripts/\`/transitive-graph, Pass 0.75 lockfile/workflows/SAST/OWASP/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 direct generator docs sync, Pass 5 ADR/checklist/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/1:1-test-co-location across \`src/app/**\` & CLI/AST scripts/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build).`,
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/env-parity across \`src/\` & \`scripts/\`/transitive-graph, Pass 0.75 lockfile/40-char-SHA & permissions workflow scanner/SAST/OWASP/${securityRuleCount}-rule-AST-taint/Babel-AST-header & SW-CACHE_URLS validation, Pass 1 types, Pass 2 MSW, Pass 3 Vitest 95/95/92/85%, Pass 4 direct generator docs sync, Pass 5 ADR/checklist/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/1:1-test-co-location across \`src/app/**\` & CLI/AST scripts/SemVer-7-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build + \`.next/routes-manifest.json\` security header audit).`,
     },
     'scripts/eslint-rules/bookarium-security.js': {
       name: 'eslint-rules/bookarium-security.js',
       npmCommand: '`npm run lint` & `npm run security:audit`',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
-        `In-repo custom ESLint & Babel AST security plugin enforcing ${securityRuleCount} rules: unsafe fetch, unvalidated redirects, client/server boundary isolation, dangerous execution primitives, DOM XSS injection, intra-procedural request taint analysis (including Prototype Pollution guards), secret env/public route guards, test anti-tautology checks, and Project Gutenberg & copyright policy enforcement.`,
+        `In-repo custom ESLint & Babel AST security plugin enforcing ${securityRuleCount} rules across \`src/\`, \`scripts/\`, \`public/sw.js\`, and \`next.config.ts\` (with explicit \`ast-parse-error\` reporting): unsafe fetch, unvalidated redirects, \`@/lib/server-rsc-nav\` & client/server boundary isolation, dangerous execution + static \`new RegExp()\` ReDoS primitives, TS-cast/constant-folded DOM XSS injection, intra-procedural server + client \`router.push()\`/\`replace()\` request taint analysis (with zero-false-positive static prefix & Prototype Pollution guards), arrow/function API handler secret/header/cookie guards, test anti-tautology checks, and Project Gutenberg & copyright policy enforcement.`,
     },
     'scripts/lib/ast-parser.js': {
       name: 'lib/ast-parser.js',
@@ -543,7 +543,7 @@ function extractWorkspaceConfigAndGovernanceCatalog(rootDirPath) {
       file: 'next.config.ts',
       layer: 'Next.js 16 Build, Rewrites & OWASP Headers',
       responsibility:
-        'Configures Next.js 16 App Router image remote patterns and CSP `img-src` allowlists (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, `www.gutenberg.org`, `gutenberg.org`), clean path Edge rewrites (`/bookshelf`, `/favorites`, `/notebook`, `/bookmarks` -> `/?view=*`), and all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy` with production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`).',
+        'Configures Next.js 16 App Router image remote patterns and CSP `img-src` allowlists (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`, `www.gutenberg.org`, `gutenberg.org`), clean path Edge rewrites (`/bookshelf`, `/favorites`, `/notebook`, `/bookmarks` -> `/?view=*`), and all 7 mandatory OWASP HTTP security headers (`Content-Security-Policy` with `object-src \'none\'`, `frame-ancestors \'none\'`, and production `unsafe-eval` stripping, `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`).',
     },
     {
       name: 'vercel.json',
@@ -713,7 +713,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 47} RLS policies, ${counts.dbFunctionCount || 9} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 17} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), PGLAF mirror-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
     { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser & behavioral contract specifications (\`GUTENBERG_PARSER.md\`, \`SYSTEM_CONTRACTS.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
-    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD & release publisher (`ci.yml`, `release.yml`), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance & cache purge workflows (`translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
+    { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD, security scanning & release publisher (`ci.yml`, `codeql.yml`, `dependency-review.yml`, `release.yml`, all 40-char commit-SHA pinned), unified Sunday sequential catalog/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), on-demand manual maintenance & cache purge workflows (`translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
   ];
 
   let auditTotals = { suites: counts.totalSuites || 258, tests: '2,645' };
@@ -754,7 +754,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { file: 'ROADMAP.md', mode: '100% AST-Generated', generator: '`scripts/generate-roadmap.js`', role: `Zero-drift product roadmap verifying feature completion directly against source files and AST patterns across Milestones 0–${maxMilestoneIdx}.` },
     { file: 'CHANGELOG.md', mode: '100% Script-Generated', generator: '`scripts/generate-changelog.js`', role: 'Chronological Keep a Changelog 1.0.0 & SemVer release ledger across all application versions.' },
     { file: 'docs/PIPELINE_GUIDE.md', mode: 'Curated Engineering Runbook', generator: '_Source-of-Truth Runbook_', role: 'Operational guide for the 7-Gateway Quality Engine, GitHub Actions workflows, and catalog/translation ingestion pipelines.' },
-    { file: 'docs/GITHUB_ACTIONS.md', mode: 'Curated Operator Runbook', generator: '_Source-of-Truth Runbook (Pass 5 Parity Verified)_', role: 'Complete trigger, schedule, permission, secret, workflow_dispatch input, CI command, and local CLI parity reference for all 6 `.github/workflows/*.yml` pipelines and Dependabot.' },
+    { file: 'docs/GITHUB_ACTIONS.md', mode: 'Curated Operator Runbook', generator: '_Source-of-Truth Runbook (Pass 5 Parity Verified)_', role: `Complete trigger, schedule, permission, secret, workflow_dispatch input, immutable SHA pin, CI command, and local CLI parity reference for all ${counts.workflowCount || 8} \`.github/workflows/*.yml\` pipelines and Dependabot.` },
     { file: 'DEVELOPMENT.md & CONTRIBUTING.md', mode: 'Curated Contributor Guides', generator: '_Source-of-Truth Guides_', role: 'Local development environment setup, testing standards, and conventional commit protocols.' },
     { file: 'SECURITY.md & CODE_OF_CONDUCT.md', mode: 'Curated Governance Policies', generator: '_Source-of-Truth Policies_', role: 'Vulnerability disclosure policy, OWASP defense-in-depth overview, and Contributor Covenant v2.1 standards.' },
     { file: 'AGENTS.md & .agents/AGENTS.md', mode: 'Immutable Agent Governance', generator: '_Canonical Agent Rules_', role: 'Master operational rules (Rules 0–9) governing human and AI multi-agent engineering in Bookarium.' },
@@ -949,6 +949,7 @@ function generateMarkdown() {
     '        SyncTranslations["🔄 Relational Translations Sync\\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]',
     '        SyncQuotes["🔄 Featured Quotes Sync Engine\\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]',
     '        PurgeVercel["🧹 Edge Cache Tag Purge CLI\\n(scripts/purge-vercel-cache.js • .github/workflows/cache-purge.yml)"]',
+    '        CISecurity["🛡️ SHA-Pinned CI, CodeQL & Dependency Review\\n(.github/workflows/ci.yml • codeql.yml • dependency-review.yml • release.yml)"]',
     '        VercelEdge["⚡ Vercel Edge Platform\\n(Edge CDN SWR, Cookie-less Analytics & Speed Insights)"]',
     '    end',
     '',
@@ -1697,7 +1698,7 @@ function generateMarkdown() {
     'book.adapter':
       'Bidirectional domain transformation between internal catalog DTO schemas (`GutendexBook` / `GutendexResponse`), canonical Book models, and Supabase cloud persistence payloads.',
     'api-utils':
-      'Server-side API route helpers, IP address extraction (`resolveClientIp`), `ApiCorpPolicy` / `buildApiSecurityHeaders` (`Cross-Origin-Resource-Policy` & `nosniff`), strict query allowlisting (`hasUnexpectedQueryParams`), `createNoStoreErrorResponse`, and `no-store` `same-origin` `429` rate-limit responses.',
+      'Server-side API route helpers, IP address extraction (`resolveClientIp`), HTTPS proxy/URL detection (`isHttpsRequest`) for protocol-aware `Secure` cookies, `ApiCorpPolicy` / `buildApiSecurityHeaders` (`Cross-Origin-Resource-Policy` & `nosniff`), strict query allowlisting (`hasUnexpectedQueryParams`), `createNoStoreErrorResponse`, and `no-store` `same-origin` `429` rate-limit responses.',
     'bookshelf-cloud-sync':
       'Bidirectional cloud reconciliation engine for bookshelves, shelf items, and favorite books, featuring non-regressive local metadata preservation (`mergeCloudBookWithLocal`), per-user in-flight mutex & `coalesceInFlightByUser` outbox flushing (`executeFlushOutbox`, `dirtyOutboxFlushUsers`, `markBookshelfOutboxDirty`), opt-in `15,000ms` passive mount cooldown (`invalidateBookshelfSyncCooldown`), concurrent `Promise.all` table fetching, multi-shelf `book_id` deduplication, outbox mutation replay, tombstone filtering, single-commit atomic state reconciliation, and deterministic ordering.',
     'book-metadata':
@@ -1767,7 +1768,7 @@ function generateMarkdown() {
     'scroll-utils':
       'Smart smooth-scrolling engine with visibility viewport heuristics, top offset calculation, header avoidance, horizontal pointer click-and-drag + wheel scrolling (`attachHorizontalDragAndWheelScroll`), live touch-swipe / mouse-drag tab scrubbing, and zero-drift scroll preservation (`runPreservingScrollPosition`).',
     utils:
-      'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, and format badges.',
+      'Core presentation utilities: Tailwind CSS class merging (clsx + twMerge), author formatting, format badges, and strict HTTPS/optional-blob format URL sanitization (`sanitizeBookFormatUrl` / `extractBookFormats`).',
     'metadata-cache':
       '2-tier external-API-free `globalThis`-anchored in-memory LRU author lifespan cache (`__bookariumMetadataCache`, 24h TTL, 1,000 entries) resolving contributor birth/death years via Supabase `public.books` and bundled `FEATURED_HERO_BOOKS` fallback, paired with a `globalThis`-anchored 20-book plain-text LRU cache (`bookContentLruCache` / `__bookariumContentLruCache`, `getCachedBookContent`, `setCachedBookContent`, `clearBookContentCache`, 24h TTL, <= 1.8M chars) shielding Project Gutenberg mirrors across `Vary: x-vercel-ip-country` edge misses.',
     'url-validator':
@@ -1818,7 +1819,11 @@ function generateMarkdown() {
     'cache-purge.yml':
       'Manual-only (`workflow_dispatch`, zero `npm ci`) GitHub Actions utility workflow (`concurrency: cache-purge`, `permissions: contents: read`) allowing operators to selectively invalidate Vercel Edge CDN cache tags (`purge_catalog`, `purge_quotes`, `purge_translations` defaulting unchecked with a fail-fast guard requiring at least one checkbox selected), choose `target` (`production` / `preview`), and run `dry_run` diagnostics via `scripts/purge-vercel-cache.js`.',
     'ci.yml':
-      'Continuous Integration pipeline executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, production build verification, and deterministic `git diff --exit-code` living-documentation sync enforcement on Node 22.',
+      'Continuous Integration pipeline (SHA-pinned actions, `permissions: contents: read`) executing the 7-Gateway Quality Engine, ESLint zero-warning check, Vitest coverage, production build verification, and deterministic `git diff --exit-code` living-documentation sync enforcement on Node 22.',
+    'codeql.yml':
+      'Automated CodeQL SAST workflow (`push`/`pull_request` on `main`/`master`/`dev` + `cron: 30 1 * * 1`, SHA-pinned actions, `security-events: write`) scanning `javascript-typescript` and `actions` targets into GitHub Security alerts.',
+    'dependency-review.yml':
+      'Pull Request supply-chain gate (`pull_request` on `main`/`master`/`dev`, SHA-pinned actions, `permissions: contents: read`) running `actions/dependency-review-action` with `fail-on-severity: high` and `GPL`/`AGPL` license exclusions.',
     'release.yml':
       'Automated GitHub Release publisher triggered on `v*` tags or manual `workflow_dispatch`, executing the full 7-Gateway Quality Engine and extracting release notes from `CHANGELOG.md`.',
   };
@@ -1833,6 +1838,8 @@ function generateMarkdown() {
       'quotes-sync.yml',
       'cache-purge.yml',
       'ci.yml',
+      'codeql.yml',
+      'dependency-review.yml',
       'release.yml',
     ];
     const wfFiles = fs
@@ -1852,7 +1859,11 @@ function generateMarkdown() {
       const wfText = fs.readFileSync(path.join(workflowsDir, wfFile), 'utf-8');
       const cronMatch = wfText.match(/cron:\s*['"]([^'"]+)['"]/);
       let triggerDesc = '`push` / `pull_request` (`master`)';
-      if (cronMatch && cronMatch[1]) {
+      if (wfFile === 'codeql.yml') {
+        triggerDesc = `\`push\` / \`pull_request\` + \`cron: ${cronMatch ? cronMatch[1].trim() : '30 1 * * 1'}\` (Mondays)`;
+      } else if (wfFile === 'dependency-review.yml') {
+        triggerDesc = '`pull_request` (`main`, `master`, `dev`)';
+      } else if (cronMatch && cronMatch[1]) {
         const cronExpr = cronMatch[1].trim();
         const isWeeklySundayCron = /^\S+\s+\S+\s+\*\s+\*\s+(?:0|7|SUN)$/i.test(cronExpr);
         triggerDesc = isWeeklySundayCron
@@ -1891,7 +1902,7 @@ function generateMarkdown() {
     '        TransTrigger["🎛️ translations-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: gutenberg-translations-sync"]',
     '        QuotesTrigger["🎛️ quotes-sync.yml (Manual Override)\\n• On-Demand (workflow_dispatch)\\n• concurrency: featured-quotes-sync"]',
     '        PurgeTrigger["🧹 cache-purge.yml (Manual Cache Purge)\\n• On-Demand (workflow_dispatch • Unchecked Defaults)\\n• concurrency: cache-purge"]',
-    '        CITrigger["✅ ci.yml & release.yml\\n• push / pull_request (master) & tags: v*\\n• Node 22 + 7-Gateway Quality Engine"]',
+    '        CITrigger["✅ ci.yml, codeql.yml, dependency-review.yml & release.yml\\n• SHA-Pinned Actions • CodeQL (cron: 30 1 * * 1) & Dependency Review\\n• Node 22 + 7-Gateway Quality Engine"]',
     '    end',
     '',
     '    subgraph UpstreamFeeds ["External Public Domain Feeds & Release Snapshot Cache"]',
@@ -2674,7 +2685,9 @@ function generateMarkdown() {
     '    end',
     '',
     '    subgraph GitHubOps ["GitHub Actions Autonomous CI/CD & Data Operations"]',
-    '        CIWorkflow["✅ .github/workflows/ci.yml\\n(Push / PR -> Node 22 -> 7-Gateway Quality Engine)"]',
+    '        CIWorkflow["✅ .github/workflows/ci.yml\\n(Push / PR -> SHA-Pinned Node 22 -> 7-Gateway Quality Engine)"]',
+    '        CodeQLWorkflow["🔎 .github/workflows/codeql.yml\\n(Push / PR / Mon 01:30 UTC -> JS/TS & Actions SARIF)"]',
+    '        DepReviewWorkflow["🛡️ .github/workflows/dependency-review.yml\\n(PR -> High CVE & License Gate)"]',
     '        ReleaseWorkflow["🏷️ .github/workflows/release.yml\\n(Tag v* -> Verified GitHub Release)"]',
     '        CatalogCron["🕒 .github/workflows/catalog-sync.yml\\n(Sundays 02:00 UTC -> Catalog + Release Snapshot + Translations + Quotes + Edge Tag Purge)"]',
     '        TransCron["🎛️ .github/workflows/translations-sync.yml\\n(On-Demand workflow_dispatch -> ingest-translations.js + Edge Tag Purge)"]',
@@ -2804,9 +2817,9 @@ function generateMarkdown() {
     '',
     '| Untrusted Input Source (Taint Origin) | Trust Boundary Transition | Canonical Sanitizer / Validator Module | Enforced Security Invariants | Protected Downstream Sink |',
     '| :--- | :--- | :--- | :--- | :--- |',
-    '| **Public API Query Params (`request.url`, `searchParams`)** | Browser / Edge -> `/api/books/**` | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) (`hasUnexpectedQueryParams`, `buildApiSecurityHeaders`) & [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) (`parseCatalogQuery`) | Strict per-route allowlists (`400 no-store` on unknown keys or production `?country=`), `s` gated to `type=card`, bounded `page <= 5000` / `offset < 160_000` / `pool=quotes` (`DEFAULT_QUOTE_POOL_LIMIT = 48`) / translation `id <= 10_000_000`, `CORP` (`cross-origin` on `type=card`, `same-origin` elsewhere) & `copyright=false` | `SupabaseCatalogProvider`, `searchCuratedCatalogFallback`, `next/og` & `book_translations` |',
+    '| **Public API Query Params, Format URLs & Service Worker `CACHE_URLS`** | Browser / Edge -> `/api/books/**` & `public/sw.js` | [`src/lib/api-utils.ts`](src/lib/api-utils.ts) (`hasUnexpectedQueryParams`, `buildApiSecurityHeaders`, `isHttpsRequest`), [`src/lib/catalog/query-parser.ts`](src/lib/catalog/query-parser.ts) (`parseCatalogQuery`), [`src/lib/utils.ts`](src/lib/utils.ts) (`sanitizeBookFormatUrl`) & [`public/sw.js`](public/sw.js) (`sanitizePrecacheUrl`) | Strict per-route allowlists (`400 no-store`), `https:`-only format links (optional `blob:` on `coverImage`), same-origin non-`/auth/`/non-`/api/` bounded `CACHE_URLS` (`<= 100`), `CORP` & `copyright=false` | `SupabaseCatalogProvider`, `DownloadDrawer`, `CACHE_NAME` & `next/og` |',
     '| **Upstream Mirror URL & Redirect Hops (`?url=`, `Location` header)** | `/api/books/content` -> External Mirror | [`src/app/api/books/content/url-validator.ts`](src/app/api/books/content/url-validator.ts) (`isSafeUpstreamUrl`, `sanitizeUpstreamUrl`) | Strictly `https:` protocol, zero credentials/ports, 4 allowlisted Gutenberg domains, re-validated on every `301`/`302` redirect hop (max 3) | Server `fetch()` in `/api/books/content` |',
-    '| **Auth Callback Redirect (`?next=`, `origin`, `x-forwarded-host`, `?recovery=`)** | External OAuth / Magic Link / Recovery -> `/auth/callback` & `/account` | [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `isRecoveryRedirectPath`, `stripRecoveryFromRedirectPath`) & [`src/lib/auth-recovery.ts`](src/lib/auth-recovery.ts) (`isRecoverySessionAmrVerified`) | Rejects `//`, `http:`, `javascript:`, backslash tricks, and foreign hosts; locks non-local redirect origins to `SITE_CONFIG.SITE_URL` (`NEXT_PUBLIC_SITE_URL` -> normalized `VERCEL_PROJECT_PRODUCTION_URL` fallback); strips `?recovery=true` on non-recovery flows and enforces JWT `amr` + `3600s` TTL + single-use consumption | `NextResponse.redirect()` in `/auth/callback` & `AccountSecuritySection` password update mode |',
+    '| **Auth Callback & Client Navigation Redirect (`?next=`, `origin`, `x-forwarded-host`, `?recovery=`, `document.referrer`)** | External OAuth / Magic Link / Recovery / Client Query -> `/auth/callback`, `/account` & `router.push`/`replace` | [`src/lib/redirect-sanitizer.ts`](src/lib/redirect-sanitizer.ts) (`sanitizeRedirectPath`, `resolveCanonicalAuthOrigin`, `isRecoveryRedirectPath`, `stripRecoveryFromRedirectPath`), [`src/lib/auth-recovery.ts`](src/lib/auth-recovery.ts) (`isRecoverySessionAmrVerified`) & [`scripts/eslint-rules/bookarium-security.js`](scripts/eslint-rules/bookarium-security.js) (`no-tainted-request-sink`) | Rejects `//`, `http:`, `javascript:`, backslash tricks, and foreign hosts; locks non-local redirect origins to `SITE_CONFIG.SITE_URL` (`NEXT_PUBLIC_SITE_URL` -> normalized `VERCEL_PROJECT_PRODUCTION_URL` fallback); tracks client `useSearchParams()` / `document.referrer` into `router.push()`/`replace()` (exempting static `/path` & `ROUTES.*` prefixes); strips `?recovery=true` on non-recovery flows and enforces JWT `amr` + `3600s` TTL + single-use consumption | `NextResponse.redirect()` in `/auth/callback`, client `useRouter()` navigation, & `AccountSecuritySection` password update mode |',
     '| **Forwarded Browser `User-Agent` Header (`req.headers.get("user-agent")`)** | Incoming HTTP Request -> SSR Auth Client & Edge Refresh | [`src/lib/supabase/client.ts`](src/lib/supabase/client.ts) (`sanitizeForwardedUserAgent`) | Strips CR/LF/control header-injection characters, trims whitespace, and clamps strings to `512` chars (`undefined` if empty) without importing `next/headers` into Edge middleware | Outbound `User-Agent` headers in `src/lib/supabase/server.ts`, `middleware.ts`, & `/auth/callback` |',
     '| **Persisted Cloud Preferences & Dynamic Object Keys (`profiles.preferences`)** | Cloud / Local Storage -> Client State Hydration | [`src/lib/preferences-sync.ts`](src/lib/preferences-sync.ts) (`normalizePreferencesSnapshot`) & [`scripts/eslint-rules/bookarium-security.js`](scripts/eslint-rules/bookarium-security.js) (`no-tainted-request-sink`) | Strict 13-key schema normalization, finite range clamping, and prototype-pollution key rejection (`__proto__`, `constructor`, `prototype`) | Zustand Stores (`usePreferencesStore`, `useReaderStore`, `useThemeStore`) |',
     '| **Privileged Server Credentials (`SUPABASE_SERVICE_ROLE_KEY`)** | Node.js CLI / CI -> Client Bundle Guard | [`scripts/verify-build.js`](scripts/verify-build.js) (`Pass 0.5`) & `no-client-server-boundary-violation` | Transitive Babel AST import graph verifies zero `src/lib/supabase/server` or `SUPABASE_SERVICE_ROLE_KEY` references in `"use client"` graph | Isolated strictly to `scripts/*.js` CLI pipelines |',
@@ -2857,14 +2870,14 @@ function generateMarkdown() {
     '| Gateway Pass | Stage Name | Target & Tooling | Enforcement & Governance |',
     '| :--- | :--- | :--- | :--- |',
     '| **Pass 0.5** | Secrets, File/Path, Env & Transitive Graph Scanner | Regex, JWT decoder, `.env.example` & Babel AST import graph | Zero live keys/JWTs, forbidden files, undocumented app `process.env.*` vars, or transitive client->server imports |',
-    `| **Pass 0.75** | 7-Pillar SAST, Lockfile, Workflow & AST Taint Suite | Lockfile SRI/registry check, workflow scanner, \`npm audit\`, ${getSecurityPluginRuleCount()}-rule AST taint engine, SQL RLS & HTTP Header auditors | Enforces lockfile SHA-512/registry integrity, GitHub Actions workflow hardening, 0 High/Critical CVEs, intra-procedural request taint guards (SSRF, redirects, DB writes, shell, fs, DOM XSS, Prototype Pollution), PostgreSQL RLS + idempotency + write isolation + \`search_path\`, and OWASP HTTP headers/CSP |`,
+    `| **Pass 0.75** | 7-Pillar SAST, Lockfile, Workflow & AST Taint Suite | Lockfile SRI/registry check, SHA-pinned/permissions workflow scanner, \`npm audit\`, ${getSecurityPluginRuleCount()}-rule AST taint engine, SQL RLS, SW & Babel AST HTTP Header auditors | Enforces lockfile SHA-512/registry integrity, 40-char commit-SHA & \`permissions:\` GitHub Actions hardening, 0 High/Critical CVEs, standalone AST coverage across \`src/\`, \`scripts/\`, \`public/sw.js\`, & \`next.config.ts\` (with explicit \`ast-parse-error\` reporting), server + client \`router.push()\`/\`replace()\` taint, TS-cast/constant-folded DOM XSS/ReDoS/tabnabbing/arrow-API-handler/cookie checks, PostgreSQL RLS + \`search_path\`, \`CACHE_URLS\` SW guard, and AST-verified \`X-Frame-Options: DENY\` / \`object-src 'none'\` CSP headers |`,
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
     '| **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |',
     '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
     '| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 18 mandatory governance docs, `@scope`/`@invariant`/`@adr` behavioral contracts across Tier-1..Tier-4 protected modules, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->`ARCHITECTURE.md` inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |',
-    `| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | \`eslint . --max-warnings 0\` (\`bookarium-security\`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and ${getSecurityPluginRuleCount()} custom AST/taint security rules; zero dead files/exports |`,
-    '| **Pass 7** | Production Application Build | `next build` | Optimized production bundle compilation within byte budget |',
+    `| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | \`eslint . --max-warnings 0\` (\`bookarium-security\`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and ${getSecurityPluginRuleCount()} custom AST/taint security rules (\`src/\`, \`scripts/\`, \`public/sw.js\`, \`next.config.ts\` audited via Pass 0.75); zero dead files/exports |`,
+    '| **Pass 7** | Production Application Build | `next build` + `.next/routes-manifest.json` audit | Optimized production bundle compilation within byte budget plus compiled security header parity (`X-Frame-Options: DENY`, `object-src \'none\'`, `frame-ancestors \'none\'`) |',
     '',
     '---',
     '',

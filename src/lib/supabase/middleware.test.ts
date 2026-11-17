@@ -171,6 +171,7 @@ describe('src/lib/supabase/middleware', () => {
         (capturedOptions?.global as { headers?: Record<string, string> })?.headers?.['user-agent']
       ).toBe('Mozilla/5.0 Chrome/131.0.0.0 Injected: bad');
       expect(res.cookies.get('bookarium-client-ip-sync')?.value).toBe('1');
+      expect(res.cookies.get('bookarium-client-ip-sync')?.secure).toBe(true);
       expect(res.cookies.get('sb-project-auth-token')?.value).toBe('rotated-jwt');
 
       // Deleting-only setAll must NOT set bookarium-client-ip-sync

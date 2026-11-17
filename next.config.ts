@@ -77,6 +77,7 @@ const nextConfig: NextConfig = {
       img-src 'self' data: blob: https://aleph.gutenberg.org https://gutenberg.pglaf.org https://gutenberg.readingroo.ms https://www.gutenberg.org https://gutenberg.org;
       connect-src ${connectSrc};
       frame-src 'self' https://challenges.cloudflare.com;
+      object-src 'none';
       frame-ancestors 'none';
       form-action 'self';
       base-uri 'self';
@@ -86,7 +87,7 @@ const nextConfig: NextConfig = {
       { key: 'Content-Security-Policy', value: cspHeader },
       { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
       { key: 'X-DNS-Prefetch-Control', value: 'on' },
-      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },

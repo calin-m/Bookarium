@@ -5,6 +5,7 @@ import {
   buildApiSecurityHeaders,
   hasUnexpectedQueryParams,
   createNoStoreErrorResponse,
+  isHttpsRequest,
 } from './api-utils';
 
 describe('api-utils', () => {
@@ -142,6 +143,38 @@ describe('api-utils', () => {
       vi.stubEnv('NODE_ENV', 'production');
       expect(hasUnexpectedQueryParams(new URLSearchParams('id=1342&country=GB'), allowed, devOnly)).toBe(true);
       expect(hasUnexpectedQueryParams(new URLSearchParams('id=1342&type=card'), allowed, devOnly)).toBe(false);
+    });
+  });
+
+  describe('isHttpsRequest', () => {
+    it('detects HTTPS from x-forwarded-proto proxy headers or request URLs while allowing HTTP localhost', () => {
+      expect(
+        isHttpsRequest({
+          url: 'http://internal-edge:3000/catalog',
+          headers: new Headers({ 'x-forwarded-proto': 'https, http' }),
+        })
+      ).toBe(true);
+
+      expect(
+        isHttpsRequest({
+          url: 'https://bookarium.vercel.app/account',
+          headers: new Headers(),
+        })
+      ).toBe(true);
+
+      expect(
+        isHttpsRequest({
+          url: 'https://bookarium.vercel.app/account',
+          headers: new Headers({ 'x-forwarded-proto': 'http' }),
+        })
+      ).toBe(false);
+
+      expect(
+        isHttpsRequest({
+          url: 'http://localhost:3000/catalog',
+          headers: new Headers(),
+        })
+      ).toBe(false);
     });
   });
 });
