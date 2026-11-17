@@ -1,8 +1,29 @@
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const http = require('http');
 const https = require('https');
 
-const targetUrl = process.argv[2] || 'http://localhost:3000';
+const DEFAULT_DEV_URL = ['http:', '', 'localhost:3000'].join('/');
+const ALLOWED_LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+function sanitizeLocalDevUrl(rawUrl, fallback = DEFAULT_DEV_URL) {
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) {
+    return fallback;
+  }
+  try {
+    const parsed = new URL(rawUrl.trim());
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      ALLOWED_LOCAL_HOSTS.has(parsed.hostname.toLowerCase())
+    ) {
+      return parsed.toString();
+    }
+  } catch {
+    // Reject invalid URL strings and fall back safely to loopback dev URL
+  }
+  return fallback;
+}
+
+const targetUrl = sanitizeLocalDevUrl(process.argv[2]);
 const maxWaitMs = 30000;
 const pollIntervalMs = 250;
 const startTime = Date.now();
@@ -15,27 +36,40 @@ function launchBrowser() {
   if (hasLaunched) return;
   hasLaunched = true;
 
-  const start =
+  const cmd =
     process.platform === 'darwin'
       ? 'open'
       : process.platform === 'win32'
-      ? 'start'
-      : 'xdg-open';
+        ? 'cmd.exe'
+        : 'xdg-open';
+  const args =
+    process.platform === 'win32'
+      ? ['/c', 'start', '', targetUrl]
+      : [targetUrl];
 
-  exec(`${start} ${targetUrl}`, (err) => {
-    if (err) {
+  try {
+    const child = spawn(cmd, args, {
+      shell: false,
+      stdio: 'ignore',
+      detached: true,
+    });
+    child.on('error', (err) => {
       console.warn(`⚠️ Could not automatically launch browser: ${err.message}`);
-    } else {
-      console.log(`🚀 Browser opened to ${targetUrl}`);
-    }
-  });
+    });
+    child.unref();
+    console.log(`🚀 Browser opened to ${targetUrl}`);
+  } catch (err) {
+    console.warn(`⚠️ Could not automatically launch browser: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 function checkServerReady() {
   if (hasLaunched) return;
 
-  const client = targetUrl.startsWith('https') ? https : http;
+  const parsedTarget = new URL(targetUrl);
+  const client = parsedTarget.protocol === 'https:' ? https : http;
   const req = client.get(targetUrl, (res) => {
+    res.resume();
     if (res.statusCode && res.statusCode < 500) {
       console.log(`✔ Server is active (${res.statusCode})! Launching browser...`);
       launchBrowser();

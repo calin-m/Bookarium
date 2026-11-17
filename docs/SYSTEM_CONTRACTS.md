@@ -793,14 +793,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting & security header parity, cookie flags, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS/tabnabbing sinks.
 - **Behavioral Invariants (`@invariant`)**:
-  - Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly).
-  - Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers or static single-slash client routes.
+  - Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly), including Node HTTP client (`https.get`/`http.get`) checks, `{ shell: false }` enforcement in `scripts/`, and `process.argv` CLI taint into shell/URL/redirect sinks.
+  - Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers, CLI `--cache-file` flags, or static single-slash client routes.
 - **Design Rationale (`@rationale`)**:
   - Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, and weak assertions in real time before commit.
 - **Governing Decisions (`@adr`)**: [ADR-067](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 3 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (25 tests)
+- **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (28 tests)
 
 #### [`scripts/ingest-catalog.js`](../scripts/ingest-catalog.js) *(Tier-4 Protected)*
 
@@ -843,15 +843,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`scripts/lib/sast-validators.js`](../scripts/lib/sast-validators.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle, GitHub Actions YAML security, and Service Worker invariant validators.
+- **Intended Scope (`@scope`)**: Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning, banned `BANNED_LIFECYCLE_HOOKS`, and strict `public/sw.js` same-origin `CACHE_URLS` guards without executing external shells.
+  - Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning, banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
 - **Design Rationale (`@rationale`)**:
   - Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
 - **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-081](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`scripts/verify-build.js`](../scripts/verify-build.js))
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (7 tests)
+- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (15 tests)
 
 #### [`scripts/purge-vercel-cache.js`](../scripts/purge-vercel-cache.js) *(Tier-4 Protected)*
 
@@ -883,15 +883,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
-  - Diff in RAM against `gutenberg-catalog-cache.json.gz` (preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
+  - Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
+  - Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
   - Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
 - **Design Rationale (`@rationale`)**:
-  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress or wiping catalog rows during partial upstream feed outages.
-- **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
+- **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (38 tests)
+- **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (41 tests)
 
 ---
 

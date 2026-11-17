@@ -8,11 +8,11 @@
  *
  * @module scripts/sync-gutenberg-catalog
  * @scope Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
- * @invariant Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
- * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
+ * @invariant Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
+ * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
  * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
- * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress or wiping catalog rows during partial upstream feed outages.
- * @adr ADR-040, ADR-080
+ * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
+ * @adr ADR-040, ADR-073, ADR-080
  *
  * Usage:
  *   node scripts/sync-gutenberg-catalog.js --dry-run
@@ -21,6 +21,7 @@
  *   node scripts/sync-gutenberg-catalog.js
  */
 
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -540,9 +541,12 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
         }
 
         const totalBytes = parseInt(res.headers?.['content-length'] || '0', 10) || 0;
+        const wireHash = crypto.createHash('sha256');
         let downloadedBytes = 0;
         let parsedBookCount = 0;
         let lastReportMs = 0;
+        let streamSha256 = null;
+        let streamTruncationError = null;
 
         const emitProgress = (force = false) => {
           if (typeof options.onProgress !== 'function') return;
@@ -554,8 +558,17 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
         };
 
         res.on('data', (chunk) => {
+          wireHash.update(chunk);
           downloadedBytes += chunk.length;
           emitProgress(false);
+        });
+        res.once('end', () => {
+          streamSha256 = wireHash.digest('hex');
+          if (totalBytes > 0 && downloadedBytes !== totalBytes) {
+            streamTruncationError = new Error(
+              `Truncated RDF archive stream: received ${downloadedBytes} of ${totalBytes} Content-Length bytes`
+            );
+          }
         });
 
         const tarProc = spawn('tar', ['-xOjf', '-'], {
@@ -569,24 +582,39 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
           }
         });
 
+        const tarExitPromise = new Promise((resolveClose, rejectClose) => {
+          tarProc.once('close', (code) => resolveClose(code));
+          tarProc.once('error', (err) => {
+            res.destroy();
+            rejectClose(err);
+          });
+        });
+
         res.pipe(tarProc.stdin);
         tarProc.stdin.on('error', () => {});
 
-        parseRdfCatalogSignalsStream(tarProc.stdout, (count) => {
-          parsedBookCount = count;
-          emitProgress(false);
-        })
-          .then((signals) => {
+        Promise.all([
+          parseRdfCatalogSignalsStream(tarProc.stdout, (count) => {
+            parsedBookCount = count;
+            emitProgress(false);
+          }),
+          tarExitPromise,
+        ])
+          .then(([signals, code]) => {
             parsedBookCount = signals.downloadCounts.size;
             emitProgress(true);
-            tarProc.on('close', (code) => {
-              if (code !== 0 && signals.downloadCounts.size === 0) {
-                reject(
-                  new Error(`tar exited with code ${code}: ${tarStderr.trim() || 'unknown error'}`)
-                );
-              } else {
-                resolve(signals);
-              }
+            if (streamTruncationError) {
+              return reject(streamTruncationError);
+            }
+            if (code !== 0) {
+              return reject(
+                new Error(`tar exited with code ${code}: ${tarStderr.trim() || 'unknown error'}`)
+              );
+            }
+            resolve({
+              ...signals,
+              archiveSha256: streamSha256,
+              downloadedBytes,
             });
           })
           .catch((err) => {
@@ -594,10 +622,6 @@ function streamRdfMirrorOnce(feedUrl, options = {}, redirectHop = 0) {
             reject(err);
           });
 
-        tarProc.on('error', (err) => {
-          res.destroy();
-          reject(err);
-        });
         res.on('error', (err) => {
           tarProc.kill();
           reject(err);
@@ -660,13 +684,17 @@ async function streamGutenbergRdfCatalogSignals(options = {}) {
           copyrightedIds !== null
             ? ` and ${copyrightedIds.size.toLocaleString()} copyrighted rights notice(s)`
             : '';
+        const shaNote = result.archiveSha256
+          ? ` | sha256:${result.archiveSha256.slice(0, 12)}`
+          : '';
         logger.log(
-          `\n  ✔ Extracted 30-day download_count for ${result.downloadCounts.size.toLocaleString()} books${rightsSummary} from ${host} (${elapsed}s).`
+          `\n  ✔ Extracted 30-day download_count for ${result.downloadCounts.size.toLocaleString()} books${rightsSummary} from ${host} (${elapsed}s${shaNote}).`
         );
         return {
           downloadCounts: result.downloadCounts,
           copyrightedIds,
           hasRightsData: copyrightedIds instanceof Set,
+          archiveSha256: result.archiveSha256 || null,
         };
       }
     } catch (err) {
@@ -742,9 +770,13 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
         }
 
         const totalBytes = parseInt(res.headers?.['content-length'] || '0', 10) || 0;
+        const wireHash = crypto.createHash('sha256');
         let downloadedBytes = 0;
+        let streamSha256 = null;
+        let streamTruncationError = null;
 
         res.on('data', (chunk) => {
+          wireHash.update(chunk);
           downloadedBytes += chunk.length;
           if (typeof options.onDownloadProgress === 'function') {
             const elapsedSec = Math.max(0.1, (Date.now() - startMs) / 1000);
@@ -755,6 +787,14 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
               elapsedSec,
               mirrorHost: new URL(catalogUrl).hostname,
             });
+          }
+        });
+        res.once('end', () => {
+          streamSha256 = wireHash.digest('hex');
+          if (totalBytes > 0 && downloadedBytes !== totalBytes) {
+            streamTruncationError = new Error(
+              `Truncated CSV archive stream: received ${downloadedBytes} of ${totalBytes} Content-Length bytes`
+            );
           }
         });
 
@@ -811,6 +851,10 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
         });
 
         gunzip.on('end', async () => {
+          if (streamTruncationError) {
+            safeReject(streamTruncationError);
+            return;
+          }
           if (currentRow.length > 0 || currentField.length > 0) {
             currentRow.push(currentField);
             if (!isHeader) {
@@ -825,7 +869,10 @@ function streamCatalogMirrorOnce(onRecord, catalogUrl, options = {}, redirectHop
             }
             if (!settled) {
               settled = true;
-              resolve();
+              resolve({
+                archiveSha256: streamSha256 || wireHash.digest('hex'),
+                downloadedBytes,
+              });
             }
           } catch (err) {
             safeReject(err);
@@ -872,7 +919,7 @@ async function streamGutenbergCatalog(
           `\n🌐 Streaming Project Gutenberg catalog [Mirror ${idx + 1}/${validMirrors.length}: ${host}] (${mirrorUrl})...`
         );
       }
-      await streamMirrorFn(
+      const streamMeta = await streamMirrorFn(
         (row) => {
           recordsEmitted++;
           return onRecord(row);
@@ -880,7 +927,7 @@ async function streamGutenbergCatalog(
         mirrorUrl,
         options
       );
-      return;
+      return streamMeta || null;
     } catch (err) {
       lastError = err;
       if (recordsEmitted > 0 || idx === validMirrors.length - 1) {
@@ -1401,13 +1448,41 @@ function extractCacheableBookRecord(book) {
   };
 }
 
+function computeSha256Hex(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+function parseSha256SidecarText(rawText) {
+  if (typeof rawText !== 'string') return null;
+  const match = rawText.match(/^\s*([a-f0-9]{64})(?:\s|$)/i);
+  return match && match[1] ? match[1].toLowerCase() : null;
+}
+
+function isSha256TimingSafeEqual(expectedHex, actualHex) {
+  if (
+    typeof expectedHex !== 'string' ||
+    typeof actualHex !== 'string' ||
+    !/^[a-f0-9]{64}$/i.test(expectedHex) ||
+    !/^[a-f0-9]{64}$/i.test(actualHex)
+  ) {
+    return false;
+  }
+  return crypto.timingSafeEqual(
+    Buffer.from(expectedHex.toLowerCase(), 'hex'),
+    Buffer.from(actualHex.toLowerCase(), 'hex')
+  );
+}
+
 function loadCatalogSnapshotCache(cacheFilePath, options = {}) {
   const fsImpl = options.fsImpl || fs;
   const logger = options.logger || null;
+  const checksumPath = options.sha256FilePath || `${cacheFilePath || ''}.sha256`;
   const emptyResult = {
     loaded: false,
     booksById: new Map(),
     candidatePoolIds: new Set(),
+    checksumVerified: false,
+    sha256: null,
   };
 
   if (!cacheFilePath || !fsImpl.existsSync(cacheFilePath)) {
@@ -1416,6 +1491,33 @@ function loadCatalogSnapshotCache(cacheFilePath, options = {}) {
 
   try {
     const rawBuf = fsImpl.readFileSync(cacheFilePath);
+    const actualSha256 = computeSha256Hex(rawBuf);
+    let checksumVerified = false;
+
+    if (fsImpl.existsSync(checksumPath)) {
+      const expectedSha256 = parseSha256SidecarText(fsImpl.readFileSync(checksumPath, 'utf8'));
+      if (!expectedSha256 || !isSha256TimingSafeEqual(expectedSha256, actualSha256)) {
+        if (logger) {
+          logger.warn(
+            `  ⚠ Security Warning: Snapshot cache SHA-256 verification failed for ${cacheFilePath} (expected ${expectedSha256 || 'invalid'}, got ${actualSha256}); discarding untrusted cache and falling back to live Supabase diff queries.`
+          );
+        }
+        return emptyResult;
+      }
+      checksumVerified = true;
+    } else if (options.requireChecksum) {
+      if (logger) {
+        logger.warn(
+          `  ⚠ Security Warning: Missing mandatory .sha256 sidecar (${checksumPath}); refusing unverified cache and falling back to live Supabase diff queries.`
+        );
+      }
+      return emptyResult;
+    } else if (logger) {
+      logger.warn(
+        `  ⚠ Notice: Companion ${checksumPath} not found (legacy snapshot); continuing with gzip CRC/JSON validation until next publish.`
+      );
+    }
+
     const jsonStr = cacheFilePath.endsWith('.gz')
       ? zlib.gunzipSync(rawBuf).toString('utf8')
       : rawBuf.toString('utf8');
@@ -1443,8 +1545,11 @@ function loadCatalogSnapshotCache(cacheFilePath, options = {}) {
     }
 
     if (logger) {
+      const shaLabel = checksumVerified
+        ? ` | sha256 verified (${actualSha256.slice(0, 12)})`
+        : '';
       logger.log(
-        `  ✔ Restored catalog snapshot cache (${booksById.size.toLocaleString()} books, ${candidatePoolIds.size} prior quote pool IDs) from ${cacheFilePath}.`
+        `  ✔ Restored catalog snapshot cache (${booksById.size.toLocaleString()} books, ${candidatePoolIds.size} prior quote pool IDs${shaLabel}) from ${cacheFilePath}.`
       );
     }
 
@@ -1452,6 +1557,8 @@ function loadCatalogSnapshotCache(cacheFilePath, options = {}) {
       loaded: true,
       booksById,
       candidatePoolIds,
+      checksumVerified,
+      sha256: actualSha256,
     };
   } catch (err) {
     if (logger) {
@@ -1470,7 +1577,7 @@ function saveCatalogSnapshotCache(cacheFilePath, booksById, candidatePoolIds = [
     typeof options.minCatalogSize === 'number' ? options.minCatalogSize : MIN_ACTIVE_CATALOG_FOR_PRUNE;
 
   if (!cacheFilePath || !(booksById instanceof Map)) {
-    return { saved: false, skippedReason: 'missing-path-or-map', count: 0 };
+    return { saved: false, skippedReason: 'missing-path-or-map', count: 0, sha256: null, sha256FilePath: null };
   }
 
   if (booksById.size < minCatalogSize) {
@@ -1479,7 +1586,7 @@ function saveCatalogSnapshotCache(cacheFilePath, booksById, candidatePoolIds = [
         `  ⚠ Skipping snapshot cache write: catalog count (${booksById.size.toLocaleString()}) is below safety floor (${minCatalogSize.toLocaleString()}).`
       );
     }
-    return { saved: false, skippedReason: 'below-min-catalog-floor', count: booksById.size };
+    return { saved: false, skippedReason: 'below-min-catalog-floor', count: booksById.size, sha256: null, sha256FilePath: null };
   }
 
   const booksArray = [];
@@ -1502,19 +1609,25 @@ function saveCatalogSnapshotCache(cacheFilePath, booksById, candidatePoolIds = [
   const outBuffer = cacheFilePath.endsWith('.gz')
     ? zlib.gzipSync(Buffer.from(payload, 'utf8'))
     : Buffer.from(payload, 'utf8');
+  const sha256 = computeSha256Hex(outBuffer);
+  const sha256FilePath = `${cacheFilePath}.sha256`;
 
   const tmpPath = `${cacheFilePath}.tmp`;
   fsImpl.writeFileSync(tmpPath, outBuffer);
   fsImpl.renameSync(tmpPath, cacheFilePath);
 
+  const tmpShaPath = `${sha256FilePath}.tmp`;
+  fsImpl.writeFileSync(tmpShaPath, `${sha256}  ${path.basename(cacheFilePath)}\n`, 'utf8');
+  fsImpl.renameSync(tmpShaPath, sha256FilePath);
+
   if (logger) {
     const sizeMb = (outBuffer.length / (1024 * 1024)).toFixed(2);
     logger.log(
-      `  ✔ Saved catalog snapshot cache (${booksArray.length.toLocaleString()} books, ${sizeMb} MB) to ${cacheFilePath}.`
+      `  ✔ Saved catalog snapshot cache (${booksArray.length.toLocaleString()} books, ${sizeMb} MB, sha256:${sha256.slice(0, 12)}) to ${cacheFilePath} (+ .sha256 sidecar).`
     );
   }
 
-  return { saved: true, skippedReason: null, count: booksArray.length };
+  return { saved: true, skippedReason: null, count: booksArray.length, sha256, sha256FilePath };
 }
 
 function computeCatalogQuotePoolDiff(booksById, previousCandidatePoolIds = new Set(), options = {}) {
@@ -1796,7 +1909,7 @@ Options:
   };
 
   try {
-    await streamGutenbergCatalog(
+    const csvArchiveMeta = await streamGutenbergCatalog(
       async (row) => {
         if (isAborted) return;
 
@@ -1863,6 +1976,12 @@ Options:
     console.log(`  • New inserted:   ${totalInserted.toLocaleString()}`);
     console.log(`  • Diff updated:   ${totalUpdated.toLocaleString()}`);
     console.log(`  • Unchanged skip: ${totalUnchanged.toLocaleString()}`);
+    if (csvArchiveMeta && csvArchiveMeta.archiveSha256) {
+      console.log(`  • CSV SHA-256:    ${csvArchiveMeta.archiveSha256}`);
+    }
+    if (rdfSignals && rdfSignals.archiveSha256) {
+      console.log(`  • RDF SHA-256:    ${rdfSignals.archiveSha256}`);
+    }
 
     let reconcileResult = null;
     if (!isDryRun && supabase && !limit && !allowedLanguages && !noPrune) {
@@ -1884,14 +2003,27 @@ Options:
       );
     }
 
+    let savedSnapshotMeta = null;
     if (cacheFilePath && !isDryRun && !limit && !allowedLanguages) {
-      saveCatalogSnapshotCache(
+      savedSnapshotMeta = saveCatalogSnapshotCache(
         cacheFilePath,
         nextSnapshotBooksById,
         quotePoolDiff ? quotePoolDiff.candidatePoolIds : [],
         { logger: console }
       );
     }
+
+    appendCatalogStepSummary({
+      totalParsed,
+      totalAccepted,
+      totalInserted,
+      totalUpdated,
+      totalUnchanged,
+      rdfSha256: rdfSignals && rdfSignals.archiveSha256 ? rdfSignals.archiveSha256 : null,
+      csvSha256: csvArchiveMeta && csvArchiveMeta.archiveSha256 ? csvArchiveMeta.archiveSha256 : null,
+      restoredCacheSha256: cachedSnapshot.sha256 || null,
+      savedCacheSha256: savedSnapshotMeta && savedSnapshotMeta.sha256 ? savedSnapshotMeta.sha256 : null,
+    });
 
     if (!isDryRun && supabase) {
       let catalogTotal =
@@ -1910,6 +2042,26 @@ Options:
     console.error('\n✖ Sync failed:', err.message || err);
     process.exit(1);
   }
+}
+
+function appendCatalogStepSummary(summaryData, options = {}) {
+  const stepSummaryPath =
+    options.stepSummaryPath !== undefined ? options.stepSummaryPath : process.env.GITHUB_STEP_SUMMARY;
+  if (!stepSummaryPath) return false;
+  const fsImpl = options.fsImpl || fs;
+  const rows = [
+    '| Check / Artifact | Details |',
+    '| :--- | :--- |',
+    `| Rows Scanned / Accepted | \`${(summaryData.totalParsed || 0).toLocaleString()}\` scanned / \`${(summaryData.totalAccepted || 0).toLocaleString()}\` valid |`,
+    `| Writes (New / Diff / Unchanged) | \`${(summaryData.totalInserted || 0).toLocaleString()}\` / \`${(summaryData.totalUpdated || 0).toLocaleString()}\` / \`${(summaryData.totalUnchanged || 0).toLocaleString()}\` |`,
+    `| CSV Archive Wire SHA-256 | \`${summaryData.csvSha256 || 'n/a'}\` |`,
+    `| RDF Archive Wire SHA-256 | \`${summaryData.rdfSha256 || 'skipped / n/a'}\` |`,
+    `| Restored Cache SHA-256 | \`${summaryData.restoredCacheSha256 || 'cold start'}\` |`,
+    `| Published Cache SHA-256 | \`${summaryData.savedCacheSha256 || 'unchanged / skipped'}\` |`,
+  ];
+  const block = `\n### 📚 Gutenberg Catalog Sync Integrity Summary\n\n${rows.join('\n')}\n`;
+  fsImpl.appendFileSync(stepSummaryPath, block, 'utf8');
+  return true;
 }
 
 // Export for unit tests
@@ -1953,8 +2105,12 @@ module.exports = {
   upsertBatch,
   reconcileWithdrawnCatalogBooks,
   extractCacheableBookRecord,
+  computeSha256Hex,
+  parseSha256SidecarText,
+  isSha256TimingSafeEqual,
   loadCatalogSnapshotCache,
   saveCatalogSnapshotCache,
+  appendCatalogStepSummary,
   computeCatalogQuotePoolDiff,
   loadEnv,
 };

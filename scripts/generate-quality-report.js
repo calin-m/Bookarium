@@ -390,15 +390,15 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | Gateway | Check | Status | Details |
 |---|---|---|---|
 | **Pass 0.5** | Secret, File/Path, Env & Graph Scanner | ✅ Passed | 0 exposed tokens/JWTs, forbidden files, undocumented \`NEXT_PUBLIC_*\` vars, or transitive client->server leaks |
-| **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + ${securityRuleCount}-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & \`search_path\`, CSP/Headers) |
+| **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline \`GPL\`/\`AGPL\` License SCA + GitHub Actions Workflow Guard + \`sast-validators.js\` AST Suite + ${securityRuleCount}-Rule AST & Request-Taint verification across \`src/\` & \`scripts/\` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (\`tsc --noEmit\`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **${totalSuitesCount}/${totalSuitesCount} test suites passed** (${totalTestCount} total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\\ge$ 95%, Statements $\\ge$ 95%, Functions $\\ge$ 92%, Branches $\\ge$ 85%) |
-| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent \`docs/ARCHITECTURE.md\`, \`docs/GUTENBERG_PARSER.md\`, \`docs/SYSTEM_CONTRACTS.md\`, \`CHANGELOG.md\`, \`ROADMAP.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | ${adrCount} sequential ADRs, 18 governance docs, Tier-1..Tier-4 \`@scope\`/\`@invariant\` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent \`docs/ARCHITECTURE.md\`, \`SECURITY.md\` (\`<!-- BEGIN:security-architecture -->\`), \`docs/GUTENBERG_PARSER.md\`, \`docs/SYSTEM_CONTRACTS.md\`, \`CHANGELOG.md\`, \`ROADMAP.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | ${adrCount} sequential ADRs, 18 governance docs, circular \`SECURITY.md\` parity, Tier-1..Tier-4 \`@scope\`/\`@invariant\` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (${securityRuleCount}-Rule AST Security) & Knip | ${isQualityClean ? '✅ Passed' : '❌ Failed'} | ${eslintErrors} lint errors, ${eslintWarnings} lint warnings, ${knipIssues.length} unused exports / dead files |
-| **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
+| **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with \`.next/routes-manifest.json\` security header audit & live \`127.0.0.1\` loopback HTTP/redirect smoke verification |
 
 ---
 

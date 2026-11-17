@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 17 Nov 2026 09:51:18 GMT  
+**Last Generated**: Tue, 17 Nov 2026 12:28:16 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 259 passed  
-**Total Verified Tests**: 2690 passed  
+**Total Verified Tests**: 2704 passed  
 
 ---
 
@@ -12,28 +12,28 @@
 | Gateway | Check | Status | Details |
 |---|---|---|---|
 | **Pass 0.5** | Secret, File/Path, Env & Graph Scanner | ✅ Passed | 0 exposed tokens/JWTs, forbidden files, undocumented `NEXT_PUBLIC_*` vars, or transitive client->server leaks |
-| **Pass 0.75** | SAST, Lockfile, Workflow & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + GitHub Actions Workflow Guard + 9-Rule AST & Request-Taint verification (CVEs, SSRF/Rate-Limiting, DOM XSS, Redirects, License, PostgreSQL RLS/Idempotency & `search_path`, CSP/Headers) |
+| **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **259/259 test suites passed** (2690 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **259/259 test suites passed** (2704 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
-| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
-| **Pass 7** | Next.js Production Build | ✅ Passed | Production webpack bundle compiled cleanly within budget |
+| **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
 ---
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.36%** (15996/16429) — *Target: $\ge$ 95%*
-- **Statements**: **96.13%** (17236/17929) — *Target: $\ge$ 95%*
-- **Functions**: **95.19%** (3424/3597) — *Target: $\ge$ 92%*
-- **Branches**: **88.5%** (15951/18022) — *Target: $\ge$ 85%*
+- **Lines**: **97.34%** (15992/16429) — *Target: $\ge$ 95%*
+- **Statements**: **96.1%** (17231/17929) — *Target: $\ge$ 95%*
+- **Functions**: **95.07%** (3420/3597) — *Target: $\ge$ 92%*
+- **Branches**: **88.52%** (15954/18022) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (259 Suites / 2690 Tests)
+## 🧪 Comprehensive Test Suite Catalog (259 Suites / 2704 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 333 Tests)
 
@@ -2066,7 +2066,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (53 Suites · 665 Tests)
+### 📚 Gutenberg Parsers & Metadata (53 Suites · 679 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2871,22 +2871,25 @@
 </details>
 
 <details>
-<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (25 tests)</summary>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (28 tests)</summary>
 
 - ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
 - ✔ `permits HTTPS and relative internal API fetch() calls`
+- ✔ `flags unencrypted http:// in Node https.get/http.get inside scripts/ while permitting loopback dev probing`
 - ✔ `flags unvalidated NextResponse.redirect() calls using raw searchParams or request.url`
 - ✔ `permits NextResponse.redirect() when path and origin are sanitized via redirect-sanitizer`
 - ✔ `flags server-only module imports and secret process.env access in client components`
 - ✔ `permits NEXT_PUBLIC_* and NODE_ENV in client-reachable modules`
 - ✔ `flags eval(), new Function(), string setTimeout(), shell execSync() in src/, and catastrophic backtracking ReDoS regex literals or static new RegExp() patterns`
 - ✔ `permits function-reference setTimeout(), setInterval(), RegExp.prototype.exec(), and dynamic template new RegExp()`
+- ✔ `flags { shell: true } in scripts/ spawn/execFile calls while permitting shell: false array args`
 - ✔ `flags dangerouslySetInnerHTML, .innerHTML, document.write, insertAdjacentHTML, JSX javascript: href, Reverse Tabnabbing target="_blank", and wildcard postMessage("*")`
 - ✔ `permits <a target="_blank" rel="noopener noreferrer"> and explicit origin postMessage`
 - ✔ `flags dynamic JSX href/src expressions with concatenated, conditional, logical, template, TS-cast, or split-constant dangerous URI schemes`
 - ✔ `flags imperative setAttribute("srcdoc"|"href"|"src") XSS sinks and window.open(..., "_blank") missing noopener`
 - ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, external URLs, PostgREST .or(), and new RegExp()`
 - ✔ `clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards`
+- ✔ `tracks module-level process.argv CLI taint into shell and HTTP sinks while exempting sanitized CLI URLs and config file paths`
 - ✔ `enforces sink-scoped sanitization and catches cross-sink sanitizer misuse`
 - ✔ `tracks client useSearchParams() and document.referrer taint into router.push()/replace() while allowing static path prefixes, ROUTES builders, and sanitized paths`
 - ✔ `flags NEXT_PUBLIC_ secret naming, service role usage in API routes, process.env serialization, missing RateLimiter, missing API security headers, and unsafe response cookie writes`
@@ -2960,7 +2963,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `passes the repository next.config.ts without header or CSP violations`
 - ✔ `flags SAMEORIGIN clickjacking regression, ungated unsafe-eval, missing object-src, missing (!isDev) HSTS guard, and syntax errors`
@@ -2968,7 +2971,15 @@
 - ✔ `passes all repository .github/workflows/*.yml files cleanly`
 - ✔ `catches missing permissions, pull_request_target write escalation, mutable @v4 uses:, and shell context injections`
 - ✔ `validates real repo package.json / package-lock.json and rejects tampered lockfiles or lifecycle hooks`
-- ✔ `passes live public/sw.js and flags missing cross-origin, CACHE_URLS, auth, or eval guards`
+- ✔ `passes live public/sw.js and flags missing cross-origin, CACHE_URLS, auth, eval, or comment-spoofed guards`
+- ✔ `passes live repository config/client files and detects bracket, destructured, aliased, and client privilege leaks`
+- ✔ `passes all live src/app/api route handlers and catches missing limiter, tainted fetch, and manual-redirect omissions`
+- ✔ `passes live auth callback route and detects external HTTP redirects and unsanitized searchParams redirects`
+- ✔ `passes live useBooks.ts and refactored parameter names while rejecting commented or missing filters`
+- ✔ `passes live useAuthStore.ts parity against schema tables and local stores, and rejects missing or comment-only wipes`
+- ✔ `passes valid production headers, 400 SSRF rejections, and origin-locked redirects while rejecting regressions`
+- ✔ `passes when SECURITY.md compiled markers cover all live ESLint rules, SAST exports, DB table count, and feed integrity tokens`
+- ✔ `flags missing markers, newly added undocumented ESLint rules or SAST exports, table-count drift, and missing feed integrity tokens`
 
 </details>
 
@@ -3008,7 +3019,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (38 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (41 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -3048,6 +3059,9 @@
 - ✔ `computes Two-Tier quote pool promotedIds, demotedIds, and candidatePoolIds and writes quote-diff.json`
 - ✔ `resolves canonical site origins across NEXT_PUBLIC_SITE_URL and normalized Vercel production vars`
 - ✔ `builds Bookarium-Catalog-Sync User-Agent strings from explicit or resolved repository/site URLs`
+- ✔ `computes wire SHA-256 digests on valid CSV streams and rejects Content-Length truncated streams`
+- ✔ `rejects corrupted RDF archive streams fail-closed when tar exits non-zero or Content-Length mismatches`
+- ✔ `appends Markdown digest summary rows to GITHUB_STEP_SUMMARY when configured`
 
 </details>
 

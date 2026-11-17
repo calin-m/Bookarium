@@ -94,13 +94,13 @@ npm run verify
 ```
 This runs all automated quality gateways:
 1. **Pass 0.5**: Secret, Boundary, Tracked `.env*`, `.env.example` Parity & Transitive AST Graph Scanner
-2. **Pass 0.75**: 7-Pillar Pre-Commit SAST & OWASP Security Suite (Dependency CVEs & Lockfile/Workflow Sanity, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, License & Public Domain Policy, PostgreSQL Idempotent RLS, `search_path` & Account Deletion Parity, OWASP HTTP Headers, and 9-Rule `bookarium-security` AST & Request-Taint Engine)
+2. **Pass 0.75**: 7-Pillar SAST & OWASP Security Suite (Dependency CVEs, Lockfile SRI, Offline `GPL`/`AGPL` Copyleft Ban, Workflow Guard, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, Public Domain Policy, PostgreSQL Idempotent RLS, `search_path` & Account Deletion Parity, OWASP HTTP Headers, `scripts/lib/sast-validators.js` AST Validators, and 9-Rule `bookarium-security` AST & Request-Taint Engine across `src/`, `scripts/`, `public/sw.js`, & `next.config.ts`)
 3. **Pass 1**: TypeScript Strict Typecheck (`tsc --noEmit`)
 4. **Pass 2 & 3**: Vitest MSW & UI Test Suites (`95/95/92/85` tiered coverage floor across `259` suites)
-5. **Pass 4**: Living Documentation AST Re-Compilation (`npm run docs:sync`)
-6. **Pass 5**: ADR Decision Ledger, 18-File Governance, 1:1 SQL$\leftrightarrow$TS Schema Parity, 0 Circular/Parse-Error/Layer-Violation/Orphan Modules & 100% 1:1 Co-Located Test Parity
+5. **Pass 4**: Living Documentation AST Re-Compilation (`npm run docs:sync`, including `SECURITY.md` `<!-- BEGIN:security-architecture -->`)
+6. **Pass 5**: ADR Decision Ledger, 18-File Governance, Circular `SECURITY.md` Parity, 1:1 SQL$\leftrightarrow$TS Schema Parity, 0 Circular/Parse-Error/Layer-Violation/Orphan Modules & 100% 1:1 Co-Located Test Parity
 7. **Pass 6**: ESLint (`--max-warnings 0`) & Knip Quality Audit
-8. **Pass 7**: Next.js Production Build Verification
+8. **Pass 7**: Next.js Production Build Verification, Compiled `.next/routes-manifest.json` Security Header Parity & Live `127.0.0.1` `next start` HTTP/Redirect Smoke Probe
 
 ---
 

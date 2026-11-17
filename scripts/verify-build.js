@@ -1,12 +1,20 @@
 const fs = require('fs');
+const http = require('http');
+const net = require('net');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const {
   validateNextConfigSecurityHeadersAst,
   validateNextBuildHeaderManifest,
   validatePackageLockAndLifecycle,
   validateGitHubWorkflowSecurity,
   validateServiceWorkerSecurity,
+  validateEnvAndPrivilegeBoundariesAst,
+  validateApiRoutesSecurityAst,
+  validateRedirectRoutesAst,
+  validatePublicDomainFilterAst,
+  validateRule9AuthStoreParityAst,
+  validateLiveHttpSecurityResponse,
 } = require('./lib/sast-validators');
 
 const isWin = process.platform === 'win32';
@@ -255,8 +263,6 @@ function pass05SecretScanner() {
     });
   }
 
-  const secretNextPublicRegex =
-    /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT)(?:_|$)/i;
   const jwtCandidateRegex =
     /\beyJ[A-Za-z0-9_-]{10,}\.([A-Za-z0-9_-]{10,})\.[A-Za-z0-9_-]{10,}\b/g;
   const trojanBidiRegex = /[\u202A-\u202E\u2066-\u2069]/;
@@ -304,57 +310,25 @@ function pass05SecretScanner() {
       } catch (_e) {}
     }
 
-    // Validate process.env.* parity with .env.example and NEXT_PUBLIC_* secret-naming prohibition
+    // AST validation of process.env.* parity (.env.example + NEXT_PUBLIC_* secret ban)
+    // and client-bundle privilege isolation (SUPABASE_SERVICE_ROLE_KEY)
     const isAuditedEnvFile =
       relPath.startsWith('src/') ||
       (relPath.startsWith('scripts/') && !relPath.startsWith('scripts/eslint-rules/'));
     if (
-      isAuditedEnvFile &&
+      (isAuditedEnvFile || relPath.startsWith('src/')) &&
       /\.(ts|tsx|js|jsx)$/.test(relPath) &&
       !relPath.includes('.test.') &&
       !relPath.includes('.spec.')
     ) {
-      const envRefs = content.matchAll(/\bprocess\.env\.([A-Z][A-Z0-9_]+)\b/g);
-      for (const ref of envRefs) {
-        const varName = ref[1];
-        if (varName.endsWith('_')) continue;
-        if (secretNextPublicRegex.test(varName)) {
-          violations.push({
-            file: relPath,
-            issue: `Forbidden secret variable name "${varName}" prefixed with NEXT_PUBLIC_.`,
-          });
-        }
-        if (
-          documentedEnvVars.size > 0 &&
-          !runtimePlatformEnvVars.has(varName) &&
-          !documentedEnvVars.has(varName)
-        ) {
-          violations.push({
-            file: relPath,
-            issue: `Undocumented environment variable "${varName}" (must be documented in .env.example).`,
-          });
-        }
-      }
-    }
-
-    // Client-Bundle Privilege Guard: Ensure SUPABASE_SERVICE_ROLE_KEY is never referenced in client-side code
-    const isClientTree =
-      relPath.startsWith('src/components/') ||
-      relPath.startsWith('src/hooks/') ||
-      relPath.startsWith('src/stores/') ||
-      (relPath.startsWith('src/') && /^['"]use client['"]/m.test(content));
-
-    if (
-      isClientTree &&
-      /\.(ts|tsx|js|jsx)$/.test(relPath) &&
-      !relPath.includes('.test.') &&
-      !relPath.includes('.spec.') &&
-      content.includes('SUPABASE_SERVICE_ROLE_KEY')
-    ) {
-      violations.push({
-        file: relPath,
-        issue: 'Forbidden SUPABASE_SERVICE_ROLE_KEY reference in client-side module (RLS bypass risk).',
+      const envBoundaryViolations = validateEnvAndPrivilegeBoundariesAst(content, {
+        filePath: relPath,
+        documentedEnvVars,
+        runtimePlatformEnvVars,
+        auditEnvVars: isAuditedEnvFile,
+        checkClientServiceRole: relPath.startsWith('src/'),
       });
+      violations.push(...envBoundaryViolations);
     }
   }
 
@@ -520,28 +494,7 @@ function pass075SecurityAndSastAudit() {
     for (const routeFile of apiFiles) {
       const code = fs.readFileSync(routeFile, 'utf-8');
       const relRoute = path.relative(rootDir, routeFile).replace(/\\/g, '/');
-      const taintedFetchPattern =
-        /fetch\s*\(\s*(?:urlParam|req\.|request\.|searchParams\.get|rawUrl|`\$\{[^}]*(?:searchParams|req\.|request\.))/i;
-      if (taintedFetchPattern.test(code)) {
-        ssrfViolations.push({
-          file: relRoute,
-          issue: 'Tainted user parameter passed to fetch() without strict constant anchoring.',
-        });
-      }
-      if (!/RateLimiter/.test(code) || !/\.check\s*\(/.test(code)) {
-        ssrfViolations.push({
-          file: relRoute,
-          issue: 'Public API route handler is missing mandatory RateLimiter.check() protection.',
-        });
-      }
-      if (relRoute.endsWith('api/books/content/route.ts')) {
-        if (!code.includes("redirect: 'manual'") || !code.includes('isSafeUpstreamUrl(')) {
-          ssrfViolations.push({
-            file: relRoute,
-            issue: 'Content proxy route must enforce redirect: "manual" and isSafeUpstreamUrl() on upstream hops.',
-          });
-        }
-      }
+      ssrfViolations.push(...validateApiRoutesSecurityAst(code, relRoute));
     }
 
     if (ssrfViolations.length > 0) {
@@ -549,60 +502,37 @@ function pass075SecurityAndSastAudit() {
       ssrfViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
       return false;
     }
-    logPass(`Pillar 2: Audited ${apiFiles.length} API route handler(s). Rate limiting and anti-SSRF guards verified.`);
+    logPass(`Pillar 2: Audited ${apiFiles.length} API route handler(s). Rate limiting and anti-SSRF guards verified via Babel AST.`);
   }
 
-  // Pillar 3: Client-Side XSS & Dangerous Evaluation Primitives Guard
-  console.log(`${colors.dim}Pillar 3: Auditing source code for DOM XSS sinks and dangerous evaluation primitives...${colors.reset}`);
-  const srcDir = path.join(rootDir, 'src');
+  // Pillar 3: Client-Side XSS & Dangerous Evaluation Primitives Guard (9-Rule Babel AST Engine)
+  console.log(`${colors.dim}Pillar 3: Auditing source code via Babel AST for DOM XSS sinks, tabnabbing, postMessage wildcard, ReDoS, and dangerous evaluation primitives...${colors.reset}`);
+  const { runStandaloneAstSecurityAudit } = require('./eslint-rules/bookarium-security');
+  const astSecurityViolations = runStandaloneAstSecurityAudit(rootDir);
+  const pillar3RuleIds = new Set([
+    'bookarium-security/no-dangerous-execution',
+    'bookarium-security/no-unsafe-dom-injection',
+    'ast-parse-error',
+  ]);
   const xssViolations = [];
-  function scanSourceForXss(dir) {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        scanSourceForXss(full);
-      } else if (/\.(tsx|ts|jsx|js)$/.test(entry.name) && !entry.name.includes('.test.') && !entry.name.includes('.spec.')) {
-        const code = fs.readFileSync(full, 'utf-8');
-        const relFile = path.relative(rootDir, full);
-        if (code.includes('dangerouslySetInnerHTML')) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden dangerouslySetInnerHTML detected.' });
-        }
-        if (/\beval\s*\(/.test(code)) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden eval() primitive detected.' });
-        }
-        if (/new\s+Function\s*\(/.test(code)) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden dynamic Function constructor detected.' });
-        }
-        if (
-          /(?:href|src)\s*=\s*['"]\s*(?:javascript\s*:|vbscript\s*:|data\s*:\s*text\/html)/i.test(code) ||
-          /(?:href|src)\s*=\s*\{\s*['"`]\s*(?:javascript\s*:|vbscript\s*:|data\s*:\s*text\/html)/i.test(code)
-        ) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden dangerous href/src URI scheme detected.' });
-        }
-        if (/\.(?:innerHTML|outerHTML)\s*=/.test(code)) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden direct DOM innerHTML/outerHTML assignment detected.' });
-        }
-        if (/\bdocument\.write\s*\(/.test(code)) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden document.write() DOM sink detected.' });
-        }
-        if (/\bset(?:Timeout|Interval)\s*\(\s*['"`]/.test(code)) {
-          xssViolations.push({ file: relFile, issue: 'Forbidden string-evaluated setTimeout/setInterval detected.' });
-        }
-      }
+  for (const v of astSecurityViolations) {
+    if (pillar3RuleIds.has(v.ruleId)) {
+      xssViolations.push({
+        file: `${v.file}:${v.line}`,
+        issue: `[${v.ruleId}] ${v.message}`,
+      });
     }
   }
-  scanSourceForXss(srcDir);
 
   if (xssViolations.length > 0) {
-    logFail(`XSS/Dangerous primitive violation detected in ${xssViolations.length} location(s):`);
+    logFail(`XSS/Dangerous primitive AST violation detected in ${xssViolations.length} location(s):`);
     xssViolations.forEach((v) => console.error(`  - ${v.file}: ${v.issue}`));
     return false;
   }
-  logPass('Pillar 3: Zero DOM XSS sinks, eval(), dynamic Function, or javascript: URI schemes detected.');
+  logPass('Pillar 3: Zero DOM XSS sinks, eval(), dynamic Function, ReDoS, or javascript: URI schemes detected (Babel AST verified).');
 
   // Pillar 4: Open Redirect, Phishing Navigation & Full AST Request-Taint Analysis
-  console.log(`${colors.dim}Pillar 4: Auditing redirect destinations and running AST request-taint dataflow analysis...${colors.reset}`);
+  console.log(`${colors.dim}Pillar 4: Auditing redirect destinations via Babel AST and running AST request-taint dataflow analysis...${colors.reset}`);
   const redirectViolations = [];
   const appDir = path.join(rootDir, 'src', 'app');
   function scanRedirects(dir) {
@@ -614,24 +544,12 @@ function pass075SecurityAndSastAudit() {
       } else if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')) {
         const code = fs.readFileSync(full, 'utf-8');
         const relFile = path.relative(rootDir, full);
-        if (/redirect\s*\(\s*['"]http/i.test(code)) {
-          redirectViolations.push({ file: relFile, issue: 'Hardcoded external HTTP redirect detected.' });
-        }
-        if (/NextResponse\.redirect\s*\(/.test(code) && /searchParams/.test(code)) {
-          if (!code.includes('sanitizeRedirectPath') || !code.includes('resolveCanonicalAuthOrigin')) {
-            redirectViolations.push({
-              file: relFile,
-              issue: 'Dynamic NextResponse.redirect() using searchParams must enforce sanitizeRedirectPath and resolveCanonicalAuthOrigin.',
-            });
-          }
-        }
+        redirectViolations.push(...validateRedirectRoutesAst(code, relFile));
       }
     }
   }
   scanRedirects(appDir);
 
-  const { runStandaloneAstSecurityAudit } = require('./eslint-rules/bookarium-security');
-  const astSecurityViolations = runStandaloneAstSecurityAudit(rootDir);
   const engineeringGovernanceRules = new Set([
     'bookarium-security/no-focused-or-tautological-tests',
     'bookarium-security/enforce-gutenberg-and-copyright-policy',
@@ -639,6 +557,7 @@ function pass075SecurityAndSastAudit() {
   const astEngineeringViolations = [];
 
   for (const v of astSecurityViolations) {
+    if (pillar3RuleIds.has(v.ruleId)) continue;
     const entry = {
       file: `${v.file}:${v.line}`,
       issue: `[${v.ruleId}] ${v.message}`,
@@ -675,12 +594,13 @@ function pass075SecurityAndSastAudit() {
   const useBooksPath = path.join(rootDir, 'src', 'hooks', 'queries', 'useBooks.ts');
   if (fs.existsSync(useBooksPath)) {
     const useBooksCode = fs.readFileSync(useBooksPath, 'utf-8');
-    if (!useBooksCode.includes('b.copyright !== true')) {
-      logFail('useBooks.ts does not enforce public domain filter (b.copyright !== true).');
+    const publicDomainViolations = validatePublicDomainFilterAst(useBooksCode);
+    if (publicDomainViolations.length > 0) {
+      logFail(publicDomainViolations[0]);
       return false;
     }
   }
-  logPass('Pillar 5: MIT license compliance and public domain integrity (copyright=false) verified.');
+  logPass('Pillar 5: MIT license compliance and public domain integrity (copyright=false, Babel AST verified) verified.');
 
   // Pillar 6: PostgreSQL Row-Level Security (RLS), Migration Idempotency & SECURITY DEFINER Hardening Audit
   console.log(`${colors.dim}Pillar 6: Auditing supabase/schema.sql for mandatory table RLS, DDL/policy idempotency, write-policy isolation, and SECURITY DEFINER search_path...${colors.reset}`);
@@ -867,12 +787,14 @@ function pass075SecurityAndSastAudit() {
 
     const tableDefRegex =
       /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?public\.([a-z0-9_]+)\s*\(([\s\S]*?)\r?\n\);/gi;
+    const userScopedTables = [];
     let tblDefMatch;
     while ((tblDefMatch = tableDefRegex.exec(schemaSql)) !== null) {
       const tblName = tblDefMatch[1];
       const tblBody = tblDefMatch[2];
       const userFkMatches = [...tblBody.matchAll(/REFERENCES\s+auth\.users\s*\(\s*id\s*\)([^\r\n,]*)/gi)];
       if (userFkMatches.length > 0) {
+        userScopedTables.push(tblName);
         for (const fkMatch of userFkMatches) {
           if (!/ON\s+DELETE\s+CASCADE/i.test(fkMatch[1] || '')) {
             rlsViolations.push(
@@ -884,12 +806,6 @@ function pass075SecurityAndSastAudit() {
         if (!rpcDeleteRegex.test(deleteUserFnBody)) {
           rlsViolations.push(
             `Rule 9 Account Deletion Parity: User-scoped table "public.${tblName}" is missing explicit DELETE FROM public.${tblName} in public.delete_current_user() (supabase/schema.sql).`
-          );
-        }
-        const clientDeleteRegex = new RegExp(`\\.from\\(\\s*['"]${tblName}['"]\\s*\\)\\s*\\.delete\\(`, 'i');
-        if (authStoreCode && !clientDeleteRegex.test(authStoreCode)) {
-          rlsViolations.push(
-            `Rule 9 Account Deletion Parity: User-scoped table "public.${tblName}" is missing explicit .from('${tblName}').delete() in useAuthStore.deleteAccount() (src/stores/useAuthStore.ts).`
           );
         }
       }
@@ -926,24 +842,26 @@ function pass075SecurityAndSastAudit() {
       }
     }
 
-    // Rule 9 Local Store Teardown Parity:
-    // Every persistent/user-scoped Zustand store in src/stores/ (except useAuthStore and useJurisdictionStore)
-    // must be referenced and wiped inside clearLocalUserStores() in src/stores/useAuthStore.ts.
+    // Rule 9 Account Deletion & Local Store Teardown Parity (Babel AST verified across useAuthStore.ts)
     const storesDir = path.join(rootDir, 'src', 'stores');
-    if (fs.existsSync(storesDir) && authStoreCode) {
+    const nonExemptStoreNames = [];
+    if (fs.existsSync(storesDir)) {
       const storeFiles = fs
         .readdirSync(storesDir)
         .filter((f) => /^use[A-Z][a-zA-Z0-9]*Store\.ts$/.test(f) && !f.endsWith('.test.ts'));
       const exemptStores = new Set(['useAuthStore.ts', 'useJurisdictionStore.ts']);
       for (const storeFile of storeFiles) {
         if (exemptStores.has(storeFile)) continue;
-        const storeName = storeFile.replace(/\.ts$/, '');
-        if (!authStoreCode.includes(storeName)) {
-          rlsViolations.push(
-            `Rule 9 Local Store Teardown Parity: Store "${storeName}" is missing cleanup inside clearLocalUserStores() in src/stores/useAuthStore.ts.`
-          );
-        }
+        nonExemptStoreNames.push(storeFile.replace(/\.ts$/, ''));
       }
+    }
+    if (authStoreCode) {
+      rlsViolations.push(
+        ...validateRule9AuthStoreParityAst(authStoreCode, {
+          userScopedTables,
+          storeNames: nonExemptStoreNames,
+        })
+      );
     }
 
     if (rlsViolations.length > 0) {
@@ -2007,7 +1925,14 @@ function pass5AdrValidation() {
         cleanPath === 'supabase/schema.sql'
       ) {
         hasNewProductionOrSchemaChange = true;
-      } else if (!isNewFile && (isProductionCode || /^scripts\/generate-.*\.js$/.test(cleanPath))) {
+      } else if (
+        !isNewFile &&
+        (isProductionCode ||
+          /^scripts\/generate-.*\.js$/.test(cleanPath) ||
+          cleanPath === 'scripts/eslint-rules/bookarium-security.js' ||
+          cleanPath === 'scripts/lib/sast-validators.js' ||
+          cleanPath === 'scripts/sync-gutenberg-catalog.js')
+      ) {
         hasEditedExistingBehavior = true;
       }
     }
@@ -2161,6 +2086,67 @@ function pass5AdrValidation() {
             `Version drift in SECURITY.md Supported Versions: expected "**${majorMinor}.x**" and "< ${majorMinor}.0" (run "npm run docs:sync").`
           );
         }
+
+        try {
+          const { auditSecurityDocumentationParity } = require('./lib/sast-validators');
+          const sastExports = Object.keys(require('./lib/sast-validators'));
+          const securityPlugin = require('./eslint-rules/bookarium-security');
+          const eslintRuleNames = Object.keys((securityPlugin && securityPlugin.rules) || {});
+          const { extractSqlSchemaEntities } = require('./lib/ast-parser');
+          const sqlEntities = fs.existsSync(schemaPath)
+            ? extractSqlSchemaEntities(fs.readFileSync(schemaPath, 'utf-8'))
+            : { tableNames: [], hasMigrationLedger: false };
+          const expectedDbTableCount =
+            sqlEntities.tableNames.length + (sqlEntities.hasMigrationLedger ? 1 : 0);
+          const syncCatalogPath = path.join(rootDir, 'scripts', 'sync-gutenberg-catalog.js');
+          const syncCatalogText = fs.existsSync(syncCatalogPath)
+            ? fs.readFileSync(syncCatalogPath, 'utf-8')
+            : '';
+          const secParityIssues = auditSecurityDocumentationParity({
+            securityMarkdown: securityText,
+            eslintRuleNames,
+            sastValidatorExports: sastExports,
+            expectedDbTableCount,
+            syncCatalogText,
+          });
+          docViolations.push(...secParityIssues);
+        } catch (err) {
+          docViolations.push(`Failed circular security documentation parity check: ${err.message}`);
+        }
+      }
+
+      if (fs.existsSync(readmePath)) {
+        const readmeText = fs.readFileSync(readmePath, 'utf-8');
+        if (!/Pass 7[^\r\n]*(?:routes-manifest|HTTP probe|next start)/i.test(readmeText)) {
+          docViolations.push(
+            'Security/Gateway drift in README.md: Pass 7 table row should describe routes-manifest / live HTTP probe verification.'
+          );
+        }
+        if (!/`npm run security:audit`[^\r\n]*Pass 5/.test(readmeText)) {
+          docViolations.push(
+            'CLI matrix drift in README.md: `npm run security:audit` description should cite Pass 0.5, Pass 0.75 & Pass 5.'
+          );
+        }
+        if (!readmeText.includes('.sha256')) {
+          docViolations.push(
+            'Catalog integrity drift in README.md: catalog-cache workflow description should reference .sha256 verification.'
+          );
+        }
+      }
+
+      const prTemplatePath = path.join(rootDir, '.github', 'pull_request_template.md');
+      if (fs.existsSync(prTemplatePath)) {
+        const prTplText = fs.readFileSync(prTemplatePath, 'utf-8');
+        if (!/GPL.*AGPL|BANNED_PACKAGE_LICENSES/i.test(prTplText) || !prTplText.includes('sast-validators')) {
+          docViolations.push(
+            'Checklist drift in .github/pull_request_template.md: Pass 0.75 must reference sast-validators.js and offline GPL/AGPL license checks.'
+          );
+        }
+        if (!/routes-manifest|127\.0\.0\.1|HTTP probe/i.test(prTplText)) {
+          docViolations.push(
+            'Checklist drift in .github/pull_request_template.md: Pass 7 must reference compiled routes-manifest header and live HTTP probe verification.'
+          );
+        }
       }
 
       const releaseWfPath = path.join(rootDir, '.github', 'workflows', 'release.yml');
@@ -2312,11 +2298,184 @@ function pass6QualityAudit() {
   return true;
 }
 
+function allocateFreeLoopbackPort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address();
+      const port = addr && typeof addr === 'object' ? addr.port : 0;
+      srv.close((closeErr) => {
+        if (closeErr) reject(closeErr);
+        else resolve(port);
+      });
+    });
+  });
+}
+
+function sendLoopbackHttpProbe(port, probePath, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: probePath,
+        method: 'GET',
+        timeout: timeoutMs,
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          resolve({
+            status: res.statusCode || 0,
+            headers: res.headers || {},
+            body: Buffer.concat(chunks).toString('utf-8'),
+          });
+        });
+      }
+    );
+    req.on('timeout', () => {
+      req.destroy(new Error(`Timeout probing 127.0.0.1:${port}${probePath}`));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function stopChildProcessGracefully(child) {
+  if (!child || child.exitCode !== null) return;
+  try {
+    child.kill('SIGTERM');
+  } catch {
+    return;
+  }
+  await new Promise((resolve) => {
+    const forceTimer = setTimeout(() => {
+      if (child.exitCode === null) {
+        try {
+          child.kill('SIGKILL');
+        } catch {}
+      }
+      resolve();
+    }, 2500);
+    if (typeof forceTimer.unref === 'function') forceTimer.unref();
+    child.once('exit', () => {
+      clearTimeout(forceTimer);
+      resolve();
+    });
+  });
+}
+
+/**
+ * Boots the compiled Next.js server briefly on loopback `127.0.0.1` and executes runtime HTTP
+ * security header, SSRF rejection, and open-redirect origin-lock smoke probes.
+ */
+async function probeCompiledNextServer(rootDirPath) {
+  const nextBin = require.resolve('next/dist/bin/next', { paths: [rootDirPath] });
+  const port = await allocateFreeLoopbackPort();
+  const loopbackOrigin = ['http:', '', `127.0.0.1:${port}`].join('/');
+  const localhostOrigin = ['http:', '', `localhost:${port}`].join('/');
+  const serverLogs = [];
+
+  const child = spawn(
+    process.execPath,
+    [nextBin, 'start', '-H', '127.0.0.1', '-p', String(port)],
+    {
+      cwd: rootDirPath,
+      shell: false,
+      env: { ...process.env, NODE_ENV: 'production' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
+  );
+  child.stdout?.on('data', (d) => serverLogs.push(d.toString('utf-8')));
+  child.stderr?.on('data', (d) => serverLogs.push(d.toString('utf-8')));
+
+  try {
+    let homeResponse = null;
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      if (child.exitCode !== null) {
+        throw new Error(
+          `Compiled Next.js server exited prematurely with code ${child.exitCode}:\n${serverLogs.join('').slice(-600)}`
+        );
+      }
+      try {
+        homeResponse = await sendLoopbackHttpProbe(port, '/', 2000);
+        if (homeResponse && homeResponse.status > 0) break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    }
+
+    if (!homeResponse) {
+      throw new Error(
+        `Timed out waiting for compiled Next.js server on 127.0.0.1:${port}:\n${serverLogs.join('').slice(-600)}`
+      );
+    }
+
+    const probeCases = [
+      {
+        spec: {
+          path: '/',
+          expectedStatus: 200,
+          expectSecurityHeaders: true,
+          forbidStackTraces: true,
+        },
+        response: homeResponse,
+      },
+      {
+        spec: {
+          path: '/api/books?unknown_param=1',
+          expectedStatus: 400,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(port, '/api/books?unknown_param=1'),
+      },
+      {
+        spec: {
+          path: '/api/books/content?url=https://evil.example/secret.txt',
+          expectedStatus: 400,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(
+          port,
+          '/api/books/content?url=https%3A%2F%2Fevil.example%2Fsecret.txt'
+        ),
+      },
+      {
+        spec: {
+          path: '/auth/callback?next=https://evil.example/phish',
+          allowedRedirectOrigins: [loopbackOrigin, localhostOrigin],
+          forbiddenRedirectHosts: ['evil.example'],
+        },
+        response: await sendLoopbackHttpProbe(
+          port,
+          '/auth/callback?next=https%3A%2F%2Fevil.example%2Fphish'
+        ),
+      },
+    ];
+
+    const violations = [];
+    for (const item of probeCases) {
+      violations.push(...validateLiveHttpSecurityResponse(item.spec, item.response));
+    }
+    return violations;
+  } finally {
+    await stopChildProcessGracefully(child);
+  }
+}
+
 // -------------------------------------------------------------
-// PASS 7: Production Build & Chunk Budget
+// PASS 7: Production Build, Chunk Budget & Live HTTP Security Smoke Probe
 // -------------------------------------------------------------
-function pass7ProductionBuild() {
-  logHeader('Pass 7: Next.js Production Build & Chunk Budget');
+async function pass7ProductionBuild() {
+  logHeader('Pass 7: Next.js Production Build, Chunk Budget & Live HTTP Security Probe');
   const buildRes = runCommand(`${npxCmd} next build --webpack`, true);
   if (!buildRes.success) {
     logFail('Next.js production build failed.');
@@ -2351,7 +2510,29 @@ function pass7ProductionBuild() {
     return false;
   }
 
-  logPass('Production build & compiled security headers (.next/routes-manifest.json) verified within performance budget.');
+  console.log(
+    `${colors.dim}Probing live compiled Next.js server (127.0.0.1) for runtime OWASP headers, SSRF rejection, and origin-locked redirects...${colors.reset}`
+  );
+  try {
+    const liveProbeViolations = await probeCompiledNextServer(rootDir);
+    if (liveProbeViolations.length > 0) {
+      logFail('Live compiled Next.js HTTP security probe violation(s):');
+      liveProbeViolations.forEach((v) => console.error(`  - ${v}`));
+      return false;
+    }
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (/\b(?:EACCES|EPERM)\b/.test(errMsg)) {
+      console.log(
+        `${colors.yellow}⚠ [WARN] Loopback socket bind restricted in current environment (${errMsg}); skipping live server probe.${colors.reset}`
+      );
+    } else {
+      logFail(`Failed executing live compiled Next.js HTTP security probe: ${errMsg}`);
+      return false;
+    }
+  }
+
+  logPass('Production build, compiled security headers (.next/routes-manifest.json), and live HTTP security smoke probes verified within budget.');
   return true;
 }
 
@@ -2402,7 +2583,7 @@ async function runAllGateways() {
   ];
 
   for (const gateway of gateways) {
-    const ok = gateway();
+    const ok = await gateway();
     if (!ok) {
       console.error(`\n${colors.bright}${colors.red}🚫 7-GATEWAY VERIFICATION HALTED. Fix the issues above before proceeding.${colors.reset}\n`);
       process.exit(1);

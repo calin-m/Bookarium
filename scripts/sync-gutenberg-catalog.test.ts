@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Readable } from 'stream';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import zlib from 'zlib';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const syncGutenbergCatalog = require('./sync-gutenberg-catalog');
 const {
@@ -38,8 +40,12 @@ const {
   upsertBatch,
   reconcileWithdrawnCatalogBooks,
   extractCacheableBookRecord,
+  computeSha256Hex,
+  parseSha256SidecarText,
+  isSha256TimingSafeEqual,
   loadCatalogSnapshotCache,
   saveCatalogSnapshotCache,
+  appendCatalogStepSummary,
   computeCatalogQuotePoolDiff,
 } = syncGutenbergCatalog;
 
@@ -1077,20 +1083,50 @@ describe('sync-gutenberg-catalog parser', () => {
         expect(blocked.skippedReason).toBe('below-min-catalog-floor');
         expect(fs.existsSync(cacheFile)).toBe(false);
 
-        // Meets safety floor -> writes compressed .json.gz and round-trips via loadCatalogSnapshotCache
+        // Meets safety floor -> writes compressed .json.gz + .sha256 sidecar and round-trips via loadCatalogSnapshotCache
         const saved = saveCatalogSnapshotCache(cacheFile, booksById, [1342, 84], {
           minCatalogSize: 2,
           logger: silentLogger,
         });
         expect(saved.saved).toBe(true);
         expect(saved.count).toBe(2);
+        expect(saved.sha256).toMatch(/^[a-f0-9]{64}$/);
         expect(fs.existsSync(cacheFile)).toBe(true);
+        expect(fs.existsSync(`${cacheFile}.sha256`)).toBe(true);
 
         const loaded = loadCatalogSnapshotCache(cacheFile, { logger: silentLogger });
         expect(loaded.loaded).toBe(true);
+        expect(loaded.checksumVerified).toBe(true);
+        expect(loaded.sha256).toBe(saved.sha256);
         expect(loaded.booksById.size).toBe(2);
         expect(loaded.booksById.get(1342).title).toBe('Pride and Prejudice');
         expect(Array.from(loaded.candidatePoolIds)).toEqual([1342, 84]);
+
+        // Tampered .sha256 sidecar -> fails closed cleanly
+        const warnLogger = { log: vi.fn(), warn: vi.fn() };
+        const originalSha = fs.readFileSync(`${cacheFile}.sha256`, 'utf8');
+        fs.writeFileSync(`${cacheFile}.sha256`, `${'f'.repeat(64)}  gutenberg-catalog-cache.json.gz\n`, 'utf8');
+        const tamperedShaResult = loadCatalogSnapshotCache(cacheFile, { logger: warnLogger });
+        expect(tamperedShaResult.loaded).toBe(false);
+        expect(tamperedShaResult.checksumVerified).toBe(false);
+        expect(warnLogger.warn).toHaveBeenCalledWith(expect.stringContaining('SHA-256 verification failed'));
+
+        // Legacy snapshot missing .sha256 -> loads with notice unless requireChecksum: true
+        fs.unlinkSync(`${cacheFile}.sha256`);
+        const legacyLoaded = loadCatalogSnapshotCache(cacheFile, { logger: warnLogger });
+        expect(legacyLoaded.loaded).toBe(true);
+        expect(legacyLoaded.checksumVerified).toBe(false);
+        const strictMissing = loadCatalogSnapshotCache(cacheFile, {
+          requireChecksum: true,
+          logger: warnLogger,
+        });
+        expect(strictMissing.loaded).toBe(false);
+
+        // Restore valid sidecar, then tamper gzip archive payload -> rejects
+        fs.writeFileSync(`${cacheFile}.sha256`, originalSha, 'utf8');
+        fs.writeFileSync(cacheFile, zlib.gzipSync(Buffer.from('{"books":[{"id":999,"title":"Tampered"}]}')));
+        const tamperedArchive = loadCatalogSnapshotCache(cacheFile, { logger: warnLogger });
+        expect(tamperedArchive.loaded).toBe(false);
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
@@ -1271,6 +1307,107 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(resolveCatalogUserAgent({})).toMatch(
         /^Bookarium-Catalog-Sync\/1\.0 \(\+https?:\/\/.+\)$/
       );
+    });
+  });
+
+  describe('Archive Wire SHA-256 Computation, Content-Length Truncation & Step Summary', () => {
+    it('computes wire SHA-256 digests on valid CSV streams and rejects Content-Length truncated streams', async () => {
+      const csvText =
+        'Text#,Type,Issued,Title,Language,Authors,Subjects,LoCC,Bookshelves\n1342,Text,1998-06-01,Pride and Prejudice,en,"Austen, Jane",,,\n';
+      const gzPayload = zlib.gzipSync(Buffer.from(csvText, 'utf8'));
+      const expectedSha = computeSha256Hex(gzPayload);
+
+      expect(parseSha256SidecarText(`${expectedSha}  gutenberg-catalog-cache.json.gz\n`)).toBe(
+        expectedSha
+      );
+      expect(isSha256TimingSafeEqual(expectedSha, expectedSha)).toBe(true);
+      expect(isSha256TimingSafeEqual(expectedSha, '0'.repeat(64))).toBe(false);
+
+      const makeMockCsvHttpsGet = (reportedContentLength: number) =>
+        (_url: string, _opts: unknown, cb: (res: Readable) => void) => {
+          const res = Readable.from([gzPayload]) as Readable & {
+            statusCode?: number;
+            statusMessage?: string;
+            headers?: Record<string, string>;
+          };
+          res.statusCode = 200;
+          res.statusMessage = 'OK';
+          res.headers = {
+            'content-type': 'application/x-gzip',
+            'content-length': String(reportedContentLength),
+          };
+          queueMicrotask(() => cb(res));
+          return Readable.from([]) as Readable & { setTimeout?: () => void };
+        };
+
+      const rows: string[][] = [];
+      const streamResult = await streamCatalogMirrorOnce(
+        (r: string[]) => rows.push(r),
+        GUTENBERG_CSV_FEED_MIRRORS[0],
+        { httpsGet: makeMockCsvHttpsGet(gzPayload.length) }
+      );
+      expect(rows).toHaveLength(1);
+      expect(streamResult.archiveSha256).toBe(expectedSha);
+      expect(streamResult.downloadedBytes).toBe(gzPayload.length);
+
+      await expect(
+        streamCatalogMirrorOnce(vi.fn(), GUTENBERG_CSV_FEED_MIRRORS[0], {
+          httpsGet: makeMockCsvHttpsGet(gzPayload.length + 1024),
+        })
+      ).rejects.toThrow(/Truncated CSV archive stream/);
+    });
+
+    it('rejects corrupted RDF archive streams fail-closed when tar exits non-zero or Content-Length mismatches', async () => {
+      const invalidBz2 = Buffer.from('not-a-valid-tar-bz2-archive', 'utf8');
+      const truncatedHttpsGet = (_url: string, _opts: unknown, cb: (res: Readable) => void) => {
+        const res = Readable.from([invalidBz2]) as Readable & {
+          statusCode?: number;
+          statusMessage?: string;
+          headers?: Record<string, string>;
+        };
+        res.statusCode = 200;
+        res.statusMessage = 'OK';
+        res.headers = {
+          'content-type': 'application/x-bzip2',
+          'content-length': String(invalidBz2.length + 512),
+        };
+        queueMicrotask(() => cb(res));
+        return Readable.from([]) as Readable & { setTimeout?: () => void };
+      };
+
+      await expect(
+        streamRdfMirrorOnce(GUTENBERG_RDF_FEED_MIRRORS[0], { httpsGet: truncatedHttpsGet })
+      ).rejects.toThrow(/(?:Truncated RDF archive stream|tar exited with code)/);
+    });
+
+    it('appends Markdown digest summary rows to GITHUB_STEP_SUMMARY when configured', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bookarium-cat-summary-'));
+      const summaryFile = path.join(tmpDir, 'summary.md');
+      try {
+        expect(appendCatalogStepSummary({}, { stepSummaryPath: '' })).toBe(false);
+        expect(
+          appendCatalogStepSummary(
+            {
+              totalParsed: 100,
+              totalAccepted: 95,
+              totalInserted: 2,
+              totalUpdated: 3,
+              totalUnchanged: 90,
+              csvSha256: 'a'.repeat(64),
+              rdfSha256: 'b'.repeat(64),
+              restoredCacheSha256: 'c'.repeat(64),
+              savedCacheSha256: 'd'.repeat(64),
+            },
+            { stepSummaryPath: summaryFile }
+          )
+        ).toBe(true);
+        const written = fs.readFileSync(summaryFile, 'utf8');
+        expect(written).toContain('Gutenberg Catalog Sync Integrity Summary');
+        expect(written).toContain('a'.repeat(64));
+        expect(written).toContain('d'.repeat(64));
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 });

@@ -62,6 +62,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download catalog-cache -p "gutenberg-catalog-cache.json.gz" --clobber || echo "No prior catalog-cache release asset found; starting cold-start sync."
+          gh release download catalog-cache -p "gutenberg-catalog-cache.json.gz.sha256" --clobber || echo "No prior snapshot .sha256 sidecar found; continuing with gzip validation until next publish."
 
       - name: Run Gutenberg Catalog Sync
         env:
@@ -107,12 +108,16 @@ jobs:
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
           if [ "$INPUT_DRY_RUN" != "true" ] && [ -z "$INPUT_LIMIT" ] && [ -f "gutenberg-catalog-cache.json.gz" ]; then
+            UPLOAD_FILES="gutenberg-catalog-cache.json.gz"
+            if [ -f "gutenberg-catalog-cache.json.gz.sha256" ]; then
+              UPLOAD_FILES="$UPLOAD_FILES gutenberg-catalog-cache.json.gz.sha256"
+            fi
             if gh release view catalog-cache >/dev/null 2>&1; then
-              gh release upload catalog-cache gutenberg-catalog-cache.json.gz --clobber
+              gh release upload catalog-cache $UPLOAD_FILES --clobber
             else
-              gh release create catalog-cache gutenberg-catalog-cache.json.gz \
+              gh release create catalog-cache $UPLOAD_FILES \
                 --title "Gutenberg Catalog Snapshot Cache" \
-                --notes "Permanent weekly compressed metadata snapshot (gutenberg-catalog-cache.json.gz) for zero-egress in-memory catalog diffing."
+                --notes "Permanent weekly compressed metadata snapshot (gutenberg-catalog-cache.json.gz + .sha256) for zero-egress in-memory catalog diffing."
             fi
           fi
 

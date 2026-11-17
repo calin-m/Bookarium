@@ -782,76 +782,90 @@ describe('offline-storage (IndexedDB engine)', () => {
       });
       const revokeUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
-      const cachedBlob = new Blob(['browsed-cover'], { type: 'image/jpeg' });
-      await saveCachedCoverBlob(777, cachedBlob);
-      expect(coverCacheStore.get(777)?.blob).toBe(cachedBlob);
-      expect(getMemoryCachedCoverUrl(777)).toMatch(/^blob:cover-/);
-      expect(await getOfflineBookCover(777)).toBe(cachedBlob);
+      try {
+        const cachedBlob = new Blob(['browsed-cover'], { type: 'image/jpeg' });
+        await saveCachedCoverBlob(777, cachedBlob);
+        expect(coverCacheStore.get(777)?.blob).toBe(cachedBlob);
+        expect(getMemoryCachedCoverUrl(777)).toMatch(/^blob:cover-/);
+        expect(await getOfflineBookCover(777)).toBe(cachedBlob);
 
-      // Expired cover_cache entries (> 30d TTL) are evicted and return null
-      coverCacheStore.set(778, {
-        bookId: 778,
-        blob: new Blob(['stale-cover'], { type: 'image/jpeg' }),
-        cachedAt: Date.now() - COVER_CACHE_TTL_MS - 10_000,
-        byteSize: 11,
-      });
-      expect(await getOfflineBookCover(778)).toBeNull();
-      expect(coverCacheStore.has(778)).toBe(false);
-
-      // Enforce bounded LRU eviction above MAX_CACHED_COVERS (300)
-      const now = Date.now();
-      for (let i = 1; i <= MAX_CACHED_COVERS; i++) {
-        coverCacheStore.set(1000 + i, {
-          bookId: 1000 + i,
-          blob: new Blob([`cover-${i}`], { type: 'image/jpeg' }),
-          cachedAt: now - (MAX_CACHED_COVERS + 50 - i) * 1000,
-          byteSize: 8,
+        // Expired cover_cache entries (> 30d TTL) are evicted and return null
+        coverCacheStore.set(778, {
+          bookId: 778,
+          blob: new Blob(['stale-cover'], { type: 'image/jpeg' }),
+          cachedAt: Date.now() - COVER_CACHE_TTL_MS - 10_000,
+          byteSize: 11,
         });
+        expect(await getOfflineBookCover(778)).toBeNull();
+        expect(coverCacheStore.has(778)).toBe(false);
+
+        // Enforce bounded LRU eviction above MAX_CACHED_COVERS (300)
+        const now = Date.now();
+        for (let i = 1; i <= MAX_CACHED_COVERS; i++) {
+          coverCacheStore.set(1000 + i, {
+            bookId: 1000 + i,
+            blob: new Blob([`cover-${i}`], { type: 'image/jpeg' }),
+            cachedAt: now - (MAX_CACHED_COVERS + 50 - i) * 1000,
+            byteSize: 8,
+          });
+        }
+        await saveCachedCoverBlob(9999, new Blob(['newest-cover'], { type: 'image/jpeg' }));
+        expect(coverCacheStore.size).toBeLessThanOrEqual(MAX_CACHED_COVERS);
+        expect(coverCacheStore.has(9999)).toBe(true);
+        expect(coverCacheStore.has(1001)).toBe(false);
+
+        // Background warmer hits internal cover proxy once per ID and backs off cleanly on HTTP 429
+        const rateLimitResponse = new Response('Rate limited', {
+          status: 429,
+          headers: { 'Retry-After': '30' },
+        });
+        const rateLimitHeaderSpy = vi.spyOn(rateLimitResponse.headers, 'get');
+        const fetchSpy = vi
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(new Blob(['warmed-jpeg'], { type: 'image/jpeg' }), {
+              status: 200,
+              headers: { 'Content-Type': 'image/jpeg' },
+            })
+          )
+          .mockResolvedValueOnce(rateLimitResponse);
+
+        try {
+          warmCoverCache(555);
+          warmCoverCache(555); // Duplicate queued ID is ignored
+          await vi.waitFor(
+            () => {
+              expect(coverCacheStore.has(555)).toBe(true);
+            },
+            { timeout: 5000 }
+          );
+          expect(fetchSpy).toHaveBeenCalledTimes(1);
+          expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=555&type=cover');
+
+          warmCoverCache(556);
+          await vi.waitFor(
+            () => {
+              expect(fetchSpy).toHaveBeenCalledTimes(2);
+              expect(rateLimitHeaderSpy).toHaveBeenCalledWith('Retry-After');
+            },
+            { timeout: 5000 }
+          );
+          warmCoverCache(557); // Suppressed during 429 cooldown
+          expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+          // clearAllOfflineBooks clears both offline_books and cover_cache
+          await clearAllOfflineBooks();
+          expect(coverCacheStore.size).toBe(0);
+          expect(getMemoryCachedCoverUrl(777)).toBeNull();
+        } finally {
+          rateLimitHeaderSpy.mockRestore();
+          fetchSpy.mockRestore();
+        }
+      } finally {
+        createUrlSpy.mockRestore();
+        revokeUrlSpy.mockRestore();
+        resetCoverWarmState();
       }
-      await saveCachedCoverBlob(9999, new Blob(['newest-cover'], { type: 'image/jpeg' }));
-      expect(coverCacheStore.size).toBeLessThanOrEqual(MAX_CACHED_COVERS);
-      expect(coverCacheStore.has(9999)).toBe(true);
-      expect(coverCacheStore.has(1001)).toBe(false);
-
-      // Background warmer hits internal cover proxy once per ID and backs off cleanly on HTTP 429
-      const fetchSpy = vi
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(new Blob(['warmed-jpeg'], { type: 'image/jpeg' }), {
-            status: 200,
-            headers: { 'Content-Type': 'image/jpeg' },
-          })
-        )
-        .mockResolvedValueOnce(
-          new Response('Rate limited', {
-            status: 429,
-            headers: { 'Retry-After': '30' },
-          })
-        );
-
-      warmCoverCache(555);
-      warmCoverCache(555); // Duplicate queued ID is ignored
-      await vi.waitFor(() => {
-        expect(coverCacheStore.has(555)).toBe(true);
-      });
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=555&type=cover');
-
-      warmCoverCache(556);
-      await vi.waitFor(() => {
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-      });
-      warmCoverCache(557); // Suppressed during 429 cooldown
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-
-      // clearAllOfflineBooks clears both offline_books and cover_cache
-      await clearAllOfflineBooks();
-      expect(coverCacheStore.size).toBe(0);
-      expect(getMemoryCachedCoverUrl(777)).toBeNull();
-
-      fetchSpy.mockRestore();
-      createUrlSpy.mockRestore();
-      revokeUrlSpy.mockRestore();
     });
   });
 });

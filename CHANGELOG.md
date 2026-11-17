@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.53] - 2026-11-17
+### *Non-Breaking Babel AST SAST Transposition, CLI/Archive Integrity, License SCA & Pass 7 Live HTTP Probes*
+
+### Added
+- **CLI Script AST Hardening, Stream Truncation Fail-Closed Guards & Snapshot `.sha256` Integrity (`scripts/eslint-rules/bookarium-security.js`, `scripts/open-browser.js`, `scripts/sync-gutenberg-catalog.js`, `.github/workflows/catalog-sync.yml`, `scripts/eslint-rules/bookarium-security.test.ts`, `scripts/sync-gutenberg-catalog.test.ts`)**: Extended `bookarium-security` across `scripts/` (`https.get`/`http.get`, `{ shell: true }` ban, module-scope `CLI process.argv` taint, & array/conditional sanitizer intersection) and replaced `open-browser.js` `exec` with `sanitizeLocalDevUrl` + shell-free `spawn`; enforced `Content-Length`/non-zero `tar` stream checks + wire `SHA-256` summary logging on Gutenberg feeds and companion `.sha256` (`timingSafeEqual`) verification on `catalog-cache` (`ADR-040`, `ADR-073`).
+- **Offline Transitive License SCA & Live Compiled HTTP Security Probes (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`)**: Extended `validatePackageLockAndLifecycle` (`Pass 0.75` Pillar 1) with `BANNED_PACKAGE_LICENSES` offline `GPL`/`AGPL` copyleft detection across `package-lock.json` (`~0 ms`, matching `dependency-review.yml`), and added `validateLiveHttpSecurityResponse` plus a `Pass 7` loopback `next start` probe verifying runtime OWASP headers, `400` SSRF rejections, and port-locked `{127.0.0.1, localhost}` `/auth/callback` origin redirects (`ADR-073`, `ADR-081`).
+
+### Changed
+- **Babel AST Transposition Across `Pass 0.5` & `Pass 0.75` (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`)**: Upgraded `validateServiceWorkerSecurity` and added `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` while deduplicating Pillar 3 onto `bookarium-security` Rules 4 & 5—preserving 100% accuracy and 0 runtime `src/` changes while catching destructured/bracket/aliased env leaks, helper-wrapped SW handlers, parameter-agnostic copyright filters, and call-graph Rule 9 teardowns with zero comment false positives (`ADR-073`, `ADR-081`).
+- **Circular `SECURITY.md` AST Compilation & Self-Enforcing Governance Parity (`scripts/generate-architecture-matrix.js`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`, `SECURITY.md`, `README.md`, `.github/pull_request_template.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Auto-compiled `<!-- BEGIN:security-architecture -->` in `SECURITY.md` from live ESLint rules, `sast-validators.js` exports, SQL RLS table counts (`14`), and `sync-gutenberg-catalog.js` `.sha256`/`Content-Length` safeguards during `npm run docs:sync`, enforced fail-closed symbol/doc parity via `auditSecurityDocumentationParity` in `Pass 5`, and synchronized `README.md`, PR/contributing checklists, runbooks, quality report rows, and `Rule 1`/`Rule 8` security interconnectivity (`ADR-073`, `ADR-081`).
+
+### Fixed
+- **Deterministic Background Cover-Warm Test Synchronization (`src/lib/offline-storage.test.ts`)**: Extended `vi.waitFor` budgets to `5000` ms across parallel `--coverage` IndexedDB mock hops, verified `429` `Retry-After` header consumption before enqueueing subsequent warms, and ensured `try ... finally` mock/state restoration via `resetCoverWarmState()` (`ADR-073`).
+
+
 ## [2.9.52] - 2026-11-17
 ### *Tier-3 Cover Cache Contract Protection & Architecture Parity Polish*
 

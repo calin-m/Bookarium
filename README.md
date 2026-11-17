@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-259%20Suites%20%7C%202690%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.36%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-259%20Suites%20%7C%202704%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2690 tests across 259 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2704 tests across 259 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -94,14 +94,14 @@ The repository enforces a closed-loop quality verification engine before any rel
 |                     7-GATEWAY CLOSED-LOOP VERIFICATION                      |
 +-----------------------------------------------------------------------------+
 | Pass 0.5  | Secret & Boundary   | Secrets, env parity & AST graph isolation |
-| Pass 0.75 | 7-Pillar SAST/OWASP | CVEs, 9-rule AST taint, SSRF, XSS & RLS   |
+| Pass 0.75 | 7-Pillar SAST/OWASP | CVEs, GPL/AGPL, CLI & 9-rule AST/SAST   |
 | Pass 1    | TypeScript Engine   | Strict typecheck with 0 compile errors    |
 | Pass 2    | Vitest Server Mocks | Validates MSW v2 handlers and query hooks |
 | Pass 3    | Vitest Client UI    | Unit & integration tests (95/95/92/85 cov)|
-| Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, AUDIT, & CHANGE|
-| Pass 5    | ADR & Parity Gate   | ADRs, SQL<->TS, AST & 1:1 test parity     |
+| Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, SECURITY & CHG |
+| Pass 5    | ADR & Parity Gate   | ADRs, SECURITY, SQL<->TS & 1:1 test parity|
 | Pass 6    | Quality & Dead Code | ESLint (--max-warnings 0) and Knip audit  |
-| Pass 7    | Production Build    | Compiles Next.js production bundle        |
+| Pass 7    | Production Build    | Next build, routes-manifest & HTTP probe  |
 +-----------------------------------------------------------------------------+
 ```
 
@@ -110,9 +110,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.52)
+## 🛠️ Latest Improvements (v2.9.53)
 
-- **Tier-3 `useOfflineCoverImage` Contract & Living Documentation Parity (`src/hooks/useOfflineCoverImage.ts`, `scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `AGENTS.md`, `docs/DECISIONS.md`)**: Annotated `src/hooks/useOfflineCoverImage.ts` with `@scope`/`@invariant`/`@rationale`/`@adr` behavioral contracts and added it to `TIER_3_CONTRACTED_MODULES` (`63` guarded modules across `docs/SYSTEM_CONTRACTS.md`), updated Matrix `3` IndexedDB store names to `BookariumOfflineDB` (`v2`: `offline_books` + `cover_cache`), and added `sast-validators.test.ts` to Diagram `9`, `layerDefs`, and `AGENTS.md` (`ADR-070`, `ADR-073`, `ADR-081`).
+- **CLI Script AST Hardening, Stream Truncation Fail-Closed Guards & Snapshot `.sha256` Integrity (`scripts/eslint-rules/bookarium-security.js`, `scripts/open-browser.js`, `scripts/sync-gutenberg-catalog.js`, `.github/workflows/catalog-sync.yml`, `scripts/eslint-rules/bookarium-security.test.ts`, `scripts/sync-gutenberg-catalog.test.ts`)**: Extended `bookarium-security` across `scripts/` (`https.get`/`http.get`, `{ shell: true }` ban, module-scope `CLI process.argv` taint, & array/conditional sanitizer intersection) and replaced `open-browser.js` `exec` with `sanitizeLocalDevUrl` + shell-free `spawn`; enforced `Content-Length`/non-zero `tar` stream checks + wire `SHA-256` summary logging on Gutenberg feeds and companion `.sha256` (`timingSafeEqual`) verification on `catalog-cache` (`ADR-040`, `ADR-073`).
+- **Offline Transitive License SCA & Live Compiled HTTP Security Probes (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`)**: Extended `validatePackageLockAndLifecycle` (`Pass 0.75` Pillar 1) with `BANNED_PACKAGE_LICENSES` offline `GPL`/`AGPL` copyleft detection across `package-lock.json` (`~0 ms`, matching `dependency-review.yml`), and added `validateLiveHttpSecurityResponse` plus a `Pass 7` loopback `next start` probe verifying runtime OWASP headers, `400` SSRF rejections, and port-locked `{127.0.0.1, localhost}` `/auth/callback` origin redirects (`ADR-073`, `ADR-081`).
+- **Babel AST Transposition Across `Pass 0.5` & `Pass 0.75` (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`)**: Upgraded `validateServiceWorkerSecurity` and added `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` while deduplicating Pillar 3 onto `bookarium-security` Rules 4 & 5—preserving 100% accuracy and 0 runtime `src/` changes while catching destructured/bracket/aliased env leaks, helper-wrapped SW handlers, parameter-agnostic copyright filters, and call-graph Rule 9 teardowns with zero comment false positives (`ADR-073`, `ADR-081`).
+- **Circular `SECURITY.md` AST Compilation & Self-Enforcing Governance Parity (`scripts/generate-architecture-matrix.js`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`, `SECURITY.md`, `README.md`, `.github/pull_request_template.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Auto-compiled `<!-- BEGIN:security-architecture -->` in `SECURITY.md` from live ESLint rules, `sast-validators.js` exports, SQL RLS table counts (`14`), and `sync-gutenberg-catalog.js` `.sha256`/`Content-Length` safeguards during `npm run docs:sync`, enforced fail-closed symbol/doc parity via `auditSecurityDocumentationParity` in `Pass 5`, and synchronized `README.md`, PR/contributing checklists, runbooks, quality report rows, and `Rule 1`/`Rule 8` security interconnectivity (`ADR-073`, `ADR-081`).
+- **Deterministic Background Cover-Warm Test Synchronization (`src/lib/offline-storage.test.ts`)**: Extended `vi.waitFor` budgets to `5000` ms across parallel `--coverage` IndexedDB mock hops, verified `429` `Retry-After` header consumption before enqueueing subsequent warms, and ensured `try ... finally` mock/state restoration via `resetCoverWarmState()` (`ADR-073`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -573,7 +577,7 @@ npm run catalog:sync
 > 1. **Unified Sunday Ingestion Pipeline ([`.github/workflows/catalog-sync.yml`](.github/workflows/catalog-sync.yml))**:
 >    - **Schedule**: Every Sunday at `02:00 UTC` (plus on-demand `workflow_dispatch`).
 >    - **Sequential 4-Step Flow**:
->      1. **Catalog Sync (`catalog:sync`)**: Restores the permanent **`catalog-cache` GitHub Release snapshot** (`gutenberg-catalog-cache.json.gz`, diffing all 78k+ catalog rows and withdrawn IDs 100% in RAM to save `~39 MB/week` of Supabase read egress), streams `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across official Gutenberg mirrors, exact-diff upserts new/changed books and reconciles withdrawn IDs in `public.books`, updates the `catalog-cache` Release asset, and emits `quote-diff.json`.
+>      1. **Catalog Sync (`catalog:sync`)**: Restores the permanent **`catalog-cache` GitHub Release snapshot** (`gutenberg-catalog-cache.json.gz` verified against its `.sha256` sidecar via `crypto.timingSafeEqual`, diffing all 78k+ catalog rows and withdrawn IDs 100% in RAM to save `~39 MB/week` of Supabase read egress), streams `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across official Gutenberg mirrors with `Content-Length` truncation and non-zero `tar` guards plus wire `SHA-256` summary logging, exact-diff upserts new/changed books and reconciles withdrawn IDs in `public.books`, updates the `catalog-cache` Release asset + `.sha256` sidecar, and emits `quote-diff.json`.
 >      2. **Relational Translations Sync (`translations:sync`)**: Clusters Wikidata `P2034` multilingual editions into `public.book_translations`.
 >      3. **Featured Quotes Delta Sync (`quotes:sync --diff-file=quote-diff.json`)**: Consumes `quote-diff.json`, discovers all out-of-window quoted volumes via partial index `idx_books_with_quotes_popular`, ingests `10–16` multi-quote spreads across the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** via PGLAF bulk mirrors (`8.0s–16.0s` float pacing), prunes Option-A `1-for-1` out-of-window surplus up to `2,000` books per run (`--max-prune`), and publishes `Out-of-Window (Pruned)` & `🧹 Pruned` rows in the Markdown **Run Report** (`$GITHUB_STEP_SUMMARY`).
 >      4. **Vercel Edge Cache Purge (`node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations`)**: Runs when `dry_run != 'true'` to invalidate `Vercel-Cache-Tag` CDN entries immediately (`exit 0` skip if Vercel secrets are unset).
@@ -631,7 +635,7 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
 
 ## 🔒 Enterprise Security & Defense-in-Depth
 
-Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model across the edge, serverless runtime, and offline client layers. For the complete 14-vector security matrix, AST taint engine specifications, and vulnerability disclosure protocol, see [**SECURITY.md**](SECURITY.md).
+Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model across the edge, serverless runtime, CLI pipelines, and offline client layers. For the AST-compiled security matrix, validator inventory, AST taint rules, and vulnerability disclosure protocol, see [**SECURITY.md**](SECURITY.md).
 
 ---
 
@@ -643,7 +647,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run dev:open` | Starts dev server and opens your default browser concurrently |
 | `npm run dev:all` | Starts dev server, Vitest test watcher, and browser concurrently |
 | `npm run verify` | **Runs the full 7-Gateway Quality Engine** before commits |
-| `npm run security:audit` | Runs Pass 0.5 & Pass 0.75 (7-Pillar SAST & OWASP Security Suite) standalone |
+| `npm run security:audit` | Runs Pass 0.5, Pass 0.75 & Pass 5 (SAST, License SCA, AST Taint & Governance Parity) standalone |
 | `npm test` | Runs the full Vitest suite with V8 code coverage report |
 | `npm run test:fast` | Runs Vitest test suites without coverage calculation for rapid developer validation |
 | `npm run test:ui` | Launches Vitest interactive visual testing UI |

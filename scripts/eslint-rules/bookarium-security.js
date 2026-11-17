@@ -8,8 +8,8 @@
  *
  * @module scripts/eslint-rules/bookarium-security
  * @scope Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting & security header parity, cookie flags, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS/tabnabbing sinks.
- * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly).
- * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers or static single-slash client routes.
+ * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly), including Node HTTP client (`https.get`/`http.get`) checks, `{ shell: false }` enforcement in `scripts/`, and `process.argv` CLI taint into shell/URL/redirect sinks.
+ * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers, CLI `--cache-file` flags, or static single-slash client routes.
  * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, and weak assertions in real time before commit.
  * @adr ADR-067, ADR-073, ADR-080
  */
@@ -44,6 +44,10 @@ const FETCH_SANITIZER_FUNCTIONS = new Set([
   'sanitizeUpstreamUrl',
   'sanitizeSupabaseUrl',
   'sanitizeBookFormatUrl',
+  'sanitizeLocalDevUrl',
+  'isAllowedRdfFeedUrl',
+  'isAllowedCsvFeedUrl',
+  'resolveFeedMirrors',
 ]);
 
 const REDIRECT_SANITIZER_FUNCTIONS = new Set([
@@ -323,6 +327,18 @@ function detectDirectTaintSource(node) {
       return `request.${prop}`;
     }
 
+    // CLI arguments (`process.argv[N]`)
+    if (
+      node.object &&
+      node.object.type === 'MemberExpression' &&
+      node.object.object &&
+      node.object.object.type === 'Identifier' &&
+      node.object.object.name === 'process' &&
+      getPropertyName(node.object) === 'argv'
+    ) {
+      return 'CLI process.argv';
+    }
+
     // document.referrer
     if (objName === 'document' && prop === 'referrer') {
       return 'document.referrer';
@@ -409,6 +425,9 @@ function getNodeSanitizedSinks(node, sanitizedVarMap = null, taintedVarMap = nul
     ) {
       return getNodeSanitizedSinks(node.callee.object, sanitizedVarMap, taintedVarMap);
     }
+    if (methodName === 'sanitizeLocalDevUrl') {
+      return new Set(['fetch', 'navigation', 'shell']);
+    }
     if (methodName && FETCH_SANITIZER_FUNCTIONS.has(methodName)) {
       return new Set(['fetch', 'navigation']);
     }
@@ -457,6 +476,14 @@ function getNodeSanitizedSinks(node, sanitizedVarMap = null, taintedVarMap = nul
     return getNodeSanitizedSinks(node.expression, sanitizedVarMap, taintedVarMap);
   }
 
+  function intersectTwoSinkSets(a, b) {
+    if (!a || !b) return null;
+    if (a.has('*')) return b;
+    if (b.has('*')) return a;
+    const intersection = new Set([...a].filter((s) => b.has(s)));
+    return intersection.size > 0 ? intersection : null;
+  }
+
   // Logical OR / Nullish coalescing where all branches are sanitized or static literals
   if (node.type === 'LogicalExpression') {
     const leftLiteral =
@@ -469,13 +496,27 @@ function getNodeSanitizedSinks(node, sanitizedVarMap = null, taintedVarMap = nul
     const rightSinks = rightLiteral
       ? new Set(['*'])
       : getNodeSanitizedSinks(node.right, sanitizedVarMap, taintedVarMap);
+    return intersectTwoSinkSets(leftSinks, rightSinks);
+  }
 
-    if (leftSinks && rightSinks) {
-      if (leftSinks.has('*')) return rightSinks;
-      if (rightSinks.has('*')) return leftSinks;
-      const intersection = new Set([...leftSinks].filter((s) => rightSinks.has(s)));
-      return intersection.size > 0 ? intersection : null;
+  // Ternary expression where both branches carry valid sink sanitizers
+  if (node.type === 'ConditionalExpression') {
+    const consSinks = getNodeSanitizedSinks(node.consequent, sanitizedVarMap, taintedVarMap);
+    const altSinks = getNodeSanitizedSinks(node.alternate, sanitizedVarMap, taintedVarMap);
+    return intersectTwoSinkSets(consSinks, altSinks);
+  }
+
+  // Array literal where every element is literal/unsanitized or carries compatible sink sanitizers
+  if (node.type === 'ArrayExpression') {
+    let acc = new Set(['*']);
+    for (const el of node.elements || []) {
+      if (!el) continue;
+      if (el.type === 'SpreadElement') return null;
+      const elSinks = getNodeSanitizedSinks(el, sanitizedVarMap, taintedVarMap);
+      acc = intersectTwoSinkSets(acc, elSinks);
+      if (!acc) return null;
     }
+    return acc;
   }
 
   return null;
@@ -698,16 +739,23 @@ const rules = {
           const isFetch =
             (objectName === null && methodName === 'fetch') ||
             ((objectName === 'globalThis' || objectName === 'window') && methodName === 'fetch');
-          if (!isFetch) return;
+          const isNodeHttpCall =
+            (objectName === 'http' || objectName === 'https' || objectName === 'client') &&
+            (methodName === 'get' || methodName === 'request');
+          if (!isFetch && !isNodeHttpCall) return;
 
           const urlArg = node.arguments && node.arguments[0];
           if (!urlArg) return;
 
-          // Flag unencrypted http:// literals in production fetch calls
+          const isLoopbackHttpUrl = (raw) =>
+            /^http:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?(?:\/|$)/i.test(raw);
+
+          // Flag unencrypted http:// literals in production fetch or Node http/https calls
           if (
             (urlArg.type === 'Literal' || urlArg.type === 'StringLiteral') &&
             typeof urlArg.value === 'string' &&
-            urlArg.value.startsWith('http://')
+            urlArg.value.startsWith('http://') &&
+            !(isNodeHttpCall && isLoopbackHttpUrl(urlArg.value))
           ) {
             context.report({
               node: urlArg,
@@ -722,7 +770,8 @@ const rules = {
             urlArg.quasis &&
             urlArg.quasis[0] &&
             urlArg.quasis[0].value &&
-            String(urlArg.quasis[0].value.raw || '').startsWith('http://')
+            String(urlArg.quasis[0].value.raw || '').startsWith('http://') &&
+            !(isNodeHttpCall && isLoopbackHttpUrl(String(urlArg.quasis[0].value.raw || '')))
           ) {
             context.report({
               node: urlArg,
@@ -732,7 +781,7 @@ const rules = {
             return;
           }
 
-          // Flag direct inline request taint source passed straight into fetch(...)
+          // Flag direct inline request/CLI taint source passed straight into fetch(...) or https.get(...)
           const directTaint = detectDirectTaintSource(urlArg);
           if (directTaint) {
             context.report({
@@ -1099,11 +1148,34 @@ const rules = {
             return;
           }
 
-          if (isShellExecCall(node) && !/(?:^|\/)scripts\//.test(filename)) {
-            context.report({
-              node,
-              message: `Shell execution primitive "${methodName}()" is forbidden inside application source code.`,
-            });
+          if (isShellExecCall(node)) {
+            if (!/(?:^|\/)scripts\//.test(filename)) {
+              context.report({
+                node,
+                message: `Shell execution primitive "${methodName}()" is forbidden inside application source code.`,
+              });
+            } else {
+              for (const arg of node.arguments || []) {
+                if (arg && arg.type === 'ObjectExpression') {
+                  for (const prop of arg.properties || []) {
+                    if (
+                      prop &&
+                      prop.type === 'ObjectProperty' &&
+                      prop.key &&
+                      (prop.key.name || prop.key.value) === 'shell' &&
+                      prop.value &&
+                      (prop.value.type === 'BooleanLiteral' || prop.value.type === 'Literal') &&
+                      prop.value.value === true
+                    ) {
+                      context.report({
+                        node: prop,
+                        message: `Passing { shell: true } to "${methodName}()" in scripts/ is forbidden (Command Injection risk). Use array arguments with shell: false.`,
+                      });
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         NewExpression(node) {
@@ -1469,13 +1541,20 @@ const rules = {
       }
 
       function enterFunctionScope(fnNode) {
-        const taintedVars = new Map();
-        const sanitizedVars = new Map();
+        const parentScope = currentScope();
+        const taintedVars = new Map(parentScope ? parentScope.taintedVars : undefined);
+        const sanitizedVars = new Map(parentScope ? parentScope.sanitizedVars : undefined);
 
-        // Check if route handler parameters destructure `{ params }`
-        if (Array.isArray(fnNode.params)) {
+        // Shadow any inherited module/outer variable that matches this function's own parameters
+        if (fnNode && Array.isArray(fnNode.params)) {
           for (const param of fnNode.params) {
-            if (param.type === 'ObjectPattern') {
+            if (param.type === 'Identifier') {
+              taintedVars.delete(param.name);
+              sanitizedVars.delete(param.name);
+            } else if (param.type === 'AssignmentPattern' && param.left && param.left.type === 'Identifier') {
+              taintedVars.delete(param.left.name);
+              sanitizedVars.delete(param.left.name);
+            } else if (param.type === 'ObjectPattern') {
               for (const prop of param.properties || []) {
                 const keyName = prop.key && prop.key.name;
                 if (keyName === 'params') {
@@ -1557,6 +1636,8 @@ const rules = {
       }
 
       return {
+        Program: enterFunctionScope,
+        'Program:exit': exitFunctionScope,
         FunctionDeclaration: enterFunctionScope,
         'FunctionDeclaration:exit': exitFunctionScope,
         FunctionExpression: enterFunctionScope,
@@ -1581,7 +1662,7 @@ const rules = {
                 scope.sanitizedVars,
                 '*'
               );
-              if (keyTaint) {
+              if (keyTaint && !keyTaint.startsWith('CLI ')) {
                 context.report({
                   node: node.left.property,
                   message: `Tainted key from ${keyTaint} used in dynamic computed property assignment (Prototype Pollution risk). Validate key against an explicit allowlist or use a Map.`,
@@ -1654,11 +1735,15 @@ const rules = {
           const arg0 = node.arguments && node.arguments[0];
           const arg1 = node.arguments && node.arguments[1];
 
-          // 1. SINK: fetch(urlArg)
+          // 1. SINK: fetch(urlArg) or Node http/https client `.get(urlArg)` / `.request(urlArg)`
+          const isNodeHttpCall =
+            (objectName === 'http' || objectName === 'https' || objectName === 'client') &&
+            (methodName === 'get' || methodName === 'request');
           if (
             (objectName === null && methodName === 'fetch') ||
             ((objectName === 'globalThis' || objectName === 'window') &&
-              methodName === 'fetch')
+              methodName === 'fetch') ||
+            isNodeHttpCall
           ) {
             const taint = evaluateNodeTaint(
               arg0,
@@ -1669,7 +1754,7 @@ const rules = {
             if (taint) {
               context.report({
                 node: arg0,
-                message: `Tainted data from ${taint} reaches fetch() sink without sanitization (SSRF risk). Validate with isSafeUpstreamUrl() or numeric/origin sanitization first.`,
+                message: `Tainted data from ${taint} reaches ${isNodeHttpCall ? `${objectName}.${methodName}` : 'fetch'}() sink without sanitization (SSRF risk). Validate with isSafeUpstreamUrl() or numeric/origin sanitization first.`,
               });
             }
             return;
@@ -1709,7 +1794,7 @@ const rules = {
               scope.sanitizedVars,
               'db'
             );
-            if (taint) {
+            if (taint && !taint.startsWith('CLI ')) {
               context.report({
                 node: payloadArg || node,
                 message: `Tainted data from ${taint} reaches database write sink (.${methodName}()) without validation or sanitization.`,
@@ -1745,7 +1830,7 @@ const rules = {
               scope.sanitizedVars,
               'fs'
             );
-            if (taint) {
+            if (taint && !taint.startsWith('CLI ')) {
               context.report({
                 node: arg0,
                 message: `Tainted data from ${taint} reaches file system sink (${methodName}()) (Path Traversal risk).`,

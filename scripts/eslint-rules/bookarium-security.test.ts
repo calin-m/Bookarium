@@ -93,6 +93,29 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       );
       expect(clean).toHaveLength(0);
     });
+
+    it('flags unencrypted http:// in Node https.get/http.get inside scripts/ while permitting loopback dev probing', () => {
+      const badNodeHttp = runRuleOnCode(
+        'no-unsafe-fetch',
+        `const https = require('https');
+        function run(arg) {
+          https.get('http://insecure.example/feed.csv');
+          https.get(process.argv[2]);
+        }`,
+        'scripts/sync-custom.js'
+      );
+      expect(badNodeHttp).toHaveLength(2);
+      expect(badNodeHttp[0].message).toContain('Unencrypted http://');
+      expect(badNodeHttp[1].message).toContain('CLI process.argv');
+
+      const safeLoopback = runRuleOnCode(
+        'no-unsafe-fetch',
+        `const http = require('http');
+        http.get('http://127.0.0.1:3000/api/health');`,
+        'scripts/open-browser.js'
+      );
+      expect(safeLoopback).toHaveLength(0);
+    });
   });
 
   describe('2. no-unvalidated-redirect', () => {
@@ -197,6 +220,18 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         'src/hooks/useNetworkStatus.ts'
       );
       expect(clean).toHaveLength(0);
+    });
+
+    it('flags { shell: true } in scripts/ spawn/execFile calls while permitting shell: false array args', () => {
+      const unsafeShell = runRuleOnCode(
+        'no-dangerous-execution',
+        `const { spawn } = require('child_process');
+        spawn('tar', ['-xOjf', '-'], { shell: true });
+        spawn('tar', ['-xOjf', '-'], { shell: false });`,
+        'scripts/sync-custom.js'
+      );
+      expect(unsafeShell).toHaveLength(1);
+      expect(unsafeShell[0].message).toContain('{ shell: true }');
     });
   });
 
@@ -349,6 +384,42 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         'src/app/api/books/content/route.ts'
       );
       expect(clean).toHaveLength(0);
+    });
+
+    it('tracks module-level process.argv CLI taint into shell and HTTP sinks while exempting sanitized CLI URLs and config file paths', () => {
+      const cliViolations = runRuleOnCode(
+        'no-tainted-request-sink',
+        `const { exec } = require('child_process');
+        const https = require('https');
+        const rawUrl = process.argv[2];
+        function run() {
+          exec('open ' + rawUrl);
+          https.get(rawUrl);
+        }`,
+        'scripts/unsafe-cli.js'
+      );
+      expect(cliViolations).toHaveLength(2);
+      expect(cliViolations[0].message).toContain('CLI process.argv');
+      expect(cliViolations[0].message).toContain('Command Injection');
+      expect(cliViolations[1].message).toContain('CLI process.argv');
+      expect(cliViolations[1].message).toContain('SSRF risk');
+
+      const safeCli = runRuleOnCode(
+        'no-tainted-request-sink',
+        `const fs = require('fs');
+        const https = require('https');
+        const { spawn } = require('child_process');
+        const rawUrl = process.argv[2];
+        const safeUrl = sanitizeLocalDevUrl(rawUrl);
+        const cachePath = process.argv[3];
+        function run() {
+          fs.readFileSync(cachePath);
+          https.get(safeUrl);
+          spawn('xdg-open', [safeUrl], { shell: false });
+        }`,
+        'scripts/open-browser.js'
+      );
+      expect(safeCli).toHaveLength(0);
     });
 
     it('enforces sink-scoped sanitization and catches cross-sink sanitizer misuse', () => {

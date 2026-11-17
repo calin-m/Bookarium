@@ -44,8 +44,8 @@ Configure repository secrets under **GitHub Repository $\to$ Settings $\to$ Secr
 | **`GITHUB_TOKEN`** | `catalog-sync.yml`, `release.yml` | **Automatic** *(Built-in)* | Provisioned automatically by GitHub Actions; requires no manual secret creation. Must remain allowed to write releases (`contents: write`) in repository workflow permissions. |
 
 ### 2.2 Permanent Release Snapshot Asset (`catalog-cache`)
-- [`catalog-sync.yml`](../.github/workflows/catalog-sync.yml) persists `gutenberg-catalog-cache.json.gz` (~4.5 MB) inside a permanent GitHub Release tagged `catalog-cache` instead of short-lived GitHub Actions caches.
-- **Zero manual bootstrap needed**: on the first full non-dry-run run (`dry_run: false` with blank `limit`), `gh release download` tolerates a missing release, `sync-gutenberg-catalog.js` runs cleanly from cold state, and the workflow automatically creates the `catalog-cache` release (`gh release create catalog-cache`) or updates it (`gh release upload ... --clobber`), guarded by a `>= 50,000`-book safety floor.
+- [`catalog-sync.yml`](../.github/workflows/catalog-sync.yml) persists `gutenberg-catalog-cache.json.gz` (~4.5 MB) and its companion `gutenberg-catalog-cache.json.gz.sha256` checksum sidecar inside a permanent GitHub Release tagged `catalog-cache` instead of short-lived GitHub Actions caches.
+- **Zero manual bootstrap needed & fail-closed checksum verification**: on restore, `loadCatalogSnapshotCache` verifies `gutenberg-catalog-cache.json.gz` against `gutenberg-catalog-cache.json.gz.sha256` via `crypto.timingSafeEqual` (falling back safely to live Supabase diff queries if corrupt or tampered, and gracefully tolerating a missing `.sha256` sidecar on legacy pre-upgrade snapshots); on the first full non-dry-run run (`dry_run: false` with blank `limit`), `catalog-sync.yml` automatically creates or updates the `catalog-cache` release (`gh release upload ... --clobber`) with both files, guarded by a `>= 50,000`-book safety floor.
 
 ### 2.3 Vercel Edge Cache Tag Invalidation (`Vercel-Cache-Tag`)
 - Live database responses attach semantic CDN tags (`catalog`, `quotes`, or `catalog,quotes` on `GET /api/books`, and `translations` on `GET /api/books/translations`), while fallback `"cache"` and `no-store` error responses omit tags.
@@ -74,9 +74,9 @@ Consolidates all scheduled database synchronization into a single deterministic 
 
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@v4`), setup Node `22` with npm cache (`actions/setup-node@v4`), and run `npm ci`.
-  2. Download `gutenberg-catalog-cache.json.gz` from release `catalog-cache` (`gh release download catalog-cache -p "gutenberg-catalog-cache.json.gz" --clobber` with `GH_TOKEN`).
-  3. Run `node scripts/sync-gutenberg-catalog.js --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json` (+ `--dry-run`, `--update-existing`, `--feed-source=HOST`, `--limit=N` per inputs).
-  4. When `dry_run != 'true'`, `limit == ''`, and `gutenberg-catalog-cache.json.gz` exists: upload updated snapshot to `catalog-cache` release (`--clobber`, creating the release if absent).
+  2. Download `gutenberg-catalog-cache.json.gz` and companion `gutenberg-catalog-cache.json.gz.sha256` (if published) from release `catalog-cache` (`gh release download catalog-cache` with `GH_TOKEN`).
+  3. Run `node scripts/sync-gutenberg-catalog.js --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json` (+ `--dry-run`, `--update-existing`, `--feed-source=HOST`, `--limit=N` per inputs), verifying snapshot `.sha256`, `Content-Length` completeness, and non-zero `tar` fail-closed integrity.
+  4. When `dry_run != 'true'`, `limit == ''`, and `gutenberg-catalog-cache.json.gz` exists: upload updated snapshot and `gutenberg-catalog-cache.json.gz.sha256` sidecar to `catalog-cache` release (`--clobber`, creating the release if absent).
   5. Run `node scripts/ingest-translations.js` (+ `--dry-run`, `--update-existing`, and `--limit=N` or `--all` when `limit` is blank).
   6. Run `node scripts/sync-featured-quotes.js --mirrors=pglaf` (+ `--diff-file=quote-diff.json` if emitted, `--dry-run`, `--limit=N`).
   7. When `dry_run != 'true'`: run `node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations`.
@@ -203,7 +203,7 @@ Continuous integration quality gate verifying every branch push and pull request
 - **Required Secrets**: **None** (runs hermetically with MSW v2 network mocks and bundled test fixtures)
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0`), setup Node `22` with npm cache (`actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0`), run `npm ci`.
-  2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity $\to$ Pass 5 ADR, 18 governance docs, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build).
+  2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/License-SCA/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity incl. `SECURITY.md` $\to$ Pass 5 ADR, 18 governance docs, circular `SECURITY.md` parity, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build + compiled `.next/routes-manifest.json` & live `127.0.0.1` HTTP smoke probe).
   3. Execute `git diff --exit-code` across the `10` deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
 - **Local CLI Equivalents**:
   ```bash
@@ -222,7 +222,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.52'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.53'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions**: Top-level `contents: read`; job-level `contents: write`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
