@@ -9,6 +9,16 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.62',
+    date: '2026-11-18',
+    title: 'Browser Fetch Metadata Anti-Deeplink & Cross-Site Asset Isolation on Content Endpoints',
+    sections: {
+      Added: [
+        '**Zero-Cache-Fragmentation Fetch Metadata Anti-Deeplink Guard (`src/lib/api-utils.ts`, `src/proxy.ts`, `src/app/api/books/content/route.ts`, `scripts/verify-build.js`)**: Added shared `isBlockedContentAssetRequest` and `guardContentAssetRequest` helpers enforced at both Edge Middleware (`src/proxy.ts`) and Route Handler entry (`GET /api/books/content`, ahead of rate-limiter and R2 calls) to reject direct browser navigations (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks with `403 no-store` (`Cross-Origin-Resource-Policy: same-origin`, `nosniff`), while exempting `?type=card` OpenGraph PNGs and failing open when `Sec-Fetch-*` headers are absent so shared `Vary`/`s-maxage` CDN keys, R2 Class B budgets, first-party `<img>`/`fetch()`/`Blob` downloads, PWA `sw.js`, and SEO crawlers stay 100% intact (`Pass 7` adds live loopback HTTP `403` probes) (`ADR-082`).',
+      ],
+    },
+  },
+  {
     version: '2.9.61',
     date: '2026-11-18',
     title: 'Fault-Tolerant Pipeline Orchestration, Resumable R2 Checkpointing, Fail-Closed RDF Copyright & Content CDN Tagging',

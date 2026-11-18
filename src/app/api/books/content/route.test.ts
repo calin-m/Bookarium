@@ -867,4 +867,71 @@ describe('GET /api/books/content', () => {
       }
     });
   });
+
+  describe('Defense-in-Depth Browser Fetch Metadata Anti-Deeplink Guard', () => {
+    it('rejects browser document navigations and cross-site subresources with 403 no-store without burning rate limits or contacting R2', async () => {
+      vi.stubEnv('R2_ACCOUNT_ID', '0123456789abcdef0123456789abcdef');
+      vi.stubEnv('R2_BUCKET_NAME', 'bookarium-assets');
+      vi.stubEnv('R2_ACCESS_KEY_ID', 'r2-key');
+      vi.stubEnv('R2_SECRET_ACCESS_KEY', 'r2-secret');
+
+      const fetchSpy = vi.spyOn(global, 'fetch');
+      const rateCheckSpy = vi.spyOn(bookCoverRateLimiter, 'check');
+
+      const navReq = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover', {
+        headers: {
+          'sec-fetch-dest': 'document',
+          'sec-fetch-mode': 'navigate',
+          'sec-fetch-site': 'none',
+        },
+      });
+      const navRes = await GET(navReq);
+      expect(navRes.status).toBe(403);
+      expect(navRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+      expect(navRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+      expect(navRes.headers.get('Vercel-Cache-Tag')).toBeNull();
+      expect(await navRes.json()).toEqual({
+        error: 'Direct browser deeplinking or cross-site embedding of book assets is not permitted.',
+      });
+
+      const crossSiteTextReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+        headers: {
+          'sec-fetch-dest': 'iframe',
+          'sec-fetch-mode': 'navigate',
+          'sec-fetch-site': 'cross-site',
+        },
+      });
+      const crossSiteTextRes = await GET(crossSiteTextReq);
+      expect(crossSiteTextRes.status).toBe(403);
+      expect(rateCheckSpy).not.toHaveBeenCalled();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('keeps same-origin reader/cover fetches and cross-site type=card OG previews functional', async () => {
+      const { setCachedBookContent } = await import('./metadata-cache');
+      setCachedBookContent(1342, sampleBookText, 'r2');
+
+      const sameOriginReaderReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+        headers: {
+          'x-vercel-ip-country': 'US',
+          'sec-fetch-dest': 'empty',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-site': 'same-origin',
+        },
+      });
+      const readerRes = await GET(sameOriginReaderReq);
+      expect(readerRes.status).toBe(200);
+      expect(readerRes.headers.get('Vercel-Cache-Tag')).toBe('book-content');
+
+      const crossSiteCardReq = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=card', {
+        headers: {
+          'sec-fetch-dest': 'image',
+          'sec-fetch-site': 'cross-site',
+        },
+      });
+      const cardRes = await GET(crossSiteCardReq);
+      expect(cardRes.status).toBe(200);
+      expect(cardRes.headers.get('Cross-Origin-Resource-Policy')).toBe('cross-origin');
+    });
+  });
 });

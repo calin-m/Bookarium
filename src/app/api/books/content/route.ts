@@ -1,7 +1,7 @@
 /**
  * @module src/app/api/books/content/route
  * @scope Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), R2-backed cover JPEGs (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
- * @invariant Reject disallowed query params (`ALLOWED_CONTENT_QUERY_KEYS`, allowing `s` exclusively with `type=card` and rejecting `?url=` upstream proxies with `400 no-store`), enforce mode-scoped rate limiters, reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlPayload`), and bound payloads (`MAX_R2_BOOK_BYTES` text / `MAX_R2_COVER_BYTES` cover).
+ * @invariant Reject disallowed query params (`ALLOWED_CONTENT_QUERY_KEYS`, allowing `s` exclusively with `type=card` and rejecting `?url=` upstream proxies with `400 no-store`), enforce defense-in-depth Fetch Metadata anti-deeplink & cross-site isolation (`guardContentAssetRequest` returning `403 no-store` outside `type=card` and headerless crawlers), enforce mode-scoped rate limiters, reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlPayload`), and bound payloads (`MAX_R2_BOOK_BYTES` text / `MAX_R2_COVER_BYTES` cover).
  * @invariant Enforce `HTTP 451` gatekeeping whenever resolved metadata restricts a volume in the caller's jurisdiction (including US `copyright === true` blocks) on plain-text and `type=card` requests, fail closed with `503` for non-US requests when metadata is unavailable, and bypass `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
  * @invariant Serve `type=cover` and plain text strictly from private Cloudflare R2 (`404` on R2 miss, `503` when R2 is unconfigured for plain text / `404` for covers, zero Project Gutenberg or external mirror fallback), coalesce concurrent upstream R2 fetches per `bookId` inside `inFlightR2Fetches`, cache resolved text in `bookContentLruCache`, and attach `Vercel-Cache-Tag` (`covers` on `200` cover responses, `book-content` on `200` plain-text responses) while keeping `no-store` errors untagged.
  * @rationale Keeping R2 credentials server-only eliminates browser/runtime Project Gutenberg requests and external cover hotlinking completely, ensuring 100% ToS compliance while preserving IndexedDB offline reading and optional Supabase `books.content` reads.
@@ -23,6 +23,7 @@ import {
   buildApiSecurityHeaders,
   hasUnexpectedQueryParams,
   createNoStoreErrorResponse,
+  guardContentAssetRequest,
 } from '@/lib/api-utils';
 import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 import { resolveClientCountry } from '@/lib/country-resolver';
@@ -52,6 +53,11 @@ const SUPPORTED_CONTENT_TYPES = new Set(['', 'cover', 'card']);
 const inFlightR2Fetches = new Map<number, Promise<R2BookTextFetchResult>>();
 
 export async function GET(request: NextRequest) {
+  const blockedAssetResponse = guardContentAssetRequest(request);
+  if (blockedAssetResponse) {
+    return blockedAssetResponse;
+  }
+
   const clientIp = getClientIp(request);
   const { searchParams } = new URL(request.url);
   const typeParam = (searchParams.get('type') || '').trim();

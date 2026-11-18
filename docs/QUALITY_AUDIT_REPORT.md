@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 18 Nov 2026 17:58:58 GMT  
+**Last Generated**: Wed, 18 Nov 2026 19:05:53 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 261 passed  
-**Total Verified Tests**: 2716 passed  
+**Total Verified Tests**: 2722 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2716 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2722 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.23%** (16185/16646) — *Target: $\ge$ 95%*
-- **Statements**: **95.98%** (17435/18165) — *Target: $\ge$ 95%*
-- **Functions**: **94.96%** (3489/3674) — *Target: $\ge$ 92%*
-- **Branches**: **88.37%** (16170/18296) — *Target: $\ge$ 85%*
+- **Lines**: **97.21%** (16208/16673) — *Target: $\ge$ 95%*
+- **Statements**: **95.93%** (17453/18192) — *Target: $\ge$ 95%*
+- **Functions**: **94.99%** (3492/3676) — *Target: $\ge$ 92%*
+- **Branches**: **88.48%** (16219/18330) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2716 Tests)
+## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2722 Tests)
 
-### 🚀 App Routes & Pages (30 Suites · 305 Tests)
+### 🚀 App Routes & Pages (30 Suites · 307 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -110,7 +110,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (28 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -140,6 +140,8 @@
 - ✔ `serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity`
 - ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
 - ✔ `renders the canonical SITE_CONFIG.SITE_HOST domain footer in the type=card OpenGraph JSX tree`
+- ✔ `rejects browser document navigations and cross-site subresources with 403 no-store without burning rate limits or contacting R2`
+- ✔ `keeps same-origin reader/cover fetches and cross-site type=card OG previews functional`
 
 </details>
 
@@ -2034,7 +2036,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (55 Suites · 709 Tests)
+### 📚 Gutenberg Parsers & Metadata (55 Suites · 712 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2101,7 +2103,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/api-utils.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/lib/api-utils.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `prioritizes x-vercel-forwarded-for when present`
 - ✔ `prioritizes cf-connecting-ip when vercel header is missing`
@@ -2115,6 +2117,9 @@
 - ✔ `accepts allowlisted params and allows dev-only params outside production`
 - ✔ `rejects unknown params and rejects dev-only params in production`
 - ✔ `detects HTTPS from x-forwarded-proto proxy headers or request URLs while allowing HTTP localhost`
+- ✔ `blocks browser deeplink navigations, embed destinations, and cross-site subresource hotlinks`
+- ✔ `permits same-origin image/fetch requests, same-site subdomains, type=card social cards, and headerless crawlers`
+- ✔ `returns false safely on malformed request URLs without throwing`
 
 </details>
 
@@ -3638,7 +3643,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (65 Suites · 303 Tests)
+### 🧩 UI Primitives & Motion (65 Suites · 304 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -4307,7 +4312,7 @@
 </details>
 
 <details>
-<summary><b><code>src/proxy.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/proxy.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `calls updateSession with the incoming request`
 - ✔ `gracefully falls back to NextResponse.next when updateSession throws`
@@ -4321,6 +4326,7 @@
 - ✔ `forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens`
 - ✔ `skips updateSession for auth callback routes, service worker precache, and background link prefetches`
 - ✔ `skips updateSession on public-route client RSC navigations while preserving full checks on /account and document requests`
+- ✔ `blocks direct browser deeplinks and cross-site subresource hotlinks on /api/books/content without breaking app assets, OG cards, or crawlers`
 
 </details>
 

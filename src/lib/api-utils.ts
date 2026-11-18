@@ -129,6 +129,77 @@ export function isHttpsRequest(
   return false;
 }
 
+const BLOCKED_CONTENT_FETCH_DESTS = new Set([
+  'document',
+  'iframe',
+  'frame',
+  'embed',
+  'object',
+  'fencedframe',
+]);
+
+/**
+ * Evaluates W3C Fetch Metadata headers (`Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `Sec-Fetch-Site`)
+ * on `/api/books/content` requests to reject direct browser tab deeplinks, iframe/object
+ * embeds, and cross-site subresource hotlinks while leaving first-party `<img>`/`fetch()` calls,
+ * `type=card` OpenGraph social images, shared `s-maxage` CDN keys, and headerless bots intact.
+ */
+export function isBlockedContentAssetRequest(request: {
+  url?: string;
+  nextUrl?: { searchParams?: Pick<URLSearchParams, 'get'> };
+  headers: Pick<Headers, 'get'>;
+}): boolean {
+  let contentType = '';
+  if (typeof request.nextUrl?.searchParams?.get === 'function') {
+    contentType = (request.nextUrl.searchParams.get('type') || '').trim().toLowerCase();
+  } else if (typeof request.url === 'string' && request.url.trim().length > 0) {
+    try {
+      const parsedUrl = new URL(request.url, 'http://localhost');
+      contentType = (parsedUrl.searchParams.get('type') || '').trim().toLowerCase();
+    } catch {
+      return false;
+    }
+  }
+
+  // Social reading card PNGs (`type=card`) explicitly allow cross-origin embedding (`CORP: cross-origin`).
+  if (contentType === 'card') {
+    return false;
+  }
+
+  const dest = (request.headers.get('sec-fetch-dest') || '').trim().toLowerCase();
+  const mode = (request.headers.get('sec-fetch-mode') || '').trim().toLowerCase();
+  const site = (request.headers.get('sec-fetch-site') || '').trim().toLowerCase();
+
+  // Fail open when Fetch Metadata headers are absent (OpenGraph/SEO crawlers, older clients, Node probes).
+  if (!dest && !mode && !site) {
+    return false;
+  }
+
+  return (
+    BLOCKED_CONTENT_FETCH_DESTS.has(dest) ||
+    mode === 'navigate' ||
+    site === 'cross-site'
+  );
+}
+
+/**
+ * Returns a standardized `403 no-store` `same-origin` response when a `/api/books/content`
+ * request triggers Fetch Metadata anti-deeplink or cross-site asset isolation rules, or `null` when allowed.
+ */
+export function guardContentAssetRequest(request: {
+  url?: string;
+  nextUrl?: { searchParams?: Pick<URLSearchParams, 'get'> };
+  headers: Pick<Headers, 'get'>;
+}): NextResponse | null {
+  if (!isBlockedContentAssetRequest(request)) {
+    return null;
+  }
+  return createNoStoreErrorResponse(
+    'Direct browser deeplinking or cross-site embedding of book assets is not permitted.',
+    403
+  );
+}
+
 /**
  * Generates a standard HTTP 429 Too Many Requests response with appropriate rate-limiting headers.
  */

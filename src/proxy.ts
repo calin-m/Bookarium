@@ -1,14 +1,14 @@
 /**
  * @module src/proxy
- * @scope Edge middleware proxy coordinating jurisdiction resolution (`x-vercel-ip-country` / `bookarium-geo-country`), share token forwarding (`?s=`), and conditional Supabase SSR session refresh.
- * @invariant Never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches; configure browser-readable geo/override cookies with `sameSite: 'lax'` and protocol-aware `secure: isHttpsRequest(request)`.
+ * @scope Edge middleware proxy coordinating Fetch Metadata anti-deeplink/cross-site isolation on `/api/books/content*`, jurisdiction resolution (`x-vercel-ip-country` / `bookarium-geo-country`), share token forwarding (`?s=`), and conditional Supabase SSR session refresh.
+ * @invariant Short-circuit direct browser deeplinks (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks on `/api/books/content*` (outside `type=card`) with `403 no-store` (`guardContentAssetRequest`) ahead of origin execution while leaving missing-header crawlers and `Vary` keys untouched; never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches; configure browser-readable geo/override cookies with `sameSite: 'lax'` and protocol-aware `secure: isHttpsRequest(request)`.
  * @invariant Bypass SSR token rotation on App Router RSC navigations (`rsc: 1`) outside `/account` and `/account/*`; only set `x-middleware-override-headers` when `validShareToken` is present.
- * @rationale Skipping cookies and `x-middleware-override-headers` on public API and RSC requests unblocks Vercel Edge CDN `s-maxage` caching while preventing concurrent prefetch/callback tabs from racing single-use OAuth refresh tokens.
- * @adr ADR-035, ADR-042, ADR-080
+ * @rationale Rejecting browser deeplinks and cross-site hotlinks at the Edge via Fetch Metadata protects private Cloudflare R2 assets without altering `Vary` or fragmenting `s-maxage` CDN keys, while skipping cookies and `x-middleware-override-headers` on public API and RSC requests preserves Edge caching and prevents concurrent OAuth refresh races.
+ * @adr ADR-035, ADR-042, ADR-080, ADR-082
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { isHttpsRequest } from '@/lib/api-utils';
+import { guardContentAssetRequest, isHttpsRequest } from '@/lib/api-utils';
 import { updateSession } from '@/lib/supabase/middleware';
 
 import {
@@ -65,6 +65,12 @@ export function shouldSkipSessionRefresh(request: NextRequest): boolean {
 export async function proxy(request: NextRequest) {
   const isPublicBookApi = request.nextUrl.pathname.startsWith('/api/books');
   const isContentAssetApi = isPublicBookApi && request.nextUrl.pathname.includes('/content');
+  if (isContentAssetApi) {
+    const blockedAssetResponse = guardContentAssetRequest(request);
+    if (blockedAssetResponse) {
+      return blockedAssetResponse;
+    }
+  }
   const isSwPrecache = request.headers.get('x-bookarium-sw-precache') === '1';
   const rawShareToken = request.nextUrl.searchParams.get('s');
   const validShareToken =

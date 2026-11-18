@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release version tag (e.g. v2.9.61)'
+        description: 'Release version tag (e.g. v2.9.62)'
         required: true
-        default: 'v2.9.61'
+        default: 'v2.9.62'
 
 permissions:
   contents: read

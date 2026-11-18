@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202716%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.23%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202722%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2716 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2722 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -111,13 +111,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.61)
+## 🛠️ Latest Improvements (v2.9.62)
 
-- **Content CDN Cache Tags & Manual Purge Inputs (`src/app/api/books/content/route.ts`, `.github/workflows/cache-purge.yml`, `.github/workflows/r2-sync.yml`, `src/app/api/books/content/route.test.ts`)**: Added `Vercel-Cache-Tag: covers` on `200` `type=cover` responses and `Vercel-Cache-Tag: book-content` on `200` plain-text responses (including warm LRU hits, while keeping `type=card` and `no-store` errors untagged); added unchecked `purge_covers` / `purge_book_content` inputs to `cache-purge.yml` plus `--catalog-source=auto|snapshot|supabase`, `--concurrency=N`, `--purge-tags-file`, and conditional post-R2 Edge cache invalidation in `r2-sync.yml` (`ADR-085`).
-- **Fault-Isolated Weekly Pipeline Chaining & Snapshot-First Publication (`.github/workflows/catalog-sync.yml`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`)**: Reordered `Publish Updated Catalog Snapshot Cache` immediately after `sync-gutenberg-catalog.js` so transient downstream R2 errors never leave `catalog-cache` stale after Supabase writes, isolated R2/translation/quote steps with `continue-on-error: true` + final status propagation so `Purge Vercel Edge Cache` still executes, switched weekly quotes sync to multi-mirror `--mirrors=pglaf,aleph,readingroo` failover, and added `shouldFailFeaturedQuotesRun` (`ADR-085`).
-- **Resumable R2 Delta Checkpointing, Bounded Put Concurrency & Partial-Config Fail-Fast (`scripts/sync-r2-assets.js`, `scripts/sync-r2-assets.test.ts`)**: Added `assertValidR2ConfigIfPresent` (preserving zero-secret fork `exit 0` skips while failing fast on partial/invalid `R2_*` vars), read-failure state preservation + union-merge (`mergeR2SyncStates`) + `try ... finally` checkpoint flushes, `isRsyncTransportError` + `runRsyncCommandWithRetry` + zero-transfer mass-batch protection, mid-batch `isOverBudget()` checks, `runWithConcurrency` (`DEFAULT_R2_PUT_CONCURRENCY = 8`), and `shouldFailR2SyncRun` (`ADR-085`).
-- **Fail-Closed RDF Outage Copyright Protection (`scripts/sync-gutenberg-catalog.js`, `scripts/sync-gutenberg-catalog.test.ts`)**: Kept `cachedBooksById` loaded under `--update-existing` while still disabling diff skip so known `copyright: true` records survive RDF outages, added `reconcileBatchWithoutRdfRights` to verify uncached existing DB flags (`public.books`), and deferred brand-new unverified volumes whenever both RDF feeds fail unless `--limit` or `--no-rdf` is set (`ADR-085`).
-- **Wikidata Socket Timeouts, Empty-DB FK Skips & Bisected Translation Retries (`scripts/ingest-translations.js`, `scripts/ingest-translations.test.ts`)**: Enforced `WIKIDATA_SPARQL_TIMEOUT_MS = 45_000` socket timeout aborts to trigger local snapshot fallback reliably, fixed the `validBookIds.size === 0` empty-catalog skip bug (`validBookIds instanceof Set`) with strict `throwOnError` retries from `main()`, added `upsertTranslationBatchesWithRetry` (exponential backoff + recursive bisection), and failed non-zero on persistent DB write failures (`ADR-085`).
+- **Zero-Cache-Fragmentation Fetch Metadata Anti-Deeplink Guard (`src/lib/api-utils.ts`, `src/proxy.ts`, `src/app/api/books/content/route.ts`, `scripts/verify-build.js`)**: Added shared `isBlockedContentAssetRequest` and `guardContentAssetRequest` helpers enforced at both Edge Middleware (`src/proxy.ts`) and Route Handler entry (`GET /api/books/content`, ahead of rate-limiter and R2 calls) to reject direct browser navigations (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks with `403 no-store` (`Cross-Origin-Resource-Policy: same-origin`, `nosniff`), while exempting `?type=card` OpenGraph PNGs and failing open when `Sec-Fetch-*` headers are absent so shared `Vary`/`s-maxage` CDN keys, R2 Class B budgets, first-party `<img>`/`fetch()`/`Blob` downloads, PWA `sw.js`, and SEO crawlers stay 100% intact (`Pass 7` adds live loopback HTTP `403` probes) (`ADR-082`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -181,7 +177,7 @@ Bookarium is structured around six core engineering pillars:
 
 ### 6. ⚖️ 100% Airtight Jurisdictional Copyright Governance & Legal Compliance
 * **Autonomous Multi-Jurisdiction Engine (`src/lib/copyright-engine.ts` & `useBookCopyright.ts`)**: Enforces global Project Gutenberg `<dcterms:rights>` exclusion (`copyright === false`, synchronized from `rdf-files.tar.bz2`) alongside statutory public domain cutoffs by visitor country (year 2026): **United States** (`published <= 1930` and `copyright === false`), **Life + 70** (EU, UK, CA, AU, NZ, JP: `death <= 1955`), **Life + 80** (CO, ES pre-1987: `death <= 1945`), and **Life + 100** (MX, CI: `death <= 1925`), including Joint Authorship (Berne Art. 7bis), Translator Protection (Berne Art. 2(3)), and fail-closed longevity heuristics.
-* **Edge Geo-IP Seeding, HTTP 451 Gatekeeper & Hyperlink Neutralization**: `src/proxy.ts` resolves `x-vercel-ip-country` / `cf-ipcountry` (or `?country=XX` in dev) for zero-flash SSR seeding; `/api/books/content` enforces **`HTTP 451: Unavailable For Legal Reasons`** globally whenever `copyright === true` (including US) as well as for territorially restricted works; `DownloadDrawer`, `BookCard`, and `ReaderErrorView` neutralize restricted download links (`CopyrightNoticeBanner.tsx`); territorial routes partition Edge caches via `Vary: x-vercel-ip-country, Accept-Encoding`; and `/copyright` provides a confidential notice & takedown intake channel.
+* **Edge Geo-IP Seeding, HTTP 451 Gatekeeper, Fetch Metadata Anti-Deeplink & Hyperlink Neutralization**: `src/proxy.ts` resolves `x-vercel-ip-country` / `cf-ipcountry` (or `?country=XX` in dev) for zero-flash SSR seeding and enforces Fetch Metadata anti-deeplink / cross-site isolation (`guardContentAssetRequest`: `403 no-store` on direct browser navigations and `cross-site` subresource hotlinks against `/api/books/content`, preserving `?type=card` OpenGraph images, SEO crawlers, same-origin readers/offline saves, and shared `s-maxage` CDN keys); `/api/books/content` enforces **`HTTP 451: Unavailable For Legal Reasons`** globally whenever `copyright === true` (including US) as well as for territorially restricted works; `DownloadDrawer`, `BookCard`, and `ReaderErrorView` neutralize restricted download links (`CopyrightNoticeBanner.tsx`); territorial routes partition Edge caches via `Vary: x-vercel-ip-country, Accept-Encoding`; and `/copyright` provides a confidential notice & takedown intake channel.
 
 ---
 
@@ -285,7 +281,7 @@ flowchart TD
     end
 
     subgraph ServerLayer ["Next.js Root Proxy & Edge Routing Layer"]
-        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]
+        RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Fetch Metadata Guard & Public RSC Bypass)"]
         ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs • Vercel-Cache-Tag, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\n(supabase-provider.ts • curated-fallback.ts)"]
         ProxyContent["GET /api/books/content\n(24h Text [book-content] & OG Card • 7d R2 Cover Proxy [covers] • Strict R2 + Optional DB Content)"]

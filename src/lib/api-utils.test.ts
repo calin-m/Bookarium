@@ -6,6 +6,8 @@ import {
   hasUnexpectedQueryParams,
   createNoStoreErrorResponse,
   isHttpsRequest,
+  isBlockedContentAssetRequest,
+  guardContentAssetRequest,
 } from './api-utils';
 
 describe('api-utils', () => {
@@ -173,6 +175,103 @@ describe('api-utils', () => {
         isHttpsRequest({
           url: 'http://localhost:3000/catalog',
           headers: new Headers(),
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('isBlockedContentAssetRequest & guardContentAssetRequest', () => {
+    it('blocks browser deeplink navigations, embed destinations, and cross-site subresource hotlinks', async () => {
+      const destinations = ['document', 'iframe', 'frame', 'embed', 'object', 'fencedframe'];
+      for (const dest of destinations) {
+        expect(
+          isBlockedContentAssetRequest({
+            url: 'https://bookarium.vercel.app/api/books/content?id=1342&type=cover',
+            headers: new Headers({ 'sec-fetch-dest': dest, 'sec-fetch-site': 'same-origin' }),
+          })
+        ).toBe(true);
+      }
+
+      expect(
+        isBlockedContentAssetRequest({
+          url: 'https://bookarium.vercel.app/api/books/content?id=1342',
+          headers: new Headers({ 'sec-fetch-mode': 'navigate' }),
+        })
+      ).toBe(true);
+
+      const blockedRes = guardContentAssetRequest({
+        url: 'https://bookarium.vercel.app/api/books/content?id=1342&type=cover',
+        headers: new Headers({ 'sec-fetch-dest': 'image', 'sec-fetch-site': 'cross-site' }),
+      });
+      expect(blockedRes).not.toBeNull();
+      expect(blockedRes?.status).toBe(403);
+      expect(blockedRes?.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+      expect(blockedRes?.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+      expect(blockedRes?.headers.get('X-Content-Type-Options')).toBe('nosniff');
+      expect(await blockedRes?.json()).toEqual({
+        error: 'Direct browser deeplinking or cross-site embedding of book assets is not permitted.',
+      });
+    });
+
+    it('permits same-origin image/fetch requests, same-site subdomains, type=card social cards, and headerless crawlers', () => {
+      expect(
+        guardContentAssetRequest({
+          url: 'https://bookarium.vercel.app/api/books/content?id=1342&type=cover',
+          headers: new Headers({
+            'sec-fetch-dest': 'image',
+            'sec-fetch-mode': 'no-cors',
+            'sec-fetch-site': 'same-origin',
+          }),
+        })
+      ).toBeNull();
+
+      expect(
+        guardContentAssetRequest({
+          url: 'https://bookarium.vercel.app/api/books/content?id=1342',
+          headers: new Headers({
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+          }),
+        })
+      ).toBeNull();
+
+      expect(
+        guardContentAssetRequest({
+          url: 'https://bookarium.vercel.app/api/books/content?id=1342&type=cover',
+          headers: new Headers({
+            'sec-fetch-dest': 'image',
+            'sec-fetch-mode': 'no-cors',
+            'sec-fetch-site': 'same-site',
+          }),
+        })
+      ).toBeNull();
+
+      expect(
+        guardContentAssetRequest({
+          url: 'https://bookarium.vercel.app/api/books/content?id=1342&type=card',
+          nextUrl: { searchParams: new URLSearchParams('id=1342&type=card') },
+          headers: new Headers({
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'cross-site',
+          }),
+        })
+      ).toBeNull();
+
+      expect(
+        guardContentAssetRequest({
+          url: 'https://bookarium.vercel.app/api/books/content?id=1342&type=cover',
+          headers: new Headers(),
+        })
+      ).toBeNull();
+    });
+
+    it('returns false safely on malformed request URLs without throwing', () => {
+      expect(
+        isBlockedContentAssetRequest({
+          url: 'http://[invalid',
+          headers: new Headers({ 'sec-fetch-dest': 'document' }),
         })
       ).toBe(false);
     });

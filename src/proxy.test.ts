@@ -210,5 +210,68 @@ describe('Root Proxy (Next.js 16)', () => {
     const apiRes = await proxy(apiContentReq);
     expect(apiRes.headers.get('x-middleware-override-headers')).toBeNull();
   });
+
+  it('blocks direct browser deeplinks and cross-site subresource hotlinks on /api/books/content without breaking app assets, OG cards, or crawlers', async () => {
+    const docDeeplinkReq = new NextRequest('https://bookarium.vercel.app/api/books/content?id=1342&type=cover', {
+      headers: {
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+      },
+    });
+    const docRes = await proxy(docDeeplinkReq);
+    expect(docRes.status).toBe(403);
+    expect(docRes.headers.get('cache-control')).toBe('no-store, max-age=0');
+    expect(docRes.headers.get('cross-origin-resource-policy')).toBe('same-origin');
+    expect(docRes.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(docRes.headers.get('set-cookie')).toBeNull();
+
+    const crossSiteReq = new NextRequest('https://bookarium.vercel.app/api/books/content?id=1342', {
+      headers: {
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'cross-site',
+      },
+    });
+    const crossSiteRes = await proxy(crossSiteReq);
+    expect(crossSiteRes.status).toBe(403);
+    expect(crossSiteRes.headers.get('cache-control')).toBe('no-store, max-age=0');
+
+    const sameOriginCoverReq = new NextRequest('https://bookarium.vercel.app/api/books/content?id=1342&type=cover', {
+      headers: {
+        'sec-fetch-dest': 'image',
+        'sec-fetch-mode': 'no-cors',
+        'sec-fetch-site': 'same-origin',
+      },
+    });
+    const sameOriginCoverRes = await proxy(sameOriginCoverReq);
+    expect(sameOriginCoverRes.status).toBe(200);
+
+    const sameOriginFetchReq = new NextRequest('https://bookarium.vercel.app/api/books/content?id=1342', {
+      headers: {
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
+      },
+    });
+    expect((await proxy(sameOriginFetchReq)).status).toBe(200);
+
+    const ogCardReq = new NextRequest('https://bookarium.vercel.app/api/books/content?id=1342&type=card', {
+      headers: {
+        'sec-fetch-dest': 'image',
+        'sec-fetch-site': 'cross-site',
+      },
+    });
+    expect((await proxy(ogCardReq)).status).toBe(200);
+
+    const readerPageDocReq = new NextRequest('https://bookarium.vercel.app/read/1342', {
+      headers: {
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'cross-site',
+      },
+    });
+    expect((await proxy(readerPageDocReq)).status).toBe(200);
+  });
 });
 

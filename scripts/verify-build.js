@@ -2349,7 +2349,7 @@ function allocateFreeLoopbackPort() {
   });
 }
 
-function sendLoopbackHttpProbe(port, probePath, timeoutMs = 5000) {
+function sendLoopbackHttpProbe(port, probePath, timeoutMs = 5000, headers = undefined) {
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -2358,6 +2358,7 @@ function sendLoopbackHttpProbe(port, probePath, timeoutMs = 5000) {
         path: probePath,
         method: 'GET',
         timeout: timeoutMs,
+        ...(headers ? { headers } : {}),
       },
       (res) => {
         const chunks = [];
@@ -2469,6 +2470,44 @@ async function probeCompiledNextServer(rootDirPath) {
           forbidStackTraces: true,
         },
         response: await sendLoopbackHttpProbe(port, '/api/books?unknown_param=1'),
+      },
+      {
+        spec: {
+          path: '/api/books/content?id=1342&type=cover (Sec-Fetch-Dest: document)',
+          expectedStatus: 403,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(
+          port,
+          '/api/books/content?id=1342&type=cover',
+          5000,
+          {
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+          }
+        ),
+      },
+      {
+        spec: {
+          path: '/api/books/content?id=1342&type=cover (Sec-Fetch-Site: cross-site)',
+          expectedStatus: 403,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(
+          port,
+          '/api/books/content?id=1342&type=cover',
+          5000,
+          {
+            'Sec-Fetch-Dest': 'image',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site',
+          }
+        ),
       },
       {
         spec: {

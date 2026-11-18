@@ -14,7 +14,7 @@ body:
     attributes:
       label: Bookarium Version / Release
       description: What version or release of Bookarium are you using?
-      placeholder: "e.g. v2.9.61, latest master, or your deployed URL"
+      placeholder: "e.g. v2.9.62, latest master, or your deployed URL"
     validations:
       required: true
 
