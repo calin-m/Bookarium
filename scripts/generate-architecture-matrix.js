@@ -399,7 +399,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '_Internal Generator Engine_',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
-        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges with OS-independent `compareCodepoint` ordering and `getDeterministicTextOrBinaryBytes` LF-normalized asset sizing), CommonJS `scripts/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), Markdown Mermaid syntax/cycle/HTML-tag verification (`validateMermaidDiagramsInMarkdown`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
+        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges with OS-independent `compareCodepoint` ordering and `getDeterministicTextOrBinaryBytes` LF-normalized asset sizing), CommonJS `scripts/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), quote-aware linear Mermaid syntax/cycle/HTML-tag verification (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
     },
     'scripts/lib/sast-validators.js': {
       name: 'lib/sast-validators.js',
@@ -2300,7 +2300,7 @@ function generateMarkdown() {
     },
     'ast-parser.test.ts': {
       layer: 'AST & SQL Analysis Engine Suite',
-      role: 'Hermetic fixture & live-repo tests verifying Babel AST dependency graphs, `hasCycles` static circular detection, fail-closed `getAstParseErrors`, architectural `detectLayerViolations`, inherited/intersected `Props` extraction, AST `persist` key & HTTP verb resolution, balanced `extractSqlSchemaEntities` parsing, and un-truncated `extractTestsFromSourceAst`.',
+      role: 'Hermetic fixture & live-repo tests verifying Babel AST dependency graphs, `hasCycles` static circular detection, fail-closed `getAstParseErrors`, architectural `detectLayerViolations`, inherited/intersected `Props` extraction, AST `persist` key & HTTP verb resolution, balanced `extractSqlSchemaEntities` parsing, un-truncated `extractTestsFromSourceAst`, and linear Mermaid syntax/cycle/arrow-chain validation (`validateMermaidDiagramsInMarkdown`).',
     },
     'sast-validators.test.ts': {
       layer: 'Stateless SAST Validator Suite',

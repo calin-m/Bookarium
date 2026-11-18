@@ -833,13 +833,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, `17`-map generator orphan checks, and Markdown Mermaid diagram syntax/cycle validation.
 - **Behavioral Invariants (`@invariant`)**:
   - Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
-  - Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes (`validateMermaidDiagramsInMarkdown`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
+  - Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
 - **Design Rationale (`@rationale`)**:
   - Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
-- **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: 4 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (16 tests)
+- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (17 tests)
 
 #### [`scripts/lib/sast-validators.js`](../scripts/lib/sast-validators.js) *(Tier-4 Protected)*
 

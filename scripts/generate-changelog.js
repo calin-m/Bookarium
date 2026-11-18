@@ -9,6 +9,16 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.63',
+    date: '2026-11-18',
+    title: 'Non-Regex Mermaid Edge Chain Tokenization & CodeQL js/bad-tag-filter Remediation',
+    sections: {
+      Fixed: [
+        '**Quote-Aware Linear Mermaid Arrow-Chain Tokenizer (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`)**: Replaced the two unanchored Mermaid flowchart arrow regexes in `inspectMermaidBlock` (`validateMermaidDiagramsInMarkdown`) with deterministic character-index scanning (`splitMermaidEdgeChainSegments` over `MERMAID_FLOW_ARROWS`), preventing false chain splits inside quoted node labels and eliminating CodeQL `js/bad-tag-filter` (`CWE-116`) alerts `#9` and `#10` without suppressions (`ADR-084`).',
+      ],
+    },
+  },
+  {
     version: '2.9.62',
     date: '2026-11-18',
     title: 'Browser Fetch Metadata Anti-Deeplink & Cross-Site Asset Isolation on Content Endpoints',

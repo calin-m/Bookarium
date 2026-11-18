@@ -879,4 +879,31 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(issues.some((msg: string) => msg.includes('Disconnected orphan node "Orphan"'))).toBe(true);
     expect(issues.some((msg: string) => msg.includes('Undeclared sequence actor "GhostActor"'))).toBe(true);
   });
+
+  it('validates chained Mermaid flowchart arrows, inline quoted arrow labels, and standalone nodes containing arrows cleanly', () => {
+    const validChainedMarkdown = [
+      '```mermaid',
+      'flowchart LR',
+      '    Solo["Proxy --> Origin"]',
+      '    ChainB["Step B"]',
+      '    ChainC["Step C"]',
+      '    ChainD["Step D"]',
+      '    ChainE["Step E"]',
+      '    ChainA["Client"] -->|"request | ok"| ChainB <--> ChainC <-.-> ChainD -.-> ChainE ==> Solo',
+      '```',
+    ].join('\n');
+
+    expect(astParser.validateMermaidDiagramsInMarkdown(validChainedMarkdown, 'chained.md')).toEqual([]);
+
+    const invalidChainedMarkdown = [
+      '```mermaid',
+      'flowchart TD',
+      '    end["Reserved"] --> NodeB["With <script>"] --> Ghost',
+      '```',
+    ].join('\n');
+
+    const chainIssues = astParser.validateMermaidDiagramsInMarkdown(invalidChainedMarkdown, 'bad-chain.md');
+    expect(chainIssues.some((msg: string) => msg.includes('Reserved Mermaid keyword "end"'))).toBe(true);
+    expect(chainIssues.some((msg: string) => msg.includes('HTML-like tag <script>'))).toBe(true);
+  });
 });

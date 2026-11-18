@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.63] - 2026-11-18
+### *Non-Regex Mermaid Edge Chain Tokenization & CodeQL js/bad-tag-filter Remediation*
+
+### Fixed
+- **Quote-Aware Linear Mermaid Arrow-Chain Tokenizer (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`)**: Replaced the two unanchored Mermaid flowchart arrow regexes in `inspectMermaidBlock` (`validateMermaidDiagramsInMarkdown`) with deterministic character-index scanning (`splitMermaidEdgeChainSegments` over `MERMAID_FLOW_ARROWS`), preventing false chain splits inside quoted node labels and eliminating CodeQL `js/bad-tag-filter` (`CWE-116`) alerts `#9` and `#10` without suppressions (`ADR-084`).
+
+
 ## [2.9.62] - 2026-11-18
 ### *Browser Fetch Metadata Anti-Deeplink & Cross-Site Asset Isolation on Content Endpoints*
 

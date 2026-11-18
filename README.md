@@ -13,7 +13,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202722%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202723%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![Code Coverage](https://img.shields.io/badge/Coverage-97.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2722 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2723 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -111,9 +111,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.62)
+## 🛠️ Latest Improvements (v2.9.63)
 
-- **Zero-Cache-Fragmentation Fetch Metadata Anti-Deeplink Guard (`src/lib/api-utils.ts`, `src/proxy.ts`, `src/app/api/books/content/route.ts`, `scripts/verify-build.js`)**: Added shared `isBlockedContentAssetRequest` and `guardContentAssetRequest` helpers enforced at both Edge Middleware (`src/proxy.ts`) and Route Handler entry (`GET /api/books/content`, ahead of rate-limiter and R2 calls) to reject direct browser navigations (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks with `403 no-store` (`Cross-Origin-Resource-Policy: same-origin`, `nosniff`), while exempting `?type=card` OpenGraph PNGs and failing open when `Sec-Fetch-*` headers are absent so shared `Vary`/`s-maxage` CDN keys, R2 Class B budgets, first-party `<img>`/`fetch()`/`Blob` downloads, PWA `sw.js`, and SEO crawlers stay 100% intact (`Pass 7` adds live loopback HTTP `403` probes) (`ADR-082`).
+- **Quote-Aware Linear Mermaid Arrow-Chain Tokenizer (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`)**: Replaced the two unanchored Mermaid flowchart arrow regexes in `inspectMermaidBlock` (`validateMermaidDiagramsInMarkdown`) with deterministic character-index scanning (`splitMermaidEdgeChainSegments` over `MERMAID_FLOW_ARROWS`), preventing false chain splits inside quoted node labels and eliminating CodeQL `js/bad-tag-filter` (`CWE-116`) alerts `#9` and `#10` without suppressions (`ADR-084`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 18 Nov 2026 19:05:53 GMT  
+**Last Generated**: Wed, 18 Nov 2026 19:29:35 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 261 passed  
-**Total Verified Tests**: 2722 passed  
+**Total Verified Tests**: 2723 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2722 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2723 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.21%** (16208/16673) — *Target: $\ge$ 95%*
-- **Statements**: **95.93%** (17453/18192) — *Target: $\ge$ 95%*
+- **Lines**: **97.21%** (16209/16673) — *Target: $\ge$ 95%*
+- **Statements**: **95.94%** (17455/18192) — *Target: $\ge$ 95%*
 - **Functions**: **94.99%** (3492/3676) — *Target: $\ge$ 92%*
-- **Branches**: **88.48%** (16219/18330) — *Target: $\ge$ 85%*
+- **Branches**: **88.45%** (16213/18330) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2722 Tests)
+## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2723 Tests)
 
 ### 🚀 App Routes & Pages (30 Suites · 307 Tests)
 
@@ -2036,7 +2036,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (55 Suites · 712 Tests)
+### 📚 Gutenberg Parsers & Metadata (55 Suites · 713 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2932,7 +2932,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (17 tests)</summary>
 
 - ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
 - ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
@@ -2950,6 +2950,7 @@
 - ✔ `produces deterministic codepoint-sorted consumer lists and LF-normalized text asset sizes regardless of CRLF`
 - ✔ `validates live Mermaid diagrams in docs/ARCHITECTURE.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations`
 - ✔ `rejects parent-child subgraph cycles, compound cycles, unquoted edge parens, HTML-tag swallowing, and orphan nodes in Mermaid diagrams`
+- ✔ `validates chained Mermaid flowchart arrows, inline quoted arrow labels, and standalone nodes containing arrows cleanly`
 
 </details>
 

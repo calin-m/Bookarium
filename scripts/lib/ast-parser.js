@@ -8,9 +8,9 @@
  * @module scripts/lib/ast-parser
  * @scope Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, `17`-map generator orphan checks, and Markdown Mermaid diagram syntax/cycle validation.
  * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
- * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes (`validateMermaidDiagramsInMarkdown`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
+ * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
  * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
- * @adr ADR-078, ADR-079, ADR-081
+ * @adr ADR-078, ADR-079, ADR-081, ADR-084
  */
 
 const fs = require('fs');
@@ -3474,6 +3474,74 @@ function inspectMermaidLabelText(relPath, blockIdx, lineNo, context, rawText, vi
   }
 }
 
+const MERMAID_FLOW_ARROWS = ['<-->', '<-.->', '-->', '-.->', '==>'];
+
+/**
+ * Splits a Mermaid flowchart edge chain (e.g. `A --> B -.->|"note"| C`) on unquoted
+ * arrow operators via linear string scanning so no regex mimics HTML comment delimiters.
+ */
+function splitMermaidEdgeChainSegments(line) {
+  const segments = [];
+  let segStart = 0;
+  let inQuotes = false;
+  let arrowCount = 0;
+  let i = 0;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '\\' && inQuotes && i + 1 < line.length) {
+      i += 2;
+      continue;
+    }
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      i++;
+      continue;
+    }
+    if (inQuotes) {
+      i++;
+      continue;
+    }
+
+    const matchedArrow = MERMAID_FLOW_ARROWS.find((op) => line.startsWith(op, i));
+    if (!matchedArrow) {
+      i++;
+      continue;
+    }
+
+    arrowCount++;
+    segments.push(line.slice(segStart, i).trim());
+    i += matchedArrow.length;
+
+    if (line[i] === '|') {
+      i++;
+      let labelInQuotes = false;
+      while (i < line.length) {
+        const lch = line[i];
+        if (lch === '\\' && labelInQuotes && i + 1 < line.length) {
+          i += 2;
+          continue;
+        }
+        if (lch === '"') {
+          labelInQuotes = !labelInQuotes;
+        } else if (lch === '|' && !labelInQuotes) {
+          i++;
+          break;
+        }
+        i++;
+      }
+    }
+
+    segStart = i;
+  }
+
+  if (arrowCount === 0) {
+    return null;
+  }
+  segments.push(line.slice(segStart).trim());
+  return segments;
+}
+
 function inspectMermaidBlock(relPath, blockIdx, startLine, rows, violations) {
   const firstNonEmpty = rows.find((r) => r.text.trim() && !r.text.trim().startsWith('%%'));
   if (!firstNonEmpty) {
@@ -3551,8 +3619,8 @@ function inspectMermaidBlock(relPath, blockIdx, startLine, rows, violations) {
         continue;
       }
 
-      if (/(?:<-->|-->|<-\.->|-\.->|==>)/.test(t)) {
-        const parts = t.split(/\s*(?:<-->|-->|<-\.->|-\.->|==>)(?:\|(?:"[^"]*"|[^|]*)\|)?\s*/);
+      const parts = splitMermaidEdgeChainSegments(t);
+      if (parts) {
         const ids = [];
         for (const p of parts) {
           const nm = p.trim().match(/^([A-Za-z0-9_]+)(.*)$/);
