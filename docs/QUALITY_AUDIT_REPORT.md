@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 18 Nov 2026 08:42:44 GMT  
+**Last Generated**: Wed, 18 Nov 2026 09:47:45 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 262 passed  
-**Total Verified Tests**: 2733 passed  
+**Total Verified Tests**: 2736 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **262/262 test suites passed** (2733 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **262/262 test suites passed** (2736 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 83 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -33,7 +33,7 @@
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (262 Suites / 2733 Tests)
+## 🧪 Comprehensive Test Suite Catalog (262 Suites / 2736 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 333 Tests)
 
@@ -2068,7 +2068,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (55 Suites · 698 Tests)
+### 📚 Gutenberg Parsers & Metadata (55 Suites · 701 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2884,7 +2884,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (29 tests)</summary>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (30 tests)</summary>
 
 - ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
 - ✔ `permits HTTPS and relative internal API fetch() calls`
@@ -2900,6 +2900,7 @@
 - ✔ `permits <a target="_blank" rel="noopener noreferrer"> and explicit origin postMessage`
 - ✔ `flags dynamic JSX href/src expressions with concatenated, conditional, logical, template, TS-cast, or split-constant dangerous URI schemes`
 - ✔ `flags imperative setAttribute("srcdoc"|"href"|"src") XSS sinks and window.open(..., "_blank") missing noopener`
+- ✔ `flags CWE-116 chained double-unescaping and double-escaping while allowing single-pass map replacements`
 - ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, external URLs, PostgREST .or(), and new RegExp()`
 - ✔ `clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards`
 - ✔ `tracks module-level process.argv CLI taint into shell and HTTP sinks while exempting sanitized CLI URLs and config file paths`
@@ -3010,7 +3011,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (19 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (20 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -3031,6 +3032,7 @@
 - ✔ `discovers 100% of out-of-window quoted books via partial index pagination, applies Option-A cushion & drain, and yields past 500 prunes`
 - ✔ `resolves canonical site origin fallback from NEXT_PUBLIC_SITE_URL and normalized Vercel production hostnames`
 - ✔ `reads books/<id>.txt.gz from private R2 first ahead of PGLAF mirrors when configured and falls back cleanly on R2 miss`
+- ✔ `supports --source=auto|r2|mirrors, --mirrors=none, --help, startup Text Source telemetry, and non-sentinel r2-miss handling`
 
 </details>
 
@@ -3082,7 +3084,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-r2-assets.test.ts</code></b> (11 tests)</summary>
+<summary><b><code>scripts/sync-r2-assets.test.ts</code></b> (12 tests)</summary>
 
 - ✔ `validates server-only R2 credentials strictly and rejects malformed identifiers`
 - ✔ `restricts R2 endpoints and PG asset URLs strictly to HTTPS allowlisted hosts`
@@ -3095,6 +3097,7 @@
 - ✔ `permits withdrawn ID deletion cleanly when full >= 50,000 catalog is verified within prune cap`
 - ✔ `executes shell-free rsync --files-from batches, compresses texts, uploads R2 assets, records misses, and writes bounded summary tables`
 - ✔ `supports PGLAF HTTPS fallback, respects --max-minutes cutoff, caps huge ledgers cleanly, and skips unconfigured runs`
+- ✔ `decodes ListObjectsV2 XML entities in a single pass without double-unescaping doubly-encoded payloads`
 
 </details>
 

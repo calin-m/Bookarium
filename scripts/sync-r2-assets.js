@@ -1,7 +1,7 @@
 /**
  * @module scripts/sync-r2-assets
  * @scope Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted `rsync --files-from` / PGLAF HTTPS transfers.
- * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), invoke `rsync`/`wsl` strictly with `{ shell: false }`, and exit `0` cleanly when `R2_*` credentials are unconfigured.
+ * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), invoke `rsync`/`wsl` strictly with `{ shell: false }`, and exit `0` cleanly when `R2_*` credentials are unconfigured.
  * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` eliminates 78k remote directory walks on CI runners while `_meta/r2-sync-state.json.gz` (`DEFAULT_MISSING_RECHECK_DAYS` TTL) suppresses repeated missing-cover probes, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
  * @adr ADR-083
  */
@@ -342,13 +342,25 @@ async function readBoundedBuffer(response, maxBytes, controller) {
   return Buffer.from(arr);
 }
 
+const XML_ENTITY_MAP = Object.freeze(
+  Object.assign(Object.create(null), {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&apos;': "'",
+  })
+);
+
+/**
+ * Decodes standard XML character entities in a single regex pass so doubly-encoded
+ * payloads (e.g. `&amp;lt;`) are never double-unescaped (`CWE-116`).
+ */
 function unescapeXmlEntities(str) {
-  return String(str || '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+  return String(str || '').replace(
+    /&(?:amp|lt|gt|quot|apos);/g,
+    (entity) => XML_ENTITY_MAP[entity] || entity
+  );
 }
 
 function parseListObjectsV2Xml(xmlText) {
@@ -1792,6 +1804,8 @@ module.exports = {
   getR2Config,
   isR2Configured,
   signR2Request,
+  XML_ENTITY_MAP,
+  unescapeXmlEntities,
   parseListObjectsV2Xml,
   listR2PrefixIds,
   fetchBookTextFromR2,

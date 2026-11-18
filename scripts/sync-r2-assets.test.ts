@@ -457,5 +457,24 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
       expect(bulkReport).toContain('_Showing first 50 of 120 changed volumes');
       expect(bulkReport).toContain('time budget cutoff reached; state saved');
     });
+
+    it('decodes ListObjectsV2 XML entities in a single pass without double-unescaping doubly-encoded payloads', () => {
+      expect(syncR2Assets.unescapeXmlEntities('a&amp;lt;b&amp;gt;c&amp;quot;d&amp;apos;e&amp;amp;f')).toBe(
+        'a&lt;b&gt;c&quot;d&apos;e&amp;f'
+      );
+      expect(syncR2Assets.unescapeXmlEntities('plain &lt;tag&gt; &quot;ok&quot; &apos;1&apos; &amp; done')).toBe(
+        'plain <tag> "ok" \'1\' & done'
+      );
+
+      const parsed = syncR2Assets.parseListObjectsV2Xml(`<ListBucketResult>
+        <IsTruncated>true</IsTruncated>
+        <NextContinuationToken>cursor&amp;lt;next&amp;amp;2</NextContinuationToken>
+        <Contents><Key>books/1342.txt.gz</Key><Size>1024</Size></Contents>
+        <Contents><Key>_meta/a&amp;lt;b&apos;c.txt</Key><Size>10</Size></Contents>
+      </ListBucketResult>`);
+
+      expect(parsed.nextContinuationToken).toBe('cursor&lt;next&amp;2');
+      expect(parsed.objects[1].key).toBe("_meta/a&lt;b'c.txt");
+    });
   });
 });

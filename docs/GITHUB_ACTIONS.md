@@ -21,10 +21,10 @@ Bookarium maintains **10** GitHub Actions workflows (validated 1:1 against [`.gi
 | **Featured Quotes Sync** | [`.github/workflows/quotes-sync.yml`](../.github/workflows/quotes-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `featured-quotes-sync` | `30m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>`GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Gutenberg Translations Sync** | [`.github/workflows/translations-sync.yml`](../.github/workflows/translations-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `gutenberg-translations-sync` | `20m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Manual Cache Purge** | [`.github/workflows/cache-purge.yml`](../.github/workflows/cache-purge.yml) | `workflow_dispatch` only *(Selective Purge)* | `contents: read` | `cache-purge` | `5m` | **No** *(~5s)* | `VERCEL_API_TOKEN`\*<br>`VERCEL_PROJECT_ID`\* | `VERCEL_TEAM_ID` |
-| **Bookarium CI** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `push` & `pull_request` on `main`, `master`, `dev` | `contents: read` | — | Runner default | Yes | **None** *(Zero keys)* | — |
+| **Bookarium CI** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `push` & `pull_request` on `main`, `master`, `dev` | `contents: read` | `ci-${{ github.workflow }}-${{ github.ref }}` *(PR cancel)* | `25m` | Yes | **None** *(Zero keys)* | — |
 | **CodeQL SAST Analysis** | [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) | `push` & `pull_request` on `main`, `master`, `dev`<br>+ `cron: 30 1 * * 1` (Mondays 01:30 UTC) | Top: `contents: read`<br>Job: `actions: read`, `contents: read`, `security-events: write` | `codeql-${{ github.ref }}` | `20m` | **No** *(Native CodeQL)* | **None** *(Public Repo)* | — |
 | **Dependency Review** | [`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) | `pull_request` on `main`, `master`, `dev` | `contents: read` | `dependency-review-${{ github.ref }}` | `10m` | **No** *(GitHub Graph)* | **None** *(Public Repo)* | — |
-| **Create Release** | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | `push` tags `v*`<br>+ `workflow_dispatch` (`tag`) | Top: `contents: read`<br>Job: `contents: write` | — | Runner default | Yes | Built-in `GITHUB_TOKEN` | — |
+| **Create Release** | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | `push` tags `v*`<br>+ `workflow_dispatch` (`tag`) | Top: `contents: read`<br>Job: `contents: write` | — | `25m` | Yes | Built-in `GITHUB_TOKEN` | — |
 
 \* *Safety Fallback*: `scripts/purge-vercel-cache.js` exits cleanly (`exit 0`) with a skip notice when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset so community forks and dry-runs never fail on missing Vercel credentials. In `cache-purge.yml`, configure both secrets in GitHub Settings if you want live CDN invalidations to execute.
 
@@ -88,7 +88,7 @@ Consolidates all scheduled database synchronization into a single deterministic 
   4. **Run Cloudflare R2 Delta Asset Sync** (unless `skip_r2=true` or `R2_*` secrets unset): runs `node scripts/sync-r2-assets.js --source=rsync --max-minutes=25` (+ `--cache-file=gutenberg-catalog-cache.json.gz`, `--dry-run`, `--limit=N`), uploading missing public-domain `.txt.gz`/`.jpg` files before snapshot publication so interrupted backfills resume cleanly and newly uploaded books are immediately available to quote extraction.
   5. When `dry_run != 'true'`, `limit == ''`, and `gutenberg-catalog-cache.json.gz` exists: upload updated snapshot and `gutenberg-catalog-cache.json.gz.sha256` sidecar to `catalog-cache` release (`--clobber`, creating the release if absent).
   6. Run `node scripts/ingest-translations.js` (+ `--dry-run`, `--update-existing`, and `--limit=N` or `--all` when `limit` is blank).
-  7. Run `node scripts/sync-featured-quotes.js --mirrors=pglaf` with optional `R2_*` credentials (`books/<id>.txt.gz` read first at 0s mirror delay before PGLAF fallback; + `--diff-file=quote-diff.json` if emitted, `--dry-run`, `--limit=N`).
+  7. Run `node scripts/sync-featured-quotes.js --source=auto --mirrors=pglaf` with optional `R2_*` credentials (`books/<id>.txt.gz` read first at 0s mirror delay before PGLAF fallback; + `--diff-file=quote-diff.json` if emitted, `--dry-run`, `--limit=N`).
   8. When `dry_run != 'true'`: run `node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations`.
 - **Local CLI Equivalents**:
   ```bash
@@ -100,7 +100,7 @@ Consolidates all scheduled database synchronization into a single deterministic 
   npm run catalog:sync -- --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json
   npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=auto --max-minutes=25
   npm run translations:sync -- --all
-  npm run quotes:sync -- --mirrors=pglaf --diff-file=quote-diff.json
+  npm run quotes:sync -- --source=auto --mirrors=pglaf --diff-file=quote-diff.json
   node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations
   ```
 
@@ -108,36 +108,41 @@ Consolidates all scheduled database synchronization into a single deterministic 
 
 ### 3.2 `Featured Quotes Sync` ([`.github/workflows/quotes-sync.yml`](../.github/workflows/quotes-sync.yml))
 
-On-demand multi-mirror + R2-first quote extractor maintaining Bookarium's **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` with Option-A `1-for-1` out-of-window surplus pruning (`<= 2,000` per run). Passes optional `R2_*` credentials so volumes already stored in R2 (`books/<id>.txt.gz`) extract with 0s mirror delay before falling back to PGLAF mirrors.
+On-demand multi-mirror + R2-first quote extractor maintaining Bookarium's **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` with Option-A `1-for-1` out-of-window surplus pruning (`<= 2,000` per run). Exposes a selectable `text_source` (`auto` | `r2` | `mirrors`) input and prints active `Text Source` telemetry in the pre-batch startup banner and `$GITHUB_STEP_SUMMARY`.
 
 - **Triggers**: `workflow_dispatch` only *(automated Sunday runs are chained in `.github/workflows/catalog-sync.yml`)*
-- **Concurrency & Permissions**: `concurrency: featured-quotes-sync` (`cancel-in-progress: true`), `permissions: contents: read`, `timeout-minutes: 30`
+- **Concurrency & Permissions**: `concurrency: featured-quotes-sync` (`cancel-in-progress: false`), `permissions: contents: read`, `timeout-minutes: 30`
 - **Manual Inputs (`workflow_dispatch`)**:
 
 | Input | Type | Required | Default | Description & Validation Rules |
 | :--- | :--- | :--- | :--- | :--- |
+| `text_source` | `choice` | **Yes** | `'auto'` | Retrieval engine: `'auto'` (`R2` first at 0s delay $\to$ checked fallback mirrors), `'r2'` (Cloudflare R2 only over AWS SigV4 HTTPS; fails fast if `R2_*` unset and records uncached items as non-sentinel `r2-miss` skips), or `'mirrors'` (bypass R2 and fetch from checked HTTPS mirrors only). |
 | `limit` | `string` | No | `'50'` | Max volumes to quote in this batch (`40 Popular + 10 Recent` slot split). |
-| `delay_range` | `string` | No | `'8-16'` | Randomized decimal delay range in seconds between Gutenberg requests. |
+| `delay_range` | `string` | No | `'8-16'` | Randomized decimal delay range in seconds between Gutenberg mirror fallback requests *(Cloudflare R2 reads execute with `0s` delay)*. |
 | `target_count` | `string` | No | `'14'` | Desired quotes extracted per volume (`10–16` bounded). |
 | `ids` | `string` | No | `''` | Comma-separated Gutenberg IDs for targeted backfill (blank uses automatic priority pool scanning). |
-| `mirror_pglaf` | `boolean` | No | `true` | Enable `gutenberg.pglaf.org` mirror. |
-| `mirror_aleph` | `boolean` | No | `false` | Enable `aleph.gutenberg.org` mirror. |
-| `mirror_readingroo` | `boolean` | No | `false` | Enable `gutenberg.readingroo.ms` mirror. *(At least 1 mirror must be checked or workflow fails fast.)* |
+| `mirror_pglaf` | `boolean` | No | `true` | Enable `gutenberg.pglaf.org` mirror (used in `auto` / `mirrors`). |
+| `mirror_aleph` | `boolean` | No | `false` | Enable `aleph.gutenberg.org` mirror (used in `auto` / `mirrors`). |
+| `mirror_readingroo` | `boolean` | No | `false` | Enable `gutenberg.readingroo.ms` mirror (used in `auto` / `mirrors`). *(At least 1 mirror must be checked when `text_source` is `'mirrors'`; `'r2'` passes `--mirrors=none`, and `'auto'` skips mirror fallback cleanly if all checkboxes are left unchecked.)* |
 | `force_refresh` | `boolean` | No | `false` | Re-extract and overwrite quotes even for already-populated IDs (`--force`). |
 | `dry_run` | `boolean` | No | `false` | Simulate extraction and generate SQL preview without writing Supabase or purging Vercel Edge cache. |
 
 - **CI Execution Sequence**:
   1. Checkout repo, setup Node `22` with npm cache, `npm ci`.
-  2. Resolve checked mirrors into `--mirrors=...` (failing fast if none checked), then run `node scripts/sync-featured-quotes.js` with `limit`, `delay_range`, `target_count`, optional `--ids=...`, `--force`, and `--dry-run`.
+  2. Validate `text_source` (`auto` / `r2` / `mirrors`), resolve checked mirrors (`--mirrors=...` or `--mirrors=none` when `text_source` is `'r2'` / `auto` with no mirrors checked, failing fast only when `'mirrors'` leaves zero mirrors enabled), and run `node scripts/sync-featured-quotes.js` with `--source`, `limit`, `delay_range`, `target_count`, optional `--ids=...`, `--force`, and `--dry-run`.
   3. When `dry_run != 'true'`: run `node scripts/purge-vercel-cache.js --tags=quotes`.
 - **Local CLI Equivalents**:
   ```bash
-  # Dry-run without DB mutation
+  # Dry-run without DB mutation (inspect --help for all flags)
   npm run quotes:sync -- --dry-run
+  node scripts/sync-featured-quotes.js --help
 
-  # Sync specific classics or custom pool/prune settings
-  npm run quotes:sync -- --ids=1342,84,2701 --force
-  npm run quotes:sync -- --limit=50 --delay-range=8-16 --mirrors=pglaf --max-prune=2000
+  # Strict R2-only backfill (0s delay, no sentinel written on R2 misses)
+  npm run quotes:sync -- --source=r2 --limit=50
+
+  # Sync specific classics or custom mirror/prune settings
+  npm run quotes:sync -- --source=mirrors --mirrors=pglaf,aleph --ids=1342,84,2701 --force
+  npm run quotes:sync -- --source=auto --limit=50 --delay-range=8-16 --mirrors=pglaf --max-prune=2000
   node scripts/purge-vercel-cache.js --tags=quotes
   ```
 
@@ -148,7 +153,7 @@ On-demand multi-mirror + R2-first quote extractor maintaining Bookarium's **Two-
 On-demand FRBR relational edition clusterer fetching Wikidata `P2034` / `P407` mappings (with offline cache fallback) and batch-upserting multilingual book links into `public.book_translations`.
 
 - **Triggers**: `workflow_dispatch` only *(automated Sunday runs are chained in `.github/workflows/catalog-sync.yml`)*
-- **Concurrency & Permissions**: `concurrency: gutenberg-translations-sync` (`cancel-in-progress: true`), `permissions: contents: read`, `timeout-minutes: 20`
+- **Concurrency & Permissions**: `concurrency: gutenberg-translations-sync` (`cancel-in-progress: false`), `permissions: contents: read`, `timeout-minutes: 20`
 - **Manual Inputs (`workflow_dispatch`)**:
 
 | Input | Type | Required | Default | Description & Behavior |
@@ -177,7 +182,7 @@ On-demand FRBR relational edition clusterer fetching Wikidata `P2034` / `P407` m
 Lightweight, standalone `workflow_dispatch`-only utility for selectively invalidating Vercel Edge `Vercel-Cache-Tag` caches without running `npm ci` or touching Supabase.
 
 - **Triggers**: `workflow_dispatch` only
-- **Concurrency & Permissions**: `concurrency: cache-purge` (`cancel-in-progress: true`), `permissions: contents: read`, `timeout-minutes: 5`
+- **Concurrency & Permissions**: `concurrency: cache-purge` (`cancel-in-progress: false`), `permissions: contents: read`, `timeout-minutes: 5`
 - **Dependencies**: Zero `npm ci` / zero npm cache (uses Node `22` built-in `fetch` directly; completes in seconds).
 - **Manual Inputs (`workflow_dispatch`)**:
 
@@ -210,7 +215,7 @@ Lightweight, standalone `workflow_dispatch`-only utility for selectively invalid
 Continuous integration quality gate verifying every branch push and pull request through the complete **7-Gateway Quality Engine** without requiring any external keys or secrets.
 
 - **Triggers**: `push` and `pull_request` on branches `main`, `master`, `dev`
-- **Permissions**: `contents: read`
+- **Concurrency & Permissions**: `concurrency: ci-${{ github.workflow }}-${{ github.ref }}` (`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`), `permissions: contents: read`, `timeout-minutes: 25`
 - **Required Secrets**: **None** (runs hermetically with MSW v2 network mocks and bundled test fixtures)
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0`), setup Node `22` with npm cache (`actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0`), run `npm ci`.
@@ -233,8 +238,8 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.58'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
-- **Permissions**: Top-level `contents: read`; job-level `contents: write`
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.59'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+- **Permissions & Timeout**: Top-level `contents: read`; job-level `contents: write`, `timeout-minutes: 25`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
   1. Checkout repo with `fetch-depth: 0`, setup Node `22` with npm cache, run `npm ci`.
@@ -259,7 +264,7 @@ Continuous inter-procedural GitHub CodeQL SAST scanning both TypeScript/JavaScri
 - **Triggers**:
   - `push` and `pull_request` on `main`, `master`, `dev`
   - Scheduled: `cron: 30 1 * * 1` (Every Monday at `01:30 UTC`, staggered away from Sunday `catalog-sync.yml`)
-- **Permissions**: Top-level `contents: read`; job-level `actions: read`, `contents: read`, `security-events: write`
+- **Permissions & Concurrency**: Top-level `contents: read`; job-level `actions: read`, `contents: read`, `security-events: write`; `concurrency: codeql-${{ github.ref }}` (`cancel-in-progress: true`)
 - **Language Matrix**: `javascript-typescript`, `actions` (`fail-fast: false`, `timeout-minutes: 20`)
 - **GitHub Repository Settings Note**: Because Bookarium configures CodeQL via `.github/workflows/codeql.yml` (Advanced Setup), keep GitHub UI **Settings $\to$ Code security $\to$ CodeQL analysis** *Default setup* disabled so the two modes never conflict.
 
@@ -271,7 +276,7 @@ Automated pull-request supply-chain firewall backed by GitHub's Dependency Graph
 
 - **Run Title (`run-name`)**: `'Dependency & License Review (PR #${{ github.event.pull_request.number }})'` (visually distinguishes dependency gates from commit-titled `CI Pipeline` runs on pull requests)
 - **Triggers**: `pull_request` on `main`, `master`, `dev`
-- **Permissions**: `contents: read` (`timeout-minutes: 10`)
+- **Permissions, Concurrency & Timeout**: `contents: read`, `concurrency: dependency-review-${{ github.ref }}` (`cancel-in-progress: true`), `timeout-minutes: 10`
 - **Policy Configuration**: `fail-on-severity: high`, `deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0` (powered automatically on public repositories by GitHub Dependency Graph).
 
 ---
@@ -348,9 +353,9 @@ On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping pri
 
 | Symptom | Likely Cause | Resolution |
 | :--- | :--- | :--- |
-| `cache-purge.yml` fails immediately with *"Select at least one cache tag to purge"* | All 3 tag checkboxes left unchecked (`false`). | Re-run **Manual Cache Purge** with one or more of `purge_catalog`, `purge_quotes`, or `purge_translations` checked. |
-| `quotes-sync.yml` fails before running script | None of `mirror_pglaf`, `mirror_aleph`, or `mirror_readingroo` was checked. | Enable at least one mirror checkbox (default: `mirror_pglaf: true`). |
+| `cache-purge.yml` fails immediately with *"At least one cache tag checkbox (purge_catalog, purge_quotes, or purge_translations) must be checked."* | All 3 tag checkboxes left unchecked (`false`). | Re-run **Manual Cache Purge** with one or more of `purge_catalog`, `purge_quotes`, or `purge_translations` checked. |
+| `quotes-sync.yml` fails before running script | `text_source` was set to `'mirrors'` with none of `mirror_pglaf`, `mirror_aleph`, or `mirror_readingroo` checked, or `'r2'` was chosen without `R2_*` secrets configured. | Enable at least one mirror checkbox for `'mirrors'` mode, add `R2_*` GitHub Secrets for `'r2'` mode, or use `'auto'` (default: `mirror_pglaf: true`). |
 | Purge step exits `0` with skip notice in logs | `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` is unset in GitHub Secrets. | Expected safe default for forks; add both secrets under Repository Settings $\to$ Actions to enable live CDN purges. |
 | Vercel purge returns `401` / `403` | Token expired or team scope mismatched. | Regenerate `VERCEL_API_TOKEN`, verify `VERCEL_PROJECT_ID` (`prj_...`), and set `VERCEL_TEAM_ID` (`team_...`) if the project belongs to a Vercel Team / personal team. |
-| `gh release download catalog-cache` prints not-found warning | First-ever cold sync before `catalog-cache` release exists. | Safe to ignore on first full live run (`limit` blank, `dry_run: false`): Step 3 creates the `catalog-cache` release automatically once active books exceed `50,000`. |
+| `gh release download catalog-cache` prints not-found warning | First-ever cold sync before `catalog-cache` release exists. | Safe to ignore on first full live run (`limit` blank, `dry_run: false`): the `Publish Updated Catalog Snapshot Cache` step creates the `catalog-cache` release automatically once active books exceed `50,000`. |
 | `release.yml` changelog extraction is empty | Dispatched tag does not match an entry header in `CHANGELOG.md`. | Update `RELEASES[0]` in [`scripts/generate-changelog.js`](../scripts/generate-changelog.js) and run `npm run docs:sync` first so `CHANGELOG.md` and `release.yml` share the exact tag version. |

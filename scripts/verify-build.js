@@ -1796,6 +1796,7 @@ function pass5AdrValidation() {
         'docs/ARCHITECTURE.md',
         'docs/GITHUB_ACTIONS.md',
         'docs/PIPELINE_GUIDE.md',
+        'DEVELOPMENT.md',
         'README.md',
         'AGENTS.md',
         '.agents/AGENTS.md',
@@ -1822,9 +1823,10 @@ function pass5AdrValidation() {
           relDoc === 'README.md' ||
           relDoc === 'docs/PIPELINE_GUIDE.md' ||
           relDoc === 'docs/GITHUB_ACTIONS.md' ||
-          relDoc === 'docs/ARCHITECTURE.md'
+          relDoc === 'docs/ARCHITECTURE.md' ||
+          relDoc === 'DEVELOPMENT.md'
         ) {
-          const wfCountMatches = docTxt.matchAll(/\ball (\d+) (?:GitHub Actions )?workflows\b/gi);
+          const wfCountMatches = docTxt.matchAll(/\ball [*_`]*(\d+)[*_`]* (?:GitHub Actions )?workflows\b/gi);
           for (const cm of wfCountMatches) {
             const declaredCount = parseInt(cm[1], 10);
             if (declaredCount !== wfFiles.length) {

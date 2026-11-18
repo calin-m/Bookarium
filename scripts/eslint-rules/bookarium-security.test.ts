@@ -320,6 +320,34 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(violations.some((v) => v.message.includes('dangerous "href" URI scheme') && v.message.includes('setAttribute()'))).toBe(true);
       expect(violations.filter((v) => v.message.includes('Reverse Tabnabbing risk (CWE-1022)'))).toHaveLength(2);
     });
+
+    it('flags CWE-116 chained double-unescaping and double-escaping while allowing single-pass map replacements', () => {
+      const unsafeViolations = runRuleOnCode(
+        'no-unsafe-dom-injection',
+        `export function badXml(raw: string) {
+          const unescaped = raw.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+          const escaped = raw.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&/g, '&amp;');
+          return unescaped + escaped;
+        }`,
+        'scripts/bad-xml.js'
+      );
+      expect(unsafeViolations).toHaveLength(2);
+      expect(unsafeViolations.some((v) => v.message.includes('Double-unescaping hazard (CWE-116'))).toBe(true);
+      expect(unsafeViolations.some((v) => v.message.includes('Double-escaping hazard (CWE-116'))).toBe(true);
+
+      const safeViolations = runRuleOnCode(
+        'no-unsafe-dom-injection',
+        `const ENTITIES: Record<string, string> = { '&amp;': '&', '&lt;': '<', '&gt;': '>' };
+        export function goodXml(raw: string) {
+          const singlePass = raw.replace(/&(?:amp|lt|gt);/g, (m) => ENTITIES[m] || m);
+          const safeEscape = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const safeUnescapeOrder = raw.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          return singlePass + safeEscape + safeUnescapeOrder;
+        }`,
+        'scripts/good-xml.js'
+      );
+      expect(safeViolations).toHaveLength(0);
+    });
   });
 
   describe('6. no-tainted-request-sink (Intra-Procedural Request Taint Analysis)', () => {

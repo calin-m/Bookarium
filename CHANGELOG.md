@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.59] - 2026-11-18
+### *Selectable quotes-sync Text Source (auto/r2/mirrors), R2 Startup Telemetry & 10-Workflow Accuracy Sync*
+
+### Added
+- **Selectable Quote Text-Source Mode & Non-Sentinel R2-Only Engine (`.github/workflows/quotes-sync.yml`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`)**: Added `text_source` (`auto` R2-first -> fallback, `r2` Cloudflare R2 only at `0s` delay, `mirrors` PG HTTPS mirrors only) to `quotes-sync.yml` and `--source=auto|r2|mirrors`, `--mirrors=none`, and `--help` to `sync-featured-quotes.js`, printing active `Text Source` telemetry in `formatInitialPoolBanner` and `$GITHUB_STEP_SUMMARY`, failing fast when `r2` mode lacks `R2_*` credentials, and skipping uncached R2 books as non-sentinel `r2-miss` entries without false placeholders (`ADR-083`).
+
+### Changed
+- **10-Workflow Accuracy, Timeout Bounds & PR Cancellation Hardening (`.github/workflows/catalog-sync.yml`, `.github/workflows/quotes-sync.yml`, `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `scripts/verify-build.js`)**: Removed `quotes-sync.yml` legacy schedule branching and mirror fail-fast block on `r2` runs, updated `catalog-sync.yml` `limit` label (`~78,000+`) and explicit `--source=auto` invocation, bounded `ci.yml` (`timeout-minutes: 25` + PR-only `cancel-in-progress` concurrency) and `release.yml` (`timeout-minutes: 25`), and hardened `Pass 5` markdown-bold workflow-count parity across `DEVELOPMENT.md` (`ADR-083`).
+- **GitHub Actions Operator Runbooks & Architecture Matrix Synchronization (`docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`, `DEVELOPMENT.md`, `README.md`, `docs/DECISIONS.md`, `scripts/generate-architecture-matrix.js`)**: Corrected `cancel-in-progress: false` documentation across `quotes-sync.yml`/`translations-sync.yml`/`cache-purge.yml`, added missing `codeql.yml`/`dependency-review.yml` concurrency details and `cache-purge.yml` exact error text, fixed stale `all **9** workflows` & `r2-sync.yml` omissions, updated `quotes-sync.yml` `R2_*` attribution, and aligned `generate-architecture-matrix.js` `Step 3`/`Step 4` pipeline contracts (`ADR-083`).
+
+### Fixed
+- **Single-Pass XML Entity Decoding & Local `CWE-116` Double-Escaping AST Rule (`scripts/sync-r2-assets.js`, `scripts/sync-r2-assets.test.ts`, `scripts/eslint-rules/bookarium-security.js`, `scripts/eslint-rules/bookarium-security.test.ts`)**: Replaced chained `.replace(/&amp;/g, ...)...` calls in `unescapeXmlEntities` with single-pass `XML_ENTITY_MAP` regex decoding to resolve CodeQL `js/double-escaping` (`CWE-116`) on doubly-encoded R2 XML keys and continuation tokens, and extended `bookarium-security/no-unsafe-dom-injection` (`npm run lint` & `Pass 0.75`) with local AST detection for chained entity escaping and unescaping cascades (`ADR-083`).
+
+
 ## [2.9.58] - 2026-11-18
 ### *Automated Cloudflare R2 Delta Asset Sync, Standalone Backfill Workflow & R2-First Quote Pipeline*
 

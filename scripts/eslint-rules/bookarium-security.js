@@ -7,11 +7,11 @@
  * and CI/Pre-Commit pipelines (`npm run lint`, `npm run security:audit`, `npm run verify`).
  *
  * @module scripts/eslint-rules/bookarium-security
- * @scope Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting & security header parity, cookie flags, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS/tabnabbing sinks.
- * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly), including Node HTTP client (`https.get`/`http.get`) checks, `{ shell: false }` enforcement in `scripts/`, and `process.argv` CLI taint into shell/URL/redirect sinks.
+ * @scope Unified 9-rule Babel/ESLint SAST plugin enforcing SSRF guards, open-redirect sanitization, API rate limiting & security header parity, cookie flags, client/server isolation, query safety, secret env boundaries, copyright gates, zero tautological tests, and XSS/tabnabbing/`CWE-116` double-escaping sinks.
+ * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly), including Node HTTP client (`https.get`/`http.get`) checks, `{ shell: false }` enforcement in `scripts/`, `CWE-116` chained XML/HTML entity `.replace()` double-escaping/double-unescaping detection, and `process.argv` CLI taint into shell/URL/redirect sinks.
  * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers, CLI `--cache-file` flags, or static single-slash client routes.
- * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, and weak assertions in real time before commit.
- * @adr ADR-067, ADR-073, ADR-080, ADR-082
+ * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, entity double-escaping, and weak assertions in real time before commit.
+ * @adr ADR-067, ADR-073, ADR-080, ADR-082, ADR-083
  */
 
 const fs = require('fs');
@@ -1225,13 +1225,71 @@ const rules = {
       type: 'problem',
       docs: {
         description:
-          'Disallow DOM XSS injection sinks, unsafe JSX URI schemes, reverse tabnabbing, and wildcard postMessage origins.',
+          'Disallow DOM XSS injection sinks, unsafe JSX URI schemes, reverse tabnabbing, wildcard postMessage origins, and CWE-116 chained entity double-escaping.',
       },
       schema: [],
     },
     create(context) {
       const filename = normalizeFilename(context);
       if (isTestOrMockFile(filename)) return {};
+
+      const visitedReplaceChains = new WeakSet();
+      const OTHER_UNESCAPE_ENTITIES = new Set(['&lt;', '&gt;', '&quot;', '&apos;', '&#39;', '&#039;', '&#x27;']);
+      const RAW_ESCAPE_TO_ENTITY = new Map([
+        ['<', '&lt;'],
+        ['>', '&gt;'],
+        ['"', '&quot;'],
+        ["'", '&apos;'],
+      ]);
+      const ENTITY_TO_RAW = new Map([
+        ['&lt;', '<'],
+        ['&gt;', '>'],
+        ['&quot;', '"'],
+        ['&apos;', "'"],
+        ['&#39;', "'"],
+        ['&#039;', "'"],
+        ['&#x27;', "'"],
+      ]);
+
+      function extractStaticReplaceToken(argNode) {
+        const cur = unwrapTsExpr(argNode);
+        if (!cur) return null;
+        if (cur.type === 'RegExpLiteral' && typeof cur.pattern === 'string') {
+          return cur.pattern.toLowerCase();
+        }
+        if (cur.type === 'Literal' && cur.regex && typeof cur.regex.pattern === 'string') {
+          return cur.regex.pattern.toLowerCase();
+        }
+        const constStr = resolveConstantStringExpr(cur);
+        return typeof constStr === 'string' ? constStr.toLowerCase() : null;
+      }
+
+      function collectChainedReplaceSteps(outerCall) {
+        const steps = [];
+        let cur = outerCall;
+        while (
+          cur &&
+          cur.type === 'CallExpression' &&
+          cur.callee &&
+          cur.callee.type === 'MemberExpression'
+        ) {
+          const prop = getPropertyName(cur.callee);
+          if ((prop !== 'replace' && prop !== 'replaceAll') || !cur.arguments || cur.arguments.length < 2) {
+            break;
+          }
+          const patternToken = extractStaticReplaceToken(cur.arguments[0]);
+          const replStr = resolveConstantStringExpr(cur.arguments[1]);
+          steps.unshift({
+            node: cur,
+            argNode: cur.arguments[0],
+            patternToken,
+            replacement: typeof replStr === 'string' ? replStr.toLowerCase() : null,
+          });
+          visitedReplaceChains.add(cur);
+          cur = cur.callee.object;
+        }
+        return steps;
+      }
 
       function unwrapTsExpr(expr) {
         let cur = expr;
@@ -1512,6 +1570,56 @@ const rules = {
                 message:
                   'Cross-origin message leak (CWE-345): postMessage() with wildcard "*" targetOrigin is forbidden. Specify window.location.origin.',
               });
+            }
+          }
+          if (
+            (methodName === 'replace' || methodName === 'replaceAll') &&
+            !visitedReplaceChains.has(node)
+          ) {
+            const chain = collectChainedReplaceSteps(node);
+            if (chain.length >= 2) {
+              const firstAmpUnescapeIdx = chain.findIndex(
+                (s) => s.patternToken === '&amp;' && s.replacement === '&'
+              );
+              if (firstAmpUnescapeIdx !== -1) {
+                const laterEntityUnescape = chain
+                  .slice(firstAmpUnescapeIdx + 1)
+                  .find(
+                    (s) =>
+                      s.patternToken &&
+                      OTHER_UNESCAPE_ENTITIES.has(s.patternToken) &&
+                      ENTITY_TO_RAW.get(s.patternToken) === s.replacement
+                  );
+                if (laterEntityUnescape) {
+                  context.report({
+                    node: chain[firstAmpUnescapeIdx].node,
+                    message:
+                      'Double-unescaping hazard (CWE-116 / js/double-escaping): replacing "&amp;" before other XML/HTML entities corrupts doubly-encoded sequences (e.g. "&amp;lt;"). Decode entities in a single regex/map pass.',
+                  });
+                  return;
+                }
+              }
+
+              const firstOtherEscapeIdx = chain.findIndex(
+                (s) =>
+                  s.patternToken &&
+                  RAW_ESCAPE_TO_ENTITY.has(s.patternToken) &&
+                  (s.replacement === RAW_ESCAPE_TO_ENTITY.get(s.patternToken) ||
+                    s.replacement === '&#39;' ||
+                    s.replacement === '&#x27;')
+              );
+              if (firstOtherEscapeIdx !== -1) {
+                const laterAmpEscape = chain
+                  .slice(firstOtherEscapeIdx + 1)
+                  .find((s) => s.patternToken === '&' && s.replacement === '&amp;');
+                if (laterAmpEscape) {
+                  context.report({
+                    node: laterAmpEscape.node,
+                    message:
+                      'Double-escaping hazard (CWE-116 / js/double-escaping): replacing "&" with "&amp;" after escaping "<", ">", quotes, or apostrophes corrupts already-escaped entities (e.g. "&lt;" -> "&amp;lt;"). Encode entities in a single regex/map pass.',
+                  });
+                }
+              }
             }
           }
         },

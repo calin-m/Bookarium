@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Maximum titles to ingest (leave blank for all ~72,000)'
+        description: 'Maximum titles to ingest (leave blank for all ~78,000+)'
         required: false
         type: string
       update_existing:
@@ -209,7 +209,7 @@ jobs:
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
-          QUOTE_ARGS="--mirrors=pglaf"
+          QUOTE_ARGS="--source=auto --mirrors=pglaf"
           if [ -f "quote-diff.json" ]; then
             QUOTE_ARGS="$QUOTE_ARGS --diff-file=quote-diff.json"
           fi

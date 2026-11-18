@@ -1594,4 +1594,190 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(summary.report).toContain('Cloudflare R2 1');
     expect(summary.books.find((b: { id: number }) => b.id === 1342)?.source).toBe('r2');
   });
+
+  it('supports --source=auto|r2|mirrors, --mirrors=none, --help, startup Text Source telemetry, and non-sentinel r2-miss handling', async () => {
+    expect(quotesSync.normalizeQuoteTextSource('r2-only')).toBe('r2');
+    expect(quotesSync.normalizeQuoteTextSource('https-mirrors')).toBe('mirrors');
+    expect(quotesSync.normalizeQuoteTextSource('unexpected')).toBe('auto');
+    expect(quotesSync.resolveSelectedMirrors('none')).toEqual([]);
+    expect(quotesSync.resolveSelectedMirrors([])).toEqual([]);
+
+    const parsedR2 = quotesSync.parseCliArgs(['--help', '--source=r2', '--mirrors=none']);
+    expect(parsedR2.help).toBe(true);
+    expect(parsedR2.source).toBe('r2');
+    expect(parsedR2.mirrors).toEqual([]);
+
+    const usageLogs: string[] = [];
+    quotesSync.printUsageGuide({ log: (msg: string) => usageLogs.push(msg) });
+    expect(usageLogs.join('\n')).toContain('--source=MODE');
+
+    expect(
+      quotesSync.formatTextSourceDescription('auto', {
+        r2Configured: true,
+        mirrors: ['https://gutenberg.pglaf.org'],
+      })
+    ).toBe('auto — Cloudflare R2 primary (0s delay) -> fallback: gutenberg.pglaf.org');
+    expect(
+      quotesSync.formatTextSourceDescription('auto', {
+        r2Configured: false,
+        mirrors: ['https://gutenberg.pglaf.org'],
+      })
+    ).toBe('auto — R2_* unset, using HTTPS mirrors: gutenberg.pglaf.org');
+    expect(quotesSync.formatTextSourceDescription('r2')).toBe(
+      'r2 — Cloudflare R2 only (0s delay, zero mirror fallback)'
+    );
+    expect(
+      quotesSync.formatTextSourceDescription('mirrors', {
+        mirrors: ['https://gutenberg.pglaf.org', 'https://aleph.gutenberg.org'],
+      })
+    ).toBe('mirrors — HTTPS mirrors only (gutenberg.pglaf.org, aleph.gutenberg.org)');
+
+    const bannerWithSource = quotesSync.formatInitialPoolBanner({
+      topPoolSize: 500,
+      topDone: 400,
+      recentPoolSize: 64,
+      recentDone: 64,
+      batchTopCount: 10,
+      batchRecentCount: 0,
+      totalBatchCount: 10,
+      textSource: 'auto',
+      r2Configured: true,
+      mirrors: ['https://gutenberg.pglaf.org'],
+    });
+    expect(bannerWithSource).toContain(
+      '• Text Source:    auto — Cloudflare R2 primary (0s delay) -> fallback: gutenberg.pglaf.org'
+    );
+
+    // 1) Fail fast when source=r2 and R2_* is unconfigured
+    await expect(
+      quotesSync.runFeaturedQuotesSync(
+        { source: 'r2', ids: [1342], dryRun: true },
+        {
+          env: {},
+          logger: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
+          writeSeedFile: false,
+        }
+      )
+    ).rejects.toThrow(/requires R2_ACCOUNT_ID/);
+
+    // 2) r2 mode extracts R2 hits and records R2 misses without mirror fetches or false sentinel writes
+    const sampleBookText = Array.from(
+      { length: 14 },
+      (_, i) =>
+        `Chapter ${i + 1}\n\n"A clear literary insight number ${i + 1} that endures across quiet centuries of reading and reflection." — Narrative Voice\n\nFiller prose sentence detailing a lantern on a misty harbor pier.`
+    ).join('\n\n');
+    const persistedUpdates: Array<{ id: number; quotes: unknown[] }> = [];
+    const buildTestSupabase = () => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: vi.fn(async () => ({
+            data: [
+              {
+                id: 1342,
+                title: 'Pride and Prejudice',
+                authors: [{ name: 'Austen, Jane' }],
+                translators: [],
+                subjects: ['Fiction'],
+                languages: ['en'],
+                copyright: false,
+                quotes: [],
+                content: null,
+                download_count: 55000,
+              },
+              {
+                id: 84,
+                title: 'Frankenstein',
+                authors: [{ name: 'Shelley, Mary' }],
+                translators: [],
+                subjects: ['Gothic'],
+                languages: ['en'],
+                copyright: false,
+                quotes: [],
+                content: null,
+                download_count: 42000,
+              },
+            ],
+            error: null,
+          })),
+          eq: vi.fn(() => ({
+            not: vi.fn(async () => ({ data: [], error: null })),
+          })),
+        })),
+        update: vi.fn((payload: { quotes: unknown[] }) => ({
+          eq: vi.fn(async (_col: string, id: number) => {
+            persistedUpdates.push({ id, quotes: payload.quotes });
+            return { error: null };
+          }),
+        })),
+      })),
+    });
+
+    const mirrorFetchSpy = vi.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      url,
+      headers: { get: () => 'text/plain; charset=utf-8' },
+      text: async () => sampleBookText,
+    }));
+    const r2FetchMock = vi.fn(async (bookId: number) =>
+      bookId === 1342 ? { status: 'ok', text: sampleBookText } : { status: 'not_found' }
+    );
+    const logs: string[] = [];
+
+    const r2OnlySummary = await quotesSync.runFeaturedQuotesSync(
+      { source: 'r2', ids: [1342, 84], limit: 2, minDelaySec: 0, maxDelaySec: 0, targetCount: 10 },
+      {
+        env: {},
+        supabaseClient: buildTestSupabase(),
+        fetchFn: mirrorFetchSpy,
+        fetchBookFromR2: r2FetchMock,
+        sleepFn: async () => {},
+        logger: { log: (m: string) => logs.push(m), error: vi.fn(), warn: vi.fn() },
+        writeSeedFile: false,
+      }
+    );
+
+    expect(r2OnlySummary.fromR2).toBe(1);
+    expect(r2OnlySummary.r2Missing).toBe(1);
+    expect(r2OnlySummary.sentinelMarked).toBe(0);
+    expect(r2OnlySummary.updated).toBe(1);
+    expect(mirrorFetchSpy).not.toHaveBeenCalled();
+    expect(persistedUpdates.map((u) => u.id)).toEqual([1342]);
+    expect(r2OnlySummary.books.find((b: { id: number }) => b.id === 84)?.outcome).toBe('r2-miss');
+    expect(r2OnlySummary.report).toContain('**Text Source**: `r2 — Cloudflare R2 only');
+    expect(r2OnlySummary.report).toContain('R2 miss (skipped): 1');
+    expect(logs.join('\n')).toContain('1 r2-miss');
+
+    // 3) mirrors mode bypasses R2 completely even when R2 callback is available
+    persistedUpdates.length = 0;
+    r2FetchMock.mockClear();
+    const mirrorsOnlySummary = await quotesSync.runFeaturedQuotesSync(
+      {
+        source: 'mirrors',
+        ids: [1342, 84],
+        limit: 2,
+        minDelaySec: 0,
+        maxDelaySec: 0,
+        mirrors: ['pglaf'],
+        targetCount: 10,
+      },
+      {
+        env: {},
+        supabaseClient: buildTestSupabase(),
+        fetchFn: mirrorFetchSpy,
+        fetchBookFromR2: r2FetchMock,
+        sleepFn: async () => {},
+        logger: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
+        writeSeedFile: false,
+      }
+    );
+
+    expect(r2FetchMock).not.toHaveBeenCalled();
+    expect(mirrorsOnlySummary.fromR2).toBe(0);
+    expect(mirrorsOnlySummary.fromMirrors).toBe(2);
+    expect(mirrorsOnlySummary.updated).toBe(2);
+    expect(mirrorsOnlySummary.report).toContain(
+      '**Text Source**: `mirrors — HTTPS mirrors only (gutenberg.pglaf.org)`'
+    );
+  });
 });

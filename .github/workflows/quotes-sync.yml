@@ -5,13 +5,22 @@ on:
   # this workflow remains available on-demand via workflow_dispatch for manual maintenance.
   workflow_dispatch:
     inputs:
+      text_source:
+        description: 'Text source: auto (R2 first -> mirrors), r2 (Cloudflare R2 only, 0s delay), or mirrors (PG HTTPS only)'
+        required: true
+        type: choice
+        default: 'auto'
+        options:
+          - auto
+          - r2
+          - mirrors
       limit:
         description: 'Max books to sync'
         required: false
         type: string
         default: '50'
       delay_range:
-        description: 'Delay range in sec (min-max)'
+        description: 'Mirror fallback delay in sec (min-max; Cloudflare R2 reads use 0s delay)'
         required: false
         type: string
         default: '8-16'
@@ -26,17 +35,17 @@ on:
         type: string
         default: ''
       mirror_pglaf:
-        description: 'Mirror: gutenberg.pglaf.org'
+        description: 'Mirror: gutenberg.pglaf.org (used in auto / mirrors)'
         required: false
         type: boolean
         default: true
       mirror_aleph:
-        description: 'Mirror: aleph.gutenberg.org'
+        description: 'Mirror: aleph.gutenberg.org (used in auto / mirrors)'
         required: false
         type: boolean
         default: false
       mirror_readingroo:
-        description: 'Mirror: gutenberg.readingroo.ms'
+        description: 'Mirror: gutenberg.readingroo.ms (used in auto / mirrors)'
         required: false
         type: boolean
         default: false
@@ -86,7 +95,7 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TEXT_SOURCE: ${{ github.event.inputs.text_source }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
           INPUT_DELAY_RANGE: ${{ github.event.inputs.delay_range }}
           INPUT_TARGET_COUNT: ${{ github.event.inputs.target_count }}
@@ -97,24 +106,35 @@ jobs:
           INPUT_FORCE: ${{ github.event.inputs.force_refresh }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
-          QUOTE_ARGS=""
-          if [ "$EVENT_NAME" = "schedule" ]; then
-            QUOTE_ARGS="$QUOTE_ARGS --mirrors=pglaf"
-          else
-            MIRRORS=""
-            if [ "$INPUT_MIRROR_PGLAF" != "false" ]; then
-              MIRRORS="pglaf"
-            fi
-            if [ "$INPUT_MIRROR_ALEPH" = "true" ]; then
-              MIRRORS="${MIRRORS:+$MIRRORS,}aleph"
-            fi
-            if [ "$INPUT_MIRROR_READINGROO" = "true" ]; then
-              MIRRORS="${MIRRORS:+$MIRRORS,}readingroo"
-            fi
-            if [ -z "$MIRRORS" ]; then
-              echo "Error: At least one mirror worker must be checked." >&2
+          TEXT_SOURCE="${INPUT_TEXT_SOURCE:-auto}"
+          case "$TEXT_SOURCE" in
+            auto|r2|mirrors) ;;
+            *)
+              echo "Error: invalid text_source '$TEXT_SOURCE' (expected 'auto', 'r2', or 'mirrors')." >&2
+              exit 1
+              ;;
+          esac
+          QUOTE_ARGS="--source=$TEXT_SOURCE"
+          MIRRORS=""
+          if [ "$INPUT_MIRROR_PGLAF" != "false" ]; then
+            MIRRORS="pglaf"
+          fi
+          if [ "$INPUT_MIRROR_ALEPH" = "true" ]; then
+            MIRRORS="${MIRRORS:+$MIRRORS,}aleph"
+          fi
+          if [ "$INPUT_MIRROR_READINGROO" = "true" ]; then
+            MIRRORS="${MIRRORS:+$MIRRORS,}readingroo"
+          fi
+          if [ "$TEXT_SOURCE" = "r2" ]; then
+            QUOTE_ARGS="$QUOTE_ARGS --mirrors=none"
+          elif [ -z "$MIRRORS" ]; then
+            if [ "$TEXT_SOURCE" = "mirrors" ]; then
+              echo "Error: At least one mirror worker must be checked when text_source is 'mirrors'." >&2
               exit 1
             fi
+            echo "Notice: No fallback mirrors checked — auto mode will read from Cloudflare R2 only and skip uncached books cleanly."
+            QUOTE_ARGS="$QUOTE_ARGS --mirrors=none"
+          else
             QUOTE_ARGS="$QUOTE_ARGS --mirrors=$MIRRORS"
           fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then
