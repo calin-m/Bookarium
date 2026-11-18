@@ -653,6 +653,22 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(clean).toHaveLength(0);
     });
 
+    it('permits R2 and Gutenberg asset fetch helpers registered in FETCH_SANITIZER_FUNCTIONS across CLI scripts', () => {
+      const cleanR2Cli = runRuleOnCode(
+        'no-tainted-request-sink',
+        `function isAllowedR2EndpointUrl(u: string) { return u.startsWith('https://'); }
+        function isAllowedGutenbergAssetUrl(u: string) { return u.startsWith('https://'); }
+        export async function runCli(argv: string[]) {
+          const url = String(argv[0] || '');
+          if (isAllowedR2EndpointUrl(url) || isAllowedGutenbergAssetUrl(url)) {
+            await fetch(url);
+          }
+        }`,
+        'scripts/sync-r2-assets.js'
+      );
+      expect(cleanR2Cli).toHaveLength(0);
+    });
+
     it('flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")', () => {
       const violations = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',

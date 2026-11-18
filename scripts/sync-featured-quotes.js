@@ -11,10 +11,10 @@
  *
  * @module scripts/sync-featured-quotes
  * @scope Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
- * @invariant Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
+ * @invariant Read plain texts from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`) first when `R2_*` credentials are configured, falling back transparently to Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
  * @invariant Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
- * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), respects Project Gutenberg mirror politeness rules, and avoids 78k-row PostgreSQL statement timeouts.
- * @adr ADR-074, ADR-080
+ * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while honoring zero-key local fallback (`Rule 4`), and avoids 78k-row PostgreSQL statement timeouts.
+ * @adr ADR-074, ADR-080, ADR-083
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
@@ -26,6 +26,13 @@
 const fs = require('fs');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  PRIORITY_HERO_BOOK_IDS,
+  PRIORITY_HERO_BOOK_ID_SET,
+  loadEnv,
+  isR2Configured,
+  fetchBookTextFromR2,
+} = require('./sync-r2-assets');
 
 function resolveSiteOriginFallback(env = process.env) {
   const candidates = [
@@ -121,44 +128,8 @@ function isAllowedPglafMirrorUrl(rawUrl) {
 }
 
 /**
- * Canonical 27 Hero & Editorial Classic Book IDs (`FEATURED_HERO_BOOKS` in `src/config/featured-books.ts`).
- * Prioritized at the front of the unpopulated Tier 1 Popular queue so initial weekly
- * `catalog-sync.yml` / manual `quotes-sync.yml` runs guarantee 10–16 multi-quote spreads in Supabase for all Hero/Editorial classics.
+ * Canonical 27 Hero & Editorial Classic Book IDs imported from `scripts/sync-r2-assets.js` (`FEATURED_HERO_BOOKS`).
  */
-const PRIORITY_HERO_BOOK_IDS = [
-  1342, 84, 2701, 64317, 11, 174, 1661, 345, 98, 35, 2600, 135, 2554, 1260,
-  768, 5200, 43, 1184, 1232, 132, 2680, 1727, 514, 2147, 164, 205, 76,
-];
-const PRIORITY_HERO_BOOK_ID_SET = new Set(PRIORITY_HERO_BOOK_IDS);
-
-function loadEnv(rootDir = path.resolve(__dirname, '..')) {
-  const envFiles = ['.env.local', '.env'];
-  const env = { ...process.env };
-
-  for (const file of envFiles) {
-    const fullPath = path.join(rootDir, file);
-    if (fs.existsSync(fullPath)) {
-      const content = fs.readFileSync(fullPath, 'utf8');
-      content.split('\n').forEach((line) => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#')) {
-          const m = trimmed.match(/^([A-Z0-9_]+)=(.*)$/);
-          if (m && !env[m[1]]) {
-            let val = m[2].trim();
-            if (
-              (val.startsWith('"') && val.endsWith('"')) ||
-              (val.startsWith("'") && val.endsWith("'"))
-            ) {
-              val = val.slice(1, -1);
-            }
-            env[m[1]] = val;
-          }
-        }
-      });
-    }
-  }
-  return env;
-}
 
 /**
  * Resolves a comma-separated list of mirror shortcodes (`pglaf,aleph,readingroo`)
@@ -1600,6 +1571,7 @@ function escapeMarkdownCell(value) {
 }
 
 function describeQuoteSource(source) {
+  if (source === 'r2') return 'Cloudflare R2';
   if (source === 'supabase-content') return 'Stored text';
   if (source === 'stored') return 'Database';
   if (!source || source === 'none') return '—';
@@ -1696,11 +1668,15 @@ function formatRunReport(summary, context = {}) {
     ''
   );
   const mirrorEntries = Object.entries(summary.mirrorBreakdown || {});
-  if (mirrorEntries.length > 0) {
-    lines.push(
-      `Mirrors: ${mirrorEntries.map(([url, n]) => `${describeQuoteSource(url)} ${n}`).join(', ')}`,
-      ''
-    );
+  if (summary.fromR2 > 0 || mirrorEntries.length > 0) {
+    const parts = [];
+    if (summary.fromR2 > 0) parts.push(`Cloudflare R2 ${summary.fromR2}`);
+    if (mirrorEntries.length > 0) {
+      parts.push(
+        `Mirrors: ${mirrorEntries.map(([url, n]) => `${describeQuoteSource(url)} ${n}`).join(', ')}`
+      );
+    }
+    lines.push(parts.join(' · '), '');
   }
 
   lines.push('### Books Processed', '');
@@ -1737,6 +1713,9 @@ function formatConsoleSummary(summary, context = {}) {
     `  • This Run:       ${countOutcome('updated')} saved · ${countOutcome('refreshed')} refreshed · ${countOutcome('no-quotes')} placeholder · ${countOutcome('already-quoted')} skipped · ${countOutcome('failed')} failed · ${summary.pruned || 0} pruned`,
   ];
 
+  if (summary.fromR2 > 0) {
+    lines.push(`  • From R2:        ${summary.fromR2} book(s) (0 mirror delay)`);
+  }
   const mirrorEntries = Object.entries(summary.mirrorBreakdown || {});
   if (mirrorEntries.length > 0) {
     lines.push(
@@ -1989,6 +1968,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     skippedExisting: 0,
     skippedByScheduleGate: false,
     fromSupabaseContent: 0,
+    fromR2: 0,
     fromMirrors: 0,
     sentinelMarked: 0,
     pruned: 0,
@@ -2291,11 +2271,22 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         summary.fromSupabaseContent++;
         await persistExtractedBookQuotes(book, existingQuotes, book.content, 'supabase-content', 0);
       } else {
-        mirrorWorkQueue.push({
-          book,
-          existingQuotes,
-          attemptedMirrors: new Set(),
-        });
+        const hasR2 = typeof deps.fetchBookFromR2 === 'function' || isR2Configured(env);
+        const r2Res = hasR2
+          ? typeof deps.fetchBookFromR2 === 'function'
+            ? await deps.fetchBookFromR2(book.id)
+            : await fetchBookTextFromR2(book.id, { env, fetchFn })
+          : null;
+        if (r2Res && r2Res.status === 'ok' && typeof r2Res.text === 'string' && r2Res.text.trim().length >= 500) {
+          summary.fromR2++;
+          await persistExtractedBookQuotes(book, existingQuotes, r2Res.text, 'r2', 0);
+        } else {
+          mirrorWorkQueue.push({
+            book,
+            existingQuotes,
+            attemptedMirrors: new Set(),
+          });
+        }
       }
     } catch (err) {
       summary.failed++;
@@ -2522,6 +2513,7 @@ module.exports = {
   scanTwoTierPools,
   resolveManualRunTiers,
   computeTierProgress,
+  describeQuoteSource,
   formatInitialPoolBanner,
   formatRunReport,
   formatConsoleSummary,

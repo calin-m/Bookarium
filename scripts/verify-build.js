@@ -1145,6 +1145,7 @@ function pass5AdrValidation() {
     'scripts/ingest-catalog.js',
     'scripts/ingest-translations.js',
     'scripts/purge-vercel-cache.js',
+    'scripts/sync-r2-assets.js',
     'scripts/sync-featured-quotes.js',
     'scripts/sync-gutenberg-catalog.js',
     'scripts/lib/ast-parser.js',

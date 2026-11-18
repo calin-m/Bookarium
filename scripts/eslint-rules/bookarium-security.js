@@ -49,6 +49,8 @@ const FETCH_SANITIZER_FUNCTIONS = new Set([
   'sanitizeLocalDevUrl',
   'isAllowedRdfFeedUrl',
   'isAllowedCsvFeedUrl',
+  'isAllowedGutenbergAssetUrl',
+  'isAllowedR2EndpointUrl',
   'resolveFeedMirrors',
 ]);
 

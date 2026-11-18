@@ -1365,7 +1365,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, `quote-diff.json` hand-off, PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, Cloudflare R2 `ListObjectsV2` / `rsync --files-from` / PGLAF HTTPS delta asset sync (`_meta/r2-sync-state.json.gz`, copyright/withdrawn pruning, bounded `$GITHUB_STEP_SUMMARY` tables), `quote-diff.json` hand-off, R2-first + PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 
@@ -1631,24 +1631,24 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       purpose: 'Appends `&teamId=...` to the Vercel tag-purge API request in `scripts/purge-vercel-cache.js` when targeting a team-owned Vercel project.',
     },
     R2_ACCOUNT_ID: {
-      scope: 'Server-Only Runtime Environment Variable (Vercel & `.env.local`)',
-      fallback: 'When any `R2_*` variable is omitted, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback) and plain text degrades to zero-key Gutenberg mirrors (`Rule 4`).',
-      purpose: 'Cloudflare account identifier building the private R2 S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts`.',
+      scope: 'Server-Only & CI Runtime Environment Variable (Vercel, GitHub Actions Secrets & `.env.local`)',
+      fallback: 'When any `R2_*` variable is omitted, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback), plain text degrades to zero-key Gutenberg mirrors (`Rule 4`), CI R2 sync skips cleanly (`exit 0`), and `quotes:sync` falls back to PGLAF mirrors.',
+      purpose: 'Cloudflare account identifier building the private R2 S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts` and `scripts/sync-r2-assets.js`.',
     },
     R2_BUCKET_NAME: {
-      scope: 'Server-Only Runtime Environment Variable (Vercel & `.env.local`)',
+      scope: 'Server-Only & CI Runtime Environment Variable (Vercel, GitHub Actions Secrets & `.env.local`)',
       fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
-      purpose: 'Private Cloudflare R2 bucket name (`bookarium-assets`) storing `covers/<id>.jpg` and `books/<id>.txt.gz`.',
+      purpose: 'Private Cloudflare R2 bucket name (`bookarium-assets`) storing `covers/<id>.jpg`, `books/<id>.txt.gz`, and `_meta/r2-sync-state.json.gz`.',
     },
     R2_ACCESS_KEY_ID: {
-      scope: 'Server-Only R2 S3 Credential (Vercel Read-Only Recommended & `.env.local`)',
+      scope: 'Server-Only & CI R2 S3 Credential (Vercel Read-Only Recommended, GitHub Secrets Read/Write & `.env.local`)',
       fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
-      purpose: 'S3 API access key ID used strictly server-side by `src/lib/r2-client.ts` for AWS SigV4 signed `GET` object requests.',
+      purpose: 'S3 API access key ID used strictly server-side and in CI/CLI pipelines for AWS SigV4 signed `GET` (`r2-client.ts`, `sync-featured-quotes.js`) and `ListObjectsV2`/`PutObject`/`DeleteObject` (`sync-r2-assets.js`).',
     },
     R2_SECRET_ACCESS_KEY: {
-      scope: 'Server-Only Signing Secret (Vercel Read-Only Recommended & `.env.local`)',
+      scope: 'Server-Only & CI Signing Secret (Vercel Read-Only Recommended, GitHub Secrets Read/Write & `.env.local`)',
       fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
-      purpose: 'HMAC-SHA256 secret signing AWS Signature V4 requests to private Cloudflare R2 storage inside `src/lib/r2-client.ts`.',
+      purpose: 'HMAC-SHA256 secret signing AWS Signature V4 requests to private Cloudflare R2 storage inside `src/lib/r2-client.ts` and `scripts/sync-r2-assets.js`.',
     },
     NODE_ENV: {
       scope: 'Framework & Build-Time Runtime Constant',
@@ -2450,6 +2450,7 @@ const TIER_1_CONTRACTED_MODULES = [
   'src/stores/useAuthStore.ts',
   'src/stores/useReaderStore.ts',
   'scripts/sync-gutenberg-catalog.js',
+  'scripts/sync-r2-assets.js',
   'scripts/sync-featured-quotes.js',
 ];
 

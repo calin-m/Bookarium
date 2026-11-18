@@ -26,9 +26,9 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `275` (`src/**` + `scripts/*.js`)
-- **Annotated Contract Modules**: `64` (**23.3%** coverage; `13` Tier-1 + `17` Tier-2 + `18` Tier-3 + `16` Tier-4 = `64` Protected)
-- **Extracted Module Invariants**: `128`
+- **Total Scanned Executable Modules**: `276` (`src/**` + `scripts/*.js`)
+- **Annotated Contract Modules**: `65` (**23.6%** coverage; `14` Tier-1 + `17` Tier-2 + `18` Tier-3 + `16` Tier-4 = `65` Protected)
+- **Extracted Module Invariants**: `129`
 - **Symbol-Level Contracts**: `1`
 - **Pending Annotation Queue**: `211` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
@@ -42,7 +42,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 | **App Router Pages & Layouts** | `25` | `1` | `24` | 4.0% |
 | **UI & Feature Components** | `114` | `0` | `114` | 0.0% |
 | **Config & Type Contracts** | `17` | `0` | `17` | 0.0% |
-| **CLI Pipelines & Governance** | `18` | `8` | `10` | 44.4% |
+| **CLI Pipelines & Governance** | `19` | `9` | `10` | 47.4% |
 
 ---
 
@@ -800,7 +800,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (12 tests)
 
 
-### Layer: CLI Pipelines & Governance (8 Contracted)
+### Layer: CLI Pipelines & Governance (9 Contracted)
 
 #### [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) *(Tier-4 Protected)*
 
@@ -813,7 +813,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-067](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
 - **AST Blast Radius**: 3 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (28 tests)
+- **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (29 tests)
 
 #### [`scripts/ingest-catalog.js`](../scripts/ingest-catalog.js) *(Tier-4 Protected)*
 
@@ -883,14 +883,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
+  - Read plain texts from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`) first when `R2_*` credentials are configured, falling back transparently to Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker), redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when a book yields 0 extractable spreads.
   - Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
 - **Design Rationale (`@rationale`)**:
-  - Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), respects Project Gutenberg mirror politeness rules, and avoids 78k-row PostgreSQL statement timeouts.
-- **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while honoring zero-key local fallback (`Rule 4`), and avoids 78k-row PostgreSQL statement timeouts.
+- **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-083](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`
-- **Test Contract**: [`scripts/sync-featured-quotes.test.ts`](../scripts/sync-featured-quotes.test.ts) (18 tests)
+- **Test Contract**: [`scripts/sync-featured-quotes.test.ts`](../scripts/sync-featured-quotes.test.ts) (19 tests)
 
 #### [`scripts/sync-gutenberg-catalog.js`](../scripts/sync-gutenberg-catalog.js) *(Tier-1 Protected)*
 
@@ -905,6 +905,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
 - **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (41 tests)
+
+#### [`scripts/sync-r2-assets.js`](../scripts/sync-r2-assets.js) *(Tier-1 Protected)*
+
+- **Intended Scope (`@scope`)**: Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted `rsync --files-from` / PGLAF HTTPS transfers.
+- **Behavioral Invariants (`@invariant`)**:
+  - Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), invoke `rsync`/`wsl` strictly with `{ shell: false }`, and exit `0` cleanly when `R2_*` credentials are unconfigured.
+- **Design Rationale (`@rationale`)**:
+  - Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` eliminates 78k remote directory walks on CI runners while `_meta/r2-sync-state.json.gz` (`DEFAULT_MISSING_RECHECK_DAYS` TTL) suppresses repeated missing-cover probes, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
+- **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md)
+- **AST Blast Radius**: 1 runtime, 0 type-only ([`scripts/sync-featured-quotes.js`](../scripts/sync-featured-quotes.js))
+- **Cross-Boundary Coupling**: DB Tables: `public.books`
+- **Test Contract**: [`scripts/sync-r2-assets.test.ts`](../scripts/sync-r2-assets.test.ts) (11 tests)
 
 ---
 

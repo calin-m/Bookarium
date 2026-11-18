@@ -50,14 +50,15 @@ npm run docs:contracts
 # Quality audit report (Pass 4 engine audit)
 npm run report
 
-# Public Domain Catalog Ingestion, Quotes & Translation Pipelines
+# Public Domain Catalog Ingestion, R2 Asset Sync, Quotes & Translation Pipelines
 npm run catalog:sync
+npm run r2:sync
 npm run catalog:ingest
 npm run translations:sync
 npm run quotes:sync
 ```
 
-> ⚡ **GitHub Actions & Edge Cache Automation**: For all 9 GitHub Actions workflows (triggers, `workflow_dispatch` inputs, required/optional secrets, `catalog-cache` release bootstrap, CodeQL/Dependency Review gates, and manual `Vercel-Cache-Tag` purges), see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md). For the 7-Gateway Quality Engine and console telemetry formats, see [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md).
+> ⚡ **GitHub Actions & Edge Cache Automation**: For all 10 GitHub Actions workflows (triggers, `workflow_dispatch` inputs, required/optional secrets, `catalog-cache` release bootstrap, CodeQL/Dependency Review gates, and manual `Vercel-Cache-Tag` purges), see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md). For the 7-Gateway Quality Engine and console telemetry formats, see [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md).
 
 ---
 
@@ -70,7 +71,7 @@ Configure these variables in `.env.local` for local development, in **Vercel Pro
 | Target Platform | What Goes Here | How to Set Up |
 | :--- | :--- | :--- |
 | 🚀 **Vercel Project Settings**<br>*(Production Web App)* | • `NEXT_PUBLIC_SITE_URL`<br>• `NEXT_PUBLIC_SUPABASE_URL`<br>• `NEXT_PUBLIC_SUPABASE_ANON_KEY`<br>• `NEXT_PUBLIC_GITHUB_REPO` *(Optional)*<br>• `NEXT_PUBLIC_TURNSTILE_SITE_KEY` *(Optional)*<br>• `NEXT_PUBLIC_LEGAL_CONTACT_FORM` *(Optional)*<br>• `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` *(Optional)*<br>• `R2_ACCOUNT_ID` *(Optional)*<br>• `R2_BUCKET_NAME` *(Optional)*<br>• `R2_ACCESS_KEY_ID` *(Optional, Read-Only)*<br>• `R2_SECRET_ACCESS_KEY` *(Optional, Read-Only)* | Go to **Vercel Dashboard $\to$ Project $\to$ Settings $\to$ Environment Variables**. Ensure all variables needed by browser visitors and edge routes are set. |
-| ⚙️ **GitHub Actions Secrets**<br>*(Automated Cron / CI Sync)* | • `NEXT_PUBLIC_SUPABASE_URL`<br>• `SUPABASE_SERVICE_ROLE_KEY`<br>• `GUTENBERG_CONTACT_EMAIL` *(Optional)*<br>• `VERCEL_API_TOKEN` *(Optional, recommended)*<br>• `VERCEL_PROJECT_ID` *(Optional, recommended)*<br>• `VERCEL_TEAM_ID` *(Optional, team/personal team)* | Go to **GitHub Repository $\to$ Settings $\to$ Secrets and variables $\to$ Actions $\to$ New repository secret**. Used by background catalog, quote, translation, and Edge cache purge workflows. |
+| ⚙️ **GitHub Actions Secrets**<br>*(Automated Cron / CI Sync)* | • `NEXT_PUBLIC_SUPABASE_URL`<br>• `SUPABASE_SERVICE_ROLE_KEY`<br>• `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` *(Optional, bucket-scoped Read & Write for `catalog-sync.yml` / `r2-sync.yml`)*<br>• `GUTENBERG_CONTACT_EMAIL` *(Optional)*<br>• `VERCEL_API_TOKEN` *(Optional, recommended)*<br>• `VERCEL_PROJECT_ID` *(Optional, recommended)*<br>• `VERCEL_TEAM_ID` *(Optional, team/personal team)* | Go to **GitHub Repository $\to$ Settings $\to$ Secrets and variables $\to$ Actions $\to$ New repository secret**. Used by background catalog, R2 asset, quote, translation, and Edge cache purge workflows. |
 | 💻 **Local `.env.local`**<br>*(Development Machine)* | • All public `NEXT_PUBLIC_*` variables<br>• `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` *(Optional, local R2 serving)*<br>• `SUPABASE_SERVICE_ROLE_KEY` *(if running local sync)*<br>• `GUTENBERG_CONTACT_EMAIL` *(Optional)* | Copy `.env.example` to `.env.local`. This file is gitignored and stays strictly on your computer. |
 | 🔑 **Supabase Dashboard**<br>*(Where to obtain keys)* | • `NEXT_PUBLIC_SUPABASE_URL` *(Project URL)*<br>• `NEXT_PUBLIC_SUPABASE_ANON_KEY` *(anon public key)*<br>• `SUPABASE_SERVICE_ROLE_KEY` *(service_role secret key)* | Open your **Supabase Dashboard $\to$ Project Settings $\to$ API**. Copy keys from *Project API Keys*. |
 
@@ -94,8 +95,8 @@ Configure these variables in `.env.local` for local development, in **Vercel Pro
 | **`DEV_COUNTRY`** | ISO 3166-1 alpha-2 code (`US`, `RO`, `DE`, `MX`, `GB`) | • `.env.local` only *(Dev)* | **Dev Override**: Simulates reading from specific countries to test multi-jurisdictional copyright rules (`Life+70`, `Life+80`, `Life+100`). |
 | **`R2_ACCOUNT_ID`** | Cloudflare Dashboard $\to$ R2 Overview $\to$ *Account ID* | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | **Server-Only R2 Endpoint Identifier**: Builds private S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts`. |
 | **`R2_BUCKET_NAME`** | Cloudflare Dashboard $\to$ R2 $\to$ Bucket Name (e.g. `bookarium-assets`) | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | **Server-Only R2 Bucket Name**: Targets `covers/<id>.jpg` and `books/<id>.txt.gz` inside private R2 storage via `/api/books/content`. |
-| **`R2_ACCESS_KEY_ID`** | Cloudflare Dashboard $\to$ R2 $\to$ Manage R2 API Tokens *(Read-Only recommended for Vercel)* | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | **Server-Only S3 Access Key**: Signs AWS SigV4 `GET` requests in `src/lib/r2-client.ts` (never exposed to browser bundles). |
-| **`R2_SECRET_ACCESS_KEY`** | Cloudflare Dashboard $\to$ R2 $\to$ Manage R2 API Tokens *(Read-Only recommended for Vercel)* | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional)* | ⚠️ **Server-Only Signing Secret**: Derives `AWS4-HMAC-SHA256` keys for private R2 asset reads (`type=cover` & `.txt.gz` streams). |
+| **`R2_ACCESS_KEY_ID`** | Cloudflare Dashboard $\to$ R2 $\to$ Manage R2 API Tokens *(Read-Only in Vercel / Read & Write in GitHub Secrets)* | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional, Read-Only)*<br>• GitHub Actions Secrets *(Optional, Read/Write)* | **Server-Only S3 Access Key**: Signs AWS SigV4 `GET` requests in Vercel/local `r2-client.ts` & `sync-featured-quotes.js` and `List`/`Put`/`Delete` operations in `sync-r2-assets.js`. |
+| **`R2_SECRET_ACCESS_KEY`** | Cloudflare Dashboard $\to$ R2 $\to$ Manage R2 API Tokens *(Read-Only in Vercel / Read & Write in GitHub Secrets)* | • `.env.local` *(Optional)*<br>• Vercel Project Settings *(Optional, Read-Only)*<br>• GitHub Actions Secrets *(Optional, Read/Write)* | ⚠️ **Server-Only Signing Secret**: Derives `AWS4-HMAC-SHA256` keys for private R2 asset reads (`type=cover` & `.txt.gz` streams) and CI asset synchronization. |
 
 ---
 

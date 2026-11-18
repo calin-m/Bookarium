@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.58] - 2026-11-18
+### *Automated Cloudflare R2 Delta Asset Sync, Standalone Backfill Workflow & R2-First Quote Pipeline*
+
+### Added
+- **Cloudflare R2 Delta Sync CLI & Missing-Asset TTL Engine (`scripts/sync-r2-assets.js`, `scripts/sync-r2-assets.test.ts`, `package.json`, `scripts/lib/ast-parser.js`, `scripts/verify-build.js`)**: Implemented `npm run r2:sync` under `TIER_1_CONTRACTED_MODULES` (`65` total protected modules) using AWS SigV4 `ListObjectsV2`/`GetObject`/`PutObject`/`DeleteObject` to diff live R2 objects against `gutenberg-catalog-cache.json.gz` or PK-ordered Supabase `public.books`, persist `_meta/r2-sync-state.json.gz` (`90-day` cooldown cache), prioritize `PRIORITY_HERO_BOOK_IDS` + `download_count DESC`, transfer delta batches via shell-free `rsync --files-from` (`aleph.gutenberg.org::gutenberg-epub`/`::gutenberg`, plus WSL/`--source=https` fallback), ban `copyright === true` uploads, prune withdrawn/copyrighted objects, and write bounded `Changed Volumes` Markdown tables to `$GITHUB_STEP_SUMMARY` (`ADR-083`).
+- **Manual R2 Backfill GitHub Actions Workflow & ESLint URL Sanitizers (`.github/workflows/r2-sync.yml`, `scripts/eslint-rules/bookarium-security.js`, `scripts/eslint-rules/bookarium-security.test.ts`, `.env.example`)**: Added the `workflow_dispatch`-only `R2 Asset Delta & Backfill Sync` workflow (`timeout-minutes: 90`, `10` total workflows, SHA-pinned actions & `env:`-bound inputs) for bulk seeding and ID repairs using bucket-scoped Read/Write GitHub Secrets while keeping Vercel Read-Only, and registered `isAllowedR2EndpointUrl` & `isAllowedGutenbergAssetUrl` inside `FETCH_SANITIZER_FUNCTIONS` (`ADR-083`).
+
+### Changed
+- **Crash-Safe Weekly R2 Sync Sequencing & R2-First Quote Extraction (`.github/workflows/catalog-sync.yml`, `.github/workflows/quotes-sync.yml`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`)**: Inserted bounded Sunday R2 delta sync (`--max-minutes=25`, skipping cleanly when `R2_*` unset) after `sync-gutenberg-catalog.js` and before `Publish Updated Catalog Snapshot Cache` and `sync-featured-quotes.js`, passed optional `R2_*` credentials into `quotes-sync.yml`, and updated `runFeaturedQuotesSync` to read `books/<id>.txt.gz` from R2 ahead of `mirrorWorkQueue` while falling back transparently to PGLAF mirrors (`ADR-083`).
+- **Pipeline Runbooks, Architecture Diagrams & Governance Telemetry Synchronization (`scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`, `DEVELOPMENT.md`, `README.md`, `docs/ARCHITECTURE.md`, `SECURITY.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Recorded `ADR-083`, synchronized `scriptMetaMap`/`scriptSuiteMetaMap`/`workflowResponsibilityMap`/`wfOrder` across Diagrams `1`, `8`, `10`, and `12` alongside the CI & External Integration matrices, updated `10`-workflow runbooks, and synced live `262`-suite test counts (`ADR-083`).
+
+
 ## [2.9.57] - 2026-11-18
 ### *Private Cloudflare R2 Asset Serving, Zero-Dep AWS SigV4 Client & Zero-Hotlink Download Hub*
 
@@ -1470,3 +1482,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-080: Fluid Multi-Resolution Kinematics, Touch-Safe Dismissal, Catalog-Unified Multi-Quote Spreads & Zero-Pull Homepage Gutenberg Shield for 3D Hero Book**
 - **ADR-081: AST-Compiled System Contracts & Behavioral Invariant Specification (`docs/SYSTEM_CONTRACTS.md`)**
 - **ADR-082: Cloudflare R2 Zero-Egress Asset Serving & Strict No-PG-Hotlinking Architecture**
+- **ADR-083: Automated Cloudflare R2 Delta Asset Sync & R2-First Quote Pipeline**

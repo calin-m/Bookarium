@@ -30,6 +30,15 @@ on:
           - gutenberg.pglaf.org
           - aleph.gutenberg.org
           - www.gutenberg.org
+      skip_r2:
+        description: 'Skip Cloudflare R2 delta asset sync step'
+        required: false
+        type: boolean
+        default: false
+      r2_limit:
+        description: 'Optional max volumes for R2 delta sync (defaults to limit or 25m time budget)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -40,9 +49,9 @@ concurrency:
 
 jobs:
   sync:
-    name: Stream & Sync Gutenberg Catalog, Translations & Quotes
+    name: Stream & Sync Gutenberg Catalog, R2 Assets, Translations & Quotes
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout Repository
@@ -101,6 +110,45 @@ jobs:
           fi
           node scripts/sync-gutenberg-catalog.js $CMD_ARGS
 
+      - name: Run Cloudflare R2 Delta Asset Sync
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_SKIP_R2: ${{ github.event.inputs.skip_r2 }}
+          INPUT_R2_LIMIT: ${{ github.event.inputs.r2_limit }}
+        run: |
+          if [ "$INPUT_SKIP_R2" = "true" ]; then
+            echo "Skipping Cloudflare R2 delta asset sync (skip_r2=true)."
+            exit 0
+          fi
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_BUCKET_NAME" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 delta sync cleanly."
+            exit 0
+          fi
+          R2_ARGS="--source=rsync --max-minutes=25"
+          if [ -f "gutenberg-catalog-cache.json.gz" ]; then
+            R2_ARGS="$R2_ARGS --cache-file=gutenberg-catalog-cache.json.gz"
+          fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            R2_ARGS="$R2_ARGS --dry-run"
+          fi
+          EFFECTIVE_R2_LIMIT="${INPUT_R2_LIMIT:-$INPUT_LIMIT}"
+          if [ -n "$EFFECTIVE_R2_LIMIT" ]; then
+            if [[ ! "$EFFECTIVE_R2_LIMIT" =~ ^[0-9]+$ ]] || [ "$EFFECTIVE_R2_LIMIT" = "0" ]; then
+              echo "Error: r2_limit/limit input must be a positive integer." >&2
+              exit 1
+            fi
+            R2_ARGS="$R2_ARGS --limit=$EFFECTIVE_R2_LIMIT"
+          fi
+          node scripts/sync-r2-assets.js $R2_ARGS
+
       - name: Publish Updated Catalog Snapshot Cache
         env:
           GH_TOKEN: ${{ github.token }}
@@ -154,6 +202,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |

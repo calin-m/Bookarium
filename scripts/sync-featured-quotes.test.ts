@@ -1493,4 +1493,105 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       })
     ).toBe('http://localhost:3000');
   });
+
+  it('reads books/<id>.txt.gz from private R2 first ahead of PGLAF mirrors when configured and falls back cleanly on R2 miss', async () => {
+    const sampleBookText = Array.from(
+      { length: 22 },
+      (_, i) =>
+        `Chapter ${i + 1}\n\n"A genuine classic passage number ${i + 1} that illuminates the quiet resilience of human curiosity across generations." — Narrative Reflection\n\nOrdinary filler paragraph describing a quiet street lamp glowing through the November fog outside the library window.`
+    ).join('\n\n');
+
+    const updateEqMock = vi.fn(async () => ({ error: null }));
+    const r2Supabase = {
+      from: vi.fn((table: string) => {
+        expect(table).toBe('books');
+        return {
+          select: vi.fn(() => ({
+            in: vi.fn(async () => ({
+              data: [
+                {
+                  id: 1342,
+                  title: 'Pride and Prejudice',
+                  authors: [{ name: 'Austen, Jane' }],
+                  translators: [],
+                  subjects: ['Fiction'],
+                  languages: ['en'],
+                  copyright: false,
+                  quotes: [],
+                  content: null,
+                  download_count: 55000,
+                },
+                {
+                  id: 84,
+                  title: 'Frankenstein',
+                  authors: [{ name: 'Shelley, Mary' }],
+                  translators: [],
+                  subjects: ['Gothic'],
+                  languages: ['en'],
+                  copyright: false,
+                  quotes: [],
+                  content: null,
+                  download_count: 42000,
+                },
+              ],
+              error: null,
+            })),
+            eq: vi.fn(() => ({
+              not: vi.fn(async () => ({ data: [], error: null })),
+            })),
+          })),
+          update: vi.fn(() => ({ eq: updateEqMock })),
+        };
+      }),
+    };
+
+    const mirrorFetchMock = vi.fn(async (url: string) => {
+      if (url.includes('gutenberg.pglaf.org/8/84/84-0.txt')) {
+        return {
+          ok: true,
+          status: 200,
+          url,
+          headers: { get: () => 'text/plain; charset=utf-8' },
+          text: async () => sampleBookText,
+        };
+      }
+      return {
+        ok: false,
+        status: 404,
+        url,
+        headers: { get: () => 'text/plain' },
+        text: async () => 'Not Found',
+      };
+    });
+
+    const fetchBookFromR2Mock = vi.fn(async (bookId: number) => {
+      if (bookId === 1342) {
+        return { status: 'ok', text: sampleBookText };
+      }
+      return { status: 'not_found' };
+    });
+
+    const summary = await quotesSync.runFeaturedQuotesSync(
+      { ids: [1342, 84], limit: 2, minDelaySec: 0, maxDelaySec: 0, mirrors: ['pglaf'], targetCount: 10 },
+      {
+        env: {},
+        supabaseClient: r2Supabase,
+        fetchFn: mirrorFetchMock,
+        fetchBookFromR2: fetchBookFromR2Mock,
+        sleepFn: async () => {},
+        logger: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
+        writeSeedFile: false,
+      }
+    );
+
+    expect(quotesSync.describeQuoteSource('r2')).toBe('Cloudflare R2');
+    expect(fetchBookFromR2Mock).toHaveBeenCalledTimes(2);
+    // 1342 came straight from R2 without touching PGLAF mirrors; only 84 hit PGLAF
+    expect(summary.fromR2).toBe(1);
+    expect(summary.fromMirrors).toBe(1);
+    expect(summary.updated).toBe(2);
+    expect(mirrorFetchMock.mock.calls.every(([u]: [string]) => !u.includes('1342'))).toBe(true);
+    expect(summary.report).toContain('Cloudflare R2 1');
+    expect(summary.books.find((b: { id: number }) => b.id === 1342)?.source).toBe('r2');
+  });
 });

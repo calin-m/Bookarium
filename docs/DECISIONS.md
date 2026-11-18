@@ -2119,6 +2119,23 @@
 
 ---
 
+## ADR-083: Automated Cloudflare R2 Delta Asset Sync & R2-First Quote Pipeline
+
+- **Date**: 2026-11-18
+- **Status**: Accepted
+- **Context**:
+  1. **Keeping Private R2 Assets Synchronized Without Bulk Bucket Costs**: Following Batch 1 (`ADR-082`) runtime R2 migration, Bookarium needed an autonomous weekly synchronization and manual backfill pipeline to populate missing `books/<id>.txt.gz` and `covers/<id>.jpg` objects for newly added public-domain works, prune withdrawn or newly copyrighted PG IDs (`copyright === true`), avoid wasting weekly requests re-probing permanently coverless volumes, and stay cleanly within Cloudflare R2 Free Tier Class A/B limits even though object storage lacks SQL B-Tree indexes.
+  2. **Cutting External Mirror Pressure in Weekly Quote Extraction**: Previously, `scripts/sync-featured-quotes.js` fetched every unpopulated book's text over `8.0s–16.0s` paced PGLAF HTTP requests even after texts were already stored privately in R2.
+- **Decision**:
+  1. **Zero-Dependency R2 Delta Engine & Hybrid Transfer Strategy (`scripts/sync-r2-assets.js`, `scripts/sync-r2-assets.test.ts`, `package.json`)**: Implemented `npm run r2:sync` under `TIER_1_CONTRACTED_MODULES` (`65` total protected modules) using AWS SigV4 (`ListObjectsV2`, `GetObject`, `PutObject`, `DeleteObject`) to inventory live `books/` and `covers/` keys in ~157 Class A calls, cache confirmed-missing covers/texts under `_meta/r2-sync-state.json.gz` with a `90-day` cooldown (`DEFAULT_MISSING_RECHECK_DAYS`, bypassable via `--recheck-missing` / `--force`), prioritize `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC`, ban `copyright === true` uploads (`Rule 2/4`), prune copyrighted or withdrawn IDs (`MIN_ACTIVE_CATALOG_FOR_PRUNE` + `500`-item cap), transfer missing batches via shell-free targeted `rsync --files-from` (`aleph.gutenberg.org::gutenberg-epub` -> `::gutenberg`, with `--source=wsl-rsync` or throttled PGLAF HTTPS fallback when native `rsync` is unavailable on Windows), emit a Pre-Batch Coverage Banner plus bounded `Changed Volumes` Markdown Run Reports to `$GITHUB_STEP_SUMMARY` (`<= 100` full or top `50` + overflow note), and register `isAllowedR2EndpointUrl` / `isAllowedGutenbergAssetUrl` inside `bookarium-security.js` (`FETCH_SANITIZER_FUNCTIONS`).
+  2. **Crash-Safe Weekly Orchestration & Dedicated Manual Backfill Workflow (`.github/workflows/catalog-sync.yml`, `.github/workflows/r2-sync.yml`, `.github/workflows/quotes-sync.yml`, `.env.example`)**: Scheduled weekly R2 delta sync inside `catalog-sync.yml` (`--max-minutes=25`, skipped gracefully with `exit 0` if `R2_*` secrets are unset) right **after** `sync-gutenberg-catalog.js` writes `gutenberg-catalog-cache.json.gz` locally and **before** publishing the updated `catalog-cache` GitHub Release or running `sync-featured-quotes.js`; added manual `workflow_dispatch`-only `r2-sync.yml` (`timeout-minutes: 90`, `10` total workflows) for initial bulk seeding and ID repairs using a bucket-scoped Read/Write token in GitHub Secrets while keeping Vercel and local `.env.local` tokens Read-Only.
+  3. **R2-First Quote Extraction (`scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`)**: Updated `runFeaturedQuotesSync` to check `books/<id>.txt.gz` via `fetchBookTextFromR2` (when `R2_*` credentials are configured) after Supabase `content` and strictly ahead of `mirrorWorkQueue`, reporting `From R2` / `Cloudflare R2` counts in console and `$GITHUB_STEP_SUMMARY` while seamlessly falling back to PGLAF mirrors on R2 `not_found`, `error`, or keyless local clones (`Rule 4`).
+- **Consequences**:
+  - Ephemeral Ubuntu CI runners keep Cloudflare R2 continuously current via targeted delta `rsync --files-from` without full 78k remote directory walks, and R2 remains self-healing if a job reaches `--max-minutes` before snapshot advancement.
+  - Weekly quote extraction reads cached `.txt.gz` volumes directly from R2 at zero egress and millisecond latency, shrinking external PGLAF mirror requests solely to rare misses or unconfigured local development runs.
+
+---
+
 ## 🗄️ Decommissioned & Superseded Decisions Ledger
 
 | Retired / Superseded Subsystem | Original ADR(s) | Superseding ADR | Architectural Rationale for Retirement / Evolution |

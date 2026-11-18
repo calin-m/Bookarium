@@ -82,6 +82,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           EVENT_NAME: ${{ github.event_name }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
           INPUT_DELAY_RANGE: ${{ github.event.inputs.delay_range }}

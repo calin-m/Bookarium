@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 18 Nov 2026 01:19:57 GMT  
+**Last Generated**: Wed, 18 Nov 2026 08:42:44 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 261 passed  
-**Total Verified Tests**: 2720 passed  
+**Total Test Suites**: 262 passed  
+**Total Verified Tests**: 2733 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2720 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **262/262 test suites passed** (2733 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 82 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 83 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.25%** (16272/16731) — *Target: $\ge$ 95%*
-- **Statements**: **96.01%** (17529/18257) — *Target: $\ge$ 95%*
-- **Functions**: **95.05%** (3498/3680) — *Target: $\ge$ 92%*
-- **Branches**: **88.39%** (16248/18381) — *Target: $\ge$ 85%*
+- **Lines**: **97.21%** (16265/16731) — *Target: $\ge$ 95%*
+- **Statements**: **95.94%** (17517/18257) — *Target: $\ge$ 95%*
+- **Functions**: **94.97%** (3495/3680) — *Target: $\ge$ 92%*
+- **Branches**: **88.45%** (16259/18381) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2720 Tests)
+## 🧪 Comprehensive Test Suite Catalog (262 Suites / 2733 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 333 Tests)
 
@@ -2068,7 +2068,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (54 Suites · 685 Tests)
+### 📚 Gutenberg Parsers & Metadata (55 Suites · 698 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2884,7 +2884,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (28 tests)</summary>
+<summary><b><code>scripts/eslint-rules/bookarium-security.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `flags unencrypted http:// URLs and direct untrusted searchParams in fetch()`
 - ✔ `permits HTTPS and relative internal API fetch() calls`
@@ -2911,6 +2911,7 @@
 - ✔ `flags describe.only, it.only, expect(true).toBe(true), and zero-assertion test blocks in test files`
 - ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
 - ✔ `permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries`
+- ✔ `permits R2 and Gutenberg asset fetch helpers registered in FETCH_SANITIZER_FUNCTIONS across CLI scripts`
 - ✔ `flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")`
 - ✔ `flags external gutendex.com runtime URLs in production code while permitting DTO types and test fixtures (ADR-080)`
 - ✔ `verifies zero AST, parse, or taint violations across src/, scripts/, public/sw.js, and next.config.ts`
@@ -3009,7 +3010,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -3029,6 +3030,7 @@
 - ✔ `consumes --diff-file (quote-diff.json) without scanning the database pool, prioritizes promotedIds, and prunes demotedIds`
 - ✔ `discovers 100% of out-of-window quoted books via partial index pagination, applies Option-A cushion & drain, and yields past 500 prunes`
 - ✔ `resolves canonical site origin fallback from NEXT_PUBLIC_SITE_URL and normalized Vercel production hostnames`
+- ✔ `reads books/<id>.txt.gz from private R2 first ahead of PGLAF mirrors when configured and falls back cleanly on R2 miss`
 
 </details>
 
@@ -3076,6 +3078,23 @@
 - ✔ `computes wire SHA-256 digests on valid CSV streams and rejects Content-Length truncated streams`
 - ✔ `rejects corrupted RDF archive streams fail-closed when tar exits non-zero or Content-Length mismatches`
 - ✔ `appends Markdown digest summary rows to GITHUB_STEP_SUMMARY when configured`
+
+</details>
+
+<details>
+<summary><b><code>scripts/sync-r2-assets.test.ts</code></b> (11 tests)</summary>
+
+- ✔ `validates server-only R2 credentials strictly and rejects malformed identifiers`
+- ✔ `restricts R2 endpoints and PG asset URLs strictly to HTTPS allowlisted hosts`
+- ✔ `parses flags cleanly and rejects malformed CLI values`
+- ✔ `resolves rsync, wsl-rsync, or https transfer engines safely based on OS capabilities`
+- ✔ `signs canonical ListObjectsV2 query parameters and paginates prefix keys`
+- ✔ `fetches and decompresses R2 book text safely and rejects HTML or oversized responses`
+- ✔ `reads and prunes expired 90-day entries from _meta/r2-sync-state.json.gz`
+- ✔ `prioritizes 27 hero classics then popularity DESC, honors cooldowns, excludes copyrighted uploads, and enforces 50k prune safety floor`
+- ✔ `permits withdrawn ID deletion cleanly when full >= 50,000 catalog is verified within prune cap`
+- ✔ `executes shell-free rsync --files-from batches, compresses texts, uploads R2 assets, records misses, and writes bounded summary tables`
+- ✔ `supports PGLAF HTTPS fallback, respects --max-minutes cutoff, caps huge ledgers cleanly, and skips unconfigured runs`
 
 </details>
 

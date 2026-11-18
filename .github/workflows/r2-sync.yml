@@ -1,0 +1,176 @@
+name: R2 Asset Delta & Backfill Sync
+
+on:
+  # Weekly delta execution runs inside catalog-sync.yml (Sundays 02:00 UTC);
+  # this workflow remains available on-demand via workflow_dispatch for bulk R2 backfills and repairs.
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max missing/queued volumes to process (leave blank to run within max_minutes budget)'
+        required: false
+        type: string
+        default: ''
+      ids:
+        description: 'Comma-separated Gutenberg IDs (blank = scan catalog & prioritize popular)'
+        required: false
+        type: string
+        default: ''
+      source:
+        description: 'Transfer engine (auto = rsync if installed else PGLAF HTTPS)'
+        required: false
+        type: choice
+        default: 'rsync'
+        options:
+          - rsync
+          - https
+          - auto
+      sync_books:
+        description: 'Sync missing/updated book texts (books/<id>.txt.gz)'
+        required: false
+        type: boolean
+        default: true
+      sync_covers:
+        description: 'Sync missing book cover artwork (covers/<id>.jpg)'
+        required: false
+        type: boolean
+        default: true
+      force:
+        description: 'Re-download and overwrite existing R2 objects for targeted scope'
+        required: false
+        type: boolean
+        default: false
+      recheck_missing:
+        description: 'Bypass 90-day confirmed-missing cooldown in _meta/r2-sync-state.json.gz'
+        required: false
+        type: boolean
+        default: false
+      prune_withdrawn:
+        description: 'Delete copyrighted (copyright=true) or withdrawn PG objects from R2'
+        required: false
+        type: boolean
+        default: true
+      max_minutes:
+        description: 'Time budget cutoff in minutes (saves progress cleanly before runner timeout)'
+        required: false
+        type: string
+        default: '75'
+      dry_run:
+        description: 'Dry run (inspect R2 inventory and delta plan without mutating R2)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r2-asset-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-r2:
+    name: Delta Sync & Backfill Cloudflare R2 Assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Restore Catalog Snapshot Cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release download catalog-cache --repo "$GITHUB_REPOSITORY" -p "gutenberg-catalog-cache.json.gz" --clobber || echo "No catalog-cache snapshot found; script will query Supabase public.books."
+          gh release download catalog-cache --repo "$GITHUB_REPOSITORY" -p "gutenberg-catalog-cache.json.gz.sha256" --clobber || echo "No snapshot .sha256 sidecar found."
+
+      - name: Run Cloudflare R2 Delta Asset Sync
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_IDS: ${{ github.event.inputs.ids }}
+          INPUT_SOURCE: ${{ github.event.inputs.source }}
+          INPUT_SYNC_BOOKS: ${{ github.event.inputs.sync_books }}
+          INPUT_SYNC_COVERS: ${{ github.event.inputs.sync_covers }}
+          INPUT_FORCE: ${{ github.event.inputs.force }}
+          INPUT_RECHECK_MISSING: ${{ github.event.inputs.recheck_missing }}
+          INPUT_PRUNE_WITHDRAWN: ${{ github.event.inputs.prune_withdrawn }}
+          INPUT_MAX_MINUTES: ${{ github.event.inputs.max_minutes }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_BUCKET_NAME" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 sync cleanly."
+            exit 0
+          fi
+          if [ "$INPUT_SYNC_BOOKS" = "false" ] && [ "$INPUT_SYNC_COVERS" = "false" ]; then
+            echo "Error: Both sync_books and sync_covers cannot be false." >&2
+            exit 1
+          fi
+          R2_ARGS=""
+          if [ -f "gutenberg-catalog-cache.json.gz" ]; then
+            R2_ARGS="$R2_ARGS --cache-file=gutenberg-catalog-cache.json.gz"
+          fi
+          case "${INPUT_SOURCE:-rsync}" in
+            auto|rsync|https)
+              R2_ARGS="$R2_ARGS --source=${INPUT_SOURCE:-rsync}"
+              ;;
+            *)
+              echo "Error: Unsupported source '${INPUT_SOURCE}'." >&2
+              exit 1
+              ;;
+          esac
+          if [ "$INPUT_SYNC_BOOKS" = "false" ]; then
+            R2_ARGS="$R2_ARGS --covers-only"
+          elif [ "$INPUT_SYNC_COVERS" = "false" ]; then
+            R2_ARGS="$R2_ARGS --books-only"
+          fi
+          if [ "$INPUT_FORCE" = "true" ]; then
+            R2_ARGS="$R2_ARGS --force"
+          fi
+          if [ "$INPUT_RECHECK_MISSING" = "true" ]; then
+            R2_ARGS="$R2_ARGS --recheck-missing"
+          fi
+          if [ "$INPUT_PRUNE_WITHDRAWN" = "false" ]; then
+            R2_ARGS="$R2_ARGS --no-prune"
+          fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            R2_ARGS="$R2_ARGS --dry-run"
+          fi
+          if [ -n "$INPUT_LIMIT" ]; then
+            if [[ ! "$INPUT_LIMIT" =~ ^[0-9]+$ ]] || [ "$INPUT_LIMIT" = "0" ]; then
+              echo "Error: limit input must be a positive integer." >&2
+              exit 1
+            fi
+            R2_ARGS="$R2_ARGS --limit=$INPUT_LIMIT"
+          fi
+          if [ -n "$INPUT_MAX_MINUTES" ]; then
+            if [[ ! "$INPUT_MAX_MINUTES" =~ ^[0-9]+$ ]] || [ "$INPUT_MAX_MINUTES" = "0" ]; then
+              echo "Error: max_minutes input must be a positive integer." >&2
+              exit 1
+            fi
+            R2_ARGS="$R2_ARGS --max-minutes=$INPUT_MAX_MINUTES"
+          fi
+          if [ -n "$INPUT_IDS" ]; then
+            if [[ ! "$INPUT_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+              echo "Error: ids input must be a comma-separated list of positive integers." >&2
+              exit 1
+            fi
+            R2_ARGS="$R2_ARGS --ids=$INPUT_IDS"
+          fi
+          node scripts/sync-r2-assets.js $R2_ARGS
