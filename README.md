@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-260%20Suites%20%7C%202714%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.27%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202720%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.25%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -34,14 +34,14 @@ An open-source, offline-first web application and reader for discovering, readin
 * **✍️ Highlight Text & Write Margin Notes (`/notebook`)**:
   * Select any sentence or paragraph while reading to **highlight it in 4 colors** and attach your own **written notes**.
   * Review all of your saved highlights and notes in one central **Notebook**—organized either by book or in chronological order—and filter them by highlight color, keyword search, or whether they include a personal note.
-* **✈️ Read Offline Without Internet or Download E-Book Files**:
+* **✈️ Read Offline Without Internet or Export Plain-Text Editions**:
   * **One-Click Browser Offline Reading**: Save individual books directly to your browser (`Save Offline`) so you can browse your saved library and read full books **completely offline** (on flights, commutes, or as an installed mobile/desktop app).
-  * **Download Standard E-Book Files**: Download any book as an **EPUB** (for Apple Books, Kobo, Nook, or PocketBook), **Kindle (MOBI)**, **Plain Text (UTF-8)**, or **HTML** file for external e-readers.
+  * **Self-Hosted Cloudflare R2 Assets & Direct `.txt` Downloads**: Bookarium self-hosts book texts (`books/<id>.txt.gz`) and cover artwork (`covers/<id>.jpg`) on private **Cloudflare R2** storage served through same-origin `/api/books/content` routes (`404` dark typographic fallback on missing covers, with zero Gutenberg hotlinking). Download any cleared book as **Clean Plain Text (UTF-8 `.txt`)** in the **Download Hub** (*in-house EPUB, Kindle, and HTML generators coming soon*).
 * **🏛️ Organize Your Shelves, Ratings & Reading Progress (`/bookshelf`, `/favorites`, `/bookmarks`)**:
   * Save books to a general shelf or create your own **custom-named shelves**, mark **Favorites**, rate books from **1 to 5 stars**, and track your reading status (**Want to Read**, **Reading**, **On Hold**, or **Finished**).
   * View all the books you have in progress in a dedicated **Bookmarks** list showing your current chapter, page, bookmarked line, and completion percentage so you can jump right back in.
 * **📖 Read Comfortably with Custom Fonts, Themes & Line-Level Bookmarks (`/read/[id]`)**:
-  * Read complete, unabridged books in a clean, distraction-free view that automatically formats archival plain-text files into readable chapters and pages.
+  * Read complete, unabridged books in a clean, distraction-free view that automatically formats Bookarium-hosted plain-text editions into readable chapters and pages.
   * Customize **Day (Light)**, **Sepia (Warm Coffee)**, or **Dark** themes, and adjust **font style** (Serif, Sans-Serif, Monospace), **font size** (`12px–36px`), **line spacing**, **page width**, and **page brightness** (`30%–100%`).
   * **Bookmark Any Specific Line**: Drag the margin bookmark ribbon to the **exact line on a page** where you stopped reading—even if you resize the font or switch between a phone and a desktop screen, the reader remembers that exact sentence and highlights it for you.
   * **Search Inside Any Book & Switch Languages**: Search for any word or phrase across the entire book with instant chapter/page jump links, and switch between available **translated editions** of the same work in one click.
@@ -68,14 +68,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2714 tests across 260 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2720 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across all `src/` & CLI modules. | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 81 validated ADRs (`ADR-001` through `ADR-081`) governing zero-API-key operation, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, unified Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 82 validated ADRs (`ADR-001` through `ADR-082`) governing zero-API-key operation, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, unified Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
@@ -110,12 +110,13 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.56)
+## 🛠️ Latest Improvements (v2.9.57)
 
-- **Context-Aware `/account` Bottom Capsule Dock (`src/components/account/AccountBottomDock.tsx`, `AccountBottomDock.test.tsx`, `src/app/account/page.tsx`)**: Replaced standalone `BackToTop` on `/account` with an ambient floating capsule dock built on `AmbientCapsuleDock` + `useAmbientDockScrollState`, exposing per-tab section anchors, an interactive upward Accolades category filter popover, a `Preferences` theme cycler, online active-session refresh, Guest Offline workspace toggles, and Scroll-to-Top muting (`ADR-080`).
-- **Explicit `run-name` Template for `Sync catalog-cache Tag` (`.github/workflows/catalog-tag-sync.yml`, `docs/GITHUB_ACTIONS.md`, `docs/ARCHITECTURE.md`)**: Added top-level `run-name: 'Refresh catalog-cache Source Archives (${{ github.event_name }} on ${{ github.ref_name }})'` beneath `name: Sync catalog-cache Tag` (matching `codeql.yml` and `dependency-review.yml`) so each GitHub Actions run renders its exact tag/source-archive refresh action rather than inheriting the commit message (`ADR-073`, `ADR-080`).
-- **Streamlined 4-Tab `Scholar Profile`-First `/account` Workspace & `PublicProfileView`-Styled Identity Header (`src/app/account/page.tsx`, `AccountIdentityCard.tsx`, `AccountPublicProfileSection.tsx`, `AccountSymposiumSection.tsx`, `AccountHabitsCard.tsx`, `AccountAccoladesCard.tsx`, `AccountPreferencesSection.tsx`, `AccountNarrationSubPanel.tsx`, `useAccountSecurityActions.ts`)**: Applied `PublicProfileView` hero styling to `AccountIdentityCard` (gradient 2-letter monogram, ambient glows, `Joined` date sub-row, streak & Sign Out actions without duplicate links), promoted View/Edit `Scholar Profile` (`Public View` header CTA, `Edit` ↔ `Cancel` + `Save`) + stacked Fellowships to Tab 1, unified `Habits` & `Accolades` to `rounded-3xl shadow-xs`, flattened sub-tabs, and pruned dead name state from `TIER_3` `useAccountSecurityActions` (`ADR-055`, `ADR-080`).
-- **Zero-Shift Unified `EditorialUnderlineTabs` (`recessed-capsule`), Swipe Guard, Compact Mobile Labels, Legacy `?tab=symposiums` & Guest Offline Tabs (`src/components/ui/EditorialUnderlineTabs.tsx`, `src/components/ui/EditorialUnderlineTabs.test.tsx`, `src/app/account/page.tsx`, `src/app/account/page.test.tsx`)**: Unified `/account`'s 4-tab `ACCOUNT_TABS` and 2-tab Guest Offline switcher under `EditorialUnderlineTabs` (`variant="recessed-capsule"`) with a recessed `bg-muted/55` track, GPU `translate3d` sliding `bg-card` capsule (`usePerformanceTier` + `ResizeObserver`), fixed equal-column slots (`grid-cols-4`/`grid-cols-2`), identical active/inactive button padding, compact stacked `< md` `mobileLabel`s (`Profile`, `Habits`, `Prefs`, `Security`), `data-no-swipe="true"`, and `?tab=symposiums` smooth scrolling (`ADR-080`).
+- **Zero-Dependency Private R2 Client & Explicit R2 Secret/Boundary Guards (`src/lib/r2-client.ts`, `src/lib/r2-client.test.ts`, `scripts/verify-build.js`, `scripts/lib/sast-validators.js`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/ast-parser.js`, `.env.example`, `DEVELOPMENT.md`)**: Implemented a built-in `node:crypto` AWS Signature V4 (`AWS4-HMAC-SHA256`) and bounded `node:zlib` `gunzip` (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`) client gated on 4 optional server-only variables (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) with `redirect: 'manual'` and HTML rejection, promoted `src/lib/r2-client.ts` into `TIER_1_CONTRACTED_MODULES` (`64` total), and enforced R2/AWS S3 secret-literal, `NEXT_PUBLIC_R2_*`, and client-module `r2-client.ts`/`R2_*` boundary guards in `Pass 0.5`, `sast-validators`, and ESLint (`ADR-082`).
+- **Strict R2-Only Cover Proxy & Zero-PG Text Fallback When Configured (`src/app/api/books/content/route.ts`, `src/app/api/books/content/metadata-cache.ts`, `src/app/api/books/content/route.test.ts`)**: Switched `/api/books/content?type=cover` to serve `covers/<id>.jpg` strictly from private R2 (`s-maxage=604800`, `X-Bookarium-Source: r2`) returning `404 no-store` on missing/unconfigured lookups with zero PG mirror fallback, extended `bookContentLruCache` with `r2` attribution, and routed plain-text fetches through R2 (`books/<id>.txt.gz`, `404`/`502` on R2 miss/error) when `isR2Configured()`, preserving 4-mirror fallback strictly for unconfigured local clones (`ADR-082`).
+- **Zero-Hotlinking Same-Origin Client Cover Resolution & `img-src` CSP Hardening (`src/hooks/useOfflineCoverImage.ts`, `next.config.ts`, `public/sw.js`, `src/hooks/useOfflineCoverImage.test.ts`, `BookCard.test.tsx`, `BookmarkCard.test.tsx`, `src/mocks/handlers.ts`)**: Retired `resolveGutenbergCoverCandidates` and removed all 5 Project Gutenberg hostnames from `next.config.ts` `images.remotePatterns` and CSP `img-src` (`'self' data: blob:`), routing PG cover URLs via `resolveBookCoverUrl` directly to `/api/books/content?id=<bookId>&type=cover` so missing covers cleanly render each card's dark typographic fallback on first error (`ADR-082`).
+- **Zero-Hotlink Download Hub & Direct R2 Plain-Text Export (`src/components/presentation/DownloadDrawer.tsx`, `DownloadDrawer.test.tsx`, `BookCard.tsx`, `BookshelfSpine.tsx`, `copyright/page.tsx`, `privacy/page.tsx`, `layout.tsx`)**: Eliminated external Project Gutenberg format `<a href>` hotlinks from Download Hub, wired **Clean Plain Text (`.txt`)** (`Default`) exports to `/api/books/content?id=<bookId>` and cached `getOfflineBook` IndexedDB / TanStack Query text via sanitized UTF-8 `Blob` saves with inline `404`/`451` error alerts, grayed out unbuilt `EPUB`, `Kindle`, and `Web HTML` slots as disabled `Coming Soon` cards awaiting future in-house generators, and updated sibling tooltips and copy (`ADR-082`).
+- **Self-Hosted Cloudflare R2 Documentation & Architecture Diagram Synchronization (`README.md`, `CONTRIBUTING.md`, `src/lib/offline-storage.ts`, `scripts/generate-architecture-matrix.js`, `docs/ARCHITECTURE.md`, `docs/SYSTEM_CONTRACTS.md`, `SECURITY.md`)**: Reconciled remaining pre-R2 mirror/EPUB copy in `README.md` (`What You Can Do` + Vercel `R2_*` env checklist + footer notice), `CONTRIBUTING.md`, `offline-storage.ts` `@rationale` contracts, Diagrams `6` and `13`, `Data Pulling & Caching Strategy`, `5-Layer Caching` matrices, and `SECURITY.md` rate-limiter descriptions so living architecture and setup docs accurately reflect self-hosted Cloudflare R2 cover/text serving (`ADR-082`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -130,11 +131,11 @@ Bookarium runs on an open, decentralized architecture requiring **Zero Paid Deve
 |---|---|---|
 | **Dedicated Supabase Catalog** | [`public.books`](#step-3-populate-public-domain-book-catalog-optional) (PostgreSQL) | Primary catalog provider hosting 78,000+ Project Gutenberg titles with automated GIN full-text search (`search_vector`) and pre-computed author lifespan indexes, delivering sub-50ms single-book copyright verification, consistent ~1–2s 32-volume catalog page searches, and zero-egress searches. |
 | **Bundled Curated Classics Archive** | [`src/lib/catalog/curated-fallback.ts`](src/lib/catalog/curated-fallback.ts) | Zero-network bundled classic anthology (`FEATURED_HERO_BOOKS`, strict `copyright=false` jurisdictional filtering) automatically serving `/api/books` searches when Supabase is unconfigured without external API dependencies (`ADR-080`). |
-| **Project Gutenberg CDN & Mirrors** | [`gutenberg.org`](https://www.gutenberg.org/) • Mirrors | Content delivery network and mirrors (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`) providing plain text (`.txt`), official EPUB packages (`.epub.images`), Kindle/MOBI formats, and web-ready HTML. |
+| **Cloudflare R2 & Archive Feeds** | Private R2 Bucket • [`gutenberg.org`](https://www.gutenberg.org/) | Zero-egress private Cloudflare R2 storage serving pre-seeded cover artwork (`covers/<id>.jpg`) and gzipped public-domain texts (`books/<id>.txt.gz`), paired with PG mirror feeds (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms`) for catalog/translation ingestion and zero-key unconfigured text fallback (`ADR-082`). |
 | **Wikidata SPARQL Knowledge Graph** | [`query.wikidata.org`](https://query.wikidata.org/) • [`CC0 1.0`](https://www.wikidata.org/) | Open public-domain bibliographic knowledge graph (`wdt:P2034` Project Gutenberg eBook ID, `wdt:P407` / `wdt:P424` language of work) powering relational FRBR work clustering across multilingual editions (`public.book_translations`). |
 | **Supabase (Auth, Sync & Catalog)** | [`supabase.com`](https://supabase.com/) | Cloud authentication, user library synchronization (bookshelves, annotations, progress, streaks, accolades) with RLS user isolation, and dedicated public domain catalog. |
 | **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, global CDN delivery, and cookie-less aggregate performance telemetry (Vercel Web Analytics & Speed Insights). |
-| **Public Domain Archive Proxies** | `/api/books`, `/api/books/content` & `/api/books/translations` | Next.js server-side route proxies providing multi-tier Vercel Edge CDN caching (`12h` 48-volume rotating quote pool, `24h` 11-column catalog & plain-text/OG card streams, `7d` quote/metadata ID batches, FRBR translations, and `?type=cover` Gutenberg mirror cover image proxy), Supabase/curated-fallback catalog resolution, Tier 1/Tier 2 content streaming, and guaranteed public domain integrity before client delivery. |
+| **Public Domain Archive Proxies** | `/api/books`, `/api/books/content` & `/api/books/translations` | Next.js server-side route proxies providing multi-tier Vercel Edge CDN caching (`12h` 48-volume rotating quote pool, `24h` 11-column catalog & plain-text/OG card streams, `7d` quote/metadata ID batches, FRBR translations, and strict R2-only `?type=cover` asset streaming with `404` dark typographic fallback on misses), Supabase/curated-fallback catalog resolution, and guaranteed public domain integrity before client delivery. |
 
 ---
 
@@ -166,7 +167,7 @@ Bookarium is structured around six core engineering pillars:
 * **Synchronized W3C Voice Read-Aloud (Text-to-Speech)**: Offline-first narration (`window.speechSynthesis`, `useReaderSpeech.ts`) with automatic language-voice pairing, amber sentence highlight tracking, speed presets (`0.85x–2.0x`), and OS MediaSession lockscreen controls, plus native browser translation guidance.
 
 ### 4. ⚡ Offline-First Persistence, Cloud Sync & Data Sovereignty
-* **Native IndexedDB Offline Storage, Mirror-Agnostic Cover LRU & Adaptive Offline Catalog**: Persists unabridged book texts (`offline_books`) and mirror-agnostic binary cover `Blob`s (`BookariumOfflineDB` v2: downloaded `offline_books` + bounded `300`-entry / `30d` `cover_cache` LRU, resolved via `useOfflineCoverImage.ts` before mirror fallback for `< 5ms` refreshes) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
+* **Native IndexedDB Offline Storage, Same-Origin R2 Cover LRU & Adaptive Offline Catalog**: Persists unabridged book texts (`offline_books`) and local binary cover `Blob`s (`BookariumOfflineDB` v2: downloaded `offline_books` + bounded `300`-entry / `30d` `cover_cache` LRU, resolved via `useOfflineCoverImage.ts` ahead of same-origin `/api/books/content?type=cover` R2 reads with zero external cover hotlinking) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: 2-column archival reading ledger with silk ribbon markers, live progress percentages, multi-attribute sorting, status filtering, completed book progress latching (`Read Again` flow), and 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails).
 * **In-Reader Highlighting, Dual-State Marginalia & Commonplace Notebook (`/notebook`)**: 4 pastel highlighters with page-boundary partial span matching, a **Dual-State Read/Edit Marginalia Popover** (`TextHighlightPopover.tsx`), composite union cards for overlapping personal + Fellow Scholar highlights (`pairOverlappingAnnotations`), and 1-click academic citation export.
 * **7-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, fellowships, and unified `profiles.preferences` JSONB (`usePreferencesStore` / `useThemeStore`) with `TOKEN_REFRESHED` wake-up re-sync, paired with `{ count: 'estimated' }` planner scans, 11-column selective projection, `(select auth.uid())` RLS `InitPlan` policies (`47` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
@@ -244,7 +245,7 @@ flowchart TD
             ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
             LangDrawer["ReaderLanguageDrawer\n(International Editions Handoff)"]
             AnnotDrawer["ReaderAnnotationsDrawer\n(In-Volume Highlights, Notes & Deep Links)"]
-            DownDrawer["DownloadDrawer\n(Download Hub: Offline Cache & Compact 2x2 Format Grid)"]
+            DownDrawer["DownloadDrawer\n(Download Hub: Offline Cache, R2 .txt Export & Coming-Soon Formats)"]
         end
         
         subgraph StateStores ["Zustand Persistent State & Offline Engine"]
@@ -286,7 +287,7 @@ flowchart TD
         RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Public RSC Auth Bypass)"]
         ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs • Vercel-Cache-Tag, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\n(supabase-provider.ts • curated-fallback.ts)"]
-        ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d Cover Image Proxy • Tier 1 DB / Tier 2 4-Mirror Waterfall)"]
+        ProxyContent["GET /api/books/content\n(24h Text & OG Card • 7d R2 Cover Proxy • Strict R2 Covers/Text when Configured + Zero-Key Fallback)"]
         ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • Vary: x-vercel-ip-country • Vercel-Cache-Tag: translations • FRBR Work Mapping)"]
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]
         LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
@@ -306,6 +307,7 @@ flowchart TD
 
     subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
         CuratedArchive["📚 Bundled Curated Archive\n(featured-books.ts • 27 Classics)"]
+        CloudflareR2[("☁️ Cloudflare R2 Private Bucket\n(covers/<id>.jpg • books/<id>.txt.gz)")]
         GutenbergCDN["🌐 Project Gutenberg Mirrors\n(aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms, www.gutenberg.org)"]
         WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
@@ -425,7 +427,8 @@ flowchart TD
     EngineCore --> JointAuthors
     EngineCore --> Translators
     ProxyContent -->|Tier 1: Instant DB Text| SupabaseCloud
-    ProxyContent -->|Tier 2: Multi-Mirror Fallback| GutenbergCDN
+    ProxyContent -->|Tier 1.5: Strict R2 Covers & .txt.gz| CloudflareR2
+    ProxyContent -.->|Tier 2: Plain Text Fallback only when R2 unset| GutenbergCDN
     ReaderPage --> QueryTranslate
     LangDrawer --> QueryTranslate
     QueryTranslate -->|Tier 1: Relational Work Mapping| ProxyBookTranslations
@@ -464,14 +467,14 @@ flowchart TD
 | **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |
 | **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |
 | **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |
-| **6** | **Focus Reader Launch & Multi-Mirror Stream** | HTTP 451 Gatekeeping, 4 Gutenberg Mirrors & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-multi-mirror-streaming--worker-ast](docs/ARCHITECTURE.md) |
+| **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/ARCHITECTURE.md) |
 | **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v7, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |
 | **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/ARCHITECTURE.md#1-github-actions--database-ingestion-topology](docs/ARCHITECTURE.md) |
 | **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/ARCHITECTURE.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/ARCHITECTURE.md) |
-| **10** | **External Integration Topology Diagram** | Boundary Contracts, Allowlisted Mirrors & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |
-| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Mirror Cascades & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |
+| **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, Allowlisted Mirrors & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |
+| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, R2/Mirror Cascades & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |
 | **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/ARCHITECTURE.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/ARCHITECTURE.md) |
-| **13** | **Multi-Tier Caching, Egress Shielding & Cover/Text Waterfall** | 5-Layer Cache Hierarchy, Edge TTLs & Gutenberg Cover/Text Proxy | [docs/ARCHITECTURE.md#2-multi-tier-caching-supabase-egress-shielding--gutenberg-mirror-covertext-waterfall](docs/ARCHITECTURE.md) |
+| **13** | **Multi-Tier Caching, Egress Shielding & R2 Serving** | 5-Layer Cache Hierarchy, Edge TTLs & Cloudflare R2 Cover/Text Proxy | [docs/ARCHITECTURE.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving](docs/ARCHITECTURE.md) |
 | **14** | **Auth, Password Recovery, Session Revocation & Origin Flow** | Edge Refresh Bypass, PKCE/OTP, JWT AMR & Pre-Null Teardown | [docs/ARCHITECTURE.md#3-authentication-password-recovery-session-revocation--origin-security-flow](docs/ARCHITECTURE.md) |
 | **15** | **Literary Fellowship, Symposium & Marginalia Guard Topology** | Reader Circles, Symposiums, Fellow Highlights & DB Triggers | [docs/ARCHITECTURE.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards](docs/ARCHITECTURE.md) |
 <!-- END:architecture-diagrams -->
@@ -629,6 +632,10 @@ Bookarium is architected for zero-config deployment on **[Vercel](https://vercel
    * `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase public anon key
    * `NEXT_PUBLIC_GITHUB_REPO` = your hosted GitHub repository URL (auto-detected if omitted)
    * `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = your optional Cloudflare Turnstile public site key
+   * `R2_ACCOUNT_ID` = your optional Cloudflare R2 account ID (server-only private cover & `.txt.gz` asset hosting)
+   * `R2_BUCKET_NAME` = your optional private Cloudflare R2 bucket name (e.g., `bookarium-assets`)
+   * `R2_ACCESS_KEY_ID` = your optional Read-Only R2 S3 access key ID
+   * `R2_SECRET_ACCESS_KEY` = your optional Read-Only R2 S3 signing secret
 4. Click **Deploy** — Vercel will automatically build the Next.js 16 production bundle, configure edge caching, and provision serverless API proxies.
 ---
 
@@ -676,4 +683,4 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 
 ## ⚖️ License & Public Domain Notice
 
-Licensed under the **MIT License**. All queried literature and book texts originate from **Project Gutenberg** and are in the **Public Domain** (Zero Copyright / CC0) in accordance with international public domain statutes. For detailed term calculations, Berne Convention rules, and our confidential notice & takedown portal, see our [**Copyright & Licensing**](/copyright) policy.
+Licensed under the **MIT License**. Literature metadata and source texts originate from **Project Gutenberg** public domain releases (archived and served via Bookarium's PostgreSQL catalog and private Cloudflare R2 storage) and are in the **Public Domain** (Zero Copyright / CC0) in accordance with international public domain statutes. For detailed term calculations, Berne Convention rules, and our confidential notice & takedown portal, see our [**Copyright & Licensing**](/copyright) policy.

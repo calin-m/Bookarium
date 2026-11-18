@@ -20,7 +20,7 @@ export interface CachedMetadata {
 
 export interface CachedBookContentEntry {
   text: string;
-  source: 'supabase' | 'gutenberg-mirror';
+  source: 'supabase' | 'r2' | 'gutenberg-mirror';
   cachedAt: number;
 }
 
@@ -55,7 +55,7 @@ export function getCachedBookContent(bookId: number): CachedBookContentEntry | u
 export function setCachedBookContent(
   bookId: number,
   text: string,
-  source: 'supabase' | 'gutenberg-mirror'
+  source: 'supabase' | 'r2' | 'gutenberg-mirror'
 ): void {
   if (!text || text.length > MAX_CACHEABLE_BOOK_CHARS) {
     return;

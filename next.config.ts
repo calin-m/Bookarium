@@ -34,13 +34,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GITHUB_REPO: resolveBuildGitRepoUrl(),
   },
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'aleph.gutenberg.org' },
-      { protocol: 'https', hostname: 'gutenberg.pglaf.org' },
-      { protocol: 'https', hostname: 'gutenberg.readingroo.ms' },
-      { protocol: 'https', hostname: 'www.gutenberg.org' },
-      { protocol: 'https', hostname: 'gutenberg.org' },
-    ],
+    remotePatterns: [],
   },
   async rewrites() {
     return [
@@ -74,7 +68,7 @@ const nextConfig: NextConfig = {
       script-src 'self' ${isDev ? "'unsafe-eval' " : ''}'unsafe-inline' https://challenges.cloudflare.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com data:;
-      img-src 'self' data: blob: https://aleph.gutenberg.org https://gutenberg.pglaf.org https://gutenberg.readingroo.ms https://www.gutenberg.org https://gutenberg.org;
+      img-src 'self' data: blob:;
       connect-src ${connectSrc};
       frame-src 'self' https://challenges.cloudflare.com;
       object-src 'none';

@@ -143,7 +143,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong className="text-foreground font-medium">IndexedDB:</strong> Caches unabridged public domain text
-                and EPUB packages when you click &ldquo;Download for Offline&rdquo;, allowing seamless in-browser reading
+                and cover artwork when you click &ldquo;Download for Offline&rdquo;, allowing seamless in-browser reading
                 even without an internet connection.
               </li>
               <li>

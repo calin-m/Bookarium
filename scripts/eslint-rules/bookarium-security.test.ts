@@ -158,20 +158,24 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         `'use client';
         import { createClient } from '@/lib/supabase/server';
         import { isClientSideNavigation } from '@/lib/server-rsc-nav';
+        import { fetchR2CoverBytes } from '@/lib/r2-client';
         import fs from 'fs';
         import http from 'node:http';
         const loadMiddleware = () => import('@/lib/supabase/middleware');
         const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const r2Key = process.env.R2_SECRET_ACCESS_KEY;
         const { DATABASE_URL } = process.env;`,
         'src/components/reader/ReaderSurface.tsx'
       );
-      expect(violations.length).toBeGreaterThanOrEqual(7);
+      expect(violations.length).toBeGreaterThanOrEqual(9);
       expect(violations.some((v) => v.message.includes('@/lib/supabase/server'))).toBe(true);
       expect(violations.some((v) => v.message.includes('@/lib/server-rsc-nav'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('@/lib/r2-client'))).toBe(true);
       expect(violations.some((v) => v.message.includes('@/lib/supabase/middleware'))).toBe(true);
       expect(violations.some((v) => v.message.includes('"fs" is a server-only module'))).toBe(true);
       expect(violations.some((v) => v.message.includes('"node:http" is a server-only module'))).toBe(true);
       expect(violations.some((v) => v.message.includes('SUPABASE_SERVICE_ROLE_KEY'))).toBe(true);
+      expect(violations.some((v) => v.message.includes('R2_SECRET_ACCESS_KEY'))).toBe(true);
       expect(violations.some((v) => v.message.includes('DATABASE_URL'))).toBe(true);
     });
 
@@ -522,6 +526,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         `import { NextResponse } from 'next/server';
         export async function GET(req: { url: string; cookies: { set: (n: string, v: string) => void } }) {
           const badPublicSecret = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+          const badPublicR2 = process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID;
           const srvRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
           const res = NextResponse.json(process.env);
           res.cookies.set('flag', '1', { path: '/' });
@@ -530,7 +535,8 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         }`,
         'src/app/api/books/route.ts'
       );
-      expect(violations).toHaveLength(6);
+      expect(violations).toHaveLength(7);
+      expect(violations.some((v) => v.message.includes('NEXT_PUBLIC_R2_ACCESS_KEY_ID'))).toBe(true);
       expect(violations.some((v) => v.message.includes('never prefix secret'))).toBe(true);
       expect(violations.some((v) => v.message.includes('must not reference SUPABASE_SERVICE_ROLE_KEY'))).toBe(true);
       expect(violations.some((v) => v.message.includes('Exposing raw process.env'))).toBe(true);

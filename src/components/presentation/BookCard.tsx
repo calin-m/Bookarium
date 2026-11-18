@@ -600,7 +600,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                   ? evaluation.reason || `Download unavailable in ${country}`
                   : isUnavailableOffline
                   ? 'Connect to the internet to download this volume'
-                  : 'Download options (EPUB, TXT, Offline)'
+                  : 'Download options (TXT, Offline)'
               }
             >
               <Download className="w-3.5 h-3.5" />

@@ -294,8 +294,14 @@ export const handlers = [
     });
   }),
 
-  // Book content internal proxy handler
-  http.get('/api/books/content', () => {
+  // Book content internal proxy handler (text & binary cover JPEG modes)
+  http.get('/api/books/content', ({ request }) => {
+    const url = new URL(request.url, 'http://localhost:3000');
+    if (url.searchParams.get('type') === 'cover') {
+      return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+        headers: { 'Content-Type': 'image/jpeg' },
+      });
+    }
     return new HttpResponse(sampleBookText, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });

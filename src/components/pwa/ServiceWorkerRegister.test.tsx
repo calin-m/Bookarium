@@ -423,9 +423,9 @@ describe('ServiceWorkerRegister', () => {
         },
       });
 
-      // Cross-origin cover mirror requests must bypass SW completely
+      // Cross-origin requests must bypass SW completely
       const mirrorRes = await harness.dispatchFetch({
-        url: 'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+        url: 'https://cdn.example.org/assets/cover-1342.jpg',
       });
       expect(mirrorRes.intercepted).toBe(false);
 

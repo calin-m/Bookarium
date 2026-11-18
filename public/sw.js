@@ -197,8 +197,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Ignore all cross-origin requests (e.g., Project Gutenberg covers, Supabase REST/Auth APIs, external CDNs)
-  // Cross-origin <img> tags load directly via native browser pipeline and HTTP disk cache under CSP img-src
+  // Ignore all cross-origin requests (e.g., Supabase REST/Auth APIs, external CDNs)
+  // Same-origin cover artwork (/api/books/content?type=cover) is cached in IndexedDB via offline-storage.ts
   if (url.origin !== self.location.origin) {
     return;
   }

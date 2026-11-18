@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 17 Nov 2026 19:24:53 GMT  
+**Last Generated**: Wed, 18 Nov 2026 01:19:57 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 260 passed  
-**Total Verified Tests**: 2714 passed  
+**Total Test Suites**: 261 passed  
+**Total Verified Tests**: 2720 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **260/260 test suites passed** (2714 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2720 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 81 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 82 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.27%** (16100/16551) — *Target: $\ge$ 95%*
-- **Statements**: **96.02%** (17350/18069) — *Target: $\ge$ 95%*
-- **Functions**: **95.04%** (3473/3654) — *Target: $\ge$ 92%*
-- **Branches**: **88.49%** (16121/18216) — *Target: $\ge$ 85%*
+- **Lines**: **97.25%** (16272/16731) — *Target: $\ge$ 95%*
+- **Statements**: **96.01%** (17529/18257) — *Target: $\ge$ 95%*
+- **Functions**: **95.05%** (3498/3680) — *Target: $\ge$ 92%*
+- **Branches**: **88.39%** (16248/18381) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (260 Suites / 2714 Tests)
+## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2720 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 334 Tests)
+### 🚀 App Routes & Pages (31 Suites · 333 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -115,7 +115,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (42 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (41 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
@@ -149,13 +149,12 @@
 - ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
 - ✔ `degrades gracefully from Tier 1 Supabase abortSignal timeout to Tier 2 mirror fetch`
 - ✔ `cascades past AbortError timeouts, HTML outage pages, and oversized streaming payloads across mirrors`
-- ✔ `streams cover image successfully from mirror with Content-Type: image/jpeg and CDN cache headers`
-- ✔ `falls back through mirrors when primary aleph mirror returns 404`
-- ✔ `safely follows trusted redirect hops when fetching cover image`
-- ✔ `returns 502 when all mirrors fail or return error`
-- ✔ `skips oversized cover responses exceeding 2MB threshold`
-- ✔ `skips copyright metadata lookup for type=cover in non-US jurisdictions and emits max-age browser caching headers`
-- ✔ `skips mirrors returning HTTP 200 text/html outage pages on type=cover requests`
+- ✔ `streams cover image strictly from private R2 with Content-Type: image/jpeg and 7d cache headers`
+- ✔ `returns 404 without falling back to Project Gutenberg when cover is missing in R2 or R2 is unconfigured`
+- ✔ `returns 502 without Gutenberg fallback when R2 storage errors, redirects, exceeds 2MB, or serves HTML`
+- ✔ `skips copyright metadata lookup for type=cover in non-US jurisdictions and streams R2 cover with browser caching`
+- ✔ `fetches and gunzips books/<id>.txt.gz from private R2 and serves cached Tier 0 hits with X-Bookarium-Source: r2`
+- ✔ `returns 404 on R2 NoSuchKey and 502 on R2 error without falling back to Project Gutenberg mirrors`
 - ✔ `serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity`
 - ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
 - ✔ `renders the canonical SITE_CONFIG.SITE_HOST domain footer in the type=card OpenGraph JSX tree`
@@ -557,7 +556,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 584 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 586 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -603,7 +602,7 @@
 - ✔ `should call onPreviewClick on mobile when activeView is favorites`
 - ✔ `applies responsive active styling (desktop hide, mobile highlight) when isPreviewActive is true`
 - ✔ `should render cursor tooltip on hover when onPreviewClick is provided`
-- ✔ `tries Gutenberg cover mirrors first and renders fallback cover after all mirrors fail`
+- ✔ `routes Gutenberg cover URLs through /api/books/content and renders dark typographic fallback immediately on cover error`
 - ✔ `falls back to offline IndexedDB cover blob when image error occurs while offline`
 - ✔ `triggers background local cover warming when online mirror image loads`
 - ✔ `triggers preview on Enter or Space key press on cover`
@@ -674,7 +673,7 @@
 - ✔ `toggles Favorite and Bookshelf state via header action buttons with full metadata preservation and without triggering card activation`
 - ✔ `applies status-tinted border and focus ring to the status selector while keeping neutral text and 1080p compact footer sizing`
 - ✔ `renders the compact text-only status pill without icons or truncation popovers`
-- ✔ `prioritizes Gutenberg mirrors for coverUrl and falls back on repeated image errors`
+- ✔ `routes Gutenberg coverUrl through same-origin /api/books/content and falls back cleanly on image error`
 
 </details>
 
@@ -1014,16 +1013,18 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (9 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (11 tests)</summary>
 
-- ✔ `should render download formats when opened with a public domain book in US`
+- ✔ `should render active plain-text export and disabled Coming Soon formats with zero external Gutenberg hotlinks`
 - ✔ `should return null when book is null`
 - ✔ `should neutralize download links and show legal banner when book is protected in UK`
-- ✔ `should provide canonical Gutenberg download links even if book.formats is empty`
+- ✔ `should expose same-origin plain-text download and Coming Soon states even when book.formats is empty`
+- ✔ `fetches plain text via /api/books/content and triggers sanitized Blob download on click`
+- ✔ `displays inline error banner without downloading when /api/books/content returns 404`
 - ✔ `should render content advisory banner when book contains mature subjects`
 - ✔ `renders Browser Offline Cache card and allows saving and removing book for offline reading`
 - ✔ `displays Offline Mode Notice Banner, disables external format links and Save Offline when offline and book is not cached`
-- ✔ `keeps Remove button active when offline and book is already downloaded`
+- ✔ `keeps Remove and cached Plain Text export active when offline and book is already downloaded`
 - ✔ `copies book share link when clicking unified Title + Author block in DownloadDrawer`
 
 </details>
@@ -2067,7 +2068,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (53 Suites · 680 Tests)
+### 📚 Gutenberg Parsers & Metadata (54 Suites · 685 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2553,6 +2554,17 @@
 - ✔ `pushes newer local preferences to cloud when local preferencesUpdatedAt is newer than remote`
 - ✔ `falls back to legacy profile.preferred_theme and profile.font_size when structured preferences is empty`
 - ✔ `self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over default legacy light on refresh`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/r2-client.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `validates R2 env configuration and rejects malformed account IDs or bucket names`
+- ✔ `generates deterministic AWS Signature V4 GET request headers for private R2 paths`
+- ✔ `detects HTML error interstitials by content-type or leading markup snippet`
+- ✔ `fetches cover bytes cleanly from R2 and fails closed on 404, redirects, HTML, and oversize`
+- ✔ `fetches and decompresses .txt.gz book payloads while guarding invalid or corrupt bodies`
 
 </details>
 
@@ -3548,12 +3560,12 @@
 <details>
 <summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (6 tests)</summary>
 
-- ✔ `orders official Gutenberg mirrors ahead of www.gutenberg.org and preserves non-Gutenberg URLs`
+- ✔ `routes Gutenberg and mirror cover URLs through same-origin /api/books/content without external hotlinking`
 - ✔ `sets imageError when not offline or when no cached cover blob exists`
-- ✔ `steps through Gutenberg mirror candidates on repeated errors and resets on prop change`
+- ✔ `resolves same-origin R2 cover route, transitions cleanly to imageError on failure, and resets on prop change`
 - ✔ `loads a blob URL from IndexedDB when offline cover blob is available and revokes it on unmount`
 - ✔ `serves in-memory cached blob URL synchronously and avoids remote warming on blob URLs`
-- ✔ `checks IndexedDB before firing mirror URLs when indexedDB is present and warms cache on mirror load miss`
+- ✔ `checks IndexedDB before serving same-origin cover route and warms cache on load miss`
 
 </details>
 

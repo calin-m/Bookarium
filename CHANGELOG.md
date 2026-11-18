@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.57] - 2026-11-18
+### *Private Cloudflare R2 Asset Serving, Zero-Dep AWS SigV4 Client & Zero-Hotlink Download Hub*
+
+### Added
+- **Zero-Dependency Private R2 Client & Explicit R2 Secret/Boundary Guards (`src/lib/r2-client.ts`, `src/lib/r2-client.test.ts`, `scripts/verify-build.js`, `scripts/lib/sast-validators.js`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/ast-parser.js`, `.env.example`, `DEVELOPMENT.md`)**: Implemented a built-in `node:crypto` AWS Signature V4 (`AWS4-HMAC-SHA256`) and bounded `node:zlib` `gunzip` (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`) client gated on 4 optional server-only variables (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) with `redirect: 'manual'` and HTML rejection, promoted `src/lib/r2-client.ts` into `TIER_1_CONTRACTED_MODULES` (`64` total), and enforced R2/AWS S3 secret-literal, `NEXT_PUBLIC_R2_*`, and client-module `r2-client.ts`/`R2_*` boundary guards in `Pass 0.5`, `sast-validators`, and ESLint (`ADR-082`).
+
+### Changed
+- **Strict R2-Only Cover Proxy & Zero-PG Text Fallback When Configured (`src/app/api/books/content/route.ts`, `src/app/api/books/content/metadata-cache.ts`, `src/app/api/books/content/route.test.ts`)**: Switched `/api/books/content?type=cover` to serve `covers/<id>.jpg` strictly from private R2 (`s-maxage=604800`, `X-Bookarium-Source: r2`) returning `404 no-store` on missing/unconfigured lookups with zero PG mirror fallback, extended `bookContentLruCache` with `r2` attribution, and routed plain-text fetches through R2 (`books/<id>.txt.gz`, `404`/`502` on R2 miss/error) when `isR2Configured()`, preserving 4-mirror fallback strictly for unconfigured local clones (`ADR-082`).
+- **Zero-Hotlinking Same-Origin Client Cover Resolution & `img-src` CSP Hardening (`src/hooks/useOfflineCoverImage.ts`, `next.config.ts`, `public/sw.js`, `src/hooks/useOfflineCoverImage.test.ts`, `BookCard.test.tsx`, `BookmarkCard.test.tsx`, `src/mocks/handlers.ts`)**: Retired `resolveGutenbergCoverCandidates` and removed all 5 Project Gutenberg hostnames from `next.config.ts` `images.remotePatterns` and CSP `img-src` (`'self' data: blob:`), routing PG cover URLs via `resolveBookCoverUrl` directly to `/api/books/content?id=<bookId>&type=cover` so missing covers cleanly render each card's dark typographic fallback on first error (`ADR-082`).
+- **Zero-Hotlink Download Hub & Direct R2 Plain-Text Export (`src/components/presentation/DownloadDrawer.tsx`, `DownloadDrawer.test.tsx`, `BookCard.tsx`, `BookshelfSpine.tsx`, `copyright/page.tsx`, `privacy/page.tsx`, `layout.tsx`)**: Eliminated external Project Gutenberg format `<a href>` hotlinks from Download Hub, wired **Clean Plain Text (`.txt`)** (`Default`) exports to `/api/books/content?id=<bookId>` and cached `getOfflineBook` IndexedDB / TanStack Query text via sanitized UTF-8 `Blob` saves with inline `404`/`451` error alerts, grayed out unbuilt `EPUB`, `Kindle`, and `Web HTML` slots as disabled `Coming Soon` cards awaiting future in-house generators, and updated sibling tooltips and copy (`ADR-082`).
+- **Self-Hosted Cloudflare R2 Documentation & Architecture Diagram Synchronization (`README.md`, `CONTRIBUTING.md`, `src/lib/offline-storage.ts`, `scripts/generate-architecture-matrix.js`, `docs/ARCHITECTURE.md`, `docs/SYSTEM_CONTRACTS.md`, `SECURITY.md`)**: Reconciled remaining pre-R2 mirror/EPUB copy in `README.md` (`What You Can Do` + Vercel `R2_*` env checklist + footer notice), `CONTRIBUTING.md`, `offline-storage.ts` `@rationale` contracts, Diagrams `6` and `13`, `Data Pulling & Caching Strategy`, `5-Layer Caching` matrices, and `SECURITY.md` rate-limiter descriptions so living architecture and setup docs accurately reflect self-hosted Cloudflare R2 cover/text serving (`ADR-082`).
+
+
 ## [2.9.56] - 2026-11-17
 ### *Scholar Profile Account Reorganization, AccountBottomDock & catalog-tag-sync Run-Name Clarity*
 
@@ -1456,3 +1469,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-079: 360-Degree Living Architecture Topology — Event Bus, Sequence Workflows, External Boundaries, Resilience, Deployment & AST Env Dependency Mapping**
 - **ADR-080: Fluid Multi-Resolution Kinematics, Touch-Safe Dismissal, Catalog-Unified Multi-Quote Spreads & Zero-Pull Homepage Gutenberg Shield for 3D Hero Book**
 - **ADR-081: AST-Compiled System Contracts & Behavioral Invariant Specification (`docs/SYSTEM_CONTRACTS.md`)**
+- **ADR-082: Cloudflare R2 Zero-Egress Asset Serving & Strict No-PG-Hotlinking Architecture**

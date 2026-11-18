@@ -9,7 +9,7 @@
  * @scope Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
  * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
  * @rationale Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
- * @adr ADR-073, ADR-080, ADR-081
+ * @adr ADR-073, ADR-080, ADR-081, ADR-082
  */
 
 const fs = require('fs');
@@ -1018,7 +1018,12 @@ function validateServiceWorkerSecurity(swCode) {
 }
 
 const SECRET_NEXT_PUBLIC_ENV_REGEX =
-  /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT)(?:_|$)/i;
+  /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT|ACCESS_KEY_ID|ACCESS_KEY|R2_ACCOUNT_ID|R2_BUCKET_NAME|R2_ACCESS_KEY|R2_SECRET)(?:_|$)/i;
+const CLIENT_FORBIDDEN_SECRET_ENV_VARS = new Set([
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+]);
 
 function isProcessEnvMemberExpr(node) {
   const n = unwrapTsExpressions(node);
@@ -1090,7 +1095,7 @@ function validateEnvAndPrivilegeBoundariesAst(code, options = {}) {
 
   const referencedEnvVars = new Set();
   const envAliasNames = new Set();
-  let hasServiceRoleInClientAst = false;
+  const detectedClientSecrets = new Set();
 
   // First pass: identify variables/params aliased directly to process.env (e.g. env = process.env)
   visitAstNodes(ast, (node) => {
@@ -1153,16 +1158,18 @@ function validateEnvAndPrivilegeBoundariesAst(code, options = {}) {
     }
 
     if (checkClientServiceRole && isClientTree) {
-      if (node.type === 'Identifier' && node.name === 'SUPABASE_SERVICE_ROLE_KEY') {
-        hasServiceRoleInClientAst = true;
+      if (node.type === 'Identifier' && CLIENT_FORBIDDEN_SECRET_ENV_VARS.has(node.name)) {
+        detectedClientSecrets.add(node.name);
       } else if (
-        (node.type === 'StringLiteral' ||
-          node.type === 'Literal' ||
-          node.type === 'TemplateLiteral' ||
-          node.type === 'BinaryExpression') &&
-        getAstStringLiteralValue(node) === 'SUPABASE_SERVICE_ROLE_KEY'
+        node.type === 'StringLiteral' ||
+        node.type === 'Literal' ||
+        node.type === 'TemplateLiteral' ||
+        node.type === 'BinaryExpression'
       ) {
-        hasServiceRoleInClientAst = true;
+        const resolvedStr = getAstStringLiteralValue(node);
+        if (resolvedStr && CLIENT_FORBIDDEN_SECRET_ENV_VARS.has(resolvedStr)) {
+          detectedClientSecrets.add(resolvedStr);
+        }
       }
     }
   });
@@ -1189,11 +1196,18 @@ function validateEnvAndPrivilegeBoundariesAst(code, options = {}) {
     }
   }
 
-  if (checkClientServiceRole && isClientTree && (hasServiceRoleInClientAst || referencedEnvVars.has('SUPABASE_SERVICE_ROLE_KEY'))) {
-    violations.push({
-      file: relPath,
-      issue: 'Forbidden SUPABASE_SERVICE_ROLE_KEY reference in client-side module (RLS bypass risk).',
-    });
+  if (checkClientServiceRole && isClientTree) {
+    for (const secretVar of CLIENT_FORBIDDEN_SECRET_ENV_VARS) {
+      if (detectedClientSecrets.has(secretVar) || referencedEnvVars.has(secretVar)) {
+        violations.push({
+          file: relPath,
+          issue:
+            secretVar === 'SUPABASE_SERVICE_ROLE_KEY'
+              ? 'Forbidden SUPABASE_SERVICE_ROLE_KEY reference in client-side module (RLS bypass risk).'
+              : `Forbidden server-only secret "${secretVar}" reference in client-side module.`,
+        });
+      }
+    }
   }
 
   return violations;

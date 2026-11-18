@@ -29,7 +29,8 @@ Before opening a PR, familiarize yourself with Bookarium's state and rendering p
 - **Remote Data Fetching**: TanStack React Query (`useBooks`, `useFeaturedQuotes`, `useQuoteEnrichedBooks`, `useBookContent`, `useBookTranslations`).
 - **Local-First State Management**: 10 Zustand stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`).
 - **Background Threading**: Web Workers (`src/workers/gutenberg.worker.ts`, `useGutenbergParserWorker.ts`) offloading chapter regex splitting and pagination spread math.
-- **Offline Persistence**: Dual-layer browser storage (localStorage for positions/preferences; IndexedDB for multi-megabyte unabridged book volumes) backed by an App Shell Service Worker (`public/sw.js`).
+- **Self-Hosted Asset Proxy**: Same-origin `/api/books/content` route streaming pre-seeded cover artwork (`covers/<id>.jpg`) and gzipped plain text (`books/<id>.txt.gz`) from private **Cloudflare R2** storage via AWS SigV4 (`src/lib/r2-client.ts`, falling back to PG mirrors for text strictly when `R2_*` env vars are unset in keyless clones).
+- **Offline Persistence**: Dual-layer browser storage (localStorage for positions/preferences; IndexedDB for multi-megabyte unabridged book volumes and cover caches) backed by an App Shell Service Worker (`public/sw.js`).
 - **Styling**: Tailwind CSS v4 (Oxide) with hardware-accelerated Framer Motion transitions.
 
 ---
@@ -96,7 +97,7 @@ This runs all automated quality gateways:
 1. **Pass 0.5**: Secret, Boundary, Tracked `.env*`, `.env.example` Parity & Transitive AST Graph Scanner
 2. **Pass 0.75**: 7-Pillar SAST & OWASP Security Suite (Dependency CVEs, Lockfile SRI, Offline `GPL`/`AGPL` Copyleft Ban, Workflow Guard, Rate Limiting & Mirror SSRF, DOM XSS, Open Redirects, Public Domain Policy, PostgreSQL Idempotent RLS, `search_path` & Account Deletion Parity, OWASP HTTP Headers, `scripts/lib/sast-validators.js` AST Validators, and 9-Rule `bookarium-security` AST & Request-Taint Engine across `src/`, `scripts/`, `public/sw.js`, & `next.config.ts`)
 3. **Pass 1**: TypeScript Strict Typecheck (`tsc --noEmit`)
-4. **Pass 2 & 3**: Vitest MSW & UI Test Suites (`95/95/92/85` tiered coverage floor across `260` suites)
+4. **Pass 2 & 3**: Vitest MSW & UI Test Suites (`95/95/92/85` tiered coverage floor across `261` suites)
 5. **Pass 4**: Living Documentation AST Re-Compilation (`npm run docs:sync`, including `SECURITY.md` `<!-- BEGIN:security-architecture -->`)
 6. **Pass 5**: ADR Decision Ledger, 18-File Governance, Circular `SECURITY.md` Parity, 1:1 SQL$\leftrightarrow$TS Schema Parity, 0 Circular/Parse-Error/Layer-Violation/Orphan Modules & 100% 1:1 Co-Located Test Parity
 7. **Pass 6**: ESLint (`--max-warnings 0`) & Knip Quality Audit

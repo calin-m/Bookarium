@@ -138,7 +138,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
             ? `Protected in ${country}`
             : isUnavailableOffline
             ? 'Unavailable Offline'
-            : 'Download Formats (EPUB, TXT)',
+            : 'Download Formats (TXT, Offline)',
         };
       case 'bookshelf':
         return {
@@ -471,7 +471,7 @@ export const BookshelfSpine: React.FC<BookshelfSpineProps> = ({
                 ? `Download unavailable in ${country}`
                 : isUnavailableOffline
                 ? 'Connect to the internet to download formats'
-                : 'Download Formats (EPUB, TXT)'
+                : 'Download Formats (TXT, Offline)'
             }
             aria-label={`Download formats for ${book.title}`}
           >

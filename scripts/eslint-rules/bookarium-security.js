@@ -11,7 +11,7 @@
  * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly), including Node HTTP client (`https.get`/`http.get`) checks, `{ shell: false }` enforcement in `scripts/`, and `process.argv` CLI taint into shell/URL/redirect sinks.
  * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers, CLI `--cache-file` flags, or static single-slash client routes.
  * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, and weak assertions in real time before commit.
- * @adr ADR-067, ADR-073, ADR-080
+ * @adr ADR-067, ADR-073, ADR-080, ADR-082
  */
 
 const fs = require('fs');
@@ -21,16 +21,18 @@ const SERVER_ONLY_IMPORT_PATTERNS = [
   /^@\/lib\/supabase\/server$/,
   /^@\/lib\/supabase\/middleware$/,
   /^@\/lib\/server-rsc-nav$/,
+  /^@\/lib\/r2-client$/,
   /^\.\.?\/.*supabase\/server$/,
   /^\.\.?\/.*supabase\/middleware$/,
   /^\.\.?\/.*server-rsc-nav$/,
+  /^\.\.?\/.*r2-client$/,
   /^next\/headers$/,
   /^(?:node:)?(?:fs|fs\/promises|child_process|net|tls|dgram|cluster|worker_threads|zlib|dns|http|https)$/,
   /^(?:@\/|\.\.?\/).*scripts\//,
 ];
 
 const SECRET_NEXT_PUBLIC_PATTERN =
-  /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT)(?:_|$)/i;
+  /^NEXT_PUBLIC_.*(?:SECRET|PRIVATE|SERVICE_ROLE|PASSWORD|TOKEN|PAT|ACCESS_KEY_ID|ACCESS_KEY|R2_ACCOUNT_ID|R2_BUCKET_NAME|R2_ACCESS_KEY|R2_SECRET)(?:_|$)/i;
 
 const UNIVERSAL_SANITIZER_FUNCTIONS = new Set([
   'parseInt',

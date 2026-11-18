@@ -1,13 +1,14 @@
 /**
  * @module src/hooks/useOfflineCoverImage
- * @scope Local-first book cover image resolution (`coverObjectUrlCache` -> IndexedDB `offline_books`/`cover_cache`), mirror-first Gutenberg fallback, and background cache warming.
- * @invariant Resolve synchronous `getMemoryCachedCoverUrl` hits first and check IndexedDB (`getOfflineBookCover`) before trying online `resolveGutenbergCoverCandidates` (`aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> original host).
- * @invariant Trigger `warmCoverCache` on successful online `handleImageLoad` (`!blob:`) and strictly revoke only `isOwned` fallback `blob:` URLs via `URL.revokeObjectURL` on unmount while leaving shared pooled `getOrCreateMemoryCoverUrl` URLs intact.
- * @rationale Holding mirror requests while checking device IndexedDB eliminates redundant mirror downloads across catalog/shelf refreshes regardless of which Gutenberg host succeeded, and separating owned vs. pooled object URLs prevents premature image revocation across virtualized cards.
- * @adr ADR-070, ADR-080
+ * @scope Local-first book cover image resolution (`coverObjectUrlCache` -> IndexedDB `offline_books`/`cover_cache` -> same-origin `/api/books/content?type=cover`) and background cache warming.
+ * @invariant Resolve synchronous `getMemoryCachedCoverUrl` hits first, inspect IndexedDB (`getOfflineBookCover`) before releasing online requests, and rewrite all Project Gutenberg / mirror cover URLs (`GUTENBERG_COVER_HOSTS`) strictly to same-origin `/api/books/content?id=<bookId>&type=cover` without client-side mirror hotlinking or cascading host fallbacks.
+ * @invariant Trigger `warmCoverCache` on successful online `handleImageLoad` (`!blob:`), transition directly to `imageError: true` on cover load failure so cards render their dark typographic fallback cover, and revoke only `isOwned` fallback `blob:` URLs via `URL.revokeObjectURL` on unmount while leaving shared pooled `getOrCreateMemoryCoverUrl` URLs intact.
+ * @rationale Routing all online cover reads through the same-origin R2-backed endpoint eliminates external Gutenberg `<img>` hotlinking, tightens CSP `img-src` to `'self' data: blob:`, and makes missing R2 covers visibly fall back to typographic card artwork.
+ * @adr ADR-070, ADR-080, ADR-082
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 import {
   getOfflineBookCover,
   getMemoryCachedCoverUrl,
@@ -15,39 +16,42 @@ import {
   warmCoverCache,
 } from '@/lib/offline-storage';
 
-const GUTENBERG_COVER_MIRROR_ORIGINS = [
-  'https://aleph.gutenberg.org',
-  'https://gutenberg.pglaf.org',
-  'https://gutenberg.readingroo.ms',
-] as const;
-
-const GUTENBERG_PRIMARY_COVER_HOSTS = new Set(['www.gutenberg.org', 'gutenberg.org']);
+const GUTENBERG_COVER_HOSTS = new Set([
+  'www.gutenberg.org',
+  'gutenberg.org',
+  'aleph.gutenberg.org',
+  'gutenberg.pglaf.org',
+  'gutenberg.readingroo.ms',
+]);
 
 /**
- * Resolves an ordered, mirror-first URL cascade for Project Gutenberg cover artwork
- * (`aleph.gutenberg.org` -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> original host)
- * while leaving non-Gutenberg or custom URLs untouched as a single candidate.
+ * Resolves a cover URL cleanly without external Project Gutenberg hotlinking:
+ * Gutenberg/mirror URLs map directly to same-origin `/api/books/content?id=<bookId>&type=cover`
+ * backed strictly by Cloudflare R2, while explicit `blob:`, `data:`, and non-Gutenberg paths
+ * are preserved as-is.
  */
-export function resolveGutenbergCoverCandidates(primaryUrl?: string | null): string[] {
+export function resolveBookCoverUrl(bookId: number, primaryUrl?: string | null): string | null {
   const trimmed = (primaryUrl || '').trim();
-  if (!trimmed) return [];
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
 
   try {
     const parsed = new URL(trimmed);
     const isHttp = parsed.protocol === 'https:' || parsed.protocol === 'http:';
-    if (isHttp && GUTENBERG_PRIMARY_COVER_HOSTS.has(parsed.hostname.toLowerCase())) {
-      const suffix = `${parsed.pathname}${parsed.search}`;
-      const ordered = [
-        ...GUTENBERG_COVER_MIRROR_ORIGINS.map((origin) => `${origin}${suffix}`),
-        trimmed,
-      ];
-      return Array.from(new Set(ordered));
+    if (isHttp && GUTENBERG_COVER_HOSTS.has(parsed.hostname.toLowerCase())) {
+      if (!Number.isInteger(bookId) || bookId <= 0) {
+        return null;
+      }
+      return `${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${Math.trunc(bookId)}&type=cover`;
     }
   } catch {
-    // Non-URL / relative fixture paths preserve direct loading without mirror rewriting
+    // Relative paths preserve direct same-origin loading
   }
 
-  return [trimmed];
+  return trimmed;
 }
 
 export interface OfflineCoverImageState {
@@ -61,10 +65,9 @@ export interface OfflineCoverImageState {
 
 /**
  * Shared hook coordinating local cover cache hydration (`coverObjectUrlCache` -> IndexedDB
- * `offline_books`/`cover_cache`), mirror-first Gutenberg online cover fallback (`aleph.gutenberg.org`
- * -> `gutenberg.pglaf.org` -> `gutenberg.readingroo.ms` -> `www.gutenberg.org`), background
- * cache warming on successful online loads, and owned `URL.revokeObjectURL` cleanup on unmount.
- * Used by `BookCard` and `BookmarkCard`.
+ * `offline_books`/`cover_cache`), same-origin R2-backed cover routing (`/api/books/content?type=cover`),
+ * background cache warming on successful online loads, direct fallback-cover signaling on error,
+ * and owned `URL.revokeObjectURL` cleanup on unmount. Used by `BookCard` and `BookmarkCard`.
  */
 export function useOfflineCoverImage(
   bookId: number,
@@ -72,9 +75,9 @@ export function useOfflineCoverImage(
   primaryCoverUrl?: string | null
 ): OfflineCoverImageState {
   const sourceKey = `${bookId}:${primaryCoverUrl ?? ''}`;
-  const candidates = useMemo(
-    () => resolveGutenbergCoverCandidates(primaryCoverUrl),
-    [primaryCoverUrl]
+  const resolvedRemoteUrl = useMemo(
+    () => resolveBookCoverUrl(bookId, primaryCoverUrl),
+    [bookId, primaryCoverUrl]
   );
 
   const canCheckIndexedDb =
@@ -83,11 +86,10 @@ export function useOfflineCoverImage(
     typeof getMemoryCachedCoverUrl === 'function' ? getMemoryCachedCoverUrl(bookId) : null;
   const isBlobPrimaryUrl = Boolean(primaryCoverUrl && primaryCoverUrl.trim().startsWith('blob:'));
 
-  const [mirrorState, setMirrorState] = useState<{
+  const [errorState, setErrorState] = useState<{
     key: string;
-    index: number;
     error: boolean;
-  }>({ key: sourceKey, index: 0, error: false });
+  }>({ key: sourceKey, error: false });
   const [offlineState, setOfflineState] = useState<{
     bookId: number;
     url: string;
@@ -146,8 +148,7 @@ export function useOfflineCoverImage(
     };
   }, [bookId, canCheckIndexedDb, memoryCachedUrl, isBlobPrimaryUrl, localLookupState.key, sourceKey]);
 
-  const effectiveIndex = mirrorState.key === sourceKey ? mirrorState.index : 0;
-  const imageError = mirrorState.key === sourceKey ? mirrorState.error : false;
+  const imageError = errorState.key === sourceKey ? errorState.error : false;
   const matchedLocalUrl =
     localLookupState.key === sourceKey ? localLookupState.url : null;
   const offlineCoverUrl =
@@ -161,11 +162,8 @@ export function useOfflineCoverImage(
     canCheckIndexedDb &&
     localLookupState.key !== sourceKey;
 
-  const currentCandidateUrl =
-    !isCheckingLocalCache && candidates.length > 0 && effectiveIndex < candidates.length
-      ? candidates[effectiveIndex]
-      : null;
-  const activeCoverUrl = offlineCoverUrl || currentCandidateUrl;
+  const onlineCoverUrl = !isCheckingLocalCache ? resolvedRemoteUrl : null;
+  const activeCoverUrl = offlineCoverUrl || onlineCoverUrl;
 
   useEffect(() => {
     const ownedOfflineUrl =
@@ -217,25 +215,15 @@ export function useOfflineCoverImage(
           return;
         }
       } catch {
-        // Non-blocking fallback to remaining mirrors or typographic placeholder cover
+        // Non-blocking fallback to typographic placeholder cover
       }
     }
 
-    if (effectiveIndex + 1 < candidates.length) {
-      setMirrorState({
-        key: sourceKey,
-        index: effectiveIndex + 1,
-        error: false,
-      });
-      return;
-    }
-
-    setMirrorState({
+    setErrorState({
       key: sourceKey,
-      index: effectiveIndex,
       error: true,
     });
-  }, [bookId, isOffline, offlineCoverUrl, offlineLookupTriedKey, sourceKey, effectiveIndex, candidates.length]);
+  }, [bookId, isOffline, offlineCoverUrl, offlineLookupTriedKey, sourceKey]);
 
   return {
     imageError,

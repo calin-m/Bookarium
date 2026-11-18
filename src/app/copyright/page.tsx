@@ -198,7 +198,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Official Bulk Data Feeds:</strong> Catalog indexes are synchronized mirror-first using Gutenberg&apos;s authorized weekly archives (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code> and <code className="font-mono text-primary font-semibold">rdf-files.tar.bz2</code>), reading <code className="font-mono">&lt;dcterms:rights&gt;</code> notices to flag and suppress copyrighted donations globally.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Bandwidth Shielding &amp; Edge Caching:</strong> Masterwork text and EPUB packages are cached at the Vercel Edge CDN for 24 hours (<code className="font-mono">s-maxage=86400, stale-while-revalidate=604800</code>) and locally in browser IndexedDB for offline reading. Direct downloads are strictly human-initiated.
+                <strong className="text-foreground font-medium">Bandwidth Shielding &amp; Edge Caching:</strong> Masterwork text and cover assets are cached at the Vercel Edge CDN (<code className="font-mono">s-maxage=86400</code>–<code className="font-mono">604800</code>) and locally in browser IndexedDB for offline reading. Direct downloads are strictly human-initiated.
               </li>
               <li>
                 <strong className="text-foreground font-medium">Transparent User-Agent:</strong> All server-side requests transmit identifying headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>).

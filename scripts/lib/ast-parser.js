@@ -1630,6 +1630,26 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       fallback: 'Omitted when targeting a non-team personal scope; include when deploying under a Vercel team or Hobby personal team.',
       purpose: 'Appends `&teamId=...` to the Vercel tag-purge API request in `scripts/purge-vercel-cache.js` when targeting a team-owned Vercel project.',
     },
+    R2_ACCOUNT_ID: {
+      scope: 'Server-Only Runtime Environment Variable (Vercel & `.env.local`)',
+      fallback: 'When any `R2_*` variable is omitted, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback) and plain text degrades to zero-key Gutenberg mirrors (`Rule 4`).',
+      purpose: 'Cloudflare account identifier building the private R2 S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts`.',
+    },
+    R2_BUCKET_NAME: {
+      scope: 'Server-Only Runtime Environment Variable (Vercel & `.env.local`)',
+      fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
+      purpose: 'Private Cloudflare R2 bucket name (`bookarium-assets`) storing `covers/<id>.jpg` and `books/<id>.txt.gz`.',
+    },
+    R2_ACCESS_KEY_ID: {
+      scope: 'Server-Only R2 S3 Credential (Vercel Read-Only Recommended & `.env.local`)',
+      fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
+      purpose: 'S3 API access key ID used strictly server-side by `src/lib/r2-client.ts` for AWS SigV4 signed `GET` object requests.',
+    },
+    R2_SECRET_ACCESS_KEY: {
+      scope: 'Server-Only Signing Secret (Vercel Read-Only Recommended & `.env.local`)',
+      fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
+      purpose: 'HMAC-SHA256 secret signing AWS Signature V4 requests to private Cloudflare R2 storage inside `src/lib/r2-client.ts`.',
+    },
     NODE_ENV: {
       scope: 'Framework & Build-Time Runtime Constant',
       fallback: 'Set automatically by Next.js / Node.js (`development`, `production`, `test`).',
@@ -2421,6 +2441,7 @@ const TIER_1_CONTRACTED_MODULES = [
   'src/proxy.ts',
   'src/app/api/books/route.ts',
   'src/app/api/books/content/route.ts',
+  'src/lib/r2-client.ts',
   'src/lib/copyright-engine.ts',
   'src/lib/catalog/supabase-provider.ts',
   'src/lib/book-sorting.ts',

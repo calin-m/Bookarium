@@ -113,6 +113,13 @@ function pass05SecretScanner() {
       regex: new RegExp('(api_key|apikey|secret_key|client_secret|service_role_key)\\s*[:=]\\s*[\'"][0-9a-zA-Z-_]{20,}[\'"]', 'i'),
     },
     {
+      name: 'Cloudflare R2 / AWS S3 Access Key Literal',
+      regex: new RegExp(
+        '(?:(?:AK' + 'IA|AS' + 'IA)[0-9A-Z]{16}|(?:r2_' + 'access_key_id|r2_' + 'secret_access_key|aws_' + 'access_key_id|aws_' + 'secret_access_key)\\s*[:=]\\s*[\'"][0-9a-zA-Z+/=]{32,}[\'"])',
+        'i'
+      ),
+    },
+    {
       name: 'PostgreSQL / Database URI with Embedded Credentials',
       regex: new RegExp('postgres(?:ql)?://' + '[^/\\s:@]+:[^/\\s@\'"`]+@', 'i'),
     },
@@ -339,6 +346,7 @@ function pass05SecretScanner() {
     const serverOnlyTargets = new Set([
       'src/lib/supabase/server.ts',
       'src/lib/supabase/middleware.ts',
+      'src/lib/r2-client.ts',
     ]);
     const forbiddenExternalServerPackages = new Set([
       'next/headers',

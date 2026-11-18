@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useOfflineCoverImage, resolveGutenbergCoverCandidates } from './useOfflineCoverImage';
+import { useOfflineCoverImage, resolveBookCoverUrl } from './useOfflineCoverImage';
 import {
   getOfflineBookCover,
   getMemoryCachedCoverUrl,
@@ -15,25 +15,30 @@ vi.mock('@/lib/offline-storage', () => ({
   warmCoverCache: vi.fn(),
 }));
 
-describe('resolveGutenbergCoverCandidates', () => {
-  it('orders official Gutenberg mirrors ahead of www.gutenberg.org and preserves non-Gutenberg URLs', () => {
-    expect(resolveGutenbergCoverCandidates('')).toEqual([]);
-    expect(resolveGutenbergCoverCandidates(null)).toEqual([]);
-    expect(resolveGutenbergCoverCandidates('https://example.com/custom-cover.jpg')).toEqual([
-      'https://example.com/custom-cover.jpg',
-    ]);
-    expect(resolveGutenbergCoverCandidates('/local/cover.jpg')).toEqual(['/local/cover.jpg']);
+describe('resolveBookCoverUrl', () => {
+  it('routes Gutenberg and mirror cover URLs through same-origin /api/books/content without external hotlinking', () => {
+    expect(resolveBookCoverUrl(1342, '')).toBeNull();
+    expect(resolveBookCoverUrl(1342, null)).toBeNull();
+    expect(resolveBookCoverUrl(1342, 'blob:local-cover')).toBe('blob:local-cover');
+    expect(resolveBookCoverUrl(1342, '/local/cover.jpg')).toBe('/local/cover.jpg');
+    expect(resolveBookCoverUrl(1342, 'https://example.com/custom-cover.jpg')).toBe(
+      'https://example.com/custom-cover.jpg'
+    );
+
+    const gutenbergHosts = [
+      'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg?v=1',
+      'https://gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+      'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+      'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg',
+      'https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.cover.medium.jpg',
+    ];
+    for (const hostUrl of gutenbergHosts) {
+      expect(resolveBookCoverUrl(1342, hostUrl)).toBe('/api/books/content?id=1342&type=cover');
+    }
 
     expect(
-      resolveGutenbergCoverCandidates(
-        'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg?v=1'
-      )
-    ).toEqual([
-      'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg?v=1',
-      'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg?v=1',
-      'https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.cover.medium.jpg?v=1',
-      'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg?v=1',
-    ]);
+      resolveBookCoverUrl(0, 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg')
+    ).toBeNull();
   });
 });
 
@@ -70,7 +75,7 @@ describe('useOfflineCoverImage', () => {
     expect(getOfflineBookCover).not.toHaveBeenCalled();
   });
 
-  it('steps through Gutenberg mirror candidates on repeated errors and resets on prop change', async () => {
+  it('resolves same-origin R2 cover route, transitions cleanly to imageError on failure, and resets on prop change', async () => {
     const { result, rerender } = renderHook(
       ({ id, offline, cover }) => useOfflineCoverImage(id, offline, cover),
       {
@@ -82,31 +87,8 @@ describe('useOfflineCoverImage', () => {
       }
     );
 
-    expect(result.current.activeCoverUrl).toBe(
-      'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg'
-    );
-
-    await act(async () => {
-      await result.current.handleImageError();
-    });
-    expect(result.current.activeCoverUrl).toBe(
-      'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg'
-    );
+    expect(result.current.activeCoverUrl).toBe('/api/books/content?id=1342&type=cover');
     expect(result.current.imageError).toBe(false);
-
-    await act(async () => {
-      await result.current.handleImageError();
-    });
-    expect(result.current.activeCoverUrl).toBe(
-      'https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.cover.medium.jpg'
-    );
-
-    await act(async () => {
-      await result.current.handleImageError();
-    });
-    expect(result.current.activeCoverUrl).toBe(
-      'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg'
-    );
 
     await act(async () => {
       await result.current.handleImageError();
@@ -119,9 +101,7 @@ describe('useOfflineCoverImage', () => {
       cover: 'https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg',
     });
     expect(result.current.imageError).toBe(false);
-    expect(result.current.activeCoverUrl).toBe(
-      'https://aleph.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg'
-    );
+    expect(result.current.activeCoverUrl).toBe('/api/books/content?id=84&type=cover');
   });
 
   it('loads a blob URL from IndexedDB when offline cover blob is available and revokes it on unmount', async () => {
@@ -172,10 +152,9 @@ describe('useOfflineCoverImage', () => {
     expect(warmCoverCache).not.toHaveBeenCalled();
   });
 
-  it('checks IndexedDB before firing mirror URLs when indexedDB is present and warms cache on mirror load miss', async () => {
+  it('checks IndexedDB before serving same-origin cover route and warms cache on load miss', async () => {
     (globalThis as { indexedDB?: unknown }).indexedDB = {};
 
-    // 1. Cache hit in IndexedDB suppresses remote mirror candidates
     const cachedBlob = new Blob(['cached-idb-jpeg'], { type: 'image/jpeg' });
     vi.mocked(getOfflineBookCover).mockResolvedValueOnce(cachedBlob);
     vi.mocked(getOrCreateMemoryCoverUrl).mockReturnValueOnce('blob:idb-shared-1342');
@@ -199,11 +178,9 @@ describe('useOfflineCoverImage', () => {
       expect(hitResult.current.activeCoverUrl).toBe('blob:idb-shared-1342');
     });
 
-    // Shared memory-pool URLs must not be revoked on component unmount
     unmountHit();
     expect(revokeObjectURLSpy).not.toHaveBeenCalled();
 
-    // 2. Cache miss in IndexedDB releases mirror cascade and warms local cache on load
     vi.mocked(getOfflineBookCover).mockResolvedValueOnce(null);
     const { result: missResult } = renderHook(() =>
       useOfflineCoverImage(
@@ -215,9 +192,7 @@ describe('useOfflineCoverImage', () => {
 
     await waitFor(() => {
       expect(missResult.current.isCheckingLocalCache).toBe(false);
-      expect(missResult.current.activeCoverUrl).toBe(
-        'https://aleph.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg'
-      );
+      expect(missResult.current.activeCoverUrl).toBe('/api/books/content?id=84&type=cover');
     });
 
     act(() => {

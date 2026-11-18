@@ -295,7 +295,7 @@ describe('BookshelfSpine Component', () => {
     const downloadBtn = screen.getByLabelText('Download formats for Pride and Prejudice');
     fireEvent.mouseMove(hoverCard, { clientX: 150, clientY: 200 });
     fireEvent.mouseEnter(downloadBtn);
-    expect(screen.getByText('Download Formats (EPUB, TXT)')).toBeInTheDocument();
+    expect(screen.getByText('Download Formats (TXT, Offline)')).toBeInTheDocument();
     fireEvent.mouseLeave(downloadBtn);
 
     const saveBtn = screen.getByLabelText('Remove from bookshelf');

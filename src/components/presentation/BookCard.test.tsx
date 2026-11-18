@@ -193,30 +193,15 @@ describe('BookCard component', () => {
     vi.useRealTimers();
   });
 
-  it('tries Gutenberg cover mirrors first and renders fallback cover after all mirrors fail', async () => {
+  it('routes Gutenberg cover URLs through /api/books/content and renders dark typographic fallback immediately on cover error', async () => {
     const book = mockBooks[0];
     render(<BookCard book={book} onPreviewClick={vi.fn()} />);
 
     const coverImg = screen.getByAltText(`Cover of ${book.title}`);
-    expect(coverImg).toHaveAttribute('src', expect.stringContaining('https://aleph.gutenberg.org/'));
-
-    await act(async () => {
-      fireEvent.error(coverImg);
-    });
-    expect(coverImg).toHaveAttribute('src', expect.stringContaining('https://gutenberg.pglaf.org/'));
-
-    await act(async () => {
-      fireEvent.error(coverImg);
-    });
     expect(coverImg).toHaveAttribute(
       'src',
-      expect.stringContaining('https://gutenberg.readingroo.ms/')
+      `/api/books/content?id=${book.id}&type=cover`
     );
-
-    await act(async () => {
-      fireEvent.error(coverImg);
-    });
-    expect(coverImg).toHaveAttribute('src', expect.stringContaining('https://www.gutenberg.org/'));
 
     await act(async () => {
       fireEvent.error(coverImg);
@@ -739,7 +724,7 @@ describe('BookCard component', () => {
     expect(activeReadLink).toHaveAttribute('title', `Read ${book.title} in Focus Reader`);
     const activeGetBtn = screen.getByRole('button', { name: `Download options for ${book.title}` });
     expect(activeGetBtn).not.toBeDisabled();
-    expect(activeGetBtn).toHaveAttribute('title', 'Download options (EPUB, TXT, Offline)');
+    expect(activeGetBtn).toHaveAttribute('title', 'Download options (TXT, Offline)');
     expect(screen.queryByTestId(`book-card-unavailable-offline-${book.id}`)).not.toBeInTheDocument();
 
     networkSpy.mockRestore();

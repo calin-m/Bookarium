@@ -1,11 +1,11 @@
 /**
  * @module src/app/api/books/content/route
- * @scope Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), Project Gutenberg cover JPEG proxies (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
- * @invariant Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlUpstreamPayload`), and bound payloads (`15 MB` text / `2 MB` cover).
+ * @scope Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), R2-backed cover JPEGs (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
+ * @invariant Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlPayload`), and bound payloads (`MAX_R2_BOOK_BYTES` text / `MAX_R2_COVER_BYTES` cover).
  * @invariant Enforce `HTTP 451` gatekeeping whenever resolved metadata restricts a volume in the caller's jurisdiction (including US `copyright === true` blocks) on plain-text and `type=card` requests, fail closed with `503` for non-US requests when metadata is unavailable, and bypass `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
- * @invariant Coalesce concurrent upstream mirror fetches per `bookId` inside `inFlightMirrorFetches` and cache Tier 0 resolved text in `bookContentLruCache`.
- * @rationale Covers bypass heavy metadata lookup for 7-day Edge caching without weakening text/card copyright enforcement across US or international jurisdictions, while OpenGraph social scrapers require `CORP: cross-origin` only on `type=card` PNGs.
- * @adr ADR-016, ADR-022, ADR-039, ADR-080
+ * @invariant Serve `type=cover` strictly from private Cloudflare R2 (`404` on miss or unconfigured, zero Project Gutenberg fallback), serve plain text strictly from R2 when `isR2Configured()` (falling back to Project Gutenberg mirrors only when `R2_*` env vars are unset), coalesce concurrent upstream fetches per `bookId` inside `inFlightMirrorFetches`, and cache resolved text in `bookContentLruCache`.
+ * @rationale Keeping R2 credentials server-only avoids public bucket exposure while eliminating browser/runtime Gutenberg hotlinking and preserving zero-key local clone compatibility when unconfigured.
+ * @adr ADR-016, ADR-022, ADR-039, ADR-080, ADR-082
  */
 
 import React from 'react';
@@ -32,6 +32,13 @@ import {
   CARD_PALETTES,
   decodeReadingCardShareToken,
 } from '@/lib/reading-card-export';
+import {
+  MAX_R2_BOOK_BYTES,
+  isHtmlPayload,
+  isR2Configured,
+  fetchR2CoverBytes,
+  fetchR2BookText,
+} from '@/lib/r2-client';
 
 import { isSafeUpstreamUrl } from './url-validator';
 import {
@@ -42,29 +49,17 @@ import {
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 
-const MAX_BOOK_BYTES = 15 * 1024 * 1024; // 15 MB threshold for Gutenberg plain text volumes
-const MAX_COVER_BYTES = 2 * 1024 * 1024; // 2 MB threshold for Gutenberg cover images
-
-function isHtmlUpstreamPayload(contentType: string | null | undefined, bodySnippet?: string): boolean {
-  const normalizedType = (contentType || '').trim().toLowerCase();
-  if (normalizedType.includes('text/html') || normalizedType.includes('application/xhtml+xml')) {
-    return true;
-  }
-  if (!bodySnippet) return false;
-  const trimmed = bodySnippet.trimStart().toLowerCase();
-  return (
-    trimmed.startsWith('<p>the document has moved') ||
-    trimmed.startsWith('<!doctype html') ||
-    trimmed.startsWith('<html') ||
-    trimmed.startsWith('<head')
-  );
-}
 const ALLOWED_CONTENT_QUERY_KEYS = new Set(['id', 'url', 'type', 's']);
 const DEV_ONLY_CONTENT_QUERY_KEYS = new Set(['country']);
 const SUPPORTED_CONTENT_TYPES = new Set(['', 'cover', 'card']);
 const inFlightMirrorFetches = new Map<
   number,
-  Promise<{ textContent: string; fetchSuccess: boolean }>
+  Promise<{
+    textContent: string;
+    fetchSuccess: boolean;
+    notFound?: boolean;
+    source?: 'r2' | 'gutenberg-mirror';
+  }>
 >();
 
 export async function GET(request: NextRequest) {
@@ -431,102 +426,46 @@ export async function GET(request: NextRequest) {
   }
 
   // ==========================================================================
-  // Binary Cover Image Streaming (Project Gutenberg Mirrors)
+  // Binary Cover Image Streaming (Strict Private Cloudflare R2 Storage)
   // ==========================================================================
   if (typeParam === 'cover') {
-    const safeId = encodeURIComponent(String(Math.trunc(bookId)));
-    const targetCoverUrls: string[] = [
-      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://aleph.gutenberg.org').toString(),
-      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://gutenberg.pglaf.org').toString(),
-      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://gutenberg.readingroo.ms').toString(),
-      new URL(`/cache/epub/${safeId}/pg${safeId}.cover.medium.jpg`, 'https://www.gutenberg.org').toString(),
-    ];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const coverResult = await fetchR2CoverBytes(bookId, controller.signal);
+      clearTimeout(timeoutId);
 
-    for (const targetUrl of targetCoverUrls) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      try {
-        let currentUrl = targetUrl;
-        let response = await fetch(currentUrl, {
-          signal: controller.signal,
-          redirect: 'manual',
-          headers: {
-            'User-Agent': SITE_CONFIG.USER_AGENT,
-            Accept: 'image/jpeg, image/*, */*',
-            Connection: 'keep-alive',
-          },
-        });
-
-        // Follow up to 3 redirect hops only if each target location is verified safe (anti-SSRF)
-        let blockedRedirect = false;
-        for (
-          let hop = 0;
-          hop < 3 &&
-          (response.status === 301 ||
-            response.status === 302 ||
-            response.status === 303 ||
-            response.status === 307 ||
-            response.status === 308);
-          hop++
-        ) {
-          const redirectLocation = response.headers?.get('location');
-          if (redirectLocation && isSafeUpstreamUrl(redirectLocation, currentUrl)) {
-            currentUrl = new URL(redirectLocation, currentUrl).toString();
-            response = await fetch(currentUrl, {
-              signal: controller.signal,
-              redirect: 'manual',
-              headers: {
-                'User-Agent': SITE_CONFIG.USER_AGENT,
-                Accept: 'image/jpeg, image/*, */*',
-                Connection: 'keep-alive',
-              },
-            });
-          } else {
-            blockedRedirect = true;
-            break;
-          }
-        }
-
-        clearTimeout(timeoutId);
-
-        if (blockedRedirect || !response.ok) {
-          continue;
-        }
-
-        const coverContentType = response.headers?.get('content-type');
-        if (isHtmlUpstreamPayload(coverContentType)) {
-          continue;
-        }
-
-        const contentLength = response.headers?.get('content-length');
-        if (contentLength && parseInt(contentLength, 10) > MAX_COVER_BYTES) {
-          continue;
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        if (arrayBuffer.byteLength > MAX_COVER_BYTES || arrayBuffer.byteLength === 0) {
-          continue;
-        }
-
-        return new NextResponse(arrayBuffer, {
+      if (coverResult.status === 'ok') {
+        return new NextResponse(coverResult.bytes, {
           status: 200,
           headers: {
             'Content-Type': 'image/jpeg',
             'Cache-Control': 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000',
-            'Vary': 'Accept-Encoding',
+            Vary: 'Accept-Encoding',
+            'X-Bookarium-Source': 'r2',
             ...buildApiSecurityHeaders('same-origin'),
           },
         });
-      } catch {
-        clearTimeout(timeoutId);
       }
-    }
 
-    return createNoStoreErrorResponse(
-      'Failed to fetch cover image from Project Gutenberg mirrors.',
-      502
-    );
+      if (coverResult.status === 'not_found' || coverResult.status === 'unconfigured') {
+        return createNoStoreErrorResponse(
+          'Cover artwork is not available in R2 asset storage.',
+          404
+        );
+      }
+
+      return createNoStoreErrorResponse(
+        'Failed to fetch cover image from R2 asset storage.',
+        502
+      );
+    } catch {
+      clearTimeout(timeoutId);
+      return createNoStoreErrorResponse(
+        'Failed to fetch cover image from R2 asset storage.',
+        502
+      );
+    }
   }
 
   // ==========================================================================
@@ -540,8 +479,8 @@ export async function GET(request: NextRequest) {
       'Vary': 'x-vercel-ip-country, Accept-Encoding',
       ...buildApiSecurityHeaders('same-origin'),
     };
-    if (cachedBook.source === 'supabase') {
-      responseHeaders['X-Bookarium-Source'] = 'supabase';
+    if (cachedBook.source === 'supabase' || cachedBook.source === 'r2') {
+      responseHeaders['X-Bookarium-Source'] = cachedBook.source;
     }
     return new NextResponse(cachedBook.text, {
       status: 200,
@@ -576,164 +515,201 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch {
-      // Degrade gracefully to external multi-mirror fetch
+      // Degrade gracefully to Tier 1.5 / Tier 2 content source
     }
   }
 
   // ==========================================================================
-  // Tier 2: Resilient Multi-Mirror Upstream Fetching with In-Flight Coalescing
+  // Tier 1.5 / Tier 2: Cloudflare R2 (Strict When Configured) or Zero-Key Mirror Fallback
   // ==========================================================================
   let mirrorPromise = inFlightMirrorFetches.get(bookId);
   if (!mirrorPromise) {
-    const safeId = encodeURIComponent(String(Math.trunc(bookId)));
-    const targetUrls: string[] = [
-      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
-      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.pglaf.org').toString(),
-      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
-      new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
-      new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
-      new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
-    ];
+    const r2Enabled = isR2Configured();
 
-    mirrorPromise = (async () => {
-      let resolvedText = '';
-      let resolvedSuccess = false;
+    if (r2Enabled) {
+      mirrorPromise = (async () => {
+        const r2Result = await fetchR2BookText(bookId);
+        if (r2Result.status === 'ok') {
+          return { textContent: r2Result.text, fetchSuccess: true, source: 'r2' as const };
+        }
+        return {
+          textContent: '',
+          fetchSuccess: false,
+          notFound: r2Result.status === 'not_found',
+          source: 'r2' as const,
+        };
+      })().finally(() => {
+        inFlightMirrorFetches.delete(bookId);
+      });
+    } else {
+      const safeId = encodeURIComponent(String(Math.trunc(bookId)));
+      const targetUrls: string[] = [
+        new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://aleph.gutenberg.org').toString(),
+        new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.pglaf.org').toString(),
+        new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://gutenberg.readingroo.ms').toString(),
+        new URL(`/cache/epub/${safeId}/pg${safeId}.txt`, 'https://www.gutenberg.org').toString(),
+        new URL(`/files/${safeId}/${safeId}-0.txt`, 'https://www.gutenberg.org').toString(),
+        new URL(`/files/${safeId}/${safeId}.txt`, 'https://www.gutenberg.org').toString(),
+      ];
 
-      for (const targetUrl of targetUrls) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
+      mirrorPromise = (async () => {
+        let resolvedText = '';
+        let resolvedSuccess = false;
 
-        try {
-          let currentUrl = targetUrl;
-          let response = await fetch(currentUrl, {
-            signal: controller.signal,
-            redirect: 'manual',
-            headers: {
-              'User-Agent': SITE_CONFIG.USER_AGENT,
-              Accept: 'text/plain, text/html, */*',
-              'Accept-Encoding': 'gzip, deflate, br',
-              Connection: 'keep-alive',
-            },
-          });
+        for (const targetUrl of targetUrls) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-          // Follow up to 3 redirect hops only if each target location is verified safe (anti-SSRF)
-          let blockedRedirect = false;
-          for (
-            let hop = 0;
-            hop < 3 &&
-            (response.status === 301 ||
-              response.status === 302 ||
-              response.status === 303 ||
-              response.status === 307 ||
-              response.status === 308);
-            hop++
-          ) {
-            const redirectLocation = response.headers?.get('location');
-            if (redirectLocation && isSafeUpstreamUrl(redirectLocation, currentUrl)) {
-              currentUrl = new URL(redirectLocation, currentUrl).toString();
-              response = await fetch(currentUrl, {
-                signal: controller.signal,
-                redirect: 'manual',
-                headers: {
-                  'User-Agent': SITE_CONFIG.USER_AGENT,
-                  Accept: 'text/plain, text/html, */*',
-                  'Accept-Encoding': 'gzip, deflate, br',
-                  Connection: 'keep-alive',
-                },
-              });
-            } else {
-              blockedRedirect = true;
-              break;
-            }
-          }
+          try {
+            let currentUrl = targetUrl;
+            let response = await fetch(currentUrl, {
+              signal: controller.signal,
+              redirect: 'manual',
+              headers: {
+                'User-Agent': SITE_CONFIG.USER_AGENT,
+                Accept: 'text/plain, text/html, */*',
+                'Accept-Encoding': 'gzip, deflate, br',
+                Connection: 'keep-alive',
+              },
+            });
 
-          clearTimeout(timeoutId);
-
-          if (blockedRedirect) {
-            continue;
-          }
-
-          if (response.ok) {
-            const upstreamContentType = response.headers?.get('content-type');
-            if (isHtmlUpstreamPayload(upstreamContentType)) {
-              continue;
-            }
-
-            const contentLength = response.headers?.get('content-length');
-            if (contentLength && parseInt(contentLength, 10) > MAX_BOOK_BYTES) {
-              continue;
-            }
-
-            let text = '';
-            if (response.body && typeof response.body.getReader === 'function') {
-              const reader = response.body.getReader();
-              const chunks: Uint8Array[] = [];
-              let totalBytes = 0;
-              let oversized = false;
-
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                if (value) {
-                  totalBytes += value.length;
-                  if (totalBytes > MAX_BOOK_BYTES) {
-                    oversized = true;
-                    controller.abort();
-                    break;
-                  }
-                  chunks.push(value);
-                }
+            // Follow up to 3 redirect hops only if each target location is verified safe (anti-SSRF)
+            let blockedRedirect = false;
+            for (
+              let hop = 0;
+              hop < 3 &&
+              (response.status === 301 ||
+                response.status === 302 ||
+                response.status === 303 ||
+                response.status === 307 ||
+                response.status === 308);
+              hop++
+            ) {
+              const redirectLocation = response.headers?.get('location');
+              if (redirectLocation && isSafeUpstreamUrl(redirectLocation, currentUrl)) {
+                currentUrl = new URL(redirectLocation, currentUrl).toString();
+                response = await fetch(currentUrl, {
+                  signal: controller.signal,
+                  redirect: 'manual',
+                  headers: {
+                    'User-Agent': SITE_CONFIG.USER_AGENT,
+                    Accept: 'text/plain, text/html, */*',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    Connection: 'keep-alive',
+                  },
+                });
+              } else {
+                blockedRedirect = true;
+                break;
               }
+            }
 
-              if (oversized) {
+            clearTimeout(timeoutId);
+
+            if (blockedRedirect) {
+              continue;
+            }
+
+            if (response.ok) {
+              const upstreamContentType = response.headers?.get('content-type');
+              if (isHtmlPayload(upstreamContentType)) {
                 continue;
               }
 
-              const decoder = new TextDecoder('utf-8');
-              text =
-                chunks.map((c) => decoder.decode(c, { stream: true })).join('') + decoder.decode();
-            } else {
-              text = await response.text();
-            }
+              const contentLength = response.headers?.get('content-length');
+              if (contentLength && parseInt(contentLength, 10) > MAX_R2_BOOK_BYTES) {
+                continue;
+              }
 
-            // Verify upstream payload is genuine plain text rather than an HTML redirect/outage page
-            if (text && !isHtmlUpstreamPayload(upstreamContentType, text.slice(0, 512))) {
-              resolvedText = text;
-              resolvedSuccess = true;
-              break;
+              let text = '';
+              if (response.body && typeof response.body.getReader === 'function') {
+                const reader = response.body.getReader();
+                const chunks: Uint8Array[] = [];
+                let totalBytes = 0;
+                let oversized = false;
+
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  if (value) {
+                    totalBytes += value.length;
+                    if (totalBytes > MAX_R2_BOOK_BYTES) {
+                      oversized = true;
+                      controller.abort();
+                      break;
+                    }
+                    chunks.push(value);
+                  }
+                }
+
+                if (oversized) {
+                  continue;
+                }
+
+                const decoder = new TextDecoder('utf-8');
+                text =
+                  chunks.map((c) => decoder.decode(c, { stream: true })).join('') + decoder.decode();
+              } else {
+                text = await response.text();
+              }
+
+              // Verify upstream payload is genuine plain text rather than an HTML redirect/outage page
+              if (text && !isHtmlPayload(upstreamContentType, text.slice(0, 512))) {
+                resolvedText = text;
+                resolvedSuccess = true;
+                break;
+              }
             }
+          } catch {
+            clearTimeout(timeoutId);
           }
-        } catch {
-          clearTimeout(timeoutId);
         }
-      }
 
-      return { textContent: resolvedText, fetchSuccess: resolvedSuccess };
-    })().finally(() => {
-      inFlightMirrorFetches.delete(bookId);
-    });
+        return {
+          textContent: resolvedText,
+          fetchSuccess: resolvedSuccess,
+          source: 'gutenberg-mirror' as const,
+        };
+      })().finally(() => {
+        inFlightMirrorFetches.delete(bookId);
+      });
+    }
 
     inFlightMirrorFetches.set(bookId, mirrorPromise);
   }
 
-  const { textContent, fetchSuccess } = await mirrorPromise;
+  const { textContent, fetchSuccess, notFound, source } = await mirrorPromise;
 
   if (!fetchSuccess || !textContent) {
+    if (notFound) {
+      return createNoStoreErrorResponse(
+        'Book text is not available in R2 asset storage.',
+        404
+      );
+    }
     return createNoStoreErrorResponse(
-      'Failed to fetch unabridged text from Project Gutenberg upstream.',
+      source === 'r2'
+        ? 'Failed to fetch unabridged text from R2 asset storage.'
+        : 'Failed to fetch unabridged text from Project Gutenberg upstream.',
       502
     );
   }
 
-  setCachedBookContent(bookId, textContent, 'gutenberg-mirror');
+  const resolvedSource = source || 'gutenberg-mirror';
+  setCachedBookContent(bookId, textContent, resolvedSource);
+
+  const okHeaders: Record<string, string> = {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
+    'Vary': 'x-vercel-ip-country, Accept-Encoding',
+    ...buildApiSecurityHeaders('same-origin'),
+  };
+  if (resolvedSource === 'r2') {
+    okHeaders['X-Bookarium-Source'] = 'r2';
+  }
 
   return new NextResponse(textContent, {
     status: 200,
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
-      'Vary': 'x-vercel-ip-country, Accept-Encoding',
-      ...buildApiSecurityHeaders('same-origin'),
-    },
+    headers: okHeaders,
   });
 }

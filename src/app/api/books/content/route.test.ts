@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
+import zlib from 'node:zlib';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { SITE_CONFIG } from '@/config/site-config';
@@ -43,6 +44,10 @@ describe('GET /api/books/content', () => {
     vi.restoreAllMocks();
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
+    vi.stubEnv('R2_ACCOUNT_ID', '');
+    vi.stubEnv('R2_BUCKET_NAME', '');
+    vi.stubEnv('R2_ACCESS_KEY_ID', '');
+    vi.stubEnv('R2_SECRET_ACCESS_KEY', '');
     bookContentRateLimiter.reset();
     bookCardRateLimiter.reset();
     bookCoverRateLimiter.reset();
@@ -814,10 +819,18 @@ describe('GET /api/books/content', () => {
     });
   });
 
-  describe('Binary Cover Image Streaming (type=cover)', () => {
+  describe('Binary Cover Image Streaming (type=cover — Strict R2 Only)', () => {
     const fakeJpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 
-    it('streams cover image successfully from mirror with Content-Type: image/jpeg and CDN cache headers', async () => {
+    function stubR2Env() {
+      vi.stubEnv('R2_ACCOUNT_ID', '0123456789abcdef0123456789abcdef');
+      vi.stubEnv('R2_BUCKET_NAME', 'bookarium-assets');
+      vi.stubEnv('R2_ACCESS_KEY_ID', 'test-r2-access-key');
+      vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test-r2-secret-key');
+    }
+
+    it('streams cover image strictly from private R2 with Content-Type: image/jpeg and 7d cache headers', async () => {
+      stubR2Env();
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(fakeJpegBytes, {
           status: 200,
@@ -832,97 +845,69 @@ describe('GET /api/books/content', () => {
       expect(res.headers.get('Content-Type')).toBe('image/jpeg');
       expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
       expect(res.headers.get('Vary')).toBe('Accept-Encoding');
+      expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
       expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
       expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
       const buffer = await res.arrayBuffer();
       expect(new Uint8Array(buffer)).toEqual(fakeJpegBytes);
 
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(fetchSpy).toHaveBeenCalledWith(
-        'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+        'https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/bookarium-assets/covers/1342.jpg',
         expect.objectContaining({ redirect: 'manual' })
       );
-
-      fetchSpy.mockRestore();
     });
 
-    it('falls back through mirrors when primary aleph mirror returns 404', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+    it('returns 404 without falling back to Project Gutenberg when cover is missing in R2 or R2 is unconfigured', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch');
+
+      const unconfiguredReq = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
+      const unconfiguredRes = await GET(unconfiguredReq);
+      expect(unconfiguredRes.status).toBe(404);
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      stubR2Env();
+      fetchSpy.mockResolvedValueOnce(new Response('NoSuchKey', { status: 404 }));
+
+      const missingReq = new NextRequest('http://localhost:3000/api/books/content?id=99999&type=cover');
+      const missingRes = await GET(missingReq);
+      expect(missingRes.status).toBe(404);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(String(fetchSpy.mock.calls[0][0])).not.toContain('gutenberg');
+    });
+
+    it('returns 502 without Gutenberg fallback when R2 storage errors, redirects, exceeds 2MB, or serves HTML', async () => {
+      stubR2Env();
+      const oversizedBytes = new Uint8Array(2 * 1024 * 1024 + 10);
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockRejectedValueOnce(new Error('Network failure'))
         .mockResolvedValueOnce(
-          new Response(fakeJpegBytes, {
+          new Response(null, { status: 302, headers: { Location: 'https://evil.example/cover.jpg' } })
+        )
+        .mockResolvedValueOnce(
+          new Response(oversizedBytes, {
             status: 200,
-            headers: { 'Content-Type': 'image/jpeg' },
-          })
-        );
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
-      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg');
-
-      fetchSpy.mockRestore();
-    });
-
-    it('safely follows trusted redirect hops when fetching cover image', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(null, {
-            status: 302,
-            headers: new Headers({
-              Location: 'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg',
-            }),
+            headers: { 'Content-Length': String(oversizedBytes.byteLength) },
           })
         )
         .mockResolvedValueOnce(
-          new Response(fakeJpegBytes, {
+          new Response('<!DOCTYPE html><html><body>Maintenance</body></html>', {
             status: 200,
-            headers: { 'Content-Type': 'image/jpeg' },
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
           })
         );
 
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
-      const res = await GET(req);
+      for (let i = 0; i < 4; i++) {
+        const res = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover'));
+        expect(res.status).toBe(502);
+      }
 
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg');
-
-      fetchSpy.mockRestore();
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
     });
 
-    it('returns 502 when all mirrors fail or return error', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network failure'));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=99999&type=cover');
-      const res = await GET(req);
-
-      expect(res.status).toBe(502);
-      const json = await res.json();
-      expect(json.error).toMatch(/Failed to fetch cover image/i);
-
-      fetchSpy.mockRestore();
-    });
-
-    it('skips oversized cover responses exceeding 2MB threshold', async () => {
-      const oversizedBytes = new Uint8Array(2 * 1024 * 1024 + 10);
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(oversizedBytes, {
-          status: 200,
-          headers: { 'Content-Length': String(oversizedBytes.byteLength) },
-        })
-      );
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
-      const res = await GET(req);
-
-      expect(res.status).toBe(502);
-      fetchSpy.mockRestore();
-    });
-
-    it('skips copyright metadata lookup for type=cover in non-US jurisdictions and emits max-age browser caching headers', async () => {
+    it('skips copyright metadata lookup for type=cover in non-US jurisdictions and streams R2 cover with browser caching', async () => {
+      stubR2Env();
       const tinyJpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(tinyJpeg, {
@@ -941,38 +926,55 @@ describe('GET /api/books/content', () => {
         'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000'
       );
       expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(String(fetchSpy.mock.calls[0][0])).toContain('pg863.cover.medium.jpg');
-
-      fetchSpy.mockRestore();
+      expect(String(fetchSpy.mock.calls[0][0])).toContain('/covers/863.jpg');
     });
+  });
 
-    it('skips mirrors returning HTTP 200 text/html outage pages on type=cover requests', async () => {
-      const fetchSpy = vi
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response('<!DOCTYPE html><html><body>Maintenance</body></html>', {
-            status: 200,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          })
-        )
-        .mockResolvedValueOnce(
-          new Response(fakeJpegBytes, {
-            status: 200,
-            headers: { 'Content-Type': 'image/jpeg', 'Content-Length': String(fakeJpegBytes.byteLength) },
-          })
-        );
+  describe('Cloudflare R2 Gzipped Book Text Mode (R2 Configured -> Zero PG Fallback)', () => {
+    function stubR2Env() {
+      vi.stubEnv('R2_ACCOUNT_ID', '0123456789abcdef0123456789abcdef');
+      vi.stubEnv('R2_BUCKET_NAME', 'bookarium-assets');
+      vi.stubEnv('R2_ACCESS_KEY_ID', 'test-r2-access-key');
+      vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test-r2-secret-key');
+    }
 
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(res.headers.get('Content-Type')).toBe('image/jpeg');
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(fetchSpy.mock.calls[1][0]).toBe(
-        'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg'
+    it('fetches and gunzips books/<id>.txt.gz from private R2 and serves cached Tier 0 hits with X-Bookarium-Source: r2', async () => {
+      stubR2Env();
+      const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(new Uint8Array(gzipped), {
+          status: 200,
+          headers: { 'Content-Type': 'application/gzip' },
+        })
       );
 
-      fetchSpy.mockRestore();
+      const firstRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
+      expect(firstRes.status).toBe(200);
+      expect(firstRes.headers.get('X-Bookarium-Source')).toBe('r2');
+      expect(await firstRes.text()).toBe(sampleBookText);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(String(fetchSpy.mock.calls[0][0])).toContain('/bookarium-assets/books/1342.txt.gz');
+
+      // Second read hits Tier 0 LRU without external fetch while preserving source header
+      const cachedRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
+      expect(cachedRes.status).toBe(200);
+      expect(cachedRes.headers.get('X-Bookarium-Source')).toBe('r2');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns 404 on R2 NoSuchKey and 502 on R2 error without falling back to Project Gutenberg mirrors', async () => {
+      stubR2Env();
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('NoSuchKey', { status: 404 }))
+        .mockResolvedValueOnce(new Response('Internal Error', { status: 500 }));
+
+      const res404 = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
+      expect(res404.status).toBe(404);
+
+      const res502 = await GET(new NextRequest('http://localhost:3000/api/books/content?id=84'));
+      expect(res502.status).toBe(502);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
 

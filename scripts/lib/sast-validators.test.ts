@@ -354,6 +354,10 @@ jobs:
         'NEXT_PUBLIC_SUPABASE_URL',
         'NEXT_PUBLIC_SUPABASE_ANON_KEY',
         'SUPABASE_SERVICE_ROLE_KEY',
+        'R2_ACCOUNT_ID',
+        'R2_BUCKET_NAME',
+        'R2_ACCESS_KEY_ID',
+        'R2_SECRET_ACCESS_KEY',
       ]);
       const runtimePlatformEnvVars = new Set(['NODE_ENV', 'CI']);
 
@@ -361,6 +365,15 @@ jobs:
       expect(
         sastValidators.validateEnvAndPrivilegeBoundariesAst(useAuthCode, {
           filePath: 'src/stores/useAuthStore.ts',
+          documentedEnvVars,
+          runtimePlatformEnvVars,
+        })
+      ).toEqual([]);
+
+      const r2ClientCode = fs.readFileSync(path.join(ROOT_DIR, 'src/lib/r2-client.ts'), 'utf-8');
+      expect(
+        sastValidators.validateEnvAndPrivilegeBoundariesAst(r2ClientCode, {
+          filePath: 'src/lib/r2-client.ts',
           documentedEnvVars,
           runtimePlatformEnvVars,
         })
@@ -394,10 +407,12 @@ jobs:
 
       const clientBypass = `
         'use client';
-        const { NEXT_PUBLIC_API_SECRET } = process.env;
+        const { NEXT_PUBLIC_API_SECRET, NEXT_PUBLIC_R2_ACCESS_KEY_ID, NEXT_PUBLIC_R2_ACCOUNT_ID } = process.env;
         const hiddenKey = process.env['UNDOCUMENTED_CLIENT_FLAG'];
         const roleKey = process.env['SUPABASE_' + 'SERVICE_ROLE_KEY'];
-        export const debug = { NEXT_PUBLIC_API_SECRET, hiddenKey, roleKey };
+        const r2Secret = process.env['R2_' + 'SECRET_ACCESS_KEY'];
+        const r2Access = process.env.R2_ACCESS_KEY_ID;
+        export const debug = { NEXT_PUBLIC_API_SECRET, NEXT_PUBLIC_R2_ACCESS_KEY_ID, NEXT_PUBLIC_R2_ACCOUNT_ID, hiddenKey, roleKey, r2Secret, r2Access };
       `;
       const violations: Array<{ file: string; issue: string }> =
         sastValidators.validateEnvAndPrivilegeBoundariesAst(clientBypass, {
@@ -406,8 +421,12 @@ jobs:
           runtimePlatformEnvVars,
         });
       expect(violations.some((v) => v.issue.includes('NEXT_PUBLIC_API_SECRET') && v.issue.includes('prefixed with NEXT_PUBLIC_'))).toBe(true);
+      expect(violations.some((v) => v.issue.includes('NEXT_PUBLIC_R2_ACCESS_KEY_ID') && v.issue.includes('prefixed with NEXT_PUBLIC_'))).toBe(true);
+      expect(violations.some((v) => v.issue.includes('NEXT_PUBLIC_R2_ACCOUNT_ID') && v.issue.includes('prefixed with NEXT_PUBLIC_'))).toBe(true);
       expect(violations.some((v) => v.issue.includes('Undocumented environment variable "UNDOCUMENTED_CLIENT_FLAG"'))).toBe(true);
       expect(violations.some((v) => v.issue.includes('Forbidden SUPABASE_SERVICE_ROLE_KEY reference'))).toBe(true);
+      expect(violations.some((v) => v.issue.includes('Forbidden server-only secret "R2_SECRET_ACCESS_KEY" reference'))).toBe(true);
+      expect(violations.some((v) => v.issue.includes('Forbidden server-only secret "R2_ACCESS_KEY_ID" reference'))).toBe(true);
 
       const aliasedCli = `
         export function run(env = process.env) {

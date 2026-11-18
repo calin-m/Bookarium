@@ -6,8 +6,8 @@
  * @scope Browser IndexedDB persistence (`BookariumOfflineDB` / `offline_books` + bounded `cover_cache` LRU), `coverObjectUrlCache` reuse, background cover warming, and non-regressive author metadata healing.
  * @invariant Never overwrite authentic author metadata with placeholder names (`isPlaceholderAuthor`, e.g., `"Anonymous"`); heal missing contributor lifespans via `patchOfflineBookAuthors`.
  * @invariant Lookup cover art in-memory (`getMemoryCachedCoverUrl`) and across IndexedDB (`offline_books.coverBlob` -> non-expired `cover_cache.blob`, capped at `MAX_CACHED_COVERS` and `COVER_CACHE_TTL_MS`), populate via same-origin `/api/books/content?id=...&type=cover`, manage `coverObjectUrlCache` revocation on eviction/removal/clear, clear both stores in `clearAllOfflineBooks`, and broadcast changes through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
- * @rationale Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache prevents slow mirror re-downloads on page refreshes regardless of which Gutenberg mirror succeeded while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
- * @adr ADR-020, ADR-069, ADR-070, ADR-080
+ * @rationale Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache prevents repeat downloads across refreshes behind `/api/books/content?type=cover` (Cloudflare R2) while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
+ * @adr ADR-020, ADR-069, ADR-070, ADR-080, ADR-082
  */
 
 import type { Author, GutendexBook } from '@/types/book.types';
@@ -473,7 +473,7 @@ function drainCoverWarmQueue(): void {
 
 /**
  * Queues a deduplicated, concurrency-bounded background fetch to persist a cover Blob locally
- * into `cover_cache` so future refreshes load from IndexedDB regardless of upstream mirror.
+ * into `cover_cache` so future refreshes load from IndexedDB without re-fetching `/api/books/content?type=cover`.
  */
 export function warmCoverCache(bookId: number): void {
   if (
