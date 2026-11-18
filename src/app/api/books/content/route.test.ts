@@ -5,7 +5,6 @@ import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { SITE_CONFIG } from '@/config/site-config';
 import { clearBookMetadataCache, clearBookContentCache } from './metadata-cache';
-import { isSafeUpstreamUrl, sanitizeUpstreamUrl } from './url-validator';
 import { sampleBookText } from '@/mocks/handlers';
 import {
   bookContentRateLimiter,
@@ -147,42 +146,22 @@ describe('GET /api/books/content', () => {
     expect(coverBlocked.headers.get('X-RateLimit-Limit')).toBe('60');
   });
 
-  it('should block SSRF attempts targeting cloud metadata or internal network', async () => {
-    const maliciousUrls = [
-      'http://169.254.169.254/latest/meta-data/',
-      'http://localhost:54321',
-      'http://127.0.0.1:3000',
-      'http://10.0.0.1:8080',
-      'https://evil.attacker.com/steal',
+  it('should reject ?url= proxy attempts and non-numeric book IDs cleanly with 400 no-store', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const maliciousRequests = [
+      'http://localhost:3000/api/books/content?url=http://169.254.169.254/latest/meta-data/',
+      'http://localhost:3000/api/books/content?url=https://www.gutenberg.org/cache/epub/1342/pg1342.txt',
+      'http://localhost:3000/api/books/content?id=1342/../../etc/passwd',
+      'http://localhost:3000/api/books/content?id=0',
     ];
 
-    for (const url of maliciousUrls) {
-      expect(isSafeUpstreamUrl(url)).toBe(false);
+    for (const rawUrl of maliciousRequests) {
+      const res = await GET(new NextRequest(rawUrl));
+      expect(res.status).toBe(400);
+      expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
     }
 
-    const req = new NextRequest('http://localhost:3000/api/books/content?url=http://169.254.169.254/latest/meta-data/');
-    const res = await GET(req);
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toMatch(/unauthorized/i);
-  });
-
-  it('should validate official Gutenberg upstream URLs as safe and sanitize them', () => {
-    expect(isSafeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt')).toBe(true);
-    expect(isSafeUpstreamUrl('https://gutenberg.org/files/1342/1342-0.txt')).toBe(true);
-
-    expect(sanitizeUpstreamUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt')).toBe(
-      'https://www.gutenberg.org/cache/epub/1342/pg1342.txt'
-    );
-    expect(sanitizeUpstreamUrl('https://gutenberg.org/files/1342/1342-0.txt')).toBe(
-      'https://gutenberg.org/files/1342/1342-0.txt'
-    );
-  });
-
-  it('should reject path traversal attempts in upstream URLs', () => {
-    expect(isSafeUpstreamUrl('https://www.gutenberg.org/../../etc/passwd')).toBe(false);
-    expect(isSafeUpstreamUrl('https://gutenberg.org/cache/epub/1342/../../../secret')).toBe(false);
-    expect(sanitizeUpstreamUrl('https://www.gutenberg.org/../../etc/passwd')).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK', async () => {
@@ -349,11 +328,39 @@ describe('GET /api/books/content', () => {
     }
   });
 
-  it('should fetch and return book text for valid public domain id in US', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      text: async () => sampleBookText,
-    } as any);
+  function stubR2Credentials() {
+    vi.stubEnv('R2_ACCOUNT_ID', '0123456789abcdef0123456789abcdef');
+    vi.stubEnv('R2_BUCKET_NAME', 'bookarium-assets');
+    vi.stubEnv('R2_ACCESS_KEY_ID', 'test-r2-access-key');
+    vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test-r2-secret-key');
+  }
+
+  it('should return HTTP 503 without external Gutenberg fallback when R2 is unconfigured', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
+      headers: {
+        'x-vercel-ip-country': 'US',
+      },
+    });
+    const res = await GET(req);
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    const json = await res.json();
+    expect(json.error).toMatch(/Cloudflare R2 asset storage is not configured/i);
+  });
+
+  it('should fetch and return book text from private R2 for valid public domain id in US', async () => {
+    stubR2Credentials();
+    const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(new Uint8Array(gzipped), {
+        status: 200,
+        headers: { 'Content-Type': 'application/gzip' },
+      })
+    );
 
     const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
       headers: {
@@ -367,14 +374,21 @@ describe('GET /api/books/content', () => {
     expect(res.headers.get('Cache-Control')).toContain('max-age=86400');
     expect(res.headers.get('Cache-Control')).toContain('s-maxage=86400');
     expect(res.headers.get('Vary')).toContain('x-vercel-ip-country');
+    expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('/bookarium-assets/books/1342.txt.gz');
     const text = await res.text();
     expect(text).toContain('Pride and Prejudice');
   }, 15000);
 
-  it('should stream public domain book to GB user when metadata confirms death year <= 1955', async () => {
-    // Book 1342 resolves Jane Austen lifespan (death_year: 1817) via Tier 3 FEATURED_HERO_BOOKS; only text mirror is fetched
+  it('should stream public domain book from R2 to GB user when metadata confirms death year <= 1955', async () => {
+    // Book 1342 resolves Jane Austen lifespan (death_year: 1817) via Tier 3 FEATURED_HERO_BOOKS; only R2 object is fetched
+    stubR2Credentials();
+    const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
-      new Response(sampleBookText, { status: 200 })
+      new Response(new Uint8Array(gzipped), {
+        status: 200,
+        headers: { 'Content-Type': 'application/gzip' },
+      })
     );
 
     try {
@@ -387,6 +401,7 @@ describe('GET /api/books/content', () => {
 
       expect(res.status).toBe(200);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(String(fetchSpy.mock.calls[0][0])).toContain('/bookarium-assets/books/1342.txt.gz');
       const text = await res.text();
       expect(text).toContain('Pride and Prejudice');
     } finally {
@@ -394,44 +409,14 @@ describe('GET /api/books/content', () => {
     }
   }, 15000);
 
-  it('should return 502 if upstream text mirrors fail or time out', async () => {
+  it('should return 502 if R2 storage requests fail or time out', async () => {
+    stubR2Credentials();
     vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Connection aborted'));
 
     const req = new NextRequest('http://localhost:3000/api/books/content?id=99999');
     const res = await GET(req);
 
     expect(res.status).toBe(502);
-  });
-
-  it('guarantees fetch is strictly called with canonical Gutenberg endpoints only', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      text: async () => sampleBookText,
-    } as any);
-
-    const req = new NextRequest('http://localhost:3000/api/books/content?url=https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(fetchSpy).toHaveBeenCalled();
-    const calledUrl = fetchSpy.mock.calls[0][0] as string;
-    expect(calledUrl).toMatch(
-      /^https:\/\/(aleph\.gutenberg\.org|gutenberg\.pglaf\.org|gutenberg\.readingroo\.ms|www\.gutenberg\.org)\/(cache\/epub|files)\/\d{1,8}\//
-    );
-  });
-
-  it('falls back to secondary mirror when primary mirror returns 404', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch')
-      .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-      .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
-    const text = await res.text();
-    expect(text).toContain('Pride and Prejudice');
   });
 
   it('streams content directly from Supabase (Tier 1) without external network fetch', async () => {
@@ -476,220 +461,16 @@ describe('GET /api/books/content', () => {
     }
   });
 
-  it('safely follows redirects to trusted Gutenberg mirrors', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch')
-      .mockResolvedValueOnce(
-        new Response(null, {
-          status: 301,
-          headers: new Headers({
-            Location: 'https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt',
-          }),
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(sampleBookText, {
-          status: 200,
-          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' }),
-        })
-      );
-
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
-    expect(fetchSpy.mock.calls[1][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
-    const text = await res.text();
-    expect(text).toContain('Pride and Prejudice');
-  });
-
-  it('follows up to 3 trusted redirect hops and skips mirrors that redirect to untrusted origins', async () => {
-    const fetchSpy = vi.spyOn(global, 'fetch')
-      // Mirror 1 redirects to an untrusted origin -> immediately skipped
-      .mockResolvedValueOnce(
-        new Response(null, {
-          status: 301,
-          headers: new Headers({
-            Location: 'https://evil.example.com/cache/epub/1342/pg1342.txt',
-          }),
-        })
-      )
-      // Mirror 2 chains two trusted hops (302 -> 307 -> 200)
-      .mockResolvedValueOnce(
-        new Response(null, {
-          status: 302,
-          headers: new Headers({
-            Location: 'https://gutenberg.pglaf.org/files/1342/1342-0.txt',
-          }),
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(null, {
-          status: 307,
-          headers: new Headers({
-            Location: 'https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt',
-          }),
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(sampleBookText, {
-          status: 200,
-          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' }),
-        })
-      );
-
-    const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-    const res = await GET(req);
-
-    expect(res.status).toBe(200);
-    expect(fetchSpy).toHaveBeenCalledTimes(4);
-    expect(fetchSpy.mock.calls[3][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
-    const text = await res.text();
-    expect(text).toContain('Pride and Prejudice');
-  });
-
-  describe('6-Tier Project Gutenberg Mirror & Fallback Cascade', () => {
-    it('Tier 1: serves directly from aleph.gutenberg.org when available', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
-      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
-    });
-
-    it('Tier 2: falls back to gutenberg.pglaf.org when aleph.gutenberg.org returns 503', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Service Unavailable', { status: 503 }))
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(fetchSpy.mock.calls[0][0]).toBe('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
-      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
-    });
-
-    it('skips mirrors returning HTTP 200 HTML outage pages and succeeds on the next plain-text mirror', async () => {
-      const fetchSpy = vi
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response('<!DOCTYPE html><html><body>Outage Maintenance</body></html>', {
-            status: 200,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          })
-        )
-        .mockResolvedValueOnce(
-          new Response(sampleBookText, {
-            status: 200,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          })
-        );
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      const body = await res.text();
-      expect(body).toContain('Pride and Prejudice');
-
-      fetchSpy.mockRestore();
-    });
-
-    it('Tier 3: falls back to gutenberg.readingroo.ms when aleph and pglaf mirrors fail', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(3);
-      expect(fetchSpy.mock.calls[2][0]).toBe('https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.txt');
-    });
-
-    it('Tier 4: falls back to www.gutenberg.org/cache/epub when all 3 harvest mirrors fail', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(4);
-      expect(fetchSpy.mock.calls[3][0]).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.txt');
-    });
-
-    it('Tier 5: falls back to www.gutenberg.org/files/{id}/{id}-0.txt when all /cache/epub endpoints return 404', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(5);
-      expect(fetchSpy.mock.calls[4][0]).toBe('https://www.gutenberg.org/files/1342/1342-0.txt');
-    });
-
-    it('Tier 6: falls back to legacy www.gutenberg.org/files/{id}/{id}.txt when all 5 prior tiers fail', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(6);
-      expect(fetchSpy.mock.calls[5][0]).toBe('https://www.gutenberg.org/files/1342/1342.txt');
-    });
-
-    it('resolves relative Location redirect paths against the active mirror origin', async () => {
-      const fetchSpy = vi.spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
-        .mockResolvedValueOnce(
-          new Response(null, {
-            status: 302,
-            headers: new Headers({
-              Location: '/files/1342/1342-0.txt',
-            }),
-          })
-        )
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-      const res = await GET(req);
-
-      expect(res.status).toBe(200);
-      expect(fetchSpy).toHaveBeenCalledTimes(3);
-      expect(fetchSpy.mock.calls[1][0]).toBe('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
-      expect(fetchSpy.mock.calls[2][0]).toBe('https://gutenberg.pglaf.org/files/1342/1342-0.txt');
-    });
-
-    it('coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch', async () => {
+  describe('Cloudflare R2 Text Coalescing, In-Memory LRU & Failure Handling (Zero PG Fallback)', () => {
+    it('coalesces concurrent in-flight requests for the same bookId into a single R2 fetch', async () => {
+      stubR2Credentials();
+      const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
       const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () => {
         await new Promise((r) => setTimeout(r, 20));
-        return new Response(sampleBookText, { status: 200 });
+        return new Response(new Uint8Array(gzipped), {
+          status: 200,
+          headers: { 'Content-Type': 'application/gzip' },
+        });
       });
 
       const req1 = new NextRequest('http://localhost:3000/api/books/content?id=1342');
@@ -700,6 +481,7 @@ describe('GET /api/books/content', () => {
       expect(res1.status).toBe(200);
       expect(res2.status).toBe(200);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(String(fetchSpy.mock.calls[0][0])).toContain('/bookarium-assets/books/1342.txt.gz');
       expect(await res1.text()).toContain('Pride and Prejudice');
       expect(await res2.text()).toContain('Pride and Prejudice');
 
@@ -707,11 +489,18 @@ describe('GET /api/books/content', () => {
     });
 
     it('serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity', async () => {
+      stubR2Credentials();
+      const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
       const fetchSpy = vi
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
+        .mockResolvedValueOnce(
+          new Response(new Uint8Array(gzipped), {
+            status: 200,
+            headers: { 'Content-Type': 'application/gzip' },
+          })
+        );
 
-      // First request from US populates server-side LRU cache
+      // First request from US populates server-side LRU cache from R2
       const usReq = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
         headers: { 'x-vercel-ip-country': 'US' },
       });
@@ -726,23 +515,33 @@ describe('GET /api/books/content', () => {
       const deRes = await GET(deReq);
       expect(deRes.status).toBe(200);
       expect(await deRes.text()).toContain('Pride and Prejudice');
-      // Still only 1 mirror fetch total: metadata resolves locally without any external API call
       expect(fetchSpy).toHaveBeenCalledTimes(1);
 
       // Fill cache past MAX_CACHED_BOOKS (20) to verify LRU eviction of oldest entry
-      fetchSpy.mockImplementation(async () => new Response(sampleBookText, { status: 200 }));
+      fetchSpy.mockImplementation(async () =>
+        new Response(new Uint8Array(gzipped), {
+          status: 200,
+          headers: { 'Content-Type': 'application/gzip' },
+        })
+      );
       for (let id = 2001; id <= 2021; id++) {
         const fillReq = new NextRequest(`http://localhost:3000/api/books/content?id=${id}`);
         const fillRes = await GET(fillReq);
         expect(fillRes.status).toBe(200);
       }
 
+      const callsAfterEvict = fetchSpy.mock.calls.length;
+      const reFetchRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
+      expect(reFetchRes.status).toBe(200);
+      expect(fetchSpy.mock.calls.length).toBe(callsAfterEvict + 1);
+
       fetchSpy.mockRestore();
     });
 
-    it('degrades gracefully from Tier 1 Supabase abortSignal timeout to Tier 2 mirror fetch', async () => {
+    it('degrades cleanly from Tier 1 Supabase abortSignal timeout to Tier 1.5 Cloudflare R2 without contacting Gutenberg', async () => {
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+      stubR2Credentials();
 
       const mockMaybeSingle = vi
         .fn()
@@ -757,53 +556,13 @@ describe('GET /api/books/content', () => {
         from: mockFrom,
       } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
 
+      const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
       const fetchSpy = vi
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(new Response(sampleBookText, { status: 200 }));
-
-      try {
-        const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
-        const res = await GET(req);
-        expect(res.status).toBe(200);
-        expect(fetchSpy).toHaveBeenCalledTimes(1);
-        expect(await res.text()).toContain('Pride and Prejudice');
-      } finally {
-        clientSpy.mockRestore();
-        fetchSpy.mockRestore();
-      }
-    });
-
-    it('cascades past AbortError timeouts, HTML outage pages, and oversized streaming payloads across mirrors', async () => {
-      const oversizedStream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(new Uint8Array(15 * 1024 * 1024 + 64));
-          controller.close();
-        },
-      });
-
-      const fetchSpy = vi
-        .spyOn(global, 'fetch')
-        // Mirror 1: AbortError timeout
-        .mockRejectedValueOnce(new DOMException('Aborted', 'AbortError'))
-        // Mirror 2: 200 OK HTML maintenance page (outage interstitial)
         .mockResolvedValueOnce(
-          new Response('<!DOCTYPE html><html><body>Mirror maintenance</body></html>', {
+          new Response(new Uint8Array(gzipped), {
             status: 200,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          })
-        )
-        // Mirror 3: Streaming payload exceeding MAX_BOOK_BYTES (15 MB)
-        .mockResolvedValueOnce(
-          new Response(oversizedStream, {
-            status: 200,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          })
-        )
-        // Mirror 4: Clean unabridged text payload
-        .mockResolvedValueOnce(
-          new Response(sampleBookText, {
-            status: 200,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            headers: { 'Content-Type': 'application/gzip' },
           })
         );
 
@@ -811,8 +570,42 @@ describe('GET /api/books/content', () => {
         const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
         const res = await GET(req);
         expect(res.status).toBe(200);
-        expect(fetchSpy).toHaveBeenCalledTimes(4);
+        expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(String(fetchSpy.mock.calls[0][0])).not.toContain('gutenberg');
         expect(await res.text()).toContain('Pride and Prejudice');
+      } finally {
+        clientSpy.mockRestore();
+        fetchSpy.mockRestore();
+      }
+    });
+
+    it('rejects R2 HTML outage pages and oversized gzip payloads fail-closed with 502', async () => {
+      stubR2Credentials();
+      const oversizedPayload = zlib.gzipSync(Buffer.alloc(15 * 1024 * 1024 + 64, 'a'));
+
+      const fetchSpy = vi
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('<!DOCTYPE html><html><body>R2 Edge Outage</body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(new Uint8Array(oversizedPayload), {
+            status: 200,
+            headers: { 'Content-Type': 'application/gzip' },
+          })
+        );
+
+      try {
+        const htmlRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
+        expect(htmlRes.status).toBe(502);
+
+        const bigRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=84'));
+        expect(bigRes.status).toBe(502);
+        expect(fetchSpy).toHaveBeenCalledTimes(2);
       } finally {
         fetchSpy.mockRestore();
       }
@@ -844,6 +637,7 @@ describe('GET /api/books/content', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('image/jpeg');
       expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
+      expect(res.headers.get('Vercel-Cache-Tag')).toBe('covers');
       expect(res.headers.get('Vary')).toBe('Accept-Encoding');
       expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
       expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
@@ -864,6 +658,7 @@ describe('GET /api/books/content', () => {
       const unconfiguredReq = new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover');
       const unconfiguredRes = await GET(unconfiguredReq);
       expect(unconfiguredRes.status).toBe(404);
+      expect(unconfiguredRes.headers.get('Vercel-Cache-Tag')).toBeNull();
       expect(fetchSpy).not.toHaveBeenCalled();
 
       stubR2Env();
@@ -872,6 +667,7 @@ describe('GET /api/books/content', () => {
       const missingReq = new NextRequest('http://localhost:3000/api/books/content?id=99999&type=cover');
       const missingRes = await GET(missingReq);
       expect(missingRes.status).toBe(404);
+      expect(missingRes.headers.get('Vercel-Cache-Tag')).toBeNull();
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(String(fetchSpy.mock.calls[0][0])).not.toContain('gutenberg');
     });
@@ -901,6 +697,7 @@ describe('GET /api/books/content', () => {
       for (let i = 0; i < 4; i++) {
         const res = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342&type=cover'));
         expect(res.status).toBe(502);
+        expect(res.headers.get('Vercel-Cache-Tag')).toBeNull();
       }
 
       expect(fetchSpy).toHaveBeenCalledTimes(4);
@@ -951,14 +748,16 @@ describe('GET /api/books/content', () => {
       const firstRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
       expect(firstRes.status).toBe(200);
       expect(firstRes.headers.get('X-Bookarium-Source')).toBe('r2');
+      expect(firstRes.headers.get('Vercel-Cache-Tag')).toBe('book-content');
       expect(await firstRes.text()).toBe(sampleBookText);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(String(fetchSpy.mock.calls[0][0])).toContain('/bookarium-assets/books/1342.txt.gz');
 
-      // Second read hits Tier 0 LRU without external fetch while preserving source header
+      // Second read hits Tier 0 LRU without external fetch while preserving source and cache tag headers
       const cachedRes = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
       expect(cachedRes.status).toBe(200);
       expect(cachedRes.headers.get('X-Bookarium-Source')).toBe('r2');
+      expect(cachedRes.headers.get('Vercel-Cache-Tag')).toBe('book-content');
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -971,9 +770,11 @@ describe('GET /api/books/content', () => {
 
       const res404 = await GET(new NextRequest('http://localhost:3000/api/books/content?id=1342'));
       expect(res404.status).toBe(404);
+      expect(res404.headers.get('Vercel-Cache-Tag')).toBeNull();
 
       const res502 = await GET(new NextRequest('http://localhost:3000/api/books/content?id=84'));
       expect(res502.status).toBe(502);
+      expect(res502.headers.get('Vercel-Cache-Tag')).toBeNull();
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
@@ -993,6 +794,7 @@ describe('GET /api/books/content', () => {
       expect(res.headers.get('Cache-Control')).toBe(
         'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800'
       );
+      expect(res.headers.get('Vercel-Cache-Tag')).toBe('book-content');
       expect(res.headers.get('X-Bookarium-Source')).toBe('supabase');
       expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
       expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
@@ -1023,6 +825,7 @@ describe('GET /api/books/content', () => {
       expect(resWithToken.status).toBe(200);
       expect(resWithToken.headers.get('Content-Type')).toContain('image/png');
       expect(resWithToken.headers.get('Cache-Control')).toContain('s-maxage=86400');
+      expect(resWithToken.headers.get('Vercel-Cache-Tag')).toBeNull();
       expect(resWithToken.headers.get('Cross-Origin-Resource-Policy')).toBe('cross-origin');
       expect(resWithToken.headers.get('X-Content-Type-Options')).toBe('nosniff');
 

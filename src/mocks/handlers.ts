@@ -240,60 +240,6 @@ export const handlers = [
     });
   }),
 
-  // Book content text mocks across allowlisted HTTPS Project Gutenberg mirrors & domains
-  http.get('https://aleph.gutenberg.org/cache/epub/:id/pg:file.txt', () => {
-    return new HttpResponse(sampleBookText, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }),
-  http.get('https://gutenberg.pglaf.org/cache/epub/:id/pg:file.txt', () => {
-    return new HttpResponse(sampleBookText, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }),
-  http.get('https://gutenberg.readingroo.ms/cache/epub/:id/pg:file.txt', () => {
-    return new HttpResponse(sampleBookText, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }),
-  http.get('https://www.gutenberg.org/cache/epub/:id/pg:file.txt', () => {
-    return new HttpResponse(sampleBookText, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }),
-  http.get('https://www.gutenberg.org/files/:id/:file.txt', () => {
-    return new HttpResponse(sampleBookText, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }),
-  http.get('https://www.gutenberg.org/ebooks/:id.txt.utf-8', () => {
-    return new HttpResponse(sampleBookText, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
-  }),
-
-  // Book cover mock across allowlisted Project Gutenberg cache
-  http.get('https://www.gutenberg.org/cache/epub/:id/pg:file.cover.:size.jpg', () => {
-    return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
-      headers: { 'Content-Type': 'image/jpeg' },
-    });
-  }),
-  http.get('https://aleph.gutenberg.org/cache/epub/:id/pg:file.cover.:size.jpg', () => {
-    return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
-      headers: { 'Content-Type': 'image/jpeg' },
-    });
-  }),
-  http.get('https://gutenberg.pglaf.org/cache/epub/:id/pg:file.cover.:size.jpg', () => {
-    return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
-      headers: { 'Content-Type': 'image/jpeg' },
-    });
-  }),
-  http.get('https://gutenberg.readingroo.ms/cache/epub/:id/pg:file.cover.:size.jpg', () => {
-    return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
-      headers: { 'Content-Type': 'image/jpeg' },
-    });
-  }),
-
   // Book content internal proxy handler (text & binary cover JPEG modes)
   http.get('/api/books/content', ({ request }) => {
     const url = new URL(request.url, 'http://localhost:3000');

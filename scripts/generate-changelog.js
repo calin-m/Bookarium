@@ -9,6 +9,43 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.61',
+    date: '2026-11-18',
+    title: 'Fault-Tolerant Pipeline Orchestration, Resumable R2 Checkpointing, Fail-Closed RDF Copyright & Content CDN Tagging',
+    sections: {
+      Added: [
+        '**Content CDN Cache Tags & Manual Purge Inputs (`src/app/api/books/content/route.ts`, `.github/workflows/cache-purge.yml`, `.github/workflows/r2-sync.yml`, `src/app/api/books/content/route.test.ts`)**: Added `Vercel-Cache-Tag: covers` on `200` `type=cover` responses and `Vercel-Cache-Tag: book-content` on `200` plain-text responses (including warm LRU hits, while keeping `type=card` and `no-store` errors untagged); added unchecked `purge_covers` / `purge_book_content` inputs to `cache-purge.yml` plus `--catalog-source=auto|snapshot|supabase`, `--concurrency=N`, `--purge-tags-file`, and conditional post-R2 Edge cache invalidation in `r2-sync.yml` (`ADR-085`).',
+      ],
+      Changed: [
+        '**Fault-Isolated Weekly Pipeline Chaining & Snapshot-First Publication (`.github/workflows/catalog-sync.yml`, `scripts/sync-featured-quotes.js`, `scripts/sync-featured-quotes.test.ts`)**: Reordered `Publish Updated Catalog Snapshot Cache` immediately after `sync-gutenberg-catalog.js` so transient downstream R2 errors never leave `catalog-cache` stale after Supabase writes, isolated R2/translation/quote steps with `continue-on-error: true` + final status propagation so `Purge Vercel Edge Cache` still executes, switched weekly quotes sync to multi-mirror `--mirrors=pglaf,aleph,readingroo` failover, and added `shouldFailFeaturedQuotesRun` (`ADR-085`).',
+        '**Resumable R2 Delta Checkpointing, Bounded Put Concurrency & Partial-Config Fail-Fast (`scripts/sync-r2-assets.js`, `scripts/sync-r2-assets.test.ts`)**: Added `assertValidR2ConfigIfPresent` (preserving zero-secret fork `exit 0` skips while failing fast on partial/invalid `R2_*` vars), read-failure state preservation + union-merge (`mergeR2SyncStates`) + `try ... finally` checkpoint flushes, `isRsyncTransportError` + `runRsyncCommandWithRetry` + zero-transfer mass-batch protection, mid-batch `isOverBudget()` checks, `runWithConcurrency` (`DEFAULT_R2_PUT_CONCURRENCY = 8`), and `shouldFailR2SyncRun` (`ADR-085`).',
+      ],
+      Fixed: [
+        '**Fail-Closed RDF Outage Copyright Protection (`scripts/sync-gutenberg-catalog.js`, `scripts/sync-gutenberg-catalog.test.ts`)**: Kept `cachedBooksById` loaded under `--update-existing` while still disabling diff skip so known `copyright: true` records survive RDF outages, added `reconcileBatchWithoutRdfRights` to verify uncached existing DB flags (`public.books`), and deferred brand-new unverified volumes whenever both RDF feeds fail unless `--limit` or `--no-rdf` is set (`ADR-085`).',
+        '**Wikidata Socket Timeouts, Empty-DB FK Skips & Bisected Translation Retries (`scripts/ingest-translations.js`, `scripts/ingest-translations.test.ts`)**: Enforced `WIKIDATA_SPARQL_TIMEOUT_MS = 45_000` socket timeout aborts to trigger local snapshot fallback reliably, fixed the `validBookIds.size === 0` empty-catalog skip bug (`validBookIds instanceof Set`) with strict `throwOnError` retries from `main()`, added `upsertTranslationBatchesWithRetry` (exponential backoff + recursive bisection), and failed non-zero on persistent DB write failures (`ADR-085`).',
+      ],
+    },
+  },
+  {
+    version: '2.9.60',
+    date: '2026-11-18',
+    title: 'Strict Cloudflare R2 Runtime Delivery, Zero-PG Runtime Policy, Mirror-Only CLI Feeds & Infrastructure Tiers Guide',
+    sections: {
+      Added: [
+        '**Deployment Tiers, Provider Quotas, Communication Topology & Hard Platform Guardrails Guide (`docs/INFRASTRUCTURE.md`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `scripts/generate-quality-report.js`, `README.md`, `DEVELOPMENT.md`, `docs/PIPELINE_GUIDE.md`, `docs/GITHUB_ACTIONS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`, `AGENTS.md`, `.agents/AGENTS.md`, `docs/DECISIONS.md`)**: Added `docs/INFRASTRUCTURE.md` documenting `Mode 0`–`Mode 2` deployment profiles, an End-to-End Infrastructure-to-User communication Mermaid diagram, approximate Free vs. Paid provider quotas (Cloudflare R2, Supabase, Vercel, GitHub Actions/Releases, Turnstile), and hard platform coding guardrails, integrated into Pass 5 governance (`18 -> 19` docs) & Mermaid diagram verification (`ADR-084`).',
+      ],
+      Changed: [
+        '**Strict Cloudflare R2 Runtime Delivery & Runtime Project Gutenberg Fallback Removal (`src/app/api/books/content/route.ts`, `metadata-cache.ts`, `useBookContent.ts`, `r2-client.ts`, `src/mocks/handlers.ts`, `url-validator.ts` [retired])**: Eliminated all runtime Project Gutenberg / PG mirror fallback fetching and `?url=` upstream proxying from `/api/books/content`, returning fail-closed `503` (unconfigured R2), `404` (missing object), or `502` (upstream R2 fault) while retaining the 20-book lazy `bookContentLruCache`, optional Supabase `public.books.content`, and IndexedDB offline reading; removed unused `url-validator.ts` / `url-validator.test.ts` and external MSW PG mocks (`ADR-082`, `ADR-084`).',
+        '**Mirror-Only Weekly CLI Feeds & `--with-content` Scraping Deprecation (`scripts/sync-gutenberg-catalog.js`, `.github/workflows/catalog-sync.yml`, `scripts/ingest-catalog.js`, `scripts/sync-featured-quotes.js`)**: Restricted `sync-gutenberg-catalog.js` and `.github/workflows/catalog-sync.yml` `feed_source` options exclusively to official PG mirrors (`gutenberg.pglaf.org` -> `aleph.gutenberg.org`), deprecated `ingest-catalog.js --with-content` PG HTTP text scraping in favor of Cloudflare R2 + `npm run r2:sync` (retaining `seed_books.sql` starter metadata generation and CLI tests), and aligned `quotes:sync` rationale contracts (`ADR-083`, `ADR-084`).',
+        '**SEO Cover Normalization, Legal Notices & End-User vs. Developer Credential Documentation (`src/app/read/[id]/layout.tsx`, `src/app/copyright/page.tsx`, `src/app/privacy/page.tsx`, `src/app/layout.tsx`, `.env.example`, `.github/pull_request_template.md`, `README.md`, `DEVELOPMENT.md`, `CONTRIBUTING.md`, `docs/PIPELINE_GUIDE.md`, `docs/GITHUB_ACTIONS.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Normalized Gutenberg-hosted cover URLs in `/read/[id]` OpenGraph/JSON-LD metadata to same-origin `/api/books/content?id=<id>&type=cover`, updated copyright/privacy/UI copy, and separated end-user zero-key free reading from developer Supabase + Cloudflare R2 requirements (including R2’s `10 GB` free storage limit) (`ADR-084`).',
+      ],
+      Fixed: [
+        '**Zero-PG-Runtime SAST/ESLint Guards, 64-Module Protected Contracts & Architecture Matrix / Mermaid Synchronization (`scripts/eslint-rules/bookarium-security.js`, `scripts/lib/sast-validators.js`, `scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `scripts/verify-build.js`, `docs/DECISIONS.md`)**: Enforced compile-time AST bans on runtime PG/mirror `fetch()` inside `src/` and `www.gutenberg.org`/`gutenberg.org` `fetch()` across `src/` and `scripts/`, pruned `url-validator.ts` (`64` protected modules / `261` suites), updated `SECURITY.md` safeguards, `ADR-084`, and the Decommissioned Ledger, resolved Mermaid edge-quoting, parent/compound subgraph cycles, `<id>`/`<account>`/`<dcterms:rights>`/`<>` HTML-tag stripping, orphan nodes, and stale labels across Diagrams `1`–`13`, and added `validateMermaidDiagramsInMarkdown` to Pass 5 (`ADR-084`).',
+        '**SAST/ESLint Sanitizer Migration & Onboarding Runbook Alignment (`scripts/eslint-rules/bookarium-security.js`, `scripts/lib/sast-validators.js`, `src/app/api/books/content/route.test.ts`, `README.md`, `DEVELOPMENT.md`, `docs/PIPELINE_GUIDE.md`, `docs/DECISIONS.md`)**: Replaced retired `isSafeUpstreamUrl`/`sanitizeUpstreamUrl` guard references and hints with active sanitizers (`isAllowedR2EndpointUrl`, `isAllowedPglafMirrorUrl`, `isAllowedGutenbergAssetUrl`), fixed `Tier 1.5 Cloudflare R2` test naming, resolved `README.md` required/optional setup contradictions with step-by-step R2 dual-token provisioning and Windows `--source=wsl-rsync` guidance, added missing CLI script docs, and added inline supersession markers to historical PG fallback ADRs (`ADR-084`).',
+      ],
+    },
+  },
+  {
     version: '2.9.59',
     date: '2026-11-18',
     title: 'Selectable quotes-sync Text Source (auto/r2/mirrors), R2 Startup Telemetry & 10-Workflow Accuracy Sync',

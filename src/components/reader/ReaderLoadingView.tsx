@@ -14,7 +14,7 @@ export const ReaderLoadingView: React.FC<ReaderLoadingViewProps> = ({ activeThem
     >
       <div className="w-12 h-12 rounded-full border-2 border-primary-500 border-t-transparent animate-spin mb-4" />
       <p className="font-serif text-base font-bold">
-        Fetching Masterwork from Project Gutenberg Mirror...
+        Fetching Masterwork from Bookarium Archive...
       </p>
       <p className={`text-xs font-mono mt-1 ${activeTheme.textMuted}`}>
         Parsing typography AST, chapters, and volume pagination

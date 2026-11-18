@@ -21,7 +21,7 @@ on:
         type: boolean
         default: false
       feed_source:
-        description: 'Feed source mirror for rdf-files.tar.bz2 & pg_catalog.csv.gz (auto = pglaf -> aleph -> www fallback)'
+        description: 'Feed source mirror for rdf-files.tar.bz2 & pg_catalog.csv.gz (auto = pglaf -> aleph mirror fallback)'
         required: false
         type: choice
         default: 'auto'
@@ -29,7 +29,6 @@ on:
           - auto
           - gutenberg.pglaf.org
           - aleph.gutenberg.org
-          - www.gutenberg.org
       skip_r2:
         description: 'Skip Cloudflare R2 delta asset sync step'
         required: false
@@ -74,6 +73,7 @@ jobs:
           gh release download catalog-cache -p "gutenberg-catalog-cache.json.gz.sha256" --clobber || echo "No prior snapshot .sha256 sidecar found; continuing with gzip validation until next publish."
 
       - name: Run Gutenberg Catalog Sync
+        id: catalog_sync
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -92,7 +92,7 @@ jobs:
           fi
           if [ -n "${INPUT_FEED_SOURCE:-}" ] && [ "$INPUT_FEED_SOURCE" != "auto" ]; then
             case "$INPUT_FEED_SOURCE" in
-              gutenberg.pglaf.org|aleph.gutenberg.org|www.gutenberg.org)
+              gutenberg.pglaf.org|aleph.gutenberg.org)
                 CMD_ARGS="$CMD_ARGS --feed-source=$INPUT_FEED_SOURCE"
                 ;;
               *)
@@ -110,46 +110,8 @@ jobs:
           fi
           node scripts/sync-gutenberg-catalog.js $CMD_ARGS
 
-      - name: Run Cloudflare R2 Delta Asset Sync
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
-          INPUT_LIMIT: ${{ github.event.inputs.limit }}
-          INPUT_SKIP_R2: ${{ github.event.inputs.skip_r2 }}
-          INPUT_R2_LIMIT: ${{ github.event.inputs.r2_limit }}
-        run: |
-          if [ "$INPUT_SKIP_R2" = "true" ]; then
-            echo "Skipping Cloudflare R2 delta asset sync (skip_r2=true)."
-            exit 0
-          fi
-          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_BUCKET_NAME" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
-            echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 delta sync cleanly."
-            exit 0
-          fi
-          R2_ARGS="--source=rsync --max-minutes=25"
-          if [ -f "gutenberg-catalog-cache.json.gz" ]; then
-            R2_ARGS="$R2_ARGS --cache-file=gutenberg-catalog-cache.json.gz"
-          fi
-          if [ "$INPUT_DRY_RUN" = "true" ]; then
-            R2_ARGS="$R2_ARGS --dry-run"
-          fi
-          EFFECTIVE_R2_LIMIT="${INPUT_R2_LIMIT:-$INPUT_LIMIT}"
-          if [ -n "$EFFECTIVE_R2_LIMIT" ]; then
-            if [[ ! "$EFFECTIVE_R2_LIMIT" =~ ^[0-9]+$ ]] || [ "$EFFECTIVE_R2_LIMIT" = "0" ]; then
-              echo "Error: r2_limit/limit input must be a positive integer." >&2
-              exit 1
-            fi
-            R2_ARGS="$R2_ARGS --limit=$EFFECTIVE_R2_LIMIT"
-          fi
-          node scripts/sync-r2-assets.js $R2_ARGS
-
       - name: Publish Updated Catalog Snapshot Cache
+        if: steps.catalog_sync.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
@@ -170,7 +132,52 @@ jobs:
             fi
           fi
 
+      - name: Run Cloudflare R2 Delta Asset Sync
+        id: r2_sync
+        if: steps.catalog_sync.outcome == 'success'
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUTENBERG_CONTACT_EMAIL: ${{ secrets.GUTENBERG_CONTACT_EMAIL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_SKIP_R2: ${{ github.event.inputs.skip_r2 }}
+          INPUT_R2_LIMIT: ${{ github.event.inputs.r2_limit }}
+        run: |
+          if [ "$INPUT_SKIP_R2" = "true" ]; then
+            echo "Skipping Cloudflare R2 delta asset sync (skip_r2=true)."
+            exit 0
+          fi
+          if [ -z "$R2_ACCOUNT_ID" ] && [ -z "$R2_BUCKET_NAME" ] && [ -z "$R2_ACCESS_KEY_ID" ] && [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 delta sync cleanly."
+            exit 0
+          fi
+          R2_ARGS="--source=rsync --max-minutes=25 --purge-tags-file=r2-purge-tags.txt"
+          if [ -f "gutenberg-catalog-cache.json.gz" ]; then
+            R2_ARGS="$R2_ARGS --cache-file=gutenberg-catalog-cache.json.gz"
+          fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            R2_ARGS="$R2_ARGS --dry-run"
+          fi
+          EFFECTIVE_R2_LIMIT="${INPUT_R2_LIMIT:-$INPUT_LIMIT}"
+          if [ -n "$EFFECTIVE_R2_LIMIT" ]; then
+            if [[ ! "$EFFECTIVE_R2_LIMIT" =~ ^[0-9]+$ ]] || [ "$EFFECTIVE_R2_LIMIT" = "0" ]; then
+              echo "Error: r2_limit/limit input must be a positive integer." >&2
+              exit 1
+            fi
+            R2_ARGS="$R2_ARGS --limit=$EFFECTIVE_R2_LIMIT"
+          fi
+          node scripts/sync-r2-assets.js $R2_ARGS
+
       - name: Run Relational Translations Sync
+        id: trans_sync
+        if: steps.catalog_sync.outcome == 'success'
+        continue-on-error: true
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -198,6 +205,9 @@ jobs:
           node scripts/ingest-translations.js $TRANS_ARGS
 
       - name: Run Featured Quotes Sync
+        id: quotes_sync
+        if: steps.catalog_sync.outcome == 'success'
+        continue-on-error: true
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -209,7 +219,7 @@ jobs:
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
-          QUOTE_ARGS="--source=auto --mirrors=pglaf"
+          QUOTE_ARGS="--source=auto --mirrors=pglaf,aleph,readingroo"
           if [ -f "quote-diff.json" ]; then
             QUOTE_ARGS="$QUOTE_ARGS --diff-file=quote-diff.json"
           fi
@@ -226,10 +236,41 @@ jobs:
           node scripts/sync-featured-quotes.js $QUOTE_ARGS
 
       - name: Purge Vercel Edge Cache
-        if: github.event.inputs.dry_run != 'true'
+        if: always() && github.event.inputs.dry_run != 'true' && (steps.catalog_sync.outcome == 'success' || steps.trans_sync.outcome == 'success' || steps.quotes_sync.outcome == 'success')
         env:
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
-        run: node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations
+          STEP_CATALOG_OUTCOME: ${{ steps.catalog_sync.outcome }}
+          STEP_TRANS_OUTCOME: ${{ steps.trans_sync.outcome }}
+          STEP_QUOTES_OUTCOME: ${{ steps.quotes_sync.outcome }}
+        run: |
+          PURGE_TAGS=""
+          if [ "${STEP_CATALOG_OUTCOME:-}" = "success" ]; then
+            PURGE_TAGS="catalog,quotes"
+          elif [ "${STEP_QUOTES_OUTCOME:-}" = "success" ]; then
+            PURGE_TAGS="quotes"
+          fi
+          if [ "${STEP_TRANS_OUTCOME:-}" = "success" ]; then
+            PURGE_TAGS="${PURGE_TAGS:+$PURGE_TAGS,}translations"
+          fi
+          if [ -s "r2-purge-tags.txt" ]; then
+            R2_EXTRA_TAGS="$(tr -d ' \r\n' < r2-purge-tags.txt)"
+            if [ -n "$R2_EXTRA_TAGS" ]; then
+              PURGE_TAGS="${PURGE_TAGS:+$PURGE_TAGS,}$R2_EXTRA_TAGS"
+            fi
+          fi
+          if [ -n "$PURGE_TAGS" ]; then
+            node scripts/purge-vercel-cache.js --tags="$PURGE_TAGS"
+          fi
+
+      - name: Verify Downstream Step Outcomes
+        if: always() && (steps.r2_sync.outcome == 'failure' || steps.trans_sync.outcome == 'failure' || steps.quotes_sync.outcome == 'failure')
+        env:
+          STEP_R2_OUTCOME: ${{ steps.r2_sync.outcome }}
+          STEP_TRANS_OUTCOME: ${{ steps.trans_sync.outcome }}
+          STEP_QUOTES_OUTCOME: ${{ steps.quotes_sync.outcome }}
+        run: |
+          echo "::error::One or more fault-isolated downstream steps failed (r2_sync=${STEP_R2_OUTCOME}, trans_sync=${STEP_TRANS_OUTCOME}, quotes_sync=${STEP_QUOTES_OUTCOME}). Upstream catalog snapshot & Edge cache purge were still completed safely." >&2
+          exit 1
 

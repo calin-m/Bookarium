@@ -119,7 +119,7 @@ export const ReaderErrorView: React.FC<ReaderErrorViewProps> = ({
         Unable to Load Masterwork Text
       </h2>
       <p className={`text-xs font-mono max-w-md mb-6 ${activeTheme.textMuted}`}>
-        The Project Gutenberg plain-text mirror could not be streamed. Please check your network connection or try again.
+        This unabridged edition could not be streamed from Bookarium&apos;s archive storage at this time. Please check your connection, retry, or open an offline-saved copy.
       </p>
       {onRetry && (
         <button

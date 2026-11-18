@@ -188,6 +188,7 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(parsed.bookFormat).toBe('https://schema.org/EBook');
     expect(parsed.identifier).toBe('gutenberg:84');
     expect(parsed.sameAs).toBe('https://www.gutenberg.org/ebooks/84');
+    expect(parsed.image).toMatch(/\/api\/books\/content\?id=84&type=cover$/);
     expect(parsed.name).toContain('Frankenstein');
     expect(parsed.author?.name).toContain('Shelley');
     expect(parsed.author?.birthDate).toBe('1797');

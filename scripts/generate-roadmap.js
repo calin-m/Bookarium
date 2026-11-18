@@ -286,7 +286,7 @@ const ROADMAP_MILESTONES = [
     title: 'Milestone 8: Offline-First PWA Resilience, Accessibility & Cloud Outbox Architecture',
     version: 'v2.8.0 (Completed)',
     badge: 'https://img.shields.io/badge/Milestone-v2.8.0-emerald?style=flat-square',
-    description: 'End-to-end offline App Shell resilience, Adaptive Offline Catalog fallback, Project Gutenberg mirror-first content streaming, 6-store snapshot-guarded cloud outboxes, and WCAG 2.2 AA accessibility hardening.',
+    description: 'End-to-end offline App Shell resilience, Adaptive Offline Catalog fallback, private Cloudflare R2 content/cover streaming, 6-store snapshot-guarded cloud outboxes, and WCAG 2.2 AA accessibility hardening.',
     features: [
       {
         title: 'Offline-First Service Worker App Shell (`v7`) & Offline Account Hub (`public/sw.js` & `ServiceWorkerRegister.tsx`)',
@@ -304,10 +304,10 @@ const ROADMAP_MILESTONES = [
           fileExists('src/components/presentation/CatalogOfflineView.tsx'),
       },
       {
-        title: 'Project Gutenberg Mirror-First Streaming & 6-Store Snapshot-Guarded Cloud Outboxes (`url-validator.ts` & `bookshelf-cloud-sync.ts`)',
-        description: 'Official Project Gutenberg harvest mirror prioritization (`aleph.gutenberg.org`, `gutenberg.pglaf.org`, `gutenberg.readingroo.ms` ahead of `www.gutenberg.org`), individual-only download compliance, per-user sync mutex coalescing, and snapshot-guarded bi-directional outbox queues across all 6 cloud-synced stores (`bookshelf-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`).',
+        title: 'Strict Private Cloudflare R2 Content Streaming & 6-Store Snapshot-Guarded Cloud Outboxes (`r2-client.ts` & `bookshelf-cloud-sync.ts`)',
+        description: 'Self-hosted private Cloudflare R2 asset streaming (`covers/<id>.jpg`, `books/<id>.txt.gz`, zero runtime Project Gutenberg traffic under `ADR-084`), individual-only download compliance, per-user sync mutex coalescing, and snapshot-guarded bi-directional outbox queues across all 6 cloud-synced stores (`bookshelf-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`).',
         check: () =>
-          fileContains('src/app/api/books/content/url-validator.ts', 'gutenberg.pglaf.org') &&
+          fileContains('src/lib/r2-client.ts', 'fetchR2BookText') &&
           fileExists('src/lib/bookshelf-cloud-sync.ts') &&
           fileExists('src/lib/annotation-cloud-sync.ts'),
       },
@@ -391,7 +391,7 @@ const ROADMAP_MILESTONES = [
       {
         title: '[Target: v2.9.x] Anonymized Scholar-Highlight Promotion into `public.books.quotes`',
         targetMinVersion: '2.9.0',
-        description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—reserving live Gutenberg mirror pulls strictly for uncached volumes opened by readers.',
+        description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—keeping live browser/serverless reads strictly inside Cloudflare R2 and IndexedDB without runtime Project Gutenberg pulls.',
         check: () =>
           fileContains('.github/workflows/quotes-sync.yml', 'workflow_dispatch:') &&
           fileContains('scripts/sync-featured-quotes.js', 'promoteScholarHighlights'),
@@ -536,11 +536,12 @@ ${renderProgressBar(totalCompleted, totalFeatures)}
 | Proposed Vector | Status | Architectural Rationale |
 |---|---|---|
 | **Ephemeral Raw API JSON Cache** | 🚫 **Excluded (Architectural Decision ADR-038)** | Storing raw third-party JSON blobs in Postgres was rejected in favor of an authoritative, structured \`public.books\` PostgreSQL catalog with GIN indexing, precomputed author lifespans, and streaming bulk ingestion, backed by Vercel Edge caching (\`s-maxage=86400, stale-while-revalidate=604800\`). |
-| **Proprietary Third-Party TTS** | 🚫 **Excluded (Keyless Policy)** | Paid cloud TTS APIs (ElevenLabs, Google Cloud TTS) violate **Rule 4 (Zero API Key Requirement)**. We strictly use native browser \`window.speechSynthesis\` for zero-cost, privacy-first read-aloud functionality. |
+| **Proprietary Third-Party TTS** | 🚫 **Excluded (End-User Keyless Policy)** | Paid cloud TTS APIs (ElevenLabs, Google Cloud TTS) violate **Rule 4 (Zero Paid API Keys for End Users)**. We strictly use native browser \`window.speechSynthesis\` for zero-cost, privacy-first read-aloud functionality. |
 | **Client-Side JSON/CSV Backup & File Import** | 🚫 **Retired (Architectural Decision ADR-072)** | Retired client-side file backup and JSON import (\`src/lib/library-backup.ts\`, originally \`ADR-023\`) to eliminate untrusted client-side payload ingestion, Last-Write-Wins (\`updatedAt\`) timestamp poisoning, semantic metadata spoofing on public scholar profiles, and offline restore ambiguity in favor of zero-trust Supabase PostgreSQL RLS synchronization and IndexedDB offline caching. |
-| **Batch Shelf Offline Downloader (\`downloadAll\`)** | 🚫 **Retired (Architectural Decision ADR-069)** | Retired batch "Download Shelf Offline" actions across \`BookshelfRack.tsx\` and \`useOfflineBooks.ts\` to strictly honor Project Gutenberg's individual-only human download policy and mirror-first harvest rules. |
+| **Batch Shelf Offline Downloader (\`downloadAll\`)** | 🚫 **Retired (Architectural Decision ADR-069)** | Retired batch "Download Shelf Offline" actions across \`BookshelfRack.tsx\` and \`useOfflineBooks.ts\` to strictly honor individual-only human offline downloads and archive usage etiquette. |
 | **Redundant Secondary Indexes (\`idx_books_subjects\` & \`idx_book_translations_work_id\`)** | 🚫 **Retired (Architectural Decision ADR-073)** | Consolidated \`subjects\` / \`bookshelves\` into the single composite \`idx_books_search_vector\` GIN index and consolidated \`idx_book_translations_work_id\` into the composite primary key \`book_translations_pkey(work_id, book_id)\` (\`0005_unused_index\`), while retaining \`idx_books_download_count\` + \`idx_books_with_quotes_popular\` (\`WHERE quotes <> '[]'::jsonb\`) and Primary-Key-Scoped \`books_pkey\` lookups (\`ADR-080\`). |
 | **External Gutendex REST API (\`gutendex-provider.ts\` & \`GUTENDEX_API_URL\`)** | 🚫 **Retired (Architectural Decision ADR-080)** | Decommissioned all runtime, UI, CSP, and CLI dependencies on external \`gutendex.com\` endpoints in favor of Supabase PostgreSQL (\`public.books\`), 2-tier local metadata resolution (\`metadata-cache.ts\`), and bundled zero-network \`curated-fallback.ts\` (\`FEATURED_HERO_BOOKS\`), eliminating third-party outages and licensing/rate-limit drift while preserving internal DTO types non-breaking. |
+| **Runtime Project Gutenberg Mirror Proxying (\`url-validator.ts\` & \`?url=\`)** | 🚫 **Retired (Architectural Decision ADR-084)** | Removed all runtime Project Gutenberg / PG mirror plain-text fallbacks, SSRF URL proxy routes, and \`ingest-catalog.js --with-content\` HTTP text scraping so live reader traffic routes strictly through private Cloudflare R2 (\`src/lib/r2-client.ts\`), optional Supabase \`public.books.content\`, and browser IndexedDB, confining PG usage exclusively to \`rsync\` and official mirror CLI syncs. |
 
 ---
 

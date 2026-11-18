@@ -482,10 +482,10 @@ jobs:
 
       const brokenProxyRoute = `
         import { bookContentRateLimiter } from '@/lib/rate-limiter';
-        import { isSafeUpstreamUrl } from './url-validator';
+        import { isAllowedR2EndpointUrl } from '@/lib/r2-client';
         export async function GET(req: Request) {
           bookContentRateLimiter.check('127.0.0.1');
-          const safe = isSafeUpstreamUrl('https://aleph.gutenberg.org/1.txt');
+          const safe = isAllowedR2EndpointUrl('https://acct.r2.cloudflarestorage.com/b/k');
           if (!safe) return null;
           await fetch('https://aleph.gutenberg.org/1.txt', { redirect: 'manual' });
           return fetch('https://aleph.gutenberg.org/1-fallback.txt');
@@ -496,6 +496,11 @@ jobs:
         'src/app/api/books/content/route.ts'
       );
       expect(proxyViolations.some((v) => v.issue.includes('redirect: "manual"'))).toBe(true);
+      expect(
+        proxyViolations.some((v) =>
+          v.issue.includes('strictly from private Cloudflare R2 without runtime Project Gutenberg')
+        )
+      ).toBe(true);
     });
   });
 

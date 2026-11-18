@@ -26,15 +26,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `276` (`src/**` + `scripts/*.js`)
-- **Annotated Contract Modules**: `65` (**23.6%** coverage; `14` Tier-1 + `17` Tier-2 + `18` Tier-3 + `16` Tier-4 = `65` Protected)
-- **Extracted Module Invariants**: `129`
+- **Total Scanned Executable Modules**: `275` (`src/**` + `scripts/*.js`)
+- **Annotated Contract Modules**: `64` (**23.3%** coverage; `14` Tier-1 + `16` Tier-2 + `18` Tier-3 + `16` Tier-4 = `64` Protected)
+- **Extracted Module Invariants**: `127`
 - **Symbol-Level Contracts**: `1`
 - **Pending Annotation Queue**: `211` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
-| **Edge Proxy & API Routes** | `6` | `6` | `0` | 100.0% |
+| **Edge Proxy & API Routes** | `5` | `5` | `0` | 100.0% |
 | **Domain Engines & Adapters** | `48` | `27` | `21` | 56.3% |
 | **State Stores (Zustand)** | `10` | `10` | `0` | 100.0% |
 | **React Hooks & Queries** | `36` | `11` | `25` | 30.6% |
@@ -48,17 +48,17 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 🛡️ Active Behavioral Contracts & Invariants
 
-### Layer: Edge Proxy & API Routes (6 Contracted)
+### Layer: Edge Proxy & API Routes (5 Contracted)
 
 #### [`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: Server-side LRU metadata (`1000` entries) and plain-text (`20` books, `1.8M` char cap, `24h` TTL) cache powering `/api/books/content` copyright resolution across Supabase and curated fixtures.
+- **Intended Scope (`@scope`)**: Server-side LRU metadata (`MAX_METADATA_CACHE_ENTRIES`) and plain-text (`MAX_CACHED_BOOKS`, `MAX_CACHEABLE_BOOK_CHARS`, `CACHE_TTL_MS`) cache powering `/api/books/content` copyright resolution and private Cloudflare R2 streaming across Supabase and curated fixtures.
 - **Behavioral Invariants (`@invariant`)**:
-  - Pin LRU Map instances on `globalThis`, enforce `MAX_METADATA_CACHE_ENTRIES` (`1000`) and `MAX_CACHED_BOOKS` (`20`) FIFO-LRU eviction, and skip caching empty or oversized (`> 1,800,000` chars) payloads.
+  - Pin LRU Map instances on `globalThis`, enforce `MAX_METADATA_CACHE_ENTRIES` and `MAX_CACHED_BOOKS` FIFO-LRU eviction, and skip caching empty or oversized (`> MAX_CACHEABLE_BOOK_CHARS`) payloads.
   - Enrich Supabase book metadata missing author lifespans from `FEATURED_HERO_BOOKS` (`enrichWithFeaturedLifespans`) and return `null` cleanly rather than throwing on unconfigured or failed lookups.
 - **Design Rationale (`@rationale`)**:
   - Separating bounded server caches from the route handler keeps Vercel serverless cold/warm invocations predictable without risking OOM memory spikes on massive omnibus volumes.
-- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-070](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
 - **Test Contract**: [`src/app/api/books/content/metadata-cache.test.ts`](../src/app/api/books/content/metadata-cache.test.ts) (10 tests)
@@ -67,28 +67,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Multi-purpose book asset endpoint streaming plain-text volumes (`type=''`), R2-backed cover JPEGs (`type=cover`), and stateless `1200x630` OpenGraph reading cards (`type=card`).
 - **Behavioral Invariants (`@invariant`)**:
-  - Reject disallowed query params (allowing `s` exclusively with `type=card`), enforce mode-scoped rate limiters, validate upstream URLs via SSRF mirror allowlists (`isSafeUpstreamUrl`), reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlPayload`), and bound payloads (`MAX_R2_BOOK_BYTES` text / `MAX_R2_COVER_BYTES` cover).
+  - Reject disallowed query params (`ALLOWED_CONTENT_QUERY_KEYS`, allowing `s` exclusively with `type=card` and rejecting `?url=` upstream proxies with `400 no-store`), enforce mode-scoped rate limiters, reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlPayload`), and bound payloads (`MAX_R2_BOOK_BYTES` text / `MAX_R2_COVER_BYTES` cover).
   - Enforce `HTTP 451` gatekeeping whenever resolved metadata restricts a volume in the caller's jurisdiction (including US `copyright === true` blocks) on plain-text and `type=card` requests, fail closed with `503` for non-US requests when metadata is unavailable, and bypass `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
-  - Serve `type=cover` strictly from private Cloudflare R2 (`404` on miss or unconfigured, zero Project Gutenberg fallback), serve plain text strictly from R2 when `isR2Configured()` (falling back to Project Gutenberg mirrors only when `R2_*` env vars are unset), coalesce concurrent upstream fetches per `bookId` inside `inFlightMirrorFetches`, and cache resolved text in `bookContentLruCache`.
+  - Serve `type=cover` and plain text strictly from private Cloudflare R2 (`404` on R2 miss, `503` when R2 is unconfigured for plain text / `404` for covers, zero Project Gutenberg or external mirror fallback), coalesce concurrent upstream R2 fetches per `bookId` inside `inFlightR2Fetches`, cache resolved text in `bookContentLruCache`, and attach `Vercel-Cache-Tag` (`covers` on `200` cover responses, `book-content` on `200` plain-text responses) while keeping `no-store` errors untagged.
 - **Design Rationale (`@rationale`)**:
-  - Keeping R2 credentials server-only avoids public bucket exposure while eliminating browser/runtime Gutenberg hotlinking and preserving zero-key local clone compatibility when unconfigured.
-- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
+  - Keeping R2 credentials server-only eliminates browser/runtime Project Gutenberg requests and external cover hotlinking completely, ensuring 100% ToS compliance while preserving IndexedDB offline reading and optional Supabase `books.content` reads.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`src/app/api/books/content/route.test.ts`](../src/app/api/books/content/route.test.ts) (41 tests) + [`src/app/api/books/content/route.security.test.ts`](../src/app/api/books/content/route.security.test.ts) (14)
-
-#### [`src/app/api/books/content/url-validator.ts`](../src/app/api/books/content/url-validator.ts) *(Tier-2 Protected)*
-
-- **Intended Scope (`@scope`)**: Zero-trust anti-SSRF upstream URL validator and canonical Gutenberg mirror normalizer for `/api/books/content`.
-- **Behavioral Invariants (`@invariant`)**:
-  - Allowlist strictly official Project Gutenberg domains (`ALLOWED_HOSTS`), rejecting custom ports, embedded credentials (`@` / `user:pass`), directory traversal (`..`), RFC1918/loopback IPs, and non-HTTP(S) schemes across both initial and `Location` redirect targets.
-  - Constrain URL pathnames to strict alphanumeric/punctuation characters (`^/[a-zA-Z0-9/_.-]+$`) before server-side `fetch` executes.
-- **Design Rationale (`@rationale`)**:
-  - Enforcing strict host allowlisting and redirect re-validation eliminates SSRF (`CWE-918`) and internal metadata-service probing from client-supplied `url` query parameters.
-- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-034](DECISIONS.md), [ADR-073](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
-- **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/app/api/books/content/url-validator.test.ts`](../src/app/api/books/content/url-validator.test.ts) (10 tests)
+- **Test Contract**: [`src/app/api/books/content/route.test.ts`](../src/app/api/books/content/route.test.ts) (28 tests) + [`src/app/api/books/content/route.security.test.ts`](../src/app/api/books/content/route.security.test.ts) (9)
 
 #### [`src/app/api/books/route.ts`](../src/app/api/books/route.ts) *(Tier-1 Protected)*
 
@@ -346,7 +333,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Server-only Cloudflare R2 S3-compatible AWS SigV4 fetch and gzip decompression client for private book texts (`books/<id>.txt.gz`) and cover artwork (`covers/<id>.jpg`).
 - **Behavioral Invariants (`@invariant`)**:
   - Never expose `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, or `R2_SECRET_ACCESS_KEY` to client bundles, validate `accountId` and `bucket` identifiers before URL construction, enforce `redirect: 'manual'` on all outbound R2 requests, and bound streamed cover payloads (`MAX_R2_COVER_BYTES`) and gzip decompression output (`MAX_R2_BOOK_BYTES`).
-  - Return explicit `'unconfigured'` status when optional `R2_*` credentials are absent so zero-key local environments degrade predictably without throwing unhandled configuration errors.
+  - Return explicit `'unconfigured'` status when `R2_*` credentials are absent so local unconfigured environments fail closed predictably (`404`/`503`) without unhandled configuration errors or Project Gutenberg fallbacks.
 - **Design Rationale (`@rationale`)**:
   - Using built-in `node:crypto` AWS Signature V4 signing and bounded `node:zlib` `gunzip` keeps R2 reads completely dependency-free, fast on serverless Node runtimes, and resilient against decompression bombs or open redirects.
 - **Governing Decisions (`@adr`)**: [ADR-082](DECISIONS.md)
@@ -628,13 +615,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/hooks/queries/useBookContent.ts`](../src/hooks/queries/useBookContent.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: Reader text fetcher and React Query hook (`useBookContent`) resolving IndexedDB offline storage, `/api/books/content` proxy streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
+- **Intended Scope (`@scope`)**: Reader text fetcher and React Query hook (`useBookContent`) resolving IndexedDB offline storage, same-origin `/api/books/content?id=<bookId>` R2 streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
 - **Behavioral Invariants (`@invariant`)**:
   - Configure `networkMode: 'always'` so locally persisted IndexedDB books resolve instantaneously when offline, and resolve authoritative local author lifespans before serving offline volumes in non-US jurisdictions while online.
-  - Never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on proxy network timeouts (`8000ms` abort).
+  - Never dispatch legacy `?url=` proxy queries without a positive integer `bookId`, never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on network timeouts (`BOOK_CONTENT_TIMEOUT_MS`).
 - **Design Rationale (`@rationale`)**:
-  - Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance.
-- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md)
+  - Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance and zero Project Gutenberg fallback.
+- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: 3 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderErrorView.tsx`](../src/components/reader/ReaderErrorView.tsx), [`src/hooks/useBookPassageShuffle.ts`](../src/hooks/useBookPassageShuffle.ts))
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content`
 - **Test Contract**: [`src/hooks/queries/useBookContent.test.ts`](../src/hooks/queries/useBookContent.test.ts) (18 tests)
@@ -810,20 +797,20 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers, CLI `--cache-file` flags, or static single-slash client routes.
 - **Design Rationale (`@rationale`)**:
   - Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, entity double-escaping, and weak assertions in real time before commit.
-- **Governing Decisions (`@adr`)**: [ADR-067](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-083](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-067](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-083](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: 3 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`scripts/eslint-rules/bookarium-security.test.ts`](../scripts/eslint-rules/bookarium-security.test.ts) (30 tests)
 
 #### [`scripts/ingest-catalog.js`](../scripts/ingest-catalog.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Offline SQL seed generator & mirror text hydrator producing idempotent `supabase/seed_books.sql` and optional `seed_books_content.sql` fixtures from `CURATED_CLASSICS`.
+- **Intended Scope (`@scope`)**: Offline SQL starter seed generator compiling idempotent `supabase/seed_books.sql` from `CURATED_CLASSICS` (with `--with-content` live Gutenberg mirror scraping retired under ADR-084).
 - **Behavioral Invariants (`@invariant`)**:
-  - Retire legacy `--pages=N` Gutendex REST pagination safely while emitting dollar-quoted (`$bookarium_txt_<id>$`) idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` / `UPDATE` scripts without requiring network credentials for `--dry-run`.
-  - Construct dynamic Project Gutenberg User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`.
+  - Retire legacy `--pages=N` Gutendex pagination and `--with-content` Project Gutenberg HTTP text scraping safely while emitting idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` seed scripts without requiring network credentials for `--dry-run`.
+  - Construct dynamic User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`, and keep pure `generateContentUpdateSql` formatter side-effect free.
 - **Design Rationale (`@rationale`)**:
-  - Gives local developers and fresh Supabase installs zero-key seed SQL files aligned with `public.books` lifespan bounds while honoring Gutenberg client identification rules.
-- **Governing Decisions (`@adr`)**: [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Gives local developers and fresh Supabase installs clean curated catalog metadata SQL seeds aligned with `public.books` lifespan bounds while keeping online text storage strictly on Cloudflare R2 (`npm run r2:sync`).
+- **Governing Decisions (`@adr`)**: [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`
 - **Test Contract**: [`scripts/ingest-catalog.test.ts`](../scripts/ingest-catalog.test.ts) (10 tests)
@@ -832,27 +819,27 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Wikidata SPARQL (`P2034` / `P407`) FRBR work-clustering CLI populating idempotent cross-language edition links in `public.book_translations`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`) before persisting links.
+  - Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning), enforce bounded `WIKIDATA_SPARQL_TIMEOUT_MS` (`45s`) HTTP socket timeout cleanly triggering `Defense 3` snapshot fallback, validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`, handling empty-catalog `validBookIds.size === 0` skips), and execute bounded-retry bisected upserts (`upsertTranslationBatchesWithRetry`) failing non-zero on persistent write errors.
   - Support offline `--dry-run` / `--output=...` atomic SQL seed generation (`generateAtomicSeedSql`) cleanly even when Supabase env credentials are absent.
 - **Design Rationale (`@rationale`)**:
-  - Strict anthology rejection, catalog FK pre-validation, and public-domain `copyright !== true` filtering eliminate spurious cross-author translation links, copyrighted volume associations, and foreign-key upsert failures during scheduled weekly runs.
-- **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Strict anthology rejection, socket-bounded Wikidata queries, catalog FK pre-validation, bisected batch retries, and public-domain `copyright !== true` filtering eliminate stalled CI runners, silent upsert drops, spurious cross-author translation links, and copyrighted volume associations.
+- **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books`
-- **Test Contract**: [`scripts/ingest-translations.test.ts`](../scripts/ingest-translations.test.ts) (16 tests)
+- **Test Contract**: [`scripts/ingest-translations.test.ts`](../scripts/ingest-translations.test.ts) (19 tests)
 
 #### [`scripts/lib/ast-parser.js`](../scripts/lib/ast-parser.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, and `17`-map generator orphan checks.
+- **Intended Scope (`@scope`)**: Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, `17`-map generator orphan checks, and Markdown Mermaid diagram syntax/cycle validation.
 - **Behavioral Invariants (`@invariant`)**:
   - Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
-  - Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
+  - Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes (`validateMermaidDiagramsInMarkdown`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
 - **Design Rationale (`@rationale`)**:
   - Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
 - **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
 - **AST Blast Radius**: 4 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (14 tests)
+- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (16 tests)
 
 #### [`scripts/lib/sast-validators.js`](../scripts/lib/sast-validators.js) *(Tier-4 Protected)*
 
@@ -861,7 +848,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
 - **Design Rationale (`@rationale`)**:
   - Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
-- **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-081](DECISIONS.md), [ADR-082](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-081](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (16 tests)
@@ -883,40 +870,40 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
+  - Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing, failing non-zero via `shouldFailFeaturedQuotesRun` when `updated === 0` or `>= 50%` of `>= 5` attempted volumes fail, and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
   - Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
 - **Design Rationale (`@rationale`)**:
-  - Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while honoring zero-key local fallback (`Rule 4`), and avoids 78k-row PostgreSQL statement timeouts.
-- **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-083](DECISIONS.md)
+  - Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while retaining official PGLAF/Aleph/ReadingRoo mirror fallback for scheduled/manual runs without contacting `www.gutenberg.org`, and avoids 78k-row PostgreSQL statement timeouts.
+- **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-083](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`
-- **Test Contract**: [`scripts/sync-featured-quotes.test.ts`](../scripts/sync-featured-quotes.test.ts) (20 tests)
+- **Test Contract**: [`scripts/sync-featured-quotes.test.ts`](../scripts/sync-featured-quotes.test.ts) (21 tests)
 
 #### [`scripts/sync-gutenberg-catalog.js`](../scripts/sync-gutenberg-catalog.js) *(Tier-1 Protected)*
 
 - **Intended Scope (`@scope`)**: Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
+  - Prioritize PGLAF/Aleph feed mirrors exclusively (never `www.gutenberg.org`, pinned or ordered via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), preserve cached and live DB `copyright` flags when RDF feeds are unavailable (including under `--update-existing`), and defer unverified brand-new books during unexpected RDF outages (`reconcileBatchWithoutRdfRights`).
   - Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
-  - Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
+  - Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE`, `MAX_WITHDRAWN_PRUNE_PER_RUN`, and `PROTECTED_HERO_BOOK_IDS`.
 - **Design Rationale (`@rationale`)**:
-  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
-- **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
+- **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (41 tests)
+- **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (42 tests)
 
 #### [`scripts/sync-r2-assets.js`](../scripts/sync-r2-assets.js) *(Tier-1 Protected)*
 
 - **Intended Scope (`@scope`)**: Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted `rsync --files-from` / PGLAF HTTPS transfers.
 - **Behavioral Invariants (`@invariant`)**:
-  - Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), invoke `rsync`/`wsl` strictly with `{ shell: false }`, and exit `0` cleanly when `R2_*` credentials are unconfigured.
+  - Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), fail fast via `assertValidR2ConfigIfPresent` on partial or malformed `R2_*` configs while exiting `0` cleanly when all `R2_*` variables are unset, prevent transient `_meta/r2-sync-state.json.gz` read errors or `rsync` transport faults from wiping/poisoning 90-day missing cooldowns (union-merging remote state before writes and flushing state cleanly in `try ... finally` alongside mid-batch `isOverBudget` checks), parallelize `putR2Object` writes via `DEFAULT_R2_PUT_CONCURRENCY` (`8`), emit conditional purge tags (`--purge-tags-file`) strictly for deleted or `--force`-overwritten assets, fail non-zero via `shouldFailR2SyncRun` on total or `>= 50%` infrastructure failures, decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), and invoke `rsync`/`wsl` strictly with `{ shell: false }`.
 - **Design Rationale (`@rationale`)**:
-  - Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` eliminates 78k remote directory walks on CI runners while `_meta/r2-sync-state.json.gz` (`DEFAULT_MISSING_RECHECK_DAYS` TTL) suppresses repeated missing-cover probes, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
-- **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md)
+  - Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
+- **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`scripts/sync-featured-quotes.js`](../scripts/sync-featured-quotes.js))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`scripts/sync-r2-assets.test.ts`](../scripts/sync-r2-assets.test.ts) (12 tests)
+- **Test Contract**: [`scripts/sync-r2-assets.test.ts`](../scripts/sync-r2-assets.test.ts) (13 tests)
 
 ---
 

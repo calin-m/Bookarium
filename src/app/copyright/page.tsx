@@ -189,22 +189,22 @@ export default function CopyrightPage() {
 
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 font-sans pl-1">
               <li>
-                <strong className="text-foreground font-medium">Zero Automated Scraping:</strong> Bookarium never runs scrapers, spiders, or automated crawlers against <code className="font-mono text-primary font-semibold">www.gutenberg.org</code>.
+                <strong className="text-foreground font-medium">Zero Live Visitor Traffic to Project Gutenberg:</strong> Runtime reading sessions, cover artwork, and plain-text exports never trigger client, SSR, or API mirror requests against <code className="font-mono text-primary font-semibold">www.gutenberg.org</code> or external mirrors. All public-domain assets are self-hosted and streamed from Bookarium&apos;s private Cloudflare R2 storage and regional Edge CDN.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Decoupled Architecture:</strong> All user catalog browsing, keyword searches, and subject facets are served via our dedicated Supabase PostgreSQL catalog and regional Edge cache, completely shielding Gutenberg origin servers from discovery traffic.
+                <strong className="text-foreground font-medium">Decoupled Architecture:</strong> All user catalog browsing, keyword searches, and subject facets are served via our dedicated Supabase PostgreSQL catalog and regional Edge cache, completely shielding external origin servers from discovery traffic.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Official Bulk Data Feeds:</strong> Catalog indexes are synchronized mirror-first using Gutenberg&apos;s authorized weekly archives (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code> and <code className="font-mono text-primary font-semibold">rdf-files.tar.bz2</code>), reading <code className="font-mono">&lt;dcterms:rights&gt;</code> notices to flag and suppress copyrighted donations globally.
+                <strong className="text-foreground font-medium">Official Bulk Data Feeds &amp; Targeted Mirroring:</strong> Scheduled background catalog indexes synchronize exclusively via Gutenberg&apos;s official mirror feeds (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code> and <code className="font-mono text-primary font-semibold">rdf-files.tar.bz2</code>) and targeted <code className="font-mono">rsync</code> (<code className="font-mono">aleph.gutenberg.org</code>), reading <code className="font-mono">&lt;dcterms:rights&gt;</code> notices to flag and suppress copyrighted donations globally.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Bandwidth Shielding &amp; Edge Caching:</strong> Masterwork text and cover assets are cached at the Vercel Edge CDN (<code className="font-mono">s-maxage=86400</code>–<code className="font-mono">604800</code>) and locally in browser IndexedDB for offline reading. Direct downloads are strictly human-initiated.
+                <strong className="text-foreground font-medium">Self-Hosted Edge Caching &amp; Offline Storage:</strong> Self-hosted Cloudflare R2 plain-text and cover assets are cached at the Vercel Edge CDN (<code className="font-mono">s-maxage=86400</code>–<code className="font-mono">604800</code>) and locally in browser IndexedDB for offline reading. Offline saves are strictly human-initiated per volume.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> All server-side requests transmit identifying headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>).
+                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> Background ingestion and feed synchronization requests transmit identifying headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>).
               </li>
               <li>
-                <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with or endorsed by the Project Gutenberg Literary Archive Foundation (PGLAF).
+                <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially for readers with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with or endorsed by the Project Gutenberg Literary Archive Foundation (PGLAF).
               </li>
             </ul>
           </section>

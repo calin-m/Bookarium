@@ -9,10 +9,10 @@
  *
  * @module scripts/ingest-translations
  * @scope Wikidata SPARQL (`P2034` / `P407`) FRBR work-clustering CLI populating idempotent cross-language edition links in `public.book_translations`.
- * @invariant Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning) and validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`) before persisting links.
+ * @invariant Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning), enforce bounded `WIKIDATA_SPARQL_TIMEOUT_MS` (`45s`) HTTP socket timeout cleanly triggering `Defense 3` snapshot fallback, validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`, handling empty-catalog `validBookIds.size === 0` skips), and execute bounded-retry bisected upserts (`upsertTranslationBatchesWithRetry`) failing non-zero on persistent write errors.
  * @invariant Support offline `--dry-run` / `--output=...` atomic SQL seed generation (`generateAtomicSeedSql`) cleanly even when Supabase env credentials are absent.
- * @rationale Strict anthology rejection, catalog FK pre-validation, and public-domain `copyright !== true` filtering eliminate spurious cross-author translation links, copyrighted volume associations, and foreign-key upsert failures during scheduled weekly runs.
- * @adr ADR-010, ADR-038, ADR-080
+ * @rationale Strict anthology rejection, socket-bounded Wikidata queries, catalog FK pre-validation, bisected batch retries, and public-domain `copyright !== true` filtering eliminate stalled CI runners, silent upsert drops, spurious cross-author translation links, and copyrighted volume associations.
+ * @adr ADR-010, ADR-038, ADR-080, ADR-085
  * 
  * Usage:
  *   node scripts/ingest-translations.js --dry-run
@@ -260,7 +260,15 @@ function checkHeuristicWorkMatch(bookA, bookB) {
 }
 
 // 8. Stream Wikidata SPARQL with Fallback Snapshot (Blocker 1 & Defense 3)
-function fetchWikidataTranslations(limit = null) {
+const WIKIDATA_SPARQL_TIMEOUT_MS = 45_000;
+
+function fetchWikidataTranslations(limit = null, options = {}) {
+  const timeoutMs =
+    typeof options.timeoutMs === 'number' && options.timeoutMs > 0
+      ? options.timeoutMs
+      : WIKIDATA_SPARQL_TIMEOUT_MS;
+  const httpsGet = typeof options.httpsGet === 'function' ? options.httpsGet : https.get;
+
   return new Promise((resolve, reject) => {
     const limitClause = limit && Number.isInteger(limit) && limit > 0 ? `LIMIT ${limit}` : '';
     const sparql = `
@@ -272,36 +280,59 @@ function fetchWikidataTranslations(limit = null) {
     `;
 
     const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparql)}&format=json`;
+    let settled = false;
+    const finish = (err, val) => {
+      if (settled) return;
+      settled = true;
+      if (err) reject(err);
+      else resolve(val);
+    };
 
-    https
-      .get(
-        url,
-        {
-          headers: {
-            'User-Agent': resolveUserAgent(),
-            Accept: 'application/sparql-results+json',
-          },
+    const req = httpsGet(
+      url,
+      {
+        timeout: timeoutMs,
+        headers: {
+          'User-Agent': resolveUserAgent(),
+          Accept: 'application/sparql-results+json',
         },
-        (res) => {
-          let rawData = '';
-          res.on('data', (chunk) => {
-            rawData += chunk;
-          });
-          res.on('end', () => {
-            try {
-              if (res.statusCode !== 200) {
-                return reject(new Error(`Wikidata HTTP ${res.statusCode}: ${rawData.slice(0, 200)}`));
-              }
-              const parsed = JSON.parse(rawData);
-              const bindings = parsed?.results?.bindings || [];
-              resolve(bindings);
-            } catch (err) {
-              reject(err);
+      },
+      (res) => {
+        let rawData = '';
+        res.on('data', (chunk) => {
+          rawData += chunk;
+        });
+        res.on('end', () => {
+          try {
+            if (res.statusCode !== 200) {
+              return finish(new Error(`Wikidata HTTP ${res.statusCode}: ${rawData.slice(0, 200)}`));
             }
-          });
-        }
-      )
-      .on('error', reject);
+            const parsed = JSON.parse(rawData);
+            const bindings = parsed?.results?.bindings || [];
+            finish(null, bindings);
+          } catch (err) {
+            finish(err);
+          }
+        });
+        res.on('error', (err) => finish(err));
+      }
+    );
+
+    if (req && typeof req.setTimeout === 'function') {
+      req.setTimeout(timeoutMs, () => {
+        const err = new Error(`Wikidata SPARQL query timed out after ${timeoutMs}ms`);
+        if (typeof req.destroy === 'function') req.destroy(err);
+        finish(err);
+      });
+    }
+    if (req && typeof req.on === 'function') {
+      req.on('timeout', () => {
+        const err = new Error(`Wikidata SPARQL query timed out after ${timeoutMs}ms`);
+        if (typeof req.destroy === 'function') req.destroy(err);
+        finish(err);
+      });
+      req.on('error', (err) => finish(err));
+    }
   });
 }
 
@@ -314,33 +345,143 @@ function loadFallbackSnapshot() {
   return [];
 }
 
+function isTransientSupabaseError(err) {
+  const msg = String((err && err.message) || err || '').toLowerCase();
+  return (
+    msg.includes('timeout') ||
+    msg.includes('canceling statement') ||
+    msg.includes('connection') ||
+    msg.includes('fetch failed') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('502') ||
+    msg.includes('503') ||
+    msg.includes('504') ||
+    msg.includes('429')
+  );
+}
+
 // 9. Foreign-Key Pre-Validation (Defense 4)
-async function filterValidCatalogBookIds(supabase, candidateIds = []) {
+async function filterValidCatalogBookIds(supabase, candidateIds = [], options = {}) {
   if (!supabase || !candidateIds || !candidateIds.length) return new Set(candidateIds);
   const uniqueIds = Array.from(new Set(candidateIds.filter((id) => Number.isInteger(id) && id > 0)));
   const validIds = new Set();
   const chunkSize = 500;
+  const retries = Number.isInteger(options.retries) && options.retries > 0 ? options.retries : 1;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 0;
+  const throwOnError = Boolean(options.throwOnError);
+  const sleepFn = options.sleepFn || ((ms) => new Promise((r) => setTimeout(r, ms)));
 
   for (let i = 0; i < uniqueIds.length; i += chunkSize) {
     const chunk = uniqueIds.slice(i, i + chunkSize);
-    const { data, error } = await supabase
-      .from('books')
-      .select('id, copyright')
-      .in('id', chunk);
+    let lastError = null;
+    let chunkData = null;
 
-    if (error) {
-      console.warn(`  ⚠ Foreign-key catalog pre-check warning: ${error.message}`);
-      return new Set(candidateIds);
-    } else if (data) {
-      data.forEach((r) => {
-        if (r && Number.isInteger(r.id) && r.copyright !== true) {
-          validIds.add(r.id);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from('books')
+          .select('id, copyright')
+          .in('id', chunk);
+
+        if (error) {
+          throw error;
         }
-      });
+        chunkData = data || [];
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (attempt < retries && baseDelayMs > 0) {
+          await sleepFn(baseDelayMs * attempt);
+        }
+      }
     }
+
+    if (lastError) {
+      const msg = lastError.message || String(lastError);
+      if (throwOnError) {
+        throw new Error(`Foreign-key catalog pre-check failed: ${msg}`);
+      }
+      console.warn(`  ⚠ Foreign-key catalog pre-check warning: ${msg}`);
+      return new Set(candidateIds);
+    }
+
+    chunkData.forEach((r) => {
+      if (r && Number.isInteger(r.id) && r.copyright !== true) {
+        validIds.add(r.id);
+      }
+    });
   }
 
   return validIds;
+}
+
+async function upsertTranslationBatchesWithRetry(supabase, rows = [], options = {}) {
+  const batchSize =
+    Number.isInteger(options.batchSize) && options.batchSize > 0 ? options.batchSize : 250;
+  const retries = Number.isInteger(options.retries) && options.retries > 0 ? options.retries : 3;
+  const baseDelayMs =
+    typeof options.baseDelayMs === 'number' && options.baseDelayMs >= 0 ? options.baseDelayMs : 800;
+  const ignoreDuplicates = Boolean(options.ignoreDuplicates);
+  const sleepFn = options.sleepFn || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const logger = options.logger || console;
+
+  let upsertedCount = 0;
+  let failedRowCount = 0;
+  let failedBatchCount = 0;
+  const errors = [];
+
+  const processSlice = async (slice, label) => {
+    if (!slice || slice.length === 0) return;
+
+    let lastErr = null;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { error } = await supabase
+          .from('book_translations')
+          .upsert(slice, {
+            onConflict: 'work_id,book_id',
+            ignoreDuplicates,
+          });
+        if (!error) {
+          upsertedCount += slice.length;
+          return;
+        }
+        lastErr = error;
+      } catch (err) {
+        lastErr = err;
+      }
+
+      if (attempt < retries && baseDelayMs > 0 && isTransientSupabaseError(lastErr)) {
+        await sleepFn(baseDelayMs * attempt);
+      } else if (!isTransientSupabaseError(lastErr)) {
+        break;
+      }
+    }
+
+    const transient = isTransientSupabaseError(lastErr);
+    if (slice.length > 1 && (!transient || slice.length > 25)) {
+      const mid = Math.floor(slice.length / 2);
+      await processSlice(slice.slice(0, mid), `${label}a`);
+      await processSlice(slice.slice(mid), `${label}b`);
+      return;
+    }
+
+    const msg = (lastErr && lastErr.message) || String(lastErr || 'Unknown upsert error');
+    failedBatchCount++;
+    failedRowCount += slice.length;
+    errors.push(msg);
+    logger.warn(`  ⚠ Batch ${label} (${slice.length} row(s)) failed after retries: ${msg}`);
+  };
+
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    await processSlice(batch, String(Math.floor(i / batchSize) + 1));
+  }
+
+  return { upsertedCount, failedRowCount, failedBatchCount, errors };
 }
 
 // 10. Generate Foreign-Key Safe Atomic SQL (Blocker 5 & Defense 4)
@@ -502,38 +643,38 @@ Options:
   if (supabase && !isDryRun) {
     console.log('\n🚀 Verifying foreign-key catalog integrity against public.books...');
     const candidateIds = translationsToInsert.map((t) => t.book_id);
-    const validBookIds = await filterValidCatalogBookIds(supabase, candidateIds);
+    const validBookIds = await filterValidCatalogBookIds(supabase, candidateIds, {
+      retries: 3,
+      baseDelayMs: 1000,
+      throwOnError: true,
+    });
 
+    const uniqueCandidateCount = new Set(candidateIds).size;
     let finalTranslations = translationsToInsert;
-    if (validBookIds && validBookIds.size > 0 && validBookIds.size !== candidateIds.length) {
+    if (validBookIds instanceof Set && validBookIds.size !== uniqueCandidateCount) {
       finalTranslations = translationsToInsert.filter((t) => validBookIds.has(t.book_id));
       const skippedCount = translationsToInsert.length - finalTranslations.length;
       console.log(`  • Verified in Catalog:  ${finalTranslations.length} rows`);
-      console.log(`  • Safely Skipped (FK):  ${skippedCount} rows not present in public.books`);
+      console.log(`  • Safely Skipped (FK):  ${skippedCount} rows not present or copyrighted in public.books`);
     } else {
       console.log(`  • Verified in Catalog:  ${finalTranslations.length} rows (100% catalog coverage)`);
     }
 
-    console.log('\n🚀 Performing live batch upsert into Supabase (public.book_translations)...');
-    const batchSize = 250;
-    let upsertedCount = 0;
-
-    for (let i = 0; i < finalTranslations.length; i += batchSize) {
-      const batch = finalTranslations.slice(i, i + batchSize);
-      const { error } = await supabase
-        .from('book_translations')
-        .upsert(batch, {
-          onConflict: 'work_id,book_id',
-          ignoreDuplicates: !shouldUpdateExisting,
-        });
-
-      if (error) {
-        console.warn(`  ⚠ Warning on batch ${Math.floor(i / batchSize) + 1}: ${error.message}`);
-      } else {
-        upsertedCount += batch.length;
+    if (finalTranslations.length === 0) {
+      console.log('  ℹ Zero matching public.books catalog entries found; skipping Supabase upsert.');
+    } else {
+      console.log('\n🚀 Performing live batch upsert into Supabase (public.book_translations)...');
+      const upsertRes = await upsertTranslationBatchesWithRetry(supabase, finalTranslations, {
+        batchSize: 250,
+        ignoreDuplicates: !shouldUpdateExisting,
+      });
+      console.log(`  ✅ Successfully synced ${upsertRes.upsertedCount} translation rows to Supabase.`);
+      if (upsertRes.failedRowCount > 0) {
+        throw new Error(
+          `Failed to upsert ${upsertRes.failedRowCount} translation row(s) across ${upsertRes.failedBatchCount} batch(es): ${upsertRes.errors[0] || 'unknown error'}`
+        );
       }
     }
-    console.log(`  ✅ Successfully synced ${upsertedCount} translation rows to Supabase.`);
   }
 
   console.log('\n🎉 Translation Ingestion completed successfully!');
@@ -547,6 +688,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  WIKIDATA_SPARQL_TIMEOUT_MS,
   resolveSiteOriginFallback,
   resolveUserAgent,
   normalizeLanguageToCode,
@@ -558,7 +700,9 @@ module.exports = {
   checkHeuristicWorkMatch,
   fetchWikidataTranslations,
   loadFallbackSnapshot,
+  isTransientSupabaseError,
   filterValidCatalogBookIds,
+  upsertTranslationBatchesWithRetry,
   generateAtomicSeedSql,
 };
 

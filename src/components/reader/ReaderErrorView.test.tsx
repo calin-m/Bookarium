@@ -13,6 +13,7 @@ describe('ReaderErrorView Component', () => {
 
     expect(screen.getByTestId('reader-error-view')).toBeInTheDocument();
     expect(screen.getByText(/Unable to Load Masterwork Text/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bookarium's archive storage/i)).toBeInTheDocument();
 
     const retryBtn = screen.getByRole('button', { name: /Retry Connection/i });
     expect(retryBtn).toBeInTheDocument();

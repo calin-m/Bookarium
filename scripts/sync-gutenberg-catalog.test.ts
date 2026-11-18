@@ -47,6 +47,7 @@ const {
   saveCatalogSnapshotCache,
   appendCatalogStepSummary,
   computeCatalogQuotePoolDiff,
+  reconcileBatchWithoutRdfRights,
 } = syncGutenbergCatalog;
 
 describe('sync-gutenberg-catalog parser', () => {
@@ -793,7 +794,6 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(GUTENBERG_RDF_FEED_MIRRORS).toEqual([
         'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
         'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
-        'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
       ]);
       expect(resolveFeedMirrors(GUTENBERG_RDF_FEED_MIRRORS, 'auto')).toEqual(GUTENBERG_RDF_FEED_MIRRORS);
       expect(resolveFeedMirrors(GUTENBERG_CSV_FEED_MIRRORS, 'aleph.gutenberg.org')).toEqual([
@@ -802,6 +802,9 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(resolveFeedMirrors(GUTENBERG_RDF_FEED_MIRRORS, 'gutenberg.pglaf.org')).toEqual([
         'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
       ]);
+      expect(() => resolveFeedMirrors(GUTENBERG_CSV_FEED_MIRRORS, 'www.gutenberg.org')).toThrow(
+        /Unsupported --feed-source/
+      );
       expect(() => resolveFeedMirrors(GUTENBERG_CSV_FEED_MIRRORS, 'evil.example.com')).toThrow(
         /Unsupported --feed-source/
       );
@@ -811,7 +814,7 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(isHtmlContentType('application/x-gzip')).toBe(false);
 
       expect(isAllowedRdfFeedUrl('https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
-        true
+        false
       );
       expect(isAllowedRdfFeedUrl('https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
         true
@@ -965,14 +968,13 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(hasCatalogMetadataChanged(existingRow, withoutMap)).toBe(false);
     });
 
-    it('supports PGLAF-first 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch', async () => {
+    it('supports PGLAF-first mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch', async () => {
       expect(GUTENBERG_CSV_FEED_MIRRORS).toEqual([
         'https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv.gz',
         'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
-        'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
       ]);
       expect(isAllowedCsvFeedUrl('https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz')).toBe(
-        true
+        false
       );
       expect(isAllowedCsvFeedUrl('https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz')).toBe(
         true
@@ -1408,6 +1410,61 @@ describe('sync-gutenberg-catalog parser', () => {
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
+    });
+
+    it('preserves cached and live-DB copyright=true flags and defers brand-new unverified volumes during RDF outages', async () => {
+      const cachedBooksById = new Map([
+        [1342, { id: 1342, copyright: false }],
+        [901, { id: 901, copyright: true }],
+      ]);
+      const batch = [
+        { id: 1342, title: 'Pride and Prejudice', copyright: false },
+        { id: 901, title: 'Restricted In Cache', copyright: false },
+        { id: 902, title: 'Restricted Only In DB', copyright: false },
+        { id: 84, title: 'Public Domain In DB', copyright: false },
+        { id: 77777, title: 'Brand New Unverified Book', copyright: false },
+      ];
+
+      const mockSupabase = {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            in: vi.fn(async (_col: string, ids: number[]) => ({
+              data: [
+                { id: 902, copyright: true },
+                { id: 84, copyright: false },
+              ].filter((r) => ids.includes(r.id)),
+              error: null,
+            })),
+          })),
+        })),
+      };
+
+      const deferredRes = await reconcileBatchWithoutRdfRights({
+        batch,
+        supabase: mockSupabase,
+        cachedBooksById,
+        shouldDeferUnverifiedNew: true,
+        fetchRowsOptions: { retries: 1, baseDelayMs: 0 },
+      });
+
+      expect(deferredRes.deferredIds).toEqual([77777]);
+      expect(deferredRes.filteredBatch.map((b: { id: number; copyright: boolean }) => [b.id, b.copyright])).toEqual([
+        [1342, false],
+        [901, true],
+        [902, true],
+        [84, false],
+      ]);
+
+      const explicitOverrideRes = await reconcileBatchWithoutRdfRights({
+        batch,
+        supabase: mockSupabase,
+        cachedBooksById,
+        shouldDeferUnverifiedNew: false,
+        fetchRowsOptions: { retries: 1, baseDelayMs: 0 },
+      });
+      expect(explicitOverrideRes.deferredIds).toEqual([]);
+      expect(explicitOverrideRes.filteredBatch).toHaveLength(5);
+      expect(explicitOverrideRes.filteredBatch.find((b: { id: number }) => b.id === 902)?.copyright).toBe(true);
     });
   });
 });

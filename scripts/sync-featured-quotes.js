@@ -12,10 +12,10 @@
  *
  * @module scripts/sync-featured-quotes
  * @scope Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
- * @invariant Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
+ * @invariant Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing, failing non-zero via `shouldFailFeaturedQuotesRun` when `updated === 0` or `>= 50%` of `>= 5` attempted volumes fail, and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
  * @invariant Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
- * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while honoring zero-key local fallback (`Rule 4`), and avoids 78k-row PostgreSQL statement timeouts.
- * @adr ADR-074, ADR-080, ADR-083
+ * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while retaining official PGLAF/Aleph/ReadingRoo mirror fallback for scheduled/manual runs without contacting `www.gutenberg.org`, and avoids 78k-row PostgreSQL statement timeouts.
+ * @adr ADR-074, ADR-080, ADR-083, ADR-084, ADR-085
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
@@ -2270,6 +2270,17 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       mirrors: resolvedMirrors,
     });
     logger.log(formatConsoleSummary(summary, { dryRun: options.dryRun }));
+    if (summary.failed > 0) {
+      const warnLog =
+        typeof logger.warn === 'function'
+          ? logger.warn.bind(logger)
+          : typeof logger.error === 'function'
+            ? logger.error.bind(logger)
+            : console.warn;
+      warnLog(
+        `::warning::Featured quotes sync completed with ${summary.failed} failed volume(s) (${summary.updated} updated).`
+      );
+    }
     writeStepSummary(deps.stepSummaryPath, summary.report, logger);
     return summary;
   };
@@ -2597,6 +2608,16 @@ Options:
 `);
 }
 
+function shouldFailFeaturedQuotesRun(summary = {}) {
+  if (!summary || summary.skippedByScheduleGate) return false;
+  const failed = typeof summary.failed === 'number' ? summary.failed : 0;
+  if (failed <= 0) return false;
+  const updated = typeof summary.updated === 'number' ? summary.updated : 0;
+  if (updated === 0) return true;
+  const attempted = updated + failed;
+  return attempted >= 5 && failed / attempted >= 0.5;
+}
+
 /* v8 ignore start */
 if (require.main === module) {
   const cliOptions = parseCliArgs(process.argv.slice(2));
@@ -2606,7 +2627,7 @@ if (require.main === module) {
   }
   runFeaturedQuotesSync(cliOptions, { stepSummaryPath: process.env.GITHUB_STEP_SUMMARY })
     .then((res) => {
-      process.exit(res.failed > 0 && res.updated === 0 && !res.skippedByScheduleGate ? 1 : 0);
+      process.exit(shouldFailFeaturedQuotesRun(res) ? 1 : 0);
     })
     .catch((err) => {
       console.error(`Fatal error in sync-featured-quotes: ${err.message}`);
@@ -2666,5 +2687,6 @@ module.exports = {
   loadQuoteDiffFile,
   fetchCandidateBooksFromSupabase,
   printUsageGuide,
+  shouldFailFeaturedQuotesRun,
   runFeaturedQuotesSync,
 };

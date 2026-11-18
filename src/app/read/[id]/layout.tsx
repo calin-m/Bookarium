@@ -17,6 +17,30 @@ interface ReaderLayoutProps {
   params: Promise<{ id: string }>;
 }
 
+const GUTENBERG_COVER_HOSTS = new Set([
+  'www.gutenberg.org',
+  'gutenberg.org',
+  'aleph.gutenberg.org',
+  'gutenberg.pglaf.org',
+  'gutenberg.readingroo.ms',
+]);
+
+function resolveSeoCoverUrl(bookId: number, rawCoverUrl?: string): string {
+  const defaultR2Cover = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=cover`;
+  const trimmed = (rawCoverUrl || '').trim();
+  if (!trimmed) return defaultR2Cover;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (GUTENBERG_COVER_HOSTS.has(parsed.hostname.toLowerCase())) {
+      return defaultR2Cover;
+    }
+    return trimmed;
+  } catch {
+    return defaultR2Cover;
+  }
+}
+
 function toSchemaPerson(person: ReaderSeoPerson) {
   return {
     '@type': 'Person',
@@ -61,9 +85,7 @@ export async function generateMetadata({
   const authorSuffix = meta.displayAuthor ? ` — ${meta.displayAuthor}` : '';
   const readerTitle = `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME} | ${meta.title}${authorSuffix}`;
   const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats);
-  const coverUrl =
-    bookData?.formats?.['image/jpeg'] ||
-    `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
+  const coverUrl = resolveSeoCoverUrl(bookId, bookData?.formats?.['image/jpeg']);
 
   let validShareToken: string | null = null;
   try {
@@ -152,9 +174,7 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
       booksData: bookData ? { count: 1, next: null, previous: null, results: [bookData] } : null,
     });
 
-    const coverUrl =
-      bookData?.formats?.['image/jpeg'] ||
-      `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
+    const coverUrl = resolveSeoCoverUrl(bookId, bookData?.formats?.['image/jpeg']);
     const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats);
     const authorSchema =
       seo.authorsMeta.length > 1

@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_CONFIG.NAME}`,
   },
   description:
-    'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct plain-text downloads with zero API keys.',
+    'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct plain-text downloads — free for readers with zero third-party API keys.',
   keywords: [
     'Public Domain Books',
     'Project Gutenberg',
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     siteName: SITE_CONFIG.NAME,
     title: SITE_CONFIG.NAME,
     description:
-      'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct plain-text downloads with zero API keys.',
+      'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct plain-text downloads — free for readers with zero third-party API keys.',
     images: [
       {
         url: '/icons/apple-touch-icon.png?v=4',
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     card: 'summary',
     title: SITE_CONFIG.NAME,
     description:
-      'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct plain-text downloads with zero API keys.',
+      'Discover, read, and download 70,000+ timeless books legally in the public domain. In-browser focus reader and direct plain-text downloads — free for readers with zero third-party API keys.',
     images: ['/icons/apple-touch-icon.png?v=4'],
   },
   robots: {

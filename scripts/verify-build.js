@@ -1022,6 +1022,7 @@ function pass5AdrValidation() {
     'docs/DECISIONS.md',
     'docs/GITHUB_ACTIONS.md',
     'docs/GUTENBERG_PARSER.md',
+    'docs/INFRASTRUCTURE.md',
     'docs/SYSTEM_CONTRACTS.md',
     'docs/QUALITY_AUDIT_REPORT.md',
     'ROADMAP.md',
@@ -1433,6 +1434,7 @@ function pass5AdrValidation() {
     'SECURITY.md',
     'docs/PIPELINE_GUIDE.md',
     'docs/GITHUB_ACTIONS.md',
+    'docs/INFRASTRUCTURE.md',
     '.github/pull_request_template.md',
     '.github/ISSUE_TEMPLATE/bug_report.yml',
     '.github/ISSUE_TEMPLATE/feature_request.yml',
@@ -1795,6 +1797,7 @@ function pass5AdrValidation() {
       const wfAuditDocs = [
         'docs/ARCHITECTURE.md',
         'docs/GITHUB_ACTIONS.md',
+        'docs/INFRASTRUCTURE.md',
         'docs/PIPELINE_GUIDE.md',
         'DEVELOPMENT.md',
         'README.md',
@@ -1823,6 +1826,7 @@ function pass5AdrValidation() {
           relDoc === 'README.md' ||
           relDoc === 'docs/PIPELINE_GUIDE.md' ||
           relDoc === 'docs/GITHUB_ACTIONS.md' ||
+          relDoc === 'docs/INFRASTRUCTURE.md' ||
           relDoc === 'docs/ARCHITECTURE.md' ||
           relDoc === 'DEVELOPMENT.md'
         ) {
@@ -1858,6 +1862,26 @@ function pass5AdrValidation() {
         docViolations.push(
           `README.md architecture directory count does not match docs/ARCHITECTURE.md (${archMermaidCount} diagrams; run "npm run docs:sync").`
         );
+      }
+    }
+
+    // Mermaid Syntax, Subgraph Cycle & HTML-Tag Safety Verification across Markdown Docs
+    const { validateMermaidDiagramsInMarkdown } = require('./lib/ast-parser');
+    const mermaidDocTargets = [
+      'docs/ARCHITECTURE.md',
+      'README.md',
+      'docs/GUTENBERG_PARSER.md',
+      'docs/INFRASTRUCTURE.md',
+    ];
+    for (const relMermaidDoc of mermaidDocTargets) {
+      const absMermaidDoc = path.join(rootDir, relMermaidDoc);
+      if (!fs.existsSync(absMermaidDoc)) continue;
+      const mermaidIssues = validateMermaidDiagramsInMarkdown(
+        fs.readFileSync(absMermaidDoc, 'utf-8'),
+        relMermaidDoc
+      );
+      for (const issue of mermaidIssues) {
+        docViolations.push(`Broken or unsafe Mermaid diagram: ${issue}`);
       }
     }
 

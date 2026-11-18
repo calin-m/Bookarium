@@ -8,11 +8,11 @@
  *
  * @module scripts/sync-gutenberg-catalog
  * @scope Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
- * @invariant Prioritize PGLAF/Aleph feed mirrors ahead of `www.gutenberg.org` (or pin via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), and preserve cached `copyright` flags when RDF feeds are unavailable or `--no-rdf` is passed.
+ * @invariant Prioritize PGLAF/Aleph feed mirrors exclusively (never `www.gutenberg.org`, pinned or ordered via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), preserve cached and live DB `copyright` flags when RDF feeds are unavailable (including under `--update-existing`), and defer unverified brand-new books during unexpected RDF outages (`reconcileBatchWithoutRdfRights`).
  * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
- * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE` (`50,000`), `MAX_WITHDRAWN_PRUNE_PER_RUN` (`500`), and `PROTECTED_HERO_BOOK_IDS`.
- * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters, detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync off `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
- * @adr ADR-040, ADR-073, ADR-080
+ * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE`, `MAX_WITHDRAWN_PRUNE_PER_RUN`, and `PROTECTED_HERO_BOOK_IDS`.
+ * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
+ * @adr ADR-040, ADR-073, ADR-080, ADR-084, ADR-085
  *
  * Usage:
  *   node scripts/sync-gutenberg-catalog.js --dry-run
@@ -318,27 +318,24 @@ function normalizeCsvRow(row, rdfSignalsOrCountsMap = null, cachedBook = null) {
 const GUTENBERG_RDF_FEED_MIRRORS = [
   'https://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2',
   'https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
-  'https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2',
 ];
 
 const GUTENBERG_CSV_FEED_MIRRORS = [
   'https://gutenberg.pglaf.org/cache/epub/feeds/pg_catalog.csv.gz',
   'https://aleph.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
-  'https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv.gz',
 ];
 
 const FEED_SOURCE_OPTIONS = new Set([
   'auto',
   'gutenberg.pglaf.org',
   'aleph.gutenberg.org',
-  'www.gutenberg.org',
 ]);
 
 function resolveFeedMirrors(defaultMirrors = GUTENBERG_CSV_FEED_MIRRORS, feedSource = 'auto') {
   const normalized = String(feedSource || 'auto').trim().toLowerCase() || 'auto';
   if (!FEED_SOURCE_OPTIONS.has(normalized)) {
     throw new Error(
-      `Unsupported --feed-source "${feedSource}". Expected auto, gutenberg.pglaf.org, aleph.gutenberg.org, or www.gutenberg.org.`
+      `Unsupported --feed-source "${feedSource}". Expected auto, gutenberg.pglaf.org, or aleph.gutenberg.org.`
     );
   }
   if (normalized === 'auto') {
@@ -361,8 +358,6 @@ const ALLOWED_RDF_FEED_HOSTS = new Set([
   'gutenberg.pglaf.org',
   'aleph.gutenberg.org',
   'gutenberg.readingroo.ms',
-  'www.gutenberg.org',
-  'gutenberg.org',
 ]);
 
 function isHtmlContentType(contentType) {
@@ -1124,6 +1119,68 @@ async function filterChangedOrNewBooks(supabase, batch, shouldForceOverwrite = f
   return { toUpsert, insertedCount, updatedCount, unchangedCount };
 }
 
+async function reconcileBatchWithoutRdfRights({
+  batch = [],
+  supabase = null,
+  cachedBooksById = null,
+  shouldDeferUnverifiedNew = false,
+  fetchRowsOptions = {},
+}) {
+  if (!Array.isArray(batch) || batch.length === 0) {
+    return { filteredBatch: [], deferredIds: [] };
+  }
+
+  const uncachedIds = [];
+  for (const book of batch) {
+    if (!book || !Number.isInteger(book.id)) continue;
+    const inCache = cachedBooksById instanceof Map && cachedBooksById.has(book.id);
+    if (!inCache) {
+      uncachedIds.push(book.id);
+    }
+  }
+
+  const dbCopyrightById = new Map();
+  if (uncachedIds.length > 0 && supabase && typeof supabase.from === 'function') {
+    const existingRows = await fetchExistingRowsWithRetry(supabase, uncachedIds, fetchRowsOptions);
+    for (const row of existingRows || []) {
+      if (row && Number.isInteger(row.id)) {
+        dbCopyrightById.set(row.id, Boolean(row.copyright));
+      }
+    }
+  }
+
+  const filteredBatch = [];
+  const deferredIds = [];
+  for (const book of batch) {
+    if (!book || !Number.isInteger(book.id)) continue;
+    if (dbCopyrightById.has(book.id)) {
+      filteredBatch.push({
+        ...book,
+        copyright: dbCopyrightById.get(book.id),
+      });
+      continue;
+    }
+
+    const cachedRow = cachedBooksById instanceof Map ? cachedBooksById.get(book.id) : null;
+    if (!cachedRow && shouldDeferUnverifiedNew) {
+      deferredIds.push(book.id);
+      continue;
+    }
+
+    if (cachedRow && cachedRow.copyright === true && book.copyright !== true) {
+      filteredBatch.push({
+        ...book,
+        copyright: true,
+      });
+      continue;
+    }
+
+    filteredBatch.push(book);
+  }
+
+  return { filteredBatch, deferredIds };
+}
+
 // Sticky dynamic write chunk sizing & latency governor so statement timeouts never repeat across batches
 const MIN_DYNAMIC_WRITE_CHUNK_SIZE = 25;
 const MAX_DYNAMIC_WRITE_CHUNK_SIZE = 100;
@@ -1766,7 +1823,7 @@ Options:
   --batch-size=N        Number of books per Supabase upsert (default: 200)
   --cache-file=PATH     Load/save compressed catalog snapshot cache (.json.gz) for in-RAM diffing
   --diff-output=PATH    Write Two-Tier quote pool diff JSON (quote-diff.json) for sync-featured-quotes.js
-  --feed-source=HOST    Feed source: auto (pglaf -> aleph -> www), gutenberg.pglaf.org, aleph.gutenberg.org, or www.gutenberg.org
+  --feed-source=HOST    Feed source: auto (pglaf -> aleph), gutenberg.pglaf.org, or aleph.gutenberg.org
   --update-existing     Force full overwrite of all existing records (default: smart exact-diff update preserving quotes)
   --no-prune            Skip withdrawn-book reconciliation at the end of a full sync
   --force-prune         Override the 500-book per-run safety cap during withdrawn-book pruning
@@ -1824,10 +1881,9 @@ Options:
     });
   }
 
-  const cachedSnapshot =
-    cacheFilePath && !shouldUpdateExisting
-      ? loadCatalogSnapshotCache(cacheFilePath, { logger: console })
-      : { loaded: false, booksById: new Map(), candidatePoolIds: new Set() };
+  const cachedSnapshot = cacheFilePath
+    ? loadCatalogSnapshotCache(cacheFilePath, { logger: console })
+    : { loaded: false, booksById: new Map(), candidatePoolIds: new Set() };
 
   let rdfSignals = { downloadCounts: new Map(), copyrightedIds: null, hasRightsData: false };
   if (!noRdf && !limit) {
@@ -1845,6 +1901,7 @@ Options:
   let totalInserted = 0;
   let totalUpdated = 0;
   let totalUnchanged = 0;
+  let totalDeferredNew = 0;
   let hasPrintedCsvSummary = false;
   let lastCsvDownloadLogMs = 0;
   let currentBatch = [];
@@ -1854,7 +1911,7 @@ Options:
 
   const flushBatch = async () => {
     if (currentBatch.length === 0) return;
-    const toSend = [...currentBatch];
+    let toSend = [...currentBatch];
     currentBatch = [];
 
     if (!hasPrintedCsvSummary) {
@@ -1862,14 +1919,26 @@ Options:
       process.stdout.write('\n');
     }
 
+    if (!rdfSignals.hasRightsData) {
+      const reconciled = await reconcileBatchWithoutRdfRights({
+        batch: toSend,
+        supabase: !isDryRun ? supabase : null,
+        cachedBooksById: cachedSnapshot.loaded ? cachedSnapshot.booksById : null,
+        shouldDeferUnverifiedNew: !noRdf && !limit,
+      });
+      toSend = reconciled.filteredBatch;
+      totalDeferredNew += reconciled.deferredIds.length;
+    }
+
     let wroteRows = 0;
-    if (!isDryRun && supabase) {
+    if (!isDryRun && supabase && toSend.length > 0) {
       const { toUpsert, insertedCount, updatedCount, unchangedCount } = await filterChangedOrNewBooks(
         supabase,
         toSend,
         shouldUpdateExisting,
         {
-          cachedBooksById: cachedSnapshot.loaded ? cachedSnapshot.booksById : null,
+          cachedBooksById:
+            cachedSnapshot.loaded && !shouldUpdateExisting ? cachedSnapshot.booksById : null,
         }
       );
       if (toUpsert.length > 0) {
@@ -1976,6 +2045,11 @@ Options:
     console.log(`  • New inserted:   ${totalInserted.toLocaleString()}`);
     console.log(`  • Diff updated:   ${totalUpdated.toLocaleString()}`);
     console.log(`  • Unchanged skip: ${totalUnchanged.toLocaleString()}`);
+    if (totalDeferredNew > 0) {
+      console.warn(
+        `  ⚠ Deferred new:   ${totalDeferredNew.toLocaleString()} brand-new book(s) skipped while RDF <dcterms:rights> feeds were unavailable.`
+      );
+    }
     if (csvArchiveMeta && csvArchiveMeta.archiveSha256) {
       console.log(`  • CSV SHA-256:    ${csvArchiveMeta.archiveSha256}`);
     }
@@ -2100,6 +2174,7 @@ module.exports = {
   isTransientDatabaseTimeout,
   fetchExistingRowsWithRetry,
   filterChangedOrNewBooks,
+  reconcileBatchWithoutRdfRights,
   getDynamicWriteChunkSize,
   resetDynamicWriteChunkSize,
   upsertBatch,

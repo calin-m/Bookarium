@@ -19,6 +19,16 @@ on:
         required: false
         type: boolean
         default: false
+      purge_covers:
+        description: "Purge 'covers' Edge cache tag (/api/books/content?type=cover artwork)"
+        required: false
+        type: boolean
+        default: false
+      purge_book_content:
+        description: "Purge 'book-content' Edge cache tag (/api/books/content plain text streams)"
+        required: false
+        type: boolean
+        default: false
       target:
         description: 'Vercel deployment environment to invalidate'
         required: true
@@ -60,6 +70,8 @@ jobs:
           INPUT_PURGE_CATALOG: ${{ inputs.purge_catalog }}
           INPUT_PURGE_QUOTES: ${{ inputs.purge_quotes }}
           INPUT_PURGE_TRANSLATIONS: ${{ inputs.purge_translations }}
+          INPUT_PURGE_COVERS: ${{ inputs.purge_covers }}
+          INPUT_PURGE_BOOK_CONTENT: ${{ inputs.purge_book_content }}
           INPUT_TARGET: ${{ inputs.target }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
@@ -78,14 +90,20 @@ jobs:
           if [ "${INPUT_PURGE_TRANSLATIONS:-false}" = "true" ]; then
             TAGS+=("translations")
           fi
+          if [ "${INPUT_PURGE_COVERS:-false}" = "true" ]; then
+            TAGS+=("covers")
+          fi
+          if [ "${INPUT_PURGE_BOOK_CONTENT:-false}" = "true" ]; then
+            TAGS+=("book-content")
+          fi
 
           if [ "${#TAGS[@]}" -eq 0 ]; then
-            echo "::error::At least one cache tag checkbox (purge_catalog, purge_quotes, or purge_translations) must be checked." >&2
+            echo "::error::At least one cache tag checkbox (purge_catalog, purge_quotes, purge_translations, purge_covers, or purge_book_content) must be checked." >&2
             if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
               {
                 echo "## ❌ Manual Cache Purge Aborted"
                 echo ""
-                echo "At least one cache tag checkbox (\`purge_catalog\`, \`purge_quotes\`, or \`purge_translations\`) must be checked before running this workflow."
+                echo "At least one cache tag checkbox (\`purge_catalog\`, \`purge_quotes\`, \`purge_translations\`, \`purge_covers\`, or \`purge_book_content\`) must be checked before running this workflow."
               } >> "$GITHUB_STEP_SUMMARY"
             fi
             exit 1

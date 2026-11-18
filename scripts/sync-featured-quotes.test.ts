@@ -1780,4 +1780,51 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       '**Text Source**: `mirrors — HTTPS mirrors only (gutenberg.pglaf.org)`'
     );
   });
+
+  it('evaluates infrastructure failure thresholds strictly via shouldFailFeaturedQuotesRun', () => {
+    expect(quotesSync.shouldFailFeaturedQuotesRun({ updated: 10, failed: 0, books: [] })).toBe(false);
+    expect(
+      quotesSync.shouldFailFeaturedQuotesRun({
+        updated: 24,
+        failed: 1,
+        books: [...Array.from({ length: 24 }, () => ({ outcome: 'updated' })), { outcome: 'error' }],
+      })
+    ).toBe(false);
+
+    expect(
+      quotesSync.shouldFailFeaturedQuotesRun({
+        updated: 0,
+        failed: 1,
+        books: [{ outcome: 'error' }],
+      })
+    ).toBe(true);
+
+    expect(
+      quotesSync.shouldFailFeaturedQuotesRun({
+        updated: 2,
+        failed: 4,
+        books: [
+          { outcome: 'updated' },
+          { outcome: 'updated' },
+          { outcome: 'error' },
+          { outcome: 'error' },
+          { outcome: 'error' },
+          { outcome: 'error' },
+        ],
+      })
+    ).toBe(true);
+
+    expect(
+      quotesSync.shouldFailFeaturedQuotesRun({
+        updated: 2,
+        failed: 2,
+        books: [
+          { outcome: 'updated' },
+          { outcome: 'updated' },
+          { outcome: 'error' },
+          { outcome: 'error' },
+        ],
+      })
+    ).toBe(false);
+  });
 });

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Bookarium — Dedicated Gutenberg Catalog Ingestion & Seeding Engine
+ * Bookarium — Curated Gutenberg Starter Seed Generator
  *
  * @module scripts/ingest-catalog
- * @scope Offline SQL seed generator & mirror text hydrator producing idempotent `supabase/seed_books.sql` and optional `seed_books_content.sql` fixtures from `CURATED_CLASSICS`.
- * @invariant Retire legacy `--pages=N` Gutendex REST pagination safely while emitting dollar-quoted (`$bookarium_txt_<id>$`) idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` / `UPDATE` scripts without requiring network credentials for `--dry-run`.
- * @invariant Construct dynamic Project Gutenberg User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`.
- * @rationale Gives local developers and fresh Supabase installs zero-key seed SQL files aligned with `public.books` lifespan bounds while honoring Gutenberg client identification rules.
- * @adr ADR-038, ADR-080
+ * @scope Offline SQL starter seed generator compiling idempotent `supabase/seed_books.sql` from `CURATED_CLASSICS` (with `--with-content` live Gutenberg mirror scraping retired under ADR-084).
+ * @invariant Retire legacy `--pages=N` Gutendex pagination and `--with-content` Project Gutenberg HTTP text scraping safely while emitting idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` seed scripts without requiring network credentials for `--dry-run`.
+ * @invariant Construct dynamic User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`, and keep pure `generateContentUpdateSql` formatter side-effect free.
+ * @rationale Gives local developers and fresh Supabase installs clean curated catalog metadata SQL seeds aligned with `public.books` lifespan bounds while keeping online text storage strictly on Cloudflare R2 (`npm run r2:sync`).
+ * @adr ADR-038, ADR-080, ADR-084
  *
  * Usage:
  *   node scripts/ingest-catalog.js --dry-run              # Generate supabase/seed_books.sql
@@ -15,11 +15,11 @@
  *   node scripts/ingest-catalog.js --help                 # View help
  *
  * Note: For full 78,000+ catalog ingestion, run `npm run catalog:sync` (pg_catalog.csv.gz + rdf-files.tar.bz2).
+ * Note: For unabridged book texts & covers, sync Cloudflare R2 assets via `npm run r2:sync`.
  */
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 
 const rootDir = path.resolve(__dirname, '..');
 const pkgVersion = (() => {
@@ -83,9 +83,8 @@ function resolveIngestUserAgent(version) {
   return `Bookarium/${version} (${contactPart})`;
 }
 
-const INGEST_USER_AGENT = resolveIngestUserAgent(pkgVersion);
+const _INGEST_USER_AGENT = resolveIngestUserAgent(pkgVersion);
 const seedSqlPath = path.join(rootDir, 'supabase', 'seed_books.sql');
-const seedContentSqlPath = path.join(rootDir, 'supabase', 'seed_books_content.sql');
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -96,15 +95,15 @@ const hasPagesFlag = args.some((a) => a.startsWith('--pages='));
 
 if (isHelp && require.main === module) {
   console.log(`
-Bookarium Catalog Ingestion Engine
-===================================
-Generates idempotent SQL seed files from Bookarium's curated masterworks dataset.
+Bookarium Curated Starter Seed Generator
+========================================
+Generates idempotent metadata SQL seed files from Bookarium's curated masterworks dataset.
 For full 78,000+ catalog synchronization, run: npm run catalog:sync
+For unabridged book texts & covers, upload to Cloudflare R2 via: npm run r2:sync
 
 Options:
   --dry-run        Do not connect to remote Supabase; write SQL to supabase/seed_books.sql
-  --curated        Ingest curated hero classic masterpieces (default)
-  --with-content   Download unabridged plain text from official Project Gutenberg mirrors
+  --curated        Generate curated hero classic metadata (default)
   --help           Show this help guide
 `);
   process.exit(0);
@@ -307,66 +306,7 @@ function computeLifespanBounds(authors = [], translators = []) {
   return { maxDeath, minBirth };
 }
 
-// Helper: fetch plain text from Gutenberg mirrors with redirect following
-function fetchBookText(bookId) {
-  const mirrors = [
-    `https://aleph.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
-    `https://gutenberg.pglaf.org/cache/epub/${bookId}/pg${bookId}.txt`,
-    `https://gutenberg.readingroo.ms/cache/epub/${bookId}/pg${bookId}.txt`,
-    `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.txt`,
-    `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`,
-    `https://www.gutenberg.org/files/${bookId}/${bookId}.txt`,
-  ];
-
-  function tryFetch(url, redirectCount = 0) {
-    if (redirectCount > 5) return Promise.reject(new Error('Too many redirects'));
-    return new Promise((resolve, reject) => {
-      https
-        .get(
-          url,
-          {
-            headers: {
-              'User-Agent': INGEST_USER_AGENT,
-              Accept: 'text/plain; charset=utf-8',
-            },
-          },
-          (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-              let redirectUrl = res.headers.location;
-              if (redirectUrl.startsWith('/')) {
-                const u = new URL(url);
-                redirectUrl = `${u.origin}${redirectUrl}`;
-              }
-              return resolve(tryFetch(redirectUrl, redirectCount + 1));
-            }
-            if (res.statusCode < 200 || res.statusCode >= 300) {
-              return reject(new Error(`HTTP ${res.statusCode}`));
-            }
-            let text = '';
-            res.setEncoding('utf8');
-            res.on('data', (chunk) => (text += chunk));
-            res.on('end', () => resolve(text));
-          }
-        )
-        .on('error', reject);
-    });
-  }
-
-  return (async () => {
-    for (const mirror of mirrors) {
-      try {
-        const txt = await tryFetch(mirror);
-        if (txt && !txt.trim().startsWith('<p>The document has moved') && txt.length > 1000) {
-          return txt;
-        }
-      } catch {
-        // try next mirror
-      }
-    }
-    return null;
-  })();
-}
-
+// Plain-text HTTP mirror scraping was retired in favor of private Cloudflare R2 storage (`npm run r2:sync`).
 // Helper to build safe jsonb_build_object expressions for formats
 function formatFormatsJson(formats) {
   const entries = Object.entries(formats);
@@ -505,43 +445,22 @@ async function main() {
 
   console.log(`✔ Successfully compiled metadata for ${books.length} volumes.`);
 
-  // Download unabridged plain text if requested
   if (isWithContent) {
-    console.log(`\n📥 Fetching unabridged plain text for ${books.length} volumes from Gutenberg mirrors...`);
-    for (let i = 0; i < books.length; i++) {
-      const b = books[i];
-      process.stdout.write(`  ↳ [${i + 1}/${books.length}] Downloading text for #${b.id} ("${b.title}")... `);
-      const text = await fetchBookText(b.id);
-      if (text) {
-        b.content = text;
-        console.log(`✔ (${(Buffer.byteLength(text) / 1024).toFixed(1)} KB)`);
-      } else {
-        console.log('⚠ (Mirror unavailable, skipping text)');
-      }
-    }
+    console.log(
+      'ℹ Note: --with-content (live Project Gutenberg mirror scraping into SQL) has been deprecated (ADR-084). Store book texts in Cloudflare R2 via `npm run r2:sync`; generating metadata-only supabase/seed_books.sql instead.'
+    );
   }
 
-  // Generate SQL files
+  // Generate SQL file
   const sql = generateSql(books);
   fs.writeFileSync(seedSqlPath, sql, 'utf-8');
   console.log(`\n💾 Idempotent seed SQL written to: ${path.relative(rootDir, seedSqlPath)} (${(Buffer.byteLength(sql) / 1024).toFixed(1)} KB)`);
 
-  const hasAnyContent = books.some((b) => Boolean(b.content));
-  if (hasAnyContent) {
-    const contentSql = generateContentUpdateSql(books);
-    fs.writeFileSync(seedContentSqlPath, contentSql, 'utf-8');
-    console.log(`💾 Idempotent content update SQL written to: ${path.relative(rootDir, seedContentSqlPath)} (${(Buffer.byteLength(contentSql) / 1024).toFixed(1)} KB)`);
-  }
-
   console.log('\n✨ Ingestion complete!');
   console.log('Next Steps:');
   console.log('1. Open your Supabase Dashboard -> SQL Editor.');
-  if (hasAnyContent) {
-    console.log(`2. Paste and run supabase/seed_books_content.sql to populate content for existing books,`);
-    console.log(`   OR run supabase/seed_books.sql for a complete fresh database setup.`);
-  } else {
-    console.log(`2. Paste and run supabase/seed_books.sql to populate public.books in your project.`);
-  }
+  console.log('2. Paste and run supabase/seed_books.sql to populate public.books in your project.');
+  console.log('3. Populate book texts & covers in private Cloudflare R2 via `npm run r2:sync`.');
 }
 
 if (require.main === module) {

@@ -1,9 +1,9 @@
 /**
  * @module scripts/sync-r2-assets
  * @scope Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted `rsync --files-from` / PGLAF HTTPS transfers.
- * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), invoke `rsync`/`wsl` strictly with `{ shell: false }`, and exit `0` cleanly when `R2_*` credentials are unconfigured.
- * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` eliminates 78k remote directory walks on CI runners while `_meta/r2-sync-state.json.gz` (`DEFAULT_MISSING_RECHECK_DAYS` TTL) suppresses repeated missing-cover probes, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
- * @adr ADR-083
+ * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), fail fast via `assertValidR2ConfigIfPresent` on partial or malformed `R2_*` configs while exiting `0` cleanly when all `R2_*` variables are unset, prevent transient `_meta/r2-sync-state.json.gz` read errors or `rsync` transport faults from wiping/poisoning 90-day missing cooldowns (union-merging remote state before writes and flushing state cleanly in `try ... finally` alongside mid-batch `isOverBudget` checks), parallelize `putR2Object` writes via `DEFAULT_R2_PUT_CONCURRENCY` (`8`), emit conditional purge tags (`--purge-tags-file`) strictly for deleted or `--force`-overwritten assets, fail non-zero via `shouldFailR2SyncRun` on total or `>= 50%` infrastructure failures, decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), and invoke `rsync`/`wsl` strictly with `{ shell: false }`.
+ * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
+ * @adr ADR-083, ADR-085
  */
 
 const crypto = require('crypto');
@@ -20,6 +20,9 @@ const MAX_R2_COVER_BYTES = 2 * 1024 * 1024;
 const MAX_R2_STATE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MISSING_RECHECK_DAYS = 90;
 const RSYNC_BATCH_SIZE = 200;
+const DEFAULT_R2_PUT_CONCURRENCY = 8;
+const R2_MIN_ATTEMPTS_FOR_RATIO_FAIL = 5;
+const R2_MAX_FAILURE_RATIO = 0.5;
 const DEFAULT_MAX_PRUNE_PER_RUN = 500;
 const MIN_ACTIVE_CATALOG_FOR_PRUNE = 50_000;
 const FULL_LEDGER_THRESHOLD = 100;
@@ -210,6 +213,33 @@ function getR2Config(env = process.env) {
 
 function isR2Configured(env = process.env) {
   return getR2Config(env) !== null;
+}
+
+function assertValidR2ConfigIfPresent(env = process.env) {
+  const fields = [
+    ['R2_ACCOUNT_ID', (env.R2_ACCOUNT_ID || '').trim()],
+    ['R2_BUCKET_NAME', (env.R2_BUCKET_NAME || '').trim()],
+    ['R2_ACCESS_KEY_ID', (env.R2_ACCESS_KEY_ID || '').trim()],
+    ['R2_SECRET_ACCESS_KEY', (env.R2_SECRET_ACCESS_KEY || '').trim()],
+  ];
+  const configuredKeys = fields.filter(([, val]) => val.length > 0).map(([k]) => k);
+  if (configuredKeys.length === 0) {
+    return null;
+  }
+
+  const config = getR2Config(env);
+  if (!config) {
+    const missingKeys = fields.filter(([, val]) => !val).map(([k]) => k);
+    if (missingKeys.length > 0) {
+      throw new Error(
+        `Partial Cloudflare R2 configuration detected (missing: ${missingKeys.join(', ')}). Configure all 4 R2_* variables or leave all unset to skip.`
+      );
+    }
+    throw new Error(
+      'Invalid R2_ACCOUNT_ID (expected 16-64 alphanumeric chars) or R2_BUCKET_NAME (expected lowercase S3 bucket name).'
+    );
+  }
+  return config;
 }
 
 function encodeRfc3986Segment(value) {
@@ -639,6 +669,8 @@ async function readR2SyncState(config, options = {}) {
     missingTexts: {},
     dirty: false,
     apiCalls: 1,
+    readFailed: false,
+    existedRemotely: false,
   };
 
   const signed = signR2Request({
@@ -655,11 +687,16 @@ async function readR2SyncState(config, options = {}) {
       fetchFn,
       timeoutMs,
     });
-    if (response.status === 404 || !response.ok) {
+    if (response.status === 404) {
       return empty;
     }
+    if (!response.ok) {
+      return { ...empty, readFailed: true };
+    }
     const gzBuf = await readBoundedBuffer(response, MAX_R2_STATE_BYTES, controller);
-    if (!gzBuf) return empty;
+    if (!gzBuf) {
+      return { ...empty, readFailed: true };
+    }
     const raw = zlib.gunzipSync(gzBuf, { maxOutputLength: MAX_R2_STATE_BYTES }).toString('utf8');
     const parsed = JSON.parse(raw);
     const coversRes = pruneExpiredStateEntries(parsed?.missingCovers, nowMs, recheckDays);
@@ -672,17 +709,94 @@ async function readR2SyncState(config, options = {}) {
       missingTexts: textsRes.entries,
       dirty: coversRes.pruned > 0 || textsRes.pruned > 0,
       apiCalls: 1,
+      readFailed: false,
+      existedRemotely: true,
     };
   } catch {
-    return empty;
+    return { ...empty, readFailed: true };
   }
 }
 
-async function writeR2SyncState(config, state, options = {}) {
+function mergeMissingTimestampMaps(baseEntries = {}, incomingEntries = {}, clearedSet = new Set()) {
+  const merged = {};
+  const addEntry = (idKey, iso) => {
+    if (!/^\d{1,8}$/.test(idKey)) return;
+    if (clearedSet && clearedSet.has(idKey)) return;
+    const incomingTs = Date.parse(iso);
+    if (!Number.isFinite(incomingTs)) return;
+    const existingTs = merged[idKey] ? Date.parse(merged[idKey]) : -Infinity;
+    if (incomingTs > existingTs) {
+      merged[idKey] = iso;
+    }
+  };
+
+  for (const [idKey, iso] of Object.entries(baseEntries || {})) {
+    addEntry(idKey, iso);
+  }
+  for (const [idKey, iso] of Object.entries(incomingEntries || {})) {
+    addEntry(idKey, iso);
+  }
+  return merged;
+}
+
+function mergeR2SyncStates(localState, remoteState, clearedKeys = {}, options = {}) {
   const nowMs = typeof options.nowMs === 'number' ? options.nowMs : Date.now();
   const recheckDays = options.recheckDays || DEFAULT_MISSING_RECHECK_DAYS;
-  const coversClean = pruneExpiredStateEntries(state.missingCovers, nowMs, recheckDays).entries;
-  const textsClean = pruneExpiredStateEntries(state.missingTexts, nowMs, recheckDays).entries;
+  const clearedCovers = clearedKeys?.covers instanceof Set ? clearedKeys.covers : new Set();
+  const clearedTexts = clearedKeys?.texts instanceof Set ? clearedKeys.texts : new Set();
+
+  const coversClean = pruneExpiredStateEntries(
+    mergeMissingTimestampMaps(remoteState?.missingCovers, localState?.missingCovers, clearedCovers),
+    nowMs,
+    recheckDays
+  ).entries;
+  const textsClean = pruneExpiredStateEntries(
+    mergeMissingTimestampMaps(remoteState?.missingTexts, localState?.missingTexts, clearedTexts),
+    nowMs,
+    recheckDays
+  ).entries;
+
+  return {
+    missingCovers: coversClean,
+    missingTexts: textsClean,
+  };
+}
+
+async function writeR2SyncState(config, state, options = {}) {
+  if (state?.readFailed && !options.forceStateOverwrite) {
+    return {
+      bytes: 0,
+      coverlessCount: Object.keys(state.missingCovers || {}).length,
+      skippedReadFailed: true,
+      extraApiCalls: 0,
+    };
+  }
+
+  const nowMs = typeof options.nowMs === 'number' ? options.nowMs : Date.now();
+  const recheckDays = options.recheckDays || DEFAULT_MISSING_RECHECK_DAYS;
+  let mergedCovers = state?.missingCovers || {};
+  let mergedTexts = state?.missingTexts || {};
+  let extraApiCalls = 0;
+
+  if (options.mergeRemote !== false && config && state?.existedRemotely) {
+    const latestRemote = await readR2SyncState(config, {
+      fetchFn: options.fetchFn,
+      nowMs,
+      recheckDays,
+    });
+    extraApiCalls += latestRemote.apiCalls || 0;
+    if (!latestRemote.readFailed) {
+      const merged = mergeR2SyncStates(state, latestRemote, options.clearedKeys, {
+        nowMs,
+        recheckDays,
+      });
+      mergedCovers = merged.missingCovers;
+      mergedTexts = merged.missingTexts;
+    }
+  }
+
+  const coversClean = pruneExpiredStateEntries(mergedCovers, nowMs, recheckDays).entries;
+  const textsClean = pruneExpiredStateEntries(mergedTexts, nowMs, recheckDays).entries;
   const payload = JSON.stringify({
     version: 1,
     updatedAt: new Date(nowMs).toISOString(),
@@ -691,7 +805,12 @@ async function writeR2SyncState(config, state, options = {}) {
   });
   const gzBuf = zlib.gzipSync(Buffer.from(payload, 'utf8'), { level: 9 });
   await putR2Object(config, SYNC_STATE_OBJECT_KEY, gzBuf, 'application/gzip', options);
-  return { bytes: gzBuf.byteLength, coverlessCount: Object.keys(coversClean).length };
+  return {
+    bytes: gzBuf.byteLength,
+    coverlessCount: Object.keys(coversClean).length,
+    skippedReadFailed: false,
+    extraApiCalls,
+  };
 }
 
 function parseDelayRange(rawRange, defaultMin = 8, defaultMax = 16) {
@@ -713,6 +832,9 @@ function parseCliArgs(argv = []) {
     limit: null,
     ids: null,
     cacheFile: null,
+    catalogSource: 'auto',
+    purgeTagsFile: null,
+    concurrency: DEFAULT_R2_PUT_CONCURRENCY,
     source: 'auto',
     mirrors: [...GUTENBERG_ASSET_MIRRORS],
     delayMin: 8,
@@ -761,6 +883,12 @@ function parseCliArgs(argv = []) {
         throw new Error(`Invalid --max-minutes value "${arg}". Must be a positive integer.`);
       }
       options.maxMinutes = m;
+    } else if (arg.startsWith('--concurrency=')) {
+      const c = parseInt(arg.slice('--concurrency='.length), 10);
+      if (!Number.isInteger(c) || c < 1 || c > 16) {
+        throw new Error(`Invalid --concurrency value "${arg}". Expected integer between 1 and 16.`);
+      }
+      options.concurrency = c;
     } else if (arg.startsWith('--max-prune=')) {
       const p = parseInt(arg.slice('--max-prune='.length), 10);
       if (!Number.isInteger(p) || p < 0) {
@@ -771,6 +899,16 @@ function parseCliArgs(argv = []) {
       const p = arg.slice('--cache-file='.length).trim();
       if (!p) throw new Error('Invalid empty --cache-file value.');
       options.cacheFile = p;
+    } else if (arg.startsWith('--purge-tags-file=')) {
+      const p = arg.slice('--purge-tags-file='.length).trim();
+      if (!p) throw new Error('Invalid empty --purge-tags-file value.');
+      options.purgeTagsFile = p;
+    } else if (arg.startsWith('--catalog-source=')) {
+      const cs = arg.slice('--catalog-source='.length).trim().toLowerCase();
+      if (!['auto', 'snapshot', 'supabase'].includes(cs)) {
+        throw new Error(`Unsupported --catalog-source "${cs}". Expected auto, snapshot, or supabase.`);
+      }
+      options.catalogSource = cs;
     } else if (arg.startsWith('--source=')) {
       const src = arg.slice('--source='.length).trim().toLowerCase();
       if (!['auto', 'rsync', 'wsl-rsync', 'https'].includes(src)) {
@@ -1078,6 +1216,12 @@ function resolveTransferEngine(requestedSource = 'auto', platform = process.plat
   return 'https';
 }
 
+function isRsyncTransportError(stderr = '') {
+  return /(?:timed out|connection refused|connection reset|connection unexpectedly closed|broken pipe|max connections|error in rsync protocol data stream|unexpected end of file|socket error|io timeout|name or service not known)/i.test(
+    String(stderr || '')
+  );
+}
+
 function runRsyncCommand({
   useWsl = false,
   manifestFile = 'manifest.txt',
@@ -1111,13 +1255,68 @@ function runRsyncCommand({
     }
     child.on('error', reject);
     child.on('close', (code) => {
-      if (RSYNC_PARTIAL_VANISHED_CODES.has(code)) {
+      if (RSYNC_PARTIAL_VANISHED_CODES.has(code) && !isRsyncTransportError(stderr)) {
         resolve({ exitCode: code, stderr });
       } else {
         reject(new Error(`${cmd} exited with code ${code}: ${stderr.trim() || 'transfer error'}`));
       }
     });
   });
+}
+
+async function runRsyncCommandWithRetry(params, retryOptions = {}) {
+  const maxRetries =
+    Number.isInteger(retryOptions.maxRetries) && retryOptions.maxRetries >= 0
+      ? retryOptions.maxRetries
+      : 2;
+  const baseDelayMs =
+    typeof retryOptions.baseDelayMs === 'number' && retryOptions.baseDelayMs >= 0
+      ? retryOptions.baseDelayMs
+      : 1500;
+  const sleepFn = retryOptions.sleepFn || ((ms) => new Promise((r) => setTimeout(r, ms)));
+
+  let lastErr = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await runRsyncCommand(params);
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxRetries && baseDelayMs > 0) {
+        await sleepFn(baseDelayMs * (attempt + 1));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+async function runWithConcurrency(tasks = [], concurrency = DEFAULT_R2_PUT_CONCURRENCY) {
+  if (!Array.isArray(tasks) || tasks.length === 0) return;
+  const workerCount = Math.max(1, Math.min(tasks.length, concurrency || DEFAULT_R2_PUT_CONCURRENCY));
+  let nextIdx = 0;
+
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextIdx < tasks.length) {
+      const idx = nextIdx++;
+      await tasks[idx]();
+    }
+  });
+  await Promise.all(workers);
+}
+
+function shouldFailR2SyncRun(summary = {}) {
+  if (!summary || summary.skippedUnconfigured) return false;
+  const failed = typeof summary.failedCount === 'number' ? summary.failedCount : 0;
+  if (failed <= 0) return false;
+  const succeeded =
+    (summary.textsUploaded || 0) +
+    (summary.coversUploaded || 0) +
+    (summary.textsDeleted || 0) +
+    (summary.coversDeleted || 0);
+  if (succeeded === 0) return true;
+  const attempted = succeeded + failed;
+  return (
+    attempted >= R2_MIN_ATTEMPTS_FOR_RATIO_FAIL && failed / attempted >= R2_MAX_FAILURE_RATIO
+  );
 }
 
 async function fetchValidHttpAsset(urls, maxBytes, headers, fetchFn = globalThis.fetch) {
@@ -1327,7 +1526,8 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
   const startMs = nowFn();
 
   const options = { ...parseCliArgs([]), ...customOptions };
-  const r2Config = deps.r2Config || getR2Config(env);
+  const r2Config =
+    deps.r2Config !== undefined ? deps.r2Config : assertValidR2ConfigIfPresent(env);
 
   if (!r2Config) {
     logger.log(
@@ -1340,6 +1540,7 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
       textsDeleted: 0,
       coversDeleted: 0,
       failedCount: 0,
+      purgeTags: [],
       changedBooks: [],
     };
   }
@@ -1348,7 +1549,22 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
   let books = [];
   let isFullCatalog = false;
 
-  if (options.cacheFile && fsImpl.existsSync(options.cacheFile)) {
+  if (options.catalogSource === 'snapshot') {
+    if (!options.cacheFile || !fsImpl.existsSync(options.cacheFile)) {
+      throw new Error(
+        `Catalog source set to "snapshot", but cache file "${options.cacheFile || ''}" was not found.`
+      );
+    }
+    const snapBooks = readCatalogSnapshotFile(options.cacheFile, fsImpl, logger);
+    if (!snapBooks || snapBooks.length === 0) {
+      throw new Error(
+        `Catalog snapshot "${options.cacheFile}" is missing, corrupt, or empty.`
+      );
+    }
+    books = snapBooks;
+    catalogSource = options.cacheFile;
+    isFullCatalog = snapBooks.length >= MIN_ACTIVE_CATALOG_FOR_PRUNE;
+  } else if (options.catalogSource !== 'supabase' && options.cacheFile && fsImpl.existsSync(options.cacheFile)) {
     const snapBooks = readCatalogSnapshotFile(options.cacheFile, fsImpl, logger);
     if (snapBooks && snapBooks.length > 0) {
       books = snapBooks;
@@ -1368,7 +1584,16 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
           )
         : null);
 
-    if (supabase) {
+    if (options.catalogSource === 'supabase') {
+      if (!supabase) {
+        throw new Error(
+          'Catalog source set to "supabase", but NEXT_PUBLIC_SUPABASE_URL / Supabase credentials are not configured.'
+        );
+      }
+      books = await fetchCatalogFromSupabase(supabase, options);
+      catalogSource = 'supabase';
+      isFullCatalog = !options.ids && books.length >= MIN_ACTIVE_CATALOG_FOR_PRUNE;
+    } else if (supabase) {
       books = await fetchCatalogFromSupabase(supabase, options);
       catalogSource = 'supabase';
       isFullCatalog = !options.ids && books.length >= MIN_ACTIVE_CATALOG_FOR_PRUNE;
@@ -1393,6 +1618,13 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
     listR2PrefixIds(r2Config, 'covers/', /^covers\/(\d+)\.jpg$/, { fetchFn }),
     readR2SyncState(r2Config, { fetchFn, nowMs: startMs, recheckDays: options.recheckDays }),
   ]);
+
+  if (syncState.readFailed) {
+    const warnFn = typeof logger?.warn === 'function' ? logger.warn.bind(logger) : logger.log.bind(logger);
+    warnFn(
+      `::warning::Failed to read existing ${SYNC_STATE_OBJECT_KEY}; preserving remote cooldown state without overwriting.`
+    );
+  }
 
   let r2ApiCalls = booksInv.apiCalls + coversInv.apiCalls + syncState.apiCalls;
   const plan = buildR2DeltaPlan({
@@ -1427,11 +1659,14 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
     catalogSource,
     stoppedByTimeBudget: false,
     elapsedSeconds: 0,
+    purgeTags: [],
     changedBooks: [],
   };
 
   const bookMetaById = new Map(books.map((b) => [b.id, b]));
   const changedMap = new Map();
+  const purgedTagsSet = new Set();
+  const clearedKeys = { covers: new Set(), texts: new Set() };
   const recordChanged = (book, updates) => {
     const meta = bookMetaById.get(book.id);
     const existing = changedMap.get(book.id) || {
@@ -1457,273 +1692,477 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
   const isOverBudget = () => Boolean(maxDurationMs && nowFn() - startMs >= maxDurationMs);
 
   // 1. Prune copyrighted & withdrawn R2 objects first (legal compliance & $0 DeleteObject)
-  for (const target of plan.deleteTargets) {
-    if (options.dryRun) {
-      if (target.key.startsWith('books/')) summary.textsDeleted++;
-      else summary.coversDeleted++;
-      if (target.reason === 'copyrighted') summary.deletedCopyrightedCount++;
-      else summary.deletedWithdrawnCount++;
-      recordChanged(
-        { id: target.id },
-        target.key.startsWith('books/')
-          ? { textOutcome: `would prune (${target.reason})` }
-          : { coverOutcome: `would prune (${target.reason})` }
-      );
-      continue;
-    }
-
-    try {
-      await deleteR2Object(r2Config, target.key, { fetchFn });
-      summary.r2ApiCalls++;
-      if (target.key.startsWith('books/')) summary.textsDeleted++;
-      else summary.coversDeleted++;
-      if (target.reason === 'copyrighted') summary.deletedCopyrightedCount++;
-      else summary.deletedWithdrawnCount++;
-      recordChanged(
-        { id: target.id },
-        target.key.startsWith('books/')
-          ? { textOutcome: `🗑 pruned (${target.reason})` }
-          : { coverOutcome: `🗑 pruned (${target.reason})` }
-      );
-    } catch (err) {
-      summary.failedCount++;
-      recordChanged(
-        { id: target.id },
-        { note: `delete error: ${err.message}` }
-      );
-    }
-  }
-
-  // 2. Upload missing / updated books & covers
   let stateDirty = syncState.dirty;
   const userAgent = buildDescriptiveUserAgent('Bookarium-R2-Sync', '1.0', env);
 
-  if (plan.uploadQueue.length > 0 && !options.dryRun) {
-    if (engine === 'rsync' || engine === 'wsl-rsync') {
-      const useWsl = engine === 'wsl-rsync';
-      const batchSize = deps.rsyncBatchSize || RSYNC_BATCH_SIZE;
-      for (let i = 0; i < plan.uploadQueue.length; i += batchSize) {
-        if (isOverBudget()) {
-          summary.stoppedByTimeBudget = true;
-          break;
+  try {
+    for (const target of plan.deleteTargets) {
+      if (!options.dryRun && isOverBudget()) {
+        summary.stoppedByTimeBudget = true;
+        break;
+      }
+      if (options.dryRun) {
+        if (target.key.startsWith('books/')) summary.textsDeleted++;
+        else summary.coversDeleted++;
+        if (target.reason === 'copyrighted') summary.deletedCopyrightedCount++;
+        else summary.deletedWithdrawnCount++;
+        recordChanged(
+          { id: target.id },
+          target.key.startsWith('books/')
+            ? { textOutcome: `would prune (${target.reason})` }
+            : { coverOutcome: `would prune (${target.reason})` }
+        );
+        continue;
+      }
+
+      try {
+        await deleteR2Object(r2Config, target.key, { fetchFn });
+        summary.r2ApiCalls++;
+        if (target.key.startsWith('books/')) {
+          summary.textsDeleted++;
+          purgedTagsSet.add('book-content');
+        } else {
+          summary.coversDeleted++;
+          purgedTagsSet.add('covers');
         }
-        const batch = plan.uploadQueue.slice(i, i + batchSize);
-        const batchDir = fsImpl.mkdtempSync(path.join(os.tmpdir(), 'bookarium-r2-'));
-        try {
-          const epubManifestLines = [];
-          for (const item of batch) {
-            if (item.needsCover) epubManifestLines.push(`${item.id}/pg${item.id}.cover.medium.jpg`);
-            if (item.needsText) epubManifestLines.push(`${item.id}/pg${item.id}.txt.utf8`, `${item.id}/pg${item.id}.txt`);
+        if (target.reason === 'copyrighted') summary.deletedCopyrightedCount++;
+        else summary.deletedWithdrawnCount++;
+        recordChanged(
+          { id: target.id },
+          target.key.startsWith('books/')
+            ? { textOutcome: `🗑 pruned (${target.reason})` }
+            : { coverOutcome: `🗑 pruned (${target.reason})` }
+        );
+      } catch (err) {
+        summary.failedCount++;
+        recordChanged(
+          { id: target.id },
+          { note: `delete error: ${err.message}` }
+        );
+      }
+    }
+
+    // 2. Upload missing / updated books & covers
+    if (plan.uploadQueue.length > 0 && !options.dryRun && !summary.stoppedByTimeBudget) {
+      if (engine === 'rsync' || engine === 'wsl-rsync') {
+        const useWsl = engine === 'wsl-rsync';
+        const batchSize = deps.rsyncBatchSize || RSYNC_BATCH_SIZE;
+        for (let i = 0; i < plan.uploadQueue.length; i += batchSize) {
+          if (isOverBudget()) {
+            summary.stoppedByTimeBudget = true;
+            break;
           }
-          fsImpl.writeFileSync(path.join(batchDir, 'manifest.txt'), `${epubManifestLines.join('\n')}\n`, 'utf8');
-          await runRsyncCommand({
-            useWsl,
-            manifestFile: 'manifest.txt',
-            remoteSource: RSYNC_EPUB_SOURCE,
-            cwd: batchDir,
-            spawnFn,
-          });
-
-          const missingMainTexts = [];
-          for (const item of batch) {
-            if (item.needsCover) {
-              const localCover = path.join(batchDir, String(item.id), `pg${item.id}.cover.medium.jpg`);
-              if (fsImpl.existsSync(localCover)) {
-                const rawCover = fsImpl.readFileSync(localCover);
-                if (rawCover.byteLength > 0 && rawCover.byteLength <= MAX_R2_COVER_BYTES && !isHtmlPayload(null, rawCover.subarray(0, 256).toString('utf8'))) {
-                  try {
-                    await putR2Object(r2Config, `covers/${item.id}.jpg`, rawCover, 'image/jpeg', { fetchFn });
-                    summary.r2ApiCalls++;
-                    summary.coversUploaded++;
-                    delete syncState.missingCovers[String(item.id)];
-                    stateDirty = true;
-                    recordChanged(item, { coverOutcome: '✅ uploaded' });
-                  } catch (err) {
-                    summary.failedCount++;
-                    recordChanged(item, { coverOutcome: '❌ upload error', note: err.message });
-                  }
-                }
-              } else {
-                syncState.missingCovers[String(item.id)] = new Date(nowFn()).toISOString();
-                stateDirty = true;
-              }
+          const batch = plan.uploadQueue.slice(i, i + batchSize);
+          const batchDir = fsImpl.mkdtempSync(path.join(os.tmpdir(), 'bookarium-r2-'));
+          try {
+            const epubManifestLines = [];
+            for (const item of batch) {
+              if (item.needsCover) epubManifestLines.push(`${item.id}/pg${item.id}.cover.medium.jpg`);
+              if (item.needsText) epubManifestLines.push(`${item.id}/pg${item.id}.txt.utf8`, `${item.id}/pg${item.id}.txt`);
             }
+            fsImpl.writeFileSync(path.join(batchDir, 'manifest.txt'), `${epubManifestLines.join('\n')}\n`, 'utf8');
+            const epubRes = await runRsyncCommandWithRetry(
+              {
+                useWsl,
+                manifestFile: 'manifest.txt',
+                remoteSource: RSYNC_EPUB_SOURCE,
+                cwd: batchDir,
+                spawnFn,
+              },
+              {
+                maxRetries: deps.rsyncRetries,
+                baseDelayMs: deps.rsyncRetryDelayMs,
+                sleepFn,
+              }
+            );
 
-            if (item.needsText) {
-              const utf8Txt = path.join(batchDir, String(item.id), `pg${item.id}.txt.utf8`);
-              const plainTxt = path.join(batchDir, String(item.id), `pg${item.id}.txt`);
-              const resolvedTxt = fsImpl.existsSync(utf8Txt) ? utf8Txt : fsImpl.existsSync(plainTxt) ? plainTxt : null;
-              if (resolvedTxt) {
-                const rawTxt = fsImpl.readFileSync(resolvedTxt);
-                if (rawTxt.byteLength > 0 && rawTxt.byteLength <= MAX_R2_BOOK_BYTES && !isHtmlPayload(null, rawTxt.subarray(0, 512).toString('utf8'))) {
-                  try {
-                    const gzTxt = zlib.gzipSync(rawTxt, { level: 9 });
-                    await putR2Object(r2Config, `books/${item.id}.txt.gz`, gzTxt, 'application/gzip', { fetchFn });
-                    summary.r2ApiCalls++;
-                    summary.textsUploaded++;
-                    delete syncState.missingTexts[String(item.id)];
-                    stateDirty = true;
-                    recordChanged(item, { textOutcome: '✅ uploaded' });
-                  } catch (err) {
-                    summary.failedCount++;
-                    recordChanged(item, { textOutcome: '❌ upload error', note: err.message });
+            const missingMainTexts = [];
+            const missingCoverIdxs = new Set();
+            const coverResults = new Array(batch.length).fill(null);
+            const textResults = new Array(batch.length).fill(null);
+            const epubUploadTasks = [];
+            let anyEpubFileFound = false;
+
+            for (let idx = 0; idx < batch.length; idx++) {
+              const item = batch[idx];
+              const idKey = String(item.id);
+              if (item.needsCover) {
+                const localCover = path.join(batchDir, idKey, `pg${item.id}.cover.medium.jpg`);
+                if (fsImpl.existsSync(localCover)) {
+                  anyEpubFileFound = true;
+                  const rawCover = fsImpl.readFileSync(localCover);
+                  if (
+                    rawCover.byteLength > 0 &&
+                    rawCover.byteLength <= MAX_R2_COVER_BYTES &&
+                    !isHtmlPayload(null, rawCover.subarray(0, 256).toString('utf8'))
+                  ) {
+                    epubUploadTasks.push(async () => {
+                      if (isOverBudget()) {
+                        summary.stoppedByTimeBudget = true;
+                        return;
+                      }
+                      try {
+                        await putR2Object(r2Config, `covers/${item.id}.jpg`, rawCover, 'image/jpeg', { fetchFn });
+                        coverResults[idx] = { ok: true, idKey };
+                      } catch (err) {
+                        coverResults[idx] = { ok: false, error: err.message };
+                      }
+                    });
+                  } else if (rawCover.byteLength === 0 || rawCover.byteLength > MAX_R2_COVER_BYTES) {
+                    missingCoverIdxs.add(idx);
+                  }
+                } else {
+                  missingCoverIdxs.add(idx);
+                }
+              }
+
+              if (item.needsText) {
+                const utf8Txt = path.join(batchDir, idKey, `pg${item.id}.txt.utf8`);
+                const plainTxt = path.join(batchDir, idKey, `pg${item.id}.txt`);
+                const resolvedTxt = fsImpl.existsSync(utf8Txt) ? utf8Txt : fsImpl.existsSync(plainTxt) ? plainTxt : null;
+                if (resolvedTxt) {
+                  anyEpubFileFound = true;
+                  const rawTxt = fsImpl.readFileSync(resolvedTxt);
+                  if (
+                    rawTxt.byteLength > 0 &&
+                    rawTxt.byteLength <= MAX_R2_BOOK_BYTES &&
+                    !isHtmlPayload(null, rawTxt.subarray(0, 512).toString('utf8'))
+                  ) {
+                    epubUploadTasks.push(async () => {
+                      if (isOverBudget()) {
+                        summary.stoppedByTimeBudget = true;
+                        return;
+                      }
+                      try {
+                        const gzTxt = zlib.gzipSync(rawTxt, { level: 9 });
+                        await putR2Object(r2Config, `books/${item.id}.txt.gz`, gzTxt, 'application/gzip', { fetchFn });
+                        textResults[idx] = { ok: true, idKey };
+                      } catch (err) {
+                        textResults[idx] = { ok: false, error: err.message };
+                      }
+                    });
+                  } else {
+                    missingMainTexts.push(item);
                   }
                 } else {
                   missingMainTexts.push(item);
                 }
-              } else {
-                missingMainTexts.push(item);
               }
             }
-          }
 
-          if (missingMainTexts.length > 0 && !isOverBudget()) {
-            const mainManifestLines = [];
-            for (const item of missingMainTexts) {
-              const dir = buildGutenbergPathDir(item.id);
-              mainManifestLines.push(`${dir}/${item.id}-0.txt`, `${dir}/${item.id}.txt`, `${dir}/${item.id}-8.txt`);
+            await runWithConcurrency(epubUploadTasks, options.concurrency);
+
+            const epubSuspiciousZeroTransfer =
+              (epubRes?.exitCode === 23 || epubRes?.exitCode === 24) &&
+              batch.length >= 10 &&
+              !anyEpubFileFound;
+
+            for (let idx = 0; idx < batch.length; idx++) {
+              const item = batch[idx];
+              const idKey = String(item.id);
+              const coverOutcome = coverResults[idx];
+              if (coverOutcome) {
+                if (coverOutcome.ok) {
+                  summary.r2ApiCalls++;
+                  summary.coversUploaded++;
+                  if (Object.prototype.hasOwnProperty.call(syncState.missingCovers, idKey)) {
+                    delete syncState.missingCovers[idKey];
+                    stateDirty = true;
+                  }
+                  clearedKeys.covers.add(idKey);
+                  if (options.force && coversInv.ids.has(item.id)) {
+                    purgedTagsSet.add('covers');
+                  }
+                  recordChanged(item, { coverOutcome: '✅ uploaded' });
+                } else {
+                  summary.failedCount++;
+                  recordChanged(item, { coverOutcome: '❌ upload error', note: coverOutcome.error });
+                }
+              } else if (missingCoverIdxs.has(idx)) {
+                if (epubSuspiciousZeroTransfer) {
+                  summary.failedCount++;
+                  recordChanged(item, { coverOutcome: '❌ rsync error', note: 'zero-transfer exit 23' });
+                } else {
+                  syncState.missingCovers[idKey] = new Date(nowFn()).toISOString();
+                  stateDirty = true;
+                }
+              }
+
+              const textOutcome = textResults[idx];
+              if (textOutcome) {
+                if (textOutcome.ok) {
+                  summary.r2ApiCalls++;
+                  summary.textsUploaded++;
+                  if (Object.prototype.hasOwnProperty.call(syncState.missingTexts, idKey)) {
+                    delete syncState.missingTexts[idKey];
+                    stateDirty = true;
+                  }
+                  clearedKeys.texts.add(idKey);
+                  if (options.force && booksInv.ids.has(item.id)) {
+                    purgedTagsSet.add('book-content');
+                  }
+                  recordChanged(item, { textOutcome: '✅ uploaded' });
+                } else {
+                  summary.failedCount++;
+                  recordChanged(item, { textOutcome: '❌ upload error', note: textOutcome.error });
+                }
+              }
             }
-            fsImpl.writeFileSync(path.join(batchDir, 'manifest-main.txt'), `${mainManifestLines.join('\n')}\n`, 'utf8');
-            await runRsyncCommand({
-              useWsl,
-              manifestFile: 'manifest-main.txt',
-              remoteSource: RSYNC_MAIN_SOURCE,
-              cwd: batchDir,
-              spawnFn,
-            });
 
-            for (const item of missingMainTexts) {
-              const dir = buildGutenbergPathDir(item.id);
-              const candidatePaths = [
-                path.join(batchDir, dir, `${item.id}-0.txt`),
-                path.join(batchDir, dir, `${item.id}.txt`),
-                path.join(batchDir, dir, `${item.id}-8.txt`),
-              ];
-              const foundPath = candidatePaths.find((p) => fsImpl.existsSync(p));
-              if (foundPath) {
-                const rawTxt = fsImpl.readFileSync(foundPath);
-                if (rawTxt.byteLength > 0 && rawTxt.byteLength <= MAX_R2_BOOK_BYTES && !isHtmlPayload(null, rawTxt.subarray(0, 512).toString('utf8'))) {
-                  try {
-                    const gzTxt = zlib.gzipSync(rawTxt, { level: 9 });
-                    await putR2Object(r2Config, `books/${item.id}.txt.gz`, gzTxt, 'application/gzip', { fetchFn });
+            if (missingMainTexts.length > 0 && !isOverBudget() && !summary.stoppedByTimeBudget) {
+              const mainManifestLines = [];
+              for (const item of missingMainTexts) {
+                const dir = buildGutenbergPathDir(item.id);
+                mainManifestLines.push(`${dir}/${item.id}-0.txt`, `${dir}/${item.id}.txt`, `${dir}/${item.id}-8.txt`);
+              }
+              fsImpl.writeFileSync(path.join(batchDir, 'manifest-main.txt'), `${mainManifestLines.join('\n')}\n`, 'utf8');
+              const mainRes = await runRsyncCommandWithRetry(
+                {
+                  useWsl,
+                  manifestFile: 'manifest-main.txt',
+                  remoteSource: RSYNC_MAIN_SOURCE,
+                  cwd: batchDir,
+                  spawnFn,
+                },
+                {
+                  maxRetries: deps.rsyncRetries,
+                  baseDelayMs: deps.rsyncRetryDelayMs,
+                  sleepFn,
+                }
+              );
+
+              const mainResults = new Array(missingMainTexts.length).fill(null);
+              const missingMainIdxs = new Set();
+              const oversizedMainIdxs = new Set();
+              const mainUploadTasks = [];
+              let anyMainFileFound = false;
+
+              for (let j = 0; j < missingMainTexts.length; j++) {
+                const item = missingMainTexts[j];
+                const idKey = String(item.id);
+                const dir = buildGutenbergPathDir(item.id);
+                const candidatePaths = [
+                  path.join(batchDir, dir, `${item.id}-0.txt`),
+                  path.join(batchDir, dir, `${item.id}.txt`),
+                  path.join(batchDir, dir, `${item.id}-8.txt`),
+                ];
+                const foundPath = candidatePaths.find((p) => fsImpl.existsSync(p));
+                if (foundPath) {
+                  anyMainFileFound = true;
+                  const rawTxt = fsImpl.readFileSync(foundPath);
+                  if (
+                    rawTxt.byteLength > 0 &&
+                    rawTxt.byteLength <= MAX_R2_BOOK_BYTES &&
+                    !isHtmlPayload(null, rawTxt.subarray(0, 512).toString('utf8'))
+                  ) {
+                    mainUploadTasks.push(async () => {
+                      if (isOverBudget()) {
+                        summary.stoppedByTimeBudget = true;
+                        return;
+                      }
+                      try {
+                        const gzTxt = zlib.gzipSync(rawTxt, { level: 9 });
+                        await putR2Object(r2Config, `books/${item.id}.txt.gz`, gzTxt, 'application/gzip', { fetchFn });
+                        mainResults[j] = { ok: true, idKey };
+                      } catch (err) {
+                        mainResults[j] = { ok: false, error: err.message };
+                      }
+                    });
+                  } else {
+                    oversizedMainIdxs.add(j);
+                  }
+                } else {
+                  missingMainIdxs.add(j);
+                }
+              }
+
+              await runWithConcurrency(mainUploadTasks, options.concurrency);
+
+              const mainSuspiciousZeroTransfer =
+                (mainRes?.exitCode === 23 || mainRes?.exitCode === 24) &&
+                missingMainTexts.length >= 10 &&
+                !anyMainFileFound;
+
+              for (let j = 0; j < missingMainTexts.length; j++) {
+                const item = missingMainTexts[j];
+                const idKey = String(item.id);
+                const mainOutcome = mainResults[j];
+                if (mainOutcome) {
+                  if (mainOutcome.ok) {
                     summary.r2ApiCalls++;
                     summary.textsUploaded++;
-                    delete syncState.missingTexts[String(item.id)];
-                    stateDirty = true;
+                    if (Object.prototype.hasOwnProperty.call(syncState.missingTexts, idKey)) {
+                      delete syncState.missingTexts[idKey];
+                      stateDirty = true;
+                    }
+                    clearedKeys.texts.add(idKey);
+                    if (options.force && booksInv.ids.has(item.id)) {
+                      purgedTagsSet.add('book-content');
+                    }
                     recordChanged(item, { textOutcome: '✅ uploaded' });
-                  } catch (err) {
+                  } else {
                     summary.failedCount++;
-                    recordChanged(item, { textOutcome: '❌ upload error', note: err.message });
+                    recordChanged(item, { textOutcome: '❌ upload error', note: mainOutcome.error });
+                  }
+                } else if (oversizedMainIdxs.has(j)) {
+                  syncState.missingTexts[idKey] = new Date(nowFn()).toISOString();
+                  stateDirty = true;
+                  recordChanged(item, { textOutcome: '⏭ skipped (oversized/invalid)' });
+                } else if (missingMainIdxs.has(j)) {
+                  if (mainSuspiciousZeroTransfer) {
+                    summary.failedCount++;
+                    recordChanged(item, { textOutcome: '❌ rsync error', note: 'zero-transfer exit 23' });
+                  } else {
+                    syncState.missingTexts[idKey] = new Date(nowFn()).toISOString();
+                    stateDirty = true;
                   }
                 }
-              } else {
-                syncState.missingTexts[String(item.id)] = new Date(nowFn()).toISOString();
-                stateDirty = true;
               }
             }
+
+            const batchNum = Math.floor(i / batchSize) + 1;
+            const totalBatches = Math.ceil(plan.uploadQueue.length / batchSize);
+            logger.log(
+              `  ↳ Batch ${batchNum}/${totalBatches}: +${summary.textsUploaded} texts, +${summary.coversUploaded} covers | ${((nowFn() - startMs) / 1000).toFixed(1)}s elapsed`
+            );
+          } finally {
+            fsImpl.rmSync(batchDir, { recursive: true, force: true });
+          }
+        }
+      } else {
+        // HTTPS PGLAF-first mirror mode (e.g. local Windows dev runs without native rsync/WSL)
+        for (let i = 0; i < plan.uploadQueue.length; i++) {
+          if (isOverBudget()) {
+            summary.stoppedByTimeBudget = true;
+            break;
+          }
+          const item = plan.uploadQueue[i];
+          const idKey = String(item.id);
+          const reqHeaders = { 'User-Agent': userAgent };
+
+          if (item.needsText) {
+            const textRes = await fetchValidHttpAsset(
+              buildHttpsTextUrls(item.id, options.mirrors),
+              MAX_R2_BOOK_BYTES,
+              reqHeaders,
+              fetchFn
+            );
+            if (textRes.ok) {
+              try {
+                const gzTxt = zlib.gzipSync(textRes.buffer, { level: 9 });
+                await putR2Object(r2Config, `books/${item.id}.txt.gz`, gzTxt, 'application/gzip', { fetchFn });
+                summary.r2ApiCalls++;
+                summary.textsUploaded++;
+                if (Object.prototype.hasOwnProperty.call(syncState.missingTexts, idKey)) {
+                  delete syncState.missingTexts[idKey];
+                  stateDirty = true;
+                }
+                clearedKeys.texts.add(idKey);
+                if (options.force && booksInv.ids.has(item.id)) {
+                  purgedTagsSet.add('book-content');
+                }
+                recordChanged(item, { textOutcome: '✅ uploaded (https)' });
+              } catch (err) {
+                summary.failedCount++;
+                recordChanged(item, { textOutcome: '❌ upload error', note: err.message });
+              }
+            } else if (textRes.authoritativeNotFound) {
+              syncState.missingTexts[idKey] = new Date(nowFn()).toISOString();
+              stateDirty = true;
+            } else {
+              summary.failedCount++;
+              recordChanged(item, { textOutcome: '❌ mirror error' });
+            }
           }
 
-          const batchNum = Math.floor(i / batchSize) + 1;
-          const totalBatches = Math.ceil(plan.uploadQueue.length / batchSize);
-          logger.log(
-            `  ↳ Batch ${batchNum}/${totalBatches}: +${summary.textsUploaded} texts, +${summary.coversUploaded} covers | ${((nowFn() - startMs) / 1000).toFixed(1)}s elapsed`
-          );
-        } finally {
-          fsImpl.rmSync(batchDir, { recursive: true, force: true });
+          if (item.needsCover) {
+            if (isOverBudget()) {
+              summary.stoppedByTimeBudget = true;
+              break;
+            }
+            const coverRes = await fetchValidHttpAsset(
+              buildHttpsCoverUrls(item.id, options.mirrors),
+              MAX_R2_COVER_BYTES,
+              reqHeaders,
+              fetchFn
+            );
+            if (coverRes.ok) {
+              try {
+                await putR2Object(r2Config, `covers/${item.id}.jpg`, coverRes.buffer, 'image/jpeg', { fetchFn });
+                summary.r2ApiCalls++;
+                summary.coversUploaded++;
+                if (Object.prototype.hasOwnProperty.call(syncState.missingCovers, idKey)) {
+                  delete syncState.missingCovers[idKey];
+                  stateDirty = true;
+                }
+                clearedKeys.covers.add(idKey);
+                if (options.force && coversInv.ids.has(item.id)) {
+                  purgedTagsSet.add('covers');
+                }
+                recordChanged(item, { coverOutcome: '✅ uploaded (https)' });
+              } catch (err) {
+                summary.failedCount++;
+                recordChanged(item, { coverOutcome: '❌ upload error', note: err.message });
+              }
+            } else if (coverRes.authoritativeNotFound) {
+              syncState.missingCovers[idKey] = new Date(nowFn()).toISOString();
+              stateDirty = true;
+            } else {
+              summary.failedCount++;
+              recordChanged(item, { coverOutcome: '❌ mirror error' });
+            }
+          }
+
+          if (i < plan.uploadQueue.length - 1 && options.delayMax > 0) {
+            const delayMs = Math.round((options.delayMin + rng() * (options.delayMax - options.delayMin)) * 1000);
+            if (delayMs > 0) await sleepFn(delayMs);
+          }
         }
       }
-    } else {
-      // HTTPS PGLAF-first mirror mode (e.g. local Windows dev runs without native rsync/WSL)
-      for (let i = 0; i < plan.uploadQueue.length; i++) {
-        if (isOverBudget()) {
-          summary.stoppedByTimeBudget = true;
-          break;
-        }
-        const item = plan.uploadQueue[i];
-        const reqHeaders = { 'User-Agent': userAgent };
-
-        if (item.needsText) {
-          const textRes = await fetchValidHttpAsset(
-            buildHttpsTextUrls(item.id, options.mirrors),
-            MAX_R2_BOOK_BYTES,
-            reqHeaders,
-            fetchFn
-          );
-          if (textRes.ok) {
-            try {
-              const gzTxt = zlib.gzipSync(textRes.buffer, { level: 9 });
-              await putR2Object(r2Config, `books/${item.id}.txt.gz`, gzTxt, 'application/gzip', { fetchFn });
-              summary.r2ApiCalls++;
-              summary.textsUploaded++;
-              delete syncState.missingTexts[String(item.id)];
-              stateDirty = true;
-              recordChanged(item, { textOutcome: '✅ uploaded (https)' });
-            } catch (err) {
-              summary.failedCount++;
-              recordChanged(item, { textOutcome: '❌ upload error', note: err.message });
-            }
-          } else if (textRes.authoritativeNotFound) {
-            syncState.missingTexts[String(item.id)] = new Date(nowFn()).toISOString();
-            stateDirty = true;
-          } else {
-            summary.failedCount++;
-            recordChanged(item, { textOutcome: '❌ mirror error' });
-          }
-        }
-
-        if (item.needsCover) {
-          const coverRes = await fetchValidHttpAsset(
-            buildHttpsCoverUrls(item.id, options.mirrors),
-            MAX_R2_COVER_BYTES,
-            reqHeaders,
-            fetchFn
-          );
-          if (coverRes.ok) {
-            try {
-              await putR2Object(r2Config, `covers/${item.id}.jpg`, coverRes.buffer, 'image/jpeg', { fetchFn });
-              summary.r2ApiCalls++;
-              summary.coversUploaded++;
-              delete syncState.missingCovers[String(item.id)];
-              stateDirty = true;
-              recordChanged(item, { coverOutcome: '✅ uploaded (https)' });
-            } catch (err) {
-              summary.failedCount++;
-              recordChanged(item, { coverOutcome: '❌ upload error', note: err.message });
-            }
-          } else if (coverRes.authoritativeNotFound) {
-            syncState.missingCovers[String(item.id)] = new Date(nowFn()).toISOString();
-            stateDirty = true;
-          } else {
-            summary.failedCount++;
-            recordChanged(item, { coverOutcome: '❌ mirror error' });
-          }
-        }
-
-        if (i < plan.uploadQueue.length - 1 && options.delayMax > 0) {
-          const delayMs = Math.round((options.delayMin + rng() * (options.delayMax - options.delayMin)) * 1000);
-          if (delayMs > 0) await sleepFn(delayMs);
-        }
+    } else if (options.dryRun) {
+      for (const item of plan.uploadQueue) {
+        recordChanged(item, {
+          textOutcome: item.needsText ? 'would upload' : 'cached',
+          coverOutcome: item.needsCover ? 'would upload' : 'cached',
+        });
       }
     }
-  } else if (options.dryRun) {
-    for (const item of plan.uploadQueue) {
-      recordChanged(item, {
-        textOutcome: item.needsText ? 'would upload' : 'cached',
-        coverOutcome: item.needsCover ? 'would upload' : 'cached',
-      });
+  } finally {
+    if (!options.dryRun && stateDirty && !syncState.readFailed) {
+      try {
+        const writeRes = await writeR2SyncState(r2Config, syncState, {
+          fetchFn,
+          nowMs: nowFn(),
+          recheckDays: options.recheckDays,
+          clearedKeys,
+        });
+        if (!writeRes?.skippedReadFailed) {
+          summary.r2ApiCalls += 1 + (writeRes?.extraApiCalls || 0);
+        }
+      } catch (stateErr) {
+        const warnFn =
+          typeof logger?.warn === 'function' ? logger.warn.bind(logger) : logger.log.bind(logger);
+        warnFn(`::warning::Failed to flush ${SYNC_STATE_OBJECT_KEY}: ${stateErr.message}`);
+      }
     }
-  }
-
-  if (!options.dryRun && stateDirty) {
-    await writeR2SyncState(r2Config, syncState, { fetchFn, nowMs: nowFn(), recheckDays: options.recheckDays });
-    summary.r2ApiCalls++;
   }
 
   summary.knownMissingTextsCount = Object.keys(syncState.missingTexts).length;
   summary.knownMissingCoversCount = Object.keys(syncState.missingCovers).length;
+  summary.purgeTags = Array.from(purgedTagsSet);
   summary.changedBooks = Array.from(changedMap.values());
   summary.elapsedSeconds = Math.max(0, (nowFn() - startMs) / 1000);
   summary.report = formatR2RunReport(summary, { dryRun: options.dryRun });
+
+  if (options.purgeTagsFile && !options.dryRun) {
+    fsImpl.writeFileSync(options.purgeTagsFile, summary.purgeTags.join(','), 'utf8');
+  }
+
+  if (summary.failedCount > 0 && !options.dryRun) {
+    const warnFn =
+      typeof logger?.warn === 'function' ? logger.warn.bind(logger) : logger.log.bind(logger);
+    warnFn(`::warning::R2 delta asset sync completed with ${summary.failedCount} failed transfer(s).`);
+  }
 
   logger.log(formatR2ConsoleSummary(summary, { dryRun: options.dryRun }));
   appendR2StepSummary(deps.stepSummaryPath, summary.report, fsImpl);
@@ -1751,10 +2190,13 @@ Options:
   --limit=N             Max missing books to upload in this run
   --ids=1342,84         Target specific Gutenberg IDs cleanly
   --cache-file=PATH     Read compressed catalog snapshot (gutenberg-catalog-cache.json.gz)
+  --catalog-source=MODE auto | snapshot | supabase (default: auto)
   --source=ENGINE       auto | rsync | wsl-rsync | https
   --mirror=NAME         pglaf | aleph | readingroo (HTTPS fallback)
   --delay-range=MIN-MAX Delay range in seconds for HTTPS mode (default: 8-16)
+  --concurrency=N       Bounded parallel R2 PutObject workers (1-16, default: 8)
   --max-minutes=N       Stop cleanly between batches before reaching minute budget
+  --purge-tags-file=P   Write comma-separated Edge Cache tags (covers,book-content) on prune/force
   --books-only          Sync texts only (skip covers)
   --covers-only         Sync covers only (skip texts)
   --force               Overwrite existing R2 objects in targeted scope
@@ -1767,7 +2209,7 @@ Options:
   }
   runR2AssetSync(cliOptions, { stepSummaryPath: process.env.GITHUB_STEP_SUMMARY })
     .then((res) => {
-      process.exit(res.failedCount > 0 && res.textsUploaded === 0 && res.coversUploaded === 0 ? 1 : 0);
+      process.exit(shouldFailR2SyncRun(res) ? 1 : 0);
     })
     .catch((err) => {
       console.error(`Fatal error in sync-r2-assets: ${err.message}`);
@@ -1783,6 +2225,9 @@ module.exports = {
   MAX_R2_STATE_BYTES,
   DEFAULT_MISSING_RECHECK_DAYS,
   RSYNC_BATCH_SIZE,
+  DEFAULT_R2_PUT_CONCURRENCY,
+  R2_MIN_ATTEMPTS_FOR_RATIO_FAIL,
+  R2_MAX_FAILURE_RATIO,
   DEFAULT_MAX_PRUNE_PER_RUN,
   MIN_ACTIVE_CATALOG_FOR_PRUNE,
   FULL_LEDGER_THRESHOLD,
@@ -1803,6 +2248,7 @@ module.exports = {
   isAllowedGutenbergAssetUrl,
   getR2Config,
   isR2Configured,
+  assertValidR2ConfigIfPresent,
   signR2Request,
   XML_ENTITY_MAP,
   unescapeXmlEntities,
@@ -1813,6 +2259,8 @@ module.exports = {
   deleteR2Object,
   pruneExpiredStateEntries,
   readR2SyncState,
+  mergeMissingTimestampMaps,
+  mergeR2SyncStates,
   writeR2SyncState,
   parseDelayRange,
   parseCliArgs,
@@ -1821,7 +2269,11 @@ module.exports = {
   buildR2DeltaPlan,
   buildGutenbergPathDir,
   resolveTransferEngine,
+  isRsyncTransportError,
   runRsyncCommand,
+  runRsyncCommandWithRetry,
+  runWithConcurrency,
+  shouldFailR2SyncRun,
   fetchValidHttpAsset,
   buildHttpsTextUrls,
   buildHttpsCoverUrls,

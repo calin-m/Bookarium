@@ -1,11 +1,11 @@
 /**
  * @module
  * @scope Reader text fetcher and React Query hook (`useBookContent`) resolving IndexedDB offline storage,
- *        `/api/books/content` proxy streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
+ *        same-origin `/api/books/content?id=<bookId>` R2 streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
  * @invariant Configure `networkMode: 'always'` so locally persisted IndexedDB books resolve instantaneously when offline, and resolve authoritative local author lifespans before serving offline volumes in non-US jurisdictions while online.
- * @invariant Never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on proxy network timeouts (`8000ms` abort).
- * @rationale Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance.
- * @adr ADR-020, ADR-036, ADR-070
+ * @invariant Never dispatch legacy `?url=` proxy queries without a positive integer `bookId`, never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on network timeouts (`BOOK_CONTENT_TIMEOUT_MS`).
+ * @rationale Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance and zero Project Gutenberg fallback.
+ * @adr ADR-020, ADR-036, ADR-070, ADR-082, ADR-084
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +18,8 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import type { Author, Book } from '@/types/book.types';
+
+export const BOOK_CONTENT_TIMEOUT_MS = 8000;
 
 export interface LegalRestrictionDetails {
   country: string;
@@ -159,17 +161,17 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
     return sampleBookText;
   }
 
-  const params = new URLSearchParams();
-  if (bookId && bookId > 0) {
-    params.set('id', String(bookId));
-  } else if (url) {
-    params.set('url', url);
+  if (!bookId || !Number.isInteger(bookId) || bookId <= 0) {
+    throw new Error('A valid numeric bookId is required to stream book content from Bookarium R2 storage.');
   }
+
+  const params = new URLSearchParams();
+  params.set('id', String(bookId));
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-  }, 8000);
+  }, BOOK_CONTENT_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?${params.toString()}`, {
@@ -206,7 +208,9 @@ export async function fetchBookContent(url?: string, bookId?: number): Promise<s
       }
     }
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Book content request timed out after 8000ms. Please check your connection.');
+      throw new Error(
+        `Book content request timed out after ${BOOK_CONTENT_TIMEOUT_MS}ms. Please check your connection.`
+      );
     }
     throw err;
   } finally {

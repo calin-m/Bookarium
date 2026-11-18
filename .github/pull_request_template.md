@@ -31,10 +31,10 @@ Please ensure all checks below are verified prior to requesting review:
   - [ ] Tests verify authentic user journeys via `@testing-library/react` and MSW v2 (anti-tautology protocol; zero synthetic or `.only` tests).
   - [ ] Coverage meets tiered V8 thresholds (`Lines >= 95%`, `Statements >= 95%`, `Functions >= 92%`, `Branches >= 85%`).
 - [ ] **Pass 4 (Living Documentation Sync)**: Ran `npm run docs:sync` to synchronize `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/QUALITY_AUDIT_REPORT.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `CHANGELOG.md`, `ROADMAP.md`, and `README.md`.
-- [ ] **Pass 5 (ADR Ledger, 18-Doc Checklist, Circular Security Parity & 1:1 SQL$\leftrightarrow$TS Schema Parity)**: Sequential ADRs in `docs/DECISIONS.md`, circular symbol/table parity in `SECURITY.md` (`auditSecurityDocumentationParity`), 1:1 `supabase/schema.sql` $\leftrightarrow$ `src/types/database.types.ts` parity, 0 circular/orphan modules, and 100% co-located tests.
+- [ ] **Pass 5 (ADR Ledger, 19-Doc Checklist, Circular Security Parity & 1:1 SQL$\leftrightarrow$TS Schema Parity)**: Sequential ADRs in `docs/DECISIONS.md`, circular symbol/table parity in `SECURITY.md` (`auditSecurityDocumentationParity`), 1:1 `supabase/schema.sql` $\leftrightarrow$ `src/types/database.types.ts` parity, 0 circular/orphan modules, and 100% co-located tests.
 - [ ] **Pass 6 (ESLint AST Security & Knip Dead Code Hygiene)**: `npm run lint` (`0` errors, `0` warnings across all 9 `bookarium-security` AST rules) and `npx knip` (`0` unused files, exports, or dependencies).
 - [ ] **Pass 7 (Production Build, Routes-Manifest Headers & Live HTTP Probe)**: `npm run build` compiles cleanly within budget with `.next/routes-manifest.json` security header parity and live `127.0.0.1` `next start` OWASP header, `400` SSRF, and origin-locked `/auth/callback` probe verification.
-- [ ] **Public Domain & Gutenberg Mirror Integrity**: All remote queries enforce `copyright=false` and prioritize official Project Gutenberg mirrors ahead of `www.gutenberg.org`.
+- [ ] **Public Domain, Cloudflare R2 & Mirror-Only Feed Integrity**: All remote queries enforce `copyright=false`, runtime `/api/books/content` serves exclusively from private Cloudflare R2 (`0` runtime Project Gutenberg fallback), and bulk CLI feeds restrict fetches to official PGLAF/Aleph mirrors and `rsync`.
 
 ---
 

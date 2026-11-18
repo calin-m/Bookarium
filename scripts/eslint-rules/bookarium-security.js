@@ -11,7 +11,7 @@
  * @invariant Keep all 9 rules synchronized cleanly across both IDE ESLint plugin listeners (`rules`) and the standalone zero-IDE Babel AST auditor (`runStandaloneAstSecurityAudit`) scanning `src/`, `scripts/`, `public/sw.js`, and `next.config.ts` (reporting parse failures explicitly), including Node HTTP client (`https.get`/`http.get`) checks, `{ shell: false }` enforcement in `scripts/`, `CWE-116` chained XML/HTML entity `.replace()` double-escaping/double-unescaping detection, and `process.argv` CLI taint into shell/URL/redirect sinks.
  * @invariant Track intra-procedural taint flows across sanitized helper boundaries (`FETCH_SANITIZER_FUNCTIONS`, `REDIRECT_SANITIZER_FUNCTIONS`, `DB_AND_QUERY_SANITIZER_FUNCTIONS`) without reporting false positives on allowlisted wrappers, CLI `--cache-file` flags, or static single-slash client routes.
  * @rationale Sharing one AST rule suite across IDE linting and CI Pass 0.75 guarantees developers catch request-taint, client/server boundary leaks, response header/cookie omissions, entity double-escaping, and weak assertions in real time before commit.
- * @adr ADR-067, ADR-073, ADR-080, ADR-082, ADR-083
+ * @adr ADR-067, ADR-073, ADR-080, ADR-082, ADR-083, ADR-084
  */
 
 const fs = require('fs');
@@ -41,16 +41,19 @@ const UNIVERSAL_SANITIZER_FUNCTIONS = new Set([
   'Boolean',
 ]);
 
-const FETCH_SANITIZER_FUNCTIONS = new Set([
-  'isSafeUpstreamUrl',
-  'sanitizeUpstreamUrl',
-  'sanitizeSupabaseUrl',
-  'sanitizeBookFormatUrl',
-  'sanitizeLocalDevUrl',
+const URL_ALLOWLIST_GUARD_FUNCTIONS = new Set([
   'isAllowedRdfFeedUrl',
   'isAllowedCsvFeedUrl',
   'isAllowedGutenbergAssetUrl',
+  'isAllowedPglafMirrorUrl',
   'isAllowedR2EndpointUrl',
+]);
+
+const FETCH_SANITIZER_FUNCTIONS = new Set([
+  'sanitizeSupabaseUrl',
+  'sanitizeBookFormatUrl',
+  'sanitizeLocalDevUrl',
+  ...URL_ALLOWLIST_GUARD_FUNCTIONS,
   'resolveFeedMirrors',
 ]);
 
@@ -133,7 +136,9 @@ function isTestOrMockFile(filename) {
     filename.endsWith('.test.tsx') ||
     filename.endsWith('.spec.ts') ||
     filename.endsWith('.spec.tsx') ||
+    filename.startsWith('src/mocks/') ||
     filename.includes('/src/mocks/') ||
+    filename.startsWith('src/test/') ||
     filename.includes('/src/test/')
   );
 }
@@ -658,7 +663,9 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars, targetSink = '*') {
 }
 
 /**
- * Extracts identifier names and their allowed sinks guarded by `isSafeUpstreamUrl(id)` or numeric guards inside an IfStatement test.
+ * Extracts identifier names and their allowed sinks guarded by allowlisted URL guards
+ * (`isAllowedR2EndpointUrl`, `isAllowedGutenbergAssetUrl`, `isAllowedPglafMirrorUrl`, etc.)
+ * or numeric guards (`isInteger`, `isFinite`) inside an `IfStatement` test.
  */
 function extractUrlValidatorGuardedVars(testNode) {
   const positiveGuarded = [];
@@ -677,17 +684,11 @@ function extractUrlValidatorGuardedVars(testNode) {
     }
     if (n.type === 'CallExpression') {
       const { methodName } = getCalleeName(n);
-      if (
-        methodName === 'isSafeUpstreamUrl' ||
-        methodName === 'isInteger' ||
-        methodName === 'isFinite'
-      ) {
+      const isUrlAllowlistGuard = URL_ALLOWLIST_GUARD_FUNCTIONS.has(methodName);
+      if (isUrlAllowlistGuard || methodName === 'isInteger' || methodName === 'isFinite') {
         const arg0 = n.arguments && n.arguments[0];
         if (arg0 && arg0.type === 'Identifier') {
-          const sinks =
-            methodName === 'isSafeUpstreamUrl'
-              ? new Set(['fetch', 'navigation'])
-              : new Set(['*']);
+          const sinks = isUrlAllowlistGuard ? new Set(['fetch', 'navigation']) : new Set(['*']);
           if (negated) {
             negativeGuarded.push({ name: arg0.name, sinks });
           } else {
@@ -790,7 +791,7 @@ const rules = {
           if (directTaint) {
             context.report({
               node: urlArg,
-              message: `Unsafe fetch() call with direct untrusted input from ${directTaint}. Validate URL via isSafeUpstreamUrl() first.`,
+              message: `Unsafe fetch() call with direct untrusted input from ${directTaint}. Validate URL via isAllowedR2EndpointUrl(), isAllowedGutenbergAssetUrl(), or isAllowedPglafMirrorUrl() first.`,
             });
           }
         },
@@ -1818,14 +1819,14 @@ const rules = {
           const { positiveGuarded, negativeGuarded } = extractUrlValidatorGuardedVars(
             node.test
           );
-          // Positive guard: `if (isSafeUpstreamUrl(x)) { ... }` -> mark sanitized inside consequent
+          // Positive guard: `if (isAllowedR2EndpointUrl(x)) { ... }` -> mark sanitized inside consequent
           for (const item of positiveGuarded) {
             scope.sanitizedVars.set(item.name, item.sinks);
             if (item.sinks.has('*')) {
               scope.taintedVars.delete(item.name);
             }
           }
-          // Early-return negative guard: `if (!isSafeUpstreamUrl(x)) { return ... }` -> mark sanitized for rest of scope
+          // Early-return negative guard: `if (!isAllowedR2EndpointUrl(x)) { return ... }` -> mark sanitized for rest of scope
           if (
             negativeGuarded.length > 0 &&
             blockAlwaysReturnsOrThrows(node.consequent)
@@ -1866,7 +1867,7 @@ const rules = {
             if (taint) {
               context.report({
                 node: arg0,
-                message: `Tainted data from ${taint} reaches ${isNodeHttpCall ? `${objectName}.${methodName}` : 'fetch'}() sink without sanitization (SSRF risk). Validate with isSafeUpstreamUrl() or numeric/origin sanitization first.`,
+                message: `Tainted data from ${taint} reaches ${isNodeHttpCall ? `${objectName}.${methodName}` : 'fetch'}() sink without sanitization (SSRF risk). Validate with isAllowedR2EndpointUrl(), isAllowedGutenbergAssetUrl(), or numeric/origin sanitization first.`,
               });
             }
             return;
@@ -2455,22 +2456,25 @@ const rules = {
 
   /**
    * 9. `bookarium-security/enforce-gutenberg-and-copyright-policy`
-   * Enforces Rule 2 & Rule 4 (Public Domain Integrity & Project Gutenberg Mirror Compliance):
+   * Enforces Rule 2 & Rule 4 (Public Domain Integrity & Zero Runtime Project Gutenberg Policy):
    * - Forbids `copyright=true` in query strings or URLSearchParams.set('copyright', 'true')
-   * - Forbids direct fetch('https://www.gutenberg.org/...') calls that bypass the official mirror priority list
+   * - Forbids direct fetch('https://www.gutenberg.org/...') calls across all code
+   * - Forbids runtime fetch() calls to Project Gutenberg or mirror hosts inside `src/`
    */
   'enforce-gutenberg-and-copyright-policy': {
     meta: {
       type: 'problem',
       docs: {
         description:
-          'Enforce Project Gutenberg mirror prioritization and strict copyright=false public domain queries.',
+          'Enforce Cloudflare R2 runtime isolation, strict copyright=false public domain queries, and zero direct www.gutenberg.org fetches.',
       },
       schema: [],
     },
     create(context) {
       const filename = normalizeFilename(context);
       const isTestFile = isTestOrMockFile(filename);
+      const isRuntimeSrcFile =
+        !isTestFile && (filename.includes('/src/') || filename.startsWith('src/'));
       const pkBoundedVars = new Set();
 
       function exprHasPrimaryKeyInCall(exprNode) {
@@ -2738,11 +2742,20 @@ const rules = {
                   ? String(urlArg.quasis[0].value.raw || '')
                   : '';
 
-            if (/^https?:\/\/(?:www\.)?gutenberg\.org\b/i.test(rawUrl)) {
+            if (!isTestFile && /^https?:\/\/(?:www\.)?gutenberg\.org\b/i.test(rawUrl)) {
               context.report({
                 node: urlArg,
                 message:
-                  'Project Gutenberg policy violation (Rule 2/4): direct fetch() to www.gutenberg.org is forbidden. Prioritize official mirrors (aleph.gutenberg.org, gutenberg.pglaf.org, gutenberg.readingroo.ms) first.',
+                  'Project Gutenberg policy violation (Rule 2/4): direct fetch() to www.gutenberg.org is forbidden. Use Cloudflare R2 at runtime or official bulk feeds/mirrors in scheduled CLI scripts.',
+              });
+            } else if (
+              isRuntimeSrcFile &&
+              /^https?:\/\/(?:aleph\.gutenberg\.org|gutenberg\.pglaf\.org|gutenberg\.readingroo\.ms)\b/i.test(rawUrl)
+            ) {
+              context.report({
+                node: urlArg,
+                message:
+                  'Project Gutenberg policy violation (ADR-084): runtime fetch() to Project Gutenberg mirrors in src/ is forbidden. Serve books and covers strictly from Cloudflare R2 via /api/books/content.',
               });
             }
           }

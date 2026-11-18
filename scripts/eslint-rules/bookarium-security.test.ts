@@ -392,16 +392,16 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(violations[9].message).toContain('dynamic new RegExp() constructor');
     });
 
-    it('clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards', () => {
+    it('clears taint when values pass through sanitizers or isAllowedR2EndpointUrl() / isAllowedPglafMirrorUrl() guards', () => {
       const clean = runRuleOnCode(
         'no-tainted-request-sink',
         `import { NextResponse } from 'next/server';
-        import { isSafeUpstreamUrl } from './url-validator';
+        import { isAllowedR2EndpointUrl } from '@/lib/r2-client';
         import { sanitizeRedirectPath, resolveCanonicalAuthOrigin } from '@/lib/redirect-sanitizer';
         export async function GET(request: Request) {
           const { searchParams, origin } = new URL(request.url);
           const urlParam = searchParams.get('url') || '';
-          if (urlParam && !isSafeUpstreamUrl(urlParam)) {
+          if (urlParam && !isAllowedR2EndpointUrl(urlParam)) {
             return NextResponse.json({ error: 'Invalid' }, { status: 400 });
           }
           await fetch(urlParam);
@@ -416,6 +416,18 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         'src/app/api/books/content/route.ts'
       );
       expect(clean).toHaveLength(0);
+
+      const cleanCli = runRuleOnCode(
+        'no-tainted-request-sink',
+        `const targetUrl = process.argv[2] || '';
+        function isAllowedPglafMirrorUrl(u: string) { return u.startsWith('https://gutenberg.pglaf.org/'); }
+        async function run() {
+          if (!isAllowedPglafMirrorUrl(targetUrl)) return;
+          await fetch(targetUrl);
+        }`,
+        'scripts/sync-featured-quotes.js'
+      );
+      expect(cleanCli).toHaveLength(0);
     });
 
     it('tracks module-level process.argv CLI taint into shell and HTTP sinks while exempting sanitized CLI URLs and config file paths', () => {
@@ -641,7 +653,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
   });
 
   describe('9. enforce-gutenberg-and-copyright-policy', () => {
-    it('flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\\./g, "\\\\.")', () => {
+    it('flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, runtime PG mirror fetch() in src/, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\\./g, "\\\\.")', () => {
       const violations = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',
         `export async function badCatalogFetch(url: string, ver: string) {
@@ -657,17 +669,22 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
         }`,
         'src/lib/catalog/supabase-provider.ts'
       );
-      expect(violations).toHaveLength(6);
-      expect(violations[0].message).toContain('setting "copyright" parameter to "true" is forbidden');
-      expect(violations[1].message).toContain('"copyright=true" is forbidden');
-      expect(violations[2].message).toContain('direct fetch() to www.gutenberg.org is forbidden');
-      expect(violations[3].message).toContain('Incomplete string escaping or encoding (CodeQL CWE-116 / js/incomplete-sanitization)');
-      expect(violations[4].message).toContain('Incomplete string escaping or encoding (CodeQL CWE-116 / js/incomplete-sanitization)');
-      expect(violations[5].message).toContain('Incomplete URL substring sanitization (CodeQL CWE-20)');
+      expect(violations).toHaveLength(7);
+      const msgs = violations.map((v) => v.message);
+      expect(msgs.some((m) => m.includes('setting "copyright" parameter to "true" is forbidden'))).toBe(true);
+      expect(msgs.some((m) => m.includes('"copyright=true" is forbidden'))).toBe(true);
+      expect(msgs.some((m) => m.includes('runtime fetch() to Project Gutenberg mirrors in src/ is forbidden'))).toBe(true);
+      expect(msgs.some((m) => m.includes('direct fetch() to www.gutenberg.org is forbidden'))).toBe(true);
+      expect(
+        msgs.filter((m) =>
+          m.includes('Incomplete string escaping or encoding (CodeQL CWE-116 / js/incomplete-sanitization)')
+        )
+      ).toHaveLength(2);
+      expect(msgs.some((m) => m.includes('Incomplete URL substring sanitization (CodeQL CWE-20)'))).toBe(true);
     });
 
-    it('permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries', () => {
-      const clean = runRuleOnCode(
+    it('permits copyright=false, mirror-prioritized fetches in CLI scripts, single-column download_count ordering, and PK-bounded quote queries while blocking runtime mirror fetches in src/', () => {
+      const cleanCli = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',
         `export async function goodCatalogFetch(supabase: any, ids: number[]) {
           const params = new URLSearchParams();
@@ -676,9 +693,22 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
           await supabase.from('books').select('*').order('download_count', { ascending: false });
           await supabase.from('books').select('id').in('id', ids).neq('quotes', '[]').order('download_count', { ascending: false });
         }`,
-        'src/lib/catalog/supabase-provider.ts'
+        'scripts/sync-featured-quotes.js'
       );
-      expect(clean).toHaveLength(0);
+      expect(cleanCli).toHaveLength(0);
+
+      const runtimeMirrorViolations = runRuleOnCode(
+        'enforce-gutenberg-and-copyright-policy',
+        `export async function badRuntimeMirrorFetch() {
+          await fetch('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+          await fetch('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt');
+        }`,
+        'src/app/api/books/content/route.ts'
+      );
+      expect(runtimeMirrorViolations).toHaveLength(2);
+      expect(runtimeMirrorViolations[0].message).toContain(
+        'runtime fetch() to Project Gutenberg mirrors in src/ is forbidden'
+      );
     });
 
     it('permits R2 and Gutenberg asset fetch helpers registered in FETCH_SANITIZER_FUNCTIONS across CLI scripts', () => {

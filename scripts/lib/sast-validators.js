@@ -9,7 +9,7 @@
  * @scope Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
  * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
  * @rationale Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
- * @adr ADR-073, ADR-080, ADR-081, ADR-082
+ * @adr ADR-073, ADR-080, ADR-081, ADR-082, ADR-084
  */
 
 const fs = require('fs');
@@ -1293,7 +1293,7 @@ function validateApiRoutesSecurityAst(code, relRoute = '') {
     }
     if (node.type === 'CallExpression') {
       const { methodName } = getCallCalleeParts(node);
-      if (methodName === 'isSafeUpstreamUrl' || methodName === 'parseInt') {
+      if (methodName === 'isAllowedR2EndpointUrl' || methodName === 'parseInt') {
         for (const arg of node.arguments || []) {
           for (const idName of collectExprIdentifierNames(arg)) {
             safeSanitizedIds.add(idName);
@@ -1339,8 +1339,10 @@ function validateApiRoutesSecurityAst(code, relRoute = '') {
 
   let hasRateLimiterCheck = false;
   let hasTaintedFetch = false;
+  let hasDirectFetchCall = false;
   let hasManualRedirectViolation = false;
-  let hasIsSafeUpstreamUrlCall = false;
+  let hasIsAllowedR2EndpointCall = false;
+  let hasGutenbergUpstreamHostLiteral = false;
   const isContentProxyRoute = normalizedRoute.endsWith('api/books/content/route.ts');
 
   const isTaintedFetchTargetExpr = (expr) => {
@@ -1393,10 +1395,11 @@ function validateApiRoutesSecurityAst(code, relRoute = '') {
             hasRateLimiterCheck = true;
           }
         }
-        if (methodName === 'isSafeUpstreamUrl') {
-          hasIsSafeUpstreamUrlCall = true;
+        if (methodName === 'isAllowedR2EndpointUrl') {
+          hasIsAllowedR2EndpointCall = true;
         }
         if (methodName === 'fetch' && objectName === null && Array.isArray(node.arguments) && node.arguments.length >= 1) {
+          hasDirectFetchCall = true;
           const targetArg = node.arguments[0];
           if (isTaintedFetchTargetExpr(targetArg)) {
             hasTaintedFetch = true;
@@ -1427,6 +1430,17 @@ function validateApiRoutesSecurityAst(code, relRoute = '') {
           }
         }
       }
+      if (isContentProxyRoute) {
+        const strVal =
+          (node.type === 'StringLiteral' || node.type === 'Literal') && typeof node.value === 'string'
+            ? node.value
+            : node.type === 'TemplateElement' && node.value
+              ? String(node.value.cooked || node.value.raw || '')
+              : '';
+        if (strVal && /^https?:\/\/(?:[a-z0-9-]+\.)?(?:gutenberg\.org|pglaf\.org|readingroo\.ms)\b/i.test(strVal)) {
+          hasGutenbergUpstreamHostLiteral = true;
+        }
+      }
     });
   }
 
@@ -1442,10 +1456,16 @@ function validateApiRoutesSecurityAst(code, relRoute = '') {
       issue: 'Public API route handler is missing mandatory RateLimiter.check() protection.',
     });
   }
-  if (isContentProxyRoute && (hasManualRedirectViolation || !hasIsSafeUpstreamUrlCall)) {
+  if (isContentProxyRoute && hasDirectFetchCall && hasGutenbergUpstreamHostLiteral) {
     violations.push({
       file: normalizedRoute,
-      issue: 'Content proxy route must enforce redirect: "manual" and isSafeUpstreamUrl() on upstream hops.',
+      issue: 'Content route must serve assets strictly from private Cloudflare R2 without runtime Project Gutenberg or mirror fallback.',
+    });
+  }
+  if (isContentProxyRoute && hasDirectFetchCall && (hasManualRedirectViolation || !hasIsAllowedR2EndpointCall)) {
+    violations.push({
+      file: normalizedRoute,
+      issue: 'Content proxy route must enforce redirect: "manual" and isAllowedR2EndpointUrl() on upstream R2 hops.',
     });
   }
 

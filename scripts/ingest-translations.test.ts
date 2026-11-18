@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { EventEmitter } from 'events';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ingestTranslations = require('./ingest-translations');
 const {
+  WIKIDATA_SPARQL_TIMEOUT_MS,
   resolveSiteOriginFallback,
   resolveUserAgent,
   normalizeLanguageToCode,
@@ -11,8 +13,11 @@ const {
   extractSignificantKeywords,
   checkAuthorCompatibility,
   checkHeuristicWorkMatch,
+  fetchWikidataTranslations,
   loadFallbackSnapshot,
+  isTransientSupabaseError,
   filterValidCatalogBookIds,
+  upsertTranslationBatchesWithRetry,
   generateAtomicSeedSql,
 } = ingestTranslations;
 
@@ -314,6 +319,120 @@ describe('scripts/ingest-translations Engine', () => {
       ).toBe('Bookarium-Gatekeeper/1.0 (+https://github.com/custom-org/bookarium-fork)');
 
       expect(resolveUserAgent({})).toMatch(/^Bookarium-Gatekeeper\/1\.0 \(\+https?:\/\/.+\)$/);
+    });
+  });
+
+  describe('Wikidata SPARQL Timeout, Strict FK Validation & Upsert Retry/Bisection', () => {
+    it('aborts hung Wikidata SPARQL requests via WIKIDATA_SPARQL_TIMEOUT_MS socket timeout handler', async () => {
+      expect(WIKIDATA_SPARQL_TIMEOUT_MS).toBe(45_000);
+
+      let capturedTimeoutMs: number | undefined;
+      const destroyMock = vi.fn();
+      const mockHttpsGet = vi.fn(
+        (_url: string, opts: { timeout?: number }, _cb: (res: unknown) => void) => {
+          capturedTimeoutMs = opts.timeout;
+          const reqEmitter = new EventEmitter() as EventEmitter & {
+            setTimeout: (ms: number, handler: () => void) => void;
+            destroy: typeof destroyMock;
+          };
+          reqEmitter.destroy = destroyMock;
+          reqEmitter.setTimeout = (_ms: number, handler: () => void) => {
+            queueMicrotask(() => handler());
+          };
+          return reqEmitter;
+        }
+      );
+
+      await expect(
+        fetchWikidataTranslations(10, { timeoutMs: 250, httpsGet: mockHttpsGet })
+      ).rejects.toThrow(/timed out after 250ms/);
+      expect(capturedTimeoutMs).toBe(250);
+      expect(destroyMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries transient FK pre-checks, honors throwOnError, and returns empty Set when catalog is empty', async () => {
+      expect(isTransientSupabaseError(new Error('canceling statement due to statement timeout'))).toBe(true);
+      expect(isTransientSupabaseError(new Error('violates foreign key constraint'))).toBe(false);
+
+      let attempts = 0;
+      const flakySupabase = {
+        from: () => ({
+          select: () => ({
+            in: async () => {
+              attempts++;
+              if (attempts < 2) {
+                return { data: null, error: { message: 'statement timeout' } };
+              }
+              return { data: [], error: null };
+            },
+          }),
+        }),
+      };
+
+      const emptyResult = await filterValidCatalogBookIds(flakySupabase, [100, 200], {
+        retries: 3,
+        baseDelayMs: 0,
+        throwOnError: true,
+      });
+      expect(attempts).toBe(2);
+      expect(emptyResult instanceof Set).toBe(true);
+      expect(emptyResult.size).toBe(0);
+
+      const deadSupabase = {
+        from: () => ({
+          select: () => ({
+            in: async () => ({ data: null, error: { message: 'persistent connection reset' } }),
+          }),
+        }),
+      };
+
+      await expect(
+        filterValidCatalogBookIds(deadSupabase, [100, 200], {
+          retries: 2,
+          baseDelayMs: 0,
+          throwOnError: true,
+        })
+      ).rejects.toThrow(/Foreign-key catalog pre-check failed: persistent connection reset/);
+    });
+
+    it('retries transient batch upserts, bisects failing chunks down to failing rows, and tracks failedRowCount', async () => {
+      const sampleRows = [
+        { work_id: 'Q1', book_id: 10, language: 'en', is_original: false, confidence_score: 1, source: 'authority_wikidata' },
+        { work_id: 'Q1', book_id: 20, language: 'fr', is_original: false, confidence_score: 1, source: 'authority_wikidata' },
+        { work_id: 'Q2', book_id: 999999, language: 'de', is_original: false, confidence_score: 1, source: 'authority_wikidata' },
+        { work_id: 'Q2', book_id: 30, language: 'es', is_original: false, confidence_score: 1, source: 'authority_wikidata' },
+      ];
+
+      let transientAttempts = 0;
+      const warnSpy = vi.fn();
+      const mixedSupabase = {
+        from: () => ({
+          upsert: async (slice: Array<{ book_id: number }>) => {
+            if (slice.length === 4 && transientAttempts === 0) {
+              transientAttempts++;
+              return { error: { message: 'canceling statement due to statement timeout' } };
+            }
+            if (slice.some((r) => r.book_id === 999999)) {
+              return { error: { message: 'violates foreign key constraint "book_translations_book_id_fkey"' } };
+            }
+            return { error: null };
+          },
+        }),
+      };
+
+      const res = await upsertTranslationBatchesWithRetry(mixedSupabase, sampleRows, {
+        batchSize: 4,
+        retries: 2,
+        baseDelayMs: 0,
+        ignoreDuplicates: false,
+        logger: { warn: warnSpy },
+      });
+
+      expect(res.upsertedCount).toBe(3);
+      expect(res.failedRowCount).toBe(1);
+      expect(res.failedBatchCount).toBe(1);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(res.errors[0]).toContain('foreign key constraint');
     });
   });
 });

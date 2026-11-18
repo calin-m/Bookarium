@@ -98,8 +98,8 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/cookie-less aggregate performance telemetry/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Project Gutenberg/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Cloudflare Turnstile/i)).toBeInTheDocument();
-    expect(screen.getByText(/Privacy-preserving, non-tracking bot protection/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cloudflare R2 & Turnstile/i)).toBeInTheDocument();
+    expect(screen.getByText(/privacy-preserving Turnstile auth bot protection/i)).toBeInTheDocument();
   });
 
   it('provides working navigation links to catalog and account settings', () => {

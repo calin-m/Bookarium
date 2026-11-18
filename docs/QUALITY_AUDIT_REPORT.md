@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 18 Nov 2026 09:47:45 GMT  
+**Last Generated**: Wed, 18 Nov 2026 17:58:58 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 262 passed  
-**Total Verified Tests**: 2736 passed  
+**Total Test Suites**: 261 passed  
+**Total Verified Tests**: 2716 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **262/262 test suites passed** (2736 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2716 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 83 sequential ADRs, 18 governance docs, circular `SECURITY.md` parity, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.21%** (16265/16731) — *Target: $\ge$ 95%*
-- **Statements**: **95.94%** (17517/18257) — *Target: $\ge$ 95%*
-- **Functions**: **94.97%** (3495/3680) — *Target: $\ge$ 92%*
-- **Branches**: **88.45%** (16259/18381) — *Target: $\ge$ 85%*
+- **Lines**: **97.23%** (16185/16646) — *Target: $\ge$ 95%*
+- **Statements**: **95.98%** (17435/18165) — *Target: $\ge$ 95%*
+- **Functions**: **94.96%** (3489/3674) — *Target: $\ge$ 92%*
+- **Branches**: **88.37%** (16170/18296) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (262 Suites / 2736 Tests)
+## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2716 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 333 Tests)
+### 🚀 App Routes & Pages (30 Suites · 305 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -95,60 +95,42 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.security.test.ts</code></b> (9 tests)</summary>
 
-- ✔ `blocks AWS and GCP cloud metadata IP endpoints`
-- ✔ `blocks loopback and private RFC 1918 IPv4/IPv6 addresses`
-- ✔ `blocks domain spoofing and subdomains targeting gutenberg.org`
-- ✔ `blocks directory traversal attempts in query parameters and paths`
-- ✔ `blocks non-HTTP/HTTPS protocols`
-- ✔ `ensures global.fetch is never triggered for unauthenticated/malicious inputs`
-- ✔ `strictly confines legitimate outgoing requests to approved Gutenberg CDN endpoints`
+- ✔ `rejects all ?url= query parameters including cloud metadata, loopback, spoofed domains, path traversal, and dangerous URI schemes without calling fetch`
+- ✔ `blocks directory traversal and non-numeric ?id= payloads at parameter boundary`
+- ✔ `fails closed with 503 when R2 is unconfigured and never contacts Project Gutenberg mirrors`
+- ✔ `strictly confines outgoing text requests to private Cloudflare R2 S3 endpoints with redirect: manual`
 - ✔ `protects backend from request flooding by enforcing 429 response`
 - ✔ `isolates ImageResponse CPU flood protection at 20 req/min/IP and blocks arbitrary query param injection`
-- ✔ `enforces redirect: manual and rejects 301/302 redirects to private link-local endpoints`
-- ✔ `blocks untrusted cross-origin redirect on primary mirror and advances cleanly to the next approved mirror`
+- ✔ `enforces redirect: manual and rejects any 301/302 R2 upstream redirects`
 - ✔ `strips all upstream server headers and sets explicit sanitized response headers`
-- ✔ `rejects oversized Content-Length headers exceeding 15MB threshold`
-- ✔ `aborts upstream stream if payload chunks exceed 15MB limit`
+- ✔ `rejects oversized R2 payloads and gzip bombs exceeding 15MB threshold`
 
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (41 tests)</summary>
+<summary><b><code>src/app/api/books/content/route.test.ts</code></b> (28 tests)</summary>
 
 - ✔ `should return 429 when client exceeds rate limits`
 - ✔ `should return 400 if neither url nor id is provided`
 - ✔ `should reject unknown query params, unsupported types, stray share tokens, and production ?country= overrides`
 - ✔ `routes type=card and type=cover requests through dedicated mode-scoped rate limiters`
-- ✔ `should block SSRF attempts targeting cloud metadata or internal network`
-- ✔ `should validate official Gutenberg upstream URLs as safe and sanitize them`
-- ✔ `should reject path traversal attempts in upstream URLs`
+- ✔ `should reject ?url= proxy attempts and non-numeric book IDs cleanly with 400 no-store`
 - ✔ `should return HTTP 451 Unavailable For Legal Reasons when book is protected in UK`
 - ✔ `should return HTTP 451 in local development via ?country=GB query parameter without headers`
 - ✔ `should return HTTP 451 when book is protected in Mexico (Life + 100)`
 - ✔ `should return HTTP 451 for US requests when catalog metadata flags copyright: true`
 - ✔ `should return HTTP 503 fail-closed when metadata cannot be retrieved for international user`
-- ✔ `should fetch and return book text for valid public domain id in US`
-- ✔ `should stream public domain book to GB user when metadata confirms death year <= 1955`
-- ✔ `should return 502 if upstream text mirrors fail or time out`
-- ✔ `guarantees fetch is strictly called with canonical Gutenberg endpoints only`
-- ✔ `falls back to secondary mirror when primary mirror returns 404`
+- ✔ `should return HTTP 503 without external Gutenberg fallback when R2 is unconfigured`
+- ✔ `should fetch and return book text from private R2 for valid public domain id in US`
+- ✔ `should stream public domain book from R2 to GB user when metadata confirms death year <= 1955`
+- ✔ `should return 502 if R2 storage requests fail or time out`
 - ✔ `streams content directly from Supabase (Tier 1) without external network fetch`
-- ✔ `safely follows redirects to trusted Gutenberg mirrors`
-- ✔ `follows up to 3 trusted redirect hops and skips mirrors that redirect to untrusted origins`
-- ✔ `Tier 1: serves directly from aleph.gutenberg.org when available`
-- ✔ `Tier 2: falls back to gutenberg.pglaf.org when aleph.gutenberg.org returns 503`
-- ✔ `skips mirrors returning HTTP 200 HTML outage pages and succeeds on the next plain-text mirror`
-- ✔ `Tier 3: falls back to gutenberg.readingroo.ms when aleph and pglaf mirrors fail`
-- ✔ `Tier 4: falls back to www.gutenberg.org/cache/epub when all 3 harvest mirrors fail`
-- ✔ `Tier 5: falls back to www.gutenberg.org/files/{id}/{id}-0.txt when all /cache/epub endpoints return 404`
-- ✔ `Tier 6: falls back to legacy www.gutenberg.org/files/{id}/{id}.txt when all 5 prior tiers fail`
-- ✔ `resolves relative Location redirect paths against the active mirror origin`
-- ✔ `coalesces concurrent in-flight requests for the same bookId into a single upstream mirror fetch`
+- ✔ `coalesces concurrent in-flight requests for the same bookId into a single R2 fetch`
 - ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
-- ✔ `degrades gracefully from Tier 1 Supabase abortSignal timeout to Tier 2 mirror fetch`
-- ✔ `cascades past AbortError timeouts, HTML outage pages, and oversized streaming payloads across mirrors`
+- ✔ `degrades cleanly from Tier 1 Supabase abortSignal timeout to Tier 1.5 Cloudflare R2 without contacting Gutenberg`
+- ✔ `rejects R2 HTML outage pages and oversized gzip payloads fail-closed with 502`
 - ✔ `streams cover image strictly from private R2 with Content-Type: image/jpeg and 7d cache headers`
 - ✔ `returns 404 without falling back to Project Gutenberg when cover is missing in R2 or R2 is unconfigured`
 - ✔ `returns 502 without Gutenberg fallback when R2 storage errors, redirects, exceeds 2MB, or serves HTML`
@@ -158,22 +140,6 @@
 - ✔ `serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity`
 - ✔ `renders a 1200x630 PNG reading card on the fly with or without a signed ?s= token`
 - ✔ `renders the canonical SITE_CONFIG.SITE_HOST domain footer in the type=card OpenGraph JSX tree`
-
-</details>
-
-<details>
-<summary><b><code>src/app/api/books/content/url-validator.test.ts</code></b> (10 tests)</summary>
-
-- ✔ `accepts legitimate Project Gutenberg URLs`
-- ✔ `rejects foreign and untrusted domains`
-- ✔ `rejects path traversal attempts`
-- ✔ `rejects credentials in URLs`
-- ✔ `rejects local and private network addresses`
-- ✔ `handles malformed URLs safely without throwing`
-- ✔ `sanitizes standard Gutenberg URLs to canonical cache paths`
-- ✔ `preserves files-0 and files paths for older legacy Gutenberg mirrors`
-- ✔ `rejects custom ports, unsupported schemes, credential userinfo, and unsafe path characters`
-- ✔ `returns null for unsafe or invalid URLs`
 
 </details>
 
@@ -2068,7 +2034,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (55 Suites · 701 Tests)
+### 📚 Gutenberg Parsers & Metadata (55 Suites · 709 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2902,7 +2868,7 @@
 - ✔ `flags imperative setAttribute("srcdoc"|"href"|"src") XSS sinks and window.open(..., "_blank") missing noopener`
 - ✔ `flags CWE-116 chained double-unescaping and double-escaping while allowing single-pass map replacements`
 - ✔ `tracks taint from searchParams, headers, cookies, and request.json() to fetch, redirect, DB writes, shell, fs, external URLs, PostgREST .or(), and new RegExp()`
-- ✔ `clears taint when values pass through sanitizers or isSafeUpstreamUrl() guards`
+- ✔ `clears taint when values pass through sanitizers or isAllowedR2EndpointUrl() / isAllowedPglafMirrorUrl() guards`
 - ✔ `tracks module-level process.argv CLI taint into shell and HTTP sinks while exempting sanitized CLI URLs and config file paths`
 - ✔ `enforces sink-scoped sanitization and catches cross-sink sanitizer misuse`
 - ✔ `tracks client useSearchParams() and document.referrer taint into router.push()/replace() while allowing static path prefixes, ROUTES builders, and sanitized paths`
@@ -2910,8 +2876,8 @@
 - ✔ `passes compliant public API route handlers that invoke RateLimiter.check(), apply buildApiSecurityHeaders(), and set sameSite + secure cookies`
 - ✔ `flags arrow-function export const GET/POST API route handlers missing RateLimiter or buildApiSecurityHeaders while permitting compliant arrow handlers`
 - ✔ `flags describe.only, it.only, expect(true).toBe(true), and zero-assertion test blocks in test files`
-- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
-- ✔ `permits copyright=false, mirror-prioritized fetches, single-column download_count ordering, and PK-bounded quote queries`
+- ✔ `flags copyright=true query strings, URLSearchParams.set("copyright", "true"), direct fetch() to www.gutenberg.org, runtime PG mirror fetch() in src/, bare-hostname .includes("aleph.gutenberg.org"), and incomplete regex escaping .replace(/\./g, "\\.")`
+- ✔ `permits copyright=false, mirror-prioritized fetches in CLI scripts, single-column download_count ordering, and PK-bounded quote queries while blocking runtime mirror fetches in src/`
 - ✔ `permits R2 and Gutenberg asset fetch helpers registered in FETCH_SANITIZER_FUNCTIONS across CLI scripts`
 - ✔ `flags 78k-row index violations (Rule 10): chaining .order("id") onto .order("download_count") or combining .neq("quotes") with .order("download_count") without .in("id")`
 - ✔ `flags external gutendex.com runtime URLs in production code while permitting DTO types and test fixtures (ADR-080)`
@@ -2936,7 +2902,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/ingest-translations.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>scripts/ingest-translations.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `normalizes common language names and variants to ISO codes`
 - ✔ `extracts primary identifying surname across various international conventions`
@@ -2954,11 +2920,14 @@
 - ✔ `gracefully falls back to candidates when database query fails`
 - ✔ `normalizes canonical origin fallbacks across NEXT_PUBLIC_SITE_URL and Vercel production vars`
 - ✔ `builds descriptive Bookarium-Gatekeeper User-Agent strings from explicit or resolved origins`
+- ✔ `aborts hung Wikidata SPARQL requests via WIKIDATA_SPARQL_TIMEOUT_MS socket timeout handler`
+- ✔ `retries transient FK pre-checks, honors throwOnError, and returns empty Set when catalog is empty`
+- ✔ `retries transient batch upserts, bisects failing chunks down to failing rows, and tracks failedRowCount`
 
 </details>
 
 <details>
-<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
 - ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
@@ -2974,6 +2943,8 @@
 - ✔ `verifies zero orphaned lookup keys exist across all 17 live generator registries`
 - ✔ `detects orphaned lookup keys across all generator registries when modules, deps, workflows, SQL entities, signals, workers, or env vars are removed`
 - ✔ `produces deterministic codepoint-sorted consumer lists and LF-normalized text asset sizes regardless of CRLF`
+- ✔ `validates live Mermaid diagrams in docs/ARCHITECTURE.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations`
+- ✔ `rejects parent-child subgraph cycles, compound cycles, unquoted edge parens, HTML-tag swallowing, and orphan nodes in Mermaid diagrams`
 
 </details>
 
@@ -3011,7 +2982,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>scripts/sync-featured-quotes.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org`
 - ✔ `parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool`
@@ -3033,11 +3004,12 @@
 - ✔ `resolves canonical site origin fallback from NEXT_PUBLIC_SITE_URL and normalized Vercel production hostnames`
 - ✔ `reads books/<id>.txt.gz from private R2 first ahead of PGLAF mirrors when configured and falls back cleanly on R2 miss`
 - ✔ `supports --source=auto|r2|mirrors, --mirrors=none, --help, startup Text Source telemetry, and non-sentinel r2-miss handling`
+- ✔ `evaluates infrastructure failure thresholds strictly via shouldFailFeaturedQuotesRun`
 
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (41 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (42 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -3071,7 +3043,7 @@
 - ✔ `extracts bookId, download_count, and <dcterms:rights> copyrighted IDs from multi-chunk RDF XML streams`
 - ✔ `enforces PGLAF-first mirror priority, resolves --feed-source pinning, rejects HTML outage responses, and fails over cleanly`
 - ✔ `attaches download_count and RDF copyright flags in normalizeCsvRow, preserves cached flags on outage, and detects copyright diffs`
-- ✔ `supports PGLAF-first 3-mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch`
+- ✔ `supports PGLAF-first mirror failover for pg_catalog.csv.gz and sticky dynamic write chunk sizing in upsertBatch`
 - ✔ `saves and loads compressed .json.gz snapshot caches and enforces the minCatalogSize safety floor`
 - ✔ `diffs incoming batches and reconciles withdrawn books 100% in RAM without querying Supabase when cachedBooksById is provided`
 - ✔ `computes Two-Tier quote pool promotedIds, demotedIds, and candidatePoolIds and writes quote-diff.json`
@@ -3080,11 +3052,12 @@
 - ✔ `computes wire SHA-256 digests on valid CSV streams and rejects Content-Length truncated streams`
 - ✔ `rejects corrupted RDF archive streams fail-closed when tar exits non-zero or Content-Length mismatches`
 - ✔ `appends Markdown digest summary rows to GITHUB_STEP_SUMMARY when configured`
+- ✔ `preserves cached and live-DB copyright=true flags and defers brand-new unverified volumes during RDF outages`
 
 </details>
 
 <details>
-<summary><b><code>scripts/sync-r2-assets.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>scripts/sync-r2-assets.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `validates server-only R2 credentials strictly and rejects malformed identifiers`
 - ✔ `restricts R2 endpoints and PG asset URLs strictly to HTTPS allowlisted hosts`
@@ -3098,6 +3071,7 @@
 - ✔ `executes shell-free rsync --files-from batches, compresses texts, uploads R2 assets, records misses, and writes bounded summary tables`
 - ✔ `supports PGLAF HTTPS fallback, respects --max-minutes cutoff, caps huge ledgers cleanly, and skips unconfigured runs`
 - ✔ `decodes ListObjectsV2 XML entities in a single pass without double-unescaping doubly-encoded payloads`
+- ✔ `enforces strict partial/invalid R2 config validation, preserves remote sync state across read failures & races, and handles budgets, concurrency, purge tags, and failure ratios`
 
 </details>
 
@@ -3123,7 +3097,7 @@
 - ✔ `enforces LegalRestrictionError in network catch block when offline book is restricted in jurisdiction`
 - ✔ `returns offline text when network fails and offline record has no local author metadata`
 - ✔ `executes queryFn via networkMode always and resolves IndexedDB content even when navigator.onLine is false`
-- ✔ `canonicalizes /api/books/content query string to ?id= when bookId is present and falls back to ?url= when bookId is omitted`
+- ✔ `canonicalizes /api/books/content query string to ?id= when bookId is present and rejects URL-only calls without bookId`
 
 </details>
 

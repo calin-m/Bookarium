@@ -54,6 +54,15 @@ on:
         required: false
         type: string
         default: '75'
+      catalog_source:
+        description: 'Catalog index source (auto = snapshot cache if present else Supabase, snapshot, supabase)'
+        required: false
+        type: choice
+        default: 'auto'
+        options:
+          - auto
+          - snapshot
+          - supabase
       dry_run:
         description: 'Dry run (inspect R2 inventory and delta plan without mutating R2)'
         required: false
@@ -112,9 +121,10 @@ jobs:
           INPUT_RECHECK_MISSING: ${{ github.event.inputs.recheck_missing }}
           INPUT_PRUNE_WITHDRAWN: ${{ github.event.inputs.prune_withdrawn }}
           INPUT_MAX_MINUTES: ${{ github.event.inputs.max_minutes }}
+          INPUT_CATALOG_SOURCE: ${{ github.event.inputs.catalog_source }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
-          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_BUCKET_NAME" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+          if [ -z "$R2_ACCOUNT_ID" ] && [ -z "$R2_BUCKET_NAME" ] && [ -z "$R2_ACCESS_KEY_ID" ] && [ -z "$R2_SECRET_ACCESS_KEY" ]; then
             echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 sync cleanly."
             exit 0
           fi
@@ -122,10 +132,19 @@ jobs:
             echo "Error: Both sync_books and sync_covers cannot be false." >&2
             exit 1
           fi
-          R2_ARGS=""
+          R2_ARGS="--purge-tags-file=r2-purge-tags.txt"
           if [ -f "gutenberg-catalog-cache.json.gz" ]; then
             R2_ARGS="$R2_ARGS --cache-file=gutenberg-catalog-cache.json.gz"
           fi
+          case "${INPUT_CATALOG_SOURCE:-auto}" in
+            auto|snapshot|supabase)
+              R2_ARGS="$R2_ARGS --catalog-source=${INPUT_CATALOG_SOURCE:-auto}"
+              ;;
+            *)
+              echo "Error: Unsupported catalog_source '${INPUT_CATALOG_SOURCE}'." >&2
+              exit 1
+              ;;
+          esac
           case "${INPUT_SOURCE:-rsync}" in
             auto|rsync|https)
               R2_ARGS="$R2_ARGS --source=${INPUT_SOURCE:-rsync}"
@@ -174,3 +193,21 @@ jobs:
             R2_ARGS="$R2_ARGS --ids=$INPUT_IDS"
           fi
           node scripts/sync-r2-assets.js $R2_ARGS
+
+      - name: Purge Modified R2 Edge Cache Tags
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          if [ ! -s "r2-purge-tags.txt" ]; then
+            echo "No R2 assets were pruned or force-overwritten; skipping Edge CDN purge cleanly."
+            exit 0
+          fi
+          PURGE_TAGS="$(tr -d ' \r\n' < r2-purge-tags.txt)"
+          if [ -z "$PURGE_TAGS" ]; then
+            echo "No non-empty purge tags generated; skipping Edge CDN purge cleanly."
+            exit 0
+          fi
+          node scripts/purge-vercel-cache.js --tags="$PURGE_TAGS"

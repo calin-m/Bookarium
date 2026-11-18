@@ -476,5 +476,282 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
       expect(parsed.nextContinuationToken).toBe('cursor&lt;next&amp;2');
       expect(parsed.objects[1].key).toBe("_meta/a&lt;b'c.txt");
     });
+
+    it('enforces strict partial/invalid R2 config validation, preserves remote sync state across read failures & races, and handles budgets, concurrency, purge tags, and failure ratios', async () => {
+      // 1) All 4 R2_* unset skips cleanly; partial or malformed throws fast
+      expect(syncR2Assets.assertValidR2ConfigIfPresent({})).toBeNull();
+      expect(() =>
+        syncR2Assets.assertValidR2ConfigIfPresent({ R2_ACCOUNT_ID: TEST_R2_ENV.R2_ACCOUNT_ID })
+      ).toThrow(/Partial Cloudflare R2 configuration/);
+      expect(() =>
+        syncR2Assets.assertValidR2ConfigIfPresent({
+          ...TEST_R2_ENV,
+          R2_BUCKET_NAME: 'Uppercase_Bucket',
+        })
+      ).toThrow(/Invalid R2_ACCOUNT_ID/);
+
+      await expect(
+        syncR2Assets.runR2AssetSync(
+          {},
+          { env: { R2_ACCOUNT_ID: TEST_R2_ENV.R2_ACCOUNT_ID }, logger: { log: vi.fn() } }
+        )
+      ).rejects.toThrow(/Partial Cloudflare R2 configuration/);
+
+      // 2) readR2SyncState marks HTTP 500 as readFailed and refuses to overwrite remote state
+      const nowMs = Date.parse('2026-11-18T12:00:00.000Z');
+      const errorReadState = await syncR2Assets.readR2SyncState(TEST_R2_CONFIG, {
+        fetchFn: vi.fn(async () => makeTextResponse(500, 'Upstream error')),
+        nowMs,
+      });
+      expect(errorReadState.readFailed).toBe(true);
+
+      const skippedWrite = await syncR2Assets.writeR2SyncState(TEST_R2_CONFIG, errorReadState, {
+        fetchFn: vi.fn(),
+        nowMs,
+      });
+      expect(skippedWrite.skippedReadFailed).toBe(true);
+
+      // 3) mergeR2SyncStates keeps concurrent remote keys while omitting locally cleared uploads
+      const merged = syncR2Assets.mergeR2SyncStates(
+        {
+          missingCovers: { '10': '2026-11-18T10:00:00.000Z', '20': '2026-11-18T10:00:00.000Z' },
+          missingTexts: { '30': '2026-11-18T10:00:00.000Z' },
+        },
+        {
+          missingCovers: { '20': '2026-11-18T11:00:00.000Z', '40': '2026-11-18T11:00:00.000Z' },
+          missingTexts: {},
+        },
+        { covers: new Set(['20']), texts: new Set() },
+        { nowMs, recheckDays: 90 }
+      );
+      expect(merged.missingCovers).toEqual({
+        '10': '2026-11-18T10:00:00.000Z',
+        '40': '2026-11-18T11:00:00.000Z',
+      });
+      expect(merged.missingTexts).toEqual({ '30': '2026-11-18T10:00:00.000Z' });
+
+      // 4) isRsyncTransportError rejects transport glitches on exit 23 & runRsyncCommandWithRetry recovers
+      expect(
+        syncR2Assets.isRsyncTransportError(
+          'rsync warning: some files vanished before they could be transferred (code 23)'
+        )
+      ).toBe(false);
+      expect(syncR2Assets.isRsyncTransportError('rsync: connection unexpectedly closed (0 bytes received so far)')).toBe(true);
+      expect(syncR2Assets.isRsyncTransportError('rsync error: error in rsync protocol data stream')).toBe(true);
+
+      let rsyncAttempt = 0;
+      const retrySpawnMock = vi.fn((_cmd: string, _args: string[], _opts: { cwd: string }) => {
+        rsyncAttempt++;
+        const proc = new EventEmitter() as EventEmitter & { stderr: EventEmitter };
+        proc.stderr = new EventEmitter();
+        queueMicrotask(() => {
+          if (rsyncAttempt === 1) {
+            proc.stderr.emit('data', Buffer.from('rsync: read error: Connection reset by peer\n'));
+            proc.emit('close', 23);
+          } else {
+            proc.emit('close', 0);
+          }
+        });
+        return proc;
+      });
+      const retryRes = await syncR2Assets.runRsyncCommandWithRetry(
+        { manifestFile: 'manifest.txt', cwd: process.cwd(), spawnFn: retrySpawnMock },
+        { maxRetries: 2, baseDelayMs: 0 }
+      );
+      expect(rsyncAttempt).toBe(2);
+      expect(retryRes.exitCode).toBe(0);
+
+      // 4b) try ... finally flushes missing-asset state even if a later batch throws
+      let tick = 0;
+      const batchThrowPuts: string[] = [];
+      let spawnBatchCall = 0;
+      const abortOnSecondBatchSpawn = vi.fn((_cmd: string, _args: string[], opts: { cwd: string }) => {
+        spawnBatchCall++;
+        const proc = new EventEmitter() as EventEmitter & { stderr: EventEmitter };
+        proc.stderr = new EventEmitter();
+        queueMicrotask(() => {
+          if (spawnBatchCall === 1) {
+            fs.mkdirSync(path.join(opts.cwd, '1342'), { recursive: true });
+            fs.writeFileSync(path.join(opts.cwd, '1342', 'pg1342.txt'), 'Pride body', 'utf8');
+            // 1342 cover intentionally missing -> dirties syncState
+            proc.emit('close', 23);
+          } else {
+            proc.stderr.emit('data', Buffer.from('rsync: read error: Connection reset by peer\n'));
+            proc.emit('close', 12);
+          }
+        });
+        return proc;
+      });
+      const batchAbortFetch = vi.fn(async (url: string, init: RequestInit = {}) => {
+        const parsed = new URL(url);
+        const method = String(init.method || 'GET').toUpperCase();
+        if (method === 'GET' && parsed.searchParams.has('prefix')) {
+          return makeTextResponse(200, '<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>');
+        }
+        if (method === 'GET') return makeTextResponse(404, 'Not Found');
+        if (method === 'PUT') {
+          batchThrowPuts.push(parsed.pathname);
+          return makeTextResponse(200, '');
+        }
+        return makeTextResponse(404, 'Unhandled');
+      });
+
+      await expect(
+        syncR2Assets.runR2AssetSync(
+          { ids: [1342, 84], source: 'rsync', maxMinutes: 10 },
+          {
+            env: TEST_R2_ENV,
+            fetchFn: batchAbortFetch,
+            spawnFn: abortOnSecondBatchSpawn,
+            rsyncBatchSize: 1,
+            rsyncRetries: 0,
+            rsyncRetryDelayMs: 0,
+            nowFn: () => {
+              tick += 1000;
+              return 1_700_000_000_000 + tick;
+            },
+            logger: { log: vi.fn(), warn: vi.fn(), error: vi.fn() },
+          }
+        )
+      ).rejects.toThrow(/exited with code 12/);
+      expect(batchThrowPuts).toContain('/bookarium-test-bucket/books/1342.txt.gz');
+      expect(batchThrowPuts).toContain('/bookarium-test-bucket/_meta/r2-sync-state.json.gz');
+
+      // 5) runWithConcurrency bounds worker parallelism & parseCliArgs validates new flags
+      let activeWorkers = 0;
+      let peakWorkers = 0;
+      const tasks = Array.from({ length: 10 }, () => async () => {
+        activeWorkers++;
+        peakWorkers = Math.max(peakWorkers, activeWorkers);
+        await new Promise((r) => setTimeout(r, 5));
+        activeWorkers--;
+      });
+      await syncR2Assets.runWithConcurrency(tasks, 3);
+      expect(peakWorkers).toBeLessThanOrEqual(3);
+
+      const parsedArgs = syncR2Assets.parseCliArgs([
+        '--catalog-source=supabase',
+        '--concurrency=4',
+        '--purge-tags-file=out-tags.txt',
+      ]);
+      expect(parsedArgs.catalogSource).toBe('supabase');
+      expect(parsedArgs.concurrency).toBe(4);
+      expect(parsedArgs.purgeTagsFile).toBe('out-tags.txt');
+      expect(() => syncR2Assets.parseCliArgs(['--concurrency=99'])).toThrow(/Invalid --concurrency/);
+      expect(() => syncR2Assets.parseCliArgs(['--catalog-source=invalid'])).toThrow(/Unsupported --catalog-source/);
+
+      // 6) --force overwrite emits purge tags file, preserves remote state even on readFailed, and enforces failure-ratio exit rules
+      const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-r2-hardening-'));
+      try {
+        const purgeFile = path.join(tmpDir, 'r2-tags.txt');
+        const forceFetch = vi.fn(async (url: string, init: RequestInit = {}) => {
+          const parsed = new URL(url);
+          const method = String(init.method || 'GET').toUpperCase();
+          if (parsed.hostname.endsWith('.r2.cloudflarestorage.com')) {
+            if (method === 'GET' && parsed.searchParams.get('prefix') === 'books/') {
+              return makeTextResponse(
+                200,
+                '<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>books/1342.txt.gz</Key><Size>100</Size></Contents></ListBucketResult>'
+              );
+            }
+            if (method === 'GET' && parsed.searchParams.get('prefix') === 'covers/') {
+              return makeTextResponse(200, '<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>');
+            }
+            if (method === 'GET') {
+              return makeTextResponse(503, 'Service Unavailable');
+            }
+            return makeTextResponse(200, '');
+          }
+          if (url.includes('1342/pg1342.txt')) {
+            return makeTextResponse(200, 'Updated full text content');
+          }
+          return makeTextResponse(404, 'Not Found');
+        });
+
+        const warnSpy = vi.fn();
+        const mockSupabase = {
+          from: () => ({
+            select: () => ({
+              gt: (_col: string, cursorId: number) => ({
+                order: () => ({
+                  limit: async () => ({
+                    data:
+                      cursorId === 0
+                        ? [
+                            {
+                              id: 1342,
+                              title: 'Pride and Prejudice',
+                              copyright: false,
+                              media_type: 'Text',
+                              download_count: 55000,
+                            },
+                          ]
+                        : [],
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+
+        const forceSummary = await syncR2Assets.runR2AssetSync(
+          {
+            catalogSource: 'supabase',
+            force: true,
+            source: 'https',
+            delayMin: 0,
+            delayMax: 0,
+            purgeTagsFile: purgeFile,
+          },
+          {
+            env: TEST_R2_ENV,
+            supabase: mockSupabase,
+            fetchFn: forceFetch,
+            sleepFn: async () => {},
+            logger: { log: vi.fn(), warn: warnSpy, error: vi.fn() },
+          }
+        );
+
+        expect(forceSummary.catalogSource).toBe('supabase');
+        expect(forceSummary.textsUploaded).toBe(1);
+        expect(forceSummary.purgeTags).toEqual(['book-content']);
+        expect(fs.readFileSync(purgeFile, 'utf8')).toBe('book-content');
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read existing _meta/r2-sync-state.json.gz'));
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+
+      expect(
+        syncR2Assets.shouldFailR2SyncRun({
+          skippedUnconfigured: false,
+          failedCount: 2,
+          textsUploaded: 0,
+          coversUploaded: 0,
+          textsDeleted: 0,
+          coversDeleted: 0,
+        })
+      ).toBe(true);
+      expect(
+        syncR2Assets.shouldFailR2SyncRun({
+          skippedUnconfigured: false,
+          failedCount: 5,
+          textsUploaded: 4,
+          coversUploaded: 0,
+          textsDeleted: 0,
+          coversDeleted: 0,
+        })
+      ).toBe(true);
+      expect(
+        syncR2Assets.shouldFailR2SyncRun({
+          skippedUnconfigured: false,
+          failedCount: 1,
+          textsUploaded: 9,
+          coversUploaded: 0,
+          textsDeleted: 0,
+          coversDeleted: 0,
+        })
+      ).toBe(false);
+    });
   });
 });

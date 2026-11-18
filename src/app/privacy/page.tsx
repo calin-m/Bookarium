@@ -332,12 +332,15 @@ export default function PrivacyPage() {
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
-                <span className="text-xs font-mono font-bold text-foreground block">Cloudflare Turnstile</span>
+                <span className="text-xs font-mono font-bold text-foreground block">Cloudflare R2 &amp; Turnstile</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
-                  Privacy-preserving, non-tracking bot protection for authentication forms with zero tracking cookies or user profiling dossiers.
+                  Self-hosted Cloudflare R2 object storage serving public domain texts/covers via same-origin routes, plus privacy-preserving Turnstile auth bot protection with zero tracking cookies.
                 </p>
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground font-sans pt-1">
+              <strong className="text-foreground">Project Gutenberg Archive Source:</strong> Unabridged public domain metadata and works originate from Project Gutenberg and are synced offline into Bookarium&apos;s Supabase catalog and private Cloudflare R2 storage so live reader sessions never transmit requests to Gutenberg servers.
+            </p>
           </section>
         </div>
 

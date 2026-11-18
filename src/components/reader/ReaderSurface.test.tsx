@@ -85,7 +85,7 @@ describe('ReaderSurface', () => {
     render(<ReaderSurface {...defaultProps} isLoading={true} />);
 
     expect(
-      screen.getByText(/Fetching Masterwork from Project Gutenberg Mirror/i)
+      screen.getByText(/Fetching Masterwork from Bookarium Archive/i)
     ).toBeInTheDocument();
   });
 

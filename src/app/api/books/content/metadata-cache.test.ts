@@ -224,15 +224,16 @@ describe('metadata-cache', () => {
   });
 
   it('stores, refreshes, expires, and caps bookContentLruCache entries', () => {
-    setCachedBookContent(1342, '', 'gutenberg-mirror');
+    setCachedBookContent(1342, '', 'r2');
     expect(getCachedBookContent(1342)).toBeUndefined();
 
-    setCachedBookContent(1342, 'A'.repeat(1_850_000), 'gutenberg-mirror');
+    setCachedBookContent(1342, 'A'.repeat(1_850_000), 'r2');
     expect(getCachedBookContent(1342)).toBeUndefined();
 
     setCachedBookContent(1342, 'Pride and Prejudice text', 'supabase');
-    setCachedBookContent(1342, 'Pride and Prejudice updated text', 'gutenberg-mirror');
+    setCachedBookContent(1342, 'Pride and Prejudice updated text', 'r2');
     expect(getCachedBookContent(1342)?.text).toBe('Pride and Prejudice updated text');
+    expect(getCachedBookContent(1342)?.source).toBe('r2');
 
     clearBookContentCache();
     expect(getCachedBookContent(1342)).toBeUndefined();

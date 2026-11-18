@@ -179,6 +179,7 @@ const astParser = require('./ast-parser.js') as {
   extractSqlSchemaEntities: (schemaSql: string) => SqlSchemaEntities;
   extractTestsFromSourceAst: (content: string) => string[];
   getDeterministicTextOrBinaryBytes: (absPath: string, relPath: string) => number;
+  validateMermaidDiagramsInMarkdown: (markdownText: string, relPath?: string) => string[];
 };
 
 const tempDirs: string[] = [];
@@ -652,7 +653,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
     const catalog = astParser.extractBehavioralContractsCatalog(repoSrc, repoRoot);
     expect(catalog.parseErrors).toEqual([]);
     expect(catalog.validationIssues).toEqual([]);
-    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(65);
+    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(64);
 
     const byFile = new Map(catalog.modules.map((m) => [m.file, m]));
     const tier1Set = new Set(astParser.TIER_1_CONTRACTED_MODULES);
@@ -832,5 +833,50 @@ describe('ast-parser architectural & SQL verification engine', () => {
 
     fs.writeFileSync(swAbs, 'const CACHE_NAME = "v1";\nconsole.log(CACHE_NAME);\n', 'utf-8');
     expect(astParser.getDeterministicTextOrBinaryBytes(swAbs, 'public/sw.js')).toBe(lfBytes);
+  });
+
+  it('validates live Mermaid diagrams in docs/ARCHITECTURE.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations', () => {
+    const repoRoot = path.resolve(__dirname, '../..');
+    for (const relDoc of ['docs/ARCHITECTURE.md', 'README.md', 'docs/GUTENBERG_PARSER.md', 'docs/INFRASTRUCTURE.md']) {
+      const content = fs.readFileSync(path.join(repoRoot, relDoc), 'utf-8');
+      expect(astParser.validateMermaidDiagramsInMarkdown(content, relDoc)).toEqual([]);
+    }
+  });
+
+  it('rejects parent-child subgraph cycles, compound cycles, unquoted edge parens, HTML-tag swallowing, and orphan nodes in Mermaid diagrams', () => {
+    const brokenMarkdown = [
+      '# Broken Diagrams',
+      '',
+      '```mermaid',
+      'flowchart TD',
+      '    subgraph UI ["Presentation"]',
+      '        Header["Header"]',
+      '        Body["Body (with HTML <id> and <>)"]',
+      '    end',
+      '    subgraph Backend ["Server"]',
+      '        Db["DB"]',
+      '    end',
+      '    Orphan["Disconnected"]',
+      '    Header --> UI',
+      '    Body -->|Tier 1 (Optional)| Db',
+      '    Db --> Body',
+      '    Backend --> UI',
+      '```',
+      '',
+      '```mermaid',
+      'sequenceDiagram',
+      '    actor User',
+      '    User->>GhostActor: Missing participant',
+      '```',
+    ].join('\n');
+
+    const issues = astParser.validateMermaidDiagramsInMarkdown(brokenMarkdown, 'broken.md');
+    expect(issues.some((msg: string) => msg.includes('Fatal parent-child subgraph cycle'))).toBe(true);
+    expect(issues.some((msg: string) => msg.includes('Unquoted Mermaid edge label |Tier 1 (Optional)|'))).toBe(true);
+    expect(issues.some((msg: string) => msg.includes('HTML-like tag <id>'))).toBe(true);
+    expect(issues.some((msg: string) => msg.includes('Empty "<>" operator'))).toBe(true);
+    expect(issues.some((msg: string) => msg.includes('Compound subgraph cycle between "Backend" and "UI"'))).toBe(true);
+    expect(issues.some((msg: string) => msg.includes('Disconnected orphan node "Orphan"'))).toBe(true);
+    expect(issues.some((msg: string) => msg.includes('Undeclared sequence actor "GhostActor"'))).toBe(true);
   });
 });

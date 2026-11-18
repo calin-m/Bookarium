@@ -11,7 +11,7 @@ describe('ReaderLoadingView Component', () => {
 
     expect(screen.getByTestId('reader-loading-view')).toBeInTheDocument();
     expect(
-      screen.getByText(/Fetching Masterwork from Project Gutenberg Mirror/i)
+      screen.getByText(/Fetching Masterwork from Bookarium Archive/i)
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Parsing typography AST, chapters, and volume pagination/i)

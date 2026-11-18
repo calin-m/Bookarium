@@ -6,9 +6,9 @@
  * and dependency topologies with mathematical zero-drift.
  *
  * @module scripts/lib/ast-parser
- * @scope Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, and `17`-map generator orphan checks.
+ * @scope Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, `17`-map generator orphan checks, and Markdown Mermaid diagram syntax/cycle validation.
  * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
- * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
+ * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes (`validateMermaidDiagramsInMarkdown`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
  * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
  * @adr ADR-078, ADR-079, ADR-081
  */
@@ -1257,7 +1257,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'handlers',
       file: 'src/mocks/handlers.ts',
       layer: 'MSW v2 HTTP Interception Handlers',
-      role: 'Canonical Mock Service Worker v2 HTTP request handlers, fail-closed `handleUnhandledMswRequest` guard (blocking unmocked external/Supabase URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, `/api/books/translations`, and allowlisted HTTPS Project Gutenberg mirrors for zero-network deterministic testing.',
+      role: 'Canonical Mock Service Worker v2 HTTP request handlers, fail-closed `handleUnhandledMswRequest` guard (blocking unmocked external/PG/Supabase URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, and `/api/books/translations` for zero-network deterministic testing.',
     },
     {
       name: 'server',
@@ -1309,7 +1309,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'App Router Pages, Layouts & API Routes',
       scope: '`src/app/**/*.test.{ts,tsx}`',
       match: (f) => f.startsWith('src/app/'),
-      strategy: 'NextRequest/NextResponse edge route verification, MSW v2 upstream failover, SSR metadata, and full-page user journeys.',
+      strategy: 'NextRequest/NextResponse edge route verification, fail-closed R2/DB outage testing, SSR metadata, and full-page user journeys.',
     },
     {
       id: 'components',
@@ -1337,7 +1337,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Domain Engines, Security Primitives & Gutenberg AST',
       scope: '`src/lib/**/*.test.ts`',
       match: (f) => f.startsWith('src/lib/'),
-      strategy: 'Pure computational & security verification (multi-jurisdictional copyright, SSRF/redirect sanitizers, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator).',
+      strategy: 'Pure computational & security verification (multi-jurisdictional copyright, R2 SigV4 endpoint & SSRF guards, open-redirect sanitizer, rate limiter, Gutenberg AST segmentation/reflow/pagination, interval annotator).',
     },
     {
       id: 'config',
@@ -1358,7 +1358,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Hermetic Network Mocks & Test Interception',
       scope: '`src/mocks/*.test.ts`',
       match: (f) => f.startsWith('src/mocks/'),
-      strategy: 'Fail-closed MSW v2 request/response handler unit contracts, Project Gutenberg mirror fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
+      strategy: 'Fail-closed MSW v2 request/response handler unit contracts, internal route fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
     },
     {
       id: 'scripts',
@@ -1567,12 +1567,12 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     },
     NEXT_PUBLIC_SUPABASE_URL: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
-      fallback: '100% Zero-API-Key Guest Mode: Catalog degrades safely to the bundled Curated Archive fallback (`curated-fallback.ts`); collections persist in `localStorage` & `IndexedDB`.',
+      fallback: 'Offline-First Guest Preview & Tests: Catalog degrades safely to the bundled Curated Archive fallback (`curated-fallback.ts`); offline books and personal collections persist locally in `localStorage` & `IndexedDB` (full 78k+ online catalog & cloud sync require a Supabase project).',
       purpose: 'Supabase project URL for PostgreSQL catalog queries (`public.books`), FRBR translations, SSR auth cookies, and 7-store cloud sync.',
     },
     NEXT_PUBLIC_SUPABASE_ANON_KEY: {
       scope: 'Public Browser & Edge SSR (`NEXT_PUBLIC_*`)',
-      fallback: '100% Zero-API-Key Guest Mode: Cloud sync and auth modals gracefully disable live network calls when unconfigured.',
+      fallback: 'Offline-First Guest Preview & Tests: Cloud sync and auth modals gracefully disable live network calls when unconfigured.',
       purpose: 'Public anonymous JWT key scoped strictly by PostgreSQL Row-Level Security (`ENABLE ROW LEVEL SECURITY` across all 14 tables).',
     },
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: {
@@ -1632,22 +1632,22 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     },
     R2_ACCOUNT_ID: {
       scope: 'Server-Only & CI Runtime Environment Variable (Vercel, GitHub Actions Secrets & `.env.local`)',
-      fallback: 'When any `R2_*` variable is omitted, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback), plain text degrades to zero-key Gutenberg mirrors (`Rule 4`), CI R2 sync skips cleanly (`exit 0`), and `quotes:sync` falls back to PGLAF mirrors.',
+      fallback: 'Required in production for online covers and plain-text books. When any `R2_*` variable is omitted locally or in tests, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback), uncached plain text fails closed with `HTTP 503` (zero runtime PG fallback), CI R2 sync skips cleanly (`exit 0`), and `quotes:sync` uses PGLAF mirror fallback. *Operator note: Full 78k+ R2 storage exceeds Cloudflare R2 10 GB free-tier allowance.*',
       purpose: 'Cloudflare account identifier building the private R2 S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts` and `scripts/sync-r2-assets.js`.',
     },
     R2_BUCKET_NAME: {
       scope: 'Server-Only & CI Runtime Environment Variable (Vercel, GitHub Actions Secrets & `.env.local`)',
-      fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
+      fallback: 'Omitted in local UI/test runs (`isR2Configured() === false`); online cover/text endpoints fail closed (`404`/`503`) until R2 is configured.',
       purpose: 'Private Cloudflare R2 bucket name (`bookarium-assets`) storing `covers/<id>.jpg`, `books/<id>.txt.gz`, and `_meta/r2-sync-state.json.gz`.',
     },
     R2_ACCESS_KEY_ID: {
       scope: 'Server-Only & CI R2 S3 Credential (Vercel Read-Only Recommended, GitHub Secrets Read/Write & `.env.local`)',
-      fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
+      fallback: 'Omitted in local UI/test runs (`isR2Configured() === false`); online cover/text endpoints fail closed (`404`/`503`) until R2 is configured.',
       purpose: 'S3 API access key ID used strictly server-side and in CI/CLI pipelines for AWS SigV4 signed `GET` (`r2-client.ts`, `sync-featured-quotes.js`) and `ListObjectsV2`/`PutObject`/`DeleteObject` (`sync-r2-assets.js`).',
     },
     R2_SECRET_ACCESS_KEY: {
       scope: 'Server-Only & CI Signing Secret (Vercel Read-Only Recommended, GitHub Secrets Read/Write & `.env.local`)',
-      fallback: 'Omitted in zero-key local clones (`isR2Configured() === false`).',
+      fallback: 'Omitted in local UI/test runs (`isR2Configured() === false`); online cover/text endpoints fail closed (`404`/`503`) until R2 is configured.',
       purpose: 'HMAC-SHA256 secret signing AWS Signature V4 requests to private Cloudflare R2 storage inside `src/lib/r2-client.ts` and `scripts/sync-r2-assets.js`.',
     },
     NODE_ENV: {
@@ -2471,7 +2471,6 @@ const TIER_2_CONTRACTED_MODULES = [
   'src/lib/auth-recovery.ts',
   'src/lib/redirect-sanitizer.ts',
   'src/lib/rate-limiter.ts',
-  'src/app/api/books/content/url-validator.ts',
 ];
 
 const TIER_3_CONTRACTED_MODULES = [
@@ -3396,6 +3395,391 @@ function findOrphanedGeneratorLookupKeys(rootDir, srcDir, options = {}) {
   );
 }
 
+const MERMAID_RESERVED_NODE_IDS = new Set([
+  'end',
+  'subgraph',
+  'graph',
+  'flowchart',
+  'direction',
+  'classDef',
+  'class',
+  'style',
+  'linkStyle',
+  'click',
+  'call',
+  'default',
+]);
+
+/**
+ * Validates fenced ```mermaid diagrams in Markdown for render-breaking syntax,
+ * HTML-tag swallowing hazards, parent/compound subgraph cycles, undeclared nodes/actors,
+ * and strictly disconnected orphan nodes.
+ */
+function validateMermaidDiagramsInMarkdown(markdownText, relPath = 'markdown') {
+  const violations = [];
+  if (typeof markdownText !== 'string' || markdownText.length === 0) {
+    return violations;
+  }
+
+  const lines = markdownText.split(/\r?\n/);
+  let inBlock = false;
+  let blockStart = 0;
+  let blockLines = [];
+  let blockIdx = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!inBlock && /^```mermaid\s*$/.test(line)) {
+      inBlock = true;
+      blockStart = i + 1;
+      blockLines = [];
+      blockIdx++;
+      continue;
+    }
+    if (inBlock && /^```\s*$/.test(line)) {
+      inBlock = false;
+      inspectMermaidBlock(relPath, blockIdx, blockStart, blockLines, violations);
+      continue;
+    }
+    if (inBlock) {
+      blockLines.push({ lineNo: i + 1, text: line });
+    }
+  }
+
+  if (inBlock) {
+    violations.push(`${relPath}:${blockStart} Unclosed \`\`\`mermaid code fence.`);
+  }
+
+  return violations;
+}
+
+function inspectMermaidLabelText(relPath, blockIdx, lineNo, context, rawText, violations) {
+  if (!rawText) return;
+  const htmlTags = rawText.match(/<[a-zA-Z][a-zA-Z0-9:_-]*>/g);
+  if (htmlTags) {
+    violations.push(
+      `${relPath}:${lineNo} (Diagram #${blockIdx}) HTML-like tag ${htmlTags.join(', ')} in ${context} will be stripped under htmlLabels:true (escape with &lt;...&gt; or use {name}/*.ext).`
+    );
+  }
+  if (/<>/.test(rawText)) {
+    violations.push(
+      `${relPath}:${lineNo} (Diagram #${blockIdx}) Empty "<>" operator in ${context} under htmlLabels:true (use "!=" or "≠").`
+    );
+  }
+  const quoteCount = (rawText.match(/"/g) || []).length;
+  if (quoteCount % 2 !== 0) {
+    violations.push(
+      `${relPath}:${lineNo} (Diagram #${blockIdx}) Unbalanced double quotes in ${context}.`
+    );
+  }
+}
+
+function inspectMermaidBlock(relPath, blockIdx, startLine, rows, violations) {
+  const firstNonEmpty = rows.find((r) => r.text.trim() && !r.text.trim().startsWith('%%'));
+  if (!firstNonEmpty) {
+    violations.push(`${relPath}:${startLine} (Diagram #${blockIdx}) Empty Mermaid diagram block.`);
+    return;
+  }
+
+  const header = firstNonEmpty.text.trim();
+  const isFlow = /^(?:flowchart|graph)\s+(?:TD|TB|BT|RL|LR)\s*$/.test(header);
+  const isSeq = /^sequenceDiagram\s*$/.test(header);
+  const isOtherValid = /^(?:stateDiagram(?:-v2)?|classDiagram|erDiagram|xychart-beta)\s*$/.test(header);
+
+  if (!isFlow && !isSeq && !isOtherValid) {
+    violations.push(
+      `${relPath}:${firstNonEmpty.lineNo} (Diagram #${blockIdx}) Invalid Mermaid diagram header "${header}".`
+    );
+    return;
+  }
+
+  if (isFlow) {
+    const sgStack = [];
+    const subgraphs = new Map();
+    const nodes = new Map();
+    const edges = [];
+
+    for (const { lineNo, text } of rows) {
+      if (lineNo === firstNonEmpty.lineNo) continue;
+      const t = text.trim();
+      if (!t || t.startsWith('%%')) continue;
+
+      const sgMatch = t.match(/^subgraph\s+([A-Za-z0-9_]+)(?:\s+\[(.*)\])?\s*$/);
+      if (sgMatch) {
+        const sgId = sgMatch[1];
+        if (MERMAID_RESERVED_NODE_IDS.has(sgId)) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Reserved Mermaid keyword "${sgId}" used as subgraph ID.`);
+        }
+        if (subgraphs.has(sgId) || nodes.has(sgId)) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Duplicate Mermaid identifier "${sgId}".`);
+        }
+        subgraphs.set(sgId, { parent: sgStack.length ? sgStack[sgStack.length - 1] : null, lineNo });
+        sgStack.push(sgId);
+        if (sgMatch[2]) {
+          inspectMermaidLabelText(relPath, blockIdx, lineNo, `subgraph "${sgId}"`, sgMatch[2], violations);
+        }
+        continue;
+      }
+
+      if (/^end$/.test(t)) {
+        if (!sgStack.length) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Unexpected "end" outside any subgraph.`);
+        } else {
+          sgStack.pop();
+        }
+        continue;
+      }
+
+      if (/^(?:direction|classDef|class|style|linkStyle|click)\s/.test(t)) continue;
+
+      const edgeMatch = t.match(
+        /^([A-Za-z0-9_]+)\s*(<-->|-->|<-\.->|-\.->|==>|---|-\.-)(?:\|([^|]*)\|)?\s*([A-Za-z0-9_]+)\s*$/
+      );
+      if (edgeMatch) {
+        const [, from, arrow, edgeLabel, to] = edgeMatch;
+        edges.push({ lineNo, from, arrow, to });
+        if (edgeLabel !== undefined) {
+          const trimmedLbl = edgeLabel.trim();
+          const isQuoted = trimmedLbl.startsWith('"') && trimmedLbl.endsWith('"');
+          if (!isQuoted && /[()[\]{}<>]/.test(trimmedLbl)) {
+            violations.push(
+              `${relPath}:${lineNo} (Diagram #${blockIdx}) Unquoted Mermaid edge label |${trimmedLbl}| contains parentheses/brackets/angle-brackets; wrap in |"..."| quotes.`
+            );
+          }
+          inspectMermaidLabelText(relPath, blockIdx, lineNo, `edge ${from} ${arrow} ${to}`, trimmedLbl, violations);
+        }
+        continue;
+      }
+
+      if (/(?:<-->|-->|<-\.->|-\.->|==>)/.test(t)) {
+        const parts = t.split(/\s*(?:<-->|-->|<-\.->|-\.->|==>)(?:\|(?:"[^"]*"|[^|]*)\|)?\s*/);
+        const ids = [];
+        for (const p of parts) {
+          const nm = p.trim().match(/^([A-Za-z0-9_]+)(.*)$/);
+          if (nm) {
+            ids.push(nm[1]);
+            if (MERMAID_RESERVED_NODE_IDS.has(nm[1])) {
+              violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Reserved Mermaid keyword "${nm[1]}" used as node ID.`);
+            }
+            if (nm[2] && !nodes.has(nm[1])) {
+              nodes.set(nm[1], { subgraph: sgStack.length ? sgStack[sgStack.length - 1] : null, lineNo });
+              inspectMermaidLabelText(relPath, blockIdx, lineNo, `node "${nm[1]}"`, nm[2], violations);
+            }
+          }
+        }
+        for (let k = 0; k < ids.length - 1; k++) {
+          edges.push({ lineNo, from: ids[k], arrow: '-->', to: ids[k + 1] });
+        }
+        continue;
+      }
+
+      const nodeMatch = t.match(/^([A-Za-z0-9_]+)\s*(\[.*|\(.*|\{.*)$/);
+      if (nodeMatch) {
+        const id = nodeMatch[1];
+        const rawLabel = nodeMatch[2];
+        if (MERMAID_RESERVED_NODE_IDS.has(id)) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Reserved Mermaid keyword "${id}" used as node ID.`);
+        }
+        if (subgraphs.has(id)) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Node ID "${id}" collides with subgraph ID.`);
+        }
+        if (nodes.has(id)) {
+          violations.push(
+            `${relPath}:${lineNo} (Diagram #${blockIdx}) Duplicate node declaration "${id}" (previously at L${nodes.get(id).lineNo}).`
+          );
+        }
+        nodes.set(id, { subgraph: sgStack.length ? sgStack[sgStack.length - 1] : null, lineNo });
+        inspectMermaidLabelText(relPath, blockIdx, lineNo, `node "${id}"`, rawLabel, violations);
+        continue;
+      }
+
+      violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Unrecognized Mermaid flowchart line: "${t}".`);
+    }
+
+    if (sgStack.length) {
+      violations.push(`${relPath}:${startLine} (Diagram #${blockIdx}) Unclosed subgraph(s): ${sgStack.join(', ')}.`);
+    }
+
+    const isDescendantOf = (entityId, targetSg) => {
+      let cur = nodes.has(entityId)
+        ? nodes.get(entityId).subgraph
+        : subgraphs.has(entityId)
+          ? subgraphs.get(entityId).parent
+          : null;
+      while (cur) {
+        if (cur === targetSg) return true;
+        cur = subgraphs.has(cur) ? subgraphs.get(cur).parent : null;
+      }
+      return false;
+    };
+
+    const getContainingChain = (entityId) => {
+      const chain = [];
+      let cur = subgraphs.has(entityId)
+        ? entityId
+        : nodes.has(entityId)
+          ? nodes.get(entityId).subgraph
+          : null;
+      while (cur) {
+        chain.push(cur);
+        cur = subgraphs.has(cur) ? subgraphs.get(cur).parent : null;
+      }
+      return chain;
+    };
+
+    const directlyConnected = new Set();
+    const sgEdgePairs = new Set();
+
+    for (const e of edges) {
+      directlyConnected.add(e.from);
+      directlyConnected.add(e.to);
+
+      if (!nodes.has(e.from) && !subgraphs.has(e.from)) {
+        violations.push(`${relPath}:${e.lineNo} (Diagram #${blockIdx}) Undeclared edge source "${e.from}".`);
+      }
+      if (!nodes.has(e.to) && !subgraphs.has(e.to)) {
+        violations.push(`${relPath}:${e.lineNo} (Diagram #${blockIdx}) Undeclared edge target "${e.to}".`);
+      }
+
+      if (subgraphs.has(e.to) && isDescendantOf(e.from, e.to)) {
+        violations.push(
+          `${relPath}:${e.lineNo} (Diagram #${blockIdx}) Fatal parent-child subgraph cycle: "${e.from}" is nested inside "${e.to}" (${e.from} ${e.arrow} ${e.to}).`
+        );
+      } else if (subgraphs.has(e.from) && isDescendantOf(e.to, e.from)) {
+        violations.push(
+          `${relPath}:${e.lineNo} (Diagram #${blockIdx}) Fatal parent-child subgraph cycle: "${e.to}" is nested inside "${e.from}" (${e.from} ${e.arrow} ${e.to}).`
+        );
+      } else if (e.from === e.to && subgraphs.has(e.from)) {
+        violations.push(
+          `${relPath}:${e.lineNo} (Diagram #${blockIdx}) Subgraph self-loop "${e.from} ${e.arrow} ${e.to}".`
+        );
+      }
+
+      if (subgraphs.has(e.from) || subgraphs.has(e.to)) {
+        const fromChain = getContainingChain(e.from);
+        const toChain = getContainingChain(e.to);
+        for (const a of fromChain) {
+          for (const b of toChain) {
+            if (a !== b && !isDescendantOf(a, b) && !isDescendantOf(b, a)) {
+              sgEdgePairs.add(`${a}->${b}`);
+              if (e.arrow === '<-->' || e.arrow === '<-.->') {
+                sgEdgePairs.add(`${b}->${a}`);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Also record child-to-child inter-subgraph edges to catch opposing compound subgraph cycles
+    for (const e of edges) {
+      if (!subgraphs.has(e.from) && !subgraphs.has(e.to)) {
+        const fromChain = getContainingChain(e.from);
+        const toChain = getContainingChain(e.to);
+        for (const a of fromChain) {
+          for (const b of toChain) {
+            if (a !== b && !isDescendantOf(a, b) && !isDescendantOf(b, a)) {
+              if (sgEdgePairs.has(`${b}->${a}`)) {
+                const [pairA, pairB] = [a, b].sort(compareCodepoint);
+                violations.push(
+                  `${relPath}:${e.lineNo} (Diagram #${blockIdx}) Compound subgraph cycle between "${pairA}" and "${pairB}" (mix of subgraph-level and child-level opposing edges).`
+                );
+              }
+            }
+          }
+        }
+      } else {
+        const fromChain = getContainingChain(e.from);
+        const toChain = getContainingChain(e.to);
+        for (const a of fromChain) {
+          for (const b of toChain) {
+            if (a !== b && sgEdgePairs.has(`${a}->${b}`) && sgEdgePairs.has(`${b}->${a}`)) {
+              const [pairA, pairB] = [a, b].sort(compareCodepoint);
+              violations.push(
+                `${relPath}:${e.lineNo} (Diagram #${blockIdx}) Bidirectional subgraph-level compound cycle between "${pairA}" and "${pairB}".`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    const hasConnectedSubgraph = (sgId) => {
+      let cur = sgId;
+      while (cur) {
+        if (directlyConnected.has(cur)) return true;
+        cur = subgraphs.has(cur) ? subgraphs.get(cur).parent : null;
+      }
+      return false;
+    };
+
+    for (const [id, info] of nodes.entries()) {
+      if (!directlyConnected.has(id) && !hasConnectedSubgraph(info.subgraph)) {
+        violations.push(
+          `${relPath}:${info.lineNo} (Diagram #${blockIdx}) Disconnected orphan node "${id}" with 0 edges and no connected parent subgraph.`
+        );
+      }
+    }
+  } else if (isSeq) {
+    const actors = new Set();
+    let altDepth = 0;
+    for (const { lineNo, text } of rows) {
+      if (lineNo === firstNonEmpty.lineNo) continue;
+      const t = text.trim();
+      if (!t || t.startsWith('%%') || t === 'autonumber') continue;
+
+      const pm = t.match(/^(?:actor|participant)\s+([A-Za-z0-9_]+)(?:\s+as\s+(.*))?$/);
+      if (pm) {
+        if (actors.has(pm[1])) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Duplicate sequence participant "${pm[1]}".`);
+        }
+        actors.add(pm[1]);
+        if (pm[2]) {
+          inspectMermaidLabelText(relPath, blockIdx, lineNo, `participant "${pm[1]}"`, pm[2], violations);
+        }
+        continue;
+      }
+
+      if (/^(?:alt|opt|loop|par|critical|break)\b/.test(t)) {
+        altDepth++;
+        continue;
+      }
+      if (/^(?:else|and)\b/.test(t)) {
+        if (altDepth === 0) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Unexpected "${t}" outside alt/opt/par block.`);
+        }
+        continue;
+      }
+      if (/^end$/.test(t)) {
+        if (altDepth === 0) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Extra "end" in sequenceDiagram.`);
+        } else {
+          altDepth--;
+        }
+        continue;
+      }
+
+      const mm = t.match(/^([A-Za-z0-9_]+)\s*-+>{1,2}[+-]?\s*([A-Za-z0-9_]+)\s*:\s*(.*)$/);
+      if (mm) {
+        if (!actors.has(mm[1])) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Undeclared sequence actor "${mm[1]}".`);
+        }
+        if (!actors.has(mm[2])) {
+          violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Undeclared sequence actor "${mm[2]}".`);
+        }
+        inspectMermaidLabelText(relPath, blockIdx, lineNo, `sequence message ${mm[1]}->${mm[2]}`, mm[3], violations);
+        continue;
+      }
+
+      violations.push(`${relPath}:${lineNo} (Diagram #${blockIdx}) Unrecognized sequenceDiagram line: "${t}".`);
+    }
+
+    if (altDepth !== 0) {
+      violations.push(`${relPath}:${startLine} (Diagram #${blockIdx}) Unclosed sequenceDiagram alt/opt block.`);
+    }
+  }
+}
+
 module.exports = {
   compareCodepoint,
   getDeterministicTextOrBinaryBytes,
@@ -3418,6 +3802,7 @@ module.exports = {
   extractBehavioralContractsCatalog,
   extractObjectLiteralKeysByVariable,
   findOrphanedGeneratorLookupKeys,
+  validateMermaidDiagramsInMarkdown,
   extractComponentCatalog,
   extractStoreCatalog,
   extractApiAndHookCatalog,

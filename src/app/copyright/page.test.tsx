@@ -76,9 +76,10 @@ describe('CopyrightPage', () => {
     const termsOfUseLink = screen.getByRole('link', { name: /Terms of Use/i });
     expect(termsOfUseLink).toHaveAttribute('href', 'https://www.gutenberg.org/policy/terms_of_use.html');
 
-    expect(screen.getByText(/Zero Automated Scraping:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zero Live Visitor Traffic to Project Gutenberg:/i)).toBeInTheDocument();
     expect(screen.getByText(/Decoupled Architecture:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Bandwidth Shielding & Edge Caching:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Self-Hosted Edge Caching & Offline Storage:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Official Bulk Data Feeds & Targeted Mirroring:/i)).toBeInTheDocument();
     expect(screen.getByText(/pg_catalog\.csv\.gz/i)).toBeInTheDocument();
     expect(screen.getByText(/rdf-files\.tar\.bz2/i)).toBeInTheDocument();
     expect(screen.getByText(/<dcterms:rights>/i)).toBeInTheDocument();
