@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202726%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.23%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-263%20Suites%20%7C%202737%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2726 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2737 tests across 263 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -80,7 +80,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
 | 🚀 **CI/CD Pipeline Guide** | Developer runbook and pipeline execution workflows. | [`docs/PIPELINE_GUIDE.md`](docs/PIPELINE_GUIDE.md) |
-| ⚡ **GitHub Actions Operator Runbook** | Complete triggers, schedules, secrets, `workflow_dispatch` inputs, SHA pins, and local CLI parity for all 10 workflows. | [`docs/GITHUB_ACTIONS.md`](docs/GITHUB_ACTIONS.md) |
+| ⚡ **GitHub Actions Operator Runbook** | Complete triggers, schedules, secrets, `workflow_dispatch` inputs, SHA pins, and local CLI parity for all 11 workflows. | [`docs/GITHUB_ACTIONS.md`](docs/GITHUB_ACTIONS.md) |
 | 🏗️ **Infrastructure & Hosting Tiers** | Mode 0–2 deployment profiles, approximate Free vs. Paid provider quotas, and hard platform coding guardrails. | [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md) |
 | 🛠️ **Developer Maintenance Hub** | Local setup, environment configuration, and contributor commands. | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
 
@@ -111,10 +111,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.64)
+## 🛠️ Latest Improvements (v2.9.65)
 
-- **Era Birth-Year B-Tree Index (`supabase/schema.sql`)**: Added idempotent `idx_books_author_birth_year` on `public.books(min_author_birth_year)` paired with `idx_books_author_death_year` so multi-predicate century/era queries stay indexed across 78,000+ rows (`ADR-043`).
-- **Selective Planner Counts, Count-Free Backfill & Non-Retryable HTTP 504 Fail-Fast (`src/lib/catalog/supabase-provider.ts`, `src/app/api/books/route.ts`, `src/hooks/queries/useBooks.ts`)**: Switched filtered searches (`search`/`topic`/`languages`/`authorYearStart`/`authorYearEnd`) to `{ count: 'planned' }` and omitted `{ count }` on `backfillQuery` chunks (`{ includeCount: false }`) to eliminate duplicate PostgREST `pgrst_source_count` (`LIMIT 1001`) scans; mapped `SQLSTATE 57014` statement timeouts (`isStatementTimeoutError`) to non-retried sanitized `HTTP 504` (`no-store`) responses and guarded `useBooks` with `shouldRetryCatalogQuery` (`CatalogRequestError`) so `504`, `15,000ms` aborts, `400`, and `429` fail fast without retry storms (`ADR-043`).
+- **Manual R2 Content Integrity Workflow & CLI (`npm run r2:scan`, `scripts/scan-r2-content.js`, `.github/workflows/r2-content-scan.yml`, `scripts/scan-r2-content.test.ts`)**: Added an on-demand (`workflow_dispatch`, zero `npm ci`) read-only content audit scanning stored R2 `books/<id>.txt.gz` objects for configurable terms (`asiafilm` default) via linear `indexOf` matching (`CWE-1333` ReDoS-safe), bounded parallel streams (`32` default), `--dry-run` `ListObjectsV2`-only inventory counting (`0` Class B reads), `--ids` / `--limit` / `--max-minutes` controls, optional `--fail-on-match` gating, and sanitized `$GITHUB_STEP_SUMMARY` reports (`ADR-085`).
+- **Shared Zero-Dependency R2 SigV4 Transport (`scripts/lib/r2-sigv4.js`, `scripts/lib/r2-sigv4.test.ts`, `scripts/sync-r2-assets.js`)**: Extracted AWS Signature V4 signing, `assertValidR2ConfigIfPresent` secret checks, `isAllowedR2EndpointUrl` SSRF guards, single-pass `XML_ENTITY_MAP` XML decoding, paginated `listR2PrefixKeys`, and bounded `.txt.gz` reads from `sync-r2-assets.js` into a shared zero-dependency module (`ADR-085`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -311,6 +311,7 @@ flowchart TD
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
         SyncR2["🔄 R2 Delta Asset Sync\n(scripts/sync-r2-assets.js • .github/workflows/r2-sync.yml)"]
+        ScanR2["🔍 R2 Content Integrity Scan\n(scripts/scan-r2-content.js • .github/workflows/r2-content-scan.yml)"]
         SyncTranslations["🔄 Relational Translations Sync\n(scripts/ingest-translations.js • .github/workflows/translations-sync.yml)"]
         SyncQuotes["🔄 Featured Quotes Sync Engine\n(scripts/sync-featured-quotes.js • .github/workflows/quotes-sync.yml)"]
         PurgeVercel["🧹 Edge Cache Tag Purge CLI\n(scripts/purge-vercel-cache.js • .github/workflows/cache-purge.yml)"]
@@ -458,6 +459,7 @@ flowchart TD
     SyncTranslations -->|"Weekly & On-Demand Ingestion"| SupabaseCloud
     SyncTranslations -.->|"Wikidata P2034 Query & Fallback Snapshot"| WikidataSPARQL
     SyncR2 <-->|"ListObjectsV2 / PutObject / DeleteObject & Merged 90d State"| CloudflareR2
+    ScanR2 -.->|"Read-Only ListObjectsV2 / .txt.gz Term Audit"| CloudflareR2
     SyncR2 -.->|"aleph.gutenberg.org rsync --files-from / PGLAF HTTPS Fallback"| GutenbergCDN
     SyncQuotes -->|"Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert"| SupabaseCloud
     SyncQuotes -.->|"R2 books/{id}.txt.gz First (0s Delay) when R2 Configured"| CloudflareR2
@@ -604,7 +606,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 | `public.books_search_vector_trigger()` | Trigger | Maintains `search_vector` across `title`, `subjects`, and `bookshelves` with an `IS DISTINCT FROM` guard that skips recomputation on `download_count`-only updates. |
 
 ### Step 3: Populate Public Domain Catalog & Private Cloudflare R2 Storage
-To activate the dedicated PostgreSQL book catalog, pre-seed private Cloudflare R2 assets (`books/<id>.txt.gz`, `covers/<id>.jpg`), and bypass third-party rate limits, run the ingestion pipelines below (see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for all 10 workflow triggers, secrets, `workflow_dispatch` inputs, `catalog-cache` setup, security scans, and manual tag purging, plus [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md#-autonomous-ingestion-pipelines--telemetry-reference) for console telemetry banners and run-report formats):
+To activate the dedicated PostgreSQL book catalog, pre-seed private Cloudflare R2 assets (`books/<id>.txt.gz`, `covers/<id>.jpg`), and bypass third-party rate limits, run the ingestion pipelines below (see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for all 11 workflow triggers, secrets, `workflow_dispatch` inputs, `catalog-cache` setup, security scans, and manual tag purging, plus [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md#-autonomous-ingestion-pipelines--telemetry-reference) for console telemetry banners and run-report formats):
 
 #### Option A: Autonomous Full-Catalog Sync (78,000+ Titles — Recommended)
 ```bash
@@ -625,9 +627,10 @@ npm run catalog:sync -- --cache-file=gutenberg-catalog-cache.json.gz --diff-outp
 >      3. **Relational Translations Sync (`translations:sync`, `continue-on-error: true` fault-isolated)**: Queries Wikidata `P2034` (`45,000ms` socket timeout with offline snapshot fallback), runs retry-hardened FK pre-checks (`filterValidCatalogBookIds`) + bisected `upsertTranslationBatchesWithRetry` batches into `public.book_translations`.
 >      4. **Featured Quotes Delta Sync (`quotes:sync --source=auto --mirrors=pglaf,aleph,readingroo --diff-file=quote-diff.json`, `continue-on-error: true` fault-isolated)**: Consumes `quote-diff.json`, reads `books/<id>.txt.gz` from private R2 first (0s delay) ahead of 3-mirror PG fallback (`8.0s–16.0s` float pacing) to ingest `10–16` multi-quote spreads across the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)**, prunes Option-A `1-for-1` out-of-window surplus up to `2,000` books per run (`--max-prune`), publishes `From R2`, `Out-of-Window (Pruned)` & `🧹 Pruned` telemetry (`$GITHUB_STEP_SUMMARY`), and evaluates infra failure thresholds via `shouldFailFeaturedQuotesRun`.
 >      5. **Vercel Edge Cache Purge (`node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations[,r2-tags]`) & Final Outcome Verification**: Runs when `dry_run != 'true'` and catalog/translations/quotes succeeded (`if: always()`), followed by final step outcome verification so transient downstream failures surface clearly without blocking cache purges.
-> 2. **Automated `catalog-cache` Tag Sync & Manual Utility Workflows ([`catalog-tag-sync.yml`](.github/workflows/catalog-tag-sync.yml), [`r2-sync.yml`](.github/workflows/r2-sync.yml), [`translations-sync.yml`](.github/workflows/translations-sync.yml), [`quotes-sync.yml`](.github/workflows/quotes-sync.yml) & [`cache-purge.yml`](.github/workflows/cache-purge.yml))**:
+> 2. **Automated `catalog-cache` Tag Sync & Manual Utility Workflows ([`catalog-tag-sync.yml`](.github/workflows/catalog-tag-sync.yml), [`r2-sync.yml`](.github/workflows/r2-sync.yml), [`r2-content-scan.yml`](.github/workflows/r2-content-scan.yml), [`translations-sync.yml`](.github/workflows/translations-sync.yml), [`quotes-sync.yml`](.github/workflows/quotes-sync.yml) & [`cache-purge.yml`](.github/workflows/cache-purge.yml))**:
 >    - [`catalog-tag-sync.yml`](.github/workflows/catalog-tag-sync.yml) (`push` to `master` + `workflow_dispatch`) advances `refs/tags/catalog-cache` in place without touching `gutenberg-catalog-cache.json.gz` or `.sha256` (so GitHub Release `Source code (zip)`/`(tar.gz)` stay current alongside code pushes, while catalog snapshots only update on live `catalog-sync.yml` runs).
 >    - [`r2-sync.yml`](.github/workflows/r2-sync.yml) provides a manual `workflow_dispatch` workflow (`90m` timeout / `max-minutes=75`) supporting selectable `catalog_source` (`auto`, `snapshot`, `supabase`) for bulk initial R2 seeding or ID repairs via `rsync` or `https`, conditionally purging `covers`/`book-content` tags only when `r2-purge-tags.txt` is non-empty.
+>    - [`r2-content-scan.yml`](.github/workflows/r2-content-scan.yml) provides a zero-`npm ci` manual `workflow_dispatch` audit (`60m` timeout) scanning stored `books/<id>.txt.gz` objects for configurable terms (`asiafilm` default) with `--dry-run` `0`-Class-B previews and `$GITHUB_STEP_SUMMARY` reports.
 >    - Configured as `workflow_dispatch`-only manual utilities (no overlapping cron schedules and no 60-day GitHub Actions inactivity warnings) so you can trigger targeted translation updates or custom quote backfills (`text_source`: `auto` | `r2` | `mirrors`, `limit`, `ids`, `mirror_pglaf`/`mirror_aleph`/`mirror_readingroo`, `force_refresh`, `dry_run`), each automatically invalidating its corresponding Vercel Edge cache tag (`translations` or `quotes`) when `dry_run != 'true'`.
 >    - [`cache-purge.yml`](.github/workflows/cache-purge.yml) (`Manual Cache Purge`) provides a zero-`npm ci` standalone workflow with unchecked-by-default tag checkboxes (`purge_catalog`, `purge_quotes`, `purge_translations`, `purge_covers`, `purge_book_content` requiring at least one selected via fail-fast validation), `target` (`production` / `preview`), and `dry_run`.
 
@@ -666,6 +669,8 @@ npm run r2:sync -- --dry-run --limit=100                 # Inspect R2 inventory 
 npm run r2:sync -- --ids=1342,84 --source=https --force   # Upload/refresh specific classics via PGLAF HTTPS
 npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=rsync --max-minutes=25
 npm run r2:sync -- --source=wsl-rsync --max-minutes=25    # Direct Supabase PK scan + WSL rsync on Windows
+npm run r2:scan -- --dry-run                             # Count stored R2 books (0 Class B reads)
+npm run r2:scan                                          # Scan stored books/*.txt.gz for 'asiafilm'
 ```
 
 Once seeded, `/api/books` automatically routes queries to your dedicated Supabase PostgreSQL catalog with predictable ~1–2s catalog page responses and sub-50ms single-book lookups, eliminating the 20–60s wait times and timeouts common on public APIs.
@@ -732,12 +737,13 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run report` | Regenerates `docs/QUALITY_AUDIT_REPORT.md` & `docs/quality-audit-results.json` standalone |
 | `npm run catalog:sync` | Synchronizes Project Gutenberg's catalog feed into Supabase via cached RAM diffs and emits quote-diff candidates ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
 | `npm run r2:sync` | Synchronizes missing public-domain `.txt.gz` texts & `.jpg` covers into private Cloudflare R2 via `ListObjectsV2` + `rsync --files-from` / HTTPS (with checkpointed state protection, bounded concurrency, and conditional `covers`/`book-content` purge tags) and prunes copyrighted/withdrawn keys ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
+| `npm run r2:scan` | Scans stored R2 `books/<id>.txt.gz` texts for unwanted or injected terms (`asiafilm` default) using zero third-party dependencies, `0` Vercel/Supabase compute, and `$0` R2 egress ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
 | `npm run catalog:ingest` | Generates idempotent curated starter catalog metadata (`supabase/seed_books.sql`) for local setup *(legacy `--with-content` scraping deprecated in favor of R2)* |
 | `npm run translations:sync` | Clusters multilingual FRBR editions via Wikidata SPARQL and batch-upserts `public.book_translations` ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
 | `npm run quotes:sync` | Maintains the Two-Tier bounded quote pool in `public.books.quotes` reading R2 `.txt.gz` first when configured ahead of 3-mirror PG fallback (`pglaf,aleph,readingroo` weekly) and CI Run Reports ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
 | `npm run build` / `npm start` | Compiles optimized Next.js 16 production bundle and serves production build locally |
 
-> ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands and security checks execute across all **10** workflows (`.github/workflows/catalog-sync.yml`, `catalog-tag-sync.yml`, `r2-sync.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, `codeql.yml`, `dependency-review.yml`, and `release.yml`, including dry-run flags and required secrets).
+> ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands and security checks execute across all **11** workflows (`.github/workflows/catalog-sync.yml`, `catalog-tag-sync.yml`, `r2-sync.yml`, `r2-content-scan.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, `codeql.yml`, `dependency-review.yml`, and `release.yml`, including dry-run flags and required secrets).
 
 ---
 

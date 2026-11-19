@@ -53,15 +53,16 @@ npm run docs:contracts
 # Quality audit report (Pass 4 engine audit; alias: npm run audit:quality)
 npm run report
 
-# Public Domain Catalog Ingestion, R2 Asset Sync, Quotes & Translation Pipelines
+# Public Domain Catalog Ingestion, R2 Asset Sync, Content Scan, Quotes & Translation Pipelines
 npm run catalog:sync
 npm run r2:sync
+npm run r2:scan
 npm run catalog:ingest
 npm run translations:sync
 npm run quotes:sync
 ```
 
-> ⚡ **GitHub Actions & Edge Cache Automation**: For all 10 GitHub Actions workflows (triggers, `workflow_dispatch` inputs, required/optional secrets, `catalog-cache` release bootstrap, CodeQL/Dependency Review gates, and manual `Vercel-Cache-Tag` purges), see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md). For the 7-Gateway Quality Engine and console telemetry formats, see [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md).
+> ⚡ **GitHub Actions & Edge Cache Automation**: For all 11 GitHub Actions workflows (triggers, `workflow_dispatch` inputs, required/optional secrets, `catalog-cache` release bootstrap, CodeQL/Dependency Review gates, R2 integrity scans, and manual `Vercel-Cache-Tag` purges), see [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md). For the 7-Gateway Quality Engine and console telemetry formats, see [**`docs/PIPELINE_GUIDE.md`**](docs/PIPELINE_GUIDE.md).
 
 ---
 

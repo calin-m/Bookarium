@@ -9,6 +9,19 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.65',
+    date: '2026-11-19',
+    title: 'Manual Cloudflare R2 Content Integrity Scanner & Shared Zero-Dependency SigV4 Transport',
+    sections: {
+      Added: [
+        '**Manual R2 Content Integrity Workflow & CLI (`npm run r2:scan`, `scripts/scan-r2-content.js`, `.github/workflows/r2-content-scan.yml`, `scripts/scan-r2-content.test.ts`)**: Added an on-demand (`workflow_dispatch`, zero `npm ci`) read-only content audit scanning stored R2 `books/<id>.txt.gz` objects for configurable terms (`asiafilm` default) via linear `indexOf` matching (`CWE-1333` ReDoS-safe), bounded parallel streams (`32` default), `--dry-run` `ListObjectsV2`-only inventory counting (`0` Class B reads), `--ids` / `--limit` / `--max-minutes` controls, optional `--fail-on-match` gating, and sanitized `$GITHUB_STEP_SUMMARY` reports (`ADR-085`).',
+      ],
+      Changed: [
+        '**Shared Zero-Dependency R2 SigV4 Transport (`scripts/lib/r2-sigv4.js`, `scripts/lib/r2-sigv4.test.ts`, `scripts/sync-r2-assets.js`)**: Extracted AWS Signature V4 signing, `assertValidR2ConfigIfPresent` secret checks, `isAllowedR2EndpointUrl` SSRF guards, single-pass `XML_ENTITY_MAP` XML decoding, paginated `listR2PrefixKeys`, and bounded `.txt.gz` reads from `sync-r2-assets.js` into a shared zero-dependency module (`ADR-085`).',
+      ],
+    },
+  },
+  {
     version: '2.9.64',
     date: '2026-11-19',
     title: 'PostgreSQL 57014 Filtered Catalog Timeout Elimination & Fail-Fast HTTP 504 Contract',

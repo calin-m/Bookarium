@@ -1,0 +1,173 @@
+name: R2 Content Integrity Scan
+
+on:
+  # Manual-only read audit scanning stored R2 books/*.txt.gz objects for unwanted or injected strings.
+  workflow_dispatch:
+    inputs:
+      terms:
+        description: 'Comma-separated search strings inside book texts (e.g. asiafilm,asiafilms)'
+        required: true
+        type: string
+        default: 'asiafilm'
+      prefix:
+        description: 'R2 object prefix scope to scan'
+        required: false
+        type: choice
+        default: 'books/'
+        options:
+          - books/
+      ids:
+        description: 'Optional comma-separated Gutenberg IDs (blank = scan all stored books/<id>.txt.gz)'
+        required: false
+        type: string
+        default: ''
+      concurrency:
+        description: 'Parallel R2 GetObject stream concurrency (1-64)'
+        required: false
+        type: string
+        default: '32'
+      limit:
+        description: 'Optional max number of stored books to scan (blank = scan all matching keys)'
+        required: false
+        type: string
+        default: ''
+      max_matches:
+        description: 'Max matching rows printed in console and GitHub Step Summary (1-500)'
+        required: false
+        type: string
+        default: '100'
+      max_minutes:
+        description: 'Clean runtime budget cutoff in minutes (1-120)'
+        required: false
+        type: string
+        default: '45'
+      case_sensitive:
+        description: 'Enable exact case-sensitive string matching'
+        required: false
+        type: boolean
+        default: false
+      fail_on_match:
+        description: 'Exit non-zero if any book matches one of the search terms'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Dry run (list matching keys with ListObjectsV2 only; 0 GetObject Class B reads)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r2-content-scan
+  cancel-in-progress: false
+
+jobs:
+  scan-r2-content:
+    name: Scan Cloudflare R2 Book Texts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Run Read-Only Cloudflare R2 Content Integrity Scan
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          INPUT_TERMS: ${{ github.event.inputs.terms }}
+          INPUT_PREFIX: ${{ github.event.inputs.prefix }}
+          INPUT_IDS: ${{ github.event.inputs.ids }}
+          INPUT_CONCURRENCY: ${{ github.event.inputs.concurrency }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit }}
+          INPUT_MAX_MATCHES: ${{ github.event.inputs.max_matches }}
+          INPUT_MAX_MINUTES: ${{ github.event.inputs.max_minutes }}
+          INPUT_CASE_SENSITIVE: ${{ github.event.inputs.case_sensitive }}
+          INPUT_FAIL_ON_MATCH: ${{ github.event.inputs.fail_on_match }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$R2_ACCOUNT_ID" ] && [ -z "$R2_BUCKET_NAME" ] && [ -z "$R2_ACCESS_KEY_ID" ] && [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 content scan cleanly."
+            exit 0
+          fi
+
+          if [ -z "${INPUT_TERMS:-}" ]; then
+            echo "Error: terms input must be non-empty." >&2
+            exit 1
+          fi
+
+          SCAN_ARGS=("--terms=${INPUT_TERMS}")
+
+          case "${INPUT_PREFIX:-books/}" in
+            books/)
+              SCAN_ARGS+=("--prefix=${INPUT_PREFIX:-books/}")
+              ;;
+            *)
+              echo "Error: Unsupported prefix '${INPUT_PREFIX}'." >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -n "${INPUT_IDS:-}" ]; then
+            if [[ ! "$INPUT_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+              echo "Error: ids input must be a comma-separated list of positive integers." >&2
+              exit 1
+            fi
+            SCAN_ARGS+=("--ids=${INPUT_IDS}")
+          fi
+
+          if [ -n "${INPUT_CONCURRENCY:-}" ]; then
+            if [[ ! "$INPUT_CONCURRENCY" =~ ^[0-9]+$ ]] || [ "$INPUT_CONCURRENCY" -lt 1 ] || [ "$INPUT_CONCURRENCY" -gt 64 ]; then
+              echo "Error: concurrency input must be an integer between 1 and 64." >&2
+              exit 1
+            fi
+            SCAN_ARGS+=("--concurrency=${INPUT_CONCURRENCY}")
+          fi
+
+          if [ -n "${INPUT_LIMIT:-}" ]; then
+            if [[ ! "$INPUT_LIMIT" =~ ^[0-9]+$ ]] || [ "$INPUT_LIMIT" = "0" ]; then
+              echo "Error: limit input must be a positive integer." >&2
+              exit 1
+            fi
+            SCAN_ARGS+=("--limit=${INPUT_LIMIT}")
+          fi
+
+          if [ -n "${INPUT_MAX_MATCHES:-}" ]; then
+            if [[ ! "$INPUT_MAX_MATCHES" =~ ^[0-9]+$ ]] || [ "$INPUT_MAX_MATCHES" -lt 1 ] || [ "$INPUT_MAX_MATCHES" -gt 500 ]; then
+              echo "Error: max_matches input must be an integer between 1 and 500." >&2
+              exit 1
+            fi
+            SCAN_ARGS+=("--max-matches=${INPUT_MAX_MATCHES}")
+          fi
+
+          if [ -n "${INPUT_MAX_MINUTES:-}" ]; then
+            if [[ ! "$INPUT_MAX_MINUTES" =~ ^[0-9]+$ ]] || [ "$INPUT_MAX_MINUTES" -lt 1 ] || [ "$INPUT_MAX_MINUTES" -gt 120 ]; then
+              echo "Error: max_minutes input must be an integer between 1 and 120." >&2
+              exit 1
+            fi
+            SCAN_ARGS+=("--max-minutes=${INPUT_MAX_MINUTES}")
+          fi
+
+          if [ "${INPUT_CASE_SENSITIVE:-false}" = "true" ]; then
+            SCAN_ARGS+=("--case-sensitive")
+          fi
+          if [ "${INPUT_FAIL_ON_MATCH:-false}" = "true" ]; then
+            SCAN_ARGS+=("--fail-on-match")
+          fi
+          if [ "${INPUT_DRY_RUN:-false}" = "true" ]; then
+            SCAN_ARGS+=("--dry-run")
+          fi
+
+          node scripts/scan-r2-content.js "${SCAN_ARGS[@]}"

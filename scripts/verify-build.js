@@ -1146,10 +1146,12 @@ function pass5AdrValidation() {
     'scripts/ingest-catalog.js',
     'scripts/ingest-translations.js',
     'scripts/purge-vercel-cache.js',
+    'scripts/scan-r2-content.js',
     'scripts/sync-r2-assets.js',
     'scripts/sync-featured-quotes.js',
     'scripts/sync-gutenberg-catalog.js',
     'scripts/lib/ast-parser.js',
+    'scripts/lib/r2-sigv4.js',
     'scripts/lib/sast-validators.js',
     'scripts/eslint-rules/bookarium-security.js',
   ];

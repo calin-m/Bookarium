@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 19 Nov 2026 09:51:17 GMT  
+**Last Generated**: Thu, 19 Nov 2026 11:11:09 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 261 passed  
-**Total Verified Tests**: 2726 passed  
+**Total Test Suites**: 263 passed  
+**Total Verified Tests**: 2737 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2726 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **263/263 test suites passed** (2737 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.23%** (16247/16709) — *Target: $\ge$ 95%*
-- **Statements**: **95.98%** (17497/18228) — *Target: $\ge$ 95%*
+- **Lines**: **97.24%** (16248/16709) — *Target: $\ge$ 95%*
+- **Statements**: **95.99%** (17498/18228) — *Target: $\ge$ 95%*
 - **Functions**: **94.97%** (3495/3680) — *Target: $\ge$ 92%*
 - **Branches**: **88.4%** (16251/18382) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2726 Tests)
+## 🧪 Comprehensive Test Suite Catalog (263 Suites / 2737 Tests)
 
 ### 🚀 App Routes & Pages (30 Suites · 307 Tests)
 
@@ -2036,7 +2036,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (55 Suites · 714 Tests)
+### 📚 Gutenberg Parsers & Metadata (57 Suites · 725 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2956,6 +2956,17 @@
 </details>
 
 <details>
+<summary><b><code>scripts/lib/r2-sigv4.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `validates R2 credentials strictly (all-unset skip, partial fail-fast, lowercase normalization)`
+- ✔ `enforces strict Cloudflare R2 HTTPS endpoint allowlist and deterministic AWS SigV4 signatures`
+- ✔ `unescapes XML entities in one CWE-116 safe pass and paginates ListObjectsV2 prefix keys & IDs`
+- ✔ `fetches gzipped R2 book text safely with manual redirects, retries, size caps, and optional HTML checks`
+- ✔ `escapes Markdown cells, appends Step Summary files, and executes bounded concurrency pools`
+
+</details>
+
+<details>
 <summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `passes the repository next.config.ts without header or CSP violations`
@@ -2985,6 +2996,18 @@
 - ✔ `skips cleanly and writes step summary when Vercel credentials are unconfigured or --dry-run is active`
 - ✔ `sends authenticated POST requests to dangerously-delete-by-tags and retries transient 429/5xx errors`
 - ✔ `fails fast on non-retryable 401/403/404 responses, validates empty tags, and logs step summary failures safely`
+
+</details>
+
+<details>
+<summary><b><code>scripts/scan-r2-content.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `parses CLI flags strictly with defaults and rejects unsafe or out-of-range inputs`
+- ✔ `performs linear literal scanning with sanitized single-line snippets and ReDoS-safe metacharacter handling`
+- ✔ `skips cleanly when all R2_* secrets are unset and fails fast on partial R2 configuration`
+- ✔ `runs --dry-run using ListObjectsV2 only with 0 GetObject Class B reads`
+- ✔ `scans stored books/*.txt.gz files, formats Step Summary with escaped cells, and handles 404 + corrupt gzip`
+- ✔ `supports targeted --ids scans without ListObjectsV2, respects --max-minutes budget, and flags excessive failures`
 
 </details>
 

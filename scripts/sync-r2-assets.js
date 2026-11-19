@@ -2,7 +2,7 @@
  * @module scripts/sync-r2-assets
  * @scope Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted `rsync --files-from` / PGLAF HTTPS transfers.
  * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), fail fast via `assertValidR2ConfigIfPresent` on partial or malformed `R2_*` configs while exiting `0` cleanly when all `R2_*` variables are unset, prevent transient `_meta/r2-sync-state.json.gz` read errors or `rsync` transport faults from wiping/poisoning 90-day missing cooldowns (union-merging remote state before writes and flushing state cleanly in `try ... finally` alongside mid-batch `isOverBudget` checks), parallelize `putR2Object` writes via `DEFAULT_R2_PUT_CONCURRENCY` (`8`), emit conditional purge tags (`--purge-tags-file`) strictly for deleted or `--force`-overwritten assets, fail non-zero via `shouldFailR2SyncRun` on total or `>= 50%` infrastructure failures, decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), and invoke `rsync`/`wsl` strictly with `{ shell: false }`.
- * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
+ * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, sharing zero-dependency SigV4 transport helpers in `scripts/lib/r2-sigv4.js`, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
  * @adr ADR-083, ADR-085
  */
 
@@ -13,14 +13,33 @@ const path = require('path');
 const zlib = require('zlib');
 const { spawn, spawnSync } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  R2_DEFAULT_TIMEOUT_MS,
+  MAX_R2_BOOK_BYTES,
+  DEFAULT_R2_PUT_CONCURRENCY,
+  XML_ENTITY_MAP,
+  loadEnv,
+  isHtmlPayload,
+  isAllowedR2EndpointUrl,
+  getR2Config,
+  isR2Configured,
+  assertValidR2ConfigIfPresent,
+  sha256Hex,
+  signR2Request,
+  readBoundedBuffer,
+  unescapeXmlEntities,
+  parseListObjectsV2Xml,
+  fetchR2WithTimeout,
+  listR2PrefixIds,
+  fetchBookTextFromR2,
+  runWithConcurrency,
+  escapeMarkdownCell,
+} = require('./lib/r2-sigv4');
 
-const R2_DEFAULT_TIMEOUT_MS = 10_000;
-const MAX_R2_BOOK_BYTES = 15 * 1024 * 1024;
 const MAX_R2_COVER_BYTES = 2 * 1024 * 1024;
 const MAX_R2_STATE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MISSING_RECHECK_DAYS = 90;
 const RSYNC_BATCH_SIZE = 200;
-const DEFAULT_R2_PUT_CONCURRENCY = 8;
 const R2_MIN_ATTEMPTS_FOR_RATIO_FAIL = 5;
 const R2_MAX_FAILURE_RATIO = 0.5;
 const DEFAULT_MAX_PRUNE_PER_RUN = 500;
@@ -28,10 +47,6 @@ const MIN_ACTIVE_CATALOG_FOR_PRUNE = 50_000;
 const FULL_LEDGER_THRESHOLD = 100;
 const BULK_LEDGER_PREVIEW_ROWS = 50;
 const RSYNC_PARTIAL_VANISHED_CODES = new Set([0, 23, 24]);
-
-const R2_ACCOUNT_ID_REGEX = /^[a-z0-9]{16,64}$/i;
-const R2_BUCKET_NAME_REGEX = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
-const EMPTY_PAYLOAD_SHA256 = 'UNSIGNED-PAYLOAD';
 
 const RSYNC_EPUB_SOURCE = 'aleph.gutenberg.org::gutenberg-epub';
 const RSYNC_MAIN_SOURCE = 'aleph.gutenberg.org::gutenberg';
@@ -113,64 +128,6 @@ function buildDescriptiveUserAgent(
   return `${appName}/${version} (${contactPart})`;
 }
 
-function loadEnv(rootDir = path.resolve(__dirname, '..')) {
-  const envFiles = ['.env.local', '.env'];
-  const env = { ...process.env };
-
-  for (const file of envFiles) {
-    const fullPath = path.join(rootDir, file);
-    if (fs.existsSync(fullPath)) {
-      const content = fs.readFileSync(fullPath, 'utf8');
-      content.split('\n').forEach((line) => {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#')) {
-          const m = trimmed.match(/^([A-Z0-9_]+)=(.*)$/);
-          if (m && !env[m[1]]) {
-            let val = m[2].trim();
-            if (
-              (val.startsWith('"') && val.endsWith('"')) ||
-              (val.startsWith("'") && val.endsWith("'"))
-            ) {
-              val = val.slice(1, -1);
-            }
-            env[m[1]] = val;
-          }
-        }
-      });
-    }
-  }
-  return env;
-}
-
-function isHtmlPayload(contentType, bodySnippet) {
-  const normalizedType = String(contentType || '').trim().toLowerCase();
-  if (normalizedType.includes('text/html') || normalizedType.includes('application/xhtml+xml')) {
-    return true;
-  }
-  if (!bodySnippet) return false;
-  const trimmed = String(bodySnippet).trimStart().toLowerCase();
-  return (
-    trimmed.startsWith('<p>the document has moved') ||
-    trimmed.startsWith('<!doctype html') ||
-    trimmed.startsWith('<html') ||
-    trimmed.startsWith('<head')
-  );
-}
-
-function isAllowedR2EndpointUrl(rawUrl) {
-  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return false;
-  try {
-    const parsed = new URL(rawUrl);
-    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port) {
-      return false;
-    }
-    const hostname = parsed.hostname.toLowerCase();
-    return /^[a-z0-9]{16,64}\.r2\.cloudflarestorage\.com$/.test(hostname);
-  } catch {
-    return false;
-  }
-}
-
 function isAllowedGutenbergAssetUrl(rawUrl) {
   if (typeof rawUrl !== 'string' || !rawUrl.trim()) return false;
   try {
@@ -184,409 +141,6 @@ function isAllowedGutenbergAssetUrl(rawUrl) {
     );
   } catch {
     return false;
-  }
-}
-
-function getR2Config(env = process.env) {
-  const accountId = (env.R2_ACCOUNT_ID || '').trim();
-  const bucket = (env.R2_BUCKET_NAME || '').trim();
-  const accessKeyId = (env.R2_ACCESS_KEY_ID || '').trim();
-  const secretAccessKey = (env.R2_SECRET_ACCESS_KEY || '').trim();
-
-  if (!accountId || !bucket || !accessKeyId || !secretAccessKey) {
-    return null;
-  }
-  if (
-    !R2_ACCOUNT_ID_REGEX.test(accountId) ||
-    !R2_BUCKET_NAME_REGEX.test(bucket) ||
-    bucket.includes('..')
-  ) {
-    return null;
-  }
-  return {
-    accountId: accountId.toLowerCase(),
-    bucket,
-    accessKeyId,
-    secretAccessKey,
-  };
-}
-
-function isR2Configured(env = process.env) {
-  return getR2Config(env) !== null;
-}
-
-function assertValidR2ConfigIfPresent(env = process.env) {
-  const fields = [
-    ['R2_ACCOUNT_ID', (env.R2_ACCOUNT_ID || '').trim()],
-    ['R2_BUCKET_NAME', (env.R2_BUCKET_NAME || '').trim()],
-    ['R2_ACCESS_KEY_ID', (env.R2_ACCESS_KEY_ID || '').trim()],
-    ['R2_SECRET_ACCESS_KEY', (env.R2_SECRET_ACCESS_KEY || '').trim()],
-  ];
-  const configuredKeys = fields.filter(([, val]) => val.length > 0).map(([k]) => k);
-  if (configuredKeys.length === 0) {
-    return null;
-  }
-
-  const config = getR2Config(env);
-  if (!config) {
-    const missingKeys = fields.filter(([, val]) => !val).map(([k]) => k);
-    if (missingKeys.length > 0) {
-      throw new Error(
-        `Partial Cloudflare R2 configuration detected (missing: ${missingKeys.join(', ')}). Configure all 4 R2_* variables or leave all unset to skip.`
-      );
-    }
-    throw new Error(
-      'Invalid R2_ACCOUNT_ID (expected 16-64 alphanumeric chars) or R2_BUCKET_NAME (expected lowercase S3 bucket name).'
-    );
-  }
-  return config;
-}
-
-function encodeRfc3986Segment(value) {
-  return encodeURIComponent(value).replace(
-    /[!'()*]/g,
-    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
-  );
-}
-
-function sha256Hex(data) {
-  return crypto.createHash('sha256').update(data).digest('hex');
-}
-
-function hmacSha256(key, data) {
-  return crypto.createHmac('sha256', key).update(data, 'utf8').digest();
-}
-
-function signR2Request({
-  config,
-  method = 'GET',
-  key = '',
-  queryParams = {},
-  payloadHash = EMPTY_PAYLOAD_SHA256,
-  contentType = null,
-  now = new Date(),
-}) {
-  const host = `${config.accountId}.r2.cloudflarestorage.com`;
-  const normalizedKey = String(key || '').replace(/^\/+/, '');
-  const encodedBucket = encodeRfc3986Segment(config.bucket);
-  const canonicalUri = normalizedKey
-    ? `/${encodedBucket}/${normalizedKey.split('/').map(encodeRfc3986Segment).join('/')}`
-    : `/${encodedBucket}`;
-
-  const queryPairs = Object.entries(queryParams || {})
-    .filter(([, val]) => val !== undefined && val !== null && val !== '')
-    .map(([k, val]) => [encodeRfc3986Segment(k), encodeRfc3986Segment(String(val))])
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  const canonicalQueryString = queryPairs.map(([k, v]) => `${k}=${v}`).join('&');
-
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
-  const dateStamp = amzDate.slice(0, 8);
-  const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
-
-  const canonicalHeaders =
-    `host:${host}\n` +
-    `x-amz-content-sha256:${payloadHash}\n` +
-    `x-amz-date:${amzDate}\n`;
-  const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
-
-  const canonicalRequest = [
-    String(method || 'GET').toUpperCase(),
-    canonicalUri,
-    canonicalQueryString,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n');
-
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    amzDate,
-    credentialScope,
-    sha256Hex(canonicalRequest),
-  ].join('\n');
-
-  const kDate = hmacSha256(`AWS4${config.secretAccessKey}`, dateStamp);
-  const kRegion = hmacSha256(kDate, 'auto');
-  const kService = hmacSha256(kRegion, 's3');
-  const kSigning = hmacSha256(kService, 'aws4_request');
-  const signature = crypto.createHmac('sha256', kSigning).update(stringToSign, 'utf8').digest('hex');
-
-  const authorization =
-    `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${credentialScope}, ` +
-    `SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  const rawUrl = canonicalQueryString
-    ? `https://${host}${canonicalUri}?${canonicalQueryString}`
-    : `https://${host}${canonicalUri}`;
-
-  const headers = {
-    'x-amz-date': amzDate,
-    'x-amz-content-sha256': payloadHash,
-    Authorization: authorization,
-  };
-  if (contentType) {
-    headers['Content-Type'] = contentType;
-  }
-
-  return {
-    url: isAllowedR2EndpointUrl(rawUrl) ? rawUrl : null,
-    headers,
-  };
-}
-
-async function readBoundedBuffer(response, maxBytes, controller) {
-  const contentLengthHeader = response.headers?.get?.('content-length');
-  if (contentLengthHeader) {
-    const declaredLength = parseInt(contentLengthHeader, 10);
-    if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
-      return null;
-    }
-  }
-
-  if (response.body && typeof response.body.getReader === 'function') {
-    const reader = response.body.getReader();
-    const chunks = [];
-    let totalBytes = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        totalBytes += value.byteLength;
-        if (totalBytes > maxBytes) {
-          controller.abort();
-          return null;
-        }
-        chunks.push(value);
-      }
-    }
-
-    if (totalBytes === 0) return null;
-    return Buffer.concat(chunks.map((c) => Buffer.from(c)));
-  }
-
-  const arr = await response.arrayBuffer();
-  if (!arr || arr.byteLength === 0 || arr.byteLength > maxBytes) {
-    return null;
-  }
-  return Buffer.from(arr);
-}
-
-const XML_ENTITY_MAP = Object.freeze(
-  Object.assign(Object.create(null), {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&apos;': "'",
-  })
-);
-
-/**
- * Decodes standard XML character entities in a single regex pass so doubly-encoded
- * payloads (e.g. `&amp;lt;`) are never double-unescaped (`CWE-116`).
- */
-function unescapeXmlEntities(str) {
-  return String(str || '').replace(
-    /&(?:amp|lt|gt|quot|apos);/g,
-    (entity) => XML_ENTITY_MAP[entity] || entity
-  );
-}
-
-function parseListObjectsV2Xml(xmlText) {
-  const text = String(xmlText || '');
-  const truncatedMatch = text.match(/<IsTruncated>([^<]+)<\/IsTruncated>/i);
-  const isTruncated = truncatedMatch ? truncatedMatch[1].trim().toLowerCase() === 'true' : false;
-  const tokenMatch = text.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/i);
-  const nextContinuationToken = tokenMatch ? unescapeXmlEntities(tokenMatch[1].trim()) : null;
-
-  const objects = [];
-  let cursor = 0;
-  while (cursor < text.length) {
-    const startIdx = text.indexOf('<Contents>', cursor);
-    if (startIdx === -1) break;
-    const endIdx = text.indexOf('</Contents>', startIdx);
-    if (endIdx === -1) break;
-    const block = text.slice(startIdx, endIdx);
-    const keyMatch = block.match(/<Key>([^<]+)<\/Key>/i);
-    if (keyMatch && keyMatch[1]) {
-      const sizeMatch = block.match(/<Size>(\d+)<\/Size>/i);
-      objects.push({
-        key: unescapeXmlEntities(keyMatch[1].trim()),
-        size: sizeMatch ? parseInt(sizeMatch[1], 10) : 0,
-      });
-    }
-    cursor = endIdx + '</Contents>'.length;
-  }
-
-  return {
-    isTruncated,
-    nextContinuationToken,
-    objects,
-  };
-}
-
-async function fetchR2WithTimeout({
-  url,
-  method = 'GET',
-  headers,
-  body,
-  fetchFn = globalThis.fetch,
-  timeoutMs = R2_DEFAULT_TIMEOUT_MS,
-  maxRetries = 2,
-  retryDelayMs = 250,
-  sleepFn = (ms) => new Promise((r) => setTimeout(r, ms)),
-}) {
-  if (!isAllowedR2EndpointUrl(url)) {
-    throw new Error(`Blocked invalid R2 endpoint URL: ${url}`);
-  }
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetchFn(url, {
-        method,
-        headers,
-        body,
-        redirect: 'manual',
-        signal: controller.signal,
-      });
-
-      const isRetryable = response.status === 429 || (response.status >= 500 && response.status < 600);
-      if (!isRetryable || attempt === maxRetries) {
-        return { response, controller };
-      }
-      const retryAfterSec = parseInt(response.headers?.get?.('retry-after') || '', 10);
-      const waitMs =
-        Number.isFinite(retryAfterSec) && retryAfterSec > 0
-          ? Math.min(5000, retryAfterSec * 1000)
-          : retryDelayMs * Math.pow(2, attempt);
-      if (waitMs > 0) await sleepFn(waitMs);
-    } catch (err) {
-      if (attempt === maxRetries) {
-        throw err;
-      }
-      const waitMs = retryDelayMs * Math.pow(2, attempt);
-      if (waitMs > 0) await sleepFn(waitMs);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-}
-
-async function listR2PrefixIds(config, prefix, keyRegex, options = {}) {
-  const fetchFn = options.fetchFn || globalThis.fetch;
-  const timeoutMs = options.timeoutMs || R2_DEFAULT_TIMEOUT_MS;
-  const maxPages = options.maxPages || 2000;
-  const ids = new Set();
-  let keyCount = 0;
-  let apiCalls = 0;
-  let continuationToken = null;
-
-  for (let page = 0; page < maxPages; page++) {
-    const signed = signR2Request({
-      config,
-      method: 'GET',
-      key: '',
-      queryParams: {
-        'list-type': '2',
-        'max-keys': '1000',
-        prefix,
-        ...(continuationToken ? { 'continuation-token': continuationToken } : {}),
-      },
-    });
-    apiCalls++;
-    const { response } = await fetchR2WithTimeout({
-      url: signed.url,
-      method: 'GET',
-      headers: signed.headers,
-      fetchFn,
-      timeoutMs,
-    });
-
-    if (!response.ok) {
-      throw new Error(`R2 ListObjectsV2 (${prefix}) returned HTTP ${response.status}`);
-    }
-
-    const xml = await response.text();
-    const parsed = parseListObjectsV2Xml(xml);
-    for (const obj of parsed.objects) {
-      keyCount++;
-      const m = obj.key.match(keyRegex);
-      if (m && m[1]) {
-        const id = parseInt(m[1], 10);
-        if (Number.isInteger(id) && id > 0) {
-          ids.add(id);
-        }
-      }
-    }
-
-    if (!parsed.isTruncated || !parsed.nextContinuationToken) {
-      break;
-    }
-    continuationToken = parsed.nextContinuationToken;
-  }
-
-  return { ids, keyCount, apiCalls };
-}
-
-async function fetchBookTextFromR2(bookId, options = {}) {
-  const numericId = typeof bookId === 'number' ? bookId : parseInt(String(bookId || ''), 10);
-  if (!Number.isInteger(numericId) || numericId <= 0) {
-    return { status: 'error', error: 'Invalid Gutenberg ID' };
-  }
-
-  const config = options.config || getR2Config(options.env || process.env);
-  if (!config) {
-    return { status: 'unconfigured' };
-  }
-
-  const fetchFn = options.fetchFn || globalThis.fetch;
-  const timeoutMs = options.timeoutMs || R2_DEFAULT_TIMEOUT_MS;
-  const signed = signR2Request({
-    config,
-    method: 'GET',
-    key: `books/${numericId}.txt.gz`,
-  });
-
-  try {
-    const { response, controller } = await fetchR2WithTimeout({
-      url: signed.url,
-      method: 'GET',
-      headers: signed.headers,
-      fetchFn,
-      timeoutMs,
-    });
-
-    if (response.status >= 300 && response.status < 400) {
-      return { status: 'error', error: 'Unexpected redirect from R2' };
-    }
-    if (response.status === 404) {
-      return { status: 'not_found' };
-    }
-    if (!response.ok) {
-      return { status: 'error', error: `R2 GetObject returned HTTP ${response.status}` };
-    }
-
-    const contentType = response.headers?.get?.('content-type') || null;
-    if (isHtmlPayload(contentType)) {
-      return { status: 'error', error: 'Rejected HTML response from R2' };
-    }
-
-    const gzBuf = await readBoundedBuffer(response, MAX_R2_BOOK_BYTES, controller);
-    if (!gzBuf) {
-      return { status: 'error', error: 'Empty or oversized R2 gzip payload' };
-    }
-
-    const text = zlib.gunzipSync(gzBuf, { maxOutputLength: MAX_R2_BOOK_BYTES }).toString('utf8');
-    if (isHtmlPayload(null, text.slice(0, 512))) {
-      return { status: 'error', error: 'Rejected HTML content inside R2 archive' };
-    }
-
-    return { status: 'ok', text };
-  } catch (err) {
-    return { status: 'error', error: err.message || 'R2 fetch error' };
   }
 }
 
@@ -1289,20 +843,6 @@ async function runRsyncCommandWithRetry(params, retryOptions = {}) {
   throw lastErr;
 }
 
-async function runWithConcurrency(tasks = [], concurrency = DEFAULT_R2_PUT_CONCURRENCY) {
-  if (!Array.isArray(tasks) || tasks.length === 0) return;
-  const workerCount = Math.max(1, Math.min(tasks.length, concurrency || DEFAULT_R2_PUT_CONCURRENCY));
-  let nextIdx = 0;
-
-  const workers = Array.from({ length: workerCount }, async () => {
-    while (nextIdx < tasks.length) {
-      const idx = nextIdx++;
-      await tasks[idx]();
-    }
-  });
-  await Promise.all(workers);
-}
-
 function shouldFailR2SyncRun(summary = {}) {
   if (!summary || summary.skippedUnconfigured) return false;
   const failed = typeof summary.failedCount === 'number' ? summary.failedCount : 0;
@@ -1393,13 +933,6 @@ function buildHttpsTextUrls(bookId, mirrors = GUTENBERG_ASSET_MIRRORS) {
 
 function buildHttpsCoverUrls(bookId, mirrors = GUTENBERG_ASSET_MIRRORS) {
   return mirrors.map((mirror) => `${String(mirror || '').replace(/\/+$/, '')}/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`);
-}
-
-function escapeMarkdownCell(val) {
-  return String(val === undefined || val === null ? '' : val)
-    .replace(/[\\|]/g, '\\$&')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
 }
 
 function formatR2CoverageBanner(plan, context = {}) {

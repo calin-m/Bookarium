@@ -95,7 +95,7 @@ Bookarium stores gzipped public-domain book texts (`books/<id>.txt.gz`), cover a
 | **Storage Capacity** | **`10 GB-month` / month** | `~$0.015 / GB-month` | **#1 Paid Threshold**: Full `78,000+` corpus (`~25+ GB` combined) exceeds `10 GB`; partial `--limit` seeding fits Free Tier. |
 | **Internet Egress Bandwidth** | **`$0` (Unlimited)** | **`$0` (Unlimited)** | Serving texts and covers from R2 to Vercel serverless routes or browsers incurs **zero egress fees**. |
 | **Class A Operations** *(Writes, Lists, `PutObject`, `ListObjectsV2`)* | **`1,000,000` / month** | `~$4.50 / million` | Full bucket scan via `ListObjectsV2` (`scripts/sync-r2-assets.js`) consumes `~157` calls across `~78,000` keys; missing-asset cooldown (`90 days`) prevents weekly repeat probes. |
-| **Class B Operations** *(Reads, `GetObject`)* | **`10,000,000` / month** | `~$0.36 / million` | Shielded upstream by Vercel Edge CDN (`s-maxage=604800` for covers, `s-maxage=86400` for plain text) + server 20-book LRU + client IndexedDB cache. |
+| **Class B Operations** *(Reads, `GetObject`)* | **`10,000,000` / month** | `~$0.36 / million` | Shielded upstream by Vercel Edge CDN (`s-maxage=604800` for covers, `s-maxage=86400` for plain text) + server 20-book LRU + client IndexedDB cache; manual `npm run r2:scan` content audits read `1` op per stored text (`< 0.8%` across 78k books; `0` under `--dry-run`). |
 | **Deletes** | **Free** | **Free** | Pruning withdrawn/copyrighted objects via `DeleteObject` adds zero operation charges. |
 
 > [!NOTE]
@@ -138,11 +138,11 @@ Bookarium pins serverless API functions to `iad1` (`us-east-1`, proximate to US 
 
 ### 3.4 GitHub Actions & GitHub Releases (CI/CD & Data Sync Pipelines)
 
-All `10` automation pipelines (`.github/workflows/*.yml`, documented in full in [`docs/GITHUB_ACTIONS.md`](GITHUB_ACTIONS.md)) run on GitHub-hosted Ubuntu runners rather than consuming Vercel compute.
+All `11` automation pipelines (`.github/workflows/*.yml`, documented in full in [`docs/GITHUB_ACTIONS.md`](GITHUB_ACTIONS.md)) run on GitHub-hosted Ubuntu runners rather than consuming Vercel compute.
 
 | Resource | Public Repository (GitHub Free) | Private Repository / Fork (GitHub Free) | Bookarium Architecture Adaptation |
 | :--- | :--- | :--- | :--- |
-| **GitHub-Hosted Runners (`ubuntu-latest`)** | **Free & unlimited minutes** | **`2,000` minutes / month** *(metered overages)* | Keep [`catalog-tag-sync.yml`](../.github/workflows/catalog-tag-sync.yml) & [`cache-purge.yml`](../.github/workflows/cache-purge.yml) at zero `npm ci` (`~5s`); bound workflows (`ci.yml`/`release.yml`: `25m`, `catalog-sync.yml`: `60m`, `r2-sync.yml`: `90m`). |
+| **GitHub-Hosted Runners (`ubuntu-latest`)** | **Free & unlimited minutes** | **`2,000` minutes / month** *(metered overages)* | Keep [`catalog-tag-sync.yml`](../.github/workflows/catalog-tag-sync.yml), [`cache-purge.yml`](../.github/workflows/cache-purge.yml), and [`r2-content-scan.yml`](../.github/workflows/r2-content-scan.yml) at zero `npm ci` (`~5s`); bound workflows (`ci.yml`/`release.yml`: `25m`, `catalog-sync.yml`/`r2-content-scan.yml`: `60m`, `r2-sync.yml`: `90m`). |
 | **GitHub Actions Dependency Cache** | **`10 GB` per repo**; **7-day LRU eviction** | **`10 GB` per repo**; **7-day LRU eviction** | Never store `gutenberg-catalog-cache.json.gz` in Actions cache alone—7-day eviction could race weekly Sunday runs. Store snapshots in permanent **`catalog-cache` GitHub Releases** instead. |
 | **GitHub Releases Assets** | **Under `2 GiB` per file**; `1,000` assets/release; unlimited downloads | Same per-file **`2 GiB`** & `1,000` assets cap; `500 MB` Packages/Artifacts storage | `gutenberg-catalog-cache.json.gz` (`~4.5–6.4 MB`) + `.sha256` sidecar sit orders of magnitude under the `2 GiB` Release file ceiling. |
 

@@ -1365,7 +1365,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, Cloudflare R2 `ListObjectsV2` / `rsync --files-from` / PGLAF HTTPS delta asset sync (`_meta/r2-sync-state.json.gz`, copyright/withdrawn pruning, bounded `$GITHUB_STEP_SUMMARY` tables), `quote-diff.json` hand-off, R2-first + PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, Cloudflare R2 `ListObjectsV2` / `rsync --files-from` / PGLAF HTTPS delta asset sync (`_meta/r2-sync-state.json.gz`, copyright/withdrawn pruning, bounded `$GITHUB_STEP_SUMMARY` tables), shared zero-dependency R2 SigV4 helpers (`r2-sigv4.test.ts`) & read-only `.txt.gz` integrity scanning (`scan-r2-content.test.ts`), `quote-diff.json` hand-off, R2-first + PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 
@@ -2451,6 +2451,7 @@ const TIER_1_CONTRACTED_MODULES = [
   'src/stores/useReaderStore.ts',
   'scripts/sync-gutenberg-catalog.js',
   'scripts/sync-r2-assets.js',
+  'scripts/lib/r2-sigv4.js',
   'scripts/sync-featured-quotes.js',
 ];
 
@@ -2508,6 +2509,7 @@ const TIER_4_CONTRACTED_MODULES = [
   'scripts/ingest-catalog.js',
   'scripts/ingest-translations.js',
   'scripts/purge-vercel-cache.js',
+  'scripts/scan-r2-content.js',
   'scripts/eslint-rules/bookarium-security.js',
   'scripts/lib/ast-parser.js',
   'scripts/lib/sast-validators.js',

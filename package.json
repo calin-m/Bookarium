@@ -1,6 +1,6 @@
 {
   "name": "bookarium",
-  "version": "2.9.64",
+  "version": "2.9.65",
   "private": true,
   "description": "High-performance frontend for discovering, reading, and downloading 100% legal, public domain books.",
   "license": "MIT",
@@ -38,6 +38,7 @@
     "catalog:ingest": "node scripts/ingest-catalog.js",
     "catalog:sync": "node scripts/sync-gutenberg-catalog.js",
     "r2:sync": "node scripts/sync-r2-assets.js",
+    "r2:scan": "node scripts/scan-r2-content.js",
     "translations:sync": "node scripts/ingest-translations.js",
     "quotes:sync": "node scripts/sync-featured-quotes.js"
   },

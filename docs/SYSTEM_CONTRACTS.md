@@ -26,9 +26,9 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `275` (`src/**` + `scripts/*.js`)
-- **Annotated Contract Modules**: `64` (**23.3%** coverage; `14` Tier-1 + `16` Tier-2 + `18` Tier-3 + `16` Tier-4 = `64` Protected)
-- **Extracted Module Invariants**: `127`
+- **Total Scanned Executable Modules**: `277` (`src/**` + `scripts/*.js`)
+- **Annotated Contract Modules**: `66` (**23.8%** coverage; `15` Tier-1 + `16` Tier-2 + `18` Tier-3 + `17` Tier-4 = `66` Protected)
+- **Extracted Module Invariants**: `129`
 - **Symbol-Level Contracts**: `1`
 - **Pending Annotation Queue**: `211` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
@@ -42,7 +42,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 | **App Router Pages & Layouts** | `25` | `1` | `24` | 4.0% |
 | **UI & Feature Components** | `114` | `0` | `114` | 0.0% |
 | **Config & Type Contracts** | `17` | `0` | `17` | 0.0% |
-| **CLI Pipelines & Governance** | `19` | `9` | `10` | 47.4% |
+| **CLI Pipelines & Governance** | `21` | `11` | `10` | 52.4% |
 
 ---
 
@@ -787,7 +787,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (12 tests)
 
 
-### Layer: CLI Pipelines & Governance (9 Contracted)
+### Layer: CLI Pipelines & Governance (11 Contracted)
 
 #### [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) *(Tier-4 Protected)*
 
@@ -841,6 +841,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (17 tests)
 
+#### [`scripts/lib/r2-sigv4.js`](../scripts/lib/r2-sigv4.js) *(Tier-1 Protected)*
+
+- **Intended Scope (`@scope`)**: Shared zero-dependency AWS Signature V4 transport, SSRF allowlist, strict config verification, paginated XML listing, and bounded `.txt.gz` reader for private Cloudflare R2 storage across CLI pipelines (`sync-r2-assets.js`, `scan-r2-content.js`, `sync-featured-quotes.js`).
+- **Behavioral Invariants (`@invariant`)**:
+  - Strictly validate `R2_ACCOUNT_ID` and `R2_BUCKET_NAME` via `assertValidR2ConfigIfPresent` (failing fast on partial or malformed configs while returning `null` only when all 4 `R2_*` variables are unset), lock all outbound requests to `isAllowedR2EndpointUrl` (`https://<account>.r2.cloudflarestorage.com`) with `redirect: 'manual'`, enforce bounded reads and gzip decompression (`MAX_R2_BOOK_BYTES`), and decode `ListObjectsV2` XML entities in a single regex pass (`XML_ENTITY_MAP`, `CWE-116` safe).
+- **Design Rationale (`@rationale`)**:
+  - Centralizing S3-compatible R2 SigV4 transport primitives into a zero-third-party-dependency module prevents duplicated cryptographic signing and allows standalone maintenance workflows such as `r2-content-scan.yml` to run on Node 22 without `npm ci`.
+- **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`scripts/scan-r2-content.js`](../scripts/scan-r2-content.js), [`scripts/sync-r2-assets.js`](../scripts/sync-r2-assets.js))
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`scripts/lib/r2-sigv4.test.ts`](../scripts/lib/r2-sigv4.test.ts) (5 tests)
+
 #### [`scripts/lib/sast-validators.js`](../scripts/lib/sast-validators.js) *(Tier-4 Protected)*
 
 - **Intended Scope (`@scope`)**: Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
@@ -865,6 +877,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Env Vars: `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`
 - **Test Contract**: [`scripts/purge-vercel-cache.test.ts`](../scripts/purge-vercel-cache.test.ts) (5 tests)
+
+#### [`scripts/scan-r2-content.js`](../scripts/scan-r2-content.js) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Zero-dependency read-only Cloudflare R2 content integrity scanner listing `books/<id>.txt.gz` objects via AWS SigV4 `ListObjectsV2` (or targeted `--ids`) and scanning gunzipped payloads for unwanted or injected terms (`asiafilm` default) without touching Vercel, Supabase, or Project Gutenberg mirrors.
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce `assertValidR2ConfigIfPresent` (clean `exit 0` skip when all 4 `R2_*` vars are unset, fail-fast on partial or malformed configs), lock key scope to `ALLOWED_SCAN_PREFIXES` (`books/`), match terms strictly via literal `String.prototype.indexOf` (`CWE-1333` ReDoS-safe, never `new RegExp()` on CLI input), cap concurrent `GetObject` streams (`MAX_SCAN_CONCURRENCY = 64`), enforce `MAX_R2_BOOK_BYTES` (`15 MB`) bounded gzip reads via `scripts/lib/r2-sigv4.js`, and sanitize output snippets in `$GITHUB_STEP_SUMMARY`.
+- **Design Rationale (`@rationale`)**:
+  - Scanning directly against private Cloudflare R2 via zero-dependency Node 22 built-ins eliminates `npm ci` workflow overhead, incurs zero R2 egress, consumes `< 0.8%` of the monthly Class B free quota across 78k books (`0` under `--dry-run`), and isolates audit runs completely from production Next.js and PostgreSQL compute.
+- **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`scripts/scan-r2-content.test.ts`](../scripts/scan-r2-content.test.ts) (6 tests)
 
 #### [`scripts/sync-featured-quotes.js`](../scripts/sync-featured-quotes.js) *(Tier-1 Protected)*
 
@@ -899,7 +923,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Behavioral Invariants (`@invariant`)**:
   - Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), fail fast via `assertValidR2ConfigIfPresent` on partial or malformed `R2_*` configs while exiting `0` cleanly when all `R2_*` variables are unset, prevent transient `_meta/r2-sync-state.json.gz` read errors or `rsync` transport faults from wiping/poisoning 90-day missing cooldowns (union-merging remote state before writes and flushing state cleanly in `try ... finally` alongside mid-batch `isOverBudget` checks), parallelize `putR2Object` writes via `DEFAULT_R2_PUT_CONCURRENCY` (`8`), emit conditional purge tags (`--purge-tags-file`) strictly for deleted or `--force`-overwritten assets, fail non-zero via `shouldFailR2SyncRun` on total or `>= 50%` infrastructure failures, decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), and invoke `rsync`/`wsl` strictly with `{ shell: false }`.
 - **Design Rationale (`@rationale`)**:
-  - Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
+  - Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, sharing zero-dependency SigV4 transport helpers in `scripts/lib/r2-sigv4.js`, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
 - **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`scripts/sync-featured-quotes.js`](../scripts/sync-featured-quotes.js))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
