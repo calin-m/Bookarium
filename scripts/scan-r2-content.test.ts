@@ -235,14 +235,63 @@ describe('scripts/scan-r2-content', () => {
       .mockResolvedValueOnce(makeGzipResponse(200, 'Found AsiaFilm reference here.'))
       .mockResolvedValueOnce(makeGzipResponse(200, 'Normal public domain prose.'));
 
+    const targetedLogs: string[] = [];
     const targeted = await scanR2Content.runR2ContentScan(
       { ids: [1342, 84], terms: ['asiafilm'], json: true },
-      { env: TEST_R2_ENV, fetchFn: fetchTargeted, stepSummaryPath: '', logger: { log: vi.fn() } }
+      {
+        env: TEST_R2_ENV,
+        fetchFn: fetchTargeted,
+        stepSummaryPath: '',
+        logger: { log: (m: string) => targetedLogs.push(m) },
+      }
     );
     expect(targeted.listApiCalls).toBe(0);
     expect(targeted.getApiCalls).toBe(2);
     expect(targeted.matchedCount).toBe(1);
     expect(targeted.matches[0].bookId).toBe(1342);
+    // --json suppresses startup/progress banners and emits valid single-payload JSON only
+    expect(targetedLogs).toHaveLength(1);
+    expect(JSON.parse(targetedLogs[0]).matchedCount).toBe(1);
+
+    // Live CI progress mode emits discovery header, throttled heartbeats, immediate match alerts, and caps inline errors
+    let clock = 10_000;
+    const progressLogs: string[] = [];
+    const multiIds = Array.from({ length: 14 }, (_u, idx) => idx + 1);
+    const liveFetch = vi.fn(async (url: string) => {
+      clock += 2_000;
+      const match = url.match(/books\/(\d+)\.txt\.gz/);
+      const id = match ? parseInt(match[1], 10) : 0;
+      if (id === 2) {
+        return makeGzipResponse(200, 'Clean prefix asiafilm injected here.');
+      }
+      if (id >= 3) {
+        return new Response(Buffer.from('corrupt-gzip-payload', 'utf8'), {
+          status: 200,
+          headers: { 'Content-Type': 'application/gzip' },
+        });
+      }
+      return makeGzipResponse(200, 'Public domain literature.');
+    });
+
+    const liveSummary = await scanR2Content.runR2ContentScan(
+      { ids: multiIds, concurrency: 1, terms: ['asiafilm'] },
+      {
+        env: { ...TEST_R2_ENV, GITHUB_ACTIONS: 'true' },
+        fetchFn: liveFetch,
+        nowFn: () => clock,
+        stepSummaryPath: '',
+        logger: { log: (m: string) => progressLogs.push(m) },
+        progressOptions: { ciMinTotalForPercent: 10, ciPercentStep: 50, ciIntervalMs: 10_000 },
+      }
+    );
+
+    expect(liveSummary.matchedCount).toBe(1);
+    expect(liveSummary.infraFailureCount).toBe(12);
+    const joinedLive = progressLogs.join('\n');
+    expect(joinedLive).toContain('Bookarium Cloudflare R2 Content Integrity Scan');
+    expect(joinedLive).toContain('🚨 [MATCH] #2 (books/2.txt.gz)');
+    expect(joinedLive).toContain('50.0% | 7 / 14');
+    expect(joinedLive).toContain('Additional R2 read errors suppressed in live log');
 
     let tick = 0;
     const nowFn = () => {

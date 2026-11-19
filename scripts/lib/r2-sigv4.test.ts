@@ -138,22 +138,30 @@ describe('scripts/lib/r2-sigv4', () => {
     ]);
     expect(fetchMock.mock.calls[1][0]).toContain('continuation-token=tok%261');
 
+    const pageSnapshots: Array<{ page: number; apiCalls: number; matchedCount: number }> = [];
     const limited = await r2Sigv4.listR2PrefixKeys(TEST_R2_CONFIG, 'books/', {
       fetchFn: vi.fn().mockResolvedValueOnce(makeTextResponse(200, page1Xml)),
       filterFn: (obj: { key: string }) => obj.key.endsWith('.txt.gz'),
       maxMatched: 1,
+      onPage: (info: { page: number; apiCalls: number; matchedCount: number }) => {
+        pageSnapshots.push({ page: info.page, apiCalls: info.apiCalls, matchedCount: info.matchedCount });
+      },
     });
     expect(limited.apiCalls).toBe(1);
     expect(limited.objects).toHaveLength(1);
     expect(limited.truncatedByLimit).toBe(true);
+    expect(pageSnapshots).toEqual([{ page: 1, apiCalls: 1, matchedCount: 1 }]);
 
+    const fullPages: number[] = [];
     const idResult = await r2Sigv4.listR2PrefixIds(TEST_R2_CONFIG, 'books/', /^books\/(\d+)\.txt\.gz$/, {
       fetchFn: vi
         .fn()
         .mockResolvedValueOnce(makeTextResponse(200, page1Xml))
         .mockResolvedValueOnce(makeTextResponse(200, page2Xml)),
+      onPage: ({ page }: { page: number }) => fullPages.push(page),
     });
     expect(idResult.ids).toEqual(new Set([1342, 84]));
+    expect(fullPages).toEqual([1, 2]);
   });
 
   it('fetches gzipped R2 book text safely with manual redirects, retries, size caps, and optional HTML checks', async () => {

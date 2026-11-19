@@ -88,7 +88,7 @@ Consolidates all scheduled database synchronization into a single deterministic 
   2. Download `gutenberg-catalog-cache.json.gz` and companion `gutenberg-catalog-cache.json.gz.sha256` (if published) from release `catalog-cache` (`gh release download catalog-cache` with `GH_TOKEN`).
   3. Run `node scripts/sync-gutenberg-catalog.js --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json` (+ `--dry-run`, `--update-existing`, `--feed-source=HOST`, `--limit=N` per inputs), verifying snapshot `.sha256`, `Content-Length` completeness, non-zero `tar` fail-closed integrity, and RDF outage `copyright: true` preservation / new-volume deferral (`reconcileBatchWithoutRdfRights`).
   4. When `dry_run != 'true'`, `limit == ''`, `catalog_sync.outcome == 'success'`, and `gutenberg-catalog-cache.json.gz` exists: upload updated snapshot and `gutenberg-catalog-cache.json.gz.sha256` sidecar to `catalog-cache` release (`--clobber`, creating the release if absent) and advance `refs/tags/catalog-cache` in place. Executing this step *immediately after* `catalog_sync` ensures transient R2 failures never leave the release snapshot stale after Supabase upserts.
-  5. **Run Cloudflare R2 Delta Asset Sync** (unless `skip_r2=true` or all 4 `R2_*` secrets are unset; `continue-on-error: true`): runs `node scripts/sync-r2-assets.js --source=rsync --max-minutes=25 --purge-tags-file=r2-purge-tags.txt` (+ `--cache-file=gutenberg-catalog-cache.json.gz`, `--dry-run`, `--limit=N`), uploading missing public-domain `.txt.gz`/`.jpg` files via bounded retries & parallel `PutObject` workers, safeguarding `_meta/r2-sync-state.json.gz` via read-fail preservation + remote union merge + `try ... finally` checkpoints, and writing conditional `covers`/`book-content` purge tags on deletes/`--force` overwrites.
+  5. **Run Cloudflare R2 Delta Asset Sync** (unless `skip_r2=true` or all 4 `R2_*` secrets are unset; `continue-on-error: true`): runs `node scripts/sync-r2-assets.js --source=rsync --rsync-host=auto --max-minutes=25 --purge-tags-file=r2-purge-tags.txt` (`aleph.gutenberg.org` primary $\rightarrow$ automatic retry failover to `rsync.ibiblio.org`, + `--cache-file=gutenberg-catalog-cache.json.gz`, `--dry-run`, `--limit=N`), uploading missing public-domain `.txt.gz`/`.jpg` files via bounded retries & parallel `PutObject` workers, safeguarding `_meta/r2-sync-state.json.gz` via read-fail preservation + remote union merge + `try ... finally` checkpoints, and writing conditional `covers`/`book-content` purge tags on deletes/`--force` overwrites.
   6. Run `node scripts/ingest-translations.js` (`continue-on-error: true`, + `--dry-run`, `--update-existing`, and `--limit=N` or `--all` when `limit` is blank) with `45,000ms` Wikidata socket timeout, strict FK pre-checks, and bisected batch upsert retries.
   7. Run `node scripts/sync-featured-quotes.js --source=auto --mirrors=pglaf,aleph,readingroo` (`continue-on-error: true`) with optional `R2_*` credentials (`books/<id>.txt.gz` read first at 0s mirror delay ahead of 3-mirror failover; + `--diff-file=quote-diff.json` if emitted, `--dry-run`, `--limit=N`).
   8. When `dry_run != 'true'` and `catalog_sync` / `trans_sync` / `quotes_sync` succeeded (`if: always()`): append any non-empty `r2-purge-tags.txt` tags to `catalog,quotes,translations` and run `node scripts/purge-vercel-cache.js --tags="$PURGE_TAGS"`.
@@ -225,7 +225,7 @@ Continuous integration quality gate verifying every branch push and pull request
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0`), setup Node `22` with npm cache (`actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0`), run `npm ci`.
   2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/License-SCA/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity incl. `SECURITY.md` $\to$ Pass 5 ADR, 19 governance docs, circular `SECURITY.md` parity, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build + compiled `.next/routes-manifest.json` & live `127.0.0.1` HTTP smoke probe).
-  3. Execute `git diff --exit-code` across the `10` deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
+  3. Execute `git diff --exit-code` across the `11` deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/GITHUB_ACTIONS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
 - **Local CLI Equivalents**:
   ```bash
   # Exact CI command (full 7-Gateway Quality Engine)
@@ -243,7 +243,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.64'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.66'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions & Timeout**: Top-level `contents: read`; job-level `contents: write`, `timeout-minutes: 25`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -304,7 +304,7 @@ Lightweight zero-checkout automation keeping the `catalog-cache` Release's auto-
 
 ### 3.10 `R2 Asset Delta & Backfill Sync` ([`.github/workflows/r2-sync.yml`](../.github/workflows/r2-sync.yml))
 
-On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping private Cloudflare R2 storage (`books/<id>.txt.gz`, `covers/<id>.jpg`, `_meta/r2-sync-state.json.gz`) synchronized with active public-domain catalog books via fast targeted Ubuntu `rsync --files-from` (`aleph.gutenberg.org`) or PGLAF HTTPS fallback without re-downloading `rdf-files.tar.bz2`, updating Supabase catalog tables, or re-running quotes/translations.
+On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping private Cloudflare R2 storage (`books/<id>.txt.gz`, `covers/<id>.jpg`, `_meta/r2-sync-state.json.gz`) synchronized with active public-domain catalog books via fast targeted Ubuntu `rsync --files-from` (`aleph.gutenberg.org` $\leftrightarrow$ `rsync.ibiblio.org` multi-host failover with selectable primary host) or PGLAF HTTPS fallback without re-downloading `rdf-files.tar.bz2`, updating Supabase catalog tables, or re-running quotes/translations.
 
 - **Triggers**: `workflow_dispatch` only *(weekly automated delta runs execute as Step 2 inside `.github/workflows/catalog-sync.yml`)*
 - **Concurrency & Permissions**: `concurrency: r2-asset-sync` (`cancel-in-progress: false`), `permissions: contents: read`, `timeout-minutes: 90`
@@ -315,7 +315,8 @@ On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping pri
 | `limit` | `string` | No | `''` *(blank)* | Max queued volumes to process (leave blank to run up to `max_minutes`, prioritizing 27 hero classics then `download_count DESC`). |
 | `ids` | `string` | No | `''` | Comma-separated Gutenberg IDs for targeted repairs (blank scans active catalog vs live R2 inventory). |
 | `catalog_source` | `choice` | No | `'auto'` | Catalog input source (`auto` snapshot-first with Supabase fallback, `snapshot` release asset only, or `supabase` live `public.books` PK scan). |
-| `source` | `choice` | No | `'rsync'` | Transfer engine: `'rsync'` (`aleph.gutenberg.org::gutenberg-epub` / `::gutenberg`), `'https'` (PGLAF fallback), or `'auto'`. |
+| `source` | `choice` | No | `'rsync'` | Transfer engine: `'rsync'` (`aleph.gutenberg.org` / `rsync.ibiblio.org` `::gutenberg-epub` / `::gutenberg`), `'https'` (PGLAF fallback), or `'auto'`. |
+| `rsync_host` | `choice` | No | `'auto'` | Primary `rsync` host order: `'auto'` / `'aleph'` (`aleph.gutenberg.org` $\rightarrow$ `rsync.ibiblio.org` failover) or `'ibiblio'` (`rsync.ibiblio.org` $\rightarrow$ `aleph.gutenberg.org` failover for large backfills). |
 | `sync_books` | `boolean` | No | `true` | Sync missing/targeted book plain texts as gzipped `.txt.gz` objects. |
 | `sync_covers` | `boolean` | No | `true` | Sync missing/targeted JPEG cover artwork (`pg<id>.cover.medium.jpg` $\to$ `covers/<id>.jpg`). *(At least one of `sync_books` or `sync_covers` must be `true`.)* |
 | `force` | `boolean` | No | `false` | Overwrite existing R2 objects in targeted scope (`--force`). |
@@ -327,16 +328,16 @@ On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping pri
 - **CI Execution Sequence**:
   1. Checkout repo, setup Node `22` with npm cache, `npm ci`.
   2. When `catalog_source` is not `'supabase'`, attempt to restore `gutenberg-catalog-cache.json.gz` + `.sha256` from release `catalog-cache` via `gh release download` with `--repo "$GITHUB_REPOSITORY"` (falling back cleanly to paginated `books_pkey` Supabase queries in `'auto'` mode if absent).
-  3. Exit `0` gracefully only when **all 4** `R2_*` GitHub Secrets are unset; otherwise execute `node scripts/sync-r2-assets.js` (`--catalog-source`, `--purge-tags-file=r2-purge-tags.txt`, bounded parallel R2 PUT concurrency `8`, `rsync` retry & transport-error shielding, mid-batch budget checks, and `try ... finally` state checkpoints) and publish the **Bucket Coverage**, **Execution Telemetry**, and bounded **Changed Volumes** tables to `$GITHUB_STEP_SUMMARY`.
+  3. Exit `0` gracefully only when **all 4** `R2_*` GitHub Secrets are unset; otherwise execute `node scripts/sync-r2-assets.js` (`--catalog-source`, `--rsync-host`, `--purge-tags-file=r2-purge-tags.txt`, bounded parallel R2 PUT concurrency `8`, multi-host `aleph.gutenberg.org` $\leftrightarrow$ `rsync.ibiblio.org` retry failover & transport-error shielding, mid-batch budget checks, and `try ... finally` state checkpoints) and publish the **Bucket Coverage**, **Execution Telemetry**, and bounded **Changed Volumes** tables to `$GITHUB_STEP_SUMMARY`.
   4. When `dry_run != 'true'` and `r2-purge-tags.txt` is non-empty (`deleted > 0` or `--force` overwrites), invoke `node scripts/purge-vercel-cache.js --tags="$PURGE_TAGS"` for affected `covers`/`book-content` tags.
 - **Local CLI Equivalents**:
   ```bash
   # Dry-run R2 coverage audit
   npm run r2:sync -- --dry-run --limit=100
 
-  # Repair specific classics from live Supabase or run local Windows HTTPS / WSL rsync sync
+  # Repair specific classics from live Supabase or run local Windows HTTPS / WSL rsync sync (or ibiblio primary backfill)
   npm run r2:sync -- --catalog-source=supabase --ids=1342,84 --force --source=https
-  npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=wsl-rsync --max-minutes=25
+  npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=wsl-rsync --rsync-host=ibiblio --max-minutes=25
   ```
 
 ---
@@ -365,7 +366,7 @@ Manual-only (`workflow_dispatch`), zero-`npm ci` read-only audit scanning stored
 - **CI Execution Sequence**:
   1. Checkout repo and setup Node `22` (no `npm ci`, zero third-party dependencies).
   2. Exit `0` gracefully when all 4 `R2_*` secrets are unset; otherwise validate `env:`-bound inputs cleanly and run `node scripts/scan-r2-content.js "${SCAN_ARGS[@]}"`.
-  3. Reports matching book IDs, hit counts, and sanitized context snippets to `$GITHUB_STEP_SUMMARY` alongside Class A / Class B / MB downloaded telemetry.
+  3. Streams throttled CI progress heartbeats (`10s` / `5%` intervals), live `[MATCH]` alerts, and capped inline read-error warnings while running, then reports matching book IDs, hit counts, and sanitized context snippets to `$GITHUB_STEP_SUMMARY` alongside Class A / Class B / MB downloaded telemetry.
 - **Local CLI Equivalents**:
   ```bash
   # Dry-run key inventory only (0 Class B GetObject reads)

@@ -1,8 +1,8 @@
 /**
  * @module scripts/scan-r2-content
  * @scope Zero-dependency read-only Cloudflare R2 content integrity scanner listing `books/<id>.txt.gz` objects via AWS SigV4 `ListObjectsV2` (or targeted `--ids`) and scanning gunzipped payloads for unwanted or injected terms (`asiafilm` default) without touching Vercel, Supabase, or Project Gutenberg mirrors.
- * @invariant Enforce `assertValidR2ConfigIfPresent` (clean `exit 0` skip when all 4 `R2_*` vars are unset, fail-fast on partial or malformed configs), lock key scope to `ALLOWED_SCAN_PREFIXES` (`books/`), match terms strictly via literal `String.prototype.indexOf` (`CWE-1333` ReDoS-safe, never `new RegExp()` on CLI input), cap concurrent `GetObject` streams (`MAX_SCAN_CONCURRENCY = 64`), enforce `MAX_R2_BOOK_BYTES` (`15 MB`) bounded gzip reads via `scripts/lib/r2-sigv4.js`, and sanitize output snippets in `$GITHUB_STEP_SUMMARY`.
- * @rationale Scanning directly against private Cloudflare R2 via zero-dependency Node 22 built-ins eliminates `npm ci` workflow overhead, incurs zero R2 egress, consumes `< 0.8%` of the monthly Class B free quota across 78k books (`0` under `--dry-run`), and isolates audit runs completely from production Next.js and PostgreSQL compute.
+ * @invariant Enforce `assertValidR2ConfigIfPresent` (clean `exit 0` skip when all 4 `R2_*` vars are unset, fail-fast on partial or malformed configs), lock key scope to `ALLOWED_SCAN_PREFIXES` (`books/`), match terms strictly via literal `String.prototype.indexOf` (`CWE-1333` ReDoS-safe, never `new RegExp()` on CLI input), cap concurrent `GetObject` streams (`MAX_SCAN_CONCURRENCY = 64`), enforce `MAX_R2_BOOK_BYTES` (`15 MB`) bounded gzip reads via `scripts/lib/r2-sigv4.js`, suppress progress chatter cleanly under `--json` while driving TTY/CI heartbeat + live match alerts + `MAX_INLINE_SCAN_ERRORS`-capped error logs via `scripts/lib/cli-progress.js`, and sanitize output snippets in `$GITHUB_STEP_SUMMARY`.
+ * @rationale Scanning directly against private Cloudflare R2 via zero-dependency Node 22 built-ins eliminates `npm ci` workflow overhead, incurs zero R2 egress, consumes `< 0.8%` of the monthly Class B free quota across 78k books (`0` under `--dry-run`), isolates audit runs completely from production Next.js and PostgreSQL compute, and gives operators real-time discovery/scan progress and instant hit feedback without dumping 78k lines.
  * @adr ADR-083, ADR-085
  */
 
@@ -18,6 +18,11 @@ const {
   escapeMarkdownCell,
   appendStepSummary,
 } = require('./lib/r2-sigv4');
+const {
+  formatDuration,
+  formatEtaSuffix,
+  createCliProgressReporter,
+} = require('./lib/cli-progress');
 
 const DEFAULT_SCAN_TERMS = ['asiafilm'];
 const DEFAULT_SCAN_PREFIX = 'books/';
@@ -30,6 +35,7 @@ const DEFAULT_SCAN_MAX_MINUTES = 45;
 const MAX_SCAN_MINUTES = 120;
 const MAX_SCAN_TERMS = 20;
 const MAX_SCAN_TERM_LENGTH = 120;
+const MAX_INLINE_SCAN_ERRORS = 10;
 const SCAN_MIN_ATTEMPTS_FOR_RATIO_FAIL = 5;
 const SCAN_MAX_FAILURE_RATIO = 0.5;
 const BOOK_TEXT_KEY_REGEX = /^books\/(\d+)\.txt\.gz$/;
@@ -374,6 +380,22 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
     return skippedSummary;
   }
 
+  const progressEnabled = !options.json;
+  const progressOpts = deps.progressOptions || {};
+
+  if (progressEnabled) {
+    const scopeLabel =
+      options.ids.length > 0
+        ? `${options.ids.length.toLocaleString()} targeted ID(s)`
+        : `${options.prefix}*.txt.gz`;
+    logger.log(
+      `\n🔍 Bookarium Cloudflare R2 Content Integrity Scan${options.dryRun ? ' (DRY RUN)' : ''}`
+    );
+    logger.log(
+      `  • Terms: ${options.terms.join(', ')} (${options.caseSensitive ? 'case-sensitive' : 'case-insensitive'}) | Scope: ${scopeLabel} | Concurrency: ${options.concurrency} | Budget: ${options.maxMinutes}m`
+    );
+  }
+
   let queuedObjects = [];
   let discoveredCount = 0;
   let listApiCalls = 0;
@@ -386,12 +408,26 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
     }));
     discoveredCount = queuedObjects.length;
   } else {
+    const listProgress = createCliProgressReporter({
+      enabled: progressEnabled,
+      env,
+      logger,
+      nowFn,
+      ...progressOpts,
+    });
     const listed = await listR2PrefixKeys(config, options.prefix, {
       fetchFn,
       timeoutMs: deps.timeoutMs || R2_DEFAULT_TIMEOUT_MS,
       maxPages: deps.maxPages || 2000,
       maxMatched: options.limit || undefined,
       filterFn: (obj) => BOOK_TEXT_KEY_REGEX.test(obj.key),
+      onPage: ({ apiCalls: pages, matchedCount }) => {
+        const elapsedSec = (nowFn() - startMs) / 1000;
+        listProgress.update(
+          matchedCount,
+          `Listing ${options.prefix}: ${matchedCount.toLocaleString()} book(s) (${pages} page${pages === 1 ? '' : 's'}) · ${formatDuration(elapsedSec)}`
+        );
+      },
     });
     listApiCalls = listed.apiCalls;
     discoveredCount = listed.objects.length;
@@ -401,6 +437,9 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
         bookId: extractBookIdFromKey(obj.key),
         size: obj.size || 0,
       })
+    );
+    listProgress.finish(
+      `  ✔ Listed ${queuedObjects.length.toLocaleString()} book(s) in ${options.prefix} (${listApiCalls} page${listApiCalls === 1 ? '' : 's'}) · ${formatDuration((nowFn() - startMs) / 1000)}.`
     );
   }
 
@@ -438,7 +477,9 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
   }
 
   const deadlineMs = startMs + options.maxMinutes * 60_000;
+  const scanStartMs = nowFn();
   let scannedObjects = 0;
+  let completedObjects = 0;
   let readableObjects = 0;
   let notFoundCount = 0;
   let infraFailureCount = 0;
@@ -446,8 +487,31 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
   let getApiCalls = 0;
   let bytesDownloaded = 0;
   let stoppedByBudget = false;
+  let inlineErrorLogs = 0;
   const matches = [];
   const errors = [];
+
+  const scanProgress = createCliProgressReporter({
+    enabled: progressEnabled && queuedObjects.length > 0,
+    total: queuedObjects.length,
+    ciPercentStep: 5,
+    env,
+    logger,
+    nowFn,
+    ...progressOpts,
+  });
+
+  const emitScanProgress = () => {
+    const elapsedSec = Math.max(0.001, (nowFn() - scanStartMs) / 1000);
+    const pct = ((completedObjects / queuedObjects.length) * 100).toFixed(1).padStart(5);
+    const mb = (bytesDownloaded / (1024 * 1024)).toFixed(1);
+    const rate = Math.round(completedObjects / elapsedSec);
+    const eta = formatEtaSuffix(completedObjects, queuedObjects.length, elapsedSec);
+    scanProgress.update(
+      completedObjects,
+      `[${pct}% | ${completedObjects.toLocaleString()} / ${queuedObjects.length.toLocaleString()}] ok: ${readableObjects.toLocaleString()} · 404: ${notFoundCount.toLocaleString()} · err: ${infraFailureCount.toLocaleString()} · hits: ${matches.length.toLocaleString()} · ${mb} MB · ${rate}/s · ${formatDuration(elapsedSec)}${eta}`
+    );
+  };
 
   const tasks = queuedObjects.map((target) => async () => {
     if (nowFn() >= deadlineMs) {
@@ -467,16 +531,30 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
 
     if (res.status === 'not_found') {
       notFoundCount++;
+      completedObjects++;
+      emitScanProgress();
       return;
     }
 
     if (res.status !== 'ok') {
       infraFailureCount++;
+      const errMsg = res.error || 'Unknown R2 fetch error';
       errors.push({
         bookId: target.bookId,
         key: target.key,
-        error: res.error || 'Unknown R2 fetch error',
+        error: errMsg,
       });
+      if (inlineErrorLogs < MAX_INLINE_SCAN_ERRORS) {
+        inlineErrorLogs++;
+        scanProgress.logEvent(`  ⚠ [ERR] #${target.bookId ?? '—'} (${target.key}): ${errMsg}`);
+      } else if (inlineErrorLogs === MAX_INLINE_SCAN_ERRORS) {
+        inlineErrorLogs++;
+        scanProgress.logEvent(
+          '  ⚠ Additional R2 read errors suppressed in live log (preview preserved in step summary).'
+        );
+      }
+      completedObjects++;
+      emitScanProgress();
       return;
     }
 
@@ -496,10 +574,19 @@ async function runR2ContentScan(customOptions = {}, deps = {}) {
         totalHits: scanResult.totalHits,
         snippet: scanResult.snippet,
       });
+      if (matches.length <= options.maxMatches) {
+        scanProgress.logEvent(
+          `  🚨 [MATCH] #${target.bookId ?? 'N/A'} (${target.key}): ${scanResult.totalHits} hit(s) [${scanResult.matchedTerms.join(', ')}] :: ${scanResult.snippet}`
+        );
+      }
     }
+
+    completedObjects++;
+    emitScanProgress();
   });
 
   await runWithConcurrency(tasks, options.concurrency);
+  scanProgress.finish();
 
   matches.sort((a, b) => (a.bookId || 0) - (b.bookId || 0) || a.key.localeCompare(b.key));
 
@@ -589,6 +676,7 @@ module.exports = {
   MAX_SCAN_MINUTES,
   MAX_SCAN_TERMS,
   MAX_SCAN_TERM_LENGTH,
+  MAX_INLINE_SCAN_ERRORS,
   SCAN_MIN_ATTEMPTS_FOR_RATIO_FAIL,
   SCAN_MAX_FAILURE_RATIO,
   BOOK_TEXT_KEY_REGEX,

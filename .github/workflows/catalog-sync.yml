@@ -157,7 +157,7 @@ jobs:
             echo "R2_* GitHub Secrets are not configured; skipping Cloudflare R2 delta sync cleanly."
             exit 0
           fi
-          R2_ARGS="--source=rsync --max-minutes=25 --purge-tags-file=r2-purge-tags.txt"
+          R2_ARGS="--source=rsync --rsync-host=auto --max-minutes=25 --purge-tags-file=r2-purge-tags.txt"
           if [ -f "gutenberg-catalog-cache.json.gz" ]; then
             R2_ARGS="$R2_ARGS --cache-file=gutenberg-catalog-cache.json.gz"
           fi

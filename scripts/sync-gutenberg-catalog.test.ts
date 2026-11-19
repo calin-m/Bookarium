@@ -622,7 +622,6 @@ describe('sync-gutenberg-catalog parser', () => {
     });
 
     it('scans public.books via keyset pagination, protects Hero classics, and deletes withdrawn book IDs', async () => {
-      const silentLogger = { log: vi.fn(), warn: vi.fn() };
       const activeIds = new Set([100, 200, 300]);
       const deletedChunks: number[][] = [];
 
@@ -658,11 +657,18 @@ describe('sync-gutenberg-catalog parser', () => {
         })),
       };
 
+      const ciLogSpy = vi.fn();
+      const ciReconcileLogger = { log: ciLogSpy, warn: vi.fn() };
       const res = await reconcileWithdrawnCatalogBooks(mockSupabase, activeIds, {
         minCatalogSize: 3,
         pageSize: 3,
         deleteChunkSize: 1,
-        logger: silentLogger,
+        logger: ciReconcileLogger,
+        progressOptions: {
+          env: { GITHUB_ACTIONS: 'true' },
+          ciMinTotalForPercent: 1,
+          ciPercentStep: 50,
+        },
       });
 
       expect(gtSpy).toHaveBeenCalledWith('id', 0);
@@ -675,6 +681,9 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(res.remainingCount).toBe(3);
       expect(res.prunedIds).toEqual([78050, 78051]);
       expect(deletedChunks).toEqual([[78050], [78051]]);
+      expect(
+        ciLogSpy.mock.calls.some((call) => String(call[0]).includes('Scanned: 3 / 3'))
+      ).toBe(true);
     });
 
     it('triggers the maxPrunePerRun safety circuit breaker when candidate removals exceed cap', async () => {

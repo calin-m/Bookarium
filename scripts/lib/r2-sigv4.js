@@ -371,6 +371,7 @@ async function listR2PrefixKeys(config, prefix, options = {}) {
   const maxMatched =
     Number.isInteger(options.maxMatched) && options.maxMatched > 0 ? options.maxMatched : null;
   const filterFn = typeof options.filterFn === 'function' ? options.filterFn : null;
+  const onPage = typeof options.onPage === 'function' ? options.onPage : null;
   const objects = [];
   let keyCount = 0;
   let apiCalls = 0;
@@ -410,9 +411,28 @@ async function listR2PrefixKeys(config, prefix, options = {}) {
         objects.push(obj);
         if (maxMatched && objects.length >= maxMatched) {
           truncatedByLimit = parsed.isTruncated || keyCount < parsed.objects.length;
+          if (onPage) {
+            onPage({
+              page: page + 1,
+              apiCalls,
+              keyCount,
+              matchedCount: objects.length,
+              pageObjectCount: parsed.objects.length,
+            });
+          }
           return { objects, keyCount, apiCalls, truncatedByLimit };
         }
       }
+    }
+
+    if (onPage) {
+      onPage({
+        page: page + 1,
+        apiCalls,
+        keyCount,
+        matchedCount: objects.length,
+        pageObjectCount: parsed.objects.length,
+      });
     }
 
     if (!parsed.isTruncated || !parsed.nextContinuationToken) {

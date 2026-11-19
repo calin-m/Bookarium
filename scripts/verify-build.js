@@ -1151,6 +1151,7 @@ function pass5AdrValidation() {
     'scripts/sync-featured-quotes.js',
     'scripts/sync-gutenberg-catalog.js',
     'scripts/lib/ast-parser.js',
+    'scripts/lib/cli-progress.js',
     'scripts/lib/r2-sigv4.js',
     'scripts/lib/sast-validators.js',
     'scripts/eslint-rules/bookarium-security.js',
@@ -2202,6 +2203,20 @@ function pass5AdrValidation() {
         if (!bugReportTplText.includes(`e.g. v${pkgVersion},`)) {
           docViolations.push(
             `Version drift in .github/ISSUE_TEMPLATE/bug_report.yml: expected placeholder "e.g. v${pkgVersion}," (run "npm run docs:sync").`
+          );
+        }
+      }
+
+      const ghaActionsDocPath = path.join(rootDir, 'docs', 'GITHUB_ACTIONS.md');
+      if (fs.existsSync(ghaActionsDocPath)) {
+        const ghaActionsDocText = fs.readFileSync(ghaActionsDocPath, 'utf-8');
+        if (
+          !ghaActionsDocText.includes(
+            `\`workflow_dispatch\` with required \`tag\` string (default \`'v${pkgVersion}'\`,`
+          )
+        ) {
+          docViolations.push(
+            `Version drift in docs/GITHUB_ACTIONS.md: expected "default \`'v${pkgVersion}'\`" (run "npm run docs:sync").`
           );
         }
       }

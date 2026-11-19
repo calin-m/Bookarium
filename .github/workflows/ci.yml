@@ -41,6 +41,7 @@ jobs:
             docs/ARCHITECTURE.md \
             docs/GUTENBERG_PARSER.md \
             docs/SYSTEM_CONTRACTS.md \
+            docs/GITHUB_ACTIONS.md \
             CHANGELOG.md \
             ROADMAP.md \
             package.json \

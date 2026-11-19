@@ -137,5 +137,5 @@ Bookarium proxies book covers (`covers/<id>.jpg`) and gzipped plain-text books (
    - **GitHub Actions / CLI Token (Read & Write)**: Grant `Object Read & Write` scoped strictly to your bucket; store `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` in **GitHub Repository Secrets** for `npm run r2:sync` and `catalog-sync.yml`.
 3. **Seed Initial Corpus & Storage Sizing Note**:
    - Hosting the complete 78,000+ catalog text + cover corpus exceeds Cloudflare R2's `10 GB` free storage quota (`~25+ GB` — see [**`docs/INFRASTRUCTURE.md`**](docs/INFRASTRUCTURE.md) for Mode `0`–`2` tiers and Free vs. Paid provider bounds).
-   - Run `npm run catalog:sync -- --cache-file=gutenberg-catalog-cache.json.gz` followed by `npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=rsync` (Linux/macOS/CI) or `npm run r2:sync -- --source=wsl-rsync` / `--source=https --ids=...` (Windows) to populate initial volumes before going live.
+   - Run `npm run catalog:sync -- --cache-file=gutenberg-catalog-cache.json.gz` followed by `npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=rsync --rsync-host=auto` (or `--rsync-host=ibiblio` for large initial backfills on Linux/macOS/CI; `--source=wsl-rsync` or `--source=https --ids=...` on Windows) to populate initial volumes before going live.
 

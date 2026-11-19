@@ -695,6 +695,7 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
           }),
         };
 
+        const forceLogs: string[] = [];
         const forceSummary = await syncR2Assets.runR2AssetSync(
           {
             catalogSource: 'supabase',
@@ -705,11 +706,12 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
             purgeTagsFile: purgeFile,
           },
           {
-            env: TEST_R2_ENV,
+            env: { ...TEST_R2_ENV, GITHUB_ACTIONS: 'true' },
             supabase: mockSupabase,
             fetchFn: forceFetch,
             sleepFn: async () => {},
-            logger: { log: vi.fn(), warn: warnSpy, error: vi.fn() },
+            progressOptions: { ciMinTotalForPercent: 1, ciPercentStep: 50 },
+            logger: { log: (m: string) => forceLogs.push(m), warn: warnSpy, error: vi.fn() },
           }
         );
 
@@ -718,6 +720,7 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
         expect(forceSummary.purgeTags).toEqual(['book-content']);
         expect(fs.readFileSync(purgeFile, 'utf8')).toBe('book-content');
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read existing _meta/r2-sync-state.json.gz'));
+        expect(forceLogs.some((line) => line.includes('HTTPS [100.0% | 1 / 1]: +1 texts'))).toBe(true);
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }
@@ -752,6 +755,167 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
           coversDeleted: 0,
         })
       ).toBe(false);
+    });
+
+    it('supports --rsync-host ordering (auto/aleph -> ibiblio and ibiblio -> aleph) with automatic multi-host rsync failover', async () => {
+      const parsedDefault = syncR2Assets.parseCliArgs([]);
+      expect(parsedDefault.rsyncHost).toBe('auto');
+
+      const parsedIbiblio = syncR2Assets.parseCliArgs(['--rsync-host=ibiblio', '--source=rsync']);
+      expect(parsedIbiblio.rsyncHost).toBe('ibiblio');
+      expect(() => syncR2Assets.parseCliArgs(['--rsync-host=ftp'])).toThrow(/Unsupported --rsync-host/);
+
+      expect(syncR2Assets.resolveRsyncHostOrder('auto')).toEqual([
+        'aleph.gutenberg.org',
+        'rsync.ibiblio.org',
+      ]);
+      expect(syncR2Assets.resolveRsyncHostOrder('aleph')).toEqual([
+        'aleph.gutenberg.org',
+        'rsync.ibiblio.org',
+      ]);
+      expect(syncR2Assets.resolveRsyncHostOrder('ibiblio')).toEqual([
+        'rsync.ibiblio.org',
+        'aleph.gutenberg.org',
+      ]);
+      expect(() => syncR2Assets.resolveRsyncHostOrder('invalid')).toThrow(/Unsupported --rsync-host/);
+
+      expect(
+        syncR2Assets.buildRsyncSourcesForOrder(
+          syncR2Assets.resolveRsyncHostOrder('ibiblio'),
+          'gutenberg-epub'
+        )
+      ).toEqual([syncR2Assets.RSYNC_IBIBLIO_EPUB_SOURCE, syncR2Assets.RSYNC_EPUB_SOURCE]);
+
+      const retrySources: string[] = [];
+      const retryNotices: Array<{ attempt: number; prevSource: string; nextSource: string }> = [];
+      const failoverSpawn = vi.fn((_cmd: string, args: string[]) => {
+        const proc = new EventEmitter() as EventEmitter & { stderr: EventEmitter };
+        proc.stderr = new EventEmitter();
+        const remoteSource = args[args.length - 2];
+        retrySources.push(remoteSource);
+        queueMicrotask(() => {
+          if (remoteSource === syncR2Assets.RSYNC_IBIBLIO_MAIN_SOURCE) {
+            proc.stderr.emit('data', Buffer.from('rsync: failed to connect to rsync.ibiblio.org\n'));
+            proc.emit('close', 10);
+          } else {
+            proc.emit('close', 0);
+          }
+        });
+        return proc;
+      });
+
+      const reversedRes = await syncR2Assets.runRsyncCommandWithRetry(
+        {
+          manifestFile: 'manifest-main.txt',
+          remoteSources: syncR2Assets.buildRsyncSourcesForOrder(
+            syncR2Assets.resolveRsyncHostOrder('ibiblio'),
+            'gutenberg'
+          ),
+          cwd: os.tmpdir(),
+          spawnFn: failoverSpawn,
+        },
+        {
+          maxRetries: 2,
+          baseDelayMs: 0,
+          onRetry: (info: { attempt: number; prevSource: string; nextSource: string }) => {
+            retryNotices.push({
+              attempt: info.attempt,
+              prevSource: info.prevSource,
+              nextSource: info.nextSource,
+            });
+          },
+        }
+      );
+
+      expect(retrySources).toEqual([
+        syncR2Assets.RSYNC_IBIBLIO_MAIN_SOURCE,
+        syncR2Assets.RSYNC_MAIN_SOURCE,
+      ]);
+      expect(retryNotices).toEqual([
+        {
+          attempt: 1,
+          prevSource: syncR2Assets.RSYNC_IBIBLIO_MAIN_SOURCE,
+          nextSource: syncR2Assets.RSYNC_MAIN_SOURCE,
+        },
+      ]);
+      expect(reversedRes).toMatchObject({
+        exitCode: 0,
+        remoteSource: syncR2Assets.RSYNC_MAIN_SOURCE,
+        host: 'aleph.gutenberg.org',
+      });
+
+      const uploadedKeys: string[] = [];
+      const syncSpawnSources: string[] = [];
+      const syncLogger = { log: vi.fn(), warn: vi.fn() };
+      const mockFetch = vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'PUT') {
+          uploadedKeys.push(new URL(url).pathname);
+          return makeTextResponse(200, '');
+        }
+        if (url.includes('list-type=2')) {
+          return makeTextResponse(
+            200,
+            '<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>'
+          );
+        }
+        return makeTextResponse(404, '');
+      });
+      const syncSpawn = vi.fn((_cmd: string, args: string[], spawnOpts: { cwd: string }) => {
+        const proc = new EventEmitter() as EventEmitter & { stderr: EventEmitter };
+        proc.stderr = new EventEmitter();
+        const remoteSource = args[args.length - 2];
+        syncSpawnSources.push(remoteSource);
+        queueMicrotask(() => {
+          if (remoteSource === syncR2Assets.RSYNC_EPUB_SOURCE) {
+            proc.stderr.emit('data', Buffer.from('rsync: read error: Connection reset by peer\n'));
+            proc.emit('close', 23);
+            return;
+          }
+          const bookDir = path.join(spawnOpts.cwd, '1342');
+          fs.mkdirSync(bookDir, { recursive: true });
+          fs.writeFileSync(path.join(bookDir, 'pg1342.txt'), 'Pride and Prejudice public domain text.', 'utf8');
+          fs.writeFileSync(path.join(bookDir, 'pg1342.cover.medium.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      const runSummary = await syncR2Assets.runR2AssetSync(
+        {
+          ids: [1342],
+          source: 'rsync',
+          rsyncHost: 'auto',
+          maxMinutes: 10,
+        },
+        {
+          env: TEST_R2_ENV,
+          r2Config: TEST_R2_CONFIG,
+          engine: 'rsync',
+          fetchFn: mockFetch,
+          spawnFn: syncSpawn,
+          rsyncBatchSize: 5,
+          rsyncRetries: 2,
+          rsyncRetryDelayMs: 0,
+          sleepFn: async () => {},
+          logger: syncLogger,
+        }
+      );
+
+      expect(syncSpawnSources).toEqual([
+        syncR2Assets.RSYNC_EPUB_SOURCE,
+        syncR2Assets.RSYNC_IBIBLIO_EPUB_SOURCE,
+      ]);
+      expect(runSummary.textsUploaded).toBe(1);
+      expect(runSummary.coversUploaded).toBe(1);
+      expect(runSummary.failedCount).toBe(0);
+      expect(runSummary.rsyncHost).toBe('auto');
+      expect(runSummary.rsyncHostOrder).toEqual(['aleph.gutenberg.org', 'rsync.ibiblio.org']);
+      expect(runSummary.rsyncHostsUsed).toEqual(['rsync.ibiblio.org']);
+      expect(uploadedKeys.some((k) => k.endsWith('/books/1342.txt.gz'))).toBe(true);
+      expect(uploadedKeys.some((k) => k.endsWith('/covers/1342.jpg'))).toBe(true);
+      expect(syncLogger.log.mock.calls.flat().join('\n')).toContain('switching to rsync.ibiblio.org');
+      expect(runSummary.report).toContain('rsync Host Order / Used');
+      expect(runSummary.report).toContain('aleph.gutenberg.org -> rsync.ibiblio.org');
     });
   });
 });

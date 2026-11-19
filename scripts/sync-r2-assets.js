@@ -1,8 +1,8 @@
 /**
  * @module scripts/sync-r2-assets
- * @scope Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted `rsync --files-from` / PGLAF HTTPS transfers.
- * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), fail fast via `assertValidR2ConfigIfPresent` on partial or malformed `R2_*` configs while exiting `0` cleanly when all `R2_*` variables are unset, prevent transient `_meta/r2-sync-state.json.gz` read errors or `rsync` transport faults from wiping/poisoning 90-day missing cooldowns (union-merging remote state before writes and flushing state cleanly in `try ... finally` alongside mid-batch `isOverBudget` checks), parallelize `putR2Object` writes via `DEFAULT_R2_PUT_CONCURRENCY` (`8`), emit conditional purge tags (`--purge-tags-file`) strictly for deleted or `--force`-overwritten assets, fail non-zero via `shouldFailR2SyncRun` on total or `>= 50%` infrastructure failures, decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), and invoke `rsync`/`wsl` strictly with `{ shell: false }`.
- * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, sharing zero-dependency SigV4 transport helpers in `scripts/lib/r2-sigv4.js`, targeted `rsync --files-from` with bounded retries and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
+ * @scope Automated Cloudflare R2 delta synchronization and backfill engine managing `books/<id>.txt.gz`, `covers/<id>.jpg`, and missing-asset cooldown state `_meta/r2-sync-state.json.gz` via zero-dependency AWS Signature V4 S3 calls and targeted multi-host `rsync --files-from` (`aleph.gutenberg.org` <-> `rsync.ibiblio.org`) / PGLAF HTTPS transfers.
+ * @invariant Unconditionally enforce `copyright !== true` (`Rule 2/4`) on all R2 uploads, enforce `MIN_ACTIVE_CATALOG_FOR_PRUNE` before pruning withdrawn IDs (bounded by `DEFAULT_MAX_PRUNE_PER_RUN` unless `--force-prune`), fail fast via `assertValidR2ConfigIfPresent` on partial or malformed `R2_*` configs while exiting `0` cleanly when all `R2_*` variables are unset, prevent transient `_meta/r2-sync-state.json.gz` read errors or `rsync` transport faults from wiping/poisoning 90-day missing cooldowns (union-merging remote state before writes and flushing state cleanly in `try ... finally` alongside mid-batch `isOverBudget` checks), rotate failing `rsync` batches across `RSYNC_HOSTS` (`aleph.gutenberg.org` <-> `rsync.ibiblio.org`) via `resolveRsyncHostOrder` (`--rsync-host=auto|aleph|ibiblio`), parallelize `putR2Object` writes via `DEFAULT_R2_PUT_CONCURRENCY` (`8`), emit conditional purge tags (`--purge-tags-file`) strictly for deleted or `--force`-overwritten assets, fail non-zero via `shouldFailR2SyncRun` on total or `>= 50%` infrastructure failures, decode `ListObjectsV2` XML entities in a single pass via `XML_ENTITY_MAP` (`CWE-116` safe), validate all remote endpoints via `isAllowedR2EndpointUrl` and `isAllowedGutenbergAssetUrl` with `redirect: 'manual'` and bounded payload limits (`MAX_R2_BOOK_BYTES`, `MAX_R2_COVER_BYTES`), and invoke `rsync`/`wsl` strictly with `{ shell: false }`.
+ * @rationale Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, sharing zero-dependency SigV4 transport helpers in `scripts/lib/r2-sigv4.js`, targeted `rsync --files-from` with automatic multi-host failover (`aleph.gutenberg.org` zero-lag primary to `rsync.ibiblio.org` mirror, or `--rsync-host=ibiblio` for bulk backfills) and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
  * @adr ADR-083, ADR-085
  */
 
@@ -35,6 +35,11 @@ const {
   runWithConcurrency,
   escapeMarkdownCell,
 } = require('./lib/r2-sigv4');
+const {
+  formatDuration,
+  formatEtaSuffix,
+  createCliProgressReporter,
+} = require('./lib/cli-progress');
 
 const MAX_R2_COVER_BYTES = 2 * 1024 * 1024;
 const MAX_R2_STATE_BYTES = 8 * 1024 * 1024;
@@ -48,8 +53,37 @@ const FULL_LEDGER_THRESHOLD = 100;
 const BULK_LEDGER_PREVIEW_ROWS = 50;
 const RSYNC_PARTIAL_VANISHED_CODES = new Set([0, 23, 24]);
 
-const RSYNC_EPUB_SOURCE = 'aleph.gutenberg.org::gutenberg-epub';
-const RSYNC_MAIN_SOURCE = 'aleph.gutenberg.org::gutenberg';
+const RSYNC_HOSTS = Object.freeze({
+  aleph: 'aleph.gutenberg.org',
+  ibiblio: 'rsync.ibiblio.org',
+});
+const RSYNC_HOST_OPTIONS = new Set(['auto', 'aleph', 'ibiblio']);
+const RSYNC_EPUB_SOURCE = `${RSYNC_HOSTS.aleph}::gutenberg-epub`;
+const RSYNC_MAIN_SOURCE = `${RSYNC_HOSTS.aleph}::gutenberg`;
+const RSYNC_IBIBLIO_EPUB_SOURCE = `${RSYNC_HOSTS.ibiblio}::gutenberg-epub`;
+const RSYNC_IBIBLIO_MAIN_SOURCE = `${RSYNC_HOSTS.ibiblio}::gutenberg`;
+
+function extractRsyncHost(remoteSource = '') {
+  const str = String(remoteSource || '');
+  const idx = str.indexOf('::');
+  return idx > 0 ? str.slice(0, idx) : str || null;
+}
+
+function resolveRsyncHostOrder(rsyncHost = 'auto') {
+  const normalized = String(rsyncHost || 'auto').trim().toLowerCase();
+  if (!RSYNC_HOST_OPTIONS.has(normalized)) {
+    throw new Error(`Unsupported --rsync-host "${rsyncHost}". Expected auto, aleph, or ibiblio.`);
+  }
+  if (normalized === 'ibiblio') {
+    return [RSYNC_HOSTS.ibiblio, RSYNC_HOSTS.aleph];
+  }
+  return [RSYNC_HOSTS.aleph, RSYNC_HOSTS.ibiblio];
+}
+
+function buildRsyncSourcesForOrder(hostOrder, moduleName = 'gutenberg-epub') {
+  const hosts = Array.isArray(hostOrder) && hostOrder.length > 0 ? hostOrder : resolveRsyncHostOrder('auto');
+  return hosts.map((host) => `${host}::${moduleName}`);
+}
 
 const MIRROR_SHORTCUT_MAP = {
   pglaf: 'https://gutenberg.pglaf.org',
@@ -390,6 +424,7 @@ function parseCliArgs(argv = []) {
     purgeTagsFile: null,
     concurrency: DEFAULT_R2_PUT_CONCURRENCY,
     source: 'auto',
+    rsyncHost: 'auto',
     mirrors: [...GUTENBERG_ASSET_MIRRORS],
     delayMin: 8,
     delayMax: 16,
@@ -469,6 +504,12 @@ function parseCliArgs(argv = []) {
         throw new Error(`Unsupported --source "${src}". Expected auto, rsync, wsl-rsync, or https.`);
       }
       options.source = src;
+    } else if (arg.startsWith('--rsync-host=')) {
+      const hostChoice = arg.slice('--rsync-host='.length).trim().toLowerCase();
+      if (!RSYNC_HOST_OPTIONS.has(hostChoice)) {
+        throw new Error(`Unsupported --rsync-host "${hostChoice}". Expected auto, aleph, or ibiblio.`);
+      }
+      options.rsyncHost = hostChoice;
     } else if (arg.startsWith('--mirror=')) {
       const key = arg.slice('--mirror='.length).trim().toLowerCase();
       if (!MIRROR_SHORTCUT_MAP[key]) {
@@ -810,7 +851,7 @@ function runRsyncCommand({
     child.on('error', reject);
     child.on('close', (code) => {
       if (RSYNC_PARTIAL_VANISHED_CODES.has(code) && !isRsyncTransportError(stderr)) {
-        resolve({ exitCode: code, stderr });
+        resolve({ exitCode: code, stderr, remoteSource, host: extractRsyncHost(remoteSource) });
       } else {
         reject(new Error(`${cmd} exited with code ${code}: ${stderr.trim() || 'transfer error'}`));
       }
@@ -828,15 +869,35 @@ async function runRsyncCommandWithRetry(params, retryOptions = {}) {
       ? retryOptions.baseDelayMs
       : 1500;
   const sleepFn = retryOptions.sleepFn || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const candidateSources =
+    Array.isArray(params?.remoteSources) && params.remoteSources.length > 0
+      ? params.remoteSources.filter(Boolean)
+      : [params?.remoteSource || RSYNC_EPUB_SOURCE];
 
   let lastErr = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const activeSource = candidateSources[attempt % candidateSources.length];
     try {
-      return await runRsyncCommand(params);
+      return await runRsyncCommand({
+        ...params,
+        remoteSource: activeSource,
+      });
     } catch (err) {
       lastErr = err;
-      if (attempt < maxRetries && baseDelayMs > 0) {
-        await sleepFn(baseDelayMs * (attempt + 1));
+      if (attempt < maxRetries) {
+        const nextSource = candidateSources[(attempt + 1) % candidateSources.length];
+        if (typeof retryOptions.onRetry === 'function') {
+          retryOptions.onRetry({
+            attempt: attempt + 1,
+            maxRetries,
+            prevSource: activeSource,
+            nextSource,
+            error: err,
+          });
+        }
+        if (baseDelayMs > 0) {
+          await sleepFn(baseDelayMs * (attempt + 1));
+        }
       }
     }
   }
@@ -944,13 +1005,19 @@ function formatR2CoverageBanner(plan, context = {}) {
     plan.eligibleBookCount > 0
       ? ((plan.existingCoversCount / plan.eligibleBookCount) * 100).toFixed(1)
       : '0.0';
+  const hostSuffix =
+    (context.engine === 'rsync' || context.engine === 'wsl-rsync') &&
+    Array.isArray(context.rsyncHostOrder) &&
+    context.rsyncHostOrder.length > 0
+      ? ` · hosts: ${context.rsyncHostOrder.join(' -> ')}`
+      : '';
   const lines = [
     `📊 Cloudflare R2 Inventory Status (Pre-Batch${context.dryRun ? ' · DRY RUN' : ''}):`,
     `  • Active PD Books:     ${plan.eligibleBookCount.toLocaleString()} eligible (copyright = false)`,
     `  • Texts Cached (R2):   ${plan.existingTextsCount.toLocaleString()} / ${plan.eligibleBookCount.toLocaleString()} (${textPct}% · ${plan.totalMissingTexts.toLocaleString()} missing · ${plan.cooldownSkippedTexts.toLocaleString()} cooldown skip)`,
     `  • Covers Cached (R2):  ${plan.existingCoversCount.toLocaleString()} / ${plan.eligibleBookCount.toLocaleString()} (${coverPct}% · ${plan.totalMissingCovers.toLocaleString()} missing · ${plan.cooldownSkippedCovers.toLocaleString()} confirmed coverless)`,
     `  • Cleanup Candidates:  ${plan.copyrightedDeleteCount.toLocaleString()} copyrighted / ${plan.withdrawnCandidateCount.toLocaleString()} withdrawn${plan.pruneBreakerTriggered ? ' (breaker triggered)' : ''}`,
-    `  • This Batch Queued:   ${plan.uploadQueue.length.toLocaleString()} volume(s) (engine: ${context.engine || 'auto'})`,
+    `  • This Batch Queued:   ${plan.uploadQueue.length.toLocaleString()} volume(s) (engine: ${context.engine || 'auto'}${hostSuffix})`,
   ];
   return lines.join('\n');
 }
@@ -976,6 +1043,19 @@ function formatR2RunReport(summary, context = {}) {
     lines.push('_Dry run: no R2 uploads or deletions were performed._', '');
   }
 
+  const showRsyncHostRow =
+    summary.engine === 'rsync' ||
+    summary.engine === 'wsl-rsync' ||
+    (Array.isArray(summary.rsyncHostsUsed) && summary.rsyncHostsUsed.length > 0);
+  const rsyncHostOrderLabel =
+    Array.isArray(summary.rsyncHostOrder) && summary.rsyncHostOrder.length > 0
+      ? summary.rsyncHostOrder.join(' -> ')
+      : summary.rsyncHost || 'auto';
+  const rsyncHostsUsedLabel =
+    Array.isArray(summary.rsyncHostsUsed) && summary.rsyncHostsUsed.length > 0
+      ? summary.rsyncHostsUsed.join(', ')
+      : 'none';
+
   lines.push(
     '### Bucket Coverage',
     '',
@@ -990,6 +1070,9 @@ function formatR2RunReport(summary, context = {}) {
     '| :--- | :--- |',
     `| Mode | \`${context.dryRun ? 'DRY-RUN' : 'LIVE'}\` |`,
     `| Transfer Engine | \`${summary.engine}\` |`,
+    ...(showRsyncHostRow
+      ? [`| rsync Host Order / Used | \`${rsyncHostOrderLabel}\` / \`${rsyncHostsUsedLabel}\` |`]
+      : []),
     `| Catalog Source | \`${summary.catalogSource}\` |`,
     `| Copyrighted Skipped / Pruned | \`${summary.skippedCopyrightCount}\` skipped / \`${summary.deletedCopyrightedCount}\` object(s) deleted |`,
     `| Withdrawn Objects Pruned | \`${summary.deletedWithdrawnCount}\` deleted |`,
@@ -1146,11 +1229,43 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
     }
   }
 
+  const invProgress = createCliProgressReporter({
+    enabled: true,
+    env,
+    logger,
+    nowFn,
+    ...(deps.progressOptions || {}),
+  });
+  let invBooksCount = 0;
+  let invCoversCount = 0;
+  let invPages = 0;
+  const emitInventoryProgress = () => {
+    invPages++;
+    const elapsedSec = (nowFn() - startMs) / 1000;
+    invProgress.update(
+      invBooksCount + invCoversCount,
+      `R2 inventory scan: ${invBooksCount.toLocaleString()} texts, ${invCoversCount.toLocaleString()} covers (${invPages} page${invPages === 1 ? '' : 's'}) · ${formatDuration(elapsedSec)}`
+    );
+  };
+
   const [booksInv, coversInv, syncState] = await Promise.all([
-    listR2PrefixIds(r2Config, 'books/', /^books\/(\d+)\.txt\.gz$/, { fetchFn }),
-    listR2PrefixIds(r2Config, 'covers/', /^covers\/(\d+)\.jpg$/, { fetchFn }),
+    listR2PrefixIds(r2Config, 'books/', /^books\/(\d+)\.txt\.gz$/, {
+      fetchFn,
+      onPage: ({ matchedCount }) => {
+        invBooksCount = matchedCount;
+        emitInventoryProgress();
+      },
+    }),
+    listR2PrefixIds(r2Config, 'covers/', /^covers\/(\d+)\.jpg$/, {
+      fetchFn,
+      onPage: ({ matchedCount }) => {
+        invCoversCount = matchedCount;
+        emitInventoryProgress();
+      },
+    }),
     readR2SyncState(r2Config, { fetchFn, nowMs: startMs, recheckDays: options.recheckDays }),
   ]);
+  invProgress.finish();
 
   if (syncState.readFailed) {
     const warnFn = typeof logger?.warn === 'function' ? logger.warn.bind(logger) : logger.log.bind(logger);
@@ -1169,8 +1284,16 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
     isFullCatalog,
   });
 
+  const rsyncHostOrder = resolveRsyncHostOrder(options.rsyncHost);
   const engine = deps.engine || resolveTransferEngine(options.source, process.platform, spawnSyncFn);
-  logger.log(formatR2CoverageBanner(plan, { dryRun: options.dryRun, engine }));
+  logger.log(
+    formatR2CoverageBanner(plan, {
+      dryRun: options.dryRun,
+      engine,
+      rsyncHost: options.rsyncHost,
+      rsyncHostOrder,
+    })
+  );
 
   const summary = {
     skippedUnconfigured: false,
@@ -1189,12 +1312,16 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
     failedCount: 0,
     r2ApiCalls,
     engine,
+    rsyncHost: options.rsyncHost || 'auto',
+    rsyncHostOrder,
+    rsyncHostsUsed: [],
     catalogSource,
     stoppedByTimeBudget: false,
     elapsedSeconds: 0,
     purgeTags: [],
     changedBooks: [],
   };
+  const rsyncHostsUsedSet = new Set();
 
   const bookMetaById = new Map(books.map((b) => [b.id, b]));
   const changedMap = new Map();
@@ -1280,11 +1407,15 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
       if (engine === 'rsync' || engine === 'wsl-rsync') {
         const useWsl = engine === 'wsl-rsync';
         const batchSize = deps.rsyncBatchSize || RSYNC_BATCH_SIZE;
+        const epubRemoteSources = buildRsyncSourcesForOrder(rsyncHostOrder, 'gutenberg-epub');
+        const mainRemoteSources = buildRsyncSourcesForOrder(rsyncHostOrder, 'gutenberg');
         for (let i = 0; i < plan.uploadQueue.length; i += batchSize) {
           if (isOverBudget()) {
             summary.stoppedByTimeBudget = true;
             break;
           }
+          const batchNum = Math.floor(i / batchSize) + 1;
+          const totalBatches = Math.ceil(plan.uploadQueue.length / batchSize);
           const batch = plan.uploadQueue.slice(i, i + batchSize);
           const batchDir = fsImpl.mkdtempSync(path.join(os.tmpdir(), 'bookarium-r2-'));
           try {
@@ -1298,7 +1429,7 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
               {
                 useWsl,
                 manifestFile: 'manifest.txt',
-                remoteSource: RSYNC_EPUB_SOURCE,
+                remoteSources: epubRemoteSources,
                 cwd: batchDir,
                 spawnFn,
               },
@@ -1306,8 +1437,14 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
                 maxRetries: deps.rsyncRetries,
                 baseDelayMs: deps.rsyncRetryDelayMs,
                 sleepFn,
+                onRetry: ({ attempt, maxRetries, prevSource, nextSource, error }) => {
+                  logger.log(
+                    `  ⚠ rsync failover (Batch ${batchNum}/${totalBatches} · epub): ${extractRsyncHost(prevSource) || prevSource} failed (${error.message}); switching to ${extractRsyncHost(nextSource) || nextSource} (retry ${attempt}/${maxRetries})`
+                  );
+                },
               }
             );
+            if (epubRes?.host) rsyncHostsUsedSet.add(epubRes.host);
 
             const missingMainTexts = [];
             const missingCoverIdxs = new Set();
@@ -1442,6 +1579,7 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
               }
             }
 
+            let mainRes = null;
             if (missingMainTexts.length > 0 && !isOverBudget() && !summary.stoppedByTimeBudget) {
               const mainManifestLines = [];
               for (const item of missingMainTexts) {
@@ -1449,11 +1587,11 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
                 mainManifestLines.push(`${dir}/${item.id}-0.txt`, `${dir}/${item.id}.txt`, `${dir}/${item.id}-8.txt`);
               }
               fsImpl.writeFileSync(path.join(batchDir, 'manifest-main.txt'), `${mainManifestLines.join('\n')}\n`, 'utf8');
-              const mainRes = await runRsyncCommandWithRetry(
+              mainRes = await runRsyncCommandWithRetry(
                 {
                   useWsl,
                   manifestFile: 'manifest-main.txt',
-                  remoteSource: RSYNC_MAIN_SOURCE,
+                  remoteSources: mainRemoteSources,
                   cwd: batchDir,
                   spawnFn,
                 },
@@ -1461,8 +1599,14 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
                   maxRetries: deps.rsyncRetries,
                   baseDelayMs: deps.rsyncRetryDelayMs,
                   sleepFn,
+                  onRetry: ({ attempt, maxRetries, prevSource, nextSource, error }) => {
+                    logger.log(
+                      `  ⚠ rsync failover (Batch ${batchNum}/${totalBatches} · main): ${extractRsyncHost(prevSource) || prevSource} failed (${error.message}); switching to ${extractRsyncHost(nextSource) || nextSource} (retry ${attempt}/${maxRetries})`
+                    );
+                  },
                 }
               );
+              if (mainRes?.host) rsyncHostsUsedSet.add(mainRes.host);
 
               const mainResults = new Array(missingMainTexts.length).fill(null);
               const missingMainIdxs = new Set();
@@ -1553,10 +1697,12 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
               }
             }
 
-            const batchNum = Math.floor(i / batchSize) + 1;
-            const totalBatches = Math.ceil(plan.uploadQueue.length / batchSize);
+            const batchHosts = [epubRes?.host, mainRes?.host].filter(
+              (host, idx, arr) => host && arr.indexOf(host) === idx
+            );
+            const hostTag = batchHosts.length > 0 ? ` [${batchHosts.join(', ')}]` : '';
             logger.log(
-              `  ↳ Batch ${batchNum}/${totalBatches}: +${summary.textsUploaded} texts, +${summary.coversUploaded} covers | ${((nowFn() - startMs) / 1000).toFixed(1)}s elapsed`
+              `  ↳ Batch ${batchNum}/${totalBatches}${hostTag}: +${summary.textsUploaded} texts, +${summary.coversUploaded} covers | ${((nowFn() - startMs) / 1000).toFixed(1)}s elapsed`
             );
           } finally {
             fsImpl.rmSync(batchDir, { recursive: true, force: true });
@@ -1564,6 +1710,16 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
         }
       } else {
         // HTTPS PGLAF-first mirror mode (e.g. local Windows dev runs without native rsync/WSL)
+        const httpsStartMs = nowFn();
+        const httpsProgress = createCliProgressReporter({
+          enabled: plan.uploadQueue.length > 0,
+          total: plan.uploadQueue.length,
+          ciPercentStep: 10,
+          env,
+          logger,
+          nowFn,
+          ...(deps.progressOptions || {}),
+        });
         for (let i = 0; i < plan.uploadQueue.length; i++) {
           if (isOverBudget()) {
             summary.stoppedByTimeBudget = true;
@@ -1646,11 +1802,21 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
             }
           }
 
+          const done = i + 1;
+          const elapsedSec = Math.max(0.001, (nowFn() - httpsStartMs) / 1000);
+          const pct = ((done / plan.uploadQueue.length) * 100).toFixed(1).padStart(5);
+          const eta = formatEtaSuffix(done, plan.uploadQueue.length, elapsedSec);
+          httpsProgress.update(
+            done,
+            `HTTPS [${pct}% | ${done.toLocaleString()} / ${plan.uploadQueue.length.toLocaleString()}]: +${summary.textsUploaded} texts, +${summary.coversUploaded} covers, ${summary.failedCount} err | ${formatDuration(elapsedSec)}${eta}`
+          );
+
           if (i < plan.uploadQueue.length - 1 && options.delayMax > 0) {
             const delayMs = Math.round((options.delayMin + rng() * (options.delayMax - options.delayMin)) * 1000);
             if (delayMs > 0) await sleepFn(delayMs);
           }
         }
+        httpsProgress.finish();
       }
     } else if (options.dryRun) {
       for (const item of plan.uploadQueue) {
@@ -1682,6 +1848,7 @@ async function runR2AssetSync(customOptions = {}, deps = {}) {
 
   summary.knownMissingTextsCount = Object.keys(syncState.missingTexts).length;
   summary.knownMissingCoversCount = Object.keys(syncState.missingCovers).length;
+  summary.rsyncHostsUsed = Array.from(rsyncHostsUsedSet);
   summary.purgeTags = Array.from(purgedTagsSet);
   summary.changedBooks = Array.from(changedMap.values());
   summary.elapsedSeconds = Math.max(0, (nowFn() - startMs) / 1000);
@@ -1725,6 +1892,7 @@ Options:
   --cache-file=PATH     Read compressed catalog snapshot (gutenberg-catalog-cache.json.gz)
   --catalog-source=MODE auto | snapshot | supabase (default: auto)
   --source=ENGINE       auto | rsync | wsl-rsync | https
+  --rsync-host=HOST     auto | aleph | ibiblio (primary rsync host; auto fails over to ibiblio)
   --mirror=NAME         pglaf | aleph | readingroo (HTTPS fallback)
   --delay-range=MIN-MAX Delay range in seconds for HTTPS mode (default: 8-16)
   --concurrency=N       Bounded parallel R2 PutObject workers (1-16, default: 8)
@@ -1767,8 +1935,14 @@ module.exports = {
   BULK_LEDGER_PREVIEW_ROWS,
   PRIORITY_HERO_BOOK_IDS,
   PRIORITY_HERO_BOOK_ID_SET,
+  RSYNC_HOSTS,
+  RSYNC_HOST_OPTIONS,
   RSYNC_EPUB_SOURCE,
   RSYNC_MAIN_SOURCE,
+  RSYNC_IBIBLIO_EPUB_SOURCE,
+  RSYNC_IBIBLIO_MAIN_SOURCE,
+  resolveRsyncHostOrder,
+  buildRsyncSourcesForOrder,
   MIRROR_SHORTCUT_MAP,
   GUTENBERG_ASSET_MIRRORS,
   SYNC_STATE_OBJECT_KEY,

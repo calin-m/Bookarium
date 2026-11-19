@@ -9,6 +9,20 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.66',
+    date: '2026-11-19',
+    title: 'Multi-Host rsync Failover, Shared TTY/CI CLI Progress Telemetry & docs/GITHUB_ACTIONS.md Parity Closure',
+    sections: {
+      Changed: [
+        '**Multi-Host `rsync` Failover & Selectable Mirror Order (`scripts/sync-r2-assets.js`, `scripts/sync-r2-assets.test.ts`, `.github/workflows/r2-sync.yml`, `.github/workflows/catalog-sync.yml`, `docs/DECISIONS.md`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Added automatic `aleph.gutenberg.org` ↔ `rsync.ibiblio.org` failover inside `runRsyncCommandWithRetry` (`resolveRsyncHostOrder` & `buildRsyncSourcesForOrder` rotating `remoteSources` across retry attempts with live failover notices and `rsync Host Order / Used` Markdown telemetry), exposed `--rsync-host=auto|aleph|ibiblio` + `r2-sync.yml` `rsync_host` choice (`auto`/`aleph` zero-lag primary; `ibiblio` first for bulk backfills), and pinned `--rsync-host=auto` in weekly `catalog-sync.yml` (`ADR-083`).',
+        '**Shared Zero-Dependency TTY/CI Progress Telemetry & Live Exception Alerts (`scripts/lib/cli-progress.js`, `scripts/lib/cli-progress.test.ts`, `scripts/lib/r2-sigv4.js`, `scripts/scan-r2-content.js`, `scripts/sync-r2-assets.js`, `scripts/sync-gutenberg-catalog.js`, `scripts/sync-featured-quotes.js`)**: Extracted a zero-dep TTY/CI progress reporter (`createCliProgressReporter`) emitting padded `\\r` tickers in local terminals and throttled newline heartbeats (`10s` / `5%`–`10%`) in GitHub Actions without buffering stalls; wired `ListObjectsV2` `onPage` discovery, live `[pct% | done/total | rate/s | ETA]` scan progress, immediate `🚨 [MATCH]` alerts, and capped inline error logs into `scan-r2-content.js` (strictly muted under `--json`) and added matching telemetry across R2 inventory/`--source=https`, Gutenberg RDF/CSV/upsert/reconcile loops, and `> 100`-book quotes batches (`ADR-085`).',
+      ],
+      Fixed: [
+        '**`docs/GITHUB_ACTIONS.md` Pre-Commit Staging, CI Drift Guard & `Pass 5` SemVer Parity (`.husky/pre-commit`, `.github/workflows/ci.yml`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `docs/PIPELINE_GUIDE.md`, `docs/GITHUB_ACTIONS.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Added `docs/GITHUB_ACTIONS.md` to `.husky/pre-commit` (`18` auto-staged files) so version updates applied by `syncReleaseVersionFiles()` during pre-commit `Pass 4` never stay unstaged in the working tree, expanded `.github/workflows/ci.yml` (`git diff --exit-code`) to `11` deterministic artifacts, added explicit `docs/GITHUB_ACTIONS.md` default-tag parity enforcement to `Pass 5` in `scripts/verify-build.js`, and synchronized `9`-file SemVer sync and `11`-artifact CI references across architecture and governance guides (`ADR-081`).',
+      ],
+    },
+  },
+  {
     version: '2.9.65',
     date: '2026-11-19',
     title: 'Manual Cloudflare R2 Content Integrity Scanner & Shared Zero-Dependency SigV4 Transport',

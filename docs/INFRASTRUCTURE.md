@@ -32,7 +32,7 @@ The diagram below traces how external public-domain sources, GitHub Actions back
 ```mermaid
 flowchart TD
     subgraph UpstreamFeeds ["1. External Public Domain Sources (Background CLI Only)"]
-        PGMirrors["🌐 Official PG rsync & PGLAF Mirrors\n(aleph.gutenberg.org • gutenberg.pglaf.org • readingroo.ms)"]
+        PGMirrors["🌐 Official PG rsync & PGLAF Mirrors\n(aleph.gutenberg.org • rsync.ibiblio.org • gutenberg.pglaf.org • readingroo.ms)"]
         Wikidata["🌍 Wikidata SPARQL (CC0 1.0)\n(query.wikidata.org • P2034 / P407 FRBR Clusters)"]
     end
 
@@ -153,7 +153,7 @@ All `11` automation pipelines (`.github/workflows/*.yml`, documented in full in 
 | Service | Quota / Limit Summary | Repo Usage & Constraints |
 | :--- | :--- | :--- |
 | **Cloudflare Turnstile (Free Tier)** | `20` widgets / account, `10` hostnames / widget, **unlimited challenge verifications**, `7-day` analytics lookback *(Enterprise required past `20` widgets)* | Optional bot shield enabled only when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is configured (`AuthModal`, `EmailSentView`, `/account` recovery). |
-| **Official Project Gutenberg Mirrors & `rsync`** | Respect upstream volunteer mirror bandwidth (`aleph.gutenberg.org` `rsync`, `gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) | Strictly confined to background CLI scripts (`sync-gutenberg-catalog.js`, `sync-r2-assets.js`, `sync-featured-quotes.js` with `8.0s–16.0s` pacing & `User-Agent` contact attribution); **strictly banned** from `src/**` runtime (`www.gutenberg.org` banned everywhere). |
+| **Official Project Gutenberg Mirrors & `rsync`** | Respect upstream volunteer mirror bandwidth (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org` `rsync`, `gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) | Strictly confined to background CLI scripts (`sync-gutenberg-catalog.js`, `sync-r2-assets.js`, `sync-featured-quotes.js` with `8.0s–16.0s` pacing & `User-Agent` contact attribution); **strictly banned** from `src/**` runtime (`www.gutenberg.org` banned everywhere). |
 | **Wikidata SPARQL Endpoint (`CC0 1.0`)** | Public query endpoint (`query.wikidata.org`) rate/timeout etiquette | Queried weekly/manually only in CLI `npm run translations:sync` (`scripts/ingest-translations.js`) with offline snapshot fallback. |
 
 ---

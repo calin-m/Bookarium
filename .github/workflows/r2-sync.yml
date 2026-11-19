@@ -24,6 +24,15 @@ on:
           - rsync
           - https
           - auto
+      rsync_host:
+        description: 'Primary rsync host order (auto/aleph = aleph.gutenberg.org -> rsync.ibiblio.org; ibiblio = rsync.ibiblio.org -> aleph.gutenberg.org)'
+        required: false
+        type: choice
+        default: 'auto'
+        options:
+          - auto
+          - aleph
+          - ibiblio
       sync_books:
         description: 'Sync missing/updated book texts (books/<id>.txt.gz)'
         required: false
@@ -115,6 +124,7 @@ jobs:
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
           INPUT_IDS: ${{ github.event.inputs.ids }}
           INPUT_SOURCE: ${{ github.event.inputs.source }}
+          INPUT_RSYNC_HOST: ${{ github.event.inputs.rsync_host }}
           INPUT_SYNC_BOOKS: ${{ github.event.inputs.sync_books }}
           INPUT_SYNC_COVERS: ${{ github.event.inputs.sync_covers }}
           INPUT_FORCE: ${{ github.event.inputs.force }}
@@ -151,6 +161,15 @@ jobs:
               ;;
             *)
               echo "Error: Unsupported source '${INPUT_SOURCE}'." >&2
+              exit 1
+              ;;
+          esac
+          case "${INPUT_RSYNC_HOST:-auto}" in
+            auto|aleph|ibiblio)
+              R2_ARGS="$R2_ARGS --rsync-host=${INPUT_RSYNC_HOST:-auto}"
+              ;;
+            *)
+              echo "Error: Unsupported rsync_host '${INPUT_RSYNC_HOST}'." >&2
               exit 1
               ;;
           esac

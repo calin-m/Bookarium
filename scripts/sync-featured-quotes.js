@@ -36,6 +36,11 @@ const {
   isR2Configured,
   fetchBookTextFromR2,
 } = require('./sync-r2-assets');
+const {
+  formatDuration,
+  formatEtaSuffix,
+  createCliProgressReporter,
+} = require('./lib/cli-progress');
 
 function resolveSiteOriginFallback(env = process.env) {
   const candidates = [
@@ -2038,6 +2043,7 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   const sleepFn =
     deps.sleepFn || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const logger = deps.logger || console;
+  const nowFn = typeof deps.nowFn === 'function' ? deps.nowFn : Date.now;
 
   const supabase =
     deps.supabaseClient ||
@@ -2324,6 +2330,42 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     }
   }
 
+  const progressThreshold =
+    typeof deps.progressThreshold === 'number' ? deps.progressThreshold : 100;
+  const useCondensedProgress = booksToProcess.length > progressThreshold;
+  const batchStartMs = nowFn();
+  let settledBooks = 0;
+  const quotesProgress = createCliProgressReporter({
+    enabled: useCondensedProgress,
+    total: booksToProcess.length,
+    ciPercentStep: 10,
+    env,
+    logger,
+    nowFn,
+    ...(deps.progressOptions || {}),
+  });
+  const emitEvent = (msg, level = 'log') => {
+    if (useCondensedProgress) {
+      quotesProgress.logEvent(msg, level);
+    } else if (level === 'error' && typeof logger.error === 'function') {
+      logger.error(msg);
+    } else if (typeof logger.log === 'function') {
+      logger.log(msg);
+    }
+  };
+  const tickQuotesProgress = (force = false) => {
+    if (!useCondensedProgress) return;
+    settledBooks++;
+    const elapsedSec = Math.max(0.001, (nowFn() - batchStartMs) / 1000);
+    const pct = ((settledBooks / booksToProcess.length) * 100).toFixed(1).padStart(5);
+    const eta = formatEtaSuffix(settledBooks, booksToProcess.length, elapsedSec);
+    quotesProgress.update(
+      settledBooks,
+      `[${pct}% | ${settledBooks.toLocaleString()} / ${booksToProcess.length.toLocaleString()}] updated: ${summary.updated} · skipped: ${summary.skippedExisting} · r2-miss: ${summary.r2Missing} · err: ${summary.failed} · ${formatDuration(elapsedSec)}${eta}`,
+      { force }
+    );
+  };
+
   async function persistExtractedBookQuotes(book, existingQuotes, rawText, source, waitedMs = 0) {
     const extracted = extractBookQuoteSpreads(rawText, book, options.targetCount);
     const mergedQuotes = mergeDistinctQuoteSpreads(existingQuotes, extracted, 16);
@@ -2339,9 +2381,10 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         source,
         existingQuoteCount: existingQuotes.length,
       });
-      logger.log(
+      emitEvent(
         `${bookPrefix(book.id)} #${book.id} "${book.title}": no quotes extractable, placeholder saved (source: ${sourceLabel}${waitSuffix}).`
       );
+      tickQuotesProgress();
       return false;
     }
 
@@ -2354,12 +2397,16 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       quoteCount: mergedQuotes.length,
       existingQuoteCount: existingQuotes.length,
     });
-    const detail = isRefresh
-      ? `refreshed ${existingQuotes.length} → ${mergedQuotes.length} quotes (force)`
-      : existingQuotes.length > 0
-        ? `topped up ${existingQuotes.length} → ${mergedQuotes.length} quotes`
-        : `${mergedQuotes.length} quotes saved`;
-    logger.log(`${bookPrefix(book.id)} #${book.id} "${book.title}": ${detail} (source: ${sourceLabel}${waitSuffix}).`);
+    if (useCondensedProgress) {
+      tickQuotesProgress();
+    } else {
+      const detail = isRefresh
+        ? `refreshed ${existingQuotes.length} → ${mergedQuotes.length} quotes (force)`
+        : existingQuotes.length > 0
+          ? `topped up ${existingQuotes.length} → ${mergedQuotes.length} quotes`
+          : `${mergedQuotes.length} quotes saved`;
+      logger.log(`${bookPrefix(book.id)} #${book.id} "${book.title}": ${detail} (source: ${sourceLabel}${waitSuffix}).`);
+    }
     return true;
   }
 
@@ -2377,9 +2424,13 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
           quoteCount: existingQuotes.length,
           existingQuoteCount: existingQuotes.length,
         });
-        logger.log(
-          `${bookPrefix(book.id)} #${book.id} "${book.title}": already has ${existingQuotes.length} quotes (stored), skipped.`
-        );
+        if (useCondensedProgress) {
+          tickQuotesProgress();
+        } else {
+          logger.log(
+            `${bookPrefix(book.id)} #${book.id} "${book.title}": already has ${existingQuotes.length} quotes (stored), skipped.`
+          );
+        }
         continue;
       }
 
@@ -2406,9 +2457,13 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
             existingQuoteCount: existingQuotes.length,
             note: skipNote,
           });
-          logger.log(
-            `${bookPrefix(book.id)} #${book.id} "${book.title}": not cached in R2 (${skipNote}), skipped cleanly without writing placeholder.`
-          );
+          if (useCondensedProgress) {
+            tickQuotesProgress();
+          } else {
+            logger.log(
+              `${bookPrefix(book.id)} #${book.id} "${book.title}": not cached in R2 (${skipNote}), skipped cleanly without writing placeholder.`
+            );
+          }
         } else {
           mirrorWorkQueue.push({
             book,
@@ -2420,7 +2475,8 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     } catch (err) {
       summary.failed++;
       recordBook(book, { outcome: 'failed', note: err.message });
-      logger.error(`[Error] #${book.id} "${book.title}": ${err.message}`);
+      emitEvent(`[Error] #${book.id} "${book.title}": ${err.message}`, 'error');
+      tickQuotesProgress();
     }
   }
 
@@ -2489,22 +2545,23 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
           } catch (err) {
             summary.failed++;
             recordBook(workItem.book, { outcome: 'failed', source: mirrorBaseUrl, note: err.message });
-            logger.error(
-              `[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`
-            );
+            emitEvent(`[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`, 'error');
+            tickQuotesProgress();
           }
           inFlightCount--;
           notifyQueueChange();
         } else {
           if (fetchRes.isMirrorLevelError) {
             consecutiveMirrorErrors++;
-            logger.error(
-              `[Mirror Worker ${mirrorBaseUrl}] Mirror error on #${workItem.book.id}: ${fetchRes.error}`
+            emitEvent(
+              `[Mirror Worker ${mirrorBaseUrl}] Mirror error on #${workItem.book.id}: ${fetchRes.error}`,
+              'error'
             );
             if (consecutiveMirrorErrors >= 2) {
               activeMirrors.delete(mirrorBaseUrl);
-              logger.error(
-                `[Mirror Worker ${mirrorBaseUrl}] Halting worker after ${consecutiveMirrorErrors} consecutive mirror errors.`
+              emitEvent(
+                `[Mirror Worker ${mirrorBaseUrl}] Halting worker after ${consecutiveMirrorErrors} consecutive mirror errors.`,
+                'error'
               );
             }
           }
@@ -2527,25 +2584,29 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
                   note: 'text not available on enabled mirrors',
                 });
                 const waitSuffix = waitedMs > 0 ? ` · waited ${(waitedMs / 1000).toFixed(1)}s` : '';
-                logger.log(
+                emitEvent(
                   `${bookPrefix(workItem.book.id)} #${workItem.book.id} "${workItem.book.title}": text not available on enabled mirrors, placeholder saved (${describeQuoteSource(mirrorBaseUrl)}${waitSuffix}).`
                 );
               } catch (err) {
                 summary.failed++;
                 recordBook(workItem.book, { outcome: 'failed', note: err.message });
-                logger.error(
-                  `[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`
+                emitEvent(
+                  `[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`,
+                  'error'
                 );
               }
+              tickQuotesProgress();
             } else {
               summary.failed++;
               recordBook(workItem.book, {
                 outcome: 'failed',
                 note: 'enabled mirrors unavailable',
               });
-              logger.error(
-                `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`
+              emitEvent(
+                `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`,
+                'error'
               );
+              tickQuotesProgress();
             }
           }
 
@@ -2565,12 +2626,15 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     for (const leftover of mirrorWorkQueue.splice(0)) {
       summary.failed++;
       recordBook(leftover.book, { outcome: 'failed', note: 'all enabled mirrors halted' });
-      logger.error(
-        `[Error] #${leftover.book.id} "${leftover.book.title}": All enabled mirror workers halted before this book was fetched.`
+      emitEvent(
+        `[Error] #${leftover.book.id} "${leftover.book.title}": All enabled mirror workers halted before this book was fetched.`,
+        'error'
       );
+      tickQuotesProgress();
     }
   }
 
+  quotesProgress.finish();
   await executePostBatchPrune();
 
   if (options.dryRun && summary.sqlStatements.length > 0 && deps.writeSeedFile !== false) {

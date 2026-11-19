@@ -28,6 +28,7 @@ const https = require('https');
 const zlib = require('zlib');
 const { spawn } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
+const { createCliProgressReporter } = require('./lib/cli-progress');
 
 // 1. Environment Loading (Native, zero-dependency)
 function loadEnv() {
@@ -642,6 +643,11 @@ async function streamGutenbergRdfCatalogSignals(options = {}) {
   for (let idx = 0; idx < validMirrors.length; idx++) {
     const mirrorUrl = validMirrors[idx];
     const host = new URL(mirrorUrl).hostname;
+    const rdfProgress = createCliProgressReporter({
+      enabled: true,
+      logger,
+      ...(options.progressOptions || {}),
+    });
     try {
       const startMs = Date.now();
       logger.log(
@@ -649,26 +655,26 @@ async function streamGutenbergRdfCatalogSignals(options = {}) {
       );
       const result = await streamMirrorFn(mirrorUrl, {
         onProgress: (count, downloadedBytes = 0, totalBytes = 0) => {
-          if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
-            const elapsedSec = Math.max(0.1, (Date.now() - startMs) / 1000);
-            const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
-            const speedMb = (downloadedBytes / (1024 * 1024) / elapsedSec).toFixed(1);
-            const sizePart =
-              totalBytes > 0
-                ? `${dlMb}/${(totalBytes / (1024 * 1024)).toFixed(1)} MB (${((downloadedBytes / totalBytes) * 100).toFixed(1)}%) @ ${speedMb} MB/s`
-                : downloadedBytes > 0
-                  ? `${dlMb} MB @ ${speedMb} MB/s`
-                  : 'connecting...';
-            process.stdout.write(
-              `\r  ↳ RDF: ${sizePart} | ${(count || 0).toLocaleString()} books (${elapsedSec.toFixed(1)}s)   `
-            );
-          }
+          const elapsedSec = Math.max(0.1, (Date.now() - startMs) / 1000);
+          const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
+          const speedMb = (downloadedBytes / (1024 * 1024) / elapsedSec).toFixed(1);
+          const sizePart =
+            totalBytes > 0
+              ? `${dlMb}/${(totalBytes / (1024 * 1024)).toFixed(1)} MB (${((downloadedBytes / totalBytes) * 100).toFixed(1)}%) @ ${speedMb} MB/s`
+              : downloadedBytes > 0
+                ? `${dlMb} MB @ ${speedMb} MB/s`
+                : 'connecting...';
+          rdfProgress.update(
+            downloadedBytes || count,
+            `RDF: ${sizePart} | ${(count || 0).toLocaleString()} books (${elapsedSec.toFixed(1)}s)`
+          );
         },
       });
+      rdfProgress.finish();
       if (result instanceof Map && result.size > 0) {
         const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
         logger.log(
-          `\n  ✔ Extracted 30-day download_count for ${result.size.toLocaleString()} books from ${host} (${elapsed}s).`
+          `  ✔ Extracted 30-day download_count for ${result.size.toLocaleString()} books from ${host} (${elapsed}s).`
         );
         return { downloadCounts: result, copyrightedIds: null, hasRightsData: false };
       }
@@ -683,7 +689,7 @@ async function streamGutenbergRdfCatalogSignals(options = {}) {
           ? ` | sha256:${result.archiveSha256.slice(0, 12)}`
           : '';
         logger.log(
-          `\n  ✔ Extracted 30-day download_count for ${result.downloadCounts.size.toLocaleString()} books${rightsSummary} from ${host} (${elapsed}s${shaNote}).`
+          `  ✔ Extracted 30-day download_count for ${result.downloadCounts.size.toLocaleString()} books${rightsSummary} from ${host} (${elapsed}s${shaNote}).`
         );
         return {
           downloadCounts: result.downloadCounts,
@@ -693,6 +699,7 @@ async function streamGutenbergRdfCatalogSignals(options = {}) {
         };
       }
     } catch (err) {
+      rdfProgress.finish();
       logger.warn(
         `  ⚠ Warning: RDF feed mirror [${idx + 1}/${validMirrors.length}: ${host}] failed (${err.message || err}); trying next mirror...`
       );
@@ -1377,6 +1384,13 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
       }
     }
   } else {
+    const reconcileProgress = createCliProgressReporter({
+      enabled: true,
+      total: expectedTotal,
+      ciPercentStep: 20,
+      logger,
+      ...(options.progressOptions || {}),
+    });
     while (true) {
       let data = null;
       for (let attempt = 1; attempt <= retries; attempt++) {
@@ -1392,6 +1406,7 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
           break;
         }
         if (attempt === retries) {
+          reconcileProgress.finish();
           throw new Error(`Failed to scan existing catalog IDs for reconciliation: ${res.error.message}`);
         }
         if (baseDelayMs > 0) {
@@ -1413,22 +1428,19 @@ async function reconcileWithdrawnCatalogBooks(supabase, activeCatalogIds, option
         }
       }
 
-      if (process.stdout && typeof process.stdout.write === 'function' && logger === console) {
-        const elapsedSec = ((Date.now() - reconcileStartMs) / 1000).toFixed(1);
-        const pct = Math.min(100, (scannedCount / expectedTotal) * 100).toFixed(1);
-        process.stdout.write(
-          `\r  ↳ Scanned: ${scannedCount.toLocaleString()} / ${activeCatalogIds.size.toLocaleString()} (${pct}%) | Withdrawn: ${withdrawnIds.length} (${elapsedSec}s)   `
-        );
-      }
+      const elapsedSec = ((Date.now() - reconcileStartMs) / 1000).toFixed(1);
+      const pct = Math.min(100, (scannedCount / expectedTotal) * 100).toFixed(1);
+      reconcileProgress.update(
+        scannedCount,
+        `Scanned: ${scannedCount.toLocaleString()} / ${activeCatalogIds.size.toLocaleString()} (${pct}%) | Withdrawn: ${withdrawnIds.length} (${elapsedSec}s)`
+      );
 
       if (data.length < pageSize) {
         break;
       }
     }
 
-    if (process.stdout && typeof process.stdout.write === 'function' && logger === console && scannedCount > 0) {
-      process.stdout.write('\n');
-    }
+    reconcileProgress.finish();
   }
 
   if (withdrawnIds.length === 0) {
@@ -1903,11 +1915,12 @@ Options:
   let totalUnchanged = 0;
   let totalDeferredNew = 0;
   let hasPrintedCsvSummary = false;
-  let lastCsvDownloadLogMs = 0;
   let currentBatch = [];
   let isAborted = false;
   const activeCatalogIds = new Set();
   const nextSnapshotBooksById = new Map();
+  const csvProgress = createCliProgressReporter({ enabled: true, logger: console });
+  const upsertProgress = createCliProgressReporter({ enabled: true, logger: console });
 
   const flushBatch = async () => {
     if (currentBatch.length === 0) return;
@@ -1916,7 +1929,7 @@ Options:
 
     if (!hasPrintedCsvSummary) {
       hasPrintedCsvSummary = true;
-      process.stdout.write('\n');
+      csvProgress.finish();
     }
 
     if (!rdfSignals.hasRightsData) {
@@ -1959,8 +1972,9 @@ Options:
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const speed = Math.round(totalProcessed / (parseFloat(elapsed) || 1));
-    process.stdout.write(
-      `\r  ↳ Processed: ${totalProcessed.toLocaleString()} | New: ${totalInserted.toLocaleString()} | Updated: ${totalUpdated.toLocaleString()} | Unchanged: ${totalUnchanged.toLocaleString()} | ${speed} books/s (${elapsed}s)   `
+    upsertProgress.update(
+      totalProcessed,
+      `Processed: ${totalProcessed.toLocaleString()} | New: ${totalInserted.toLocaleString()} | Updated: ${totalUpdated.toLocaleString()} | Unchanged: ${totalUnchanged.toLocaleString()} | ${speed} books/s (${elapsed}s)`
     );
 
     // Dynamic anti-throttling pause: 0ms when diffed purely in RAM with 0 writes, 50ms when DB-queried, scaled when writing
@@ -2014,21 +2028,14 @@ Options:
         logger: console,
         onDownloadProgress: ({ downloadedBytes, totalBytes, speedMBps, elapsedSec }) => {
           if (hasPrintedCsvSummary) return;
-          const now = Date.now();
-          if (
-            (totalBytes > 0 && downloadedBytes >= totalBytes) ||
-            now - lastCsvDownloadLogMs >= 200
-          ) {
-            lastCsvDownloadLogMs = now;
-            const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
-            const sizePart =
-              totalBytes > 0
-                ? `${dlMb}/${(totalBytes / (1024 * 1024)).toFixed(1)} MB (${((downloadedBytes / totalBytes) * 100).toFixed(1)}%) @ ${speedMBps.toFixed(1)} MB/s`
-                : `${dlMb} MB @ ${speedMBps.toFixed(1)} MB/s`;
-            process.stdout.write(
-              `\r  ↳ CSV: ${sizePart} (${elapsedSec.toFixed(1)}s)   `
-            );
-          }
+          const dlMb = (downloadedBytes / (1024 * 1024)).toFixed(1);
+          const sizePart =
+            totalBytes > 0
+              ? `${dlMb}/${(totalBytes / (1024 * 1024)).toFixed(1)} MB (${((downloadedBytes / totalBytes) * 100).toFixed(1)}%) @ ${speedMBps.toFixed(1)} MB/s`
+              : `${dlMb} MB @ ${speedMBps.toFixed(1)} MB/s`;
+          csvProgress.update(downloadedBytes, `CSV: ${sizePart} (${elapsedSec.toFixed(1)}s)`, {
+            force: totalBytes > 0 && downloadedBytes >= totalBytes,
+          });
         },
       }
     );
@@ -2037,9 +2044,11 @@ Options:
     if (currentBatch.length > 0) {
       await flushBatch();
     }
+    csvProgress.finish();
+    upsertProgress.finish();
 
     const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`\n\n✔ Sync Complete in ${totalSeconds} seconds!`);
+    console.log(`\n✔ Sync Complete in ${totalSeconds} seconds!`);
     console.log(`  • Rows scanned:   ${totalParsed.toLocaleString()}`);
     console.log(`  • Valid texts:    ${totalAccepted.toLocaleString()}`);
     console.log(`  • New inserted:   ${totalInserted.toLocaleString()}`);

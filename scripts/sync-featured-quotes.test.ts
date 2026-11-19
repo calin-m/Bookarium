@@ -1827,4 +1827,60 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       })
     ).toBe(false);
   });
+
+  it('condenses routine saves into CI heartbeats above progressThreshold while keeping exceptions visible', async () => {
+    const denseProse = Array.from(
+      { length: 14 },
+      (_, i) =>
+        `Chapter ${i + 1}\n\n"A clear literary insight number ${i + 1} that endures across quiet centuries of reading and reflection." — Narrative Voice\n\nFiller prose sentence detailing a lantern on a misty harbor pier.`
+    ).join('\n\n');
+    const booksRows = [
+      { id: 1342, title: 'Pride and Prejudice', authors: [{ name: 'Austen, Jane' }], translators: [], subjects: ['Fiction'], languages: ['en'], copyright: false, quotes: [], content: null, download_count: 55000 },
+      { id: 84, title: 'Frankenstein', authors: [{ name: 'Shelley, Mary' }], translators: [], subjects: ['Gothic'], languages: ['en'], copyright: false, quotes: [], content: null, download_count: 42000 },
+      { id: 2701, title: 'Moby-Dick', authors: [{ name: 'Melville, Herman' }], translators: [], subjects: ['Adventure'], languages: ['en'], copyright: false, quotes: [], content: null, download_count: 35000 },
+      { id: 98, title: 'A Tale of Two Cities', authors: [{ name: 'Dickens, Charles' }], translators: [], subjects: ['Fiction'], languages: ['en'], copyright: false, quotes: [], content: null, download_count: 31000 },
+    ];
+    const logs: string[] = [];
+    const mockClient = {
+      from: vi.fn((table: string) => {
+        if (table !== 'books') return {};
+        return {
+          select: vi.fn(() => ({
+            in: vi.fn(async () => ({ data: booksRows, error: null })),
+            eq: vi.fn(() => ({
+              not: vi.fn(async () => ({ data: [], error: null })),
+            })),
+          })),
+          update: vi.fn(() => ({
+            eq: vi.fn(async () => ({ error: null })),
+          })),
+        };
+      }),
+    };
+
+    const r2Fetch = vi.fn(async (id: number) =>
+      id === 98 ? { status: 'not_found' } : { status: 'ok', text: denseProse }
+    );
+
+    const summary = await quotesSync.runFeaturedQuotesSync(
+      { source: 'r2', ids: [1342, 84, 2701, 98], limit: 4, minDelaySec: 0, maxDelaySec: 0, targetCount: 10 },
+      {
+        env: { GITHUB_ACTIONS: 'true' },
+        supabaseClient: mockClient,
+        fetchBookFromR2: r2Fetch,
+        sleepFn: async () => {},
+        progressThreshold: 2,
+        progressOptions: { ciMinTotalForPercent: 1, ciPercentStep: 50 },
+        logger: { log: (m: string) => logs.push(m), error: (m: string) => logs.push(m), warn: vi.fn() },
+        writeSeedFile: false,
+      }
+    );
+
+    expect(summary.updated).toBe(3);
+    expect(summary.r2Missing).toBe(1);
+    const output = logs.join('\n');
+    expect(output).toContain('50.0% | 2 / 4');
+    expect(output).toContain('100.0% | 4 / 4');
+    expect(output).not.toContain('quotes saved (source: Cloudflare R2)');
+  });
 });
