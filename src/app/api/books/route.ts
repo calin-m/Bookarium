@@ -2,7 +2,7 @@
  * @module src/app/api/books/route
  * @scope Read-only Edge/serverless catalog gateway serving paginated searches, ID lookups, and the 2-spread rotating quote pool (`?pool=quotes`).
  * @invariant Enforce strict parameter allowlisting (`ALLOWED_CATALOG_QUERY_KEYS`, dev-only `?country=`), `booksApiRateLimiter`, and `Cross-Origin-Resource-Policy: same-origin` across all responses.
- * @invariant Fail closed with HTTP `503` and `Cache-Control: no-store, max-age=0` on transient Supabase outages or `pool=quotes` unavailability; never return static fixture fallback on live DB errors.
+ * @invariant Fail closed with HTTP `504` on PostgreSQL statement timeouts (`57014`) and HTTP `503` with `Cache-Control: no-store, max-age=0` on transient Supabase outages or `pool=quotes` unavailability; never return static fixture fallback on live DB errors.
  * @invariant Differentiate CDN caching by query mode (`s-maxage=43200` + `Vercel-Cache-Tag: quotes` for `?pool=quotes`, `s-maxage=604800` + `Vary: Accept-Encoding` for jurisdiction-independent lookups, `Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding` for country-filtered pages).
  * @rationale Prevents Vercel Edge CDN cache poisoning during DB outages, stops query-cache busting abuse, and shields the 78k-row database via global CDN offloading.
  * @adr ADR-022, ADR-037, ADR-080
@@ -92,7 +92,14 @@ export async function GET(request: NextRequest) {
     if (shouldQuerySupabase) {
       try {
         result = await supabaseCatalogProvider.searchBooks(queryOptions);
-      } catch {
+      } catch (err: unknown) {
+        if (err instanceof CatalogProviderError && err.statusCode === 504) {
+          throw new CatalogProviderError(
+            'Catalog query timed out. Try narrowing your filters or search terms.',
+            504,
+            'supabase'
+          );
+        }
         throw new CatalogProviderError(
           'Catalog database temporarily unavailable. Please try again.',
           503,

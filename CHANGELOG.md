@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.64] - 2026-11-19
+### *PostgreSQL 57014 Filtered Catalog Timeout Elimination & Fail-Fast HTTP 504 Contract*
+
+### Added
+- **Era Birth-Year B-Tree Index (`supabase/schema.sql`)**: Added idempotent `idx_books_author_birth_year` on `public.books(min_author_birth_year)` paired with `idx_books_author_death_year` so multi-predicate century/era queries stay indexed across 78,000+ rows (`ADR-043`).
+
+### Fixed
+- **Selective Planner Counts, Count-Free Backfill & Non-Retryable HTTP 504 Fail-Fast (`src/lib/catalog/supabase-provider.ts`, `src/app/api/books/route.ts`, `src/hooks/queries/useBooks.ts`)**: Switched filtered searches (`search`/`topic`/`languages`/`authorYearStart`/`authorYearEnd`) to `{ count: 'planned' }` and omitted `{ count }` on `backfillQuery` chunks (`{ includeCount: false }`) to eliminate duplicate PostgREST `pgrst_source_count` (`LIMIT 1001`) scans; mapped `SQLSTATE 57014` statement timeouts (`isStatementTimeoutError`) to non-retried sanitized `HTTP 504` (`no-store`) responses and guarded `useBooks` with `shouldRetryCatalogQuery` (`CatalogRequestError`) so `504`, `15,000ms` aborts, `400`, and `429` fail fast without retry storms (`ADR-043`).
+
+
 ## [2.9.63] - 2026-11-18
 ### *Non-Regex Mermaid Edge Chain Tokenization & CodeQL js/bad-tag-filter Remediation*
 

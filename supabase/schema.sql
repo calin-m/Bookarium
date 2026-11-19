@@ -745,6 +745,7 @@ CREATE INDEX IF NOT EXISTS idx_books_search_vector ON public.books USING GIN(sea
 CREATE INDEX IF NOT EXISTS idx_books_languages ON public.books USING GIN(languages);
 CREATE INDEX IF NOT EXISTS idx_books_download_count ON public.books(download_count DESC);
 CREATE INDEX IF NOT EXISTS idx_books_author_death_year ON public.books(max_author_death_year);
+CREATE INDEX IF NOT EXISTS idx_books_author_birth_year ON public.books(min_author_birth_year);
 CREATE INDEX IF NOT EXISTS idx_books_with_quotes_popular ON public.books(download_count DESC) WHERE quotes <> '[]'::jsonb;
 
 -- Row Level Security (RLS)

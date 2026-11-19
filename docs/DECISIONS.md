@@ -639,12 +639,13 @@
   2. Investigation revealed that the queries requested `{ count: 'exact' }`, forcing PostgreSQL to perform expensive sequential scans across tens of thousands of rows on every search query to calculate an exact total count.
   3. Because Gutenberg catalog count queries only require pagination bounds rather than atomic precision for tens of thousands of books, exact row-counting wasted significant database CPU and risked statement-timeout catalog degradation.
 - **Decision**:
-  1. Switched `{ count: 'exact' }` to `{ count: 'estimated' }` in `supabase-provider.ts`.
-  2. Leveraged PostgreSQL's internal planner statistics (`pg_class.reltuples`), reducing query overhead by orders of magnitude.
-  3. Maintained exact bounds on small result sets while avoiding statement timeouts on large queries.
+  1. Switched `{ count: 'exact' }` to `{ count: 'estimated' }` on unfiltered and `hasQuotes` (`idx_books_with_quotes_popular`) browse queries in `supabase-provider.ts`.
+  2. Switched selective multi-predicate filtered initial searches (`search`, `topic`, `languages`, `authorYearStart`, `authorYearEnd`) to `{ count: 'planned' }`, and omitted `{ count }` entirely on internal `backfillQuery` chunks (`{ includeCount: false }`) so PostgREST never runs duplicate `pgrst_source_count` (`LIMIT 1001`) scans on selective filters or fills.
+  3. Added a B-Tree index on `min_author_birth_year` (`idx_books_author_birth_year` in `supabase/schema.sql`) alongside `idx_books_author_death_year` for server-side era bounds filtering.
+  4. Added `isStatementTimeoutError` (`SQLSTATE 57014` / `statement timeout`) fail-fast handling without retrying `executeInitialProbe`, propagated sanitized `HTTP 504` responses from `/api/books/route.ts`, and added `shouldRetryCatalogQuery` (`CatalogRequestError`) in `useBooks.ts` to block React Query retries on `504`, `AbortError` (`15,000ms`), `400`, and `429`.
 - **Consequences**:
-  - Catalog query latency dropped from `>3,000ms` (statement timeout) down to **`~275ms`**.
-  - Complete elimination of PostgreSQL 57014 timeout errors.
+  - Catalog query latency dropped from `>3,000ms` (statement timeout) down to **`~275ms`** for unfiltered scans while eliminating duplicate PostgREST count scans on selective multi-filter `ORDER BY id DESC` queries.
+  - True `8s` `57014` timeouts fail fast cleanly (`HTTP 504 no-store`) in a single request instead of compounding into 2x server probes + client retries.
   - Rock-solid primary Supabase catalog performance without degrading to upstream mirrors.
 
 ## ADR-044: Multi-Jurisdiction Copyright Governance, Digital Age Consent & Content Safety Architecture

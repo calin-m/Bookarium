@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 18 Nov 2026 19:29:35 GMT  
+**Last Generated**: Thu, 19 Nov 2026 09:51:17 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 261 passed  
-**Total Verified Tests**: 2723 passed  
+**Total Verified Tests**: 2726 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2723 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **261/261 test suites passed** (2726 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.21%** (16209/16673) — *Target: $\ge$ 95%*
-- **Statements**: **95.94%** (17455/18192) — *Target: $\ge$ 95%*
-- **Functions**: **94.99%** (3492/3676) — *Target: $\ge$ 92%*
-- **Branches**: **88.45%** (16213/18330) — *Target: $\ge$ 85%*
+- **Lines**: **97.23%** (16247/16709) — *Target: $\ge$ 95%*
+- **Statements**: **95.98%** (17497/18228) — *Target: $\ge$ 95%*
+- **Functions**: **94.97%** (3495/3680) — *Target: $\ge$ 92%*
+- **Branches**: **88.4%** (16251/18382) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2723 Tests)
+## 🧪 Comprehensive Test Suite Catalog (261 Suites / 2726 Tests)
 
 ### 🚀 App Routes & Pages (30 Suites · 307 Tests)
 
@@ -2036,7 +2036,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (55 Suites · 713 Tests)
+### 📚 Gutenberg Parsers & Metadata (55 Suites · 714 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2241,7 +2241,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (39 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (40 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2266,6 +2266,7 @@
 - ✔ `filters by comma-delimited book IDs`
 - ✔ `applies ascending and descending sort directions`
 - ✔ `retries once on transient initial query error and throws CatalogProviderError when retry also fails`
+- ✔ `detects SQLSTATE 57014 statement timeout errors and fails fast with 504 without retrying`
 - ✔ `bypasses copyright filtering when includeRestrictedMetadata is true`
 - ✔ `filters by non-empty quotes JSONB column and excludes sentinel-only or quoteless rows when hasQuotes is true`
 - ✔ `caches searchBooks results for 5 minutes and pre-warms globalThis bookMetadataCache`
@@ -3081,7 +3082,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 345 Tests)
+### 🔄 Hooks & React Query (36 Suites · 347 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
@@ -3108,7 +3109,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (22 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -3132,6 +3133,8 @@
 - ✔ `settles with a cold cache once the fetch completes, including when the fetch fails`
 - ✔ `forwards all optional query parameters in usePrefetchNextPage and sorts cached quote-enriched books deterministically`
 - ✔ `excludes copyright === true entries from fetchQuoteEnrichedBooks and fetchFeaturedQuotesMap`
+- ✔ `does not retry HTTP 504 gateway timeouts even when QueryClient default retry is enabled, while retrying transient HTTP 503`
+- ✔ `evaluates shouldRetryCatalogQuery across non-retryable timeouts/status codes and QueryClient retry modes`
 
 </details>
 

@@ -15,6 +15,8 @@ import {
   writeCachedQuoteEnrichedBooks,
   QUOTE_ENRICHED_BOOKS_CACHE_KEY,
   QUOTE_POOL_SETTLE_TIMEOUT_MS,
+  CatalogRequestError,
+  shouldRetryCatalogQuery,
 } from './useBooks';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 import { server } from '@/mocks/server';
@@ -1022,6 +1024,79 @@ describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
     } finally {
       onLineGetter.mockRestore();
     }
+  });
+
+  it('does not retry HTTP 504 gateway timeouts even when QueryClient default retry is enabled, while retrying transient HTTP 503', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: 1,
+          retryDelay: 0,
+        },
+      },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    let timeoutCalls = 0;
+    server.use(
+      http.get('/api/books', () => {
+        timeoutCalls += 1;
+        return HttpResponse.json(
+          { error: 'Catalog query timed out. Try narrowing your filters or search terms.' },
+          { status: 504 }
+        );
+      })
+    );
+
+    const { result: timeoutResult } = renderHook(
+      () => useBooks({ search: 'timeout-check', page: 1 }),
+      { wrapper }
+    );
+    await waitFor(() => expect(timeoutResult.current.isError).toBe(true));
+    expect(timeoutCalls).toBe(1);
+
+    let transientCalls = 0;
+    server.use(
+      http.get('/api/books', () => {
+        transientCalls += 1;
+        if (transientCalls === 1) {
+          return HttpResponse.json({ error: 'Temporary database blip' }, { status: 503 });
+        }
+        return HttpResponse.json({ count: 0, next: null, previous: null, results: [] });
+      })
+    );
+
+    const { result: recoveryResult } = renderHook(
+      () => useBooks({ search: 'transient-503-recovery', page: 1 }),
+      { wrapper }
+    );
+    await waitFor(() => expect(recoveryResult.current.isSuccess).toBe(true));
+    expect(transientCalls).toBe(2);
+  });
+
+  it('evaluates shouldRetryCatalogQuery across non-retryable timeouts/status codes and QueryClient retry modes', () => {
+    const timeoutErr = new CatalogRequestError('Request timed out', undefined, true);
+    const gatewayTimeoutErr = new CatalogRequestError('Gateway timeout', 504);
+    const badRequestErr = new CatalogRequestError('Invalid query', 400);
+    const rateLimitErr = new CatalogRequestError('Rate limited', 429);
+    const serverErr = new CatalogRequestError('Transient 503', 503);
+
+    expect(shouldRetryCatalogQuery(0, serverErr, false)).toBe(false);
+    expect(shouldRetryCatalogQuery(0, timeoutErr, 2)).toBe(false);
+    expect(shouldRetryCatalogQuery(0, gatewayTimeoutErr, 2)).toBe(false);
+    expect(shouldRetryCatalogQuery(0, badRequestErr, 2)).toBe(false);
+    expect(shouldRetryCatalogQuery(0, rateLimitErr, 2)).toBe(false);
+
+    expect(shouldRetryCatalogQuery(0, serverErr, 2)).toBe(true);
+    expect(shouldRetryCatalogQuery(2, serverErr, 2)).toBe(false);
+    expect(shouldRetryCatalogQuery(0, serverErr, true)).toBe(true);
+    expect(shouldRetryCatalogQuery(0, serverErr, undefined)).toBe(true);
+    expect(shouldRetryCatalogQuery(1, serverErr, undefined)).toBe(false);
+
+    const fnRetry = vi.fn((_count: number, err: Error) => err.message.includes('stringified'));
+    expect(shouldRetryCatalogQuery(0, 'stringified error', fnRetry)).toBe(true);
+    expect(fnRetry).toHaveBeenCalledWith(0, expect.any(Error));
   });
 });
 

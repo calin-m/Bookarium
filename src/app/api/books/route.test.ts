@@ -223,6 +223,20 @@ describe('GET /api/books route handler', () => {
     const fallbackErrJson = await fallbackErrRes.json();
     expect(fallbackErrJson.error).toBe('Catalog database temporarily unavailable. Please try again.');
 
+    searchBooksSpy.mockRejectedValueOnce(
+      new CatalogProviderError(
+        'Catalog query timed out. Try narrowing your filters or search terms.',
+        504,
+        'supabase'
+      )
+    );
+    const timeoutErrRes = await GET(new NextRequest('http://localhost:3000/api/books?page=1&search=sherlock'));
+    expect(timeoutErrRes.status).toBe(504);
+    expect(timeoutErrRes.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    expect(timeoutErrRes.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
+    const timeoutErrJson = await timeoutErrRes.json();
+    expect(timeoutErrJson.error).toBe('Catalog query timed out. Try narrowing your filters or search terms.');
+
     isHealthySpy.mockRestore();
     searchBooksSpy.mockRestore();
     vi.unstubAllEnvs();

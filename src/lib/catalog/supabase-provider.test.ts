@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   SupabaseCatalogProvider,
   isSupabaseConfigured,
+  isStatementTimeoutError,
   mapDatabaseBookToGutendexBook,
   CATALOG_METADATA_COLUMNS,
   CATALOG_WITH_QUOTES_COLUMNS,
@@ -316,7 +317,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(result.results).toHaveLength(2);
       expect(result.clientCountry).toBe('US');
       expect(result.jurisdictionRule).toBe('US_PUBLIC_DOMAIN');
-      expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'estimated' });
+      expect(client.from().select).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS, { count: 'planned' });
       expect(CATALOG_METADATA_COLUMNS).not.toContain('quotes');
       expect(CATALOG_METADATA_COLUMNS).not.toContain('content');
       expect(CATALOG_WITH_QUOTES_COLUMNS).toContain('quotes');
@@ -595,6 +596,29 @@ describe('SupabaseCatalogProvider', () => {
       ).rejects.toThrow(CatalogProviderError);
     });
 
+    it('detects SQLSTATE 57014 statement timeout errors and fails fast with 504 without retrying', async () => {
+      expect(isStatementTimeoutError({ code: '57014', message: 'canceling statement due to statement timeout' })).toBe(true);
+      expect(isStatementTimeoutError({ message: 'canceling statement due to statement timeout' })).toBe(true);
+      expect(isStatementTimeoutError({ code: '08006', message: 'connection failure' })).toBe(false);
+      expect(isStatementTimeoutError(null)).toBe(false);
+
+      const { client } = createMockQueryBuilder([], 0, {
+        code: '57014',
+        message: 'canceling statement due to statement timeout',
+      });
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      await expect(
+        provider.searchBooks({ page: 1, limit: 32, country: 'US', search: 'sherlock' })
+      ).rejects.toMatchObject({
+        name: 'CatalogProviderError',
+        statusCode: 504,
+        source: 'supabase',
+      });
+
+      expect(client.from).toHaveBeenCalledTimes(1);
+    });
+
     it('bypasses copyright filtering when includeRestrictedMetadata is true', async () => {
       // sampleDbRows[1] is Agatha Christie (restricted in GB)
       const { client, builder } = createMockQueryBuilder([sampleDbRows[1]], 1);
@@ -727,9 +751,10 @@ describe('SupabaseCatalogProvider', () => {
         }),
       };
 
+      const selectMock = vi.fn().mockReturnValue(builder);
       const client = {
         from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue(builder),
+          select: selectMock,
         }),
       };
 
@@ -746,6 +771,8 @@ describe('SupabaseCatalogProvider', () => {
       expect(callCount).toBe(2);
       expect(builder.range).toHaveBeenNthCalledWith(1, 0, 4);
       expect(builder.range).toHaveBeenNthCalledWith(2, 5, 36);
+      expect(selectMock).toHaveBeenNthCalledWith(1, CATALOG_METADATA_COLUMNS, { count: 'estimated' });
+      expect(selectMock).toHaveBeenNthCalledWith(2, CATALOG_METADATA_COLUMNS);
     });
 
     it('handles pool === "quotes" by querying candidate pool, slicing quotes to 2 spreads, and sorting deterministically', async () => {

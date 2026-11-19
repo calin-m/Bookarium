@@ -1,10 +1,10 @@
 /**
  * @module src/lib/catalog/supabase-provider
- * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, and LRU response caching.
+ * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, and LRU response caching.
  * @invariant Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
  * @invariant Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1` and strip 1-item bibliographic sentinel rows.
- * @invariant Short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`) and enforce `limit + 1` dynamic backfill under non-US copyright filters.
- * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows that trigger PostgreSQL 8s `statement_timeout` full-table sorts if compound SQL ordering or unfiltered `quotes <> '[]'` scans are issued.
+ * @invariant Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
+ * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures.
  * @adr ADR-037, ADR-038, ADR-043, ADR-080
  */
 
@@ -219,6 +219,28 @@ export function isSupabaseConfigured(): boolean {
 }
 
 /**
+ * Detects PostgreSQL `SQLSTATE 57014` (`canceling statement due to statement timeout`) errors
+ * so catalog callers fail fast (`HTTP 504`) instead of doubling timeout latency with blind retries.
+ */
+export function isStatementTimeoutError(err: unknown): boolean {
+  if (!err) return false;
+  const candidate = err as { code?: unknown; statusCode?: unknown; message?: unknown };
+  if (typeof candidate.code === 'string' && candidate.code.trim() === '57014') {
+    return true;
+  }
+  if (candidate.statusCode === 504) {
+    return true;
+  }
+  const message =
+    typeof candidate.message === 'string'
+      ? candidate.message
+      : err instanceof Error
+        ? err.message
+        : String(err);
+  return /canceling statement due to statement timeout|statement timeout/i.test(message);
+}
+
+/**
  * Maps a database row from `public.books` to standard GutendexBook format.
  */
 export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
@@ -428,12 +450,37 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     supabase: SupabaseClient<Database>,
     options: CatalogQueryOptions,
     jurisdictionRule: string,
-    currentYear: number
+    currentYear: number,
+    queryConfig?: { includeCount?: boolean }
   ) {
     const selectedColumns = options.hasQuotes
       ? CATALOG_WITH_QUOTES_COLUMNS
       : CATALOG_METADATA_COLUMNS;
-    let query = supabase.from('books').select(selectedColumns as string, { count: 'estimated' });
+
+    // Full-text search and topic filtering on GIN search_vector (title + subjects)
+    const cleanSearch =
+      options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
+    const cleanTopic =
+      options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
+    const topicList = cleanTopic
+      ? cleanTopic.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+    const searchVectorQuery = [cleanSearch, topicList.join(' or ')].filter(Boolean).join(' ');
+
+    const hasSelectiveFilters = Boolean(
+      searchVectorQuery ||
+        (options.languages && options.languages.length > 0) ||
+        options.authorYearStart !== undefined ||
+        options.authorYearEnd !== undefined
+    );
+
+    const table = supabase.from('books');
+    let query =
+      queryConfig?.includeCount === false
+        ? table.select(selectedColumns as string)
+        : table.select(selectedColumns as string, {
+            count: hasSelectiveFilters ? 'planned' : 'estimated',
+          });
 
     // Enforce zero-copyright
     query = query.eq('copyright', false);
@@ -448,12 +495,6 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         query = query.in('id', idList);
       }
     }
-
-    // Full-text search and topic filtering on GIN search_vector (title + subjects)
-    const cleanSearch = options.search && options.search.trim().length >= 2 ? options.search.trim() : null;
-    const cleanTopic = options.topic && options.topic.trim().length > 0 ? options.topic.trim() : null;
-    const topicList = cleanTopic ? cleanTopic.split(',').map((t) => t.trim()).filter(Boolean) : [];
-    const searchVectorQuery = [cleanSearch, topicList.join(' or ')].filter(Boolean).join(' ');
 
     if (searchVectorQuery) {
       query = query.textSearch('search_vector', searchVectorQuery, {
@@ -710,9 +751,10 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
         const res = await this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear)
           .range(from, from + limit);
         if (res.error) {
+          const isTimeout = isStatementTimeoutError(res.error);
           throw new CatalogProviderError(
             `Supabase Catalog query error: ${res.error.message}`,
-            500,
+            isTimeout ? 504 : 500,
             'supabase'
           );
         }
@@ -722,7 +764,10 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       let initialProbe;
       try {
         initialProbe = await executeInitialProbe();
-      } catch {
+      } catch (probeErr: unknown) {
+        if (isStatementTimeoutError(probeErr)) {
+          throw probeErr;
+        }
         // Single fast transient retry for cold serverless connection hiccups
         initialProbe = await executeInitialProbe();
       }
@@ -761,7 +806,8 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
             supabase,
             options,
             jurisdictionRule,
-            currentYear
+            currentYear,
+            { includeCount: false }
           ).range(nextOffset, nextOffset + fetchBatch - 1);
 
           const { data: backfillData, error: backfillError } = await backfillQuery;

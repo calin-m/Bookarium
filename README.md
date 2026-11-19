@@ -13,8 +13,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202723%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.21%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-261%20Suites%20%7C%202726%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.23%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -68,7 +68,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2723 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2726 tests across 261 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -111,9 +111,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.63)
+## 🛠️ Latest Improvements (v2.9.64)
 
-- **Quote-Aware Linear Mermaid Arrow-Chain Tokenizer (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`)**: Replaced the two unanchored Mermaid flowchart arrow regexes in `inspectMermaidBlock` (`validateMermaidDiagramsInMarkdown`) with deterministic character-index scanning (`splitMermaidEdgeChainSegments` over `MERMAID_FLOW_ARROWS`), preventing false chain splits inside quoted node labels and eliminating CodeQL `js/bad-tag-filter` (`CWE-116`) alerts `#9` and `#10` without suppressions (`ADR-084`).
+- **Era Birth-Year B-Tree Index (`supabase/schema.sql`)**: Added idempotent `idx_books_author_birth_year` on `public.books(min_author_birth_year)` paired with `idx_books_author_death_year` so multi-predicate century/era queries stay indexed across 78,000+ rows (`ADR-043`).
+- **Selective Planner Counts, Count-Free Backfill & Non-Retryable HTTP 504 Fail-Fast (`src/lib/catalog/supabase-provider.ts`, `src/app/api/books/route.ts`, `src/hooks/queries/useBooks.ts`)**: Switched filtered searches (`search`/`topic`/`languages`/`authorYearStart`/`authorYearEnd`) to `{ count: 'planned' }` and omitted `{ count }` on `backfillQuery` chunks (`{ includeCount: false }`) to eliminate duplicate PostgREST `pgrst_source_count` (`LIMIT 1001`) scans; mapped `SQLSTATE 57014` statement timeouts (`isStatementTimeoutError`) to non-retried sanitized `HTTP 504` (`no-store`) responses and guarded `useBooks` with `shouldRetryCatalogQuery` (`CatalogRequestError`) so `504`, `15,000ms` aborts, `400`, and `429` fail fast without retry storms (`ADR-043`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -167,7 +168,7 @@ Bookarium is structured around six core engineering pillars:
 * **Native IndexedDB Offline Storage, Same-Origin R2 Cover LRU & Adaptive Offline Catalog**: Persists unabridged book texts (`offline_books`) and local binary cover `Blob`s (`BookariumOfflineDB` v2: downloaded `offline_books` + bounded `300`-entry / `30d` `cover_cache` LRU, resolved via `useOfflineCoverImage.ts` ahead of same-origin `/api/books/content?type=cover` R2 reads with zero external cover hotlinking) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: 2-column archival reading ledger with silk ribbon markers, live progress percentages, multi-attribute sorting, status filtering, completed book progress latching (`Read Again` flow), and 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails).
 * **In-Reader Highlighting, Dual-State Marginalia & Commonplace Notebook (`/notebook`)**: 4 pastel highlighters with page-boundary partial span matching, a **Dual-State Read/Edit Marginalia Popover** (`TextHighlightPopover.tsx`), composite union cards for overlapping personal + Fellow Scholar highlights (`pairOverlappingAnnotations`), and 1-click academic citation export.
-* **7-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, fellowships, and unified `profiles.preferences` JSONB (`usePreferencesStore` / `useThemeStore`) with `TOKEN_REFRESHED` wake-up re-sync, paired with `{ count: 'estimated' }` planner scans, 11-column selective projection, `(select auth.uid())` RLS `InitPlan` policies (`47` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
+* **7-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, fellowships, and unified `profiles.preferences` JSONB (`usePreferencesStore` / `useThemeStore`) with `TOKEN_REFRESHED` wake-up re-sync, paired with `{ count: 'estimated' }` / `{ count: 'planned' }` planner scans, 11-column selective projection, `(select auth.uid())` RLS `InitPlan` policies (`47` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
 * **Hardened Authentication, Active Device Sessions & 3-Tier Zero-Retention Erasure (`/account`, `/privacy`)**: Supports Email/Password, Magic Link, and Google OAuth 2.0 PKCE with Cloudflare Turnstile (including `/account` recovery & resend gating) + Honeypot bot protection, fail-closed JWT `amr` password recovery (`auth-recovery.ts`), owner-scoped **Active Device Sessions** inspection & single-device/peer revocation (`public.get_active_sessions()`, `public.revoke_user_session(UUID)`, `verifyActiveSessionValidity`), Connected Accounts linking, dual Reading/Listening streak & annual challenge telemetry (`useHabitsStore`), Dynamic OpenGraph Reading Quote Cards, and a **Two-Step Email-Verified 3-Tier Zero-Retention Data Erasure Protocol** (`public.delete_current_user()` + device storage wipe).
 
 ### 5. 🤝 Reader Circles, Literary Symposiums & Scholarly Honors
@@ -419,7 +420,7 @@ flowchart TD
     QueryBooks --> ProxyBooks
     ProxyBooks --> CatalogSeam
     CatalogSeam --> EngineCore
-    CatalogSeam -->|"Primary: Estimated-Count Fast Scan / <50ms Single-Book"| SupabaseCloud
+    CatalogSeam -->|"Primary: Planner/Estimated Fast Scan / 504 Timeout Shield"| SupabaseCloud
     CatalogSeam -.->|"Fallback when Supabase unconfigured"| CuratedArchive
     SyncEngine -->|"Weekly Cron Snapshot Diff & pg_catalog.csv.gz Stream"| SupabaseCloud
     CISecurity -.->|"Verifies Builds, Gates & SemVer Releases"| SyncEngine
@@ -576,7 +577,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 ### Step 2: Run Database Schema Script
 1. In your Supabase Dashboard, open the **SQL Editor** from the left sidebar.
 2. Click **New Query**, copy and paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**.
-3. The script is **100% idempotent** and safely provisions all `14` database tables, `47` consolidated `(select auth.uid())` Row Level Security (RLS) policies, `21` explicit indexes, and `9` stored functions/triggers (`5` row triggers):
+3. The script is **100% idempotent** and safely provisions all `14` database tables, `47` consolidated `(select auth.uid())` Row Level Security (RLS) policies, `22` explicit indexes, and `9` stored functions/triggers (`5` row triggers):
 
 | Database Object | Type | Purpose & Security Governance |
 |---|---|---|

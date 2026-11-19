@@ -82,7 +82,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Read-only Edge/serverless catalog gateway serving paginated searches, ID lookups, and the 2-spread rotating quote pool (`?pool=quotes`).
 - **Behavioral Invariants (`@invariant`)**:
   - Enforce strict parameter allowlisting (`ALLOWED_CATALOG_QUERY_KEYS`, dev-only `?country=`), `booksApiRateLimiter`, and `Cross-Origin-Resource-Policy: same-origin` across all responses.
-  - Fail closed with HTTP `503` and `Cache-Control: no-store, max-age=0` on transient Supabase outages or `pool=quotes` unavailability; never return static fixture fallback on live DB errors.
+  - Fail closed with HTTP `504` on PostgreSQL statement timeouts (`57014`) and HTTP `503` with `Cache-Control: no-store, max-age=0` on transient Supabase outages or `pool=quotes` unavailability; never return static fixture fallback on live DB errors.
   - Differentiate CDN caching by query mode (`s-maxage=43200` + `Vercel-Cache-Tag: quotes` for `?pool=quotes`, `s-maxage=604800` + `Vary: Accept-Encoding` for jurisdiction-independent lookups, `Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding` for country-filtered pages).
 - **Design Rationale (`@rationale`)**:
   - Prevents Vercel Edge CDN cache poisoning during DB outages, stops query-cache busting abuse, and shields the 78k-row database via global CDN offloading.
@@ -187,17 +187,17 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/catalog/supabase-provider.ts`](../src/lib/catalog/supabase-provider.ts) *(Tier-1 Protected)*
 
-- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, and LRU response caching.
+- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, and LRU response caching.
 - **Behavioral Invariants (`@invariant`)**:
   - Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
   - Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1` and strip 1-item bibliographic sentinel rows.
-  - Short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`) and enforce `limit + 1` dynamic backfill under non-US copyright filters.
+  - Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
 - **Design Rationale (`@rationale`)**:
-  - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows that trigger PostgreSQL 8s `statement_timeout` full-table sorts if compound SQL ordering or unfiltered `quotes <> '[]'` scans are issued.
+  - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures.
 - **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
-- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (39 tests)
+- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (40 tests)
 
 #### [`src/lib/copyright-engine.ts`](../src/lib/copyright-engine.ts) *(Tier-1 Protected)*
 
@@ -643,14 +643,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`), featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
 - **Behavioral Invariants (`@invariant`)**:
-  - Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
+  - Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, never auto-retry `HTTP 504` / abort timeouts or `400`/`429` rejections, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
   - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place.
 - **Design Rationale (`@rationale`)**:
-  - Client-side copyright filtering and deterministic quote sorting prevent regional or visual flash regressions across hydration and partial network failures.
-- **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans.
+- **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
-- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (22 tests)
+- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (24 tests)
 
 #### [`src/hooks/reader/useContinueReadingLedger.ts`](../src/hooks/reader/useContinueReadingLedger.ts) *(Tier-4 Protected)*
 

@@ -2,10 +2,10 @@
  * @module
  * @scope TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`),
  *        featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
- * @invariant Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
+ * @invariant Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, never auto-retry `HTTP 504` / abort timeouts or `400`/`429` rejections, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
  * @invariant Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place.
- * @rationale Client-side copyright filtering and deterministic quote sorting prevent regional or visual flash regressions across hydration and partial network failures.
- * @adr ADR-004, ADR-036, ADR-080
+ * @rationale Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans.
+ * @adr ADR-004, ADR-036, ADR-043, ADR-080
  */
 
 import {
@@ -56,6 +56,48 @@ export interface UseBooksParams {
 
 export interface UseBooksOptions {
   enabled?: boolean;
+}
+
+export class CatalogRequestError extends Error {
+  public readonly status?: number;
+  public readonly isTimeout: boolean;
+
+  constructor(message: string, status?: number, isTimeout = false) {
+    super(message);
+    this.name = 'CatalogRequestError';
+    this.status = status;
+    this.isTimeout = isTimeout;
+  }
+}
+
+export function shouldRetryCatalogQuery(
+  failureCount: number,
+  error: unknown,
+  defaultRetry?: boolean | number | ((failureCount: number, error: Error) => boolean)
+): boolean {
+  if (defaultRetry === false) {
+    return false;
+  }
+  if (
+    error instanceof CatalogRequestError &&
+    (error.isTimeout ||
+      error.status === 400 ||
+      error.status === 429 ||
+      error.status === 504)
+  ) {
+    return false;
+  }
+  if (typeof defaultRetry === 'number') {
+    return failureCount < defaultRetry;
+  }
+  if (typeof defaultRetry === 'function') {
+    const normalizedError = error instanceof Error ? error : new Error(String(error));
+    return defaultRetry(failureCount, normalizedError);
+  }
+  if (defaultRetry === true) {
+    return true;
+  }
+  return failureCount < 1;
 }
 
 export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexResponse> {
@@ -112,13 +154,24 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     });
   } catch (netErr: unknown) {
     clearTimeout(timeoutId);
+    const isAbortTimeout =
+      controller.signal.aborted ||
+      (netErr instanceof Error && netErr.name === 'AbortError');
     const msg = netErr instanceof Error ? netErr.message : 'Network error';
-    throw new Error(`Failed to fetch books: ${msg}`);
+    throw new CatalogRequestError(
+      `Failed to fetch books: ${msg}`,
+      isAbortTimeout ? 504 : undefined,
+      isAbortTimeout
+    );
   }
   clearTimeout(timeoutId);
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch books: ${res.statusText || res.status}`);
+    throw new CatalogRequestError(
+      `Failed to fetch books: ${res.statusText || res.status}`,
+      res.status,
+      res.status === 504
+    );
   }
 
   let data: GutendexResponse;
@@ -161,10 +214,13 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
 }
 
 export function useBooks(params: UseBooksParams = {}, options: UseBooksOptions = {}) {
+  const queryClient = useQueryClient();
   const effectiveCountry = useJurisdictionStore((s) => s.overrideCountry || s.country || 'US');
+  const defaultRetry = queryClient.getDefaultOptions().queries?.retry;
   return useQuery({
     queryKey: ['books', params, effectiveCountry],
     queryFn: () => fetchBooks(params),
+    retry: (failureCount, error) => shouldRetryCatalogQuery(failureCount, error, defaultRetry),
     placeholderData: keepPreviousData, // Keep previous page data while new page is loading
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000,
