@@ -211,17 +211,17 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/catalog/supabase-provider.ts`](../src/lib/catalog/supabase-provider.ts) *(Tier-1 Protected)*
 
-- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, and LRU response caching.
+- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
 - **Behavioral Invariants (`@invariant`)**:
   - Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
-  - Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1` and strip 1-item bibliographic sentinel rows.
+  - Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
   - Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
 - **Design Rationale (`@rationale`)**:
-  - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures.
-- **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures, while cross-country `jurisdictionRule` normalization, translation LRU caching, and in-flight coalescing cut warm serverless read egress cleanly.
+- **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
-- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (40 tests)
+- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (41 tests)
 
 #### [`src/lib/copyright-engine.ts`](../src/lib/copyright-engine.ts) *(Tier-1 Protected)*
 
@@ -232,7 +232,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Centralizing legal rules in a pure zero-network module guarantees SSR, Edge routes, catalog queries, and Reader `HTTP 451` checks produce identical deterministic decisions.
 - **Governing Decisions (`@adr`)**: [ADR-002](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-044](DECISIONS.md), [ADR-070](DECISIONS.md)
-- **AST Blast Radius**: 21 runtime, 2 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx) *(type)*, [`src/types/catalog.types.ts`](../src/types/catalog.types.ts) *(type)*, …)
+- **AST Blast Radius**: 22 runtime, 2 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx) *(type)*, [`src/types/catalog.types.ts`](../src/types/catalog.types.ts) *(type)*, …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/copyright-engine.test.ts`](../src/lib/copyright-engine.test.ts) (34 tests)
 
@@ -331,13 +331,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Browser IndexedDB persistence (`BookariumOfflineDB` / `offline_books` + bounded `cover_cache` LRU), `coverObjectUrlCache` reuse, background cover warming, and non-regressive author metadata healing.
 - **Behavioral Invariants (`@invariant`)**:
   - Never overwrite authentic author metadata with placeholder names (`isPlaceholderAuthor`, e.g., `"Anonymous"`); heal missing contributor lifespans via `patchOfflineBookAuthors`.
-  - Lookup cover art in-memory (`getMemoryCachedCoverUrl`) and across IndexedDB (`offline_books.coverBlob` -> non-expired `cover_cache.blob`, capped at `MAX_CACHED_COVERS` and `COVER_CACHE_TTL_MS`), populate via same-origin `/api/books/content?id=...&type=cover`, manage `coverObjectUrlCache` revocation on eviction/removal/clear, clear both stores in `clearAllOfflineBooks`, and broadcast changes through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
+  - Lookup cover art in-memory (`getMemoryCachedCoverUrl`) and across IndexedDB via a single-transaction dual-store read (`[offline_books, cover_cache]`, returning `offline_books.coverBlob` before non-expired `cover_cache.blob` capped at `MAX_CACHED_COVERS` and `COVER_CACHE_TTL_MS`), populate via same-origin `/api/books/content?id=...&type=cover` with `{ cache: 'force-cache' }`, manage `coverObjectUrlCache` revocation on eviction/removal/clear, clear both stores in `clearAllOfflineBooks`, and broadcast changes through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
 - **Design Rationale (`@rationale`)**:
-  - Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache prevents repeat downloads across refreshes behind `/api/books/content?type=cover` (Cloudflare R2) while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
-- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
+  - Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache using single-transaction reads and browser HTTP cache reuse prevents repeat downloads across refreshes behind `/api/books/content?type=cover` (Cloudflare R2) while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
+- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 0 type-only ([`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx), [`src/hooks/queries/useBookContent.ts`](../src/hooks/queries/useBookContent.ts), [`src/hooks/useCollectionAutoHeal.ts`](../src/hooks/useCollectionAutoHeal.ts), [`src/hooks/useOfflineBooks.ts`](../src/hooks/useOfflineBooks.ts), …)
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `BookariumOfflineDB`
-- **Test Contract**: [`src/lib/offline-storage.test.ts`](../src/lib/offline-storage.test.ts) (20 tests)
+- **Test Contract**: [`src/lib/offline-storage.test.ts`](../src/lib/offline-storage.test.ts) (21 tests)
 
 #### [`src/lib/password.ts`](../src/lib/password.ts) *(Tier-3 Protected)*
 
@@ -521,10 +521,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Cross-store Supabase cloud synchronization coordinator and session-validity re-export hub.
 - **Behavioral Invariants (`@invariant`)**:
   - Reject empty `userId` and coalesce overlapping sync calls per `userId` via `coalesceInFlightByUser` so concurrent mount/focus events share one Promise identity (`p1 === p2`).
-  - Verify an active authenticated cookie/session via `verifyActiveCloudSession` before dispatching PostgREST queries across the 7 syncable stores, executing all stores under `Promise.allSettled` for partial-failure isolation.
+  - Verify an active authenticated cookie/session via `verifyActiveCloudSession` before dispatching PostgREST queries across the 7 syncable stores, executing all stores under `Promise.allSettled` for partial-failure isolation and forwarding optional `PASSIVE_SYNC_COOLDOWN_MS` (`authMinSyncIntervalMs` / `minSyncIntervalMs`) cleanly when supplied.
 - **Design Rationale (`@rationale`)**:
-  - Without pre-sync token verification, stale tabs whose `sb-*-auth-token` cookies were cleared emit bursts of PostgreSQL `42501` RLS write violations and overwrite state with false empty `SELECT` arrays.
-- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-035](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Without pre-sync token verification, stale tabs whose `sb-*-auth-token` cookies were cleared emit bursts of PostgreSQL `42501` RLS write violations and overwrite state with false empty `SELECT` arrays; opt-in `authMinSyncIntervalMs` deduplicates redundant profile fetches immediately after bootstrap or token refreshes without delaying collection store recovery.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-035](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/providers.tsx`](../src/app/providers.tsx))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/sync-utils.test.ts`](../src/lib/sync-utils.test.ts) (5 tests)
@@ -533,7 +533,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 | Symbol | Signature | Scope / Invariants / Rationale |
 | :--- | :--- | :--- |
-| `syncAllStoresWithCloud` | `(userId)` | **Scope**: Fans out unified 7-store cloud synchronization for a verified `userId`. **Invariants**: Must execute `verifyActiveCloudSession` inside the coalesced per-user flight before calling `syncWithCloud` / `fetchFellowshipData`. |
+| `syncAllStoresWithCloud` | `(userId, options)` | **Scope**: Fans out unified 7-store cloud synchronization for a verified `userId`. **Invariants**: Must execute `verifyActiveCloudSession` inside the coalesced per-user flight before calling `syncWithCloud` / `fetchFellowshipData`. |
 
 
 ### Layer: State Stores (Zustand) (10 Contracted)
@@ -570,13 +570,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Behavioral Invariants (`@invariant`)**:
   - Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` must erase all 10 Zustand slices, localStorage keys, cookies, and IndexedDB in lockstep (`Rule 9`).
   - Persist `STORAGE_KEYS.PENDING_STORE_CLEANUP` synchronously across teardowns so interrupted reloads finish cleanup in `initializeAuth()` without affecting offline signed-in sessions or guest users.
-  - Treat `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions.
+  - Verify `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions, and honor optional `minSyncIntervalMs` cooldown in `syncWithCloud` after live `fetchProfile` completion unless `pendingProfileUpdates` or dirty markers exist.
 - **Design Rationale (`@rationale`)**:
-  - Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, and reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout.
-- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 21 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.reader_circles`, `public.reading_progress`, `public.symposium_sessions`, `public.user_accolades`, `public.user_annotations`, `public.user_book_curation`, `public.user_favorites`, `public.user_reading_habits` · RPCs: `public.delete_current_user()`, `public.get_active_sessions()`, `public.revoke_user_session()` · API Calls: `/auth/callback` · Signals: emits `CustomEvent:bookarium:auth-token-refreshed` · Storage/Cookies: `bookarium-auth-hint`, `bookarium-auth-profile`, `bookarium-client-ip-sync`, `bookarium-pending-store-cleanup`, `bookarium_auto_heal_attempted` · Env Vars: `NODE_ENV`
-- **Test Contract**: [`src/stores/useAuthStore.test.ts`](../src/stores/useAuthStore.test.ts) (51 tests)
+- **Test Contract**: [`src/stores/useAuthStore.test.ts`](../src/stores/useAuthStore.test.ts) (52 tests)
 
 #### [`src/stores/useBookshelfStore.ts`](../src/stores/useBookshelfStore.ts) *(Tier-2 Protected)*
 
@@ -626,7 +626,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Synchronous initial country resolution avoids client hydration flicker on regional availability badges while matching server edge-proxy `bookarium-geo-country` headers.
 - **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-042](DECISIONS.md), [ADR-044](DECISIONS.md)
-- **AST Blast Radius**: 9 runtime, 0 type-only ([`src/app/providers.tsx`](../src/app/providers.tsx), [`src/components/presentation/BookshelfRack.tsx`](../src/components/presentation/BookshelfRack.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), [`src/components/presentation/HeroSearch.tsx`](../src/components/presentation/HeroSearch.tsx), …)
+- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/providers.tsx`](../src/app/providers.tsx), [`src/components/presentation/BookshelfRack.tsx`](../src/components/presentation/BookshelfRack.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), [`src/components/presentation/HeroSearch.tsx`](../src/components/presentation/HeroSearch.tsx), …)
 - **Cross-Boundary Coupling**: Env Vars: `NODE_ENV`
 - **Test Contract**: [`src/stores/useJurisdictionStore.test.ts`](../src/stores/useJurisdictionStore.test.ts) (9 tests)
 
@@ -678,39 +678,39 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Reader text fetcher and React Query hook (`useBookContent`) resolving IndexedDB offline storage, same-origin `/api/books/content?id=<bookId>` R2 streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
 - **Behavioral Invariants (`@invariant`)**:
   - Configure `networkMode: 'always'` so locally persisted IndexedDB books resolve instantaneously when offline, and resolve authoritative local author lifespans before serving offline volumes in non-US jurisdictions while online.
-  - Never dispatch legacy `?url=` proxy queries without a positive integer `bookId`, never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on network timeouts (`BOOK_CONTENT_TIMEOUT_MS`).
+  - Never dispatch legacy `?url=` proxy queries without a positive integer `bookId`, never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, align React Query `staleTime` and `gcTime` on `BOOK_CONTENT_CACHE_TTL_MS` (`60m`), and fall back to local IndexedDB text on network timeouts (`BOOK_CONTENT_TIMEOUT_MS`).
 - **Design Rationale (`@rationale`)**:
   - Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance and zero Project Gutenberg fallback.
-- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 3 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderErrorView.tsx`](../src/components/reader/ReaderErrorView.tsx), [`src/hooks/useBookPassageShuffle.ts`](../src/hooks/useBookPassageShuffle.ts))
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content`
-- **Test Contract**: [`src/hooks/queries/useBookContent.test.ts`](../src/hooks/queries/useBookContent.test.ts) (18 tests)
+- **Test Contract**: [`src/hooks/queries/useBookContent.test.ts`](../src/hooks/queries/useBookContent.test.ts) (19 tests)
 
 #### [`src/hooks/queries/useBookTranslations.ts`](../src/hooks/queries/useBookTranslations.ts) *(Tier-3 Protected)*
 
 - **Intended Scope (`@scope`)**: Two-tier edition discovery hook (`useBookTranslations`) resolving alternate language editions via relational `/api/books/translations` links with root-title + author-surname fallback lookup.
 - **Behavioral Invariants (`@invariant`)**:
-  - Normalize titles and author surnames (`extractRootTitle`, `extractAuthorSurname`) while ignoring placeholder authors (`isPlaceholderAuthor`) when constructing fallback search queries.
+  - Normalize titles and author surnames (`extractRootTitle`, `extractAuthorSurname`) while ignoring placeholder authors (`isPlaceholderAuthor`) when constructing fallback search queries, and partition Tier-1 & Tier-2 query keys by normalized `effectiveCountry` so jurisdiction changes never reuse stale regional edition lists.
   - Deduplicate Tier-1 relational DB translations and Tier-2 `/api/books` fallback candidates against `currentBookId`, preserving ISO-639-1 human-readable language labels via `resolveLanguageLabel`.
 - **Design Rationale (`@rationale`)**:
   - Combines exact Wikidata FRBR links from Supabase with deterministic catalog search fallback so unseeded or locally tested books still surface sibling translations reliably.
-- **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 2 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderHeader.tsx`](../src/components/reader/ReaderHeader.tsx) *(type)*, [`src/components/reader/ReaderLanguageDrawer.tsx`](../src/components/reader/ReaderLanguageDrawer.tsx) *(type)*)
 - **Cross-Boundary Coupling**: API Calls: `/api/books`, `/api/books/translations`
-- **Test Contract**: [`src/hooks/queries/useBookTranslations.test.ts`](../src/hooks/queries/useBookTranslations.test.ts) (18 tests)
+- **Test Contract**: [`src/hooks/queries/useBookTranslations.test.ts`](../src/hooks/queries/useBookTranslations.test.ts) (19 tests)
 
 #### [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts) *(Tier-3 Protected)*
 
 - **Intended Scope (`@scope`)**: TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`), featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
 - **Behavioral Invariants (`@invariant`)**:
   - Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, never auto-retry `HTTP 504` / abort timeouts or `400`/`429` rejections, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
-  - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place.
+  - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place; consult `bookarium-extracted-passages-v1` read-only (`>= 3` locally extracted passages) inside `fetchFeaturedQuotesMap` without writing server DB quotes back into `bookarium-extracted-passages-v1`.
 - **Design Rationale (`@rationale`)**:
-  - Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans.
-- **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans, while read-only passage reuse avoids redundant deep-quote requests without suppressing dynamic text extraction.
+- **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
-- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (24 tests)
+- **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (25 tests)
 
 #### [`src/hooks/reader/useContinueReadingLedger.ts`](../src/hooks/reader/useContinueReadingLedger.ts) *(Tier-4 Protected)*
 
@@ -760,7 +760,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Avoiding unnecessary full-text fetches on quote-enriched Hero and Catalog volumes honors zero-pull homepage protection while preserving instant passage shuffling everywhere.
 - **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 2 runtime, 0 type-only ([`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx))
+- **AST Blast Radius**: 3 runtime, 0 type-only ([`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts))
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-extracted-passages-v1`
 - **Test Contract**: [`src/hooks/useBookPassageShuffle.test.ts`](../src/hooks/useBookPassageShuffle.test.ts) (6 tests)
 
@@ -874,10 +874,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Client runtime provider orchestrating TanStack Query defaults, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
 - **Behavioral Invariants (`@invariant`)**:
-  - Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud`, and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
+  - Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud` (passing `{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }` on bootstrap mount and `bookarium:auth-token-refreshed`), and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
 - **Design Rationale (`@rationale`)**:
   - Consolidating session lifecycle listeners, token-refresh events (`bookarium:auth-token-refreshed`), and reconnect outbox synchronization in a single client boundary keeps Zustand stores decoupled from DOM/window listeners.
-- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx))
 - **Cross-Boundary Coupling**: Signals: listens `CustomEvent:bookarium:auth-token-refreshed`
 - **Test Contract**: [`src/app/providers.test.tsx`](../src/app/providers.test.tsx) (12 tests)
@@ -886,13 +886,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Server-side Reader volume metadata resolver, bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Cap `serverMetadataCache` and `confirmedNotFoundIds` at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
+  - Anchor `serverMetadataCache` and `confirmedNotFoundIds` on `globalThis` capped at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
 - **Design Rationale (`@rationale`)**:
-  - Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded.
-- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md)
+  - Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded across warm SSR module reloads.
+- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`src/app/read/[id]/reader-layout-utils.test.ts`](../src/app/read/[id]/reader-layout-utils.test.ts) (15 tests)
+- **Test Contract**: [`src/app/read/[id]/reader-layout-utils.test.ts`](../src/app/read/[id]/reader-layout-utils.test.ts) (16 tests)
 
 #### [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx) *(Tier-2 Protected)*
 
@@ -910,13 +910,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Server-side public handle resolution and bounded LRU metadata cache (`serverProfileCache`) powering `/u/[username]` layout metadata and privacy gates.
 - **Behavioral Invariants (`@invariant`)**:
-  - Bound `serverProfileCache` via `MAX_PROFILE_CACHE_ENTRIES` and `PROFILE_CACHE_TTL_MS`, normalize handles via `VALID_HANDLE_REGEX`, enforce exact lowercase username equality after `.ilike()` lookups, never cache `'unavailable'` errors, and collapse private or missing accounts uniformly to `private_or_missing`.
+  - Anchor `serverProfileCache` on `globalThis` bounded via `MAX_PROFILE_CACHE_ENTRIES` and `PROFILE_CACHE_TTL_MS`, normalize handles via `VALID_HANDLE_REGEX`, enforce exact lowercase username equality after `.ilike()` lookups, never cache `'unavailable'` errors, and collapse private or missing accounts uniformly to `private_or_missing`.
 - **Design Rationale (`@rationale`)**:
-  - Bounding handle LRU entries and neutralizing SQL `_` wildcard matching protects server memory and enforces ADR-033 anti-enumeration across public profile routes.
-- **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-053](DECISIONS.md)
+  - Bounding handle LRU entries and neutralizing SQL `_` wildcard matching protects server memory across warm SSR reloads and enforces ADR-033 anti-enumeration across public profile routes.
+- **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-053](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx))
 - **Cross-Boundary Coupling**: DB Tables: `public.profiles`
-- **Test Contract**: [`src/app/u/[username]/profile-layout-utils.test.ts`](../src/app/u/[username]/profile-layout-utils.test.ts) (6 tests)
+- **Test Contract**: [`src/app/u/[username]/profile-layout-utils.test.ts`](../src/app/u/[username]/profile-layout-utils.test.ts) (7 tests)
 
 
 ### Layer: UI & Feature Components (1 Contracted)

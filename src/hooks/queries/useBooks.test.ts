@@ -19,6 +19,11 @@ import {
   shouldRetryCatalogQuery,
 } from './useBooks';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
+import {
+  clearCachedBookPassages,
+  writeCachedBookPassages,
+  readCachedBookPassages,
+} from '@/hooks/useBookPassageShuffle';
 import { server } from '@/mocks/server';
 import { http, HttpResponse } from 'msw';
 
@@ -39,6 +44,7 @@ function createWrapper() {
 
 afterEach(() => {
   vi.useRealTimers();
+  clearCachedBookPassages();
   useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
 });
 
@@ -1097,6 +1103,61 @@ describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
     const fnRetry = vi.fn((_count: number, err: Error) => err.message.includes('stringified'));
     expect(shouldRetryCatalogQuery(0, 'stringified error', fnRetry)).toBe(true);
     expect(fnRetry).toHaveBeenCalledWith(0, expect.any(Error));
+  });
+
+  it('reuses >= 3 locally extracted passages read-only without writing server quotes back into extracted passages cache', async () => {
+    const supabaseProviderModule = await import('@/lib/catalog/supabase-provider');
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+    const onLineGetter = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+
+    try {
+      clearCachedBookPassages();
+      window.localStorage.removeItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY);
+
+      writeCachedBookPassages(1342, [
+        { chapterLabel: 'Ch I', openingLine: 'Open 1', quoteExcerpt: 'Quote 1' },
+        { chapterLabel: 'Ch II', openingLine: 'Open 2', quoteExcerpt: 'Quote 2' },
+        { chapterLabel: 'Ch III', openingLine: 'Open 3', quoteExcerpt: 'Quote 3' },
+      ]);
+      // < 3 extracted spreads should still trigger server resolution
+      writeCachedBookPassages(84, [
+        { chapterLabel: 'L I', openingLine: 'Open L1', quoteExcerpt: 'Quote L1' },
+        { chapterLabel: 'L II', openingLine: 'Open L2', quoteExcerpt: 'Quote L2' },
+      ]);
+
+      const requestedIds: string[] = [];
+      server.use(
+        http.get('/api/books', ({ request }) => {
+          const url = new URL(request.url, 'http://localhost:3000');
+          requestedIds.push(url.searchParams.get('ids') || '');
+          return HttpResponse.json({
+            count: 1,
+            source: 'supabase',
+            results: [
+              {
+                id: 84,
+                title: 'Frankenstein',
+                quotes: [
+                  { chapterLabel: 'DB 1', openingLine: 'DB Open 1', quoteExcerpt: 'DB Quote 1' },
+                  { chapterLabel: 'DB 2', openingLine: 'DB Open 2', quoteExcerpt: 'DB Quote 2' },
+                  { chapterLabel: 'DB 3', openingLine: 'DB Open 3', quoteExcerpt: 'DB Quote 3' },
+                ],
+              },
+            ],
+          });
+        })
+      );
+
+      const resolved = await fetchFeaturedQuotesMap([1342, 84]);
+      expect(requestedIds).toEqual(['84']);
+      expect(resolved[1342]).toHaveLength(3);
+      expect(resolved[84]).toHaveLength(3);
+      // Confirm DB quotes were not written back into bookarium-extracted-passages-v1
+      expect(readCachedBookPassages(84)).toHaveLength(2);
+    } finally {
+      onLineGetter.mockRestore();
+      vi.restoreAllMocks();
+    }
   });
 });
 

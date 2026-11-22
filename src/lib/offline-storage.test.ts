@@ -785,7 +785,9 @@ describe('offline-storage (IndexedDB engine)', () => {
         new Response(new Blob(['network-patched-cover']), { status: 200 })
       );
       await fetchAndPatchOfflineCover(402);
-      expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=402&type=cover');
+      expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=402&type=cover', {
+        cache: 'force-cache',
+      });
       expect(store.get(402)?.coverBlob).toBeDefined();
       fetchSpy.mockRestore();
     });
@@ -858,7 +860,9 @@ describe('offline-storage (IndexedDB engine)', () => {
             { timeout: 5000 }
           );
           expect(fetchSpy).toHaveBeenCalledTimes(1);
-          expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=555&type=cover');
+          expect(fetchSpy).toHaveBeenCalledWith('/api/books/content?id=555&type=cover', {
+            cache: 'force-cache',
+          });
 
           warmCoverCache(556);
           await vi.waitFor(
@@ -884,6 +888,56 @@ describe('offline-storage (IndexedDB engine)', () => {
         revokeUrlSpy.mockRestore();
         resetCoverWarmState();
       }
+    });
+
+    it('reads offline_books and cover_cache in one transaction inside getOfflineBookCover and handles legacy schemas', async () => {
+      const openSpy = vi.spyOn(globalThis.indexedDB, 'open');
+      const fallbackBlob = new Blob(['dual-tx-cover'], { type: 'image/jpeg' });
+      coverCacheStore.set(601, {
+        bookId: 601,
+        blob: fallbackBlob,
+        cachedAt: Date.now(),
+        byteSize: fallbackBlob.size,
+      });
+
+      const resolved = await getOfflineBookCover(601);
+      expect(resolved).toBe(fallbackBlob);
+      expect(openSpy).toHaveBeenCalledTimes(1);
+      openSpy.mockRestore();
+
+      const origIndexedDb = (globalThis as { indexedDB?: unknown }).indexedDB;
+      const legacyBlob = new Blob(['legacy-book-cover'], { type: 'image/jpeg' });
+      const legacyStore = {
+        get: vi.fn(() => {
+          const req: any = { onsuccess: null, onerror: null, result: undefined };
+          setTimeout(() => {
+            req.result = { bookId: 602, coverBlob: legacyBlob };
+            req.onsuccess?.();
+          }, 0);
+          return req;
+        }),
+      };
+      (globalThis as { indexedDB?: unknown }).indexedDB = {
+        open: vi.fn(() => {
+          const openReq: any = { onsuccess: null, onerror: null, result: null };
+          setTimeout(() => {
+            openReq.result = {
+              objectStoreNames: {
+                contains: vi.fn((name: string) => name === 'offline_books'),
+              },
+              transaction: vi.fn(() => ({
+                objectStore: vi.fn(() => legacyStore),
+                onerror: null,
+              })),
+            };
+            openReq.onsuccess?.();
+          }, 0);
+          return openReq;
+        }),
+      };
+
+      expect(await getOfflineBookCover(602)).toBe(legacyBlob);
+      (globalThis as { indexedDB?: unknown }).indexedDB = origIndexedDb;
     });
   });
 });

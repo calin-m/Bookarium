@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.69] - 2026-11-22
+### *Non-Breaking 5-Layer Caching Efficiency, In-Flight Request Coalescing & Passive Auth Sync Deduplication*
+
+### Changed
+- **L1/L2 Client Query Parity & Single-Transaction IndexedDB Cover Reuse (`src/hooks/queries/useBookContent.ts`, `src/hooks/queries/useBookTranslations.ts`, `src/hooks/queries/useBooks.ts`, `src/lib/offline-storage.ts`, co-located tests)**: Aligned `useBookContent` `gcTime` with `BOOK_CONTENT_CACHE_TTL_MS` (`60m`), partitioned `db-book-translations` and `ast-book-translations` query keys by `effectiveCountry` via `useJurisdictionStore`, reused `>= 3`-spread `bookarium-extracted-passages-v1` entries read-only inside `fetchFeaturedQuotesMap` without mutating dynamic passage storage, refactored `getOfflineBookCover` into a single `openDB()` dual-store `[offline_books, cover_cache]` readonly transaction, and added `{ cache: "force-cache" }` to `warmCoverCache` and `fetchAndPatchOfflineCover` (`ADR-004`, `ADR-082`, `ADR-086`).
+- **L4 Jurisdictional Normalization, In-Flight Coalescing, Error-Safe Translations LRU & `globalThis` SSR Anchors (`src/lib/catalog/supabase-provider.ts`, `src/app/read/[id]/reader-layout-utils.ts`, `src/app/u/[username]/profile-layout-utils.ts`, co-located tests)**: Shared `fetchQuoteEnrichedPool` cache entries globally and normalized `searchBooks` + bounded `__bookariumTranslationCache` (`getBookTranslations`) keys by `jurisdictionRule` with caller `clientCountry` cloning and non-caching DB error guards, added per-key `inFlight` Promise coalescing with `hasInjectedClient` singleton tracking, and anchored `serverMetadataCache`, `confirmedNotFoundIds`, and `serverProfileCache` on `globalThis` (`ADR-086`).
+- **Passive Bootstrap & Token-Refresh Auth Profile Sync Deduplication (`src/stores/useAuthStore.ts`, `src/lib/sync-utils.ts`, `src/app/providers.tsx`, `docs/DECISIONS.md`, co-located tests)**: Added `lastProfileSyncByUser` + opt-in `{ minSyncIntervalMs }` cooldown (bypassed cleanly on `pendingProfileUpdates` or unthrottled callers) to `useAuthStore.syncWithCloud`, exported `PASSIVE_SYNC_COOLDOWN_MS` (`15_000ms`) + `authMinSyncIntervalMs` forwarding in `syncAllStoresWithCloud`, and applied passive auth cooldown on `Providers` mount and `bookarium:auth-token-refreshed` while keeping `visibilitychange` and `online` unthrottled (`ADR-086`).
+- **AST Runtime Cache Extraction, Architecture Parity & Documentation Refresh (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `README.md`, `.agents/AGENTS.md`)**: Extended `extractRuntimeSpecConstants` to extract `BOOK_CONTENT_CACHE_TTL_MS` (`60m`) and `PASSIVE_SYNC_COOLDOWN_MS` (`15,000ms`) with live/fixture assertions; updated `providers.tsx` and Failure Mode Matrix #9 (`lastProfileSyncByUser`, per-key `inFlight` coalescing) in generated architecture diagrams; added the Cloudflare R2 badge and refreshed intro/baseline counts (`55,754` EU / `78,086` US) in `README.md`; and fixed PostgreSQL index parity (`22 explicit`) in `.agents/AGENTS.md` (`ADR-086`).
+
+
+## [2.9.68] - 2026-11-22
+### *Focus Reader Preference Cloud-Sync Parity & Account Theme Write Deduplication*
+
+### Fixed
+- **Focus Reader Preference Cloud-Sync Parity, `/account` Theme Write Deduplication & Metadata Alignment (`src/app/read/[id]/page.tsx`, `src/app/read/[id]/page.test.tsx`, `src/app/account/page.tsx`, `src/app/account/page.test.tsx`, `docs/DECISIONS.md`, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`)**: Routed all 4 remaining local-only Focus Reader preference paths—pinch-to-zoom font scaling (`ReaderSurface`), Read-Aloud speed and narrator voice (`ReaderSpeechBar`/`useReaderSpeech`), `Exit Bookmark Prompt` toggles (`ReaderControls` & `ReaderExitBookmarkModal`), and Symposium `Spoiler Shield` (`ReaderAnnotationsDrawer`)—through `schedulePreferencesCloudSync()` via shared memoized handlers so Reader edits persist to `public.profiles.preferences`; removed `/account` `handleThemeChange`'s redundant extra `updateProfile({ preferred_theme })` call; and aligned `ADR-073`, architecture, and roadmap metadata (`14` keys, `500ms` default / `0ms` immediate debounce) (`ADR-073`, `ADR-080`).
+
+
 ## [2.9.67] - 2026-11-22
 ### *AST Runtime Spec & Env-Var Automation, docs:sync DAG Ordering & Living Documentation Drift Remediation*
 
@@ -1589,3 +1606,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-083: Automated Cloudflare R2 Delta Asset Sync & R2-First Quote Pipeline**
 - **ADR-084: Strict Self-Hosted Cloudflare R2 Runtime Delivery, Zero-PG Runtime Policy, Mirror-Only Weekly Feeds & End-User vs. Developer Credential Boundary**
 - **ADR-085: Fault-Tolerant Data Pipeline Orchestration, Resumable R2 Checkpointing, Fail-Closed Copyright Guards & Content CDN Cache Tagging**
+- **ADR-086: Non-Breaking 5-Layer Caching Optimization, Jurisdictional Query Normalization, In-Flight Request Coalescing & Passive Auth Sync Deduplication**

@@ -1337,6 +1337,46 @@ describe('useAuthStore', () => {
       expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
     });
 
+    it('honors opt-in minSyncIntervalMs cooldown on clean syncWithCloud while bypassing on pending updates or omitted options', async () => {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true, writable: true });
+      useAuthStore.setState({
+        user: { id: 'auth-cooldown-user', email: 'cooldown@bookarium.test' } as any,
+        profile: null,
+        pendingProfileUpdates: null,
+      });
+
+      const mockSingle = vi.fn().mockResolvedValue({
+        data: { id: 'auth-cooldown-user', display_name: 'Cooldown Scholar', is_public: false },
+        error: null,
+      });
+      const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockImplementation(() => ({
+        select: () => ({ eq: () => ({ single: mockSingle }) }),
+        update: () => ({ eq: mockUpdateEq }),
+      }));
+
+      try {
+        await useAuthStore.getState().fetchProfile();
+        expect(mockSingle).toHaveBeenCalledTimes(1);
+
+        // Immediate passive syncWithCloud respects minSyncIntervalMs cooldown
+        await useAuthStore.getState().syncWithCloud('auth-cooldown-user', { minSyncIntervalMs: 15_000 });
+        expect(mockSingle).toHaveBeenCalledTimes(1);
+
+        // Direct unthrottled syncWithCloud without options bypasses cooldown
+        await useAuthStore.getState().syncWithCloud('auth-cooldown-user');
+        expect(mockSingle).toHaveBeenCalledTimes(2);
+
+        // Pending offline updates bypass minSyncIntervalMs cooldown cleanly
+        useAuthStore.setState({ pendingProfileUpdates: { bio: 'Pending flush' } });
+        await useAuthStore.getState().syncWithCloud('auth-cooldown-user', { minSyncIntervalMs: 15_000 });
+        expect(mockUpdateEq).toHaveBeenCalledTimes(1);
+        expect(mockSingle).toHaveBeenCalledTimes(3);
+      } finally {
+        useAuthStore.setState({ pendingProfileUpdates: null });
+      }
+    });
+
     it('forwards optional Cloudflare Turnstile captchaToken across auth actions', async () => {
       mockSignInWithPassword.mockResolvedValueOnce({
         data: { user: { id: 'u-cap', email: 'cap@bookarium.test' } },

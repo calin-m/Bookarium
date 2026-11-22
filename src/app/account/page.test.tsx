@@ -439,10 +439,21 @@ describe('AccountPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Preferences/i }));
     const preferencesPanel = document.getElementById('account-tabpanel-preferences')!;
 
-    // Theme Switcher
+    // Theme Switcher (single unified schedulePreferencesCloudSync write; no duplicate preferred_theme write)
     fireEvent.click(within(preferencesPanel).getByText('Sepia'));
     expect(useThemeStore.getState().theme).toBe('sepia');
-    expect(mockUpdateProfile).toHaveBeenCalledWith({ preferred_theme: 'sepia' });
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    expect(mockUpdateProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferred_theme: 'sepia',
+        font_size: expect.any(Number),
+        preferences: expect.objectContaining({
+          active: expect.objectContaining({
+            theme: 'sepia',
+          }),
+        }),
+      })
+    );
 
     // Sticky Scroll Navigation Setting
     expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();

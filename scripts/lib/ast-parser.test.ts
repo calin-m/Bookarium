@@ -149,6 +149,7 @@ interface RuntimeSpecConstants {
     profileCacheTtlMin: number;
     maxExtractedPassages: number;
     extractedPassagesTtlDays: number;
+    bookContentCacheTtlMin: number;
   };
   stores: {
     maxPinnedAccolades: number;
@@ -173,6 +174,7 @@ interface RuntimeSpecConstants {
     dockIdleTimeoutMs: number;
     mobileFocusBandRatio: number;
     tooltipDelayMs: number;
+    passiveSyncCooldownMs: number;
   };
   cli: {
     catalogMinActiveForPrune: number;
@@ -1259,6 +1261,12 @@ describe('ast-parser architectural & SQL verification engine', () => {
       'src/hooks/useCursorTooltip.ts': `
         const DEFAULT_TOOLTIP_DELAY_MS = 420;
       `,
+      'src/hooks/queries/useBookContent.ts': `
+        export const BOOK_CONTENT_CACHE_TTL_MS = 45 * 60 * 1000;
+      `,
+      'src/lib/sync-utils.ts': `
+        export const PASSIVE_SYNC_COOLDOWN_MS = 22_500;
+      `,
     });
 
     const spec = astParser.extractRuntimeSpecConstants(rootDir);
@@ -1290,8 +1298,10 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(spec.caches.profileCacheTtlMin).toBe(10);
     expect(spec.caches.maxExtractedPassages).toBe(150);
     expect(spec.caches.extractedPassagesTtlDays).toBe(14);
+    expect(spec.caches.bookContentCacheTtlMin).toBe(45);
     expect(spec.stores).toEqual({ maxPinnedAccolades: 5, preferencesKeyCount: 3 });
     expect(spec.hooks.tooltipDelayMs).toBe(420);
+    expect(spec.hooks.passiveSyncCooldownMs).toBe(22500);
     expect(spec.r2.maxBookMb).toBe(20);
     expect(spec.r2.maxCoverMb).toBe(4);
     expect(spec.r2.defaultTimeoutMs).toBe(12000);
@@ -1443,8 +1453,10 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(liveSpec.caches.profileCacheTtlMin).toBe(5);
     expect(liveSpec.caches.maxExtractedPassages).toBe(100);
     expect(liveSpec.caches.extractedPassagesTtlDays).toBe(30);
+    expect(liveSpec.caches.bookContentCacheTtlMin).toBe(60);
     expect(liveSpec.stores).toEqual({ maxPinnedAccolades: 3, preferencesKeyCount: 14 });
     expect(liveSpec.hooks.tooltipDelayMs).toBe(300);
+    expect(liveSpec.hooks.passiveSyncCooldownMs).toBe(15000);
     expect(liveSpec.routeCache.booksQuotePool.sMaxAge).toBe(43200);
     expect(liveSpec.routeCache.contentCover.sMaxAge).toBe(604800);
     expect(liveSpec.cli.r2MinActiveForPrune).toBe(50000);

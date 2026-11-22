@@ -5,9 +5,9 @@
  * @module src/lib/offline-storage
  * @scope Browser IndexedDB persistence (`BookariumOfflineDB` / `offline_books` + bounded `cover_cache` LRU), `coverObjectUrlCache` reuse, background cover warming, and non-regressive author metadata healing.
  * @invariant Never overwrite authentic author metadata with placeholder names (`isPlaceholderAuthor`, e.g., `"Anonymous"`); heal missing contributor lifespans via `patchOfflineBookAuthors`.
- * @invariant Lookup cover art in-memory (`getMemoryCachedCoverUrl`) and across IndexedDB (`offline_books.coverBlob` -> non-expired `cover_cache.blob`, capped at `MAX_CACHED_COVERS` and `COVER_CACHE_TTL_MS`), populate via same-origin `/api/books/content?id=...&type=cover`, manage `coverObjectUrlCache` revocation on eviction/removal/clear, clear both stores in `clearAllOfflineBooks`, and broadcast changes through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
- * @rationale Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache prevents repeat downloads across refreshes behind `/api/books/content?type=cover` (Cloudflare R2) while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
- * @adr ADR-020, ADR-069, ADR-070, ADR-080, ADR-082
+ * @invariant Lookup cover art in-memory (`getMemoryCachedCoverUrl`) and across IndexedDB via a single-transaction dual-store read (`[offline_books, cover_cache]`, returning `offline_books.coverBlob` before non-expired `cover_cache.blob` capped at `MAX_CACHED_COVERS` and `COVER_CACHE_TTL_MS`), populate via same-origin `/api/books/content?id=...&type=cover` with `{ cache: 'force-cache' }`, manage `coverObjectUrlCache` revocation on eviction/removal/clear, clear both stores in `clearAllOfflineBooks`, and broadcast changes through `OFFLINE_BOOKS_UPDATED_EVENT` (`bookarium:offline-updated`).
+ * @rationale Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache using single-transaction reads and browser HTTP cache reuse prevents repeat downloads across refreshes behind `/api/books/content?type=cover` (Cloudflare R2) while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
+ * @adr ADR-020, ADR-069, ADR-070, ADR-080, ADR-082, ADR-086
  */
 
 import type { Author, GutendexBook } from '@/types/book.types';
@@ -297,41 +297,24 @@ export async function getOfflineBook(bookId: number): Promise<string | null> {
   return record ? record.text : null;
 }
 
-async function getCachedCoverFromStore(bookId: number): Promise<Blob | null> {
-  try {
-    const db = await openDB();
-    if (!db.objectStoreNames.contains(COVER_CACHE_STORE)) {
-      return null;
+function validateCachedCoverRecord(
+  db: IDBDatabase,
+  bookId: number,
+  record: CoverCacheRecord | null
+): Blob | null {
+  if (!record || !record.blob) return null;
+
+  if (Date.now() - record.cachedAt > COVER_CACHE_TTL_MS) {
+    try {
+      const cleanupTxn = db.transaction(COVER_CACHE_STORE, 'readwrite');
+      cleanupTxn.objectStore(COVER_CACHE_STORE).delete(bookId);
+    } catch {
+      // Non-blocking TTL cleanup
     }
-
-    const record = await new Promise<CoverCacheRecord | null>((resolve) => {
-      try {
-        const transaction = db.transaction(COVER_CACHE_STORE, 'readonly');
-        const store = transaction.objectStore(COVER_CACHE_STORE);
-        const request = store.get(bookId);
-        request.onsuccess = () => resolve((request.result as CoverCacheRecord | undefined) || null);
-        request.onerror = () => resolve(null);
-      } catch {
-        resolve(null);
-      }
-    });
-
-    if (!record || !record.blob) return null;
-
-    if (Date.now() - record.cachedAt > COVER_CACHE_TTL_MS) {
-      try {
-        const cleanupTxn = db.transaction(COVER_CACHE_STORE, 'readwrite');
-        cleanupTxn.objectStore(COVER_CACHE_STORE).delete(bookId);
-      } catch {
-        // Non-blocking TTL cleanup
-      }
-      return null;
-    }
-
-    return record.blob;
-  } catch {
     return null;
   }
+
+  return record.blob;
 }
 
 /**
@@ -438,7 +421,9 @@ function drainCoverWarmQueue(): void {
         }
 
         const safeId = encodeURIComponent(String(Math.trunc(nextId)));
-        const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${safeId}&type=cover`);
+        const res = await fetch(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${safeId}&type=cover`, {
+          cache: 'force-cache',
+        });
         if (res.status === 429) {
           const retryAfterRaw = res.headers?.get('Retry-After');
           const retrySeconds = retryAfterRaw ? parseInt(retryAfterRaw, 10) : NaN;
@@ -506,14 +491,75 @@ export function resetCoverWarmState(): void {
 
 /**
  * Retrieves the stored cover image Blob for a book from `offline_books` first,
- * falling back to the bounded LRU `cover_cache` store when not downloaded as full text.
+ * falling back to the bounded LRU `cover_cache` store using a single `openDB()` call
+ * and dual-store readonly transaction whenever both stores exist.
  */
 export async function getOfflineBookCover(bookId: number): Promise<Blob | null> {
-  const record = await getOfflineBookRecord(bookId);
-  if (record?.coverBlob) {
-    return record.coverBlob;
+  try {
+    const db = await openDB();
+    const hasBookStore = db.objectStoreNames.contains(STORE_NAME);
+    const hasCoverStore = db.objectStoreNames.contains(COVER_CACHE_STORE);
+    if (!hasBookStore && !hasCoverStore) {
+      return null;
+    }
+
+    const storeNames =
+      hasBookStore && hasCoverStore
+        ? [STORE_NAME, COVER_CACHE_STORE]
+        : hasBookStore
+          ? STORE_NAME
+          : COVER_CACHE_STORE;
+
+    const { bookRecord, coverRecord } = await new Promise<{
+      bookRecord: OfflineBookRecord | null;
+      coverRecord: CoverCacheRecord | null;
+    }>((resolve) => {
+      try {
+        const transaction = db.transaction(storeNames, 'readonly');
+        let resolvedBook: OfflineBookRecord | null = null;
+        let resolvedCover: CoverCacheRecord | null = null;
+        let pending = (hasBookStore ? 1 : 0) + (hasCoverStore ? 1 : 0);
+
+        const settleOne = () => {
+          pending -= 1;
+          if (pending <= 0) {
+            resolve({ bookRecord: resolvedBook, coverRecord: resolvedCover });
+          }
+        };
+
+        if (hasBookStore) {
+          const bookReq = transaction.objectStore(STORE_NAME).get(bookId);
+          bookReq.onsuccess = () => {
+            resolvedBook = (bookReq.result as OfflineBookRecord | undefined) || null;
+            settleOne();
+          };
+          bookReq.onerror = () => settleOne();
+        }
+
+        if (hasCoverStore) {
+          const coverReq = transaction.objectStore(COVER_CACHE_STORE).get(bookId);
+          coverReq.onsuccess = () => {
+            resolvedCover = (coverReq.result as CoverCacheRecord | undefined) || null;
+            settleOne();
+          };
+          coverReq.onerror = () => settleOne();
+        }
+
+        transaction.onerror = () => {
+          resolve({ bookRecord: resolvedBook, coverRecord: resolvedCover });
+        };
+      } catch {
+        resolve({ bookRecord: null, coverRecord: null });
+      }
+    });
+
+    if (bookRecord?.coverBlob) {
+      return bookRecord.coverBlob;
+    }
+    return hasCoverStore ? validateCachedCoverRecord(db, bookId, coverRecord) : null;
+  } catch {
+    return null;
   }
-  return getCachedCoverFromStore(bookId);
 }
 
 /**
@@ -555,7 +601,7 @@ export async function fetchAndPatchOfflineCover(bookId: number): Promise<void> {
   if (typeof window === 'undefined' || !navigator.onLine) return;
   try {
     const coverUrl = `${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${bookId}&type=cover`;
-    const res = await fetch(coverUrl);
+    const res = await fetch(coverUrl, { cache: 'force-cache' });
     if (res.ok) {
       const blob = await res.blob();
       if (blob && blob.size > 0) {

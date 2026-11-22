@@ -1,9 +1,9 @@
 /**
  * @module src/app/u/[username]/profile-layout-utils
  * @scope Server-side public handle resolution and bounded LRU metadata cache (`serverProfileCache`) powering `/u/[username]` layout metadata and privacy gates.
- * @invariant Bound `serverProfileCache` via `MAX_PROFILE_CACHE_ENTRIES` and `PROFILE_CACHE_TTL_MS`, normalize handles via `VALID_HANDLE_REGEX`, enforce exact lowercase username equality after `.ilike()` lookups, never cache `'unavailable'` errors, and collapse private or missing accounts uniformly to `private_or_missing`.
- * @rationale Bounding handle LRU entries and neutralizing SQL `_` wildcard matching protects server memory and enforces ADR-033 anti-enumeration across public profile routes.
- * @adr ADR-033, ADR-053
+ * @invariant Anchor `serverProfileCache` on `globalThis` bounded via `MAX_PROFILE_CACHE_ENTRIES` and `PROFILE_CACHE_TTL_MS`, normalize handles via `VALID_HANDLE_REGEX`, enforce exact lowercase username equality after `.ilike()` lookups, never cache `'unavailable'` errors, and collapse private or missing accounts uniformly to `private_or_missing`.
+ * @rationale Bounding handle LRU entries and neutralizing SQL `_` wildcard matching protects server memory across warm SSR reloads and enforces ADR-033 anti-enumeration across public profile routes.
+ * @adr ADR-033, ADR-053, ADR-086
  */
 
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
@@ -30,7 +30,13 @@ export const MAX_PROFILE_CACHE_ENTRIES = 500;
 export const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALID_HANDLE_REGEX = /^[a-z0-9_-]{1,40}$/;
 
-const serverProfileCache = new Map<string, ProfileCacheEntry>();
+const globalForProfileCache = globalThis as typeof globalThis & {
+  __bookariumServerProfileCache?: Map<string, ProfileCacheEntry>;
+};
+
+const serverProfileCache =
+  globalForProfileCache.__bookariumServerProfileCache ??
+  (globalForProfileCache.__bookariumServerProfileCache = new Map<string, ProfileCacheEntry>());
 
 export function normalizeScholarHandle(rawUsername: string): string {
   try {

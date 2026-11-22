@@ -3,9 +3,9 @@
 /**
  * @module src/app/providers
  * @scope Client runtime provider orchestrating TanStack Query defaults, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
- * @invariant Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud`, and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
+ * @invariant Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud` (passing `{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }` on bootstrap mount and `bookarium:auth-token-refreshed`), and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
  * @rationale Consolidating session lifecycle listeners, token-refresh events (`bookarium:auth-token-refreshed`), and reconnect outbox synchronization in a single client boundary keeps Zustand stores decoupled from DOM/window listeners.
- * @adr ADR-005, ADR-069, ADR-072, ADR-080
+ * @adr ADR-005, ADR-069, ADR-072, ADR-080, ADR-086
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -14,7 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { initializeJurisdiction } from '@/stores/useJurisdictionStore';
 import { initializeTheme, type AppTheme } from '@/stores/useThemeStore';
-import { syncAllStoresWithCloud } from '@/lib/sync-utils';
+import { syncAllStoresWithCloud, PASSIVE_SYNC_COOLDOWN_MS } from '@/lib/sync-utils';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 import { GlobalTitleTooltip } from '@/components/ui/CursorTooltip';
 
@@ -126,7 +126,7 @@ export function Providers({
     if (!isLoading && user?.id) {
       lastSyncTimeRef.current = Date.now();
       void reconcileClientSessionOrigin?.();
-      syncAllStoresWithCloud(user.id);
+      syncAllStoresWithCloud(user.id, { authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS });
     }
   }, [isLoading, user?.id, reconcileClientSessionOrigin]);
 
@@ -159,7 +159,7 @@ export function Providers({
     const handleTokenRefreshed = () => {
       if (!isLoading && user?.id) {
         lastSyncTimeRef.current = Date.now();
-        syncAllStoresWithCloud(user.id);
+        syncAllStoresWithCloud(user.id, { authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS });
       }
     };
 

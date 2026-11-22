@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 22 Nov 2026 12:33:04 GMT  
+**Last Generated**: Sun, 22 Nov 2026 16:59:18 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 264 passed  
-**Total Verified Tests**: 2750 passed  
+**Total Verified Tests**: 2760 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2750 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2760 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.22%** (16245/16709) — *Target: $\ge$ 95%*
-- **Statements**: **95.95%** (17491/18228) — *Target: $\ge$ 95%*
-- **Functions**: **95%** (3496/3680) — *Target: $\ge$ 92%*
-- **Branches**: **88.46%** (16261/18382) — *Target: $\ge$ 85%*
+- **Lines**: **97.22%** (16344/16811) — *Target: $\ge$ 95%*
+- **Statements**: **95.96%** (17594/18333) — *Target: $\ge$ 95%*
+- **Functions**: **95.02%** (3515/3699) — *Target: $\ge$ 92%*
+- **Branches**: **88.43%** (16337/18473) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2750 Tests)
+## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2760 Tests)
 
-### 🚀 App Routes & Pages (30 Suites · 307 Tests)
+### 🚀 App Routes & Pages (30 Suites · 311 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -398,7 +398,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (46 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (48 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page when back button is clicked and exit modal is confirmed`
@@ -446,11 +446,13 @@
 - ✔ `intercepts exit with ReaderExitBookmarkModal when back is clicked without a line bookmark`
 - ✔ `saves reading position with bookmarkRow: 1 and sets status currently_reading when Bookmark is clicked in exit modal`
 - ✔ `bypasses exit modal when a bookmark exists further ahead or when reminder is disabled`
+- ✔ `syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences`
+- ✔ `syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences`
 
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `clears all cached items from serverMetadataCache and enforces LRU eviction at MAX_SERVER_METADATA_CACHE_ENTRIES`
 - ✔ `returns true when rsc header is 1`
@@ -467,6 +469,7 @@
 - ✔ `records confirmed missing IDs only when configured Supabase cleanly returns not-found (not on timeouts or unconfigured env)`
 - ✔ `normalizes tags, lifespan contributors, formats, featured opening hooks, and Gutenberg URL without duplicates`
 - ✔ `falls back safely when subjects, bookshelves, formats, and authentic authors are absent`
+- ✔ `anchors serverMetadataCache and confirmedNotFoundIds on globalThis`
 
 </details>
 
@@ -513,7 +516,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `normalizes URL-encoded scholar handles safely`
 - ✔ `collapses malformed handles directly to private_or_missing without querying Supabase`
@@ -521,6 +524,7 @@
 - ✔ `resolves public scholar profiles, caches hits, and evicts expired/LRU entries cleanly`
 - ✔ `neutralizes SQL ILIKE underscore wildcard matches and caches hidden accounts uniformly`
 - ✔ `returns unavailable without caching when query errors or throws`
+- ✔ `anchors serverProfileCache on globalThis for warm serverless reuse`
 
 </details>
 
@@ -1733,7 +1737,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 241 Tests)
+### ⚡ Zustand State Stores (10 Suites · 242 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1797,7 +1801,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (51 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (52 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1838,6 +1842,7 @@
 - ✔ `preserves persisted user and profile when initializeAuth runs offline`
 - ✔ `preserves session user on transient network/reload errors while online and clears only on definitive 401/session_not_found errors`
 - ✔ `updates profile optimistically offline and flushes pendingProfileUpdates on syncWithCloud when online`
+- ✔ `honors opt-in minSyncIntervalMs cooldown on clean syncWithCloud while bypassing on pending updates or omitted options`
 - ✔ `forwards optional Cloudflare Turnstile captchaToken across auth actions`
 - ✔ `coalesces overlapping Strict-Mode initializeAuth calls onto one getUser request and resets on settle`
 - ✔ `skips duplicate INITIAL_SESSION profile fetch while checkInitialUser is still pending`
@@ -2036,7 +2041,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (58 Suites · 738 Tests)
+### 📚 Gutenberg Parsers & Metadata (58 Suites · 740 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2241,7 +2246,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (40 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (41 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2283,6 +2288,7 @@
 - ✔ `hits Quote Pool cache, expires stale TTL entries, handles partial scan chains, skips invalid rows, and wraps Quote Pool failures`
 - ✔ `handles backfill error/empty/saturation break paths, LRU cache eviction, and unexpected search exceptions`
 - ✔ `returns empty array on translation step errors and filters copyright=true editions in getBookTranslations`
+- ✔ `shares L4 searchBooks across countries with identical jurisdictionRule, shares quotePool globally, coalesces concurrent misses, and caches non-error getBookTranslations`
 
 </details>
 
@@ -2475,7 +2481,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -2497,6 +2503,7 @@
 - ✔ `updates offline book authors when stored record has missing or placeholder authors`
 - ✔ `persists and retrieves coverBlobs with patch and self-healing support`
 - ✔ `persists mirror-agnostic cover_cache LRU entries, expires stale TTL entries, warms cleanly with 429 cooldown, and clears on wipe`
+- ✔ `reads offline_books and cover_cache in one transaction inside getOfflineBookCover and handles legacy schemas`
 
 </details>
 
@@ -3124,10 +3131,10 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 347 Tests)
+### 🔄 Hooks & React Query (36 Suites · 350 Tests)
 
 <details>
-<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `should fetch book text content from URL`
 - ✔ `should return sample text when neither url nor bookId is provided`
@@ -3147,11 +3154,12 @@
 - ✔ `returns offline text when network fails and offline record has no local author metadata`
 - ✔ `executes queryFn via networkMode always and resolves IndexedDB content even when navigator.onLine is false`
 - ✔ `canonicalizes /api/books/content query string to ?id= when bookId is present and rejects URL-only calls without bookId`
+- ✔ `aligns React Query gcTime with staleTime on BOOK_CONTENT_CACHE_TTL_MS`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (24 tests)</summary>
+<summary><b><code>src/hooks/queries/useBooks.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `should fetch public domain books list successfully`
 - ✔ `should filter books by search term, topic, languages, era, and sort`
@@ -3177,11 +3185,12 @@
 - ✔ `excludes copyright === true entries from fetchQuoteEnrichedBooks and fetchFeaturedQuotesMap`
 - ✔ `does not retry HTTP 504 gateway timeouts even when QueryClient default retry is enabled, while retrying transient HTTP 503`
 - ✔ `evaluates shouldRetryCatalogQuery across non-retryable timeouts/status codes and QueryClient retry modes`
+- ✔ `reuses >= 3 locally extracted passages read-only without writing server quotes back into extracted passages cache`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/hooks/queries/useBookTranslations.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `strips subtitles after semicolons and colons`
 - ✔ `strips volume and part suffixes`
@@ -3201,6 +3210,7 @@
 - ✔ `requires title keyword match when volume has an anonymous or placeholder author`
 - ✔ `prioritizes Tier 1 relational database editions when returned from /api/books/translations`
 - ✔ `covers edge-case helper branches, DB missing current volume injection, and translator/duplicate language prioritization`
+- ✔ `partitions translation React Query keys by effectiveCountry so jurisdiction changes refetch cleanly`
 
 </details>
 

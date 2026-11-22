@@ -503,9 +503,6 @@ function AccountDashboardContent() {
   const handleThemeChange = (newTheme: AppTheme) => {
     setTheme(newTheme);
     setReaderTheme(newTheme);
-    if (user) {
-      updateProfile({ preferred_theme: newTheme }).catch(() => {});
-    }
     schedulePreferencesCloudSync(0);
   };
 

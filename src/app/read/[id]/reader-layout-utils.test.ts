@@ -342,5 +342,19 @@ describe('reader-layout-utils', () => {
       expect(seo.gutenbergUrl).toBe('https://www.gutenberg.org/ebooks/999999');
     });
   });
+
+  it('anchors serverMetadataCache and confirmedNotFoundIds on globalThis', () => {
+    setServerMetadataCache(1342, { id: 1342, title: 'Pride and Prejudice' } as GutendexBook);
+    const g = globalThis as typeof globalThis & {
+      __bookariumServerMetadataCache?: Map<number, GutendexBook>;
+      __bookariumConfirmedNotFoundIds?: Set<number>;
+    };
+    expect(g.__bookariumServerMetadataCache).toBe(serverMetadataCache);
+    expect(g.__bookariumConfirmedNotFoundIds).toBeInstanceOf(Set);
+    clearServerMetadataCache();
+    expect(g.__bookariumServerMetadataCache?.size).toBe(0);
+    clearConfirmedNotFoundCache();
+    expect(g.__bookariumConfirmedNotFoundIds?.size).toBe(0);
+  });
 });
 

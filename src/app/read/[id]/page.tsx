@@ -56,6 +56,20 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { ROUTES } from '@/config/routes';
 
+/**
+ * Wraps a preference setter so every UI or gesture change persists locally
+ * and schedules Supabase `public.profiles.preferences` synchronization.
+ */
+function createSyncedPreferenceSetter<T>(
+  setter: (value: T) => void,
+  delayMs?: number
+): (value: T) => void {
+  return (value: T) => {
+    setter(value);
+    schedulePreferencesCloudSync(delayMs);
+  };
+}
+
 function BookReaderContent() {
   const params = useParams();
   const router = useRouter();
@@ -497,6 +511,31 @@ function BookReaderContent() {
   const textToRead = rawPageText;
   const speechLanguage = resolvedIdentity.languages?.[0] || 'en';
 
+  const handleFontSizeChange = useMemo(
+    () => createSyncedPreferenceSetter(setFontSize),
+    [setFontSize]
+  );
+  const handleSpeechRateChange = useMemo(
+    () => createSyncedPreferenceSetter(setSpeechRate),
+    [setSpeechRate]
+  );
+  const handleSpeechVoiceChange = useMemo(
+    () => createSyncedPreferenceSetter(setSpeechVoiceURI),
+    [setSpeechVoiceURI]
+  );
+  const handleExitBookmarkReminderChange = useMemo(
+    () => createSyncedPreferenceSetter(setExitBookmarkReminderEnabled),
+    [setExitBookmarkReminderEnabled]
+  );
+  const handleSpoilerShieldChange = useMemo(
+    () => createSyncedPreferenceSetter(setSpoilerShieldEnabled),
+    [setSpoilerShieldEnabled]
+  );
+  const handleImmediateThemeChange = useMemo(
+    () => createSyncedPreferenceSetter(setTheme, 0),
+    [setTheme]
+  );
+
   const speech = useReaderSpeech({
     text: textToRead,
     bookTitle,
@@ -506,8 +545,8 @@ function BookReaderContent() {
     totalPages: activeChapterPageCount,
     defaultRate: speechRate,
     preferredVoiceURI: speechVoiceURI,
-    onRateChange: setSpeechRate,
-    onVoiceChange: setSpeechVoiceURI,
+    onRateChange: handleSpeechRateChange,
+    onVoiceChange: handleSpeechVoiceChange,
     onPageComplete: () => {
       if (speechAutoPageAdvance && readingMode === 'paginated' && !isNextDisabled) {
         handleNextPage();
@@ -624,10 +663,7 @@ function BookReaderContent() {
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
-        onThemeChange={(nextTheme) => {
-          setTheme(nextTheme);
-          schedulePreferencesCloudSync(0);
-        }}
+        onThemeChange={handleImmediateThemeChange}
         resumeNotice={resumeNotice}
         onRestart={handleRestart}
         onDismissResume={dismissResumeNotice}
@@ -667,7 +703,7 @@ function BookReaderContent() {
         bookAuthor={bookAuthor}
         onPreviousPage={handlePrevPage}
         onNextPage={handleNextPage}
-        onFontSizeChange={setFontSize}
+        onFontSizeChange={handleFontSizeChange}
         onTapSurface={handleTapReaderSurface}
         isSpeechOpen={isSpeechOpen}
         highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
@@ -703,10 +739,7 @@ function BookReaderContent() {
         }}
         onToggleAnnotations={() => handleToggleDrawer('annotations')}
         onToggleTranslations={() => handleToggleDrawer('translations')}
-        onThemeChange={(nextTheme) => {
-          setTheme(nextTheme);
-          schedulePreferencesCloudSync(0);
-        }}
+        onThemeChange={handleImmediateThemeChange}
         isTocOpen={isTocOpen}
         isControlsOpen={isControlsOpen}
         isSearchOpen={isSearchOpen}
@@ -723,10 +756,7 @@ function BookReaderContent() {
         isOpen={isControlsOpen}
         onClose={closeDrawer}
         fontSize={fontSize}
-        onFontSizeChange={(size) => {
-          setFontSize(size);
-          schedulePreferencesCloudSync();
-        }}
+        onFontSizeChange={handleFontSizeChange}
         lineHeight={lineHeight}
         onLineHeightChange={(height) => {
           setLineHeight(height);
@@ -767,7 +797,7 @@ function BookReaderContent() {
           resetReaderAppearanceToDefaults('factory');
         }}
         exitBookmarkReminderEnabled={exitBookmarkReminderEnabled}
-        onExitBookmarkReminderChange={setExitBookmarkReminderEnabled}
+        onExitBookmarkReminderChange={handleExitBookmarkReminderChange}
       />
 
       {/* Slide-out Table of Contents Drawer */}
@@ -848,7 +878,7 @@ function BookReaderContent() {
         symposiumCompanionDisplayName={symposiumCompanion?.displayName}
         activeChapterIndex={activeChapterIndex}
         spoilerShieldEnabled={spoilerShieldEnabled}
-        onToggleSpoilerShield={setSpoilerShieldEnabled}
+        onToggleSpoilerShield={handleSpoilerShieldChange}
         bookTitle={bookTitle}
         theme={theme}
         onJumpToAnnotation={(chapterIdx, page, annotationId) => {
@@ -917,7 +947,7 @@ function BookReaderContent() {
         isUnderThreshold={isUnderThreshold}
         theme={theme}
         initialReminderEnabled={exitBookmarkReminderEnabled}
-        onToggleReminder={setExitBookmarkReminderEnabled}
+        onToggleReminder={handleExitBookmarkReminderChange}
       />
 
     </div>

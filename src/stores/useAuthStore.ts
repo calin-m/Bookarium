@@ -3,9 +3,9 @@
  * @scope Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, and 3-layer GDPR account deletion.
  * @invariant Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` must erase all 10 Zustand slices, localStorage keys, cookies, and IndexedDB in lockstep (`Rule 9`).
  * @invariant Persist `STORAGE_KEYS.PENDING_STORE_CLEANUP` synchronously across teardowns so interrupted reloads finish cleanup in `initializeAuth()` without affecting offline signed-in sessions or guest users.
- * @invariant Treat `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions.
- * @rationale Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, and reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout.
- * @adr ADR-005, ADR-072, ADR-080
+ * @invariant Verify `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions, and honor optional `minSyncIntervalMs` cooldown in `syncWithCloud` after live `fetchProfile` completion unless `pendingProfileUpdates` or dirty markers exist.
+ * @rationale Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
+ * @adr ADR-005, ADR-072, ADR-080, ADR-086
  */
 
 import { create } from 'zustand';
@@ -221,6 +221,7 @@ let inFlightClientIpSync: Promise<void> | null = null;
 let lastClientIpSyncAtMs = 0;
 const inFlightProfileFetchByUser = new Map<string, Promise<void>>();
 const dirtyProfileSyncUsers = new Set<string>();
+const lastProfileSyncByUser = new Map<string, number>();
 
 const DEFINITIVE_AUTH_ERROR_CODES = new Set([
   'session_not_found',
@@ -323,7 +324,7 @@ export interface AuthState {
   }>;
   revokeSession: (sessionId: string) => Promise<{ error: Error | null }>;
   fetchProfile: () => Promise<void>;
-  syncWithCloud: (userId?: string) => Promise<void>;
+  syncWithCloud: (userId?: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   updateProfile: (updates: {
     display_name?: string;
     preferred_theme?: string;
@@ -368,6 +369,11 @@ async function resetClientAuthState(
 ): Promise<void> {
   lastSessionCheckAtMs = 0;
   lastClientIpSyncAtMs = 0;
+  if (options.userId) {
+    lastProfileSyncByUser.delete(options.userId);
+  } else {
+    lastProfileSyncByUser.clear();
+  }
   clearConsumedRecoveryMarker(options.userId ?? undefined);
   markPendingUserStoreCleanup(options.wipeDeviceStorage);
   syncAuthCookieHint(false);
@@ -544,6 +550,7 @@ export const useAuthStore = create<AuthState>()(
       const nextUserId = nextUser?.id ?? null;
       const currentCachedId = get().user?.id ?? lastKnownUserId;
       if (currentCachedId && currentCachedId !== nextUserId) {
+        lastProfileSyncByUser.delete(currentCachedId);
         lastKnownUserId = nextUserId;
         if (!activeCleanupPromise) {
           activeCleanupPromise = clearLocalUserStores({ wipeDeviceStorage: false }).finally(() => {
@@ -1289,6 +1296,7 @@ export const useAuthStore = create<AuthState>()(
             .single();
 
           if (!error && data) {
+            lastProfileSyncByUser.set(user.id, Date.now());
             set({ profile: data as Profile });
             try {
               const { reconcileCloudPreferencesWithLocal } = await import('@/lib/preferences-sync');
@@ -1305,14 +1313,25 @@ export const useAuthStore = create<AuthState>()(
     );
   },
 
-  syncWithCloud: async (userId?: string) => {
+  syncWithCloud: async (userId?: string, options?: { minSyncIntervalMs?: number }) => {
     const targetUserId = userId || get().user?.id;
     if (!targetUserId) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
     try {
       const pending = get().pendingProfileUpdates;
-      if (pending && Object.keys(pending).length > 0 && targetUserId !== get().user?.id) {
+      const hasPending = Boolean(pending && Object.keys(pending).length > 0);
+      const minSyncIntervalMs = options?.minSyncIntervalMs ?? 0;
+
+      if (minSyncIntervalMs > 0 && !hasPending && !dirtyProfileSyncUsers.has(targetUserId)) {
+        const lastSyncAt = lastProfileSyncByUser.get(targetUserId);
+        if (lastSyncAt !== undefined && Date.now() - lastSyncAt < minSyncIntervalMs) {
+          return;
+        }
+      }
+
+      if (hasPending && pending && targetUserId !== get().user?.id) {
+        lastProfileSyncByUser.delete(targetUserId);
         const supabase = createClient();
         const { error } = await supabase
           .from('profiles')
@@ -1323,6 +1342,9 @@ export const useAuthStore = create<AuthState>()(
             s.pendingProfileUpdates === pending ? { pendingProfileUpdates: null } : {}
           );
         }
+      }
+      if (hasPending) {
+        lastProfileSyncByUser.delete(targetUserId);
       }
       await get().fetchProfile();
     } catch {
@@ -1366,6 +1388,7 @@ export const useAuthStore = create<AuthState>()(
         },
         error: null,
       }));
+      lastProfileSyncByUser.delete(user.id);
       if (inFlightProfileFetchByUser.has(user.id)) {
         dirtyProfileSyncUsers.add(user.id);
       }
@@ -1384,6 +1407,7 @@ export const useAuthStore = create<AuthState>()(
         return { error: new Error(error.message) };
       }
 
+      lastProfileSyncByUser.delete(user.id);
       set((state) => ({
         profile: mergeProfile(state.profile),
       }));

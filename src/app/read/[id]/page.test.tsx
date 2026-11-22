@@ -1330,6 +1330,269 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     // Restore preference
     usePreferencesStore.setState({ exitBookmarkReminderEnabled: true });
   });
+
+  it('syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { cancelPendingPreferencesCloudSync } = await import('@/lib/preferences-sync');
+
+    const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
+    const originalUpdateProfile = useAuthStore.getState().updateProfile;
+    const originalSpeechSynthesis = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    const originalUtterance = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'SpeechSynthesisUtterance'
+    );
+
+    const mockVoices = [
+      {
+        voiceURI: 'voice-default-en',
+        name: 'Default English',
+        lang: 'en-US',
+        default: true,
+        localService: true,
+      },
+      {
+        voiceURI: 'voice-neural-uk',
+        name: 'British Scholar',
+        lang: 'en-GB',
+        default: false,
+        localService: true,
+      },
+    ] as unknown as SpeechSynthesisVoice[];
+
+    class MockSpeechSynthesisUtterance {
+      text: string;
+      rate = 1;
+      pitch = 1;
+      lang = '';
+      voice: SpeechSynthesisVoice | null = null;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+
+    Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: MockSpeechSynthesisUtterance,
+    });
+
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speaking: false,
+        paused: false,
+        pending: false,
+        getVoices: () => mockVoices,
+        speak: vi.fn(),
+        cancel: vi.fn(),
+        pause: vi.fn(),
+        resume: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        onvoiceschanged: null,
+      } as unknown as SpeechSynthesis,
+    });
+
+    vi.useFakeTimers();
+
+    try {
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'reader-sync-u1', email: 'reader@bookarium.test' } as unknown as ReturnType<
+            typeof useAuthStore.getState
+          >['user'],
+          updateProfile: mockUpdateProfile,
+        });
+        usePreferencesStore.getState().resetAllPreferencesStore();
+      });
+
+      render(<BookReaderPage />);
+
+      // 1. Pinch-to-zoom font scaling on ReaderSurface
+      const surface = screen.getByRole('main');
+      fireEvent.touchStart(surface, {
+        touches: [
+          { clientX: 100, clientY: 200 },
+          { clientX: 200, clientY: 200 },
+        ],
+      });
+      fireEvent.touchMove(surface, {
+        touches: [
+          { clientX: 50, clientY: 200 },
+          { clientX: 290, clientY: 200 },
+        ],
+      });
+      fireEvent.touchEnd(surface, { touches: [] });
+
+      const pinchedFontSize = useReaderStore.getState().fontSize;
+      expect(pinchedFontSize).toBeGreaterThan(18);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          font_size: pinchedFontSize,
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ fontSize: pinchedFontSize }),
+          }),
+        })
+      );
+
+      // 2. Read-Aloud speed & narrator voice inside ReaderSpeechBar
+      mockUpdateProfile.mockClear();
+      fireEvent.click(screen.getAllByLabelText('Read Aloud Narration')[0]);
+      fireEvent.change(screen.getByLabelText('Narrator voice'), {
+        target: { value: 'voice-neural-uk' },
+      });
+      expect(usePreferencesStore.getState().speechVoiceURI).toBe('voice-neural-uk');
+
+      fireEvent.click(screen.getByRole('button', { name: /Speech rate:/i }));
+      fireEvent.click(screen.getByRole('button', { name: '1.5x' }));
+      expect(usePreferencesStore.getState().speechRate).toBe(1.5);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({
+              speechRate: 1.5,
+              speechVoiceURI: 'voice-neural-uk',
+            }),
+          }),
+        })
+      );
+
+      // 3. Exit Bookmark Prompt toggle inside ReaderControls
+      mockUpdateProfile.mockClear();
+      fireEvent.click(screen.getAllByLabelText('Typography & Theme Controls')[0]);
+      fireEvent.click(screen.getByTestId('reader-toggle-exit-bookmark-prompt'));
+      expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({
+              exitBookmarkReminderEnabled: false,
+            }),
+          }),
+        })
+      );
+    } finally {
+      cancelPendingPreferencesCloudSync();
+      vi.useRealTimers();
+      if (originalSpeechSynthesis) {
+        Object.defineProperty(window, 'speechSynthesis', originalSpeechSynthesis);
+      } else {
+        delete (window as unknown as Record<string, unknown>).speechSynthesis;
+      }
+      if (originalUtterance) {
+        Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', originalUtterance);
+      } else {
+        delete (globalThis as unknown as Record<string, unknown>).SpeechSynthesisUtterance;
+      }
+      act(() => {
+        usePreferencesStore.getState().resetAllPreferencesStore();
+        useAuthStore.setState({ user: null, updateProfile: originalUpdateProfile });
+      });
+    }
+  });
+
+  it('syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { cancelPendingPreferencesCloudSync } = await import('@/lib/preferences-sync');
+
+    const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
+    const originalUpdateProfile = useAuthStore.getState().updateProfile;
+    vi.useFakeTimers();
+
+    try {
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'reader-sync-u2', email: 'reader2@bookarium.test' } as unknown as ReturnType<
+            typeof useAuthStore.getState
+          >['user'],
+          updateProfile: mockUpdateProfile,
+        });
+        usePreferencesStore.getState().resetAllPreferencesStore();
+        useFellowshipStore.setState({
+          symposiums: [
+            {
+              id: 'symp-sync-1342',
+              book_id: 1342,
+              book_title: 'Pride and Prejudice',
+              host_id: 'reader-sync-u2',
+              host_username: 'host_scholar',
+              host_display_name: 'Host Scholar',
+              fellow_id: 'fellow-2',
+              fellow_username: 'fellow_2',
+              fellow_display_name: 'Fellow Two',
+              status: 'active',
+              host_progress: 10,
+              host_chapter: 0,
+              fellow_progress: 25,
+              fellow_chapter: 1,
+              created_at: '2026-10-15T10:00:00Z',
+              updated_at: '2026-10-15T10:00:00Z',
+            },
+          ],
+        });
+      });
+
+      render(<BookReaderPage />);
+
+      // 1. Spoiler Shield toggle inside ReaderAnnotationsDrawer
+      fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+      fireEvent.click(screen.getByTestId('drawer-spoiler-shield-btn'));
+      expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ spoilerShieldEnabled: false }),
+          }),
+        })
+      );
+
+      // 2. Close drawer and test Exit Bookmark Modal "Don't ask me again when closing" checkbox
+      mockUpdateProfile.mockClear();
+      fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Catalog' }));
+      expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('dont-remind-again-checkbox'));
+      expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ exitBookmarkReminderEnabled: false }),
+          }),
+        })
+      );
+    } finally {
+      cancelPendingPreferencesCloudSync();
+      vi.useRealTimers();
+      act(() => {
+        useAnnotationStore.getState().setSpoilerShieldEnabled(true);
+        useFellowshipStore.getState().clearFellowshipState();
+        usePreferencesStore.getState().resetAllPreferencesStore();
+        useAuthStore.setState({ user: null, updateProfile: originalUpdateProfile });
+      });
+    }
+  });
 });
 
 

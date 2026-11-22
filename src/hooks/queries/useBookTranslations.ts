@@ -2,10 +2,10 @@
  * @module
  * @scope Two-tier edition discovery hook (`useBookTranslations`) resolving alternate language editions
  *        via relational `/api/books/translations` links with root-title + author-surname fallback lookup.
- * @invariant Normalize titles and author surnames (`extractRootTitle`, `extractAuthorSurname`) while ignoring placeholder authors (`isPlaceholderAuthor`) when constructing fallback search queries.
+ * @invariant Normalize titles and author surnames (`extractRootTitle`, `extractAuthorSurname`) while ignoring placeholder authors (`isPlaceholderAuthor`) when constructing fallback search queries, and partition Tier-1 & Tier-2 query keys by normalized `effectiveCountry` so jurisdiction changes never reuse stale regional edition lists.
  * @invariant Deduplicate Tier-1 relational DB translations and Tier-2 `/api/books` fallback candidates against `currentBookId`, preserving ISO-639-1 human-readable language labels via `resolveLanguageLabel`.
  * @rationale Combines exact Wikidata FRBR links from Supabase with deterministic catalog search fallback so unseeded or locally tested books still surface sibling translations reliably.
- * @adr ADR-010, ADR-038
+ * @adr ADR-010, ADR-038, ADR-086
  */
 
 import { useMemo } from 'react';
@@ -13,6 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import { CATALOG_LANGUAGES } from '@/config/catalog-filters';
 import { resolveTranslationLanguage } from '@/config/translation-languages';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import { normalizeCountryCode } from '@/lib/copyright-engine';
+import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 import type { GutendexBook } from '@/types/book.types';
 
 export interface BookTranslationOption {
@@ -140,12 +142,15 @@ export function useBookTranslations(
     return titleKeywords || '';
   }, [authorSurname, author, titleKeywords]);
 
+  const rawCountry = useJurisdictionStore((s) => s.country);
+  const effectiveCountry = useMemo(() => normalizeCountryCode(rawCountry), [rawCountry]);
+
   // Tier 1: Query relational database translation links
   const {
     data: dbData,
     isLoading: isDbLoading,
   } = useQuery<{ results: { bookId: number; title: string; languageCode: string; isCurrent: boolean }[] }>({
-    queryKey: ['db-book-translations', currentBookId],
+    queryKey: ['db-book-translations', currentBookId, effectiveCountry],
     queryFn: async () => {
       if (!currentBookId || currentBookId <= 0) return { results: [] };
       const endpoint = `/api/books/translations?id=${currentBookId}`;
@@ -172,7 +177,7 @@ export function useBookTranslations(
     isLoading: isAstLoading,
     isError: isAstError,
   } = useQuery<{ results: GutendexBook[] }>({
-    queryKey: ['ast-book-translations', currentBookId, searchQuery],
+    queryKey: ['ast-book-translations', currentBookId, searchQuery, effectiveCountry],
     queryFn: async () => {
       if (!searchQuery) return { results: [] };
       const endpoint = `/api/books?search=${encodeURIComponent(searchQuery)}`;

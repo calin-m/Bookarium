@@ -337,8 +337,8 @@ const ROADMAP_MILESTONES = [
           fileContains('src/lib/reader-bookmark-geometry.ts', 'resolveTextRowSpanInElement'),
       },
       {
-        title: 'Unified 13-Key Scholar Preferences, Two-Tier Custom Default Presets & `public.profiles.preferences` JSONB Sync (`preferences-sync.ts` & `AccountTypographySubPanel.tsx`)',
-        description: 'Unified 13-key preferences coordinator (`preferences-sync.ts`), live Typography & Layout Studio (`AccountTypographySubPanel.tsx`), persistent `readingMode` (`paginated` | `scroll`) and `columnWidth` (`narrow` | `normal` | `wide`), Symposium Spoiler Shield toggle, Two-Tier Preset Management (`Save as My Default`, `Revert to My Default`, and `Factory Reset` across `AccountPreferencesSection.tsx` and `ReaderControls.tsx`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud sync.',
+        title: 'Unified 14-Key Scholar Preferences, Two-Tier Custom Default Presets & `public.profiles.preferences` JSONB Sync (`preferences-sync.ts` & `AccountTypographySubPanel.tsx`)',
+        description: 'Unified 14-key preferences coordinator (`preferences-sync.ts`), live Typography & Layout Studio (`AccountTypographySubPanel.tsx`), persistent `readingMode` (`paginated` | `scroll`) and `columnWidth` (`narrow` | `normal` | `wide`), Symposium Spoiler Shield toggle, `Exit Bookmark Prompt` toggle, Two-Tier Preset Management (`Save as My Default`, `Revert to My Default`, and `Factory Reset` across `AccountPreferencesSection.tsx` and `ReaderControls.tsx`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud sync.',
         check: () =>
           fileExists('src/lib/preferences-sync.ts') &&
           fileExists('src/components/account/AccountTypographySubPanel.tsx') &&

@@ -269,6 +269,17 @@ describe('syncAllStoresWithCloud', () => {
     expect(mockGetSession).toHaveBeenCalledTimes(2);
     expect(readerMock).toHaveBeenCalledTimes(2);
 
+    // authMinSyncIntervalMs applies cooldown options solely to useAuthStore while keeping sibling stores unthrottled
+    vi.clearAllMocks();
+    mockGetSession.mockResolvedValueOnce({
+      data: { session: { access_token: 'tok-opt', user: { id: 'user-concurrent-1' } } },
+      error: null,
+    });
+    await syncAllStoresWithCloud('user-concurrent-1', { authMinSyncIntervalMs: 15_000 });
+    expect(authMock).toHaveBeenCalledWith('user-concurrent-1', { minSyncIntervalMs: 15_000 });
+    expect(bookshelfMock).toHaveBeenCalledWith('user-concurrent-1');
+    expect(readerMock).toHaveBeenCalledWith('user-concurrent-1');
+
     createClientSpy.mockRestore();
   });
 });

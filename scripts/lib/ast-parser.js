@@ -4523,6 +4523,14 @@ function extractRuntimeSpecConstants(rootDirPath) {
     path.join(rootDirPath, 'src', 'hooks', 'queries', 'useBooks.ts'),
     ['QUOTE_POOL_SETTLE_TIMEOUT_MS']
   );
+  const useBookContentDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'hooks', 'queries', 'useBookContent.ts'),
+    ['BOOK_CONTENT_CACHE_TTL_MS']
+  );
+  const syncUtilsDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'sync-utils.ts'),
+    ['PASSIVE_SYNC_COOLDOWN_MS']
+  );
   const translationsRouteDecl = collectDeclaredAstValues(
     path.join(rootDirPath, 'src', 'app', 'api', 'books', 'translations', 'route.ts'),
     ['MAX_BOOK_ID']
@@ -4632,6 +4640,7 @@ function extractRuntimeSpecConstants(rootDirPath) {
       profileCacheTtlMin: Math.round((profileLayoutDecl.scalars.get('PROFILE_CACHE_TTL_MS') ?? 300000) / 60000),
       maxExtractedPassages: passageShuffleDecl.scalars.get('MAX_EXTRACTED_PASSAGES_ENTRIES') ?? 100,
       extractedPassagesTtlDays: Math.round((passageShuffleDecl.scalars.get('EXTRACTED_PASSAGES_TTL_MS') ?? 2592000000) / 86400000),
+      bookContentCacheTtlMin: Math.round((useBookContentDecl.scalars.get('BOOK_CONTENT_CACHE_TTL_MS') ?? 3600000) / 60000),
     },
     stores: {
       maxPinnedAccolades: accoladesStoreDecl.scalars.get('MAX_PINNED_ACCOLADES') ?? 3,
@@ -4656,6 +4665,7 @@ function extractRuntimeSpecConstants(rootDirPath) {
       dockIdleTimeoutMs: dockParams.get('idleTimeoutMs') ?? 1600,
       mobileFocusBandRatio: focusParams.get('focusBandRatio') ?? 0.45,
       tooltipDelayMs: tooltipDecl.scalars.get('DEFAULT_TOOLTIP_DELAY_MS') ?? 300,
+      passiveSyncCooldownMs: syncUtilsDecl.scalars.get('PASSIVE_SYNC_COOLDOWN_MS') ?? 15000,
     },
     cli: {
       catalogMinActiveForPrune: syncCatalogDecl.scalars.get('MIN_ACTIVE_CATALOG_FOR_PRUNE') ?? 50000,

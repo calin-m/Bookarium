@@ -1,11 +1,11 @@
 /**
  * @module src/lib/catalog/supabase-provider
- * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, and LRU response caching.
+ * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
  * @invariant Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
- * @invariant Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1` and strip 1-item bibliographic sentinel rows.
+ * @invariant Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
  * @invariant Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
- * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures.
- * @adr ADR-037, ADR-038, ADR-043, ADR-080
+ * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures, while cross-country `jurisdictionRule` normalization, translation LRU caching, and in-flight coalescing cut warm serverless read egress cleanly.
+ * @adr ADR-037, ADR-038, ADR-043, ADR-080, ADR-086
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -67,6 +67,11 @@ interface CatalogQueryCacheEntry {
   expiresAt: number;
 }
 
+interface TranslationQueryCacheEntry {
+  results: RelationalTranslationOption[];
+  expiresAt: number;
+}
+
 interface SharedBookMetadataEntry {
   book: {
     id: number;
@@ -80,12 +85,17 @@ interface SharedBookMetadataEntry {
 
 const globalForCatalogCache = globalThis as typeof globalThis & {
   __bookariumCatalogQueryCache?: Map<string, CatalogQueryCacheEntry>;
+  __bookariumTranslationCache?: Map<string, TranslationQueryCacheEntry>;
   __bookariumMetadataCache?: Map<number, SharedBookMetadataEntry>;
 };
 
 const catalogQueryCache =
   globalForCatalogCache.__bookariumCatalogQueryCache ??
   (globalForCatalogCache.__bookariumCatalogQueryCache = new Map<string, CatalogQueryCacheEntry>());
+
+const translationQueryCache =
+  globalForCatalogCache.__bookariumTranslationCache ??
+  (globalForCatalogCache.__bookariumTranslationCache = new Map<string, TranslationQueryCacheEntry>());
 
 function warmBookMetadataCache(books: GutendexBook[]): void {
   if (!books || books.length === 0) return;
@@ -282,33 +292,46 @@ export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
 export class SupabaseCatalogProvider implements ICatalogProvider {
   public readonly name = 'supabase' as const;
   private client: SupabaseClient<Database> | null;
+  private readonly hasInjectedClient: boolean;
   private instanceQueryCache = new Map<string, CatalogQueryCacheEntry>();
+  private instanceTranslationCache = new Map<string, TranslationQueryCacheEntry>();
+  private inFlightCatalogQueries = new Map<string, Promise<CatalogQueryResult>>();
+  private inFlightTranslationQueries = new Map<string, Promise<RelationalTranslationOption[]>>();
   private lastHealthCheckTime = 0;
   private lastHealthCheckResult = false;
   public static readonly HEALTH_CACHE_TTL_MS = 60 * 1000; // 60 seconds
 
   constructor(client?: SupabaseClient<Database>) {
     this.client = client || null;
+    this.hasInjectedClient = Boolean(client);
   }
 
   public resetHealthCache(): void {
     this.lastHealthCheckTime = 0;
     this.lastHealthCheckResult = false;
     this.instanceQueryCache.clear();
-    if (!this.client) {
+    this.instanceTranslationCache.clear();
+    this.inFlightCatalogQueries.clear();
+    this.inFlightTranslationQueries.clear();
+    if (!this.hasInjectedClient) {
       catalogQueryCache.clear();
+      translationQueryCache.clear();
     }
   }
 
   private getQueryCache(): Map<string, CatalogQueryCacheEntry> {
-    return this.client ? this.instanceQueryCache : catalogQueryCache;
+    return this.hasInjectedClient ? this.instanceQueryCache : catalogQueryCache;
   }
 
-  private getCachedCatalogResult(
+  private getTranslationCache(): Map<string, TranslationQueryCacheEntry> {
+    return this.hasInjectedClient ? this.instanceTranslationCache : translationQueryCache;
+  }
+
+  private readLruCacheEntry<T extends { expiresAt: number }>(
+    cache: Map<string, T>,
     cacheKey: string,
     now: number
-  ): CatalogQueryResult | undefined {
-    const cache = this.getQueryCache();
+  ): T | undefined {
     const cached = cache.get(cacheKey);
     if (!cached) return undefined;
     if (cached.expiresAt <= now) {
@@ -317,8 +340,45 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     }
     cache.delete(cacheKey);
     cache.set(cacheKey, cached);
+    return cached;
+  }
+
+  private writeLruCacheEntry<T>(cache: Map<string, T>, cacheKey: string, entry: T): void {
+    if (cache.has(cacheKey)) {
+      cache.delete(cacheKey);
+    } else if (cache.size >= MAX_CATALOG_CACHE_ENTRIES) {
+      const oldestKey = cache.keys().next().value;
+      if (typeof oldestKey === 'string') {
+        cache.delete(oldestKey);
+      }
+    }
+    cache.set(cacheKey, entry);
+  }
+
+  private cloneCatalogResult(
+    result: CatalogQueryResult,
+    clientCountry: string,
+    jurisdictionRule: JurisdictionRule,
+    latencyMs: number
+  ): CatalogQueryResult {
+    return {
+      ...result,
+      results: [...result.results],
+      clientCountry,
+      jurisdictionRule,
+      latencyMs,
+    };
+  }
+
+  private getCachedCatalogResult(
+    cacheKey: string,
+    now: number
+  ): CatalogQueryResult | undefined {
+    const cached = this.readLruCacheEntry(this.getQueryCache(), cacheKey, now);
+    if (!cached) return undefined;
     return {
       ...cached.result,
+      results: [...cached.result.results],
       latencyMs: 0,
     };
   }
@@ -328,20 +388,29 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     result: CatalogQueryResult,
     now: number
   ): void {
-    const cache = this.getQueryCache();
-    if (cache.has(cacheKey)) {
-      cache.delete(cacheKey);
-    } else if (cache.size >= MAX_CATALOG_CACHE_ENTRIES) {
-      const oldestKey = cache.keys().next().value;
-      if (typeof oldestKey === 'string') {
-        cache.delete(oldestKey);
-      }
-    }
-    cache.set(cacheKey, {
+    this.writeLruCacheEntry(this.getQueryCache(), cacheKey, {
       result,
       expiresAt: now + CATALOG_CACHE_TTL_MS,
     });
     warmBookMetadataCache(result.results);
+  }
+
+  private coalesceInFlight<T>(
+    inFlightMap: Map<string, Promise<T>>,
+    cacheKey: string,
+    factory: () => Promise<T>
+  ): { promise: Promise<T>; isLeader: boolean } {
+    const existing = inFlightMap.get(cacheKey);
+    if (existing) {
+      return { promise: existing, isLeader: false };
+    }
+    const promise = factory().finally(() => {
+      if (inFlightMap.get(cacheKey) === promise) {
+        inFlightMap.delete(cacheKey);
+      }
+    });
+    inFlightMap.set(cacheKey, promise);
+    return { promise, isLeader: true };
   }
 
   private getSupabase(): SupabaseClient<Database> {
@@ -562,135 +631,150 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     );
     const quoteCacheKey = JSON.stringify({
       mode: 'quotes',
-      country: options.country,
-      jurisdictionRule,
       limit,
       quoteWindow: Math.floor(startTime / QUOTE_POOL_CACHE_TTL_MS),
     });
     const cachedQuotePool = this.getCachedCatalogResult(quoteCacheKey, startTime);
     if (cachedQuotePool) {
-      return cachedQuotePool;
+      return this.cloneCatalogResult(cachedQuotePool, options.country, jurisdictionRule, 0);
     }
 
-    const supabase = this.getSupabase();
+    const { promise, isLeader } = this.coalesceInFlight(
+      this.inFlightCatalogQueries,
+      quoteCacheKey,
+      async (): Promise<CatalogQueryResult> => {
+        const supabase = this.getSupabase();
 
-    try {
-      const candidateIdSet = new Set<number>([
-        ...FEATURED_HERO_BOOKS.map((b) => b.id),
-        ...LITERARY_QUOTES.map((q) => q.bookId),
-      ]);
-      const idScanSpecs = [
-        { col: 'download_count', scanLimit: 500 },
-        { col: 'id', scanLimit: 64 },
-      ] as const;
+        try {
+          const candidateIdSet = new Set<number>([
+            ...FEATURED_HERO_BOOKS.map((b) => b.id),
+            ...LITERARY_QUOTES.map((q) => q.bookId),
+          ]);
+          const idScanSpecs = [
+            { col: 'download_count', scanLimit: 500 },
+            { col: 'id', scanLimit: 64 },
+          ] as const;
 
-      const scanResults = await Promise.all(
-        idScanSpecs.map(async (spec) => {
-          const idSelect = supabase.from('books').select('id');
-          if (idSelect && typeof idSelect.order === 'function') {
-            const ordered = idSelect.order(spec.col, { ascending: false });
-            if (ordered && typeof ordered.limit === 'function') {
-              return ordered.limit(spec.scanLimit);
+          const scanResults = await Promise.all(
+            idScanSpecs.map(async (spec) => {
+              const idSelect = supabase.from('books').select('id');
+              if (idSelect && typeof idSelect.order === 'function') {
+                const ordered = idSelect.order(spec.col, { ascending: false });
+                if (ordered && typeof ordered.limit === 'function') {
+                  return ordered.limit(spec.scanLimit);
+                }
+              }
+              return { data: null };
+            })
+          );
+
+          for (const res of scanResults) {
+            if (Array.isArray(res?.data)) {
+              for (const row of res.data) {
+                if (row && typeof row.id === 'number') {
+                  candidateIdSet.add(row.id);
+                }
+              }
             }
           }
-          return { data: null };
-        })
-      );
 
-      for (const res of scanResults) {
-        if (Array.isArray(res?.data)) {
-          for (const row of res.data) {
-            if (row && typeof row.id === 'number') {
-              candidateIdSet.add(row.id);
-            }
+          const selectedCandidateIds = selectRotatingQuotePoolCandidateIds(
+            Array.from(candidateIdSet),
+            limit
+          );
+
+          const baseSelect = supabase
+            .from('books')
+            .select(QUOTE_POOL_COLUMNS);
+          const scopedSelect =
+            baseSelect && typeof baseSelect.in === 'function'
+              ? baseSelect.in('id', selectedCandidateIds)
+              : baseSelect;
+
+          const { data, error } = await scopedSelect
+            .neq('quotes', '[]')
+            .order('download_count', { ascending: false })
+            .limit(limit);
+
+          if (error || !Array.isArray(data)) {
+            throw new CatalogProviderError(
+              `Supabase Quote Pool query error: ${error?.message || 'Empty or invalid response'}`,
+              500,
+              'supabase'
+            );
           }
+
+          this.lastHealthCheckTime = Date.now();
+          this.lastHealthCheckResult = true;
+
+          const books: GutendexBook[] = [];
+          for (const row of data) {
+            if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
+            if (row.copyright === true) continue;
+            const rowWithQuotes = row as { quotes?: unknown; quote0?: unknown; quote1?: unknown };
+            const rawQuotes = Array.isArray(rowWithQuotes.quotes)
+              ? rowWithQuotes.quotes
+              : [rowWithQuotes.quote0, rowWithQuotes.quote1].filter(Boolean);
+            const validPassages = filterValidBookPassages(rawQuotes);
+            if (validPassages.length === 0) continue;
+
+            books.push({
+              id: row.id,
+              title: row.title,
+              authors: Array.isArray(row.authors)
+                ? (row.authors as unknown as GutendexBook['authors'])
+                : [],
+              translators: Array.isArray(row.translators)
+                ? (row.translators as unknown as GutendexBook['translators'])
+                : [],
+              subjects: Array.isArray(row.subjects) ? row.subjects : [],
+              bookshelves: Array.isArray((row as { bookshelves?: string[] }).bookshelves)
+                ? ((row as { bookshelves: string[] }).bookshelves)
+                : [],
+              languages: Array.isArray(row.languages) ? row.languages : ['en'],
+              copyright: typeof row.copyright === 'boolean' ? row.copyright : false,
+              media_type: 'Text',
+              formats: {},
+              download_count: typeof row.download_count === 'number' ? row.download_count : 0,
+              quotes: validPassages.slice(0, 2),
+            });
+          }
+
+          const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
+
+          const result: CatalogQueryResult = {
+            count: sortedBooks.length,
+            next: null,
+            previous: null,
+            results: sortedBooks,
+            source: 'supabase',
+            latencyMs: Date.now() - startTime,
+            clientCountry: options.country,
+            jurisdictionRule,
+          };
+          this.setCachedCatalogResult(quoteCacheKey, result, Date.now());
+          return result;
+        } catch (err: unknown) {
+          if (err instanceof CatalogProviderError) throw err;
+          throw new CatalogProviderError(
+            `Supabase Quote Pool error: ${err instanceof Error ? err.message : String(err)}`,
+            500,
+            'supabase'
+          );
         }
       }
+    );
 
-      const selectedCandidateIds = selectRotatingQuotePoolCandidateIds(
-        Array.from(candidateIdSet),
-        limit
-      );
-
-      const baseSelect = supabase
-        .from('books')
-        .select(QUOTE_POOL_COLUMNS);
-      const scopedSelect =
-        baseSelect && typeof baseSelect.in === 'function'
-          ? baseSelect.in('id', selectedCandidateIds)
-          : baseSelect;
-
-      const { data, error } = await scopedSelect
-        .neq('quotes', '[]')
-        .order('download_count', { ascending: false })
-        .limit(limit);
-
-      if (error || !Array.isArray(data)) {
-        throw new CatalogProviderError(
-          `Supabase Quote Pool query error: ${error?.message || 'Empty or invalid response'}`,
-          500,
-          'supabase'
+    const resolved = await promise;
+    const resolvedCountry = options.country || 'US';
+    return isLeader
+      ? resolved
+      : this.cloneCatalogResult(
+          resolved,
+          resolvedCountry,
+          jurisdictionRule,
+          Date.now() - startTime
         );
-      }
-
-      this.lastHealthCheckTime = Date.now();
-      this.lastHealthCheckResult = true;
-
-      const books: GutendexBook[] = [];
-      for (const row of data) {
-        if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
-        if (row.copyright === true) continue;
-        const rowWithQuotes = row as { quotes?: unknown; quote0?: unknown; quote1?: unknown };
-        const rawQuotes = Array.isArray(rowWithQuotes.quotes)
-          ? rowWithQuotes.quotes
-          : [rowWithQuotes.quote0, rowWithQuotes.quote1].filter(Boolean);
-        const validPassages = filterValidBookPassages(rawQuotes);
-        if (validPassages.length === 0) continue;
-
-        books.push({
-          id: row.id,
-          title: row.title,
-          authors: Array.isArray(row.authors)
-            ? (row.authors as unknown as GutendexBook['authors'])
-            : [],
-          translators: Array.isArray(row.translators)
-            ? (row.translators as unknown as GutendexBook['translators'])
-            : [],
-          subjects: Array.isArray(row.subjects) ? row.subjects : [],
-          bookshelves: Array.isArray((row as { bookshelves?: string[] }).bookshelves)
-            ? ((row as { bookshelves: string[] }).bookshelves)
-            : [],
-          languages: Array.isArray(row.languages) ? row.languages : ['en'],
-          copyright: typeof row.copyright === 'boolean' ? row.copyright : false,
-          media_type: 'Text',
-          formats: {},
-          download_count: typeof row.download_count === 'number' ? row.download_count : 0,
-          quotes: validPassages.slice(0, 2),
-        });
-      }
-
-      const sortedBooks = sortQuoteEnrichedBooksDeterministically(books);
-
-      const result: CatalogQueryResult = {
-        count: sortedBooks.length,
-        next: null,
-        previous: null,
-        results: sortedBooks,
-        source: 'supabase',
-        latencyMs: Date.now() - startTime,
-        clientCountry: options.country,
-        jurisdictionRule,
-      };
-      this.setCachedCatalogResult(quoteCacheKey, result, Date.now());
-      return result;
-    } catch (err: unknown) {
-      if (err instanceof CatalogProviderError) throw err;
-      throw new CatalogProviderError(
-        `Supabase Quote Pool error: ${err instanceof Error ? err.message : String(err)}`,
-        500,
-        'supabase'
-      );
-    }
   }
 
   public async searchBooks(options: CatalogQueryOptions): Promise<CatalogQueryResult> {
@@ -735,161 +819,171 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
       ids: options.ids || '',
       hasQuotes: Boolean(options.hasQuotes),
       includeRestrictedMetadata: Boolean(options.includeRestrictedMetadata),
-      country,
       jurisdictionRule,
       year: currentYear,
     });
     const cachedSearch = this.getCachedCatalogResult(searchCacheKey, startTime);
     if (cachedSearch) {
-      return cachedSearch;
+      return this.cloneCatalogResult(cachedSearch, country, jurisdictionRule, 0);
     }
 
-    const supabase = this.getSupabase();
+    const { promise, isLeader } = this.coalesceInFlight(
+      this.inFlightCatalogQueries,
+      searchCacheKey,
+      async (): Promise<CatalogQueryResult> => {
+        const supabase = this.getSupabase();
 
-    try {
-      const executeInitialProbe = async () => {
-        const res = await this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear)
-          .range(from, from + limit);
-        if (res.error) {
-          const isTimeout = isStatementTimeoutError(res.error);
-          throw new CatalogProviderError(
-            `Supabase Catalog query error: ${res.error.message}`,
-            isTimeout ? 504 : 500,
-            'supabase'
-          );
-        }
-        return res;
-      };
+        try {
+          const executeInitialProbe = async () => {
+            const res = await this.buildSearchQuery(supabase, options, jurisdictionRule, currentYear)
+              .range(from, from + limit);
+            if (res.error) {
+              const isTimeout = isStatementTimeoutError(res.error);
+              throw new CatalogProviderError(
+                `Supabase Catalog query error: ${res.error.message}`,
+                isTimeout ? 504 : 500,
+                'supabase'
+              );
+            }
+            return res;
+          };
 
-      let initialProbe;
-      try {
-        initialProbe = await executeInitialProbe();
-      } catch (probeErr: unknown) {
-        if (isStatementTimeoutError(probeErr)) {
-          throw probeErr;
-        }
-        // Single fast transient retry for cold serverless connection hiccups
-        initialProbe = await executeInitialProbe();
-      }
-
-      const { data, count } = initialProbe;
-
-      this.lastHealthCheckTime = Date.now();
-      this.lastHealthCheckResult = true;
-
-      const rawRows: DatabaseBook[] = (data || []) as unknown as DatabaseBook[];
-      const initialBatch = this.filterBatch(rawRows, options, country, currentYear);
-      const finalResults = [...initialBatch.validBooks];
-      let totalFiltered = initialBatch.restrictedCount;
-      let totalSentinelFiltered = initialBatch.sentinelCount;
-
-      let sqlExhausted = rawRows.length < limit + 1;
-      const targetValidCount = limit + 1;
-
-      // Exact limit + 1 probing & bounded backfill: whenever runtime jurisdictional or format filtering
-      // withholds rows and SQL has not reached EOF, top up toward limit + 1 compliant items so pagination
-      // links accurately reflect real available items beyond inaccurate estimated row counts.
-      if (
-        finalResults.length < targetValidCount &&
-        !sqlExhausted &&
-        !options.includeRestrictedMetadata
-      ) {
-        let nextOffset = from + rawRows.length;
-        let iterations = 0;
-        const MAX_BACKFILL_ITERATIONS = 5;
-
-        while (finalResults.length < targetValidCount && iterations < MAX_BACKFILL_ITERATIONS) {
-          iterations++;
-          const deficit = targetValidCount - finalResults.length;
-          const fetchBatch = Math.max(deficit * 2, 32);
-          const backfillQuery = this.buildSearchQuery(
-            supabase,
-            options,
-            jurisdictionRule,
-            currentYear,
-            { includeCount: false }
-          ).range(nextOffset, nextOffset + fetchBatch - 1);
-
-          const { data: backfillData, error: backfillError } = await backfillQuery;
-          if (backfillError) {
-            break;
-          }
-          if (!backfillData || backfillData.length === 0) {
-            sqlExhausted = true;
-            break;
+          let initialProbe;
+          try {
+            initialProbe = await executeInitialProbe();
+          } catch (probeErr: unknown) {
+            if (isStatementTimeoutError(probeErr)) {
+              throw probeErr;
+            }
+            // Single fast transient retry for cold serverless connection hiccups
+            initialProbe = await executeInitialProbe();
           }
 
-          const rawBackfill = backfillData as unknown as DatabaseBook[];
-          const backfillBatch = this.filterBatch(rawBackfill, options, country, currentYear);
-          totalFiltered += backfillBatch.restrictedCount;
-          totalSentinelFiltered += backfillBatch.sentinelCount;
+          const { data, count } = initialProbe;
 
-          for (const book of backfillBatch.validBooks) {
-            if (finalResults.length < targetValidCount) {
-              finalResults.push(book);
-            } else {
-              break;
+          this.lastHealthCheckTime = Date.now();
+          this.lastHealthCheckResult = true;
+
+          const rawRows: DatabaseBook[] = (data || []) as unknown as DatabaseBook[];
+          const initialBatch = this.filterBatch(rawRows, options, country, currentYear);
+          const finalResults = [...initialBatch.validBooks];
+          let totalFiltered = initialBatch.restrictedCount;
+          let totalSentinelFiltered = initialBatch.sentinelCount;
+
+          let sqlExhausted = rawRows.length < limit + 1;
+          const targetValidCount = limit + 1;
+
+          // Exact limit + 1 probing & bounded backfill: whenever runtime jurisdictional or format filtering
+          // withholds rows and SQL has not reached EOF, top up toward limit + 1 compliant items so pagination
+          // links accurately reflect real available items beyond inaccurate estimated row counts.
+          if (
+            finalResults.length < targetValidCount &&
+            !sqlExhausted &&
+            !options.includeRestrictedMetadata
+          ) {
+            let nextOffset = from + rawRows.length;
+            let iterations = 0;
+            const MAX_BACKFILL_ITERATIONS = 5;
+
+            while (finalResults.length < targetValidCount && iterations < MAX_BACKFILL_ITERATIONS) {
+              iterations++;
+              const deficit = targetValidCount - finalResults.length;
+              const fetchBatch = Math.max(deficit * 2, 32);
+              const backfillQuery = this.buildSearchQuery(
+                supabase,
+                options,
+                jurisdictionRule,
+                currentYear,
+                { includeCount: false }
+              ).range(nextOffset, nextOffset + fetchBatch - 1);
+
+              const { data: backfillData, error: backfillError } = await backfillQuery;
+              if (backfillError) {
+                break;
+              }
+              if (!backfillData || backfillData.length === 0) {
+                sqlExhausted = true;
+                break;
+              }
+
+              const rawBackfill = backfillData as unknown as DatabaseBook[];
+              const backfillBatch = this.filterBatch(rawBackfill, options, country, currentYear);
+              totalFiltered += backfillBatch.restrictedCount;
+              totalSentinelFiltered += backfillBatch.sentinelCount;
+
+              for (const book of backfillBatch.validBooks) {
+                if (finalResults.length < targetValidCount) {
+                  finalResults.push(book);
+                } else {
+                  break;
+                }
+              }
+
+              nextOffset += rawBackfill.length;
+              if (rawBackfill.length < fetchBatch) {
+                sqlExhausted = true;
+                break;
+              }
             }
           }
 
-          nextOffset += rawBackfill.length;
-          if (rawBackfill.length < fetchBatch) {
-            sqlExhausted = true;
-            break;
+          const pageResults = finalResults.slice(0, limit);
+          const hasNext =
+            finalResults.length > limit || (!sqlExhausted && pageResults.length === limit);
+
+          const estimatedAdjusted =
+            count !== null && count !== undefined
+              ? Math.max(0, count - totalFiltered - totalSentinelFiltered)
+              : 0;
+
+          const totalCount =
+            pageResults.length === 0 && sqlExhausted
+              ? from === 0
+                ? 0
+                : Math.min(from, estimatedAdjusted)
+              : sqlExhausted
+                ? from + pageResults.length
+                : count !== null && count !== undefined
+                  ? Math.max(from + pageResults.length, estimatedAdjusted)
+                  : from + pageResults.length;
+          const latencyMs = Date.now() - startTime;
+
+          // Next / previous pagination links
+          const hasPrev = page > 1;
+
+          const nextUrl = hasNext ? `/api/books?page=${page + 1}` : null;
+          const prevUrl = hasPrev ? `/api/books?page=${page - 1}` : null;
+
+          const result: CatalogQueryResult = {
+            count: totalCount,
+            next: nextUrl,
+            previous: prevUrl,
+            results: pageResults,
+            source: 'supabase',
+            latencyMs,
+            clientCountry: country,
+            jurisdictionRule,
+            totalFiltered,
+          };
+          this.setCachedCatalogResult(searchCacheKey, result, Date.now());
+          return result;
+        } catch (err: unknown) {
+          if (err instanceof CatalogProviderError) {
+            throw err;
           }
+          throw new CatalogProviderError(
+            `Supabase Catalog unexpected failure: ${err instanceof Error ? err.message : String(err)}`,
+            500,
+            'supabase'
+          );
         }
       }
+    );
 
-      const pageResults = finalResults.slice(0, limit);
-      const hasNext =
-        finalResults.length > limit || (!sqlExhausted && pageResults.length === limit);
-
-      const estimatedAdjusted =
-        count !== null && count !== undefined
-          ? Math.max(0, count - totalFiltered - totalSentinelFiltered)
-          : 0;
-
-      const totalCount =
-        pageResults.length === 0 && sqlExhausted
-          ? from === 0
-            ? 0
-            : Math.min(from, estimatedAdjusted)
-          : sqlExhausted
-            ? from + pageResults.length
-            : count !== null && count !== undefined
-              ? Math.max(from + pageResults.length, estimatedAdjusted)
-              : from + pageResults.length;
-      const latencyMs = Date.now() - startTime;
-
-      // Next / previous pagination links
-      const hasPrev = page > 1;
-
-      const nextUrl = hasNext ? `/api/books?page=${page + 1}` : null;
-      const prevUrl = hasPrev ? `/api/books?page=${page - 1}` : null;
-
-      const result: CatalogQueryResult = {
-        count: totalCount,
-        next: nextUrl,
-        previous: prevUrl,
-        results: pageResults,
-        source: 'supabase',
-        latencyMs,
-        clientCountry: country,
-        jurisdictionRule,
-        totalFiltered,
-      };
-      this.setCachedCatalogResult(searchCacheKey, result, Date.now());
-      return result;
-    } catch (err: unknown) {
-      if (err instanceof CatalogProviderError) {
-        throw err;
-      }
-      throw new CatalogProviderError(
-        `Supabase Catalog unexpected failure: ${err instanceof Error ? err.message : String(err)}`,
-        500,
-        'supabase'
-      );
-    }
+    const resolved = await promise;
+    return isLeader
+      ? resolved
+      : this.cloneCatalogResult(resolved, country, jurisdictionRule, Date.now() - startTime);
   }
 
   /**
@@ -903,96 +997,133 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
   ): Promise<RelationalTranslationOption[]> {
     if (!bookId || bookId <= 0) return [];
 
-    try {
-      const supabase = this.getSupabase();
+    const now = Date.now();
+    const jurisdictionRule = getJurisdictionRule(country);
+    const cacheKey = `${bookId}:${jurisdictionRule}`;
+    const cached = this.readLruCacheEntry(this.getTranslationCache(), cacheKey, now);
+    if (cached) {
+      return [...cached.results];
+    }
 
-      // 1. Fetch work_id(s) for the target book
-      const { data: workMappings, error: workErr } = await supabase
-        .from('book_translations')
-        .select('work_id')
-        .eq('book_id', bookId);
+    const { promise } = this.coalesceInFlight(
+      this.inFlightTranslationQueries,
+      cacheKey,
+      async (): Promise<RelationalTranslationOption[]> => {
+        try {
+          const supabase = this.getSupabase();
 
-      if (workErr || !workMappings || workMappings.length === 0) {
-        return [];
-      }
+          // 1. Fetch work_id(s) for the target book
+          const { data: workMappings, error: workErr } = await supabase
+            .from('book_translations')
+            .select('work_id')
+            .eq('book_id', bookId);
 
-      const workIds = (workMappings as { work_id: string }[]).map((w) => w.work_id);
+          if (workErr) {
+            return [];
+          }
+          if (!workMappings || workMappings.length === 0) {
+            this.writeLruCacheEntry(this.getTranslationCache(), cacheKey, {
+              results: [],
+              expiresAt: Date.now() + CATALOG_CACHE_TTL_MS,
+            });
+            return [];
+          }
 
-      // 2. Fetch all edition book_ids in the same work(s) (Defense 1: IN subquery defense)
-      const { data: clusterEditions, error: clusterErr } = await supabase
-        .from('book_translations')
-        .select('book_id, language, is_original')
-        .in('work_id', workIds);
+          const workIds = (workMappings as { work_id: string }[]).map((w) => w.work_id);
 
-      if (clusterErr || !clusterEditions || clusterEditions.length === 0) {
-        return [];
-      }
+          // 2. Fetch all edition book_ids in the same work(s) (Defense 1: IN subquery defense)
+          const { data: clusterEditions, error: clusterErr } = await supabase
+            .from('book_translations')
+            .select('book_id, language, is_original')
+            .in('work_id', workIds);
 
-      const editions = clusterEditions as { book_id: number; language: string; is_original: boolean }[];
-      const editionBookIds = editions.map((e) => e.book_id);
+          if (clusterErr) {
+            return [];
+          }
+          if (!clusterEditions || clusterEditions.length === 0) {
+            this.writeLruCacheEntry(this.getTranslationCache(), cacheKey, {
+              results: [],
+              expiresAt: Date.now() + CATALOG_CACHE_TTL_MS,
+            });
+            return [];
+          }
 
-      // 3. Fetch title, download_count, copyright, and creator lifespans for discovered books
-      const { data: books, error: booksErr } = await supabase
-        .from('books')
-        .select('id, title, download_count, copyright, authors, translators')
-        .in('id', editionBookIds);
+          const editions = clusterEditions as { book_id: number; language: string; is_original: boolean }[];
+          const editionBookIds = editions.map((e) => e.book_id);
 
-      if (booksErr || !books) {
-        return [];
-      }
+          // 3. Fetch title, download_count, copyright, and creator lifespans for discovered books
+          const { data: books, error: booksErr } = await supabase
+            .from('books')
+            .select('id, title, download_count, copyright, authors, translators')
+            .in('id', editionBookIds);
 
-      const typedBooks = books as {
-        id: number;
-        title: string;
-        download_count: number;
-        copyright?: boolean | null;
-        authors?: DatabaseBook['authors'] | null;
-        translators?: DatabaseBook['translators'] | null;
-      }[];
+          if (booksErr || !books) {
+            return [];
+          }
 
-      // Filter out any edition that is under copyright or restricted in the caller's jurisdiction
-      const allowedBooks = typedBooks.filter((b) => {
-        if (b.copyright === true) return false;
-        const evaluation = isBookPublicDomainInJurisdiction(
-          {
-            id: b.id,
-            title: b.title,
-            authors: Array.isArray(b.authors) ? (b.authors as unknown as Author[]) : [],
-            translators: Array.isArray(b.translators) ? (b.translators as unknown as Author[]) : [],
-            copyright: b.copyright ?? false,
-          },
-          country
-        );
-        return evaluation.isAllowed;
-      });
+          const typedBooks = books as {
+            id: number;
+            title: string;
+            download_count: number;
+            copyright?: boolean | null;
+            authors?: DatabaseBook['authors'] | null;
+            translators?: DatabaseBook['translators'] | null;
+          }[];
 
-      const booksMap = new Map(allowedBooks.map((b) => [b.id, b]));
-
-      const results: RelationalTranslationOption[] = [];
-      for (const ed of editions) {
-        const book = booksMap.get(ed.book_id);
-        if (book) {
-          results.push({
-            bookId: ed.book_id,
-            title: book.title,
-            languageCode: ed.language,
-            isOriginal: Boolean(ed.is_original),
-            isCurrent: ed.book_id === bookId,
+          // Filter out any edition that is under copyright or restricted in the caller's jurisdiction
+          const allowedBooks = typedBooks.filter((b) => {
+            if (b.copyright === true) return false;
+            const evaluation = isBookPublicDomainInJurisdiction(
+              {
+                id: b.id,
+                title: b.title,
+                authors: Array.isArray(b.authors) ? (b.authors as unknown as Author[]) : [],
+                translators: Array.isArray(b.translators) ? (b.translators as unknown as Author[]) : [],
+                copyright: b.copyright ?? false,
+              },
+              country
+            );
+            return evaluation.isAllowed;
           });
+
+          const booksMap = new Map(allowedBooks.map((b) => [b.id, b]));
+
+          const results: RelationalTranslationOption[] = [];
+          for (const ed of editions) {
+            const book = booksMap.get(ed.book_id);
+            if (book) {
+              results.push({
+                bookId: ed.book_id,
+                title: book.title,
+                languageCode: ed.language,
+                isOriginal: Boolean(ed.is_original),
+                isCurrent: ed.book_id === bookId,
+              });
+            }
+          }
+
+          // Sort: Current book first, then original edition, then by download_count
+          const sorted = results.sort((a, b) => {
+            if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
+            if (a.isOriginal !== b.isOriginal) return a.isOriginal ? -1 : 1;
+            const countA = booksMap.get(a.bookId)?.download_count ?? 0;
+            const countB = booksMap.get(b.bookId)?.download_count ?? 0;
+            return countB - countA;
+          });
+
+          this.writeLruCacheEntry(this.getTranslationCache(), cacheKey, {
+            results: sorted,
+            expiresAt: Date.now() + CATALOG_CACHE_TTL_MS,
+          });
+          return sorted;
+        } catch {
+          return [];
         }
       }
+    );
 
-      // Sort: Current book first, then original edition, then by download_count
-      return results.sort((a, b) => {
-        if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
-        if (a.isOriginal !== b.isOriginal) return a.isOriginal ? -1 : 1;
-        const countA = booksMap.get(a.bookId)?.download_count ?? 0;
-        const countB = booksMap.get(b.bookId)?.download_count ?? 0;
-        return countB - countA;
-      });
-    } catch {
-      return [];
-    }
+    const resolved = await promise;
+    return [...resolved];
   }
 }
 

@@ -1302,7 +1302,8 @@ describe('SupabaseCatalogProvider', () => {
         expect(refreshed.results).toHaveLength(1);
         expect(mockSupabase.from.mock.calls.length).toBeGreaterThan(callsAfterFirst);
 
-        // Provider query error wraps into CatalogProviderError
+        // Provider query error wraps into CatalogProviderError (reset L4 quote cache before fault injection)
+        provider.resetHealthCache();
         quoteQueryError = { message: 'Pool RPC failed' };
         await expect(
           provider.searchBooks({ page: 1, pool: 'quotes', country: 'DE', limit: 12 })
@@ -1433,6 +1434,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(backfillErrRes.results.map((b) => b.id)).toEqual([3]);
 
       // 4. Unexpected non-CatalogProviderError during probe wraps as CatalogProviderError
+      provider.resetHealthCache();
       rangeMode = 'throw_unexpected';
       await expect(
         provider.searchBooks({ page: 1, limit: 2, country: 'NZ' })
@@ -1542,6 +1544,181 @@ describe('SupabaseCatalogProvider', () => {
       } as never);
       const translations = await copyrightedEditionProvider.getBookTranslations(1342, 'US');
       expect(translations.map((t) => t.bookId)).toEqual([1342]);
+    });
+
+    it('shares L4 searchBooks across countries with identical jurisdictionRule, shares quotePool globally, coalesces concurrent misses, and caches non-error getBookTranslations', async () => {
+      const baseRow: DatabaseBook = {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        subjects: ['Fiction'],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 50000,
+        max_author_death_year: 1817,
+        min_author_birth_year: 1775,
+        content: null,
+        search_vector: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      };
+
+      // 1. searchBooks shares LIFE_70 cache across DE and FR while cloning clientCountry
+      const searchChain: Record<string, unknown> = {
+        range: vi.fn().mockResolvedValue({ data: [baseRow], count: 1, error: null }),
+      };
+      searchChain.select = vi.fn().mockReturnValue(searchChain);
+      searchChain.eq = vi.fn().mockReturnValue(searchChain);
+      searchChain.lte = vi.fn().mockReturnValue(searchChain);
+      searchChain.order = vi.fn().mockReturnValue(searchChain);
+      const searchClient = { from: vi.fn(() => searchChain) };
+
+      const searchProvider = new SupabaseCatalogProvider(searchClient as never);
+      const [deRes, frRes] = await Promise.all([
+        searchProvider.searchBooks({ page: 1, limit: 32, country: 'DE' }),
+        searchProvider.searchBooks({ page: 1, limit: 32, country: 'FR' }),
+      ]);
+      expect(searchClient.from).toHaveBeenCalledTimes(1);
+      expect(deRes.clientCountry).toBe('DE');
+      expect(frRes.clientCountry).toBe('FR');
+      expect(frRes.results.map((b) => b.id)).toEqual([1342]);
+
+      // Subsequent DE/FR hit uses L4 LRU with latencyMs: 0; US hits distinct jurisdictionRule
+      const frHit = await searchProvider.searchBooks({ page: 1, limit: 32, country: 'FR' });
+      expect(searchClient.from).toHaveBeenCalledTimes(1);
+      expect(frHit.latencyMs).toBe(0);
+      await searchProvider.searchBooks({ page: 1, limit: 32, country: 'US' });
+      expect(searchClient.from).toHaveBeenCalledTimes(2);
+
+      // 2. fetchQuoteEnrichedPool shares L4 cache across countries and coalesces concurrent misses
+      let poolSelectCalls = 0;
+      const poolRow = {
+        ...baseRow,
+        quote0: { chapterLabel: 'Ch 1', openingLine: 'Opening', quoteExcerpt: 'Excerpt' },
+        quote1: null,
+      };
+      const poolClient = {
+        from: vi.fn(() => {
+          poolSelectCalls += 1;
+          const chain: Record<string, unknown> = {
+            select: vi.fn((cols: string) => {
+              if (cols === 'id') {
+                return {
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: [{ id: 1342 }], error: null }),
+                  }),
+                };
+              }
+              return chain;
+            }),
+            in: vi.fn().mockReturnThis(),
+            neq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({ data: [poolRow], error: null }),
+          };
+          return chain;
+        }),
+      };
+      const poolProvider = new SupabaseCatalogProvider(poolClient as never);
+      const [usPool, jpPool] = await Promise.all([
+        poolProvider.fetchQuoteEnrichedPool(
+          { page: 1, pool: 'quotes', limit: 24, country: 'US' },
+          'US_PUBLIC_DOMAIN'
+        ),
+        poolProvider.fetchQuoteEnrichedPool(
+          { page: 1, pool: 'quotes', limit: 24, country: 'JP' },
+          'LIFE_70'
+        ),
+      ]);
+      expect(poolSelectCalls).toBe(3); // 2 id scans + 1 quote select executed once for both concurrent callers
+      expect(jpPool.clientCountry).toBe('JP');
+      expect(jpPool.jurisdictionRule).toBe('LIFE_70');
+      expect(usPool.results).toHaveLength(1);
+      const cachedDePool = await poolProvider.fetchQuoteEnrichedPool(
+        { page: 1, pool: 'quotes', limit: 24, country: 'DE' },
+        'LIFE_70'
+      );
+      expect(poolSelectCalls).toBe(3);
+      expect(cachedDePool.latencyMs).toBe(0);
+      expect(cachedDePool.clientCountry).toBe('DE');
+
+      // 3. getBookTranslations caches valid results per [bookId, jurisdictionRule], skips error caching, and clears on resetHealthCache
+      let translationQueryAttempts = 0;
+      const transClient = {
+        from: vi.fn().mockImplementation((table: string) => {
+          translationQueryAttempts += 1;
+          if (table === 'book_translations') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [{ work_id: 'Q1' }], error: null }),
+                in: vi.fn().mockResolvedValue({
+                  data: [{ book_id: 1342, language: 'en', is_original: true }],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    id: 1342,
+                    title: 'Pride and Prejudice',
+                    download_count: 5000,
+                    copyright: false,
+                    authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                    translators: [],
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          };
+        }),
+      };
+      const transProvider = new SupabaseCatalogProvider(transClient as never);
+      const [tDe, tFr] = await Promise.all([
+        transProvider.getBookTranslations(1342, 'DE'),
+        transProvider.getBookTranslations(1342, 'FR'),
+      ]);
+      expect(tDe.map((t) => t.bookId)).toEqual([1342]);
+      expect(tFr.map((t) => t.bookId)).toEqual([1342]);
+      expect(translationQueryAttempts).toBe(3);
+
+      // Cached hit without incrementing queries; resetHealthCache invalidates
+      await transProvider.getBookTranslations(1342, 'DE');
+      expect(translationQueryAttempts).toBe(3);
+      transProvider.resetHealthCache();
+      await transProvider.getBookTranslations(1342, 'DE');
+      expect(translationQueryAttempts).toBe(6);
+
+      // Error responses are never cached in L4 translation LRU
+      let failingCalls = 0;
+      const errRecoveryProvider = new SupabaseCatalogProvider({
+        from: vi.fn(() => {
+          failingCalls += 1;
+          if (failingCalls === 1) {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'transient error' } }),
+              }),
+            };
+          }
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          };
+        }),
+      } as never);
+      expect(await errRecoveryProvider.getBookTranslations(1342, 'US')).toEqual([]);
+      expect(await errRecoveryProvider.getBookTranslations(1342, 'US')).toEqual([]);
+      expect(failingCalls).toBe(2); // Second call re-queried instead of hitting poisoned error cache
     });
   });
 });

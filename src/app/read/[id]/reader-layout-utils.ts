@@ -1,9 +1,9 @@
 /**
  * @module src/app/read/[id]/reader-layout-utils
  * @scope Server-side Reader volume metadata resolver, bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
- * @invariant Cap `serverMetadataCache` and `confirmedNotFoundIds` at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
- * @rationale Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded.
- * @adr ADR-036, ADR-070
+ * @invariant Anchor `serverMetadataCache` and `confirmedNotFoundIds` on `globalThis` capped at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
+ * @rationale Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded across warm SSR module reloads.
+ * @adr ADR-036, ADR-070, ADR-086
  */
 
 import { cache } from 'react';
@@ -29,8 +29,19 @@ import type { DatabaseBook } from '@/types/database.types';
 export { isClientSideNavigation };
 
 export const MAX_SERVER_METADATA_CACHE_ENTRIES = 500;
-export const serverMetadataCache = new Map<number, GutendexBook>();
-const confirmedNotFoundIds = new Set<number>();
+
+const globalForReaderMetadata = globalThis as typeof globalThis & {
+  __bookariumServerMetadataCache?: Map<number, GutendexBook>;
+  __bookariumConfirmedNotFoundIds?: Set<number>;
+};
+
+export const serverMetadataCache =
+  globalForReaderMetadata.__bookariumServerMetadataCache ??
+  (globalForReaderMetadata.__bookariumServerMetadataCache = new Map<number, GutendexBook>());
+
+const confirmedNotFoundIds =
+  globalForReaderMetadata.__bookariumConfirmedNotFoundIds ??
+  (globalForReaderMetadata.__bookariumConfirmedNotFoundIds = new Set<number>());
 
 function markConfirmedNotFound(bookId: number): void {
   if (confirmedNotFoundIds.has(bookId)) {

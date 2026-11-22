@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -477,6 +477,52 @@ describe('useBookTranslations and helpers', () => {
         const fr = astResult.current.translations.find((t) => t.languageCode === 'fr');
         expect(fr?.bookId).toBe(30);
       });
+    });
+
+    it('partitions translation React Query keys by effectiveCountry so jurisdiction changes refetch cleanly', async () => {
+      const { useJurisdictionStore } = await import('@/stores/useJurisdictionStore');
+      useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const wrapper = ({ children }: { children: React.ReactNode }) =>
+        React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+      const fetchSpy = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({
+            results: [
+              { bookId: 1342, title: 'Pride and Prejudice', languageCode: 'en', isCurrent: true },
+              { bookId: 43647, title: 'Orgueil et Préjugé', languageCode: 'fr', isCurrent: false },
+            ],
+          }),
+        })
+      );
+      globalThis.fetch = fetchSpy;
+
+      const { result, rerender } = renderHook(
+        () => useBookTranslations('Pride and Prejudice', 'Jane Austen', 1342, ['en']),
+        { wrapper }
+      );
+
+      await waitFor(() => expect(result.current.translations).toHaveLength(2));
+      expect(queryClient.getQueryCache().find({ queryKey: ['db-book-translations', 1342, 'US'] })).toBeDefined();
+
+      await act(async () => {
+        useJurisdictionStore.setState({ country: 'de', overrideCountry: 'de' });
+        rerender();
+        await Promise.resolve();
+      });
+
+      await waitFor(() =>
+        expect(
+          queryClient.getQueryCache().find({ queryKey: ['db-book-translations', 1342, 'DE'] })
+        ).toBeDefined()
+      );
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      useJurisdictionStore.setState({ country: 'US', overrideCountry: null });
     });
   });
 });

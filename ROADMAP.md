@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.67-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.69-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-42_of_47-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -166,8 +166,8 @@
 
 - [x] **Interactive Row-Snapping Silk Bookmark & `bookmarkText` Reflow-Resilient Resume (`ReaderRowBookmark.tsx` & `reader-bookmark-geometry.ts`)** `✅ VERIFIED`
   Permanently visible left-margin row-snapping silk bookmark tab (`ReaderRowBookmark.tsx`, `role="slider"`), multi-row (`startRow` -> `endRow`) wrapped passage highlights, `bookmarkText`-first canonical resume centering across Phone, Tablet, and Desktop with `bookmarkRow` duplicate-line disambiguation (`resolveTextRowSpanInElement`), cross-page font-reflow healing (`useReaderSession.ts`), and conditional bookmark reset notices when marking volumes `Finished`.
-- [x] **Unified 13-Key Scholar Preferences, Two-Tier Custom Default Presets & `public.profiles.preferences` JSONB Sync (`preferences-sync.ts` & `AccountTypographySubPanel.tsx`)** `✅ VERIFIED`
-  Unified 13-key preferences coordinator (`preferences-sync.ts`), live Typography & Layout Studio (`AccountTypographySubPanel.tsx`), persistent `readingMode` (`paginated` | `scroll`) and `columnWidth` (`narrow` | `normal` | `wide`), Symposium Spoiler Shield toggle, Two-Tier Preset Management (`Save as My Default`, `Revert to My Default`, and `Factory Reset` across `AccountPreferencesSection.tsx` and `ReaderControls.tsx`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud sync.
+- [x] **Unified 14-Key Scholar Preferences, Two-Tier Custom Default Presets & `public.profiles.preferences` JSONB Sync (`preferences-sync.ts` & `AccountTypographySubPanel.tsx`)** `✅ VERIFIED`
+  Unified 14-key preferences coordinator (`preferences-sync.ts`), live Typography & Layout Studio (`AccountTypographySubPanel.tsx`), persistent `readingMode` (`paginated` | `scroll`) and `columnWidth` (`narrow` | `normal` | `wide`), Symposium Spoiler Shield toggle, `Exit Bookmark Prompt` toggle, Two-Tier Preset Management (`Save as My Default`, `Revert to My Default`, and `Factory Reset` across `AccountPreferencesSection.tsx` and `ReaderControls.tsx`), and debounced Last-Write-Wins Supabase `public.profiles.preferences` JSONB cloud sync.
 - [x] **Tactile Overlay Reader Chrome, Page Brightness (`30%–100%`), Global `300ms` Stylized Tooltips & Hold-to-Scrub Tabs (`ReaderHeader.tsx`, `CursorTooltip.tsx` & `scroll-utils.ts`)** `✅ VERIFIED`
   Single-finger tap (`onTapSurface`) fixed-overlay immersive header/footer slide (`ReaderHeader.tsx`, `ReaderFooter.tsx`), `30%–100%` page brightness filter (`ReaderControls.tsx`), global `300ms` cursor-anchored stylized tooltips (`GlobalTitleTooltip` in `CursorTooltip.tsx`), and `160ms` hold-to-scrub vs. flick-to-scroll tab bar disambiguation (`createTabScrubberHandlers` in `scroll-utils.ts`, `EditorialUnderlineTabs.tsx`).
 - [x] **Full 32-Bookshelf & 20-Language Project Gutenberg Discovery Taxonomy (`catalog-filters.ts` & `AdvancedFilterDrawer.tsx`)** `✅ VERIFIED`
@@ -177,7 +177,7 @@
 
 ---
 
-### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.67)`)
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.69)`)
 `[██████████░░░░░░░░░░]` **2/4 (50%)**
 
 > Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.

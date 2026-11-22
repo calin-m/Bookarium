@@ -3,9 +3,9 @@
  * @scope Reader text fetcher and React Query hook (`useBookContent`) resolving IndexedDB offline storage,
  *        same-origin `/api/books/content?id=<bookId>` R2 streams, and typed `LegalRestrictionError` (`HTTP 451`) failures.
  * @invariant Configure `networkMode: 'always'` so locally persisted IndexedDB books resolve instantaneously when offline, and resolve authoritative local author lifespans before serving offline volumes in non-US jurisdictions while online.
- * @invariant Never dispatch legacy `?url=` proxy queries without a positive integer `bookId`, never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, and fall back to local IndexedDB text on network timeouts (`BOOK_CONTENT_TIMEOUT_MS`).
+ * @invariant Never dispatch legacy `?url=` proxy queries without a positive integer `bookId`, never retry `LegalRestrictionError` (`HTTP 451`) or requests while `!navigator.onLine`, align React Query `staleTime` and `gcTime` on `BOOK_CONTENT_CACHE_TTL_MS` (`60m`), and fall back to local IndexedDB text on network timeouts (`BOOK_CONTENT_TIMEOUT_MS`).
  * @rationale Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance and zero Project Gutenberg fallback.
- * @adr ADR-020, ADR-036, ADR-070, ADR-082, ADR-084
+ * @adr ADR-020, ADR-036, ADR-070, ADR-082, ADR-084, ADR-086
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +20,7 @@ import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import type { Author, Book } from '@/types/book.types';
 
 export const BOOK_CONTENT_TIMEOUT_MS = 8000;
+export const BOOK_CONTENT_CACHE_TTL_MS = 60 * 60 * 1000;
 
 export interface LegalRestrictionDetails {
   country: string;
@@ -225,7 +226,8 @@ export function useBookContent(contentUrl?: string, bookId?: number) {
     queryFn: () => fetchBookContent(contentUrl, bookId),
     enabled: Boolean(contentUrl || bookId),
     networkMode: 'always',
-    staleTime: 60 * 60 * 1000, // 1 hour caching for book text
+    staleTime: BOOK_CONTENT_CACHE_TTL_MS, // 1 hour caching for book text
+    gcTime: BOOK_CONTENT_CACHE_TTL_MS,
     retry: (failureCount, error) => {
       // Never retry on HTTP 451 legal restrictions or when device is offline
       if (error instanceof LegalRestrictionError) return false;

@@ -462,6 +462,22 @@ describe('useBookContent hook', () => {
 
     fetchSpy.mockRestore();
   });
+
+  it('aligns React Query gcTime with staleTime on BOOK_CONTENT_CACHE_TTL_MS', async () => {
+    const { BOOK_CONTENT_CACHE_TTL_MS } = await import('./useBookContent');
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 30 * 60 * 1000 } },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result } = renderHook(() => useBookContent(undefined, 1342), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const query = queryClient.getQueryCache().find({ queryKey: ['book-content', undefined, 1342] });
+    expect(query).toBeDefined();
+    expect(query?.gcTime).toBe(BOOK_CONTENT_CACHE_TTL_MS);
+  });
 });
 
 

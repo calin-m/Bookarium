@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import React from 'react';
 import { Providers, useAuthHint } from './providers';
-import { syncAllStoresWithCloud } from '@/lib/sync-utils';
+import { syncAllStoresWithCloud, PASSIVE_SYNC_COOLDOWN_MS } from '@/lib/sync-utils';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 
 vi.mock('@/lib/sync-utils', () => ({
   syncAllStoresWithCloud: vi.fn(),
+  PASSIVE_SYNC_COOLDOWN_MS: 15_000,
 }));
 
 describe('Providers component', () => {
@@ -51,7 +52,9 @@ describe('Providers component', () => {
       useAuthStore.setState({ isLoading: false });
     });
 
-    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-123');
+    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-123', {
+      authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS,
+    });
   });
 
   it('should trigger syncAllStoresWithCloud on window online event when user is logged in', () => {
@@ -65,7 +68,9 @@ describe('Providers component', () => {
       </Providers>
     );
 
-    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-online-1');
+    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-online-1', {
+      authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS,
+    });
     vi.mocked(syncAllStoresWithCloud).mockClear();
 
     act(() => {
@@ -87,7 +92,9 @@ describe('Providers component', () => {
       </Providers>
     );
 
-    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-vis-1');
+    expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-vis-1', {
+      authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS,
+    });
     vi.mocked(syncAllStoresWithCloud).mockClear();
 
     // Advance time beyond cooldown (15s)
@@ -242,7 +249,9 @@ describe('Providers component', () => {
       );
 
       expect(syncAllStoresWithCloud).toHaveBeenCalledTimes(1);
-      expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1');
+      expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1', {
+        authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS,
+      });
       vi.mocked(syncAllStoresWithCloud).mockClear();
 
       // Advance only 5s (< 15s cooldown): visibilitychange should stay suppressed
@@ -265,7 +274,9 @@ describe('Providers component', () => {
         );
       });
       expect(syncAllStoresWithCloud).toHaveBeenCalledTimes(1);
-      expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1');
+      expect(syncAllStoresWithCloud).toHaveBeenCalledWith('user-sleep-1', {
+        authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS,
+      });
     } finally {
       vi.useRealTimers();
     }

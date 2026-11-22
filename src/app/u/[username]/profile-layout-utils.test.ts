@@ -156,4 +156,14 @@ describe('profile-layout-utils', () => {
     const thrown = await fetchPublicScholarProfileSummary('bram_stoker');
     expect(thrown).toEqual({ status: 'unavailable' });
   });
+
+  it('anchors serverProfileCache on globalThis for warm serverless reuse', async () => {
+    setServerProfileCache('persisted_scholar', { status: 'private_or_missing' });
+    const globalCache = (
+      globalThis as typeof globalThis & { __bookariumServerProfileCache?: Map<string, unknown> }
+    ).__bookariumServerProfileCache;
+    expect(globalCache?.has('persisted_scholar')).toBe(true);
+    clearServerProfileCache();
+    expect(globalCache?.size).toBe(0);
+  });
 });
