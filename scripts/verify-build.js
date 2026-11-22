@@ -1,8 +1,21 @@
+/**
+ * @module scripts/verify-build
+ * @scope 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
+ * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+ * @rationale Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
+ * @adr ADR-073, ADR-078, ADR-079, ADR-081
+ */
+
 const fs = require('fs');
 const http = require('http');
 const net = require('net');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const { execSync, execFileSync, spawn } = require('child_process');
+const {
+  extractRuntimeSpecConstants,
+  extractWorkflowSpecCatalog,
+  REQUIRED_GOVERNANCE_DOCS,
+} = require('./lib/ast-parser');
 const {
   validateNextConfigSecurityHeadersAst,
   validateNextBuildHeaderManifest,
@@ -939,7 +952,10 @@ function pass2ServerMocks() {
 // PASS 3: Vitest Full Unit Suite & Code Coverage
 // -------------------------------------------------------------
 function pass3ClientUI() {
-  logHeader('Pass 3: Vitest Unit Suite & Tiered Coverage Assertion (95/95/92/85)');
+  const { coverageThresholds } = extractRuntimeSpecConstants(rootDir);
+  logHeader(
+    `Pass 3: Vitest Unit Suite & Tiered Coverage Assertion (${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches})`
+  );
   const res = runCommand(
     `${npmCmd} run test:coverage -- --reporter=verbose --reporter=json --outputFile=coverage/test-results.json`,
     true
@@ -955,19 +971,19 @@ function pass3ClientUI() {
     const { lines, statements, functions, branches } = cov.total;
     console.log(`\n📊 Total Coverage: Lines: ${lines.pct}%, Stmts: ${statements.pct}%, Funcs: ${functions.pct}%, Branches: ${branches.pct}%`);
     if (
-      lines.pct < 95 ||
-      statements.pct < 95 ||
-      functions.pct < 92 ||
-      branches.pct < 85
+      lines.pct < coverageThresholds.lines ||
+      statements.pct < coverageThresholds.statements ||
+      functions.pct < coverageThresholds.functions ||
+      branches.pct < coverageThresholds.branches
     ) {
       logFail(
-        `Coverage threshold unmet (Target: Lines >= 95%, Statements >= 95%, Functions >= 92%, Branches >= 85%).`
+        `Coverage threshold unmet (Target: Lines >= ${coverageThresholds.lines}%, Statements >= ${coverageThresholds.statements}%, Functions >= ${coverageThresholds.functions}%, Branches >= ${coverageThresholds.branches}%).`
       );
       return false;
     }
   }
   logPass(
-    'All unit and integration tests passed with tiered V8 coverage thresholds (Lines >= 95%, Stmts >= 95%, Funcs >= 92%, Branches >= 85%).'
+    `All unit and integration tests passed with tiered V8 coverage thresholds (Lines >= ${coverageThresholds.lines}%, Stmts >= ${coverageThresholds.statements}%, Funcs >= ${coverageThresholds.functions}%, Branches >= ${coverageThresholds.branches}%).`
   );
   return true;
 }
@@ -978,10 +994,11 @@ function pass3ClientUI() {
 function pass4DocsSync() {
   logHeader('Pass 4: Living Documentation Synchronization');
   try {
-    require('./generate-quality-report.js');
-    require('./generate-architecture-matrix.js');
-    require('./generate-parser-docs.js');
-    require('./generate-contracts-docs.js');
+    execFileSync(process.execPath, [path.join(__dirname, 'generate-quality-report.js'), '--fast'], {
+      cwd: rootDir,
+      stdio: 'inherit',
+      shell: false,
+    });
     const {
       syncReleaseVersionFiles,
       generateChangelog,
@@ -990,9 +1007,12 @@ function pass4DocsSync() {
     syncReleaseVersionFiles();
     generateChangelog();
     syncReadmeLatestRelease();
+    require('./generate-parser-docs.js');
+    require('./generate-contracts-docs.js');
     const { generateRoadmapMarkdown } = require('./generate-roadmap.js');
     fs.writeFileSync(path.join(rootDir, 'ROADMAP.md'), generateRoadmapMarkdown(), 'utf-8');
-    logPass('docs/QUALITY_AUDIT_REPORT.md, docs/ARCHITECTURE.md, docs/GUTENBERG_PARSER.md, docs/SYSTEM_CONTRACTS.md, CHANGELOG.md, and ROADMAP.md synced successfully from source AST.');
+    require('./generate-architecture-matrix.js');
+    logPass('docs/QUALITY_AUDIT_REPORT.md, CHANGELOG.md, docs/GUTENBERG_PARSER.md, docs/SYSTEM_CONTRACTS.md, ROADMAP.md, and docs/ARCHITECTURE.md synced successfully from source AST.');
     return true;
   } catch (err) {
     logFail(`Documentation synchronization failed: ${err.message}`);
@@ -1007,27 +1027,7 @@ function pass5AdrValidation() {
   logHeader('Pass 5: ADR Ledger, Governance Docs, SQL<->TS Schema Parity, Dependency Graph & Test Co-Location');
 
   // 1. Mandatory Governance & Living Documentation Checklist
-  const requiredDocs = [
-    'README.md',
-    'SECURITY.md',
-    'CONTRIBUTING.md',
-    'CODE_OF_CONDUCT.md',
-    'DEVELOPMENT.md',
-    'LICENSE',
-    'AGENTS.md',
-    '.agents/AGENTS.md',
-    '.env.example',
-    'supabase/schema.sql',
-    'docs/ARCHITECTURE.md',
-    'docs/DECISIONS.md',
-    'docs/GITHUB_ACTIONS.md',
-    'docs/GUTENBERG_PARSER.md',
-    'docs/INFRASTRUCTURE.md',
-    'docs/SYSTEM_CONTRACTS.md',
-    'docs/QUALITY_AUDIT_REPORT.md',
-    'ROADMAP.md',
-    'CHANGELOG.md',
-  ];
+  const requiredDocs = [...REQUIRED_GOVERNANCE_DOCS];
 
   const docViolations = [];
   for (const relDoc of requiredDocs) {
@@ -1270,6 +1270,7 @@ function pass5AdrValidation() {
       TIER_1_CONTRACTED_MODULES,
       TIER_2_CONTRACTED_MODULES,
       TIER_3_CONTRACTED_MODULES,
+      TIER_4_CONTRACTED_MODULES,
       PROTECTED_CONTRACTED_MODULES,
       extractBehavioralContractsCatalog,
       findOrphanedGeneratorLookupKeys,
@@ -1320,6 +1321,7 @@ function pass5AdrValidation() {
     const tier1Set = new Set(TIER_1_CONTRACTED_MODULES);
     const tier2Set = new Set(TIER_2_CONTRACTED_MODULES);
     const tier3Set = new Set(TIER_3_CONTRACTED_MODULES);
+    const tier4Set = new Set(TIER_4_CONTRACTED_MODULES);
     for (const protectedFile of PROTECTED_CONTRACTED_MODULES) {
       const entry = contractsByFile.get(protectedFile);
       if (
@@ -1335,7 +1337,9 @@ function pass5AdrValidation() {
             ? 'Tier-2'
             : tier3Set.has(protectedFile)
               ? 'Tier-3'
-              : 'Tier-4';
+              : tier4Set.has(protectedFile)
+                ? 'Tier-4'
+                : 'Protected';
         docViolations.push(
           `${tierLabel} protected module "${protectedFile}" is missing required @scope + @invariant JSDoc contract annotations.`
         );
@@ -1346,6 +1350,52 @@ function pass5AdrValidation() {
     const contractsDocContent = fs.existsSync(contractsDocPath)
       ? fs.readFileSync(contractsDocPath, 'utf-8')
       : null;
+    const activeSectionStart =
+      contractsDocContent !== null
+        ? contractsDocContent.indexOf('## 🛡️ Active Behavioral Contracts')
+        : -1;
+    const pendingSectionStart =
+      contractsDocContent !== null
+        ? contractsDocContent.indexOf('## 📋 AST-Prioritized Pending Contract Queue')
+        : -1;
+    const activeContractsSection =
+      contractsDocContent !== null &&
+      activeSectionStart !== -1 &&
+      pendingSectionStart > activeSectionStart
+        ? contractsDocContent.slice(activeSectionStart, pendingSectionStart)
+        : '';
+
+    if (contractsDocContent !== null) {
+      if (!activeContractsSection) {
+        docViolations.push(
+          'docs/SYSTEM_CONTRACTS.md is missing expected Active Behavioral Contracts / Pending Contract Queue section boundaries (run "npm run docs:contracts").'
+        );
+      } else {
+        for (const hMatch of activeContractsSection.matchAll(/^#### \[`([^`]+)`\]\(/gm)) {
+          const activeHeadingFile = hMatch[1];
+          if (!contractsByFile.get(activeHeadingFile)?.hasContract) {
+            docViolations.push(
+              `Stale or uncontracted active heading "${activeHeadingFile}" in docs/SYSTEM_CONTRACTS.md (run "npm run docs:contracts" or "npm run docs:sync").`
+            );
+          }
+        }
+      }
+
+      const expectedSummaryTokens = [
+        `**Total Scanned Executable Modules**: \`${contractsCatalog.summary.totalModules}\``,
+        `**Annotated Contract Modules**: \`${contractsCatalog.summary.contractedModules}\``,
+        `= \`${contractsCatalog.protectedModules.length}\` Protected`,
+        `**Extracted Module Invariants**: \`${contractsCatalog.summary.totalModuleInvariants}\``,
+      ];
+      for (const token of expectedSummaryTokens) {
+        if (!contractsDocContent.includes(token)) {
+          docViolations.push(
+            `Stale contract summary metric in docs/SYSTEM_CONTRACTS.md: missing "${token}" (run "npm run docs:contracts" or "npm run docs:sync").`
+          );
+        }
+      }
+    }
+
     for (const mod of contractsCatalog.modules) {
       if (!mod.hasContract) continue;
       contractedFilesSet.add(mod.file);
@@ -1360,10 +1410,13 @@ function pass5AdrValidation() {
           );
         }
       }
-      if (contractsDocContent !== null && !contractsDocContent.includes(mod.file)) {
-        docViolations.push(
-          `Contracted module "${mod.file}" is missing from docs/SYSTEM_CONTRACTS.md (run "npm run docs:contracts" or "npm run docs:sync").`
-        );
+      if (contractsDocContent !== null && activeContractsSection) {
+        const expectedHeading = `#### [\`${mod.file}\`](`;
+        if (!activeContractsSection.includes(expectedHeading)) {
+          docViolations.push(
+            `Contracted module "${mod.file}" is missing its active section heading in docs/SYSTEM_CONTRACTS.md (run "npm run docs:contracts" or "npm run docs:sync").`
+          );
+        }
       }
     }
     for (const orphanKey of orphanLookupKeys) {
@@ -1545,6 +1598,44 @@ function pass5AdrValidation() {
         docViolations.push(
           `Coverage threshold drift in ${coverageTpl}: must reference the canonical 95% V8 coverage floor (not legacy 80%).`
         );
+      }
+    }
+  }
+
+  // Verify live V8 coverage threshold parity across engineering guides
+  const { coverageThresholds } = extractRuntimeSpecConstants(rootDir);
+  const expectedCovTuple = `${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches}`;
+  const covDocChecks = [
+    { rel: 'CONTRIBUTING.md', requireTuple: true, requireMetrics: true },
+    { rel: 'docs/PIPELINE_GUIDE.md', requireTuple: true, requireMetrics: true },
+    { rel: 'docs/GITHUB_ACTIONS.md', requireTuple: true, requireMetrics: false },
+    { rel: 'DEVELOPMENT.md', requireTuple: false, requireMetrics: true },
+  ];
+  for (const covCheck of covDocChecks) {
+    const absCovDoc = path.join(rootDir, covCheck.rel);
+    if (!fs.existsSync(absCovDoc)) continue;
+    const covText = fs.readFileSync(absCovDoc, 'utf-8');
+    if (covCheck.requireTuple && !covText.includes(expectedCovTuple)) {
+      docViolations.push(
+        `Coverage tuple drift in ${covCheck.rel}: expected "${expectedCovTuple}" matching vitest.config.mts.`
+      );
+    }
+    if (covCheck.requireMetrics) {
+      const expectedMetricChecks = [
+        ['Lines', coverageThresholds.lines],
+        ['Statements', coverageThresholds.statements],
+        ['Functions', coverageThresholds.functions],
+        ['Branches', coverageThresholds.branches],
+      ];
+      for (const [label, pct] of expectedMetricChecks) {
+        const metricOk =
+          covText.includes(`${label} >= ${pct}%`) ||
+          covText.includes(`${label} $\\ge ${pct}\\%$`);
+        if (!metricOk) {
+          docViolations.push(
+            `Coverage metric drift in ${covCheck.rel}: missing ${label} >= ${pct}% matching vitest.config.mts.`
+          );
+        }
       }
     }
   }
@@ -1791,6 +1882,35 @@ function pass5AdrValidation() {
             docViolations.push(
               `Cron schedule "cron: ${cronExpr}" for "${relWfPath}" is out of sync in docs/GITHUB_ACTIONS.md.`
             );
+          }
+        }
+      }
+
+      // Marker integrity and SHA-pin parity inside docs/GITHUB_ACTIONS.md
+      if (actionsDocContent !== null) {
+        for (const [beginTag, endTag] of [
+          ['<!-- BEGIN:workflows-matrix -->', '<!-- END:workflows-matrix -->'],
+          ['<!-- BEGIN:actions-pins -->', '<!-- END:actions-pins -->'],
+        ]) {
+          const bIdx = actionsDocContent.indexOf(beginTag);
+          const eIdx = actionsDocContent.indexOf(endTag);
+          if (bIdx === -1 || eIdx === -1 || eIdx <= bIdx || !actionsDocContent.slice(bIdx + beginTag.length, eIdx).trim()) {
+            docViolations.push(
+              `docs/GITHUB_ACTIONS.md is missing non-empty "${beginTag}" / "${endTag}" synced block (run "npm run docs:sync").`
+            );
+          }
+        }
+        const workflowSpec = extractWorkflowSpecCatalog(rootDir);
+        const seenShas = new Set();
+        for (const wfSpec of workflowSpec.workflows) {
+          for (const act of wfSpec.actions) {
+            if (seenShas.has(act.sha)) continue;
+            seenShas.add(act.sha);
+            if (!actionsDocContent.includes(act.sha)) {
+              docViolations.push(
+                `Action SHA pin "${act.repo}@${act.sha}" from ${wfSpec.file} is out of sync in docs/GITHUB_ACTIONS.md (run "npm run docs:sync").`
+              );
+            }
           }
         }
       }
@@ -2340,11 +2460,18 @@ function pass6QualityAudit() {
   }
   console.log(`  ${colors.green}✔${colors.reset} Knip: 0 unused files, 0 unused dependencies, 0 dead exports.`);
 
-  // Update quality report
+  // Update quality report with Pass-6-verified lint & Knip counts without re-running linters
   try {
     const reportScript = path.join(__dirname, 'generate-quality-report.js');
-    execSync(`node "${reportScript}"`, { cwd: rootDir, stdio: 'pipe' });
-  } catch (_e) {}
+    execFileSync(process.execPath, [reportScript, '--pass6-verified'], {
+      cwd: rootDir,
+      stdio: 'pipe',
+      shell: false,
+    });
+  } catch (err) {
+    logFail(`Failed updating quality audit report after Pass 6 verification: ${err.message}`);
+    return false;
+  }
 
   logPass('ESLint and Knip quality checks completed cleanly with 0 defects.');
   return true;

@@ -1,3 +1,11 @@
+/**
+ * @module src/lib/server-rsc-nav
+ * @scope Server-only App Router navigation header inspector isolating `next/headers` checks from client component bundles.
+ * @invariant Read Next.js internal flight/prefetch headers (`rsc`, `next-router-state-tree`, `next-router-prefetch`, `accept`) defensively inside `try/catch`, returning `false` outside active request scopes and never importing client-side modules.
+ * @rationale Keeping `next/headers` inside a dedicated server leaf lets layout utilities detect RSC transitions cleanly without failing `Pass 0.5` transitive client-to-server AST isolation checks.
+ * @adr ADR-035, ADR-042
+ */
+
 import { headers } from 'next/headers';
 
 /**

@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/app/providers
+ * @scope Client runtime provider orchestrating TanStack Query defaults, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
+ * @invariant Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud`, and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
+ * @rationale Consolidating session lifecycle listeners, token-refresh events (`bookarium:auth-token-refreshed`), and reconnect outbox synchronization in a single client boundary keeps Zustand stores decoupled from DOM/window listeners.
+ * @adr ADR-005, ADR-069, ADR-072, ADR-080
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

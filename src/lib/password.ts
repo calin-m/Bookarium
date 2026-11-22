@@ -1,6 +1,12 @@
 /**
  * Pure domain utilities for cryptographic password generation and strength evaluation.
  * Decoupled from React runtimes for zero-dependency portability and testing.
+ *
+ * @module src/lib/password
+ * @scope Client-safe password generation (`generateStrongPassword`) and heuristic strength scoring (`evaluatePasswordStrength`) shared across registration and account security forms.
+ * @invariant Use Web Crypto `window.crypto.getRandomValues` whenever available in browser contexts and score empty or sub-6-character passwords deterministically at `score: 0` without blocking form submission logic.
+ * @rationale Centralizing CSPRNG password generation and complexity feedback keeps AuthModal and AccountSecuritySection aligned without adding third-party zxcvbn bundle weight.
+ * @adr ADR-005
  */
 
 export interface PasswordStrength {

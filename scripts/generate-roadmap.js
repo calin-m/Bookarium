@@ -55,7 +55,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Vercel Edge Response Caching & Rate Limiting',
-        description: 'Edge headers (`stale-while-revalidate`), datacenter proximity pinning (`iad1` in `vercel.json`), and sliding-window rate limiters protecting upstream Project Gutenberg APIs.',
+        description: 'Edge headers (`stale-while-revalidate`), datacenter proximity pinning (`iad1` in `vercel.json`), and sliding-window rate limiters protecting upstream catalog and content origins.',
         check: () => fileExists('src/lib/rate-limiter.ts') && fileContains('src/app/api/books/route.ts', 'stale-while-revalidate'),
       },
       {
@@ -200,7 +200,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Relational FRBR Multilingual Translation Engine (`public.book_translations` & `scripts/ingest-translations.js`)',
-        description: 'Wikidata SPARQL (`P2034` / `P407`) work-clustering pipeline (`scripts/ingest-translations.js`), weekly `.github/workflows/translations-sync.yml` cron, `/api/books/translations` endpoint, and 1-click `<Globe />` language edition handoff (`ReaderLanguageDrawer.tsx`).',
+        description: 'Wikidata SPARQL (`P2034` / `P407`) work-clustering pipeline (`scripts/ingest-translations.js`), on-demand `.github/workflows/translations-sync.yml` workflow (unified Sunday execution in `catalog-sync.yml`), `/api/books/translations` endpoint, and 1-click `<Globe />` language edition handoff (`ReaderLanguageDrawer.tsx`).',
         check: () =>
           fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.book_translations') &&
           fileExists('scripts/ingest-translations.js') &&
@@ -304,8 +304,8 @@ const ROADMAP_MILESTONES = [
           fileExists('src/components/presentation/CatalogOfflineView.tsx'),
       },
       {
-        title: 'Strict Private Cloudflare R2 Content Streaming & 6-Store Snapshot-Guarded Cloud Outboxes (`r2-client.ts` & `bookshelf-cloud-sync.ts`)',
-        description: 'Self-hosted private Cloudflare R2 asset streaming (`covers/<id>.jpg`, `books/<id>.txt.gz`, zero runtime Project Gutenberg traffic under `ADR-084`), individual-only download compliance, per-user sync mutex coalescing, and snapshot-guarded bi-directional outbox queues across all 6 cloud-synced stores (`bookshelf-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`).',
+        title: 'Strict Private Cloudflare R2 Content Streaming & Snapshot-Guarded Cloud Outboxes (`r2-client.ts` & `bookshelf-cloud-sync.ts`)',
+        description: 'Self-hosted private Cloudflare R2 asset streaming (`covers/<id>.jpg`, `books/<id>.txt.gz`, zero runtime Project Gutenberg traffic under `ADR-084`), individual-only download compliance, per-user sync mutex coalescing, and snapshot-guarded bi-directional outbox queues across cloud-synced stores (`bookshelf-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `reader-cloud-sync.ts`, and `preferences-sync.ts` in `v2.8.1`).',
         check: () =>
           fileContains('src/lib/r2-client.ts', 'fetchR2BookText') &&
           fileExists('src/lib/bookshelf-cloud-sync.ts') &&
@@ -381,7 +381,7 @@ const ROADMAP_MILESTONES = [
       {
         title: '[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `40 + 10` Ingestion, Out-of-Window Auto-Pruning & Instant Preview Integration',
         targetMinVersion: '2.9.0',
-        description: 'Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT \'[]\'::jsonb` column and single-column `idx_books_download_count` popularity index; build `scripts/sync-featured-quotes.js`, unified Sunday `.github/workflows/catalog-sync.yml` (`--diff-file=quote-diff.json`), and manual `.github/workflows/quotes-sync.yml` (`workflow_dispatch` with per-mirror worker checkboxes defaulting to `gutenberg.pglaf.org`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by single-column `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`), blending `40 Popular + 10 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), Priority Hero Book ID pinning, Primary-Key-Scoped quote discovery (`fetchQuotedBookIds` querying `books_pkey` `.in(\'id\', chunk).neq(\'quotes\', \'[]\')`), and burst-safe post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), checking `public.books.content` first before polite PGLAF mirror fetching (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.',
+        description: 'Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT \'[]\'::jsonb` column and single-column `idx_books_download_count` popularity index; build `scripts/sync-featured-quotes.js`, unified Sunday `.github/workflows/catalog-sync.yml` (`--diff-file=quote-diff.json`), and manual `.github/workflows/quotes-sync.yml` (`workflow_dispatch` with `--source=auto|r2|mirrors`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by single-column `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`), blending `40 Popular + 10 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), Priority Hero Book ID pinning, partial-index quote discovery (`idx_books_with_quotes_popular` / `books_pkey`), and burst-safe post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), reading `public.books.content` and private R2 `books/<id>.txt.gz` before 3-mirror failover (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.',
         check: () =>
           fileContains('supabase/schema.sql', 'quotes JSONB') &&
           fileContains('scripts/sync-featured-quotes.js', 'blendTwoTierCandidates') &&
@@ -391,7 +391,7 @@ const ROADMAP_MILESTONES = [
       {
         title: '[Target: v2.9.x] Anonymized Scholar-Highlight Promotion into `public.books.quotes`',
         targetMinVersion: '2.9.0',
-        description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.annotations` for strict RLS privacy and GDPR erasure)—keeping live browser/serverless reads strictly inside Cloudflare R2 and IndexedDB without runtime Project Gutenberg pulls.',
+        description: 'Extend `scripts/sync-featured-quotes.js` (`promoteScholarHighlights`) to promote frequently highlighted public passages from `public.user_annotations` into `public.books.quotes` across the active Two-Tier Quote Pool (stripping `user_id` and personal `note` metadata while keeping personal highlights isolated in `public.user_annotations` for strict RLS privacy and GDPR erasure)—keeping live browser/serverless reads strictly inside Cloudflare R2 and IndexedDB without runtime Project Gutenberg pulls.',
         check: () =>
           fileContains('.github/workflows/quotes-sync.yml', 'workflow_dispatch:') &&
           fileContains('scripts/sync-featured-quotes.js', 'promoteScholarHighlights'),

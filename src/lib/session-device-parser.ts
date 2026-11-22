@@ -1,3 +1,11 @@
+/**
+ * @module src/lib/session-device-parser
+ * @scope User-Agent browser/OS/device classifier and session payload normalizer supporting `get_active_sessions` device security cards.
+ * @invariant Evaluate ordered browser signatures (`Edge` / `Opera` / `Chrome` / `Safari` precedence) safely without throwing on malformed or null `User-Agent` strings, falling back cleanly to `'Browser session'` / `'unknown'`.
+ * @rationale Parsing UA strings purely from `userAgent` tokens lets `/account` display recognizable active-device rows without storing invasive fingerprinting metadata.
+ * @adr ADR-072
+ */
+
 export interface ActiveUserSession {
   id: string;
   userAgent: string | null;

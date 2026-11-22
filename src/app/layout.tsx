@@ -1,3 +1,11 @@
+/**
+ * @module src/app/layout
+ * @scope Next.js App Router root HTML layout hydrating SSR jurisdiction, theme class (`light`/`dark`/`sepia`), auth hint state, and JSON-LD structured metadata without client flash.
+ * @invariant Read SSR cookies/headers defensively inside `try/catch` (`GEO_COOKIE_NAME` / edge headers -> `normalizeCountryCode`, `STORAGE_KEYS.THEME`, `STORAGE_KEYS.AUTH_HINT` + `sb-*-auth-token` cookie check) without requiring external secrets during build or offline rendering, and forward hydrated props cleanly into `Providers`.
+ * @rationale Computing country, theme class, and optimistic auth hints on the server eliminates first-paint theme flicker and incorrect guest/jurisdiction states during SSR hydration.
+ * @adr ADR-005, ADR-036, ADR-042
+ */
+
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 import { cookies, headers } from 'next/headers';

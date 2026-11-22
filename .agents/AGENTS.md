@@ -150,5 +150,5 @@ Never manually craft static component matrices, route catalogs, or architectural
 5. **Layer 5 — Supabase PostgreSQL Schema, Triggers, Indexes & Seeds (`supabase/`)**:
    - `supabase/schema.sql` defines **14 RLS-enabled tables** (`public.profiles`, `bookshelves`, `bookshelf_items`, `user_favorites`, `reading_progress`, `user_annotations`, `user_book_curation`, `user_reading_habits`, `user_accolades`, `books`, `book_translations`, `reader_circles`, `symposium_sessions`, and `supabase_migrations.schema_migrations`), **9 stored functions/triggers** (5 row triggers), and **21 explicit GIN/B-Tree/unique indexes**, paired with `supabase/seed_books.sql` and `supabase/seed_translations.sql`.
 6. **Layer 6 — Living AST Documentation & 7-Gateway Quality Engine (`scripts/` & `docs/`)**:
-   - `npm run docs:sync` executes `generate-quality-report.js`, `generate-architecture-matrix.js`, `generate-parser-docs.js`, `generate-contracts-docs.js`, `generate-changelog.js`, and `generate-roadmap.js`.
+   - `npm run docs:sync` executes `generate-quality-report.js`, `generate-changelog.js`, `generate-parser-docs.js`, `generate-contracts-docs.js`, `generate-roadmap.js`, and `generate-architecture-matrix.js`.
    - `npm run verify` (`scripts/verify-build.js`) executes Passes `0.5`, `0.75`, and `1` through `7`.

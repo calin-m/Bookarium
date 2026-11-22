@@ -2,6 +2,12 @@
  * Bookarium Service Worker
  * Provides offline application shell resilience, static asset caching,
  * and seamless fallback for saved IndexedDB book reading in offline mode.
+ *
+ * @module public/sw
+ * @scope Offline App Shell Service Worker managing `CACHE_NAME` precaching, bounded `CACHE_URLS` warmups, and network/cache routing strategies.
+ * @invariant Enforce strict same-origin (`url.origin === self.location.origin`) and non-`/auth/` non-`/api/` path sanitization (`sanitizePrecacheUrl`, bounded by `MAX_MESSAGE_PRECACHE_URLS`), never intercept cross-origin or `/auth/*` requests, never return HTML documents for `_rsc`/`RSC: 1` requests, and return `503` JSON for offline `/api/*` fetches.
+ * @rationale Bounding message-driven precaching and bypassing `/auth/*`, `/api/*`, and cross-origin origins prevents CSWSH/cache poisoning and stale OAuth loops while keeping saved IndexedDB reader routes functional offline.
+ * @adr ADR-020, ADR-073, ADR-080
  */
 
 const CACHE_NAME = 'bookarium-app-shell-v7';

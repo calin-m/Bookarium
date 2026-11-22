@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/components/auth/TurnstileWidget
+ * @scope Shared Cloudflare Turnstile Managed CAPTCHA widget wrapper for authentication, resend verification, and account password-reset forms.
+ * @invariant Render zero external scripts, containers, or UI overhead when `getTurnstileSiteKey()` is blank or `active` is false, isolate per-mount widget lifecycles via `removeTurnstileInstance`, and clear tokens deterministically on reset/expiration/error callbacks.
+ * @rationale Keeping CAPTCHA rendering strictly optional and keyless-graceful preserves 100% zero-config local/offline usability while hardening public auth forms in production deployments.
+ * @adr ADR-034, ADR-080
+ */
+
 import React, { useEffect, useImperativeHandle, useRef } from 'react';
 import Script from 'next/script';
 

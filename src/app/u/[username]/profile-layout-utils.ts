@@ -1,3 +1,11 @@
+/**
+ * @module src/app/u/[username]/profile-layout-utils
+ * @scope Server-side public handle resolution and bounded LRU metadata cache (`serverProfileCache`) powering `/u/[username]` layout metadata and privacy gates.
+ * @invariant Bound `serverProfileCache` via `MAX_PROFILE_CACHE_ENTRIES` and `PROFILE_CACHE_TTL_MS`, normalize handles via `VALID_HANDLE_REGEX`, enforce exact lowercase username equality after `.ilike()` lookups, never cache `'unavailable'` errors, and collapse private or missing accounts uniformly to `private_or_missing`.
+ * @rationale Bounding handle LRU entries and neutralizing SQL `_` wildcard matching protects server memory and enforces ADR-033 anti-enumeration across public profile routes.
+ * @adr ADR-033, ADR-053
+ */
+
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 

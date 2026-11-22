@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 19 Nov 2026 21:32:36 GMT  
+**Last Generated**: Sun, 22 Nov 2026 12:33:04 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 264 passed  
-**Total Verified Tests**: 2743 passed  
+**Total Verified Tests**: 2750 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2743 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2750 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, Tier-1..Tier-4 `@scope`/`@invariant` contracts, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 85 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.24%** (16248/16709) — *Target: $\ge$ 95%*
-- **Statements**: **95.99%** (17498/18228) — *Target: $\ge$ 95%*
-- **Functions**: **94.97%** (3495/3680) — *Target: $\ge$ 92%*
-- **Branches**: **88.4%** (16251/18382) — *Target: $\ge$ 85%*
+- **Lines**: **97.22%** (16245/16709) — *Target: $\ge$ 95%*
+- **Statements**: **95.95%** (17491/18228) — *Target: $\ge$ 95%*
+- **Functions**: **95%** (3496/3680) — *Target: $\ge$ 92%*
+- **Branches**: **88.46%** (16261/18382) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2743 Tests)
+## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2750 Tests)
 
 ### 🚀 App Routes & Pages (30 Suites · 307 Tests)
 
@@ -2036,7 +2036,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (58 Suites · 731 Tests)
+### 📚 Gutenberg Parsers & Metadata (58 Suites · 738 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2933,7 +2933,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (24 tests)</summary>
 
 - ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
 - ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
@@ -2943,6 +2943,7 @@
 - ✔ `verifies live src/ repository graph has zero cycles, zero parse errors, zero orphans, and zero layer violations`
 - ✔ `separates runtime edges from inline and declaration type-only imports in the dependency graph`
 - ✔ `extracts cross-boundary Supabase tables/RPCs, API callers, signals, storage keys, and scripts CommonJS graph`
+- ✔ `orders cross-boundary catalogs with OS-independent UTF-16 codepoint ordering`
 - ✔ `verifies live repository cross-boundary signals, API/RPC callers, and scripts graph cleanly`
 - ✔ `extracts module-level and symbol-level @scope/@invariant/@rationale/@adr tags across TS and CommonJS without misattribution`
 - ✔ `verifies all Tier-1, Tier-2, Tier-3, and Tier-4 protected modules in the live repository maintain valid @scope/@invariant contracts`
@@ -2952,6 +2953,12 @@
 - ✔ `validates live Mermaid diagrams in docs/ARCHITECTURE.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations`
 - ✔ `rejects parent-child subgraph cycles, compound cycles, unquoted edge parens, HTML-tag swallowing, and orphan nodes in Mermaid diagrams`
 - ✔ `validates chained Mermaid flowchart arrows, inline quoted arrow labels, and standalone nodes containing arrows cleanly`
+- ✔ `extracts .env.example consumers across default-param env, local loadEnv bindings, and scripts/lib modules without false positives`
+- ✔ `discovers R2 and Supabase service-role code consumers on the live repository via extractEnvironmentDependencyCatalog`
+- ✔ `extracts workflow YAML branch triggers across inline brackets, indented block lists, and missing blocks`
+- ✔ `extracts SQL userScopedTables from delete_current_user() and runtime specs from synthetic fixtures without falling back to defaults`
+- ✔ `extracts GitHub Actions workflows and Dependabot config from synthetic YAML fixtures`
+- ✔ `extracts live repository runtime specs, governance constants, and workflow catalog consistently`
 
 </details>
 

@@ -3,6 +3,12 @@
  *
  * Verifies `.agents/hooks.json` schema integrity and ensures all configured
  * lifecycle commands map to valid `package.json` scripts prior to commit.
+ *
+ * @module scripts/approval-gate
+ * @scope Governance pre-commit gate validating `.agents/hooks.json` schema completeness (`preCommit`, `prePush`, `postBuild`) and npm script bindings against `package.json`.
+ * @invariant Require non-empty `preCommit`, `prePush`, and `postBuild` arrays inside `.agents/hooks.json` and fail closed (`exit 1`) if any `npm run <script>` entry is absent from `package.json`.
+ * @rationale Prevents silent hook bypasses when npm scripts are renamed or `.agents/hooks.json` becomes malformed.
+ * @adr ADR-078, ADR-081
  */
 
 const fs = require('fs');

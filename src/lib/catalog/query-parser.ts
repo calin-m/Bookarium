@@ -1,3 +1,11 @@
+/**
+ * @module src/lib/catalog/query-parser
+ * @scope Authoritative input parser and sanitizer (`parseCatalogQuery`) normalizing `/api/books` search parameters and resolving active client copyright jurisdiction.
+ * @invariant Enforce strict upper bounds (`MAX_CATALOG_PAGE`, `MAX_SEARCH_LENGTH`, `MAX_TOPIC_LENGTH`, `MAX_IDS_BATCH`, `MAX_LANGUAGES`, `MAX_MIME_TYPE_LENGTH`, `MIN_ERA_YEAR`..`MAX_ERA_YEAR`, and `DEFAULT_QUOTE_POOL_LIMIT` when `pool === 'quotes'`), validate regex patterns for ISO languages/IDs/MIME types, and delegate jurisdiction resolution exclusively to `resolveClientCountry`.
+ * @rationale Bounding page offsets, ID batch counts, string lengths, and quote pool limits upfront shields the 78k-row PostgreSQL database and Vercel Edge cache keys from unconstrained offset scans and cache-busting payloads.
+ * @adr ADR-022, ADR-036, ADR-037, ADR-080
+ */
+
 import { NextRequest } from 'next/server';
 import type { CatalogQueryOptions } from '@/types/catalog.types';
 import { resolveClientCountry } from '@/lib/country-resolver';

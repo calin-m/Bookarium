@@ -1,3 +1,11 @@
+/**
+ * @module next.config
+ * @scope Next.js application security headers, strict Content-Security-Policy, zero-remote image allowlist, and collection view rewrites.
+ * @invariant Enforce `X-Frame-Options: DENY`, `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `base-uri 'self'`, `img-src 'self' data: blob:`, strip `'unsafe-eval'` outside `isDev`, and emit HSTS (`max-age=63072000`) in production builds while locking `images.remotePatterns` to `[]`.
+ * @rationale Enforcing strict security headers and CSP at the Next.js platform boundary blocks XSS, clickjacking, MIME sniffing, and external cover hotlinking across every HTML and static response.
+ * @adr ADR-022, ADR-073, ADR-080
+ */
+
 import type { NextConfig } from 'next';
 import fs from 'fs';
 import path from 'path';

@@ -1,3 +1,11 @@
+/**
+ * @module src/lib/api-utils
+ * @scope Shared HTTP security utilities enforcing API query allowlists, Fetch Metadata isolation (`guardContentAssetRequest`), `nosniff`/`CORP` response headers, HTTPS proxy detection, and rightmost-hop client IP extraction.
+ * @invariant Reject unexpected query keys (`hasUnexpectedQueryParams`, restricting dev diagnostic params to `NODE_ENV !== 'production'`), block browser deeplinks and cross-site subresource hotlinks on `/api/books/content*` (`isBlockedContentAssetRequest`, returning `403 no-store` while keeping `type=card` and headerless crawlers intact), and emit `Cache-Control: no-store, max-age=0` + `Cross-Origin-Resource-Policy` (`same-origin` default) on all error and rate-limit responses.
+ * @rationale Centralizing Fetch Metadata, proxy header precedence (`x-vercel-forwarded-for`, rightmost `x-forwarded-for`), and `no-store` error headers prevents security-header drift or cache poisoning across API route handlers.
+ * @adr ADR-016, ADR-022, ADR-080, ADR-082
+ */
+
 import { NextResponse } from 'next/server';
 
 export interface RateLimitInfo {

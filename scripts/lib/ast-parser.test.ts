@@ -82,12 +82,116 @@ interface RouteCatalogEntry {
 interface SqlSchemaEntities {
   hasMigrationLedger: boolean;
   tableNames: string[];
+  userScopedTables: string[];
   indexes: Array<{ name: string; type: string; table: string; definition: string }>;
   triggers: Array<{ name: string; table: string; functionName: string }>;
   functions: Array<{ rawName: string; returnType: string }>;
   hasRlsAutoEnable: boolean;
   policyCount: number;
   checkConstraintCount: number;
+}
+
+interface RuntimeSpecConstants {
+  engines: { node: string; npm: string; nodeMajor: string };
+  vercel: { region: string; apiMaxDurationSec: number };
+  coverageThresholds: { lines: number; statements: number; functions: number; branches: number };
+  performanceTier: {
+    lowMaxCores: number;
+    lowMaxMemoryGb: number;
+    mediumMaxCores: number;
+    mediumMaxMemoryGb: number;
+  };
+  routeCache: {
+    booksQuotePool: { raw: string; maxAge: number | null; sMaxAge: number | null; swr: number | null };
+    booksLookup: { raw: string; maxAge: number | null; sMaxAge: number | null; swr: number | null };
+    booksSearch: { raw: string; maxAge: number | null; sMaxAge: number | null; swr: number | null };
+    contentText: { raw: string; maxAge: number | null; sMaxAge: number | null; swr: number | null };
+    contentCover: { raw: string; maxAge: number | null; sMaxAge: number | null; swr: number | null };
+    translations: {
+      raw: string;
+      maxAge: number | null;
+      sMaxAge: number | null;
+      swr: number | null;
+      vary: string;
+    };
+  };
+  featuredHeroBookCount: number;
+  rateLimits: { booksApi: number; bookContent: number; bookCard: number; bookCover: number };
+  queryLimits: {
+    defaultQuotePoolLimit: number;
+    maxCatalogPage: number;
+    maxCatalogOffset: number;
+    maxSearchLength: number;
+    maxTopicLength: number;
+    maxIdsBatch: number;
+    maxLanguages: number;
+    maxMimeTypeLength: number;
+    minEraYear: number;
+    maxEraYear: number;
+    maxTranslationBookId: number;
+    catalogCacheTtlMs: number;
+    maxCatalogCacheEntries: number;
+    quotePoolCacheTtlMs: number;
+    maxBackfillIterations: number;
+  };
+  caches: {
+    metadataCacheTtlMs: number;
+    maxMetadataCacheEntries: number;
+    maxCachedBooks: number;
+    maxCacheableBookChars: number;
+    maxCachedCovers: number;
+    coverCacheTtlDays: number;
+    offlineDbName: string;
+    offlineDbVersion: number;
+    maxPaginationCacheEntries: number;
+    maxServerMetadataEntries: number;
+    maxProfileCacheEntries: number;
+    profileCacheTtlMin: number;
+    maxExtractedPassages: number;
+    extractedPassagesTtlDays: number;
+  };
+  stores: {
+    maxPinnedAccolades: number;
+    preferencesKeyCount: number;
+  };
+  r2: {
+    maxBookBytes: number;
+    maxBookMb: number;
+    maxCoverBytes: number;
+    maxCoverMb: number;
+    defaultTimeoutMs: number;
+    defaultPutConcurrency: number;
+  };
+  parser: {
+    charsPerPageBase: number;
+    passageScanBytes: number;
+    estimatedWordsPerMinute: number;
+  };
+  hooks: {
+    quotePoolSettleTimeoutMs: number;
+    readingIdleTimeoutMs: number;
+    dockIdleTimeoutMs: number;
+    mobileFocusBandRatio: number;
+    tooltipDelayMs: number;
+  };
+  cli: {
+    catalogMinActiveForPrune: number;
+    catalogMaxWithdrawnPrune: number;
+    catalogMinWriteChunk: number;
+    catalogMaxWriteChunk: number;
+    quotePopularPoolSize: number;
+    quoteRecentPoolSize: number;
+    quoteMaxPrunePerRun: number;
+    quoteMirrorKeys: string[];
+    r2MissingRecheckDays: number;
+    r2MinActiveForPrune: number;
+    r2MaxPrunePerRun: number;
+    r2RsyncPrimaryHost: string;
+    r2RsyncSecondaryHost: string;
+    scanDefaultConcurrency: number;
+    scanDefaultTerms: string[];
+    wikidataSparqlTimeoutMs: number;
+  };
 }
 
 interface ContractBlock {
@@ -139,6 +243,48 @@ interface BehavioralContractsCatalog {
   };
 }
 
+interface EnvDependencyEntry {
+  name: string;
+  scope: string;
+  fallback: string;
+  purpose: string;
+  consumers: string[];
+}
+
+interface WorkflowSpecEntry {
+  file: string;
+  filename: string;
+  name: string;
+  cron: string | null;
+  hasWorkflowDispatch: boolean;
+  pushBranches: string[];
+  pushTags: string[];
+  pullRequestBranches: string[];
+  dispatchInputs: Array<{ name: string; defaultValue: string | null }>;
+  topPermissions: string[];
+  jobPermissions: string[];
+  concurrencyGroup: string | null;
+  concurrencyCancelInProgress: string | null;
+  timeoutMinutes: number | null;
+  nodeVersion: string | null;
+  usesNpmCache: boolean;
+  usesNpmCi: boolean;
+  usesFetchDepthZero: boolean;
+  secrets: string[];
+  actions: Array<{ repo: string; sha: string; versionTag: string | null }>;
+}
+
+interface WorkflowSpecCatalog {
+  workflows: WorkflowSpecEntry[];
+  dependabotUpdates: Array<{
+    ecosystem: string;
+    interval: string | null;
+    targetBranch: string | null;
+    openPullRequestsLimit: number | null;
+    prefix: string | null;
+  }>;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const astParser = require('./ast-parser.js') as {
   analyzeDependencyGraph: (srcDir: string, rootDir: string) => Map<string, AstModuleNode>;
@@ -156,6 +302,8 @@ const astParser = require('./ast-parser.js') as {
   TIER_3_CONTRACTED_MODULES: string[];
   TIER_4_CONTRACTED_MODULES: string[];
   PROTECTED_CONTRACTED_MODULES: string[];
+  REQUIRED_GOVERNANCE_DOCS: string[];
+  GENERATOR_LOOKUP_MAP_COUNT: number;
   parseJsDocContractTags: (commentValue: string) => {
     hasAnyContractTag: boolean;
     hasModuleHint: boolean;
@@ -177,7 +325,11 @@ const astParser = require('./ast-parser.js') as {
   extractStoreCatalog: (srcDir: string) => StoreCatalogEntry[];
   extractApiAndHookCatalog: (srcDir: string) => { routes: RouteCatalogEntry[] };
   extractSqlSchemaEntities: (schemaSql: string) => SqlSchemaEntities;
+  extractWorkflowTriggerBranches: (wfText: string) => string[];
+  extractWorkflowSpecCatalog: (rootDirPath: string) => WorkflowSpecCatalog;
+  extractRuntimeSpecConstants: (rootDirPath: string) => RuntimeSpecConstants;
   extractTestsFromSourceAst: (content: string) => string[];
+  extractEnvironmentDependencyCatalog: (rootDir: string, srcDir: string) => EnvDependencyEntry[];
   getDeterministicTextOrBinaryBytes: (absPath: string, relPath: string) => number;
   validateMermaidDiagramsInMarkdown: (markdownText: string, relPath?: string) => string[];
 };
@@ -494,6 +646,24 @@ describe('ast-parser architectural & SQL verification engine', () => {
     ]);
   });
 
+  it('orders cross-boundary catalogs with OS-independent UTF-16 codepoint ordering', () => {
+    const { rootDir, srcDir } = createTempProject({
+      'src/lib/multi.ts': `
+        export function run(supabase: any) {
+          localStorage.setItem('bookarium-a', '1');
+          localStorage.setItem('bookarium-Z', '2');
+          window.dispatchEvent(new CustomEvent('bookarium:a'));
+          window.dispatchEvent(new CustomEvent('bookarium:Z'));
+          return [supabase.from('a_table'), supabase.from('a1_table')];
+        }
+      `,
+    });
+    const catalog = astParser.extractCrossBoundaryCouplingCatalog(srcDir, rootDir);
+    expect(catalog.dbTouchpoints.map((d) => d.table)).toEqual(['public.a1_table', 'public.a_table']);
+    expect(catalog.storageKeyBindings.map((s) => s.key)).toEqual(['bookarium-Z', 'bookarium-a']);
+    expect(catalog.signalChannels.map((c) => c.name)).toEqual(['bookarium:Z', 'bookarium:a']);
+  });
+
   it('verifies live repository cross-boundary signals, API/RPC callers, and scripts graph cleanly', () => {
     const repoRoot = path.resolve(__dirname, '..', '..');
     const repoSrc = path.join(repoRoot, 'src');
@@ -644,6 +814,41 @@ describe('ast-parser architectural & SQL verification engine', () => {
         { file: 'src/lib/stub-invalid.ts', message: 'Empty or placeholder @invariant tag' },
       ])
     );
+
+    const rootEdgeFixture = createTempProject({
+      'next.config.ts': `
+        /**
+         * @module next.config
+         * @scope Security headers.
+         * @invariant Enforce CSP object-src 'none'.
+         * @rationale Hardening.
+         * @adr ADR-073
+         */
+        export default {};
+      `,
+      'public/sw.js': `
+        /**
+         * @module public/sw
+         * @scope Offline worker.
+         * @invariant Enforce same-origin cache allowlists.
+         * @rationale Security.
+         * @adr ADR-020
+         */
+        self.addEventListener('fetch', () => {});
+      `,
+      'src/lib/leaf.ts': 'export const ok = true;',
+    });
+    const rootCatalog = astParser.extractBehavioralContractsCatalog(
+      rootEdgeFixture.srcDir,
+      rootEdgeFixture.rootDir
+    );
+    expect(rootCatalog.parseErrors).toEqual([]);
+    const nextCfg = rootCatalog.modules.find((m) => m.file === 'next.config.ts');
+    const swFile = rootCatalog.modules.find((m) => m.file === 'public/sw.js');
+    expect(nextCfg?.hasContract).toBe(true);
+    expect(nextCfg?.layer).toBe('Config & Type Contracts');
+    expect(swFile?.hasContract).toBe(true);
+    expect(swFile?.layer).toBe('Web Workers');
   });
 
   it('verifies all Tier-1, Tier-2, Tier-3, and Tier-4 protected modules in the live repository maintain valid @scope/@invariant contracts', () => {
@@ -653,9 +858,15 @@ describe('ast-parser architectural & SQL verification engine', () => {
     const catalog = astParser.extractBehavioralContractsCatalog(repoSrc, repoRoot);
     expect(catalog.parseErrors).toEqual([]);
     expect(catalog.validationIssues).toEqual([]);
-    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(67);
+    expect(astParser.TIER_1_CONTRACTED_MODULES.length).toBe(19);
+    expect(astParser.TIER_2_CONTRACTED_MODULES.length).toBe(20);
+    expect(astParser.TIER_3_CONTRACTED_MODULES.length).toBe(23);
+    expect(astParser.TIER_4_CONTRACTED_MODULES.length).toBe(20);
+    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(82);
 
     const byFile = new Map(catalog.modules.map((m) => [m.file, m]));
+    expect(byFile.get('next.config.ts')?.isTier1Protected).toBe(true);
+    expect(byFile.get('public/sw.js')?.isTier1Protected).toBe(true);
     const tier1Set = new Set(astParser.TIER_1_CONTRACTED_MODULES);
     const tier2Set = new Set(astParser.TIER_2_CONTRACTED_MODULES);
     const tier3Set = new Set(astParser.TIER_3_CONTRACTED_MODULES);
@@ -905,5 +1116,348 @@ describe('ast-parser architectural & SQL verification engine', () => {
     const chainIssues = astParser.validateMermaidDiagramsInMarkdown(invalidChainedMarkdown, 'bad-chain.md');
     expect(chainIssues.some((msg: string) => msg.includes('Reserved Mermaid keyword "end"'))).toBe(true);
     expect(chainIssues.some((msg: string) => msg.includes('HTML-like tag <script>'))).toBe(true);
+  });
+
+  it('extracts .env.example consumers across default-param env, local loadEnv bindings, and scripts/lib modules without false positives', () => {
+    const { rootDir, srcDir } = createTempProject({
+      '.env.example': 'R2_ACCOUNT_ID=\nSUPABASE_SERVICE_ROLE_KEY=\n',
+      'src/lib/r2-client.ts': `
+        export function getR2Config(env: Record<string, string | undefined> = process.env) {
+          return (env.R2_ACCOUNT_ID || '').trim();
+        }
+        export function ignorePlainObjects() {
+          const env = { R2_ACCOUNT_ID: 'literal-fixture' };
+          return env.R2_ACCOUNT_ID;
+        }
+      `,
+      'scripts/lib/r2-sigv4.js': `
+        function getConfig(env = process.env) {
+          return (env.R2_ACCOUNT_ID || '').trim();
+        }
+        module.exports = { getConfig };
+      `,
+      'scripts/sync-catalog.js': `
+        function main(deps = {}) {
+          const env = deps.env || loadEnv();
+          return env.SUPABASE_SERVICE_ROLE_KEY;
+        }
+        module.exports = { main };
+      `,
+    });
+
+    const entries = astParser.extractEnvironmentDependencyCatalog(rootDir, srcDir);
+    const byName = new Map(entries.map((e) => [e.name, e.consumers]));
+
+    expect(byName.get('R2_ACCOUNT_ID')).toEqual([
+      'scripts/lib/r2-sigv4.js',
+      'src/lib/r2-client.ts',
+    ]);
+    expect(byName.get('SUPABASE_SERVICE_ROLE_KEY')).toEqual(['scripts/sync-catalog.js']);
+  });
+
+  it('discovers R2 and Supabase service-role code consumers on the live repository via extractEnvironmentDependencyCatalog', () => {
+    const repoRoot = path.resolve(__dirname, '../..');
+    const repoSrc = path.join(repoRoot, 'src');
+    const entries = astParser.extractEnvironmentDependencyCatalog(repoRoot, repoSrc);
+    const byName = new Map(entries.map((e) => [e.name, e.consumers]));
+
+    expect(byName.get('R2_ACCOUNT_ID')).toEqual(
+      expect.arrayContaining(['scripts/lib/r2-sigv4.js', 'src/lib/r2-client.ts'])
+    );
+    expect(byName.get('SUPABASE_SERVICE_ROLE_KEY')).toEqual(
+      expect.arrayContaining([
+        'scripts/ingest-translations.js',
+        'scripts/sync-featured-quotes.js',
+        'scripts/sync-gutenberg-catalog.js',
+        'scripts/sync-r2-assets.js',
+      ])
+    );
+  });
+
+  it('extracts workflow YAML branch triggers across inline brackets, indented block lists, and missing blocks', () => {
+    expect(astParser.extractWorkflowTriggerBranches('on:\n  push:\n    branches: [master]\n')).toEqual([
+      'master',
+    ]);
+    expect(
+      astParser.extractWorkflowTriggerBranches(
+        "on:\n  pull_request:\n    branches:\n      - 'main'\n      - master\n      - dev # dev branch\npermissions:\n  contents: read\n"
+      )
+    ).toEqual(['main', 'master', 'dev']);
+    expect(astParser.extractWorkflowTriggerBranches('on:\n  workflow_dispatch:\n')).toEqual([]);
+  });
+
+  it('extracts SQL userScopedTables from delete_current_user() and runtime specs from synthetic fixtures without falling back to defaults', () => {
+    const syntheticSql = [
+      'CREATE OR REPLACE FUNCTION public.delete_current_user()',
+      'RETURNS VOID LANGUAGE plpgsql AS $$',
+      'BEGIN',
+      '  DELETE FROM public.symposium_sessions WHERE host_id = target_uid;',
+      '  DELETE FROM public.profiles WHERE id = target_uid;',
+      'END;',
+      '$$;',
+    ].join('\n');
+    expect(astParser.extractSqlSchemaEntities(syntheticSql).userScopedTables).toEqual([
+      'symposium_sessions',
+      'profiles',
+    ]);
+
+    const { rootDir } = createTempProject({
+      'vercel.json': JSON.stringify({
+        regions: ['fra1'],
+        functions: { 'src/app/api/**/*.ts': { maxDuration: 45 } },
+      }),
+      'vitest.config.mts': `export default defineConfig({ test: { coverage: { thresholds: { lines: 91, statements: 92, functions: 93, branches: 88 } } } });`,
+      'src/config/featured-books.ts': `export const FEATURED_HERO_BOOKS = [{ id: 1 }, { id: 2 }, { id: 3 }];`,
+      'src/lib/rate-limiter.ts': `
+        export const booksApiRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 120 });
+        export const bookContentRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 45 });
+        export const bookCardRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 15 });
+        export const bookCoverRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 90 });
+      `,
+      'src/hooks/usePerformanceTier.ts': `
+        export function getClientSnapshot() {
+          let tier = 'high';
+          if (cores <= 1 || memory <= 1) { tier = 'low'; }
+          else if (cores <= 6 || memory <= 6) { tier = 'medium'; }
+          return tier;
+        }
+      `,
+      'src/lib/r2-client.ts': `
+        export const MAX_R2_BOOK_BYTES = 20 * 1024 * 1024;
+        export const MAX_R2_COVER_BYTES = 4 * 1024 * 1024;
+        export const R2_DEFAULT_TIMEOUT_MS = 12_000;
+      `,
+      'package.json': JSON.stringify({
+        name: 'fixture',
+        engines: { node: '>=24.0.0', npm: '>=11.0.0' },
+      }),
+      'src/lib/offline-storage.ts': `
+        const DB_NAME = 'FixtureOfflineDB';
+        const DB_VERSION = 7;
+      `,
+      'src/app/read/[id]/reader-layout-utils.ts': `
+        const MAX_SERVER_METADATA_CACHE_ENTRIES = 750;
+      `,
+      'src/app/u/[username]/profile-layout-utils.ts': `
+        const MAX_PROFILE_CACHE_ENTRIES = 250;
+        const PROFILE_CACHE_TTL_MS = 10 * 60 * 1000;
+      `,
+      'src/hooks/useBookPassageShuffle.ts': `
+        const MAX_EXTRACTED_PASSAGES_ENTRIES = 150;
+        const EXTRACTED_PASSAGES_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+      `,
+      'src/stores/useAccoladesStore.ts': `
+        export const MAX_PINNED_ACCOLADES = 5;
+      `,
+      'src/lib/preferences-sync.ts': `
+        export const FACTORY_PREFERENCES = {
+          theme: 'light',
+          fontSize: 18,
+          speechRate: 1.0,
+        };
+      `,
+      'src/hooks/useCursorTooltip.ts': `
+        const DEFAULT_TOOLTIP_DELAY_MS = 420;
+      `,
+    });
+
+    const spec = astParser.extractRuntimeSpecConstants(rootDir);
+    expect(spec.engines).toEqual({ node: '>=24.0.0', npm: '>=11.0.0', nodeMajor: '24' });
+    expect(spec.vercel).toEqual({ region: 'fra1', apiMaxDurationSec: 45 });
+    expect(spec.coverageThresholds).toEqual({
+      lines: 91,
+      statements: 92,
+      functions: 93,
+      branches: 88,
+    });
+    expect(spec.featuredHeroBookCount).toBe(3);
+    expect(spec.rateLimits).toEqual({
+      booksApi: 120,
+      bookContent: 45,
+      bookCard: 15,
+      bookCover: 90,
+    });
+    expect(spec.performanceTier).toEqual({
+      lowMaxCores: 1,
+      lowMaxMemoryGb: 1,
+      mediumMaxCores: 6,
+      mediumMaxMemoryGb: 6,
+    });
+    expect(spec.caches.offlineDbName).toBe('FixtureOfflineDB');
+    expect(spec.caches.offlineDbVersion).toBe(7);
+    expect(spec.caches.maxServerMetadataEntries).toBe(750);
+    expect(spec.caches.maxProfileCacheEntries).toBe(250);
+    expect(spec.caches.profileCacheTtlMin).toBe(10);
+    expect(spec.caches.maxExtractedPassages).toBe(150);
+    expect(spec.caches.extractedPassagesTtlDays).toBe(14);
+    expect(spec.stores).toEqual({ maxPinnedAccolades: 5, preferencesKeyCount: 3 });
+    expect(spec.hooks.tooltipDelayMs).toBe(420);
+    expect(spec.r2.maxBookMb).toBe(20);
+    expect(spec.r2.maxCoverMb).toBe(4);
+    expect(spec.r2.defaultTimeoutMs).toBe(12000);
+  });
+
+  it('extracts GitHub Actions workflows and Dependabot config from synthetic YAML fixtures', () => {
+    const { rootDir } = createTempProject({
+      '.github/workflows/nightly.yml': [
+        'name: Nightly Fixture Audit',
+        'on:',
+        '  schedule:',
+        "    - cron: '15 4 * * 2'",
+        '  push:',
+        '    branches: [main, master]',
+        '  pull_request:',
+        '    branches: [main, master]',
+        '  workflow_dispatch:',
+        '    inputs:',
+        '      dry_run:',
+        '        default: true',
+        'permissions:',
+        '  contents: read',
+        'concurrency:',
+        '  group: nightly-${{ github.ref }}',
+        '  cancel-in-progress: ${{ github.event_name == \'pull_request\' }}',
+        'jobs:',
+        '  audit:',
+        '    timeout-minutes: 15',
+        '    permissions:',
+        '      security-events: write',
+        '    steps:',
+        '      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0',
+        '        with:',
+        '          fetch-depth: 0',
+        '      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0',
+        '        with:',
+        "          node-version: '22'",
+        '          cache: npm',
+        '      - run: npm ci',
+        '        env:',
+        '          API_TOKEN: ${{ secrets.FIXTURE_TOKEN }}',
+      ].join('\n'),
+      '.github/dependabot.yml': [
+        'version: 2',
+        'updates:',
+        '  - package-ecosystem: "npm"',
+        '    schedule:',
+        '      interval: "weekly"',
+        '    target-branch: "main"',
+        '    open-pull-requests-limit: 4',
+        '    commit-message:',
+        '      prefix: "chore(deps)"',
+        '  - package-ecosystem: "github-actions"',
+        '    schedule:',
+        '      interval: "monthly"',
+        '    open-pull-requests-limit: 2',
+        '    commit-message:',
+        '      prefix: "chore(ci)"',
+      ].join('\n'),
+    });
+
+    const specCatalog = astParser.extractWorkflowSpecCatalog(rootDir);
+    expect(specCatalog.workflows).toHaveLength(1);
+    const wf = specCatalog.workflows[0];
+    expect(wf.filename).toBe('nightly.yml');
+    expect(wf.name).toBe('Nightly Fixture Audit');
+    expect(wf.cron).toBe('15 4 * * 2');
+    expect(wf.pushBranches).toEqual(['main', 'master']);
+    expect(wf.pullRequestBranches).toEqual(['main', 'master']);
+    expect(wf.hasWorkflowDispatch).toBe(true);
+    expect(wf.dispatchInputs).toEqual([{ name: 'dry_run', defaultValue: 'true' }]);
+    expect(wf.topPermissions).toEqual(['contents: read']);
+    expect(wf.jobPermissions).toEqual(['security-events: write']);
+    expect(wf.concurrencyGroup).toBe('nightly-${{ github.ref }}');
+    expect(wf.timeoutMinutes).toBe(15);
+    expect(wf.nodeVersion).toBe('22');
+    expect(wf.usesNpmCache).toBe(true);
+    expect(wf.usesNpmCi).toBe(true);
+    expect(wf.usesFetchDepthZero).toBe(true);
+    expect(wf.secrets).toEqual(['FIXTURE_TOKEN']);
+    expect(wf.actions).toHaveLength(2);
+    expect(wf.actions[0]).toEqual({
+      repo: 'actions/checkout',
+      sha: '11d5960a326750d5838078e36cf38b85af677262',
+      versionTag: 'v4.4.0',
+    });
+
+    expect(specCatalog.dependabotUpdates).toHaveLength(2);
+    expect(specCatalog.dependabotUpdates[0]).toEqual({
+      ecosystem: 'npm',
+      interval: 'weekly',
+      targetBranch: 'main',
+      openPullRequestsLimit: 4,
+      prefix: 'chore(deps)',
+    });
+  });
+
+  it('extracts live repository runtime specs, governance constants, and workflow catalog consistently', () => {
+    const repoRoot = path.resolve(__dirname, '../..');
+    const schemaText = fs.readFileSync(path.join(repoRoot, 'supabase', 'schema.sql'), 'utf-8');
+    const sqlEntities = astParser.extractSqlSchemaEntities(schemaText);
+    const liveSpec = astParser.extractRuntimeSpecConstants(repoRoot);
+    const liveWorkflows = astParser.extractWorkflowSpecCatalog(repoRoot);
+    const depReviewYaml = fs.readFileSync(
+      path.join(repoRoot, '.github', 'workflows', 'dependency-review.yml'),
+      'utf-8'
+    );
+
+    expect(astParser.REQUIRED_GOVERNANCE_DOCS).toHaveLength(19);
+    expect(astParser.REQUIRED_GOVERNANCE_DOCS).toEqual(
+      expect.arrayContaining(['README.md', 'SECURITY.md', 'docs/ARCHITECTURE.md', 'docs/GITHUB_ACTIONS.md'])
+    );
+    expect(astParser.GENERATOR_LOOKUP_MAP_COUNT).toBe(17);
+
+    expect(sqlEntities.userScopedTables.length).toBe(11);
+    expect(sqlEntities.userScopedTables).toEqual(
+      expect.arrayContaining(['symposium_sessions', 'reader_circles', 'profiles'])
+    );
+    expect(astParser.extractWorkflowTriggerBranches(depReviewYaml)).toEqual([
+      'main',
+      'master',
+      'dev',
+    ]);
+    expect(liveSpec.engines.nodeMajor).toBe('22');
+    expect(liveSpec.vercel).toEqual({ region: 'iad1', apiMaxDurationSec: 30 });
+    expect(liveSpec.coverageThresholds).toEqual({
+      lines: 95,
+      statements: 95,
+      functions: 92,
+      branches: 85,
+    });
+    expect(liveSpec.featuredHeroBookCount).toBe(27);
+    expect(liveSpec.rateLimits).toEqual({
+      booksApi: 60,
+      bookContent: 30,
+      bookCard: 20,
+      bookCover: 60,
+    });
+    expect(liveSpec.performanceTier).toEqual({
+      lowMaxCores: 2,
+      lowMaxMemoryGb: 2,
+      mediumMaxCores: 4,
+      mediumMaxMemoryGb: 4,
+    });
+    expect(liveSpec.caches.offlineDbName).toBe('BookariumOfflineDB');
+    expect(liveSpec.caches.offlineDbVersion).toBe(2);
+    expect(liveSpec.caches.maxServerMetadataEntries).toBe(500);
+    expect(liveSpec.caches.maxProfileCacheEntries).toBe(500);
+    expect(liveSpec.caches.profileCacheTtlMin).toBe(5);
+    expect(liveSpec.caches.maxExtractedPassages).toBe(100);
+    expect(liveSpec.caches.extractedPassagesTtlDays).toBe(30);
+    expect(liveSpec.stores).toEqual({ maxPinnedAccolades: 3, preferencesKeyCount: 14 });
+    expect(liveSpec.hooks.tooltipDelayMs).toBe(300);
+    expect(liveSpec.routeCache.booksQuotePool.sMaxAge).toBe(43200);
+    expect(liveSpec.routeCache.contentCover.sMaxAge).toBe(604800);
+    expect(liveSpec.cli.r2MinActiveForPrune).toBe(50000);
+    expect(liveSpec.cli.wikidataSparqlTimeoutMs).toBe(45000);
+
+    expect(liveWorkflows.workflows.length).toBeGreaterThanOrEqual(11);
+    const releaseWf = liveWorkflows.workflows.find((w) => w.filename === 'release.yml');
+    expect(releaseWf?.pushTags).toEqual(['v*']);
+    expect(releaseWf?.usesFetchDepthZero).toBe(true);
+    expect(releaseWf?.actions.every((a) => /^[0-9a-f]{40}$/.test(a.sha))).toBe(true);
+    expect(liveWorkflows.dependabotUpdates.map((d) => d.ecosystem)).toEqual([
+      'npm',
+      'github-actions',
+    ]);
   });
 });

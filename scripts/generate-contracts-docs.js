@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   CONTRACT_LAYER_ORDER,
+  compareCodepoint,
   analyzeDependencyGraph,
   analyzeScriptsDependencyGraph,
   extractCrossBoundaryCouplingCatalog,
@@ -30,9 +31,16 @@ function escapeCell(value) {
  */
 function resolveCoLocatedTestMetrics(relPath) {
   const baseNoExt = relPath.replace(/\.(ts|tsx|js|jsx)$/, '');
-  const primaryCandidates = relPath.endsWith('.js')
-    ? [`${baseNoExt}.test.ts`]
-    : [`${baseNoExt}.test.ts`, `${baseNoExt}.test.tsx`];
+  let primaryCandidates;
+  if (relPath === 'public/sw.js') {
+    primaryCandidates = ['src/components/pwa/ServiceWorkerRegister.test.tsx'];
+  } else if (relPath === 'next.config.ts') {
+    primaryCandidates = ['scripts/lib/sast-validators.test.ts'];
+  } else if (relPath.endsWith('.js')) {
+    primaryCandidates = [`${baseNoExt}.test.ts`];
+  } else {
+    primaryCandidates = [`${baseNoExt}.test.ts`, `${baseNoExt}.test.tsx`];
+  }
 
   let primaryTest = null;
   let primaryCount = 0;
@@ -90,6 +98,7 @@ function buildModuleContextIndex() {
         storageWritten: new Set(),
         storageRead: new Set(),
         envVars: new Set(),
+        scriptHelpers: new Set(),
       });
     }
     return contextByFile.get(fileRel);
@@ -107,6 +116,9 @@ function buildModuleContextIndex() {
     const ctx = ensureCtx(sNode.file);
     ctx.runtimeCallers = [...(sNode.consumedBy || [])];
     ctx.runtimeDeps = [...(sNode.requires || [])];
+    for (const helper of sNode.requires || []) {
+      ctx.scriptHelpers.add(helper);
+    }
   }
 
   for (const item of crossBoundary.dbTouchpoints) {
@@ -152,24 +164,24 @@ function buildModuleContextIndex() {
 /**
  * Formats a compact, readable summary of cross-boundary touchpoints for a module.
  */
-function formatTouchpointsList(ctx) {
+function formatTouchpointsList(ctx, modFile = '') {
   const parts = [];
   if (ctx.dbTables.size > 0) {
-    parts.push(`DB Tables: ${Array.from(ctx.dbTables).sort().map((t) => `\`${t}\``).join(', ')}`);
+    parts.push(`DB Tables: ${Array.from(ctx.dbTables).sort(compareCodepoint).map((t) => `\`${t}\``).join(', ')}`);
   }
   if (ctx.rpcs.size > 0) {
-    parts.push(`RPCs: ${Array.from(ctx.rpcs).sort().map((r) => `\`${r.endsWith('()') ? r : `${r}()`}\``).join(', ')}`);
+    parts.push(`RPCs: ${Array.from(ctx.rpcs).sort(compareCodepoint).map((r) => `\`${r.endsWith('()') ? r : `${r}()`}\``).join(', ')}`);
   }
   if (ctx.apiRoutes.size > 0) {
-    parts.push(`API Calls: ${Array.from(ctx.apiRoutes).sort().map((a) => `\`${a}\``).join(', ')}`);
+    parts.push(`API Calls: ${Array.from(ctx.apiRoutes).sort(compareCodepoint).map((a) => `\`${a}\``).join(', ')}`);
   }
   if (ctx.signalsEmitted.size > 0 || ctx.signalsSubscribed.size > 0) {
     const sigItems = [];
     if (ctx.signalsEmitted.size > 0) {
-      sigItems.push(`emits ${Array.from(ctx.signalsEmitted).sort().map((s) => `\`${s}\``).join(', ')}`);
+      sigItems.push(`emits ${Array.from(ctx.signalsEmitted).sort(compareCodepoint).map((s) => `\`${s}\``).join(', ')}`);
     }
     if (ctx.signalsSubscribed.size > 0) {
-      sigItems.push(`listens ${Array.from(ctx.signalsSubscribed).sort().map((s) => `\`${s}\``).join(', ')}`);
+      sigItems.push(`listens ${Array.from(ctx.signalsSubscribed).sort(compareCodepoint).map((s) => `\`${s}\``).join(', ')}`);
     }
     parts.push(`Signals: ${sigItems.join('; ')}`);
   }
@@ -179,10 +191,13 @@ function formatTouchpointsList(ctx) {
     ...ctx.storageRead,
   ]);
   if (storageKeys.size > 0) {
-    parts.push(`Storage/Cookies: ${Array.from(storageKeys).sort().map((k) => `\`${k}\``).join(', ')}`);
+    parts.push(`Storage/Cookies: ${Array.from(storageKeys).sort(compareCodepoint).map((k) => `\`${k}\``).join(', ')}`);
   }
   if (ctx.envVars.size > 0) {
-    parts.push(`Env Vars: ${Array.from(ctx.envVars).sort().map((v) => `\`${v}\``).join(', ')}`);
+    parts.push(`Env Vars: ${Array.from(ctx.envVars).sort(compareCodepoint).map((v) => `\`${v}\``).join(', ')}`);
+  }
+  if (modFile.startsWith('scripts/') && ctx.scriptHelpers && ctx.scriptHelpers.size > 0) {
+    parts.push(`Helpers: ${Array.from(ctx.scriptHelpers).sort(compareCodepoint).map((h) => `\`${h}\``).join(', ')}`);
   }
   return parts;
 }
@@ -241,7 +256,7 @@ function generateContractsMarkdown() {
     '',
     '## 📐 Writing Contract JSDoc Annotations',
     '',
-    'Annotate a module header (above imports or tagged `@module`) or an exported function/class/type directly in `src/` or `scripts/*.js`:',
+    'Annotate a module header (above imports or tagged `@module`) or an exported function/class/type directly in `src/` or `scripts/**/*.js`:',
     '',
     '```ts',
     '/**',
@@ -259,7 +274,7 @@ function generateContractsMarkdown() {
     '',
     '## 📊 Contract Coverage Telemetry (Across All Executable Modules)',
     '',
-    `- **Total Scanned Executable Modules**: \`${contracts.summary.totalModules}\` (\`src/**\` + \`scripts/*.js\`)`,
+    `- **Total Scanned Executable Modules**: \`${contracts.summary.totalModules}\` (\`src/**\`, \`scripts/**/*.js\`, \`next.config.ts\`, \`public/sw.js\`)`,
     `- **Annotated Contract Modules**: \`${contracts.summary.contractedModules}\` (**${contracts.summary.coveragePct}%** coverage; \`${contracts.tier1ProtectedModules.length}\` Tier-1 + \`${contracts.tier2ProtectedModules.length}\` Tier-2 + \`${contracts.tier3ProtectedModules.length}\` Tier-3 + \`${contracts.tier4ProtectedModules.length}\` Tier-4 = \`${contracts.protectedModules.length}\` Protected)`,
     `- **Extracted Module Invariants**: \`${contracts.summary.totalModuleInvariants}\``,
     `- **Symbol-Level Contracts**: \`${contracts.summary.totalSymbolContracts}\``,
@@ -311,6 +326,7 @@ function generateContractsMarkdown() {
         storageWritten: new Set(),
         storageRead: new Set(),
         envVars: new Set(),
+        scriptHelpers: new Set(),
       };
       const testMetrics = resolveCoLocatedTestMetrics(mod.file);
       const tierBadge = mod.isTier1Protected
@@ -354,10 +370,10 @@ function generateContractsMarkdown() {
           : `${ctx.runtimeCallers.length} runtime, ${ctx.typeOnlyCallers.length} type-only (${[
               ...ctx.runtimeCallers.slice(0, 4).map((c) => `[\`${c}\`](../${c})`),
               ...ctx.typeOnlyCallers.slice(0, 2).map((c) => `[\`${c}\`](../${c}) *(type)*`),
-            ].join(', ')}${ctx.runtimeCallers.length + ctx.typeOnlyCallers.length > 6 ? ', …' : ''})`;
+            ].join(', ')}${ctx.runtimeCallers.length > 4 || ctx.typeOnlyCallers.length > 2 ? ', …' : ''})`;
       lines.push(`- **AST Blast Radius**: ${callersSummary}`);
 
-      const touchpoints = formatTouchpointsList(ctx);
+      const touchpoints = formatTouchpointsList(ctx, mod.file);
       lines.push(
         `- **Cross-Boundary Coupling**: ${touchpoints.length > 0 ? touchpoints.join(' · ') : 'Self-contained / pure domain computation'}`
       );
@@ -387,7 +403,8 @@ function generateContractsMarkdown() {
             descParts.push(`**Why**: ${sym.rationales.join(' • ')}`);
           }
           if (sym.adrs.length > 0) {
-            descParts.push(`*(${sym.adrs.join(', ')})*`);
+            const symAdrLinks = sym.adrs.map((adr) => `[${adr}](DECISIONS.md)`).join(', ');
+            descParts.push(`*(${symAdrLinks})*`);
           }
           const visTag = sym.exported ? '' : ' *(internal)*';
           lines.push(
@@ -418,15 +435,16 @@ function generateContractsMarkdown() {
         storageWritten: new Set(),
         storageRead: new Set(),
         envVars: new Set(),
+        scriptHelpers: new Set(),
       };
       return {
         mod,
         ctx,
         score: computePriorityScore(mod, ctx),
-        touchpoints: formatTouchpointsList(ctx),
+        touchpoints: formatTouchpointsList(ctx, mod.file),
       };
     })
-    .sort((a, b) => b.score - a.score || a.mod.file.localeCompare(b.mod.file));
+    .sort((a, b) => b.score - a.score || compareCodepoint(a.mod.file, b.mod.file));
 
   lines.push(
     '---',
@@ -490,14 +508,14 @@ function generateContractsMarkdown() {
     '',
     '## 🔒 Verification & Compliance',
     '',
-    'This living contract reference is compiled in **Pass 4** and validated in **Pass 5 of the 7-Gateway Quality Engine** (`npm run verify`, `npm run security:audit`) alongside Tier-1 protected module preservation and `ADR-XXX` cross-reference checks (`ADR-081`).',
+    'This living contract reference is compiled in **Pass 4** and validated in **Pass 5 of the 7-Gateway Quality Engine** (`npm run verify`, `npm run security:audit`) alongside Tier-1..Tier-4 protected module preservation and `ADR-XXX` cross-reference checks (`ADR-081`).',
     ''
   );
 
   return lines.join('\n');
 }
 
-const content = generateContractsMarkdown();
+const content = generateContractsMarkdown().replace(/\r\n/g, '\n');
 const normalizeLineEndings = (text) => String(text || '').replace(/\r\n/g, '\n').trim();
 const existing = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf-8') : '';
 if (existing && normalizeLineEndings(content) === normalizeLineEndings(existing)) {

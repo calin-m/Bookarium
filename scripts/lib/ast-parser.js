@@ -6,8 +6,8 @@
  * and dependency topologies with mathematical zero-drift.
  *
  * @module scripts/lib/ast-parser
- * @scope Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, `17`-map generator orphan checks, and Markdown Mermaid diagram syntax/cycle validation.
- * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
+ * @scope Central Babel 8 AST, SQL, YAML & config static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts (across `src/`, `scripts/`, `next.config.ts`, and `public/sw.js`), SQL<->TS entities (incl. `userScopedTables` cascade targets), live runtime/CI specs (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), shared governance registries (`REQUIRED_GOVERNANCE_DOCS`, `GENERATOR_LOOKUP_MAP_COUNT`), `.env.example` consumer discovery (`src/`, `next.config.ts`, `scripts/` incl. `lib/` & `eslint-rules/`, workflows), and Markdown Mermaid diagram syntax/cycle validation.
+ * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`) across dependency graphs, cross-boundary catalogs, and pending contract queues, detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), resolve `process.env`, defaulted parameter (`env = process.env`/`loadEnv`), and local `loadEnv()` variable bindings cleanly across `scripts/` (`collectScriptFiles`), extract declared constants/thresholds/triggers read-only from configs/sources/workflows (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
  * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
  * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
  * @adr ADR-078, ADR-079, ADR-081, ADR-084
@@ -1227,6 +1227,22 @@ function extractSqlSchemaEntities(schemaSql) {
     });
   }
 
+  const userScopedTables = [];
+  const delFnStart = content.indexOf('public.delete_current_user');
+  if (delFnStart !== -1) {
+    const bodyStart = content.indexOf('$$', delFnStart);
+    const bodyEnd = bodyStart !== -1 ? content.indexOf('$$', bodyStart + 2) : -1;
+    if (bodyStart !== -1 && bodyEnd !== -1) {
+      const delFnBody = content.slice(bodyStart + 2, bodyEnd);
+      const delMatches = delFnBody.matchAll(/DELETE\s+FROM\s+public\.([a-z0-9_]+)/gi);
+      for (const dm of delMatches) {
+        if (dm[1] && !userScopedTables.includes(dm[1])) {
+          userScopedTables.push(dm[1]);
+        }
+      }
+    }
+  }
+
   const hasRlsAutoEnable = content.includes("p.proname = 'rls_auto_enable'");
   const policyCount = (content.match(/CREATE\s+POLICY\s+/gi) || []).length;
   const checkConstraintCount = (content.match(/ADD\s+CONSTRAINT\s+chk_\w+/gi) || []).length;
@@ -1234,6 +1250,7 @@ function extractSqlSchemaEntities(schemaSql) {
   return {
     hasMigrationLedger,
     tableNames,
+    userScopedTables,
     indexes,
     triggers,
     triggersByFunction,
@@ -1632,8 +1649,8 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     },
     R2_ACCOUNT_ID: {
       scope: 'Server-Only & CI Runtime Environment Variable (Vercel, GitHub Actions Secrets & `.env.local`)',
-      fallback: 'Required in production for online covers and plain-text books. When any `R2_*` variable is omitted locally or in tests, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback), uncached plain text fails closed with `HTTP 503` (zero runtime PG fallback), CI R2 sync skips cleanly (`exit 0`), and `quotes:sync` uses PGLAF mirror fallback. *Operator note: Full 78k+ R2 storage exceeds Cloudflare R2 10 GB free-tier allowance.*',
-      purpose: 'Cloudflare account identifier building the private R2 S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts` and `scripts/sync-r2-assets.js`.',
+      fallback: 'Required in production for online covers and plain-text books. When any `R2_*` variable is omitted locally or in tests, `/api/books/content?type=cover` returns `404` (`dark typographic cover` fallback), uncached plain text fails closed with `HTTP 503` (zero runtime PG fallback), CI R2 sync/scan skips cleanly (`exit 0`), and `quotes:sync` uses PGLAF mirror fallback. *Operator note: Full 78k+ R2 storage exceeds Cloudflare R2 10 GB free-tier allowance.*',
+      purpose: 'Cloudflare account identifier building the private R2 S3 endpoint `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` inside `src/lib/r2-client.ts`, `scripts/lib/r2-sigv4.js`, `scripts/sync-r2-assets.js`, and `scripts/scan-r2-content.js`.',
     },
     R2_BUCKET_NAME: {
       scope: 'Server-Only & CI Runtime Environment Variable (Vercel, GitHub Actions Secrets & `.env.local`)',
@@ -1643,12 +1660,12 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     R2_ACCESS_KEY_ID: {
       scope: 'Server-Only & CI R2 S3 Credential (Vercel Read-Only Recommended, GitHub Secrets Read/Write & `.env.local`)',
       fallback: 'Omitted in local UI/test runs (`isR2Configured() === false`); online cover/text endpoints fail closed (`404`/`503`) until R2 is configured.',
-      purpose: 'S3 API access key ID used strictly server-side and in CI/CLI pipelines for AWS SigV4 signed `GET` (`r2-client.ts`, `sync-featured-quotes.js`) and `ListObjectsV2`/`PutObject`/`DeleteObject` (`sync-r2-assets.js`).',
+      purpose: 'S3 API access key ID used strictly server-side and in CI/CLI pipelines for AWS SigV4 signed `GET` (`r2-client.ts`, `r2-sigv4.js`, `sync-featured-quotes.js`, `scan-r2-content.js`) and `ListObjectsV2`/`PutObject`/`DeleteObject` (`sync-r2-assets.js`).',
     },
     R2_SECRET_ACCESS_KEY: {
       scope: 'Server-Only & CI Signing Secret (Vercel Read-Only Recommended, GitHub Secrets Read/Write & `.env.local`)',
       fallback: 'Omitted in local UI/test runs (`isR2Configured() === false`); online cover/text endpoints fail closed (`404`/`503`) until R2 is configured.',
-      purpose: 'HMAC-SHA256 secret signing AWS Signature V4 requests to private Cloudflare R2 storage inside `src/lib/r2-client.ts` and `scripts/sync-r2-assets.js`.',
+      purpose: 'HMAC-SHA256 secret signing AWS Signature V4 requests to private Cloudflare R2 storage inside `src/lib/r2-client.ts`, `scripts/lib/r2-sigv4.js`, `scripts/sync-r2-assets.js`, `scripts/scan-r2-content.js`, and `scripts/sync-featured-quotes.js`.',
     },
     NODE_ENV: {
       scope: 'Framework & Build-Time Runtime Constant',
@@ -1672,19 +1689,12 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     scanTargets.push({ abs: nextConfigPath, rel: 'next.config.ts', kind: 'code' });
   }
 
-  const scriptsDir = path.join(rootDir, 'scripts');
-  if (fs.existsSync(scriptsDir)) {
-    for (const entry of fs
-      .readdirSync(scriptsDir, { withFileTypes: true })
-      .sort((a, b) => compareCodepoint(a.name, b.name))) {
-      if (entry.isFile() && entry.name.endsWith('.js')) {
-        scanTargets.push({
-          abs: path.join(scriptsDir, entry.name),
-          rel: `scripts/${entry.name}`,
-          kind: 'code',
-        });
-      }
-    }
+  for (const scriptFile of collectScriptFiles(rootDir)) {
+    scanTargets.push({
+      abs: scriptFile.abs,
+      rel: scriptFile.rel,
+      kind: 'code',
+    });
   }
 
   const workflowsDir = path.join(rootDir, '.github', 'workflows');
@@ -1701,6 +1711,61 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
       }
     }
   }
+
+  const isDirectProcessEnvExpr = (expr) =>
+    Boolean(
+      expr &&
+        expr.type === 'MemberExpression' &&
+        expr.object &&
+        expr.object.type === 'Identifier' &&
+        expr.object.name === 'process' &&
+        expr.property &&
+        expr.property.type === 'Identifier' &&
+        expr.property.name === 'env'
+    );
+
+  const isEnvSourceExpression = (expr) => {
+    if (!expr) return false;
+    if (isDirectProcessEnvExpr(expr)) return true;
+    if (
+      expr.type === 'CallExpression' &&
+      expr.callee &&
+      expr.callee.type === 'Identifier' &&
+      expr.callee.name === 'loadEnv'
+    ) {
+      return true;
+    }
+    if (expr.type === 'LogicalExpression' && (expr.operator === '||' || expr.operator === '??')) {
+      return isEnvSourceExpression(expr.right) || isEnvSourceExpression(expr.left);
+    }
+    if (expr.type === 'ConditionalExpression') {
+      return isEnvSourceExpression(expr.consequent) || isEnvSourceExpression(expr.alternate);
+    }
+    if (expr.type === 'ObjectExpression' && Array.isArray(expr.properties)) {
+      return expr.properties.some(
+        (prop) => prop && prop.type === 'SpreadElement' && isEnvSourceExpression(prop.argument)
+      );
+    }
+    return false;
+  };
+
+  const isProcessEnvBackedBinding = (binding) => {
+    if (!binding || !binding.path) return false;
+    if (binding.kind === 'param') {
+      const assignNode = binding.path.isAssignmentPattern()
+        ? binding.path.node
+        : binding.path.parentPath?.isAssignmentPattern()
+          ? binding.path.parentPath.node
+          : null;
+      return Boolean(assignNode && isEnvSourceExpression(assignNode.right));
+    }
+    if (binding.kind === 'const' || binding.kind === 'let' || binding.kind === 'var') {
+      if (binding.path.isVariableDeclarator()) {
+        return isEnvSourceExpression(binding.path.node.init);
+      }
+    }
+    return false;
+  };
 
   const consumersMap = new Map(envVarNames.map((v) => [v, []]));
 
@@ -1722,37 +1787,15 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
             const varName = node.property.name;
             if (!consumersMap.has(varName)) return;
 
-            const isDirectProcessEnv =
-              node.object &&
-              node.object.type === 'MemberExpression' &&
-              node.object.object &&
-              node.object.object.type === 'Identifier' &&
-              node.object.object.name === 'process' &&
-              node.object.property &&
-              node.object.property.type === 'Identifier' &&
-              node.object.property.name === 'env';
+            const isDirectProcessEnv = isDirectProcessEnvExpr(node.object);
 
-            let isInjectedEnvParam = false;
-            if (!isDirectProcessEnv && node.object && node.object.type === 'Identifier' && node.object.name === 'env') {
-              const binding = astPath.scope.getBinding('env');
-              const assignParent = binding?.path?.parentPath;
-              if (binding?.kind === 'param' && assignParent?.isAssignmentPattern()) {
-                const defaultExpr = assignParent.node.right;
-                const isDefaultProcessEnv =
-                  defaultExpr?.type === 'MemberExpression' &&
-                  defaultExpr.object?.type === 'Identifier' &&
-                  defaultExpr.object.name === 'process' &&
-                  defaultExpr.property?.type === 'Identifier' &&
-                  defaultExpr.property.name === 'env';
-                const isDefaultLoadEnv =
-                  defaultExpr?.type === 'CallExpression' &&
-                  defaultExpr.callee?.type === 'Identifier' &&
-                  defaultExpr.callee.name === 'loadEnv';
-                isInjectedEnvParam = isDefaultProcessEnv || isDefaultLoadEnv;
-              }
+            let isInjectedEnvBinding = false;
+            if (!isDirectProcessEnv && node.object && node.object.type === 'Identifier') {
+              const binding = astPath.scope.getBinding(node.object.name);
+              isInjectedEnvBinding = isProcessEnvBackedBinding(binding);
             }
 
-            if (isDirectProcessEnv || isInjectedEnvParam) {
+            if (isDirectProcessEnv || isInjectedEnvBinding) {
               foundVars.add(varName);
             }
           },
@@ -2403,29 +2446,32 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
     Array.from(map.entries())
       .map(([k, setVal]) => ({
         [labelKey]: k,
-        callers: Array.from(setVal).sort(),
+        callers: Array.from(setVal).sort(compareCodepoint),
       }))
-      .sort((a, b) => a[labelKey].localeCompare(b[labelKey]));
+      .sort((a, b) => compareCodepoint(a[labelKey], b[labelKey]));
 
   const signalChannels = Array.from(signalMap.values())
     .map((sig) => ({
       kind: sig.kind,
       name: sig.name,
       isCustomSignal: sig.isCustomSignal,
-      emitters: Array.from(sig.emitters).sort(),
-      subscribers: Array.from(sig.subscribers).sort(),
-      detailKeys: Array.from(sig.detailKeys).sort(),
+      emitters: Array.from(sig.emitters).sort(compareCodepoint),
+      subscribers: Array.from(sig.subscribers).sort(compareCodepoint),
+      detailKeys: Array.from(sig.detailKeys).sort(compareCodepoint),
     }))
-    .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
+    .sort(
+      (a, b) =>
+        compareCodepoint(a.kind, b.kind) || compareCodepoint(a.name, b.name)
+    );
 
   const storageKeyBindings = Array.from(storageMap.values())
     .map((item) => ({
       key: item.key,
-      persistedBy: Array.from(item.persistedBy).sort(),
-      writers: Array.from(item.writers).sort(),
-      readers: Array.from(item.readers).sort(),
+      persistedBy: Array.from(item.persistedBy).sort(compareCodepoint),
+      writers: Array.from(item.writers).sort(compareCodepoint),
+      readers: Array.from(item.readers).sort(compareCodepoint),
     }))
-    .sort((a, b) => a.key.localeCompare(b.key));
+    .sort((a, b) => compareCodepoint(a.key, b.key));
 
   return {
     dbTouchpoints: serializeSetMap(dbTableMap, 'table'),
@@ -2438,9 +2484,13 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
 }
 
 const TIER_1_CONTRACTED_MODULES = [
+  'next.config.ts',
+  'public/sw.js',
   'src/proxy.ts',
   'src/app/api/books/route.ts',
   'src/app/api/books/content/route.ts',
+  'src/lib/api-utils.ts',
+  'src/lib/catalog/query-parser.ts',
   'src/lib/r2-client.ts',
   'src/lib/copyright-engine.ts',
   'src/lib/catalog/supabase-provider.ts',
@@ -2456,6 +2506,10 @@ const TIER_1_CONTRACTED_MODULES = [
 ];
 
 const TIER_2_CONTRACTED_MODULES = [
+  'src/app/layout.tsx',
+  'src/app/providers.tsx',
+  'src/app/u/[username]/page.tsx',
+  'src/components/auth/TurnstileWidget.tsx',
   'src/stores/useBookshelfStore.ts',
   'src/stores/useFellowshipStore.ts',
   'src/stores/useAnnotationStore.ts',
@@ -2487,9 +2541,14 @@ const TIER_3_CONTRACTED_MODULES = [
   'src/lib/supabase/client.ts',
   'src/lib/supabase/server.ts',
   'src/lib/supabase/middleware.ts',
+  'src/lib/server-rsc-nav.ts',
+  'src/lib/password.ts',
+  'src/lib/session-device-parser.ts',
   'src/app/auth/callback/route.ts',
   'src/app/api/books/translations/route.ts',
   'src/app/api/books/content/metadata-cache.ts',
+  'src/app/read/[id]/reader-layout-utils.ts',
+  'src/app/u/[username]/profile-layout-utils.ts',
   'src/lib/country-resolver.ts',
   'src/lib/safe-storage.ts',
   'src/lib/book-metadata.ts',
@@ -2506,6 +2565,8 @@ const TIER_4_CONTRACTED_MODULES = [
   'src/lib/reader-bookmark-geometry.ts',
   'src/hooks/reader/useReaderSession.ts',
   'src/hooks/reader/useContinueReadingLedger.ts',
+  'scripts/approval-gate.js',
+  'scripts/verify-build.js',
   'scripts/ingest-catalog.js',
   'scripts/ingest-translations.js',
   'scripts/purge-vercel-cache.js',
@@ -2540,6 +2601,8 @@ const CONTRACT_LAYER_ORDER = [
  */
 function classifyContractLayer(relPath) {
   if (relPath.startsWith('scripts/')) return 'CLI Pipelines & Governance';
+  if (relPath === 'public/sw.js' || relPath.startsWith('src/workers/')) return 'Web Workers';
+  if (relPath === 'next.config.ts') return 'Config & Type Contracts';
   if (relPath === 'src/proxy.ts' || relPath.startsWith('src/app/api/')) {
     return 'Edge Proxy & API Routes';
   }
@@ -2547,7 +2610,6 @@ function classifyContractLayer(relPath) {
   if (relPath.startsWith('src/stores/')) return 'State Stores (Zustand)';
   if (relPath.startsWith('src/lib/')) return 'Domain Engines & Adapters';
   if (relPath.startsWith('src/hooks/')) return 'React Hooks & Queries';
-  if (relPath.startsWith('src/workers/')) return 'Web Workers';
   if (relPath.startsWith('src/components/')) return 'UI & Feature Components';
   return 'Config & Type Contracts';
 }
@@ -3027,7 +3089,12 @@ function extractBehavioralContractsCatalog(srcDir, rootDir) {
     rel: path.relative(rootDir, abs).replace(/\\/g, '/'),
   }));
   const scriptFiles = collectScriptFiles(rootDir);
-  const allTargets = [...srcFiles, ...scriptFiles].sort((a, b) => compareCodepoint(a.rel, b.rel));
+  const rootEdgeTargets = ['next.config.ts', 'public/sw.js']
+    .map((rel) => ({ abs: path.join(rootDir, rel), rel }))
+    .filter((entry) => fs.existsSync(entry.abs));
+  const allTargets = [...srcFiles, ...scriptFiles, ...rootEdgeTargets].sort((a, b) =>
+    compareCodepoint(a.rel, b.rel)
+  );
 
   const modules = [];
   const parseErrors = [];
@@ -3143,6 +3210,54 @@ function extractObjectLiteralKeysByVariable(filePath, targetNames) {
   return { keysByVar: result, parseError: null };
 }
 
+const REQUIRED_GOVERNANCE_DOCS = Object.freeze([
+  'README.md',
+  'SECURITY.md',
+  'CONTRIBUTING.md',
+  'CODE_OF_CONDUCT.md',
+  'DEVELOPMENT.md',
+  'LICENSE',
+  'AGENTS.md',
+  '.agents/AGENTS.md',
+  '.env.example',
+  'supabase/schema.sql',
+  'docs/ARCHITECTURE.md',
+  'docs/DECISIONS.md',
+  'docs/GITHUB_ACTIONS.md',
+  'docs/GUTENBERG_PARSER.md',
+  'docs/INFRASTRUCTURE.md',
+  'docs/SYSTEM_CONTRACTS.md',
+  'docs/QUALITY_AUDIT_REPORT.md',
+  'ROADMAP.md',
+  'CHANGELOG.md',
+]);
+
+const MATRIX_GENERATOR_LOOKUP_MAP_NAMES = Object.freeze([
+  'scriptMetaMap',
+  'pageDescriptions',
+  'storeDescriptions',
+  'hookRoles',
+  'utilityDescriptions',
+  'purposeMap',
+  'storeMap',
+  'writeAuthMap',
+  'descMap',
+  'indexDescMap',
+  'functionMetaMap',
+  'signalMetaMap',
+  'workflowResponsibilityMap',
+  'scriptSuiteMetaMap',
+]);
+
+const AST_PARSER_LOOKUP_MAP_NAMES = Object.freeze([
+  'varMetaMap',
+  'workerRoleMap',
+  'roleMap',
+]);
+
+const GENERATOR_LOOKUP_MAP_COUNT =
+  MATRIX_GENERATOR_LOOKUP_MAP_NAMES.length + AST_PARSER_LOOKUP_MAP_NAMES.length;
+
 /**
  * Audits generator lookup maps across generate-architecture-matrix.js and ast-parser.js
  * to detect stale keys whose modules, scripts, dependencies, workflows, SQL entities,
@@ -3170,22 +3285,10 @@ function findOrphanedGeneratorLookupKeys(rootDir, srcDir, options = {}) {
   const matrixRel = 'scripts/generate-architecture-matrix.js';
   const matrixAbs = path.join(rootDir, matrixRel);
   if (fs.existsSync(matrixAbs)) {
-    const { keysByVar, parseError } = extractObjectLiteralKeysByVariable(matrixAbs, [
-      'scriptMetaMap',
-      'pageDescriptions',
-      'storeDescriptions',
-      'hookRoles',
-      'utilityDescriptions',
-      'purposeMap',
-      'storeMap',
-      'writeAuthMap',
-      'descMap',
-      'indexDescMap',
-      'functionMetaMap',
-      'signalMetaMap',
-      'workflowResponsibilityMap',
-      'scriptSuiteMetaMap',
-    ]);
+    const { keysByVar, parseError } = extractObjectLiteralKeysByVariable(
+      matrixAbs,
+      MATRIX_GENERATOR_LOOKUP_MAP_NAMES
+    );
     if (parseError) {
       orphans.push({
         mapName: 'AST_PARSE',
@@ -3352,11 +3455,10 @@ function findOrphanedGeneratorLookupKeys(rootDir, srcDir, options = {}) {
       ...extractEnvironmentDependencyCatalog(rootDir, srcDir).map((e) => e.name),
       'NODE_ENV',
     ]);
-    const { keysByVar, parseError } = extractObjectLiteralKeysByVariable(astParserAbs, [
-      'varMetaMap',
-      'workerRoleMap',
-      'roleMap',
-    ]);
+    const { keysByVar, parseError } = extractObjectLiteralKeysByVariable(
+      astParserAbs,
+      AST_PARSER_LOOKUP_MAP_NAMES
+    );
     if (parseError) {
       orphans.push({
         mapName: 'AST_PARSE',
@@ -3851,6 +3953,968 @@ function inspectMermaidBlock(relPath, blockIdx, startLine, rows, violations) {
   }
 }
 
+function parseModuleAstQuiet(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return null;
+  try {
+    const source = fs.readFileSync(filePath, 'utf-8');
+    return parser.parse(source, {
+      sourceType: 'unambiguous',
+      plugins: ['typescript', 'jsx'],
+    });
+  } catch {
+    return null;
+  }
+}
+
+function unwrapTypeAndFreezeAstNode(node) {
+  let current = node;
+  while (current) {
+    if (
+      current.type === 'TSAsExpression' ||
+      current.type === 'TSSatisfiesExpression' ||
+      current.type === 'TSTypeAssertion' ||
+      current.type === 'TypeCastExpression' ||
+      current.type === 'ParenthesizedExpression'
+    ) {
+      current = current.expression;
+      continue;
+    }
+    if (
+      current.type === 'CallExpression' &&
+      current.callee &&
+      current.callee.type === 'MemberExpression' &&
+      current.callee.object?.name === 'Object' &&
+      current.callee.property?.name === 'freeze' &&
+      Array.isArray(current.arguments) &&
+      current.arguments.length === 1
+    ) {
+      current = current.arguments[0];
+      continue;
+    }
+    break;
+  }
+  return current;
+}
+
+function evaluateStaticAstScalar(node) {
+  const inner = unwrapTypeAndFreezeAstNode(node);
+  if (!inner) return undefined;
+  if (
+    inner.type === 'NumericLiteral' ||
+    inner.type === 'StringLiteral' ||
+    inner.type === 'BooleanLiteral'
+  ) {
+    return inner.value;
+  }
+  if (
+    inner.type === 'TemplateLiteral' &&
+    inner.expressions.length === 0 &&
+    inner.quasis.length === 1
+  ) {
+    return inner.quasis[0].value.cooked;
+  }
+  if (inner.type === 'UnaryExpression' && inner.operator === '-') {
+    const operand = evaluateStaticAstScalar(inner.argument);
+    return typeof operand === 'number' ? -operand : undefined;
+  }
+  if (inner.type === 'BinaryExpression') {
+    const left = evaluateStaticAstScalar(inner.left);
+    const right = evaluateStaticAstScalar(inner.right);
+    if (typeof left === 'number' && typeof right === 'number') {
+      if (inner.operator === '*') return left * right;
+      if (inner.operator === '+') return left + right;
+      if (inner.operator === '-') return left - right;
+      if (inner.operator === '/' && right !== 0) return left / right;
+    }
+    if (inner.operator === '+' && typeof left === 'string' && typeof right === 'string') {
+      return left + right;
+    }
+  }
+  return undefined;
+}
+
+function extractObjectScalarFields(objNode) {
+  const unwrapped = unwrapTypeAndFreezeAstNode(objNode);
+  if (!unwrapped || unwrapped.type !== 'ObjectExpression') return null;
+  const out = {};
+  for (const prop of unwrapped.properties || []) {
+    if (prop.type !== 'ObjectProperty' || prop.computed) continue;
+    const key = prop.key?.name || prop.key?.value;
+    if (!key) continue;
+    const val = evaluateStaticAstScalar(prop.value);
+    if (val !== undefined) {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
+function extractStringArrayFromAstNode(node) {
+  const unwrapped = unwrapTypeAndFreezeAstNode(node);
+  if (!unwrapped) return null;
+  if (unwrapped.type === 'ArrayExpression') {
+    const items = [];
+    for (const el of unwrapped.elements || []) {
+      const scalar = evaluateStaticAstScalar(el);
+      if (scalar !== undefined) items.push(scalar);
+    }
+    return { items, length: unwrapped.elements.length };
+  }
+  if (
+    unwrapped.type === 'NewExpression' &&
+    unwrapped.callee?.name === 'Set' &&
+    unwrapped.arguments.length === 1
+  ) {
+    return extractStringArrayFromAstNode(unwrapped.arguments[0]);
+  }
+  return null;
+}
+
+function collectDeclaredAstValues(filePath, targetNames = null) {
+  const scalars = new Map();
+  const arrays = new Map();
+  const arrayLengths = new Map();
+  const objects = new Map();
+  const objectKeyCounts = new Map();
+  const rateLimiterRequests = new Map();
+
+  const ast = parseModuleAstQuiet(filePath);
+  if (!ast) {
+    return { scalars, arrays, arrayLengths, objects, objectKeyCounts, rateLimiterRequests };
+  }
+
+  const wanted = targetNames ? new Set(targetNames) : null;
+  traverse(ast, {
+    VariableDeclarator({ node }) {
+      const varName = node.id?.type === 'Identifier' ? node.id.name : null;
+      if (!varName || (wanted && !wanted.has(varName))) return;
+
+      const initNode = unwrapTypeAndFreezeAstNode(node.init);
+      if (!initNode) return;
+
+      const scalar = evaluateStaticAstScalar(initNode);
+      if (scalar !== undefined) {
+        scalars.set(varName, scalar);
+        return;
+      }
+
+      const arrInfo = extractStringArrayFromAstNode(initNode);
+      if (arrInfo) {
+        arrays.set(varName, arrInfo.items);
+        arrayLengths.set(varName, arrInfo.length);
+        return;
+      }
+
+      if (initNode.type === 'ObjectExpression' && Array.isArray(initNode.properties)) {
+        objectKeyCounts.set(
+          varName,
+          initNode.properties.filter((p) => p.type === 'ObjectProperty').length
+        );
+      }
+
+      const objFields = extractObjectScalarFields(initNode);
+      if (objFields) {
+        objects.set(varName, objFields);
+        return;
+      }
+
+      if (initNode.type === 'NewExpression' && initNode.callee?.name === 'InMemoryRateLimiter') {
+        const argFields = extractObjectScalarFields(initNode.arguments?.[0]);
+        if (argFields && typeof argFields.maxRequests === 'number') {
+          rateLimiterRequests.set(varName, argFields.maxRequests);
+        }
+      } else if (initNode.type === 'LogicalExpression' && initNode.operator === '??') {
+        const rhs = unwrapTypeAndFreezeAstNode(initNode.right);
+        const target = rhs?.type === 'AssignmentExpression' ? rhs.right : rhs;
+        if (target?.type === 'NewExpression' && target.callee?.name === 'InMemoryRateLimiter') {
+          const argFields = extractObjectScalarFields(target.arguments?.[0]);
+          if (argFields && typeof argFields.maxRequests === 'number') {
+            rateLimiterRequests.set(varName, argFields.maxRequests);
+          }
+        }
+      }
+    },
+  });
+
+  return { scalars, arrays, arrayLengths, objects, objectKeyCounts, rateLimiterRequests };
+}
+
+function extractWorkflowTriggerBranches(wfText) {
+  const lines = String(wfText || '').split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const inlineMatch = line.match(/^\s*branches:\s*\[([^\]]+)\]/);
+    if (inlineMatch) {
+      return inlineMatch[1]
+        .split(',')
+        .map((b) => b.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
+    }
+    const blockHeader = line.match(/^(\s*)branches:\s*(?:#.*)?$/);
+    if (blockHeader) {
+      const baseIndent = blockHeader[1].length;
+      const collected = [];
+      for (let j = i + 1; j < lines.length; j++) {
+        const nextLine = lines[j];
+        if (!nextLine.trim() || nextLine.trim().startsWith('#')) continue;
+        const itemMatch = nextLine.match(/^(\s*)-\s+(.+?)\s*$/);
+        if (itemMatch && itemMatch[1].length > baseIndent) {
+          const branchName = itemMatch[2].replace(/\s+#.*$/, '').replace(/^['"]|['"]$/g, '').trim();
+          if (branchName) collected.push(branchName);
+          continue;
+        }
+        break;
+      }
+      if (collected.length > 0) return collected;
+    }
+  }
+  return [];
+}
+
+function extractVercelConfigSpecs(rootDirPath) {
+  const vercelPath = path.join(rootDirPath, 'vercel.json');
+  const defaults = { region: 'iad1', apiMaxDurationSec: 30 };
+  if (!fs.existsSync(vercelPath)) return defaults;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(vercelPath, 'utf-8'));
+    const region =
+      Array.isArray(parsed.regions) && typeof parsed.regions[0] === 'string' && parsed.regions[0].trim()
+        ? parsed.regions[0].trim()
+        : defaults.region;
+    const apiMaxDurationSec =
+      typeof parsed.functions?.['src/app/api/**/*.ts']?.maxDuration === 'number'
+        ? parsed.functions['src/app/api/**/*.ts'].maxDuration
+        : defaults.apiMaxDurationSec;
+    return { region, apiMaxDurationSec };
+  } catch {
+    return defaults;
+  }
+}
+
+function extractVitestThresholdsSpec(rootDirPath) {
+  const defaults = { lines: 95, statements: 95, functions: 92, branches: 85 };
+  const ast = parseModuleAstQuiet(path.join(rootDirPath, 'vitest.config.mts'));
+  if (!ast) return defaults;
+
+  let extracted = null;
+  traverse(ast, {
+    ObjectProperty({ node }) {
+      const key = node.key?.name || node.key?.value;
+      if (key === 'thresholds') {
+        const fields = extractObjectScalarFields(node.value);
+        if (fields && typeof fields.lines === 'number') {
+          extracted = fields;
+        }
+      }
+    },
+  });
+
+  return {
+    lines: typeof extracted?.lines === 'number' ? extracted.lines : defaults.lines,
+    statements: typeof extracted?.statements === 'number' ? extracted.statements : defaults.statements,
+    functions: typeof extracted?.functions === 'number' ? extracted.functions : defaults.functions,
+    branches: typeof extracted?.branches === 'number' ? extracted.branches : defaults.branches,
+  };
+}
+
+function extractPerformanceTierSpecs(rootDirPath) {
+  const defaults = {
+    lowMaxCores: 2,
+    lowMaxMemoryGb: 2,
+    mediumMaxCores: 4,
+    mediumMaxMemoryGb: 4,
+  };
+  const ast = parseModuleAstQuiet(path.join(rootDirPath, 'src', 'hooks', 'usePerformanceTier.ts'));
+  if (!ast) return defaults;
+
+  const out = { ...defaults };
+  const extractCoreMemPair = (testNode) => {
+    const pair = {};
+    const visit = (node) => {
+      if (!node || typeof node !== 'object') return;
+      if (node.type === 'BinaryExpression' && node.operator === '<=') {
+        const name = node.left?.type === 'Identifier' ? node.left.name : null;
+        const val = evaluateStaticAstScalar(node.right);
+        if (name === 'cores' && typeof val === 'number') pair.cores = val;
+        if (name === 'memory' && typeof val === 'number') pair.memory = val;
+        return;
+      }
+      if (node.type === 'LogicalExpression') {
+        visit(node.left);
+        visit(node.right);
+      }
+    };
+    visit(testNode);
+    return pair;
+  };
+
+  traverse(ast, {
+    IfStatement({ node }) {
+      const consequentText = [];
+      for (const stmt of node.consequent?.body || []) {
+        if (
+          stmt.type === 'ExpressionStatement' &&
+          stmt.expression?.type === 'AssignmentExpression' &&
+          stmt.expression.left?.name === 'tier' &&
+          stmt.expression.right?.type === 'StringLiteral'
+        ) {
+          consequentText.push(stmt.expression.right.value);
+        }
+      }
+      if (consequentText.includes('low')) {
+        const pair = extractCoreMemPair(node.test);
+        if (typeof pair.cores === 'number') out.lowMaxCores = pair.cores;
+        if (typeof pair.memory === 'number') out.lowMaxMemoryGb = pair.memory;
+      } else if (consequentText.includes('medium')) {
+        const pair = extractCoreMemPair(node.test);
+        if (typeof pair.cores === 'number') out.mediumMaxCores = pair.cores;
+        if (typeof pair.memory === 'number') out.mediumMaxMemoryGb = pair.memory;
+      }
+    },
+  });
+
+  return out;
+}
+
+function extractRouteCacheDirectives(rootDirPath) {
+  const booksRouteAst = parseModuleAstQuiet(
+    path.join(rootDirPath, 'src', 'app', 'api', 'books', 'route.ts')
+  );
+  const contentRouteAst = parseModuleAstQuiet(
+    path.join(rootDirPath, 'src', 'app', 'api', 'books', 'content', 'route.ts')
+  );
+  const translationsRouteAst = parseModuleAstQuiet(
+    path.join(rootDirPath, 'src', 'app', 'api', 'books', 'translations', 'route.ts')
+  );
+
+  const booksCacheStrings = new Set();
+  if (booksRouteAst) {
+    traverse(booksRouteAst, {
+      StringLiteral({ node }) {
+        if (/s-maxage=\d+/.test(node.value)) {
+          booksCacheStrings.add(node.value);
+        }
+      },
+    });
+  }
+
+  const contentHeadersByMode = { textOrCard: null, cover: null };
+  if (contentRouteAst) {
+    traverse(contentRouteAst, {
+      ObjectExpression({ node }) {
+        const fields = extractObjectScalarFields(node);
+        if (!fields || !fields['Cache-Control'] || !fields['Vercel-Cache-Tag']) return;
+        if (fields['Vercel-Cache-Tag'] === 'covers') {
+          contentHeadersByMode.cover = fields;
+        } else if (fields['Vercel-Cache-Tag'] === 'book-content') {
+          contentHeadersByMode.textOrCard = fields;
+        }
+      },
+    });
+  }
+
+  let translationsHeaders = null;
+  if (translationsRouteAst) {
+    traverse(translationsRouteAst, {
+      ObjectExpression({ node }) {
+        const fields = extractObjectScalarFields(node);
+        if (fields && fields['Cache-Control'] && fields['Vercel-Cache-Tag'] === 'translations') {
+          translationsHeaders = fields;
+        }
+      },
+    });
+  }
+
+  const extractSMaxAge = (ccStr) => {
+    const m = String(ccStr || '').match(/s-maxage=(\d+)/);
+    return m ? Number(m[1]) : null;
+  };
+  const extractMaxAge = (ccStr) => {
+    const m = String(ccStr || '').match(/(?:^|,\s*)max-age=(\d+)/);
+    return m ? Number(m[1]) : null;
+  };
+  const extractSwr = (ccStr) => {
+    const m = String(ccStr || '').match(/stale-while-revalidate=(\d+)/);
+    return m ? Number(m[1]) : null;
+  };
+
+  const booksCCs = [...booksCacheStrings];
+  const quotePoolCC =
+    booksCCs.find((s) => s.includes('s-maxage=43200') || s.includes('max-age=3600')) ||
+    'public, max-age=3600, s-maxage=43200, stale-while-revalidate=604800';
+  const lookupCC =
+    booksCCs.find((s) => s.includes('s-maxage=604800') && s.includes('max-age=86400')) ||
+    'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000';
+  const searchCC =
+    booksCCs.find((s) => s.includes('s-maxage=86400') && s.includes('max-age=300')) ||
+    'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800';
+
+  const contentTextCC =
+    contentHeadersByMode.textOrCard?.['Cache-Control'] ||
+    'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800';
+  const contentCoverCC =
+    contentHeadersByMode.cover?.['Cache-Control'] ||
+    'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000';
+  const translationsCC =
+    translationsHeaders?.['Cache-Control'] ||
+    'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000';
+
+  return {
+    booksQuotePool: {
+      raw: quotePoolCC,
+      maxAge: extractMaxAge(quotePoolCC),
+      sMaxAge: extractSMaxAge(quotePoolCC),
+      swr: extractSwr(quotePoolCC),
+    },
+    booksLookup: {
+      raw: lookupCC,
+      maxAge: extractMaxAge(lookupCC),
+      sMaxAge: extractSMaxAge(lookupCC),
+      swr: extractSwr(lookupCC),
+    },
+    booksSearch: {
+      raw: searchCC,
+      maxAge: extractMaxAge(searchCC),
+      sMaxAge: extractSMaxAge(searchCC),
+      swr: extractSwr(searchCC),
+    },
+    contentText: {
+      raw: contentTextCC,
+      maxAge: extractMaxAge(contentTextCC),
+      sMaxAge: extractSMaxAge(contentTextCC),
+      swr: extractSwr(contentTextCC),
+    },
+    contentCover: {
+      raw: contentCoverCC,
+      maxAge: extractMaxAge(contentCoverCC),
+      sMaxAge: extractSMaxAge(contentCoverCC),
+      swr: extractSwr(contentCoverCC),
+    },
+    translations: {
+      raw: translationsCC,
+      maxAge: extractMaxAge(translationsCC),
+      sMaxAge: extractSMaxAge(translationsCC),
+      swr: extractSwr(translationsCC),
+      vary: translationsHeaders?.Vary || 'x-vercel-ip-country',
+    },
+  };
+}
+
+function extractHookParamDefaults(filePath, targetParams) {
+  const ast = parseModuleAstQuiet(filePath);
+  const out = new Map();
+  if (!ast) return out;
+  const wanted = new Set(targetParams);
+  traverse(ast, {
+    AssignmentPattern({ node }) {
+      if (node.left?.type === 'Identifier' && wanted.has(node.left.name)) {
+        const val = evaluateStaticAstScalar(node.right);
+        if (val !== undefined) out.set(node.left.name, val);
+      }
+    },
+  });
+  return out;
+}
+
+/**
+ * Extracts runtime tunables, cache/rate limits, coverage thresholds, Vercel config specs,
+ * hardware-tier boundaries, and CLI pipeline constants directly from source AST/JSON without fallback drift.
+ */
+function extractRuntimeSpecConstants(rootDirPath) {
+  const vercel = extractVercelConfigSpecs(rootDirPath);
+  const coverageThresholds = extractVitestThresholdsSpec(rootDirPath);
+  const performanceTier = extractPerformanceTierSpecs(rootDirPath);
+  const routeCache = extractRouteCacheDirectives(rootDirPath);
+
+  const featuredDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'config', 'featured-books.ts'),
+    ['FEATURED_HERO_BOOKS']
+  );
+  const rateLimitDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'rate-limiter.ts'),
+    ['booksApiRateLimiter', 'bookContentRateLimiter', 'bookCardRateLimiter', 'bookCoverRateLimiter']
+  );
+  const queryParserDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'catalog', 'query-parser.ts'),
+    [
+      'DEFAULT_QUOTE_POOL_LIMIT',
+      'MAX_CATALOG_PAGE',
+      'MAX_SEARCH_LENGTH',
+      'MAX_TOPIC_LENGTH',
+      'MAX_IDS_BATCH',
+      'MAX_LANGUAGES',
+      'MAX_MIME_TYPE_LENGTH',
+      'MIN_ERA_YEAR',
+      'MAX_ERA_YEAR',
+    ]
+  );
+  const supabaseProviderDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'catalog', 'supabase-provider.ts'),
+    [
+      'MAX_CATALOG_OFFSET',
+      'QUOTE_POOL_CACHE_TTL_MS',
+      'CATALOG_CACHE_TTL_MS',
+      'MAX_CATALOG_CACHE_ENTRIES',
+      'MAX_BACKFILL_ITERATIONS',
+    ]
+  );
+  const metadataCacheDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'app', 'api', 'books', 'content', 'metadata-cache.ts'),
+    ['CACHE_TTL_MS', 'MAX_METADATA_CACHE_ENTRIES', 'MAX_CACHED_BOOKS', 'MAX_CACHEABLE_BOOK_CHARS']
+  );
+  const r2ClientDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'r2-client.ts'),
+    ['MAX_R2_BOOK_BYTES', 'MAX_R2_COVER_BYTES', 'R2_DEFAULT_TIMEOUT_MS']
+  );
+  const offlineStorageDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'offline-storage.ts'),
+    ['DB_NAME', 'DB_VERSION', 'MAX_CACHED_COVERS', 'COVER_CACHE_TTL_MS']
+  );
+  const readerLayoutDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'app', 'read', '[id]', 'reader-layout-utils.ts'),
+    ['MAX_SERVER_METADATA_CACHE_ENTRIES']
+  );
+  const profileLayoutDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'app', 'u', '[username]', 'profile-layout-utils.ts'),
+    ['MAX_PROFILE_CACHE_ENTRIES', 'PROFILE_CACHE_TTL_MS']
+  );
+  const passageShuffleDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'hooks', 'useBookPassageShuffle.ts'),
+    ['MAX_EXTRACTED_PASSAGES_ENTRIES', 'EXTRACTED_PASSAGES_TTL_MS']
+  );
+  const accoladesStoreDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'stores', 'useAccoladesStore.ts'),
+    ['MAX_PINNED_ACCOLADES']
+  );
+  const preferencesSyncDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'preferences-sync.ts'),
+    ['FACTORY_PREFERENCES']
+  );
+  const tooltipDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'hooks', 'useCursorTooltip.ts'),
+    ['DEFAULT_TOOLTIP_DELAY_MS']
+  );
+  let pkgEngines = { node: '>=22.0.0', npm: '>=10.0.0', nodeMajor: '22' };
+  const pkgPath = path.join(rootDirPath, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      const nodeSpec = String(pkg.engines?.node || '>=22.0.0').trim();
+      const npmSpec = String(pkg.engines?.npm || '>=10.0.0').trim();
+      const nodeMajorMatch = nodeSpec.match(/\d+/);
+      pkgEngines = {
+        node: nodeSpec,
+        npm: npmSpec,
+        nodeMajor: nodeMajorMatch ? nodeMajorMatch[0] : '22',
+      };
+    } catch {
+      // keep defaults
+    }
+  }
+  const parserTypesDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'gutenberg', 'types.ts'),
+    ['GUTENBERG_PARSER_CONFIG']
+  );
+  const paginationDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'gutenberg', 'pagination.ts'),
+    ['MAX_PAGINATION_CACHE_ENTRIES']
+  );
+  const useBooksDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'hooks', 'queries', 'useBooks.ts'),
+    ['QUOTE_POOL_SETTLE_TIMEOUT_MS']
+  );
+  const translationsRouteDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'app', 'api', 'books', 'translations', 'route.ts'),
+    ['MAX_BOOK_ID']
+  );
+  const timerParams = extractHookParamDefaults(
+    path.join(rootDirPath, 'src', 'hooks', 'useReadingTimer.ts'),
+    ['idleTimeoutMs', 'flushIntervalMs']
+  );
+  const dockParams = extractHookParamDefaults(
+    path.join(rootDirPath, 'src', 'hooks', 'useAmbientDockScrollState.ts'),
+    ['idleTimeoutMs']
+  );
+  const focusParams = extractHookParamDefaults(
+    path.join(rootDirPath, 'src', 'hooks', 'useMobileViewportCardFocus.ts'),
+    ['focusBandRatio']
+  );
+
+  // CLI Sync Script Constants
+  const r2SigV4Decl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'scripts', 'lib', 'r2-sigv4.js'),
+    ['R2_DEFAULT_TIMEOUT_MS', 'MAX_R2_BOOK_BYTES', 'DEFAULT_R2_PUT_CONCURRENCY']
+  );
+  const syncCatalogDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'scripts', 'sync-gutenberg-catalog.js'),
+    [
+      'MIN_ACTIVE_CATALOG_FOR_PRUNE',
+      'MAX_WITHDRAWN_PRUNE_PER_RUN',
+      'MIN_DYNAMIC_WRITE_CHUNK_SIZE',
+      'MAX_DYNAMIC_WRITE_CHUNK_SIZE',
+      'DEFAULT_QUOTE_POPULAR_POOL_SIZE',
+      'DEFAULT_QUOTE_RECENT_POOL_SIZE',
+    ]
+  );
+  const syncR2Decl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'scripts', 'sync-r2-assets.js'),
+    ['DEFAULT_MISSING_RECHECK_DAYS', 'MIN_ACTIVE_CATALOG_FOR_PRUNE', 'DEFAULT_MAX_PRUNE_PER_RUN', 'RSYNC_HOSTS']
+  );
+  const scanR2Decl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'scripts', 'scan-r2-content.js'),
+    ['DEFAULT_SCAN_CONCURRENCY', 'DEFAULT_SCAN_TERMS']
+  );
+  const syncQuotesDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'scripts', 'sync-featured-quotes.js'),
+    [
+      'DEFAULT_POPULAR_POOL_SIZE',
+      'DEFAULT_RECENT_POOL_SIZE',
+      'DEFAULT_MAX_PRUNE_PER_RUN',
+      'MIRROR_SHORTCUT_MAP',
+    ]
+  );
+  const ingestTransDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'scripts', 'ingest-translations.js'),
+    ['WIKIDATA_SPARQL_TIMEOUT_MS']
+  );
+
+  const parserCfg = parserTypesDecl.objects.get('GUTENBERG_PARSER_CONFIG') || {};
+  const rsyncHostsObj = syncR2Decl.objects.get('RSYNC_HOSTS') || {};
+  const quoteMirrorsObj = syncQuotesDecl.objects.get('MIRROR_SHORTCUT_MAP') || {};
+  const factoryPrefObj = preferencesSyncDecl.objects.get('FACTORY_PREFERENCES') || {};
+  const preferencesKeyCount =
+    preferencesSyncDecl.objectKeyCounts.get('FACTORY_PREFERENCES') ||
+    Object.keys(factoryPrefObj).length ||
+    14;
+
+  return {
+    engines: pkgEngines,
+    vercel,
+    coverageThresholds,
+    performanceTier,
+    routeCache,
+    featuredHeroBookCount: featuredDecl.arrayLengths.get('FEATURED_HERO_BOOKS') ?? 27,
+    rateLimits: {
+      booksApi: rateLimitDecl.rateLimiterRequests.get('booksApiRateLimiter') ?? 60,
+      bookContent: rateLimitDecl.rateLimiterRequests.get('bookContentRateLimiter') ?? 30,
+      bookCard: rateLimitDecl.rateLimiterRequests.get('bookCardRateLimiter') ?? 20,
+      bookCover: rateLimitDecl.rateLimiterRequests.get('bookCoverRateLimiter') ?? 60,
+    },
+    queryLimits: {
+      defaultQuotePoolLimit: queryParserDecl.scalars.get('DEFAULT_QUOTE_POOL_LIMIT') ?? 48,
+      maxCatalogPage: queryParserDecl.scalars.get('MAX_CATALOG_PAGE') ?? 5000,
+      maxCatalogOffset: supabaseProviderDecl.scalars.get('MAX_CATALOG_OFFSET') ?? 160000,
+      maxSearchLength: queryParserDecl.scalars.get('MAX_SEARCH_LENGTH') ?? 120,
+      maxTopicLength: queryParserDecl.scalars.get('MAX_TOPIC_LENGTH') ?? 120,
+      maxIdsBatch: queryParserDecl.scalars.get('MAX_IDS_BATCH') ?? 100,
+      maxLanguages: queryParserDecl.scalars.get('MAX_LANGUAGES') ?? 5,
+      maxMimeTypeLength: queryParserDecl.scalars.get('MAX_MIME_TYPE_LENGTH') ?? 64,
+      minEraYear: queryParserDecl.scalars.get('MIN_ERA_YEAR') ?? -4000,
+      maxEraYear: queryParserDecl.scalars.get('MAX_ERA_YEAR') ?? 3000,
+      maxTranslationBookId: translationsRouteDecl.scalars.get('MAX_BOOK_ID') ?? 10000000,
+      catalogCacheTtlMs: supabaseProviderDecl.scalars.get('CATALOG_CACHE_TTL_MS') ?? 300000,
+      maxCatalogCacheEntries: supabaseProviderDecl.scalars.get('MAX_CATALOG_CACHE_ENTRIES') ?? 64,
+      quotePoolCacheTtlMs: supabaseProviderDecl.scalars.get('QUOTE_POOL_CACHE_TTL_MS') ?? 43200000,
+      maxBackfillIterations: supabaseProviderDecl.scalars.get('MAX_BACKFILL_ITERATIONS') ?? 5,
+    },
+    caches: {
+      metadataCacheTtlMs: metadataCacheDecl.scalars.get('CACHE_TTL_MS') ?? 86400000,
+      maxMetadataCacheEntries: metadataCacheDecl.scalars.get('MAX_METADATA_CACHE_ENTRIES') ?? 1000,
+      maxCachedBooks: metadataCacheDecl.scalars.get('MAX_CACHED_BOOKS') ?? 20,
+      maxCacheableBookChars: metadataCacheDecl.scalars.get('MAX_CACHEABLE_BOOK_CHARS') ?? 1800000,
+      maxCachedCovers: offlineStorageDecl.scalars.get('MAX_CACHED_COVERS') ?? 300,
+      coverCacheTtlDays: Math.round((offlineStorageDecl.scalars.get('COVER_CACHE_TTL_MS') ?? 2592000000) / 86400000),
+      offlineDbName: offlineStorageDecl.scalars.get('DB_NAME') ?? 'BookariumOfflineDB',
+      offlineDbVersion: offlineStorageDecl.scalars.get('DB_VERSION') ?? 2,
+      maxPaginationCacheEntries: paginationDecl.scalars.get('MAX_PAGINATION_CACHE_ENTRIES') ?? 500,
+      maxServerMetadataEntries: readerLayoutDecl.scalars.get('MAX_SERVER_METADATA_CACHE_ENTRIES') ?? 500,
+      maxProfileCacheEntries: profileLayoutDecl.scalars.get('MAX_PROFILE_CACHE_ENTRIES') ?? 500,
+      profileCacheTtlMin: Math.round((profileLayoutDecl.scalars.get('PROFILE_CACHE_TTL_MS') ?? 300000) / 60000),
+      maxExtractedPassages: passageShuffleDecl.scalars.get('MAX_EXTRACTED_PASSAGES_ENTRIES') ?? 100,
+      extractedPassagesTtlDays: Math.round((passageShuffleDecl.scalars.get('EXTRACTED_PASSAGES_TTL_MS') ?? 2592000000) / 86400000),
+    },
+    stores: {
+      maxPinnedAccolades: accoladesStoreDecl.scalars.get('MAX_PINNED_ACCOLADES') ?? 3,
+      preferencesKeyCount,
+    },
+    r2: {
+      maxBookBytes: r2ClientDecl.scalars.get('MAX_R2_BOOK_BYTES') ?? 15 * 1024 * 1024,
+      maxBookMb: Math.round((r2ClientDecl.scalars.get('MAX_R2_BOOK_BYTES') ?? 15 * 1024 * 1024) / (1024 * 1024)),
+      maxCoverBytes: r2ClientDecl.scalars.get('MAX_R2_COVER_BYTES') ?? 2 * 1024 * 1024,
+      maxCoverMb: Math.round((r2ClientDecl.scalars.get('MAX_R2_COVER_BYTES') ?? 2 * 1024 * 1024) / (1024 * 1024)),
+      defaultTimeoutMs: r2ClientDecl.scalars.get('R2_DEFAULT_TIMEOUT_MS') ?? r2SigV4Decl.scalars.get('R2_DEFAULT_TIMEOUT_MS') ?? 10000,
+      defaultPutConcurrency: r2SigV4Decl.scalars.get('DEFAULT_R2_PUT_CONCURRENCY') ?? 8,
+    },
+    parser: {
+      charsPerPageBase: parserCfg.CHARS_PER_PAGE_BASE ?? 5600,
+      passageScanBytes: parserCfg.PASSAGE_SCAN_BYTES ?? 120000,
+      estimatedWordsPerMinute: parserCfg.ESTIMATED_WORDS_PER_MINUTE ?? 200,
+    },
+    hooks: {
+      quotePoolSettleTimeoutMs: useBooksDecl.scalars.get('QUOTE_POOL_SETTLE_TIMEOUT_MS') ?? 1500,
+      readingIdleTimeoutMs: timerParams.get('idleTimeoutMs') ?? 120000,
+      dockIdleTimeoutMs: dockParams.get('idleTimeoutMs') ?? 1600,
+      mobileFocusBandRatio: focusParams.get('focusBandRatio') ?? 0.45,
+      tooltipDelayMs: tooltipDecl.scalars.get('DEFAULT_TOOLTIP_DELAY_MS') ?? 300,
+    },
+    cli: {
+      catalogMinActiveForPrune: syncCatalogDecl.scalars.get('MIN_ACTIVE_CATALOG_FOR_PRUNE') ?? 50000,
+      catalogMaxWithdrawnPrune: syncCatalogDecl.scalars.get('MAX_WITHDRAWN_PRUNE_PER_RUN') ?? 500,
+      catalogMinWriteChunk: syncCatalogDecl.scalars.get('MIN_DYNAMIC_WRITE_CHUNK_SIZE') ?? 25,
+      catalogMaxWriteChunk: syncCatalogDecl.scalars.get('MAX_DYNAMIC_WRITE_CHUNK_SIZE') ?? 100,
+      quotePopularPoolSize: syncQuotesDecl.scalars.get('DEFAULT_POPULAR_POOL_SIZE') ?? syncCatalogDecl.scalars.get('DEFAULT_QUOTE_POPULAR_POOL_SIZE') ?? 500,
+      quoteRecentPoolSize: syncQuotesDecl.scalars.get('DEFAULT_RECENT_POOL_SIZE') ?? syncCatalogDecl.scalars.get('DEFAULT_QUOTE_RECENT_POOL_SIZE') ?? 64,
+      quoteMaxPrunePerRun: syncQuotesDecl.scalars.get('DEFAULT_MAX_PRUNE_PER_RUN') ?? 2000,
+      quoteMirrorKeys: Object.keys(quoteMirrorsObj).length > 0 ? Object.keys(quoteMirrorsObj) : ['pglaf', 'aleph', 'readingroo'],
+      r2MissingRecheckDays: syncR2Decl.scalars.get('DEFAULT_MISSING_RECHECK_DAYS') ?? 90,
+      r2MinActiveForPrune: syncR2Decl.scalars.get('MIN_ACTIVE_CATALOG_FOR_PRUNE') ?? 50000,
+      r2MaxPrunePerRun: syncR2Decl.scalars.get('DEFAULT_MAX_PRUNE_PER_RUN') ?? 500,
+      r2RsyncPrimaryHost: rsyncHostsObj.aleph || 'aleph.gutenberg.org',
+      r2RsyncSecondaryHost: rsyncHostsObj.ibiblio || 'rsync.ibiblio.org',
+      scanDefaultConcurrency: scanR2Decl.scalars.get('DEFAULT_SCAN_CONCURRENCY') ?? 32,
+      scanDefaultTerms: scanR2Decl.arrays.get('DEFAULT_SCAN_TERMS') || ['asiafilm'],
+      wikidataSparqlTimeoutMs: ingestTransDecl.scalars.get('WIKIDATA_SPARQL_TIMEOUT_MS') ?? 45000,
+    },
+  };
+}
+
+function extractPermissionsPairsFromYamlLines(lines, startIndex, headerIndent) {
+  const pairs = [];
+  for (let i = startIndex + 1; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw.trim() || raw.trim().startsWith('#')) continue;
+    const indent = raw.search(/\S/);
+    if (indent <= headerIndent) break;
+    const kv = raw.trim().match(/^([a-z0-9_-]+):\s*([a-z0-9_-]+)\s*(?:#.*)?$/i);
+    if (kv) {
+      pairs.push(`${kv[1]}: ${kv[2]}`);
+    }
+  }
+  return pairs;
+}
+
+function parseSingleWorkflowYaml(wfFile, wfText) {
+  const lines = String(wfText || '').split(/\r?\n/);
+  const cleanVal = (raw) => String(raw || '').trim().replace(/^['"]|['"]$/g, '');
+
+  let name = wfFile;
+  for (const line of lines) {
+    const nm = line.match(/^name:\s*(.+?)\s*(?:#.*)?$/);
+    if (nm) {
+      name = cleanVal(nm[1]);
+      break;
+    }
+  }
+
+  let cron = null;
+  let hasWorkflowDispatch = false;
+  let pushBranches = [];
+  let pushTags = [];
+  let pullRequestBranches = [];
+  const dispatchInputs = [];
+
+  let inOnBlock = false;
+  let currentOnSub = '';
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw.trim() || raw.trim().startsWith('#')) continue;
+    const indent = raw.search(/\S/);
+    const trimmed = raw.trim();
+
+    if (indent === 0) {
+      inOnBlock = /^on:\s*(?:#.*)?$/.test(trimmed);
+      currentOnSub = '';
+      continue;
+    }
+    if (!inOnBlock) continue;
+
+    if (indent === 2) {
+      const subMatch = trimmed.match(/^(schedule|push|pull_request|workflow_dispatch):\s*(?:#.*)?$/);
+      currentOnSub = subMatch ? subMatch[1] : '';
+      if (currentOnSub === 'workflow_dispatch') hasWorkflowDispatch = true;
+      continue;
+    }
+
+    if (currentOnSub === 'schedule') {
+      const cm = trimmed.match(/^-\s*cron:\s*['"]([^'"]+)['"]/);
+      if (cm && !cron) cron = cm[1].trim();
+    } else if (currentOnSub === 'push') {
+      if (trimmed.startsWith('branches:')) {
+        pushBranches = extractWorkflowTriggerBranches(lines.slice(i).join('\n'));
+      } else if (trimmed.startsWith('tags:')) {
+        const inlineTags = trimmed.match(/^tags:\s*\[([^\]]+)\]/);
+        if (inlineTags) {
+          pushTags = inlineTags[1].split(',').map((t) => cleanVal(t)).filter(Boolean);
+        } else {
+          for (let j = i + 1; j < lines.length; j++) {
+            const nl = lines[j];
+            if (!nl.trim() || nl.trim().startsWith('#')) continue;
+            if (nl.search(/\S/) <= indent) break;
+            const tm = nl.trim().match(/^-\s+(.+?)\s*$/);
+            if (tm) pushTags.push(cleanVal(tm[1]));
+          }
+        }
+      }
+    } else if (currentOnSub === 'pull_request' && trimmed.startsWith('branches:')) {
+      pullRequestBranches = extractWorkflowTriggerBranches(lines.slice(i).join('\n'));
+    } else if (currentOnSub === 'workflow_dispatch' && indent === 6) {
+      const inpMatch = trimmed.match(/^([a-z0-9_-]+):\s*$/i);
+      if (inpMatch) {
+        let defaultVal = null;
+        for (let j = i + 1; j < lines.length; j++) {
+          const nl = lines[j];
+          if (!nl.trim() || nl.trim().startsWith('#')) continue;
+          if (nl.search(/\S/) <= indent) break;
+          const dm = nl.trim().match(/^default:\s*(.+?)\s*$/);
+          if (dm) {
+            defaultVal = cleanVal(dm[1]);
+            break;
+          }
+        }
+        dispatchInputs.push({ name: inpMatch[1], defaultValue: defaultVal });
+      }
+    }
+  }
+
+  let topPermissions = [];
+  const jobPermissions = [];
+  let concurrencyGroup = null;
+  let concurrencyCancelInProgress = null;
+  let timeoutMinutes = null;
+  let nodeVersion = null;
+  let usesNpmCache = false;
+  let usesNpmCi = false;
+  let usesFetchDepthZero = false;
+  const secretsSet = new Set();
+  const actions = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (!raw.trim() || raw.trim().startsWith('#')) continue;
+    const indent = raw.search(/\S/);
+    const trimmed = raw.trim();
+
+    if (/^permissions:\s*$/.test(trimmed)) {
+      const pairs = extractPermissionsPairsFromYamlLines(lines, i, indent);
+      if (indent === 0) topPermissions = pairs;
+      else if (pairs.length > 0) jobPermissions.push(...pairs);
+    } else if (indent === 0 && /^concurrency:\s*$/.test(trimmed)) {
+      for (let j = i + 1; j < lines.length; j++) {
+        const nl = lines[j];
+        if (!nl.trim() || nl.trim().startsWith('#')) continue;
+        if (nl.search(/\S/) === 0) break;
+        const gm = nl.trim().match(/^group:\s*(.+?)\s*$/);
+        if (gm) concurrencyGroup = cleanVal(gm[1]);
+        const cm = nl.trim().match(/^cancel-in-progress:\s*(.+?)\s*$/);
+        if (cm) concurrencyCancelInProgress = cleanVal(cm[1]);
+      }
+    } else if (trimmed.startsWith('timeout-minutes:')) {
+      const tm = trimmed.match(/^timeout-minutes:\s*(\d+)/);
+      if (tm && timeoutMinutes === null) timeoutMinutes = Number(tm[1]);
+    } else if (trimmed.startsWith('node-version:')) {
+      const nvm = trimmed.match(/^node-version:\s*['"]?([0-9.]+)['"]?/);
+      if (nvm && nodeVersion === null) nodeVersion = nvm[1];
+    } else if (/^cache:\s*['"]?npm['"]?/.test(trimmed)) {
+      usesNpmCache = true;
+    } else if (/^(?:-\s+)?run:\s*npm ci\b/.test(trimmed)) {
+      usesNpmCi = true;
+    } else if (/^fetch-depth:\s*0\b/.test(trimmed)) {
+      usesFetchDepthZero = true;
+    } else {
+      const usesMatch = trimmed.match(/^(?:-\s+)?uses:\s*([^\s@]+)@([0-9a-f]{40})(?:\s*#\s*(.+))?$/);
+      if (usesMatch) {
+        actions.push({
+          repo: usesMatch[1],
+          sha: usesMatch[2],
+          versionTag: usesMatch[3] ? usesMatch[3].trim() : null,
+        });
+      }
+    }
+
+    for (const sm of raw.matchAll(/\$\{\{\s*secrets\.([A-Z0-9_]+)\s*\}\}/g)) {
+      secretsSet.add(sm[1]);
+    }
+  }
+
+  return {
+    file: `.github/workflows/${wfFile}`,
+    filename: wfFile,
+    name,
+    cron,
+    hasWorkflowDispatch,
+    pushBranches,
+    pushTags,
+    pullRequestBranches,
+    dispatchInputs,
+    topPermissions,
+    jobPermissions,
+    concurrencyGroup,
+    concurrencyCancelInProgress,
+    timeoutMinutes,
+    nodeVersion,
+    usesNpmCache,
+    usesNpmCi,
+    usesFetchDepthZero,
+    secrets: [...secretsSet].sort(compareCodepoint),
+    actions,
+  };
+}
+
+/**
+ * Parses all `.github/workflows/*.yml` files and `.github/dependabot.yml` into a deterministic catalog
+ * covering triggers, cron schedules, permissions, concurrency, timeouts, secret bindings, and SHA-pinned actions.
+ */
+function extractWorkflowSpecCatalog(rootDirPath) {
+  const workflowsDir = path.join(rootDirPath, '.github', 'workflows');
+  const workflows = [];
+  if (fs.existsSync(workflowsDir)) {
+    const wfFiles = fs
+      .readdirSync(workflowsDir)
+      .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
+      .sort(compareCodepoint);
+    for (const wfFile of wfFiles) {
+      const wfText = fs.readFileSync(path.join(workflowsDir, wfFile), 'utf-8');
+      workflows.push(parseSingleWorkflowYaml(wfFile, wfText));
+    }
+  }
+
+  const dependabotUpdates = [];
+  const depPath = path.join(rootDirPath, '.github', 'dependabot.yml');
+  if (fs.existsSync(depPath)) {
+    const depLines = fs.readFileSync(depPath, 'utf-8').split(/\r?\n/);
+    const cleanVal = (raw) => String(raw || '').trim().replace(/^['"]|['"]$/g, '');
+    let current = null;
+    for (const raw of depLines) {
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const ecoMatch = trimmed.match(/^-\s*package-ecosystem:\s*(.+)$/);
+      if (ecoMatch) {
+        if (current) dependabotUpdates.push(current);
+        current = {
+          ecosystem: cleanVal(ecoMatch[1]),
+          interval: null,
+          targetBranch: null,
+          openPullRequestsLimit: null,
+          prefix: null,
+        };
+        continue;
+      }
+      if (!current) continue;
+      const iv = trimmed.match(/^interval:\s*(.+)$/);
+      if (iv) current.interval = cleanVal(iv[1]);
+      const tb = trimmed.match(/^target-branch:\s*(.+)$/);
+      if (tb) current.targetBranch = cleanVal(tb[1]);
+      const lim = trimmed.match(/^open-pull-requests-limit:\s*(\d+)/);
+      if (lim) current.openPullRequestsLimit = Number(lim[1]);
+      const pf = trimmed.match(/^prefix:\s*(.+)$/);
+      if (pf) current.prefix = cleanVal(pf[1]);
+    }
+    if (current) dependabotUpdates.push(current);
+  }
+
+  return { workflows, dependabotUpdates };
+}
+
 module.exports = {
   compareCodepoint,
   getDeterministicTextOrBinaryBytes,
@@ -3861,6 +4925,7 @@ module.exports = {
   getAstParseErrors,
   detectLayerViolations,
   detectOrphanedModules,
+  collectScriptFiles,
   analyzeScriptsDependencyGraph,
   extractCrossBoundaryCouplingCatalog,
   TIER_1_CONTRACTED_MODULES,
@@ -3888,5 +4953,10 @@ module.exports = {
   extractTestHarnessAstDependencies,
   extractPublicAssetsCatalog,
   extractEnvironmentDependencyCatalog,
+  extractWorkflowTriggerBranches,
+  extractWorkflowSpecCatalog,
+  extractRuntimeSpecConstants,
+  REQUIRED_GOVERNANCE_DOCS,
+  GENERATOR_LOOKUP_MAP_COUNT,
 };
 

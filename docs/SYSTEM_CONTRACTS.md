@@ -8,7 +8,7 @@ While [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) maps structural topology and [`d
 
 ## 📐 Writing Contract JSDoc Annotations
 
-Annotate a module header (above imports or tagged `@module`) or an exported function/class/type directly in `src/` or `scripts/*.js`:
+Annotate a module header (above imports or tagged `@module`) or an exported function/class/type directly in `src/` or `scripts/**/*.js`:
 
 ```ts
 /**
@@ -26,23 +26,23 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `278` (`src/**` + `scripts/*.js`)
-- **Annotated Contract Modules**: `67` (**24.1%** coverage; `15` Tier-1 + `16` Tier-2 + `18` Tier-3 + `18` Tier-4 = `67` Protected)
-- **Extracted Module Invariants**: `130`
+- **Total Scanned Executable Modules**: `280` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
+- **Annotated Contract Modules**: `82` (**29.3%** coverage; `19` Tier-1 + `20` Tier-2 + `23` Tier-3 + `20` Tier-4 = `82` Protected)
+- **Extracted Module Invariants**: `145`
 - **Symbol-Level Contracts**: `1`
-- **Pending Annotation Queue**: `211` *(auto-ranked below by AST blast radius & external boundary exposure)*
+- **Pending Annotation Queue**: `198` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
 | **Edge Proxy & API Routes** | `5` | `5` | `0` | 100.0% |
-| **Domain Engines & Adapters** | `48` | `27` | `21` | 56.3% |
+| **Domain Engines & Adapters** | `48` | `32` | `16` | 66.7% |
 | **State Stores (Zustand)** | `10` | `10` | `0` | 100.0% |
 | **React Hooks & Queries** | `36` | `11` | `25` | 30.6% |
-| **Web Workers** | `1` | `1` | `0` | 100.0% |
-| **App Router Pages & Layouts** | `25` | `1` | `24` | 4.0% |
-| **UI & Feature Components** | `114` | `0` | `114` | 0.0% |
-| **Config & Type Contracts** | `17` | `0` | `17` | 0.0% |
-| **CLI Pipelines & Governance** | `22` | `12` | `10` | 54.5% |
+| **Web Workers** | `2` | `2` | `0` | 100.0% |
+| **App Router Pages & Layouts** | `25` | `6` | `19` | 24.0% |
+| **UI & Feature Components** | `114` | `1` | `113` | 0.9% |
+| **Config & Type Contracts** | `18` | `1` | `17` | 5.6% |
+| **CLI Pipelines & Governance** | `22` | `14` | `8` | 63.6% |
 
 ---
 
@@ -118,7 +118,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/proxy.test.ts`](../src/proxy.test.ts) (13 tests)
 
 
-### Layer: Domain Engines & Adapters (27 Contracted)
+### Layer: Domain Engines & Adapters (32 Contracted)
 
 #### [`src/lib/annotation-cloud-sync.ts`](../src/lib/annotation-cloud-sync.ts) *(Tier-2 Protected)*
 
@@ -132,6 +132,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/stores/useAnnotationStore.ts`](../src/stores/useAnnotationStore.ts))
 - **Cross-Boundary Coupling**: DB Tables: `public.user_annotations`
 - **Test Contract**: [`src/lib/annotation-cloud-sync.test.ts`](../src/lib/annotation-cloud-sync.test.ts) (8 tests)
+
+#### [`src/lib/api-utils.ts`](../src/lib/api-utils.ts) *(Tier-1 Protected)*
+
+- **Intended Scope (`@scope`)**: Shared HTTP security utilities enforcing API query allowlists, Fetch Metadata isolation (`guardContentAssetRequest`), `nosniff`/`CORP` response headers, HTTPS proxy detection, and rightmost-hop client IP extraction.
+- **Behavioral Invariants (`@invariant`)**:
+  - Reject unexpected query keys (`hasUnexpectedQueryParams`, restricting dev diagnostic params to `NODE_ENV !== 'production'`), block browser deeplinks and cross-site subresource hotlinks on `/api/books/content*` (`isBlockedContentAssetRequest`, returning `403 no-store` while keeping `type=card` and headerless crawlers intact), and emit `Cache-Control: no-store, max-age=0` + `Cross-Origin-Resource-Policy` (`same-origin` default) on all error and rate-limit responses.
+- **Design Rationale (`@rationale`)**:
+  - Centralizing Fetch Metadata, proxy header precedence (`x-vercel-forwarded-for`, rightmost `x-forwarded-for`), and `no-store` error headers prevents security-header drift or cache poisoning across API route handlers.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
+- **AST Blast Radius**: 6 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/app/auth/callback/route.ts`](../src/app/auth/callback/route.ts), …)
+- **Cross-Boundary Coupling**: Env Vars: `NODE_ENV`
+- **Test Contract**: [`src/lib/api-utils.test.ts`](../src/lib/api-utils.test.ts) (15 tests)
 
 #### [`src/lib/auth-recovery.ts`](../src/lib/auth-recovery.ts) *(Tier-2 Protected)*
 
@@ -185,6 +197,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.user_book_curation`, `public.user_favorites`
 - **Test Contract**: [`src/lib/bookshelf-cloud-sync.test.ts`](../src/lib/bookshelf-cloud-sync.test.ts) (13 tests)
 
+#### [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts) *(Tier-1 Protected)*
+
+- **Intended Scope (`@scope`)**: Authoritative input parser and sanitizer (`parseCatalogQuery`) normalizing `/api/books` search parameters and resolving active client copyright jurisdiction.
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce strict upper bounds (`MAX_CATALOG_PAGE`, `MAX_SEARCH_LENGTH`, `MAX_TOPIC_LENGTH`, `MAX_IDS_BATCH`, `MAX_LANGUAGES`, `MAX_MIME_TYPE_LENGTH`, `MIN_ERA_YEAR`..`MAX_ERA_YEAR`, and `DEFAULT_QUOTE_POOL_LIMIT` when `pool === 'quotes'`), validate regex patterns for ISO languages/IDs/MIME types, and delegate jurisdiction resolution exclusively to `resolveClientCountry`.
+- **Design Rationale (`@rationale`)**:
+  - Bounding page offsets, ID batch counts, string lengths, and quote pool limits upfront shields the 78k-row PostgreSQL database and Vercel Edge cache keys from unconstrained offset scans and cache-busting payloads.
+- **Governing Decisions (`@adr`)**: [ADR-022](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-037](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/route.ts`](../src/app/api/books/route.ts))
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/lib/catalog/query-parser.test.ts`](../src/lib/catalog/query-parser.test.ts) (11 tests)
+
 #### [`src/lib/catalog/supabase-provider.ts`](../src/lib/catalog/supabase-provider.ts) *(Tier-1 Protected)*
 
 - **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, and LRU response caching.
@@ -221,7 +245,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Isolating dev overrides behind `NODE_ENV === 'development'` prevents HTTP 451 copyright circumvention in production while allowing zero-network local jurisdiction testing.
 - **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-042](DECISIONS.md)
-- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts), [`src/proxy.ts`](../src/proxy.ts))
+- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts), [`src/proxy.ts`](../src/proxy.ts), …)
 - **Cross-Boundary Coupling**: Env Vars: `DEV_COUNTRY`, `NODE_ENV`
 - **Test Contract**: [`src/lib/country-resolver.test.ts`](../src/lib/country-resolver.test.ts) (16 tests)
 
@@ -272,7 +296,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Bounded scanning keeps extraction instantaneous in browser modals and CLI quote ingestion alike while blocking proofreader banners and separator art from appearing as literary excerpts.
 - **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md)
-- **AST Blast Radius**: 6 runtime, 0 type-only ([`src/components/presentation/HeroFeaturedBook2DCard.tsx`](../src/components/presentation/HeroFeaturedBook2DCard.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx), [`src/components/presentation/OpenBookLeftPageSpread.tsx`](../src/components/presentation/OpenBookLeftPageSpread.tsx))
+- **AST Blast Radius**: 6 runtime, 0 type-only ([`src/components/presentation/HeroFeaturedBook2DCard.tsx`](../src/components/presentation/HeroFeaturedBook2DCard.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx), [`src/components/presentation/OpenBookLeftPageSpread.tsx`](../src/components/presentation/OpenBookLeftPageSpread.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/gutenberg/passages.test.ts`](../src/lib/gutenberg/passages.test.ts) (12 tests)
 
@@ -315,6 +339,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `BookariumOfflineDB`
 - **Test Contract**: [`src/lib/offline-storage.test.ts`](../src/lib/offline-storage.test.ts) (20 tests)
 
+#### [`src/lib/password.ts`](../src/lib/password.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Client-safe password generation (`generateStrongPassword`) and heuristic strength scoring (`evaluatePasswordStrength`) shared across registration and account security forms.
+- **Behavioral Invariants (`@invariant`)**:
+  - Use Web Crypto `window.crypto.getRandomValues` whenever available in browser contexts and score empty or sub-6-character passwords deterministically at `score: 0` without blocking form submission logic.
+- **Design Rationale (`@rationale`)**:
+  - Centralizing CSPRNG password generation and complexity feedback keeps AuthModal and AccountSecuritySection aligned without adding third-party zxcvbn bundle weight.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md)
+- **AST Blast Radius**: 2 runtime, 2 type-only ([`src/components/auth/AuthModal.tsx`](../src/components/auth/AuthModal.tsx), [`src/hooks/useAccountSecurityActions.ts`](../src/hooks/useAccountSecurityActions.ts), [`src/components/account/AccountSecuritySection.tsx`](../src/components/account/AccountSecuritySection.tsx) *(type)*, [`src/components/ui/PasswordStrengthMeter.tsx`](../src/components/ui/PasswordStrengthMeter.tsx) *(type)*)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/lib/password.test.ts`](../src/lib/password.test.ts) (8 tests)
+
 #### [`src/lib/preferences-sync.ts`](../src/lib/preferences-sync.ts) *(Tier-2 Protected)*
 
 - **Intended Scope (`@scope`)**: Cross-store scholar preferences coordinator bundling active display/narration settings, `customDefaults` presets, and LWW `public.profiles.preferences` cloud sync.
@@ -338,15 +374,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Using built-in `node:crypto` AWS Signature V4 signing and bounded `node:zlib` `gunzip` keeps R2 reads completely dependency-free, fast on serverless Node runtimes, and resilient against decompression bombs or open redirects.
 - **Governing Decisions (`@adr`)**: [ADR-082](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
-- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Cross-Boundary Coupling**: Env Vars: `R2_ACCESS_KEY_ID`, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_SECRET_ACCESS_KEY`
 - **Test Contract**: [`src/lib/r2-client.test.ts`](../src/lib/r2-client.test.ts) (5 tests)
 
 #### [`src/lib/rate-limiter.ts`](../src/lib/rate-limiter.ts) *(Tier-2 Protected)*
 
 - **Intended Scope (`@scope`)**: Route-mode-scoped sliding-window rate limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) anchored on `globalThis`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Anchor singleton limiters on `globalThis` with bounded key capacity (`maxKeys = 10,000`) and periodic `30,000ms` stale-record eviction (`pruneStaleRecords`) to prevent unbounded memory growth.
-  - Keep content (`30/min`), OpenGraph card rendering (`20/min`), cover proxying (`60/min`), and catalog search (`60/min`) buckets isolated so cover batches never starve reader text requests.
+  - Anchor singleton limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) on `globalThis` with bounded `maxKeys` capacity and periodic `pruneStaleRecords` eviction to prevent unbounded memory growth.
+  - Keep `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`, and `booksApiRateLimiter` buckets isolated so cover or card bursts never starve reader text requests.
 - **Design Rationale (`@rationale`)**:
   - Zero-dependency `globalThis` persistence preserves quota tracking across hot reloads and warm serverless invocations without requiring external Redis infrastructure.
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-080](DECISIONS.md)
@@ -418,6 +454,30 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/safe-storage.test.ts`](../src/lib/safe-storage.test.ts) (7 tests)
 
+#### [`src/lib/server-rsc-nav.ts`](../src/lib/server-rsc-nav.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Server-only App Router navigation header inspector isolating `next/headers` checks from client component bundles.
+- **Behavioral Invariants (`@invariant`)**:
+  - Read Next.js internal flight/prefetch headers (`rsc`, `next-router-state-tree`, `next-router-prefetch`, `accept`) defensively inside `try/catch`, returning `false` outside active request scopes and never importing client-side modules.
+- **Design Rationale (`@rationale`)**:
+  - Keeping `next/headers` inside a dedicated server leaf lets layout utilities detect RSC transitions cleanly without failing `Pass 0.5` transitive client-to-server AST isolation checks.
+- **Governing Decisions (`@adr`)**: [ADR-035](DECISIONS.md), [ADR-042](DECISIONS.md)
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx))
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/lib/server-rsc-nav.test.ts`](../src/lib/server-rsc-nav.test.ts) (2 tests)
+
+#### [`src/lib/session-device-parser.ts`](../src/lib/session-device-parser.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: User-Agent browser/OS/device classifier and session payload normalizer supporting `get_active_sessions` device security cards.
+- **Behavioral Invariants (`@invariant`)**:
+  - Evaluate ordered browser signatures (`Edge` / `Opera` / `Chrome` / `Safari` precedence) safely without throwing on malformed or null `User-Agent` strings, falling back cleanly to `'Browser session'` / `'unknown'`.
+- **Design Rationale (`@rationale`)**:
+  - Parsing UA strings purely from `userAgent` tokens lets `/account` display recognizable active-device rows without storing invasive fingerprinting metadata.
+- **Governing Decisions (`@adr`)**: [ADR-072](DECISIONS.md)
+- **AST Blast Radius**: 1 runtime, 2 type-only ([`src/components/account/AccountSecuritySection.tsx`](../src/components/account/AccountSecuritySection.tsx), [`src/hooks/useAccountSecurityActions.ts`](../src/hooks/useAccountSecurityActions.ts) *(type)*, [`src/stores/useAuthStore.ts`](../src/stores/useAuthStore.ts) *(type)*)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/lib/session-device-parser.test.ts`](../src/lib/session-device-parser.test.ts) (6 tests)
+
 #### [`src/lib/supabase/client.ts`](../src/lib/supabase/client.ts) *(Tier-3 Protected)*
 
 - **Intended Scope (`@scope`)**: Browser Supabase SSR client factory plus shared URL and User-Agent sanitization helpers consumed across browser, server, and Edge middleware Supabase clients.
@@ -487,7 +547,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Coalescing sync flights and isolating `pendingPinUpdates` prevents celebration loops or un-pinned showcase regressions when reconnecting after offline milestones.
 - **Governing Decisions (`@adr`)**: [ADR-027](DECISIONS.md), [ADR-030](DECISIONS.md), [ADR-032](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/accolades/AccoladeCelebrationModal.tsx`](../src/components/accolades/AccoladeCelebrationModal.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/lib/sync-utils.ts`](../src/lib/sync-utils.ts))
+- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/accolades/AccoladeCelebrationModal.tsx`](../src/components/accolades/AccoladeCelebrationModal.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/lib/sync-utils.ts`](../src/lib/sync-utils.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.user_accolades` · Storage/Cookies: `bookarium-accolades-storage`
 - **Test Contract**: [`src/stores/useAccoladesStore.test.ts`](../src/stores/useAccoladesStore.test.ts) (11 tests)
 
@@ -579,7 +639,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Separating durable user presets and audio settings from volatile reader positions ensures full 10-store local erasure parity (`clearLocalUserStores({ wipeDeviceStorage: true })`) without cross-store cycles.
 - **Governing Decisions (`@adr`)**: [ADR-009](DECISIONS.md), [ADR-018](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/lib/preferences-sync.ts`](../src/lib/preferences-sync.ts))
+- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/lib/preferences-sync.ts`](../src/lib/preferences-sync.ts), …)
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-navigation-preferences`
 - **Test Contract**: [`src/stores/usePreferencesStore.test.ts`](../src/stores/usePreferencesStore.test.ts) (7 tests)
 
@@ -693,10 +753,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/hooks/useBookPassageShuffle.ts`](../src/hooks/useBookPassageShuffle.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: Interactive book preview passage coordinator managing three-tier quote sourcing, bounded `localStorage` caching, and `450ms` reduced-motion-safe 3D leaf-turn resets.
+- **Intended Scope (`@scope`)**: Interactive book preview passage coordinator managing three-tier quote sourcing, bounded `EXTRACTED_PASSAGES_CACHE_KEY` caching, and reduced-motion-safe 3D leaf-turn resets.
 - **Behavioral Invariants (`@invariant`)**:
-  - Prioritize pre-seeded `supabaseQuotes` (skipping redundant full-text fetches whenever `>= 2` passages are present), falling back to bounded `bookarium-extracted-passages-v1` (`100` entries, `30`-day TTL) or `curatedPassages`.
-  - Reset `isTurningLeaf` after `450ms` via timeout safety fallback so page-turn interactions never lock under `prefers-reduced-motion` or 2D mobile mode.
+  - Prioritize pre-seeded `supabaseQuotes` (skipping redundant full-text fetches whenever `>= 2` passages are present), falling back to bounded `EXTRACTED_PASSAGES_CACHE_KEY` (`MAX_EXTRACTED_PASSAGES_ENTRIES`, `EXTRACTED_PASSAGES_TTL_MS`) or `curatedPassages`.
+  - Reset `isTurningLeaf` via timeout safety fallback so page-turn interactions never lock under `prefers-reduced-motion` or 2D mobile mode.
 - **Design Rationale (`@rationale`)**:
   - Avoiding unnecessary full-text fetches on quote-enriched Hero and Catalog volumes honors zero-pull homepage protection while preserving instant passage shuffling everywhere.
 - **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md)
@@ -756,7 +816,19 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/hooks/useOfflineCoverImage.test.ts`](../src/hooks/useOfflineCoverImage.test.ts) (6 tests)
 
 
-### Layer: Web Workers (1 Contracted)
+### Layer: Web Workers (2 Contracted)
+
+#### [`public/sw.js`](../public/sw.js) *(Tier-1 Protected)*
+
+- **Intended Scope (`@scope`)**: Offline App Shell Service Worker managing `CACHE_NAME` precaching, bounded `CACHE_URLS` warmups, and network/cache routing strategies.
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce strict same-origin (`url.origin === self.location.origin`) and non-`/auth/` non-`/api/` path sanitization (`sanitizePrecacheUrl`, bounded by `MAX_MESSAGE_PRECACHE_URLS`), never intercept cross-origin or `/auth/*` requests, never return HTML documents for `_rsc`/`RSC: 1` requests, and return `503` JSON for offline `/api/*` fetches.
+- **Design Rationale (`@rationale`)**:
+  - Bounding message-driven precaching and bypassing `/auth/*`, `/api/*`, and cross-origin origins prevents CSWSH/cache poisoning and stale OAuth loops while keeping saved IndexedDB reader routes functional offline.
+- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/components/pwa/ServiceWorkerRegister.test.tsx`](../src/components/pwa/ServiceWorkerRegister.test.tsx) (8 tests)
 
 #### [`src/workers/gutenberg.worker.ts`](../src/workers/gutenberg.worker.ts) *(Tier-4 Protected)*
 
@@ -771,7 +843,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/workers/gutenberg.worker.test.ts`](../src/workers/gutenberg.worker.test.ts) (3 tests)
 
 
-### Layer: App Router Pages & Layouts (1 Contracted)
+### Layer: App Router Pages & Layouts (6 Contracted)
 
 #### [`src/app/auth/callback/route.ts`](../src/app/auth/callback/route.ts) *(Tier-3 Protected)*
 
@@ -786,8 +858,110 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`, `bookarium-client-ip-sync`
 - **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (12 tests)
 
+#### [`src/app/layout.tsx`](../src/app/layout.tsx) *(Tier-2 Protected)*
 
-### Layer: CLI Pipelines & Governance (12 Contracted)
+- **Intended Scope (`@scope`)**: Next.js App Router root HTML layout hydrating SSR jurisdiction, theme class (`light`/`dark`/`sepia`), auth hint state, and JSON-LD structured metadata without client flash.
+- **Behavioral Invariants (`@invariant`)**:
+  - Read SSR cookies/headers defensively inside `try/catch` (`GEO_COOKIE_NAME` / edge headers -> `normalizeCountryCode`, `STORAGE_KEYS.THEME`, `STORAGE_KEYS.AUTH_HINT` + `sb-*-auth-token` cookie check) without requiring external secrets during build or offline rendering, and forward hydrated props cleanly into `Providers`.
+- **Design Rationale (`@rationale`)**:
+  - Computing country, theme class, and optimistic auth hints on the server eliminates first-paint theme flicker and incorrect guest/jurisdiction states during SSR hydration.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-042](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`, `bookarium-theme-preference` · Env Vars: `NEXT_PUBLIC_SUPABASE_URL`
+- **Test Contract**: [`src/app/layout.test.tsx`](../src/app/layout.test.tsx) (6 tests)
+
+#### [`src/app/providers.tsx`](../src/app/providers.tsx) *(Tier-2 Protected)*
+
+- **Intended Scope (`@scope`)**: Client runtime provider orchestrating TanStack Query defaults, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
+- **Behavioral Invariants (`@invariant`)**:
+  - Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud`, and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
+- **Design Rationale (`@rationale`)**:
+  - Consolidating session lifecycle listeners, token-refresh events (`bookarium:auth-token-refreshed`), and reconnect outbox synchronization in a single client boundary keeps Zustand stores decoupled from DOM/window listeners.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx))
+- **Cross-Boundary Coupling**: Signals: listens `CustomEvent:bookarium:auth-token-refreshed`
+- **Test Contract**: [`src/app/providers.test.tsx`](../src/app/providers.test.tsx) (12 tests)
+
+#### [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Server-side Reader volume metadata resolver, bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
+- **Behavioral Invariants (`@invariant`)**:
+  - Cap `serverMetadataCache` and `confirmedNotFoundIds` at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
+- **Design Rationale (`@rationale`)**:
+  - Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded.
+- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md)
+- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx))
+- **Cross-Boundary Coupling**: DB Tables: `public.books`
+- **Test Contract**: [`src/app/read/[id]/reader-layout-utils.test.ts`](../src/app/read/[id]/reader-layout-utils.test.ts) (15 tests)
+
+#### [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx) *(Tier-2 Protected)*
+
+- **Intended Scope (`@scope`)**: Client UI page rendering opt-in public Scholar Sanctuaries (`is_public = true`), non-PII shelves, pinned accolades, and reading habit summaries.
+- **Behavioral Invariants (`@invariant`)**:
+  - Validate normalized handles strictly (`^[a-z0-9_-]{1,40}$`), verify exact normalized username equality after `.ilike()` lookups to neutralize `_` wildcards, enforce `.eq('is_public', true)`, and render `PrivateProfileNotice` uniformly for both missing and private accounts (`Scholar Sanctuary Not Found`).
+- **Design Rationale (`@rationale`)**:
+  - Collapsing private, invalid, and nonexistent handles onto a single zero-PII fallback UI enforces ADR-033 anti-enumeration and prevents exposure of private reader activity.
+- **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-053](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.user_accolades`, `public.user_reading_habits`
+- **Test Contract**: [`src/app/u/[username]/page.test.tsx`](../src/app/u/[username]/page.test.tsx) (10 tests)
+
+#### [`src/app/u/[username]/profile-layout-utils.ts`](../src/app/u/[username]/profile-layout-utils.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Server-side public handle resolution and bounded LRU metadata cache (`serverProfileCache`) powering `/u/[username]` layout metadata and privacy gates.
+- **Behavioral Invariants (`@invariant`)**:
+  - Bound `serverProfileCache` via `MAX_PROFILE_CACHE_ENTRIES` and `PROFILE_CACHE_TTL_MS`, normalize handles via `VALID_HANDLE_REGEX`, enforce exact lowercase username equality after `.ilike()` lookups, never cache `'unavailable'` errors, and collapse private or missing accounts uniformly to `private_or_missing`.
+- **Design Rationale (`@rationale`)**:
+  - Bounding handle LRU entries and neutralizing SQL `_` wildcard matching protects server memory and enforces ADR-033 anti-enumeration across public profile routes.
+- **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-053](DECISIONS.md)
+- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx))
+- **Cross-Boundary Coupling**: DB Tables: `public.profiles`
+- **Test Contract**: [`src/app/u/[username]/profile-layout-utils.test.ts`](../src/app/u/[username]/profile-layout-utils.test.ts) (6 tests)
+
+
+### Layer: UI & Feature Components (1 Contracted)
+
+#### [`src/components/auth/TurnstileWidget.tsx`](../src/components/auth/TurnstileWidget.tsx) *(Tier-2 Protected)*
+
+- **Intended Scope (`@scope`)**: Shared Cloudflare Turnstile Managed CAPTCHA widget wrapper for authentication, resend verification, and account password-reset forms.
+- **Behavioral Invariants (`@invariant`)**:
+  - Render zero external scripts, containers, or UI overhead when `getTurnstileSiteKey()` is blank or `active` is false, isolate per-mount widget lifecycles via `removeTurnstileInstance`, and clear tokens deterministically on reset/expiration/error callbacks.
+- **Design Rationale (`@rationale`)**:
+  - Keeping CAPTCHA rendering strictly optional and keyless-graceful preserves 100% zero-config local/offline usability while hardening public auth forms in production deployments.
+- **Governing Decisions (`@adr`)**: [ADR-034](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 4 runtime, 0 type-only ([`src/components/account/AccountIdentityCard.tsx`](../src/components/account/AccountIdentityCard.tsx), [`src/components/account/AccountSecuritySection.tsx`](../src/components/account/AccountSecuritySection.tsx), [`src/components/auth/AuthModal.tsx`](../src/components/auth/AuthModal.tsx), [`src/components/auth/EmailSentView.tsx`](../src/components/auth/EmailSentView.tsx))
+- **Cross-Boundary Coupling**: Env Vars: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- **Test Contract**: [`src/components/auth/TurnstileWidget.test.tsx`](../src/components/auth/TurnstileWidget.test.tsx) (2 tests)
+
+
+### Layer: Config & Type Contracts (1 Contracted)
+
+#### [`next.config.ts`](../next.config.ts) *(Tier-1 Protected)*
+
+- **Intended Scope (`@scope`)**: Next.js application security headers, strict Content-Security-Policy, zero-remote image allowlist, and collection view rewrites.
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce `X-Frame-Options: DENY`, `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `base-uri 'self'`, `img-src 'self' data: blob:`, strip `'unsafe-eval'` outside `isDev`, and emit HSTS (`max-age=63072000`) in production builds while locking `images.remotePatterns` to `[]`.
+- **Design Rationale (`@rationale`)**:
+  - Enforcing strict security headers and CSP at the Next.js platform boundary blocks XSS, clickjacking, MIME sniffing, and external cover hotlinking across every HTML and static response.
+- **Governing Decisions (`@adr`)**: [ADR-022](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (16 tests)
+
+
+### Layer: CLI Pipelines & Governance (14 Contracted)
+
+#### [`scripts/approval-gate.js`](../scripts/approval-gate.js) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Governance pre-commit gate validating `.agents/hooks.json` schema completeness (`preCommit`, `prePush`, `postBuild`) and npm script bindings against `package.json`.
+- **Behavioral Invariants (`@invariant`)**:
+  - Require non-empty `preCommit`, `prePush`, and `postBuild` arrays inside `.agents/hooks.json` and fail closed (`exit 1`) if any `npm run <script>` entry is absent from `package.json`.
+- **Design Rationale (`@rationale`)**:
+  - Prevents silent hook bypasses when npm scripts are renamed or `.agents/hooks.json` becomes malformed.
+- **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-081](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: _Covered via runtime/verification harness_
 
 #### [`scripts/eslint-rules/bookarium-security.js`](../scripts/eslint-rules/bookarium-security.js) *(Tier-4 Protected)*
 
@@ -812,7 +986,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Gives local developers and fresh Supabase installs clean curated catalog metadata SQL seeds aligned with `public.books` lifespan bounds while keeping online text storage strictly on Cloudflare R2 (`npm run r2:sync`).
 - **Governing Decisions (`@adr`)**: [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
-- **Cross-Boundary Coupling**: Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`
+- **Cross-Boundary Coupling**: Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`
 - **Test Contract**: [`scripts/ingest-catalog.test.ts`](../scripts/ingest-catalog.test.ts) (10 tests)
 
 #### [`scripts/ingest-translations.js`](../scripts/ingest-translations.js) *(Tier-4 Protected)*
@@ -825,21 +999,21 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Strict anthology rejection, socket-bounded Wikidata queries, catalog FK pre-validation, bisected batch retries, and public-domain `copyright !== true` filtering eliminate stalled CI runners, silent upsert drops, spurious cross-author translation links, and copyrighted volume associations.
 - **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
-- **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books`
+- **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - **Test Contract**: [`scripts/ingest-translations.test.ts`](../scripts/ingest-translations.test.ts) (19 tests)
 
 #### [`scripts/lib/ast-parser.js`](../scripts/lib/ast-parser.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Central Babel 8 AST & SQL static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts, SQL<->TS entities, `17`-map generator orphan checks, and Markdown Mermaid diagram syntax/cycle validation.
+- **Intended Scope (`@scope`)**: Central Babel 8 AST, SQL, YAML & config static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts (across `src/`, `scripts/`, `next.config.ts`, and `public/sw.js`), SQL<->TS entities (incl. `userScopedTables` cascade targets), live runtime/CI specs (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), shared governance registries (`REQUIRED_GOVERNANCE_DOCS`, `GENERATOR_LOOKUP_MAP_COUNT`), `.env.example` consumer discovery (`src/`, `next.config.ts`, `scripts/` incl. `lib/` & `eslint-rules/`, workflows), and Markdown Mermaid diagram syntax/cycle validation.
 - **Behavioral Invariants (`@invariant`)**:
-  - Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`), detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
+  - Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`) across dependency graphs, cross-boundary catalogs, and pending contract queues, detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), resolve `process.env`, defaulted parameter (`env = process.env`/`loadEnv`), and local `loadEnv()` variable bindings cleanly across `scripts/` (`collectScriptFiles`), extract declared constants/thresholds/triggers read-only from configs/sources/workflows (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
   - Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
 - **Design Rationale (`@rationale`)**:
   - Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
 - **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md), [ADR-084](DECISIONS.md)
-- **AST Blast Radius**: 4 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
+- **AST Blast Radius**: 5 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js), [`scripts/generate-parser-docs.js`](../scripts/generate-parser-docs.js), [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (17 tests)
+- **Test Contract**: [`scripts/lib/ast-parser.test.ts`](../scripts/lib/ast-parser.test.ts) (24 tests)
 
 #### [`scripts/lib/cli-progress.js`](../scripts/lib/cli-progress.js) *(Tier-4 Protected)*
 
@@ -862,7 +1036,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Centralizing S3-compatible R2 SigV4 transport primitives into a zero-third-party-dependency module prevents duplicated cryptographic signing and allows standalone maintenance workflows such as `r2-content-scan.yml` to run on Node 22 without `npm ci`.
 - **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`scripts/scan-r2-content.js`](../scripts/scan-r2-content.js), [`scripts/sync-r2-assets.js`](../scripts/sync-r2-assets.js))
-- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Cross-Boundary Coupling**: Env Vars: `R2_ACCESS_KEY_ID`, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_SECRET_ACCESS_KEY`
 - **Test Contract**: [`scripts/lib/r2-sigv4.test.ts`](../scripts/lib/r2-sigv4.test.ts) (5 tests)
 
 #### [`scripts/lib/sast-validators.js`](../scripts/lib/sast-validators.js) *(Tier-4 Protected)*
@@ -899,7 +1073,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Scanning directly against private Cloudflare R2 via zero-dependency Node 22 built-ins eliminates `npm ci` workflow overhead, incurs zero R2 egress, consumes `< 0.8%` of the monthly Class B free quota across 78k books (`0` under `--dry-run`), isolates audit runs completely from production Next.js and PostgreSQL compute, and gives operators real-time discovery/scan progress and instant hit feedback without dumping 78k lines.
 - **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
-- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Cross-Boundary Coupling**: Helpers: `scripts/lib/cli-progress.js`, `scripts/lib/r2-sigv4.js`
 - **Test Contract**: [`scripts/scan-r2-content.test.ts`](../scripts/scan-r2-content.test.ts) (6 tests)
 
 #### [`scripts/sync-featured-quotes.js`](../scripts/sync-featured-quotes.js) *(Tier-1 Protected)*
@@ -912,7 +1086,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while retaining official PGLAF/Aleph/ReadingRoo mirror fallback for scheduled/manual runs without contacting `www.gutenberg.org`, and avoids 78k-row PostgreSQL statement timeouts.
 - **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-083](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
-- **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`
+- **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` · Helpers: `scripts/lib/cli-progress.js`, `scripts/sync-r2-assets.js`
 - **Test Contract**: [`scripts/sync-featured-quotes.test.ts`](../scripts/sync-featured-quotes.test.ts) (22 tests)
 
 #### [`scripts/sync-gutenberg-catalog.js`](../scripts/sync-gutenberg-catalog.js) *(Tier-1 Protected)*
@@ -926,7 +1100,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
 - **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
-- **Cross-Boundary Coupling**: DB Tables: `public.books`
+- **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` · Helpers: `scripts/lib/cli-progress.js`
 - **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (42 tests)
 
 #### [`scripts/sync-r2-assets.js`](../scripts/sync-r2-assets.js) *(Tier-1 Protected)*
@@ -938,16 +1112,28 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Scanning private R2 prefixes with `ListObjectsV2` consumes ~157 Class A operations across ~78,000 books without requiring SQL indexes, sharing zero-dependency SigV4 transport helpers in `scripts/lib/r2-sigv4.js`, targeted `rsync --files-from` with automatic multi-host failover (`aleph.gutenberg.org` zero-lag primary to `rsync.ibiblio.org` mirror, or `--rsync-host=ibiblio` for bulk backfills) and parallel R2 uploads accelerates multi-run seeding while honoring PG mirror etiquette, state read-fail guards + union merges prevent concurrent `catalog-sync`/`r2-sync` cooldown corruption, and prioritizing `PRIORITY_HERO_BOOK_IDS` followed by `download_count DESC` accelerates Quote Pool and classic asset readiness.
 - **Governing Decisions (`@adr`)**: [ADR-083](DECISIONS.md), [ADR-085](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`scripts/sync-featured-quotes.js`](../scripts/sync-featured-quotes.js))
-- **Cross-Boundary Coupling**: DB Tables: `public.books`
+- **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` · Helpers: `scripts/lib/cli-progress.js`, `scripts/lib/r2-sigv4.js`
 - **Test Contract**: [`scripts/sync-r2-assets.test.ts`](../scripts/sync-r2-assets.test.ts) (14 tests)
+
+#### [`scripts/verify-build.js`](../scripts/verify-build.js) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+- **Design Rationale (`@rationale`)**:
+  - Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
+- **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Helpers: `scripts/eslint-rules/bookarium-security.js`, `scripts/generate-architecture-matrix.js`, `scripts/generate-changelog.js`, `scripts/generate-contracts-docs.js`, `scripts/generate-parser-docs.js`, `scripts/generate-roadmap.js`, `scripts/lib/ast-parser.js`, `scripts/lib/sast-validators.js`
+- **Test Contract**: _Covered via runtime/verification harness_
 
 ---
 
-## 📋 AST-Prioritized Pending Contract Queue (211 Modules)
+## 📋 AST-Prioritized Pending Contract Queue (198 Modules)
 
 Unannotated modules ranked automatically by AST **fan-in blast radius** and **cross-boundary exposure** (`Supabase DB`, `RPC`, `/api/*`, `CustomEvent`/`BroadcastChannel`, `localStorage`/Cookies, `process.env.*`):
 
-### High-Coupling Priority Candidates (60 Modules, Score >= 8)
+### High-Coupling Priority Candidates (50 Modules, Score >= 8)
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
@@ -962,27 +1148,22 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `30` | [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) | UI & Feature Components | `11` / `0` | Signals: emits `CustomEvent:bookarium:book-link-copied`; listens `CustomEvent:bookarium:book-link-copied` |
 | `28` | [`src/components/ui/Modal.tsx`](../src/components/ui/Modal.tsx) | UI & Feature Components | `14` / `0` | Pure / internal |
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
-| `22` | [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx) | App Router Pages & Layouts | `0` / `0` | DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.user_accolades`, `public.user_reading_habits` |
 | `22` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `22` | Pure / internal |
-| `20` | [`src/lib/api-utils.ts`](../src/lib/api-utils.ts) | Domain Engines & Adapters | `6` / `0` | Env Vars: `NODE_ENV` |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `15` | [`src/hooks/useBookCopyright.ts`](../src/hooks/useBookCopyright.ts) | React Hooks & Queries | `6` / `0` | Pure / internal |
 | `15` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `3` | Pure / internal |
-| `14` | [`src/app/layout.tsx`](../src/app/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Storage/Cookies: `bookarium-auth-hint`, `bookarium-theme-preference` · Env Vars: `NEXT_PUBLIC_SUPABASE_URL` |
 | `14` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `7` / `0` | Pure / internal |
 | `14` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
-| `12` | [`src/components/auth/TurnstileWidget.tsx`](../src/components/auth/TurnstileWidget.tsx) | UI & Feature Components | `4` / `0` | Env Vars: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` |
 | `12` | [`src/components/presentation/Footer.tsx`](../src/components/presentation/Footer.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
 | `12` | [`src/components/reader/ReaderDrawerShell.tsx`](../src/components/reader/ReaderDrawerShell.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
 | `12` | [`src/config/api-endpoints.ts`](../src/config/api-endpoints.ts) | Config & Type Contracts | `6` / `0` | Pure / internal |
 | `11` | [`src/config/catalog-filters.ts`](../src/config/catalog-filters.ts) | Config & Type Contracts | `5` / `1` | Pure / internal |
 | `11` | [`src/hooks/useDialogFocusTrap.ts`](../src/hooks/useDialogFocusTrap.ts) | React Hooks & Queries | `4` / `0` | Pure / internal |
-| `10` | [`src/app/providers.tsx`](../src/app/providers.tsx) | App Router Pages & Layouts | `2` / `0` | Signals: listens `CustomEvent:bookarium:auth-token-refreshed` |
 | `10` | [`src/components/motion/ContentCrossfade.tsx`](../src/components/motion/ContentCrossfade.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx) | UI & Feature Components | `3` / `0` | API Calls: `/api/books/content` |
 | `10` | [`src/components/ui/Input.tsx`](../src/components/ui/Input.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
@@ -992,7 +1173,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `10` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `5` / `0` | Pure / internal |
 | `10` | [`src/lib/accolades-engine.ts`](../src/lib/accolades-engine.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/content-advisory.ts`](../src/lib/content-advisory.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
-| `10` | [`src/lib/password.ts`](../src/lib/password.ts) | Domain Engines & Adapters | `2` / `2` | Pure / internal |
 | `10` | [`src/lib/reading-card-export.ts`](../src/lib/reading-card-export.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/smart-search.ts`](../src/lib/smart-search.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/speech-utils.ts`](../src/lib/speech-utils.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
@@ -1001,32 +1181,21 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `9` | [`src/hooks/usePerformanceTier.ts`](../src/hooks/usePerformanceTier.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useTouchDevice.ts`](../src/hooks/useTouchDevice.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `8` | [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx) | App Router Pages & Layouts | `3` / `0` | Pure / internal |
-
-<details><summary>Remaining 10 high-coupling candidates</summary>
-
-| Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
-| :---: | :--- | :--- | :---: | :--- |
-| `8` | [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts) | App Router Pages & Layouts | `1` / `0` | DB Tables: `public.books` |
-| `8` | [`src/app/u/[username]/profile-layout-utils.ts`](../src/app/u/[username]/profile-layout-utils.ts) | App Router Pages & Layouts | `1` / `0` | DB Tables: `public.profiles` |
 | `8` | [`src/components/presentation/CollectionEmptyState.tsx`](../src/components/presentation/CollectionEmptyState.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/Alert.tsx`](../src/components/ui/Alert.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/RemoveCollectionBookModal.tsx`](../src/components/ui/RemoveCollectionBookModal.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/Textarea.tsx`](../src/components/ui/Textarea.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/config/views.config.ts`](../src/config/views.config.ts) | Config & Type Contracts | `3` / `2` | Pure / internal |
 | `8` | [`src/lib/book-tags.ts`](../src/lib/book-tags.ts) | Domain Engines & Adapters | `2` / `0` | Pure / internal |
-| `8` | [`src/lib/server-rsc-nav.ts`](../src/lib/server-rsc-nav.ts) | Domain Engines & Adapters | `2` / `0` | Pure / internal |
-| `8` | [`src/lib/session-device-parser.ts`](../src/lib/session-device-parser.ts) | Domain Engines & Adapters | `1` / `2` | Pure / internal |
 
-</details>
-
-<details><summary>Standard & Leaf Modules Pending Optional Annotation (151 Modules)</summary>
+<details><summary>Standard & Leaf Modules Pending Optional Annotation (148 Modules)</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
 | `7` | [`scripts/generate-roadmap.js`](../scripts/generate-roadmap.js) | CLI Pipelines & Governance | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useCatalogFilters.ts`](../src/hooks/useCatalogFilters.ts) | React Hooks & Queries | `1` / `2` | Leaf / pure |
-| `7` | [`src/hooks/useMobileViewportCardFocus.ts`](../src/hooks/useMobileViewportCardFocus.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useMobileViewSwipe.ts`](../src/hooks/useMobileViewSwipe.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
+| `7` | [`src/hooks/useMobileViewportCardFocus.ts`](../src/hooks/useMobileViewportCardFocus.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useScrollDirection.ts`](../src/hooks/useScrollDirection.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `6` | [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | API Calls: `/api/books/content` |
 | `6` | [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
@@ -1047,17 +1216,15 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `6` | [`src/config/literary-quotes.ts`](../src/config/literary-quotes.ts) | Config & Type Contracts | `3` / `0` | Leaf / pure |
 | `6` | [`src/hooks/reader/useReaderSpeech.ts`](../src/hooks/reader/useReaderSpeech.ts) | React Hooks & Queries | `1` / `1` | Leaf / pure |
 | `6` | [`src/lib/catalog/curated-fallback.ts`](../src/lib/catalog/curated-fallback.ts) | Domain Engines & Adapters | `1` / `0` | Leaf / pure |
-| `6` | [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts) | Domain Engines & Adapters | `1` / `0` | Leaf / pure |
 | `6` | [`src/lib/gutenberg/index.ts`](../src/lib/gutenberg/index.ts) | Domain Engines & Adapters | `1` / `0` | Leaf / pure |
 | `6` | [`src/lib/gutenberg/metadata.ts`](../src/lib/gutenberg/metadata.ts) | Domain Engines & Adapters | `1` / `0` | Leaf / pure |
 | `6` | [`src/lib/in-book-search.ts`](../src/lib/in-book-search.ts) | Domain Engines & Adapters | `1` / `0` | Leaf / pure |
 | `6` | [`src/lib/notebook-sorting.ts`](../src/lib/notebook-sorting.ts) | Domain Engines & Adapters | `1` / `0` | Leaf / pure |
 | `6` | [`src/types/catalog.types.ts`](../src/types/catalog.types.ts) | Config & Type Contracts | `2` / `2` | Leaf / pure |
-| `5` | [`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js) | CLI Pipelines & Governance | `1` / `0` | Leaf / pure |
+| `5` | [`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js) | CLI Pipelines & Governance | `1` / `0` | Helpers: `scripts/eslint-rules/bookarium-security.js`, `scripts/generate-roadmap.js`, `scripts/lib/ast-parser.js`, `scripts/lib/sast-validators.js` |
 | `5` | [`scripts/generate-changelog.js`](../scripts/generate-changelog.js) | CLI Pipelines & Governance | `1` / `0` | Leaf / pure |
-| `5` | [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js) | CLI Pipelines & Governance | `1` / `0` | Leaf / pure |
-| `5` | [`scripts/generate-parser-docs.js`](../scripts/generate-parser-docs.js) | CLI Pipelines & Governance | `1` / `0` | Leaf / pure |
-| `5` | [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js) | CLI Pipelines & Governance | `1` / `0` | Leaf / pure |
+| `5` | [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js) | CLI Pipelines & Governance | `1` / `0` | Helpers: `scripts/lib/ast-parser.js` |
+| `5` | [`scripts/generate-parser-docs.js`](../scripts/generate-parser-docs.js) | CLI Pipelines & Governance | `1` / `0` | Helpers: `scripts/lib/ast-parser.js` |
 | `5` | [`src/components/presentation/CollectionSortDropdown.tsx`](../src/components/presentation/CollectionSortDropdown.tsx) | UI & Feature Components | `1` / `3` | Leaf / pure |
 | `5` | [`src/hooks/reader/useGutenbergParserWorker.ts`](../src/hooks/reader/useGutenbergParserWorker.ts) | React Hooks & Queries | `1` / `0` | Leaf / pure |
 | `5` | [`src/hooks/reader/useReaderAnnotationActions.ts`](../src/hooks/reader/useReaderAnnotationActions.ts) | React Hooks & Queries | `1` / `0` | Leaf / pure |
@@ -1077,9 +1244,9 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `4` | [`src/components/bookshelf/ReadingStatusSelector.tsx`](../src/components/bookshelf/ReadingStatusSelector.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/motion/motion-config.ts`](../src/components/motion/motion-config.ts) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/presentation/BookCard.tsx`](../src/components/presentation/BookCard.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
-| `4` | [`src/components/presentation/bookshelf/BookshelfMobileModal.tsx`](../src/components/presentation/bookshelf/BookshelfMobileModal.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/presentation/CopyrightNoticeBanner.tsx`](../src/components/presentation/CopyrightNoticeBanner.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/presentation/OpenBookLeftPageSpread.tsx`](../src/components/presentation/OpenBookLeftPageSpread.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
+| `4` | [`src/components/presentation/bookshelf/BookshelfMobileModal.tsx`](../src/components/presentation/bookshelf/BookshelfMobileModal.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/profile/PrivateProfileNotice.tsx`](../src/components/profile/PrivateProfileNotice.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/reader/ReaderLoadingView.tsx`](../src/components/reader/ReaderLoadingView.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/ui/Badge.tsx`](../src/components/ui/Badge.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
@@ -1087,10 +1254,9 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `4` | [`src/components/ui/PasswordStrengthMeter.tsx`](../src/components/ui/PasswordStrengthMeter.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/ui/Switch.tsx`](../src/components/ui/Switch.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/config/library-tokens.ts`](../src/config/library-tokens.ts) | Config & Type Contracts | `2` / `0` | Leaf / pure |
-| `3` | [`scripts/approval-gate.js`](../scripts/approval-gate.js) | CLI Pipelines & Governance | `0` / `0` | Leaf / pure |
 | `3` | [`scripts/generate-pwa-icons.js`](../scripts/generate-pwa-icons.js) | CLI Pipelines & Governance | `0` / `0` | Leaf / pure |
+| `3` | [`scripts/generate-quality-report.js`](../scripts/generate-quality-report.js) | CLI Pipelines & Governance | `0` / `0` | Helpers: `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/ast-parser.js` |
 | `3` | [`scripts/open-browser.js`](../scripts/open-browser.js) | CLI Pipelines & Governance | `0` / `0` | Leaf / pure |
-| `3` | [`scripts/verify-build.js`](../scripts/verify-build.js) | CLI Pipelines & Governance | `0` / `0` | Leaf / pure |
 | `3` | [`src/components/profile/PinnedAccoladesShelf.tsx`](../src/components/profile/PinnedAccoladesShelf.tsx) | UI & Feature Components | `1` / `1` | Leaf / pure |
 | `2` | [`src/app/account/layout.tsx`](../src/app/account/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/app/auth/confirm-deletion/layout.tsx`](../src/app/auth/confirm-deletion/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
@@ -1129,8 +1295,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/presentation/BookGrid.tsx`](../src/components/presentation/BookGrid.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/BookmarkCard.tsx`](../src/components/presentation/BookmarkCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/BookmarksView.tsx`](../src/components/presentation/BookmarksView.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
-| `2` | [`src/components/presentation/bookshelf/BookshelfManageModals.tsx`](../src/components/presentation/bookshelf/BookshelfManageModals.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
-| `2` | [`src/components/presentation/bookshelf/BookshelfSpine.tsx`](../src/components/presentation/bookshelf/BookshelfSpine.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/CatalogMobileBottomDock.tsx`](../src/components/presentation/CatalogMobileBottomDock.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/CatalogOfflineView.tsx`](../src/components/presentation/CatalogOfflineView.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/CatalogTelemetryBadge.tsx`](../src/components/presentation/CatalogTelemetryBadge.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
@@ -1143,12 +1307,14 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/presentation/LanguageSelector.tsx`](../src/components/presentation/LanguageSelector.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/LiteraryQuotes.tsx`](../src/components/presentation/LiteraryQuotes.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
-| `2` | [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
-| `2` | [`src/components/presentation/notebook/NotebookVolumeGroup.tsx`](../src/components/presentation/notebook/NotebookVolumeGroup.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
-| `2` | [`src/components/presentation/notebook/QuickColorSwatchPopover.tsx`](../src/components/presentation/notebook/QuickColorSwatchPopover.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/StickyCatalogToolbar.tsx`](../src/components/presentation/StickyCatalogToolbar.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/presentation/bookshelf/BookshelfManageModals.tsx`](../src/components/presentation/bookshelf/BookshelfManageModals.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/presentation/bookshelf/BookshelfSpine.tsx`](../src/components/presentation/bookshelf/BookshelfSpine.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/presentation/notebook/NotebookVolumeGroup.tsx`](../src/components/presentation/notebook/NotebookVolumeGroup.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/presentation/notebook/QuickColorSwatchPopover.tsx`](../src/components/presentation/notebook/QuickColorSwatchPopover.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/profile/PublicProfileView.tsx`](../src/components/profile/PublicProfileView.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/GutenbergInfoModal.tsx`](../src/components/reader/GutenbergInfoModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/QuoteDeletePreview.tsx`](../src/components/reader/QuoteDeletePreview.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
@@ -1181,4 +1347,4 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 
 ## 🔒 Verification & Compliance
 
-This living contract reference is compiled in **Pass 4** and validated in **Pass 5 of the 7-Gateway Quality Engine** (`npm run verify`, `npm run security:audit`) alongside Tier-1 protected module preservation and `ADR-XXX` cross-reference checks (`ADR-081`).
+This living contract reference is compiled in **Pass 4** and validated in **Pass 5 of the 7-Gateway Quality Engine** (`npm run verify`, `npm run security:audit`) alongside Tier-1..Tier-4 protected module preservation and `ADR-XXX` cross-reference checks (`ADR-081`).

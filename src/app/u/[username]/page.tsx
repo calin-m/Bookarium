@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/app/u/[username]/page
+ * @scope Client UI page rendering opt-in public Scholar Sanctuaries (`is_public = true`), non-PII shelves, pinned accolades, and reading habit summaries.
+ * @invariant Validate normalized handles strictly (`^[a-z0-9_-]{1,40}$`), verify exact normalized username equality after `.ilike()` lookups to neutralize `_` wildcards, enforce `.eq('is_public', true)`, and render `PrivateProfileNotice` uniformly for both missing and private accounts (`Scholar Sanctuary Not Found`).
+ * @rationale Collapsing private, invalid, and nonexistent handles onto a single zero-PII fallback UI enforces ADR-033 anti-enumeration and prevents exposure of private reader activity.
+ * @adr ADR-033, ADR-053
+ */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';

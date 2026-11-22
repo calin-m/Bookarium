@@ -46,7 +46,7 @@ npm run security:audit
 # Combined ESLint (--max-warnings 0) & Knip dead-code check
 npm run audit:detailed
 
-# Sync Living Documentation (AST Matrix, System Contracts `@scope`/`@invariant`, Gutenberg Parser docs, Quality Report, Roadmap, and Changelog)
+# Sync Living Documentation (AST Matrix, System Contracts `@scope`/`@invariant`, Gutenberg Parser docs, GitHub Actions workflow/SHA tables, Quality Report, Roadmap, and Changelog)
 npm run docs:sync
 npm run docs:contracts
 

@@ -3,6 +3,7 @@ const path = require('path');
 const parser = require('@babel/parser');
 const traverseModule = require('@babel/traverse');
 const traverse = traverseModule.default || traverseModule;
+const { extractRuntimeSpecConstants } = require('./lib/ast-parser');
 
 const rootDir = path.resolve(__dirname, '..');
 const gutenbergDir = path.join(rootDir, 'src', 'lib', 'gutenberg');
@@ -111,6 +112,12 @@ function extractModuleExports(filename) {
  */
 function generateMarkdown() {
   const config = extractConfig();
+  const configMap = new Map(config.map((c) => [c.key, c.val]));
+  const { caches } = extractRuntimeSpecConstants(rootDir);
+  const paginationLruMax = caches.maxPaginationCacheEntries || 500;
+  const wordsPerMin = configMap.get('ESTIMATED_WORDS_PER_MINUTE') || 200;
+  const headerScanBytes = Number(configMap.get('HEADER_SCAN_BYTES') || 5000).toLocaleString('en-US');
+  const passageScanBytes = Number(configMap.get('PASSAGE_SCAN_BYTES') || 120000).toLocaleString('en-US');
   const timestamp = new Date().toISOString().split('T')[0];
 
   const modules = [
@@ -125,14 +132,14 @@ function generateMarkdown() {
       file: 'pagination.ts',
       title: 'Virtual Sentence-Snapped Pagination & Reading Metrics',
       description:
-        'Calculates virtual page spreads snapped cleanly to paragraph and sentence boundaries (including UTF-8 curly quotes, guillemets, and parentheticals). Backed by a 500-entry LRU memory cache and dynamic font-size scaling. Derives 200 WPM reading estimates.',
+        `Calculates virtual page spreads snapped cleanly to paragraph and sentence boundaries (including UTF-8 curly quotes, guillemets, and parentheticals). Backed by a ${paginationLruMax}-entry LRU memory cache and dynamic font-size scaling. Derives ${wordsPerMin} WPM reading estimates.`,
       exports: extractModuleExports('pagination.ts'),
     },
     {
       file: 'metadata.ts',
       title: 'Preamble Metadata Extraction & Language Mapping',
       description:
-        'Scans the initial 5,000 bytes of Gutenberg plain-text headers to extract Title, Author, and ISO 639-1 Language Codes across 25+ language identifiers.',
+        `Scans the initial ${headerScanBytes} bytes of Gutenberg plain-text headers to extract Title, Author, and ISO 639-1 Language Codes across 25+ language identifiers.`,
       exports: extractModuleExports('metadata.ts'),
     },
     {
@@ -146,7 +153,7 @@ function generateMarkdown() {
       file: 'passages.ts',
       title: 'Dynamic Literary Passage Extraction & Line-Budget Layout',
       description:
-        'Scans up to 120,000 characters of narrative chapters to dynamically harvest memorable dialogue quotes, opening paragraphs, and literary excerpts for the 3D Book Preview Modal, with sentence/word-boundary truncation (`safeCleanQuote`), typographic normalization (`formatCleanQuote`), and deterministic line-budget packing (`resolveSpreadQuoteLayout`).',
+        `Scans up to ${passageScanBytes} characters of narrative chapters to dynamically harvest memorable dialogue quotes, opening paragraphs, and literary excerpts for the 3D Book Preview Modal, with sentence/word-boundary truncation (\`safeCleanQuote\`), typographic normalization (\`formatCleanQuote\`), and deterministic line-budget packing (\`resolveSpreadQuoteLayout\`).`,
       exports: extractModuleExports('passages.ts'),
     },
     {
@@ -182,7 +189,7 @@ function generateMarkdown() {
     '    Dedup --> BodySub["Standalone Body Subtitle Matcher"]',
     '    BodySub --> Flow["Paragraph Reflower (reflow.ts)"]',
     '    Flow --> Pag["Sentence-Snapped Paginator (pagination.ts)"]',
-    '    Pag --> Cache["500-Entry LRU Cache (Map)"]',
+    `    Pag --> Cache["${paginationLruMax}-Entry LRU Cache (Map)"]`,
     '    Flow --> Passages["Dynamic Quote Harvester (passages.ts)"]',
     '```',
     '',

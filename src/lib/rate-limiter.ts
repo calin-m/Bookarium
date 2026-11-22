@@ -4,8 +4,8 @@
  *
  * @module src/lib/rate-limiter
  * @scope Route-mode-scoped sliding-window rate limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) anchored on `globalThis`.
- * @invariant Anchor singleton limiters on `globalThis` with bounded key capacity (`maxKeys = 10,000`) and periodic `30,000ms` stale-record eviction (`pruneStaleRecords`) to prevent unbounded memory growth.
- * @invariant Keep content (`30/min`), OpenGraph card rendering (`20/min`), cover proxying (`60/min`), and catalog search (`60/min`) buckets isolated so cover batches never starve reader text requests.
+ * @invariant Anchor singleton limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) on `globalThis` with bounded `maxKeys` capacity and periodic `pruneStaleRecords` eviction to prevent unbounded memory growth.
+ * @invariant Keep `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`, and `booksApiRateLimiter` buckets isolated so cover or card bursts never starve reader text requests.
  * @rationale Zero-dependency `globalThis` persistence preserves quota tracking across hot reloads and warm serverless invocations without requiring external Redis infrastructure.
  * @adr ADR-016, ADR-022, ADR-080
  */

@@ -12,21 +12,23 @@ Complete operator reference for every workflow under [`.github/workflows/`](../.
 
 ## 📋 1. Workflow Matrix at a Glance
 
+<!-- BEGIN:workflows-matrix -->
 Bookarium maintains **11** GitHub Actions workflows (validated 1:1 against [`.github/workflows/`](../.github/workflows) by **Pass 5** in [`scripts/verify-build.js`](../scripts/verify-build.js)):
 
 | Workflow Name | File | Triggers & Exact Schedule | Permissions | Concurrency Lock | Timeout | `npm ci` | Required Secrets | Optional Secrets |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Unified Gutenberg Catalog Sync** | [`.github/workflows/catalog-sync.yml`](../.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays 02:00 UTC)<br>+ `workflow_dispatch` | `contents: write` | `gutenberg-catalog-sync` | `60m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY`<br>+ built-in `GITHUB_TOKEN` | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>`GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
+| **Gutenberg Catalog Sync** | [`.github/workflows/catalog-sync.yml`](../.github/workflows/catalog-sync.yml) | `cron: 0 2 * * 0` (Sundays 02:00 UTC)<br>+ `workflow_dispatch` | `contents: write` | `gutenberg-catalog-sync` | `60m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY`<br>+ built-in `GITHUB_TOKEN` | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>`GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Sync catalog-cache Tag** | [`.github/workflows/catalog-tag-sync.yml`](../.github/workflows/catalog-tag-sync.yml) | `push` on `master`<br>+ `workflow_dispatch` | `contents: write` | `catalog-cache-tag-sync` | `5m` | **No** *(~5s)* | Built-in `GITHUB_TOKEN` | — |
 | **R2 Asset Delta & Backfill Sync** | [`.github/workflows/r2-sync.yml`](../.github/workflows/r2-sync.yml) | `workflow_dispatch` only *(Manual Backfill)* | `contents: read` | `r2-asset-sync` | `90m` | Yes | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`\* | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY`<br>`GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **R2 Content Integrity Scan** | [`.github/workflows/r2-content-scan.yml`](../.github/workflows/r2-content-scan.yml) | `workflow_dispatch` only *(Manual Read Audit)* | `contents: read` | `r2-content-scan` | `60m` | **No** *(~5s)* | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`\* | — |
-| **Featured Quotes Sync** | [`.github/workflows/quotes-sync.yml`](../.github/workflows/quotes-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `featured-quotes-sync` | `30m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>`GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Gutenberg Translations Sync** | [`.github/workflows/translations-sync.yml`](../.github/workflows/translations-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `gutenberg-translations-sync` | `20m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
+| **Featured Quotes Sync** | [`.github/workflows/quotes-sync.yml`](../.github/workflows/quotes-sync.yml) | `workflow_dispatch` only *(Manual Override)* | `contents: read` | `featured-quotes-sync` | `30m` | Yes | `NEXT_PUBLIC_SUPABASE_URL`<br>`SUPABASE_SERVICE_ROLE_KEY` | `R2_ACCOUNT_ID`<br>`R2_BUCKET_NAME`<br>`R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>`GUTENBERG_CONTACT_EMAIL`<br>`VERCEL_API_TOKEN`<br>`VERCEL_PROJECT_ID`<br>`VERCEL_TEAM_ID` |
 | **Manual Cache Purge** | [`.github/workflows/cache-purge.yml`](../.github/workflows/cache-purge.yml) | `workflow_dispatch` only *(Selective Purge)* | `contents: read` | `cache-purge` | `5m` | **No** *(~5s)* | `VERCEL_API_TOKEN`\*<br>`VERCEL_PROJECT_ID`\* | `VERCEL_TEAM_ID` |
-| **Bookarium CI** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `push` & `pull_request` on `main`, `master`, `dev` | `contents: read` | `ci-${{ github.workflow }}-${{ github.ref }}` *(PR cancel)* | `25m` | Yes | **None** *(Zero keys)* | — |
+| **CI Pipeline** | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | `push` & `pull_request` on `main`, `master`, `dev` | `contents: read` | `ci-${{ github.workflow }}-${{ github.ref }}` *(PR cancel)* | `25m` | Yes | **None** *(Zero keys)* | — |
 | **CodeQL SAST Analysis** | [`.github/workflows/codeql.yml`](../.github/workflows/codeql.yml) | `push` & `pull_request` on `main`, `master`, `dev`<br>+ `cron: 30 1 * * 1` (Mondays 01:30 UTC) | Top: `contents: read`<br>Job: `actions: read`, `contents: read`, `security-events: write` | `codeql-${{ github.ref }}` | `20m` | **No** *(Native CodeQL)* | **None** *(Public Repo)* | — |
 | **Dependency Review** | [`.github/workflows/dependency-review.yml`](../.github/workflows/dependency-review.yml) | `pull_request` on `main`, `master`, `dev` | `contents: read` | `dependency-review-${{ github.ref }}` | `10m` | **No** *(GitHub Graph)* | **None** *(Public Repo)* | — |
-| **Create Release** | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | `push` tags `v*`<br>+ `workflow_dispatch` (`tag`) | Top: `contents: read`<br>Job: `contents: write` | — | `25m` | Yes | Built-in `GITHUB_TOKEN` | — |
+| **Automated Release & Publish** | [`.github/workflows/release.yml`](../.github/workflows/release.yml) | `push` tags `v*`<br>+ `workflow_dispatch` (`tag`) | Top: `contents: read`<br>Job: `contents: write` | — | `25m` | Yes | Built-in `GITHUB_TOKEN` | — |
+<!-- END:workflows-matrix -->
 
 \* *Safety Fallback*: `scripts/purge-vercel-cache.js` exits cleanly (`exit 0`) with a skip notice when `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` are unset so community forks and dry-runs never fail on missing Vercel credentials (in `cache-purge.yml`, configure both secrets in GitHub Settings if you want live CDN invalidations to execute). Likewise, `r2-sync.yml`, `r2-content-scan.yml`, and `catalog-sync.yml` skip R2 scripts with `exit 0` only when **all 4** `R2_*` secrets are unset—partial or malformed `R2_*` setups fail fast (`exit 1`) via `assertValidR2ConfigIfPresent`.
 
@@ -243,7 +245,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.66'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.67'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions & Timeout**: Top-level `contents: read`; job-level `contents: write`, `timeout-minutes: 25`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -381,16 +383,18 @@ Manual-only (`workflow_dispatch`), zero-`npm ci` read-only audit scanning stored
 
 ## 🛠️ 4. Related GitHub Automation & Marketplace Actions
 
+<!-- BEGIN:actions-pins -->
 | Component | Configuration / Pin | Scope & Schedule |
 | :--- | :--- | :--- |
 | **Dependabot** | [`.github/dependabot.yml`](../.github/dependabot.yml) | Automated `monthly` PRs targeting `master` for `npm` dependencies (`open-pull-requests-limit: 5`, `chore(deps)`) and `github-actions` commit-SHA updates (`open-pull-requests-limit: 3`, `chore(ci)`). |
 | **Checkout Action** | `actions/checkout@11d5960a326750d5838078e36cf38b85af677262` (`v4.4.0`) | Used across `10` workflows (`fetch-depth: 0` in `release.yml` for tag/changelog extraction; omitted in `catalog-tag-sync.yml`). |
-| **Node.js Setup** | `actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020` (`v4.4.0`) | Pins `node-version: '22'` across 8 Node.js workflows (enables `cache: 'npm'` except `cache-purge.yml` and `r2-content-scan.yml`, which need zero npm dependencies). |
+| **Node.js Setup** | `actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020` (`v4.4.0`) | Pins `node-version: '22'` across 8 Node.js workflows (enables `cache: 'npm'` except `r2-content-scan.yml` and `cache-purge.yml`, which need zero npm dependencies). |
 | **CodeQL Action (`init` / `analyze`)** | `github/codeql-action/*@33d7b85da1a04171e211befe2c739303b9a4c066` (`v4.39.3`) | Executes multi-target `javascript-typescript` and `actions` SARIF analysis inside `codeql.yml`. |
 | **Dependency Review Action** | `actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48` (`v4.9.0`) | Enforces `high` CVE and `GPL`/`AGPL` license checks on PR dependency changes inside `dependency-review.yml`. |
 | **Release Publisher** | `softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65` (`v2.6.2`) | Publishes GitHub Releases from extracted `CHANGELOG.md` notes inside `release.yml`. |
 
 > **Workflow Security Posture (Pass 0.75 Enforced)**: All 11 workflows declare explicit least-privilege `permissions:`, pin every external `uses:` step to a 40-character immutable commit SHA (`/@[0-9a-f]{40}$/`), forbid combining `pull_request_target` with `contents: write`, and bind inputs via `env:` instead of directly interpolating `${{ github.event.* }}` inside `run:` shell scripts.
+<!-- END:actions-pins -->
 
 ---
 

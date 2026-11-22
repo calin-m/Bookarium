@@ -1,3 +1,11 @@
+/**
+ * @module src/app/read/[id]/reader-layout-utils
+ * @scope Server-side Reader volume metadata resolver, bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
+ * @invariant Cap `serverMetadataCache` and `confirmedNotFoundIds` at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
+ * @rationale Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded.
+ * @adr ADR-036, ADR-070
+ */
+
 import { cache } from 'react';
 import type { GutendexBook } from '@/types/book.types';
 import { SITE_CONFIG } from '@/config/site-config';
