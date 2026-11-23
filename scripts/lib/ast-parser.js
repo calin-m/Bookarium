@@ -6,9 +6,9 @@
  * and dependency topologies with mathematical zero-drift.
  *
  * @module scripts/lib/ast-parser
- * @scope Central Babel 8 AST, SQL, YAML & config static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts (across `src/`, `scripts/`, `next.config.ts`, and `public/sw.js`), SQL<->TS entities (incl. `userScopedTables` cascade targets), live runtime/CI specs (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), shared governance registries (`REQUIRED_GOVERNANCE_DOCS`, `GENERATOR_LOOKUP_MAP_COUNT`), `.env.example` consumer discovery (`src/`, `next.config.ts`, `scripts/` incl. `lib/` & `eslint-rules/`, workflows), and Markdown Mermaid diagram syntax/cycle validation.
+ * @scope Central Babel 8 AST, SQL, YAML & config static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts (across `src/`, `scripts/`, `next.config.ts`, and `public/sw.js`), SQL<->TS entities (incl. `userScopedTables` cascade targets), live runtime/CI specs (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), shared governance & architecture corpus registries (`REQUIRED_GOVERNANCE_DOCS`, `GENERATOR_LOOKUP_MAP_COUNT`, `loadArchitectureCorpus`), `.env.example` consumer discovery (`src/`, `next.config.ts`, `scripts/` incl. `lib/` & `eslint-rules/`, workflows), and Markdown Mermaid diagram syntax/cycle validation.
  * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`) across dependency graphs, cross-boundary catalogs, and pending contract queues, detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), resolve `process.env`, defaulted parameter (`env = process.env`/`loadEnv`), and local `loadEnv()` variable bindings cleanly across `scripts/` (`collectScriptFiles`), extract declared constants/thresholds/triggers read-only from configs/sources/workflows (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
- * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
+ * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), load the hub-and-subdoc living architecture corpus deterministically (`loadArchitectureCorpus` spanning `docs/ARCHITECTURE.md` and `docs/architecture/*.md`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
  * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
  * @adr ADR-078, ADR-079, ADR-081, ADR-084
  */
@@ -3210,6 +3210,50 @@ function extractObjectLiteralKeysByVariable(filePath, targetNames) {
   return { keysByVar: result, parseError: null };
 }
 
+/**
+ * Loads the modular living architecture hub (`docs/ARCHITECTURE.md`) and all
+ * subsystem files under `docs/architecture/*.md` in deterministic codepoint order.
+ */
+function loadArchitectureCorpus(rootDirPath) {
+  const indexRel = 'docs/ARCHITECTURE.md';
+  const indexAbs = path.join(rootDirPath, indexRel);
+  const indexExists = fs.existsSync(indexAbs);
+  const indexContent = indexExists ? fs.readFileSync(indexAbs, 'utf-8') : '';
+
+  const subDirAbs = path.join(rootDirPath, 'docs', 'architecture');
+  const subDocs = [];
+  if (fs.existsSync(subDirAbs) && fs.statSync(subDirAbs).isDirectory()) {
+    const entries = fs
+      .readdirSync(subDirAbs, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+      .sort((a, b) => compareCodepoint(a.name, b.name));
+    for (const entry of entries) {
+      const relPath = `docs/architecture/${entry.name}`;
+      const absPath = path.join(subDirAbs, entry.name);
+      subDocs.push({
+        name: entry.name,
+        relPath,
+        absPath,
+        content: fs.readFileSync(absPath, 'utf-8'),
+      });
+    }
+  }
+
+  const allDocs = indexExists
+    ? [{ name: 'ARCHITECTURE.md', relPath: indexRel, absPath: indexAbs, content: indexContent }, ...subDocs]
+    : [...subDocs];
+  const combinedContent = allDocs.map((d) => d.content).join('\n\n');
+
+  return {
+    indexRel,
+    indexExists,
+    indexContent,
+    subDocs,
+    allDocs,
+    combinedContent,
+  };
+}
+
 const REQUIRED_GOVERNANCE_DOCS = Object.freeze([
   'README.md',
   'SECURITY.md',
@@ -4981,5 +5025,6 @@ module.exports = {
   extractRuntimeSpecConstants,
   REQUIRED_GOVERNANCE_DOCS,
   GENERATOR_LOOKUP_MAP_COUNT,
+  loadArchitectureCorpus,
 };
 

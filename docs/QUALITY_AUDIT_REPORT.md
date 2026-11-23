@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 23 Nov 2026 12:03:31 GMT  
+**Last Generated**: Mon, 23 Nov 2026 15:44:55 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 264 passed  
-**Total Verified Tests**: 2771 passed  
+**Total Verified Tests**: 2772 passed  
 
 ---
 
@@ -15,9 +15,9 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2771 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2772 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
-| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
+| **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.27%** (16439/16899) — *Target: $\ge$ 95%*
-- **Statements**: **96.01%** (17700/18435) — *Target: $\ge$ 95%*
-- **Functions**: **95.24%** (3542/3719) — *Target: $\ge$ 92%*
-- **Branches**: **88.42%** (16478/18635) — *Target: $\ge$ 85%*
+- **Lines**: **97.26%** (16437/16899) — *Target: $\ge$ 95%*
+- **Statements**: **96.01%** (17701/18435) — *Target: $\ge$ 95%*
+- **Functions**: **95.07%** (3536/3719) — *Target: $\ge$ 92%*
+- **Branches**: **88.39%** (16473/18635) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2771 Tests)
+## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2772 Tests)
 
 ### 🚀 App Routes & Pages (30 Suites · 313 Tests)
 
@@ -2050,7 +2050,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (58 Suites · 740 Tests)
+### 📚 Gutenberg Parsers & Metadata (58 Suites · 741 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2949,7 +2949,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (24 tests)</summary>
+<summary><b><code>scripts/lib/ast-parser.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `detects static circular dependencies with hasCycles while ignoring type-only import cycles`
 - ✔ `records parse errors explicitly instead of silently ignoring malformed TypeScript files`
@@ -2966,7 +2966,8 @@
 - ✔ `verifies zero orphaned lookup keys exist across all 17 live generator registries`
 - ✔ `detects orphaned lookup keys across all generator registries when modules, deps, workflows, SQL entities, signals, workers, or env vars are removed`
 - ✔ `produces deterministic codepoint-sorted consumer lists and LF-normalized text asset sizes regardless of CRLF`
-- ✔ `validates live Mermaid diagrams in docs/ARCHITECTURE.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations`
+- ✔ `loads hub and deterministic codepoint-sorted docs/architecture/*.md slices while ignoring non-Markdown entries`
+- ✔ `validates live Mermaid diagrams across docs/ARCHITECTURE.md, docs/architecture/*.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations`
 - ✔ `rejects parent-child subgraph cycles, compound cycles, unquoted edge parens, HTML-tag swallowing, and orphan nodes in Mermaid diagrams`
 - ✔ `validates chained Mermaid flowchart arrows, inline quoted arrow labels, and standalone nodes containing arrows cleanly`
 - ✔ `extracts .env.example consumers across default-param env, local loadEnv bindings, and scripts/lib modules without false positives`

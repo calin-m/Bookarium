@@ -6,7 +6,7 @@ Complete operator reference for every workflow under [`.github/workflows/`](../.
 > - For the **7-Gateway Quality Engine** architecture and console telemetry reference, see [**`docs/PIPELINE_GUIDE.md`**](PIPELINE_GUIDE.md).
 > - For **Free vs. Paid deployment tiers, GitHub runner/Release caps, and platform coding guardrails**, see [**`docs/INFRASTRUCTURE.md`**](INFRASTRUCTURE.md).
 > - For local `.env.local` / Vercel environment variable setup, see [**`DEVELOPMENT.md`**](../DEVELOPMENT.md#-environment-variables--secrets-reference) and [**`.env.example`**](../.env.example).
-> - For end-to-end architecture diagrams (`Diagram 1`, `Diagram 8`, `Diagram 10`, `Diagram 12`), see [**`docs/ARCHITECTURE.md`**](ARCHITECTURE.md#-background-data-pipelines--automation-engines).
+> - For end-to-end architecture diagrams (`Diagram 1` in `docs/ARCHITECTURE.md`, plus `Diagram 8`, `Diagram 10`, `Diagram 12` in subsystem slices), see [**`docs/ARCHITECTURE.md`**](ARCHITECTURE.md) and [**`docs/architecture/database-and-pipelines.md`**](architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology).
 
 ---
 
@@ -227,7 +227,7 @@ Continuous integration quality gate verifying every branch push and pull request
 - **CI Execution Sequence**:
   1. Checkout repo (`actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0`), setup Node `22` with npm cache (`actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0`), run `npm ci`.
   2. Execute `npm run verify:build` (Pass 0.5 secret/env/AST boundary scan $\to$ Pass 0.75 7-Pillar OWASP/SAST/License-SCA/Workflow/AST taint suite $\to$ Pass 1 TypeScript $\to$ Pass 2 & 3 Vitest with `95/95/92/85` V8 coverage $\to$ Pass 4 AST doc sync parity incl. `SECURITY.md` $\to$ Pass 5 ADR, 19 governance docs, circular `SECURITY.md` parity, 1:1 SQL$\leftrightarrow$TS parity, 1:1 workflow/cron parity & co-location $\to$ Pass 6 ESLint zero-warning + Knip $\to$ Pass 7 Next.js production build + compiled `.next/routes-manifest.json` & live `127.0.0.1` HTTP smoke probe).
-  3. Execute `git diff --exit-code` across the `11` deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/GITHUB_ACTIONS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
+  3. Execute `git diff --exit-code` across the deterministic AST/SemVer/contract living-documentation artifacts (`docs/ARCHITECTURE.md`, `7` modular specs under `docs/architecture/`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/GITHUB_ACTIONS.md`, `CHANGELOG.md`, `ROADMAP.md`, `package.json`, `package-lock.json`, `SECURITY.md`, `.github/workflows/release.yml`, and `.github/ISSUE_TEMPLATE/bug_report.yml`) to reject PRs with unsynchronized generated outputs (deliberately excluding `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`, `README.md`, and `next-env.d.ts` whose outputs embed dynamic V8 coverage floats or local Next typegen stubs).
 - **Local CLI Equivalents**:
   ```bash
   # Exact CI command (full 7-Gateway Quality Engine)
@@ -245,7 +245,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.72'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.73'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions & Timeout**: Top-level `contents: read`; job-level `contents: write`, `timeout-minutes: 25`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:

@@ -14,8 +14,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-264%20Suites%20%7C%202771%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.27%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-264%20Suites%20%7C%202772%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.26%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -69,7 +69,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2771 tests across 264 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2772 tests across 264 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -112,9 +112,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.72)
+## 🛠️ Latest Improvements (v2.9.73)
 
-- **Tactile & Desktop `TextHighlightPopover` Positioning, Keyboard Elevation & Stacking Layer (`src/components/reader/TextHighlightPopover.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/app/read/[id]/page.tsx`, `docs/DECISIONS.md`, co-located tests)**: Raised popover stacking to `zIndex: 10002` above `ReaderHeader` and `ReaderSpeechBar`, wired `useVisualViewportKeyboard()` + `isSpeechOpen` bottom clearance onto coarse-pointer docks, replaced `left: 50%` + `x: -50%` with layout centering and landscape height clamping, added `ResizeObserver` + desktop top/bottom viewport clamping, and refined multi-line `getClientRects()` + `<mark>` `bottom` rect coordinates (`ADR-019`, `ADR-080`).
+- **Modular Hub-and-Subdoc Architecture Output & Relative Link Compiler (`scripts/generate-architecture-matrix.js`, `scripts/lib/ast-parser.js`, `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `README.md`, `docs/DECISIONS.md`)**: Split the 2,247-line single-file `docs/ARCHITECTURE.md` compilation into a compact hub entrypoint (retaining `Diagram 1`, health banner, clickable Subsystem TOC, and 7-Gateway overview) paired with `7` domain-focused subsystem documents under `docs/architecture/*.md` housing Diagrams `2`–`15` and 100% of existing AST matrices with zero data removed, added fence-safe `relativizeArchitectureLinks()` rewriting (`../` in hub, `../../` in sub-docs), per-file CRLF/`Last Synchronized` idempotency with stale-file cleanup, `loadArchitectureCorpus()` in `ast-parser.js`, and direct sub-doc + `#anchor` links across Rows `1`–`15` of `README.md` (`ADR-079`, `ADR-081`).
+- **Corpus-Aware Pass 5 Parity, TOC Integrity, Pre-Commit Staging & CI Drift Enforcement (`scripts/verify-build.js`, `scripts/lib/ast-parser.test.ts`, `.husky/pre-commit`, `.github/workflows/ci.yml`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Upgraded `Pass 5` in `scripts/verify-build.js` to validate bidirectional hub TOC parity, combined-corpus AST/SQL/SW/workflow/env/coverage coverage, ReDoS-safe `../` target normalization, per-file directory-relative links, and live Mermaid validation across all `8` architecture documents (`loadArchitectureCorpus` unit & live tests in `ast-parser.test.ts`), while adding `docs/architecture` to `.husky/pre-commit` and `docs/architecture/` to `.github/workflows/ci.yml` `git diff --exit-code` (`ADR-079`, `ADR-081`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -495,21 +496,21 @@ flowchart TD
 
 | # | Architectural Diagram | Primary Layer & Subsystem | Living Architecture Specification |
 |---|---|---|---|
-| **1** | **End-to-End System Context & Data Flow** | Global System Context, Edge Proxy & Client SPA | [docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow](docs/ARCHITECTURE.md) |
-| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/ARCHITECTURE.md#2-focus-reader-state--typography-engine](docs/ARCHITECTURE.md) |
-| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |
-| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |
-| **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |
-| **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/ARCHITECTURE.md) |
-| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v7, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |
-| **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/ARCHITECTURE.md#1-github-actions--database-ingestion-topology](docs/ARCHITECTURE.md) |
-| **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/ARCHITECTURE.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/ARCHITECTURE.md) |
-| **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, CLI Mirror Feeds & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |
-| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Strict R2 Delivery & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |
-| **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/ARCHITECTURE.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/ARCHITECTURE.md) |
-| **13** | **Multi-Tier Caching, Egress Shielding & R2 Serving** | 5-Layer Cache Hierarchy, Edge TTLs & Cloudflare R2 Cover/Text Proxy | [docs/ARCHITECTURE.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving](docs/ARCHITECTURE.md) |
-| **14** | **Auth, Password Recovery, Session Revocation & Origin Flow** | Edge Refresh Bypass, PKCE/OTP, JWT AMR & Pre-Null Teardown | [docs/ARCHITECTURE.md#3-authentication-password-recovery-session-revocation--origin-security-flow](docs/ARCHITECTURE.md) |
-| **15** | **Literary Fellowship, Symposium & Marginalia Guard Topology** | Reader Circles, Symposiums, Fellow Highlights & DB Triggers | [docs/ARCHITECTURE.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards](docs/ARCHITECTURE.md) |
+| **1** | **End-to-End System Context & Data Flow** | Global System Context, Edge Proxy & Client SPA | [docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow](docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow) |
+| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/architecture/reader-components-and-state.md#2-focus-reader-state--typography-engine](docs/architecture/reader-components-and-state.md#2-focus-reader-state--typography-engine) |
+| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/architecture/reader-components-and-state.md#3-bookmarks--continue-reading-ledger-architecture](docs/architecture/reader-components-and-state.md#3-bookmarks--continue-reading-ledger-architecture) |
+| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/architecture/event-bus-and-runtime-flows.md#1-cross-store-worker--dom-event-bus-diagram](docs/architecture/event-bus-and-runtime-flows.md#1-cross-store-worker--dom-event-bus-diagram) |
+| **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/architecture/event-bus-and-runtime-flows.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/architecture/event-bus-and-runtime-flows.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation) |
+| **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast) |
+| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v7, IndexedDB & Outbox Queue | [docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay) |
+| **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology](docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology) |
+| **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline) |
+| **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, CLI Mirror Feeds & Timeouts | [docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram](docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram) |
+| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Strict R2 Delivery & Worker Fallback | [docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram](docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram) |
+| **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology) |
+| **13** | **Multi-Tier Caching, Egress Shielding & R2 Serving** | 5-Layer Cache Hierarchy, Edge TTLs & Cloudflare R2 Cover/Text Proxy | [docs/architecture/integrations-failure-and-ops.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving](docs/architecture/integrations-failure-and-ops.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving) |
+| **14** | **Auth, Password Recovery, Session Revocation & Origin Flow** | Edge Refresh Bypass, PKCE/OTP, JWT AMR & Pre-Null Teardown | [docs/architecture/security-and-fellowship.md#3-authentication-password-recovery-session-revocation--origin-security-flow](docs/architecture/security-and-fellowship.md#3-authentication-password-recovery-session-revocation--origin-security-flow) |
+| **15** | **Literary Fellowship, Symposium & Marginalia Guard Topology** | Reader Circles, Symposiums, Fellow Highlights & DB Triggers | [docs/architecture/security-and-fellowship.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards](docs/architecture/security-and-fellowship.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards) |
 <!-- END:architecture-diagrams -->
 
 ---

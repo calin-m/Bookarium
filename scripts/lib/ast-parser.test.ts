@@ -293,6 +293,22 @@ interface WorkflowSpecCatalog {
   }>;
 }
 
+interface ArchitectureDocEntry {
+  name: string;
+  relPath: string;
+  absPath: string;
+  content: string;
+}
+
+interface ArchitectureCorpus {
+  indexRel: string;
+  indexExists: boolean;
+  indexContent: string;
+  subDocs: ArchitectureDocEntry[];
+  allDocs: ArchitectureDocEntry[];
+  combinedContent: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const astParser = require('./ast-parser.js') as {
   analyzeDependencyGraph: (srcDir: string, rootDir: string) => Map<string, AstModuleNode>;
@@ -340,6 +356,7 @@ const astParser = require('./ast-parser.js') as {
   extractEnvironmentDependencyCatalog: (rootDir: string, srcDir: string) => EnvDependencyEntry[];
   getDeterministicTextOrBinaryBytes: (absPath: string, relPath: string) => number;
   validateMermaidDiagramsInMarkdown: (markdownText: string, relPath?: string) => string[];
+  loadArchitectureCorpus: (rootDirPath: string) => ArchitectureCorpus;
 };
 
 const tempDirs: string[] = [];
@@ -1054,9 +1071,48 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(astParser.getDeterministicTextOrBinaryBytes(swAbs, 'public/sw.js')).toBe(lfBytes);
   });
 
-  it('validates live Mermaid diagrams in docs/ARCHITECTURE.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations', () => {
+  it('loads hub and deterministic codepoint-sorted docs/architecture/*.md slices while ignoring non-Markdown entries', () => {
+    const { rootDir } = createTempProject({
+      'docs/ARCHITECTURE.md': '# Hub\nDiagram 1\n',
+      'docs/architecture/zeta.md': '# Zeta\n',
+      'docs/architecture/alpha.md': '# Alpha\n',
+      'docs/architecture/notes.txt': 'ignored\n',
+    });
+    fs.mkdirSync(path.join(rootDir, 'docs', 'architecture', 'nested-dir'), { recursive: true });
+
+    const corpus = astParser.loadArchitectureCorpus(rootDir);
+    expect(corpus.indexExists).toBe(true);
+    expect(corpus.indexRel).toBe('docs/ARCHITECTURE.md');
+    expect(corpus.subDocs.map((d) => d.relPath)).toEqual([
+      'docs/architecture/alpha.md',
+      'docs/architecture/zeta.md',
+    ]);
+    expect(corpus.allDocs.map((d) => d.relPath)).toEqual([
+      'docs/ARCHITECTURE.md',
+      'docs/architecture/alpha.md',
+      'docs/architecture/zeta.md',
+    ]);
+    expect(corpus.combinedContent).toContain('# Hub');
+    expect(corpus.combinedContent).toContain('# Alpha');
+    expect(corpus.combinedContent).toContain('# Zeta');
+    expect(corpus.combinedContent).not.toContain('ignored');
+
+    const { rootDir: hubOnlyRoot } = createTempProject({
+      'docs/ARCHITECTURE.md': '# Only Hub\n',
+    });
+    const hubOnlyCorpus = astParser.loadArchitectureCorpus(hubOnlyRoot);
+    expect(hubOnlyCorpus.subDocs).toEqual([]);
+    expect(hubOnlyCorpus.allDocs.map((d) => d.relPath)).toEqual(['docs/ARCHITECTURE.md']);
+  });
+
+  it('validates live Mermaid diagrams across docs/ARCHITECTURE.md, docs/architecture/*.md, README.md, docs/GUTENBERG_PARSER.md, and docs/INFRASTRUCTURE.md with zero violations', () => {
     const repoRoot = path.resolve(__dirname, '../..');
-    for (const relDoc of ['docs/ARCHITECTURE.md', 'README.md', 'docs/GUTENBERG_PARSER.md', 'docs/INFRASTRUCTURE.md']) {
+    const archCorpus = astParser.loadArchitectureCorpus(repoRoot);
+    expect(archCorpus.indexExists).toBe(true);
+    for (const archDoc of archCorpus.allDocs) {
+      expect(astParser.validateMermaidDiagramsInMarkdown(archDoc.content, archDoc.relPath)).toEqual([]);
+    }
+    for (const relDoc of ['README.md', 'docs/GUTENBERG_PARSER.md', 'docs/INFRASTRUCTURE.md']) {
       const content = fs.readFileSync(path.join(repoRoot, relDoc), 'utf-8');
       expect(astParser.validateMermaidDiagramsInMarkdown(content, relDoc)).toEqual([]);
     }

@@ -11,7 +11,7 @@ Canonical reference for **deployment environments**, **free vs. paid provider ti
 > - Environment variable placement & OAuth / R2 setup steps: [**`DEVELOPMENT.md`**](../DEVELOPMENT.md) and [**`.env.example`**](../.env.example)
 > - GitHub Actions triggers, schedules, secrets & `catalog-cache` snapshots: [**`docs/GITHUB_ACTIONS.md`**](GITHUB_ACTIONS.md)
 > - 7-Gateway Quality Engine & ingestion pipeline telemetry: [**`docs/PIPELINE_GUIDE.md`**](PIPELINE_GUIDE.md)
-> - System topology diagrams, cache hierarchy & security boundaries: [**`docs/ARCHITECTURE.md`**](ARCHITECTURE.md) and [**`SECURITY.md`**](../SECURITY.md)
+> - System topology diagrams, cache hierarchy & security boundaries: [**`docs/ARCHITECTURE.md`**](ARCHITECTURE.md) (hub + `docs/architecture/` subsystem slices) and [**`SECURITY.md`**](../SECURITY.md)
 
 ---
 

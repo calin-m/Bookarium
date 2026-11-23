@@ -39,6 +39,7 @@ jobs:
         run: |
           git diff --exit-code -- \
             docs/ARCHITECTURE.md \
+            docs/architecture/ \
             docs/GUTENBERG_PARSER.md \
             docs/SYSTEM_CONTRACTS.md \
             docs/GITHUB_ACTIONS.md \

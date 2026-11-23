@@ -250,7 +250,7 @@ function generateContractsMarkdown() {
     '',
     '> **Auto-Generated Living Specification**: This document is 100% compiled by [`scripts/generate-contracts-docs.js`](../scripts/generate-contracts-docs.js) using [`scripts/lib/ast-parser.js`](../scripts/lib/ast-parser.js). Never edit this file directly — author `@scope`, `@invariant`, `@rationale` (`@why`), and `@adr` JSDoc tags in source files and run `npm run docs:contracts` (or `npm run docs:sync`).',
     '',
-    'While [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) maps structural topology and [`docs/DECISIONS.md`](DECISIONS.md) records historical architectural decisions, **`SYSTEM_CONTRACTS.md`** documents **code-level intent**: what each module owns, which invariants must never be broken, why non-obvious constraints exist, its live caller blast radius, and its co-located test contract.',
+    'While [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) (and its modular subsystem slices under `docs/architecture/`) maps structural topology and [`docs/DECISIONS.md`](DECISIONS.md) records historical architectural decisions, **`SYSTEM_CONTRACTS.md`** documents **code-level intent**: what each module owns, which invariants must never be broken, why non-obvious constraints exist, its live caller blast radius, and its co-located test contract.',
     '',
     '---',
     '',

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.73] - 2026-11-23
+### *Modular Hub-and-Subdoc Architecture Topology Split (docs/ARCHITECTURE.md + 7 docs/architecture/*.md Slices)*
+
+### Changed
+- **Modular Hub-and-Subdoc Architecture Output & Relative Link Compiler (`scripts/generate-architecture-matrix.js`, `scripts/lib/ast-parser.js`, `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `README.md`, `docs/DECISIONS.md`)**: Split the 2,247-line single-file `docs/ARCHITECTURE.md` compilation into a compact hub entrypoint (retaining `Diagram 1`, health banner, clickable Subsystem TOC, and 7-Gateway overview) paired with `7` domain-focused subsystem documents under `docs/architecture/*.md` housing Diagrams `2`–`15` and 100% of existing AST matrices with zero data removed, added fence-safe `relativizeArchitectureLinks()` rewriting (`../` in hub, `../../` in sub-docs), per-file CRLF/`Last Synchronized` idempotency with stale-file cleanup, `loadArchitectureCorpus()` in `ast-parser.js`, and direct sub-doc + `#anchor` links across Rows `1`–`15` of `README.md` (`ADR-079`, `ADR-081`).
+- **Corpus-Aware Pass 5 Parity, TOC Integrity, Pre-Commit Staging & CI Drift Enforcement (`scripts/verify-build.js`, `scripts/lib/ast-parser.test.ts`, `.husky/pre-commit`, `.github/workflows/ci.yml`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Upgraded `Pass 5` in `scripts/verify-build.js` to validate bidirectional hub TOC parity, combined-corpus AST/SQL/SW/workflow/env/coverage coverage, ReDoS-safe `../` target normalization, per-file directory-relative links, and live Mermaid validation across all `8` architecture documents (`loadArchitectureCorpus` unit & live tests in `ast-parser.test.ts`), while adding `docs/architecture` to `.husky/pre-commit` and `docs/architecture/` to `.github/workflows/ci.yml` `git diff --exit-code` (`ADR-079`, `ADR-081`).
+
+
 ## [2.9.72] - 2026-11-23
 ### *Tactile & Desktop Selection Popover Visual-Viewport Elevation, Read Aloud Clearance & Stacking Hardening*
 

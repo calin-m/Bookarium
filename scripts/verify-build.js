@@ -1,7 +1,7 @@
 /**
  * @module scripts/verify-build
  * @scope 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
- * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+ * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, bidirectional TOC + corpus parity across `docs/ARCHITECTURE.md` and `docs/architecture/*.md`, circular `SECURITY.md` symbol parity, `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
  * @rationale Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
  * @adr ADR-073, ADR-078, ADR-079, ADR-081
  */
@@ -16,6 +16,7 @@ const {
   extractRuntimeSpecConstants,
   extractSqlSchemaEntities,
   extractWorkflowSpecCatalog,
+  loadArchitectureCorpus,
   REQUIRED_GOVERNANCE_DOCS,
 } = require('./lib/ast-parser');
 const {
@@ -1014,7 +1015,7 @@ function pass4DocsSync() {
     const { generateRoadmapMarkdown } = require('./generate-roadmap.js');
     fs.writeFileSync(path.join(rootDir, 'ROADMAP.md'), generateRoadmapMarkdown(), 'utf-8');
     require('./generate-architecture-matrix.js');
-    logPass('docs/QUALITY_AUDIT_REPORT.md, CHANGELOG.md, docs/GUTENBERG_PARSER.md, docs/SYSTEM_CONTRACTS.md, ROADMAP.md, and docs/ARCHITECTURE.md synced successfully from source AST.');
+    logPass('docs/QUALITY_AUDIT_REPORT.md, CHANGELOG.md, docs/GUTENBERG_PARSER.md, docs/SYSTEM_CONTRACTS.md, ROADMAP.md, docs/ARCHITECTURE.md, and docs/architecture/*.md synced successfully from source AST.');
     return true;
   } catch (err) {
     logFail(`Documentation synchronization failed: ${err.message}`);
@@ -1721,10 +1722,52 @@ function pass5AdrValidation() {
     }
   }
 
-  // Verify generator lookup completeness in docs/ARCHITECTURE.md
-  const archDocPath = path.join(rootDir, 'docs', 'ARCHITECTURE.md');
-  if (fs.existsSync(archDocPath)) {
-    const archContent = fs.readFileSync(archDocPath, 'utf-8');
+  // Verify generator lookup completeness & bidirectional hub/subdoc parity across docs/ARCHITECTURE.md + docs/architecture/*.md
+  const archCorpus = loadArchitectureCorpus(rootDir);
+  if (archCorpus.indexExists) {
+    const stripLeadingParentDirs = (rawRel) => {
+      let cleaned = String(rawRel || '').replace(/\\/g, '/');
+      while (cleaned.startsWith('../')) {
+        cleaned = cleaned.slice(3);
+      }
+      if (cleaned.startsWith('./')) {
+        cleaned = cleaned.slice(2);
+      }
+      return cleaned;
+    };
+
+    if (archCorpus.subDocs.length === 0) {
+      docViolations.push(
+        'Missing modular architecture subsystem files under docs/architecture/*.md (run "npm run docs:sync").'
+      );
+    }
+    const subDocRelSet = new Set(archCorpus.subDocs.map((d) => d.relPath));
+    for (const subDoc of archCorpus.subDocs) {
+      if (subDoc.content.trim().length === 0) {
+        docViolations.push(`Empty architecture subsystem file detected: ${subDoc.relPath}`);
+      }
+    }
+
+    // Bidirectional Hub TOC Completeness: docs/ARCHITECTURE.md <-> docs/architecture/*.md
+    const linkedSubdocsInHub = new Set();
+    for (const tocMatch of archCorpus.indexContent.matchAll(/\]\((architecture\/[A-Za-z0-9_.-]+\.md)(?:[?#][^)\s]*)?\)/g)) {
+      const targetSubRel = `docs/${tocMatch[1]}`;
+      linkedSubdocsInHub.add(targetSubRel);
+      if (!subDocRelSet.has(targetSubRel)) {
+        docViolations.push(
+          `Broken subsystem TOC link "${tocMatch[1]}" in docs/ARCHITECTURE.md (target file missing under docs/architecture/).`
+        );
+      }
+    }
+    for (const subDoc of archCorpus.subDocs) {
+      if (!linkedSubdocsInHub.has(subDoc.relPath)) {
+        docViolations.push(
+          `Orphaned architecture sub-document "${subDoc.relPath}" is not linked in docs/ARCHITECTURE.md TOC (run "npm run docs:sync").`
+        );
+      }
+    }
+
+    const archContent = archCorpus.combinedContent;
     const genericPlaceholders = [
       'Production runtime library.',
       'Development or verification tooling.',
@@ -1836,36 +1879,65 @@ function pass5AdrValidation() {
       }
     }
 
-    // Forward Inventory Check: Every module in depGraph (src/**) and its co-located test must appear in docs/ARCHITECTURE.md
+    // Forward Inventory Check: Every module in depGraph (src/**) and its co-located test must appear across the architecture corpus
     if (depGraph) {
+      const normalizedArchLinks = new Set();
+      for (const m of archContent.matchAll(/\]\(([^)\s?#]+)(?:[?#][^)\s]*)?\)/g)) {
+        normalizedArchLinks.add(stripLeadingParentDirs(m[1]));
+      }
       for (const modFile of depGraph.keys()) {
-        if (!archContent.includes(`](${modFile})`)) {
+        if (!normalizedArchLinks.has(modFile)) {
           docViolations.push(
-            `Source module "${modFile}" is missing from docs/ARCHITECTURE.md (run "npm run docs:sync").`
+            `Source module "${modFile}" is missing from docs/ARCHITECTURE.md + docs/architecture/*.md (run "npm run docs:sync").`
           );
         }
         const baseNoExt = modFile.replace(/\.(ts|tsx|js|jsx)$/, '');
         for (const testCand of [`${baseNoExt}.test.ts`, `${baseNoExt}.test.tsx`]) {
-          if (fs.existsSync(path.join(rootDir, testCand)) && !archContent.includes(`](${testCand})`)) {
+          if (fs.existsSync(path.join(rootDir, testCand)) && !normalizedArchLinks.has(testCand)) {
             docViolations.push(
-              `Co-located test suite "${testCand}" is missing from docs/ARCHITECTURE.md (run "npm run docs:sync").`
+              `Co-located test suite "${testCand}" is missing from docs/ARCHITECTURE.md + docs/architecture/*.md (run "npm run docs:sync").`
             );
           }
         }
       }
     }
 
-      // Reverse Dead-Link Check: Every ](src/...) or ](scripts/...) link in docs/ARCHITECTURE.md must exist on disk
-    const archFileLinks = archContent.matchAll(/\]\(((?:src|scripts)\/[A-Za-z0-9_./-]+)\)/g);
-    for (const linkMatch of archFileLinks) {
-      const linkedRel = linkMatch[1].replace(/\/$/, '');
-      if (
-        /\.[a-z0-9]+$/i.test(linkedRel) &&
-        !fs.existsSync(path.join(rootDir, linkedRel))
-      ) {
-        docViolations.push(
-          `Stale dead file reference "${linkedRel}" in docs/ARCHITECTURE.md (file was deleted or renamed; run "npm run docs:sync").`
-        );
+    // Per-file Reverse Dead-Link & Relative Path Check across docs/ARCHITECTURE.md + docs/architecture/*.md
+    const archLinkFileExtRe = /\.(?:md|sql|ts|tsx|js|jsx|css|yml|yaml|json|png|svg|ico|webp)$/i;
+    for (const archDoc of archCorpus.allDocs) {
+      let inCodeFence = false;
+      for (const docLine of archDoc.content.split(/\r?\n/)) {
+        if (docLine.trim().startsWith('```')) {
+          inCodeFence = !inCodeFence;
+          continue;
+        }
+        if (inCodeFence) continue;
+        for (const linkMatch of docLine.matchAll(/\]\(([^)\s]+)\)/g)) {
+          const rawTarget = linkMatch[1];
+          if (/^(?:https?:|mailto:|file:|#)/i.test(rawTarget)) continue;
+          const cleanTarget = rawTarget.split(/[?#]/)[0].replace(/\/$/, '');
+          if (!cleanTarget) continue;
+          if (archLinkFileExtRe.test(cleanTarget)) {
+            const resolvedFromDoc = cleanTarget.startsWith('/')
+              ? path.join(rootDir, cleanTarget.slice(1))
+              : path.resolve(path.dirname(archDoc.absPath), cleanTarget);
+            if (!fs.existsSync(resolvedFromDoc)) {
+              docViolations.push(
+                `Broken relative link "${rawTarget}" in ${archDoc.relPath} (target not found on disk; run "npm run docs:sync").`
+              );
+            }
+          }
+          const normalizedRepoTarget = stripLeadingParentDirs(cleanTarget);
+          if (
+            /^(?:src|scripts)\/[A-Za-z0-9_./-]+$/.test(normalizedRepoTarget) &&
+            /\.[a-z0-9]+$/i.test(normalizedRepoTarget) &&
+            !fs.existsSync(path.join(rootDir, normalizedRepoTarget))
+          ) {
+            docViolations.push(
+              `Stale dead file reference "${normalizedRepoTarget}" in ${archDoc.relPath} (file was deleted or renamed; run "npm run docs:sync").`
+            );
+          }
+        }
       }
     }
 
@@ -1978,8 +2050,9 @@ function pass5AdrValidation() {
 
       // Reverse Dead Workflow File & Live Count Parity across docs/guides
       const activeWfSet = new Set(wfFiles.map((f) => `.github/workflows/${f}`));
+      const archDocRelList = archCorpus.allDocs.map((d) => d.relPath);
       const wfAuditDocs = [
-        'docs/ARCHITECTURE.md',
+        ...archDocRelList,
         'docs/GITHUB_ACTIONS.md',
         'docs/INFRASTRUCTURE.md',
         'docs/PIPELINE_GUIDE.md',
@@ -1988,6 +2061,14 @@ function pass5AdrValidation() {
         'AGENTS.md',
         '.agents/AGENTS.md',
       ];
+      const wfCountAuditDocSet = new Set([
+        'README.md',
+        'docs/PIPELINE_GUIDE.md',
+        'docs/GITHUB_ACTIONS.md',
+        'docs/INFRASTRUCTURE.md',
+        'DEVELOPMENT.md',
+        ...archDocRelList,
+      ]);
       for (const relDoc of wfAuditDocs) {
         const absDoc = path.join(rootDir, relDoc);
         if (!fs.existsSync(absDoc)) continue;
@@ -2006,14 +2087,7 @@ function pass5AdrValidation() {
             );
           }
         }
-        if (
-          relDoc === 'README.md' ||
-          relDoc === 'docs/PIPELINE_GUIDE.md' ||
-          relDoc === 'docs/GITHUB_ACTIONS.md' ||
-          relDoc === 'docs/INFRASTRUCTURE.md' ||
-          relDoc === 'docs/ARCHITECTURE.md' ||
-          relDoc === 'DEVELOPMENT.md'
-        ) {
+        if (wfCountAuditDocSet.has(relDoc)) {
           const wfCountMatches = docTxt.matchAll(/\ball [*_`]*(\d+)[*_`]* (?:GitHub Actions )?workflows\b/gi);
           for (const cm of wfCountMatches) {
             const declaredCount = parseInt(cm[1], 10);
@@ -2027,14 +2101,14 @@ function pass5AdrValidation() {
       }
     }
 
-    // Architecture Diagrams & Directory Parity Check between docs/ARCHITECTURE.md and README.md
+    // Architecture Diagrams & Directory Parity Check between docs/ARCHITECTURE.md + docs/architecture/*.md and README.md
     const readmeFilePath = path.join(rootDir, 'README.md');
     if (fs.existsSync(readmeFilePath)) {
       const readmeText = fs.readFileSync(readmeFilePath, 'utf-8');
       const archMermaidCount = (archContent.match(/```mermaid/g) || []).length;
       if (archMermaidCount < 15) {
         docViolations.push(
-          `docs/ARCHITECTURE.md is missing expected 360-degree diagrams (found ${archMermaidCount}, expected at least 15; run "npm run docs:sync").`
+          `Architecture corpus (docs/ARCHITECTURE.md + docs/architecture/*.md) is missing expected 360-degree diagrams (found ${archMermaidCount}, expected at least 15; run "npm run docs:sync").`
         );
       }
       if (!readmeText.includes('End-to-End System Context & Data Flow') || !readmeText.includes('<!-- BEGIN:architecture-diagrams -->')) {
@@ -2044,18 +2118,18 @@ function pass5AdrValidation() {
       }
       if (!readmeText.includes(`Living Architecture Directory (${archMermaidCount} Interactive Diagrams)`)) {
         docViolations.push(
-          `README.md architecture directory count does not match docs/ARCHITECTURE.md (${archMermaidCount} diagrams; run "npm run docs:sync").`
+          `README.md architecture directory count does not match architecture corpus (${archMermaidCount} diagrams; run "npm run docs:sync").`
         );
       }
       const archDiag1Marker = '### 1. End-to-End System Context & Data Flow';
-      const archDiag1Start = archContent.indexOf(archDiag1Marker);
+      const archDiag1Start = archCorpus.indexContent.indexOf(archDiag1Marker);
       const archMermaidStart =
-        archDiag1Start !== -1 ? archContent.indexOf('```mermaid', archDiag1Start) : -1;
+        archDiag1Start !== -1 ? archCorpus.indexContent.indexOf('```mermaid', archDiag1Start) : -1;
       const archMermaidEnd =
-        archMermaidStart !== -1 ? archContent.indexOf('```', archMermaidStart + 10) : -1;
+        archMermaidStart !== -1 ? archCorpus.indexContent.indexOf('```', archMermaidStart + 10) : -1;
       const archDiagram1Block =
         archMermaidStart !== -1 && archMermaidEnd !== -1
-          ? archContent.slice(archMermaidStart, archMermaidEnd + 3).replace(/\r\n/g, '\n').trim()
+          ? archCorpus.indexContent.slice(archMermaidStart, archMermaidEnd + 3).replace(/\r\n/g, '\n').trim()
           : '';
       const readmeArchBlockMatch = readmeText.match(
         /<!-- BEGIN:architecture-diagrams -->[\s\S]*?(```mermaid[\s\S]*?```)[\s\S]*?<!-- END:architecture-diagrams -->/
@@ -2073,7 +2147,7 @@ function pass5AdrValidation() {
     // Mermaid Syntax, Subgraph Cycle & HTML-Tag Safety Verification across Markdown Docs
     const { validateMermaidDiagramsInMarkdown } = require('./lib/ast-parser');
     const mermaidDocTargets = [
-      'docs/ARCHITECTURE.md',
+      ...archCorpus.allDocs.map((d) => d.relPath),
       'README.md',
       'docs/GUTENBERG_PARSER.md',
       'docs/INFRASTRUCTURE.md',

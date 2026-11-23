@@ -412,7 +412,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '`npm run verify` & `npm run verify:build`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/AST-env-parity across \`src/\` & \`scripts/\`/client-privilege-boundary/transitive-graph, Pass 0.75 lockfile/license/40-char-SHA & permissions workflow scanner/AST API-route, Pillar-3 XSS-eval deduplication, redirect, public-domain, Rule-9 auth-store parity, OWASP header, & Service Worker validators/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest ${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches}%, Pass 4 direct generator docs & \`SECURITY.md\` sync, Pass 5 ADR/checklist/circular-\`SECURITY.md\`-parity (\`auditSecurityDocumentationParity\`)/\`README.md\` Diagram 1 & relative Markdown link parity/Mermaid diagram syntax & cycle parity (\`validateMermaidDiagramsInMarkdown\`)/SQL explicit index & \`jurisdictionBaselines\` parity/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/dynamic \`scripts/\` test co-location via \`collectScriptFiles\` & \`STANDALONE_RUNNER_SCRIPTS\` across \`src/app/**\` & CLI/AST scripts/SemVer-9-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build + \`.next/routes-manifest.json\` security header audit + live \`next start\` loopback HTTP smoke probes).`,
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/AST-env-parity across \`src/\` & \`scripts/\`/client-privilege-boundary/transitive-graph, Pass 0.75 lockfile/license/40-char-SHA & permissions workflow scanner/AST API-route, Pillar-3 XSS-eval deduplication, redirect, public-domain, Rule-9 auth-store parity, OWASP header, & Service Worker validators/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest ${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches}%, Pass 4 direct generator docs & \`SECURITY.md\` sync, Pass 5 ADR/checklist/circular-\`SECURITY.md\`-parity (\`auditSecurityDocumentationParity\`)/\`README.md\` Diagram 1 & relative Markdown link parity/bidirectional \`docs/ARCHITECTURE.md\`<->\`docs/architecture/*.md\` TOC & corpus parity/Mermaid diagram syntax & cycle parity (\`validateMermaidDiagramsInMarkdown\`)/SQL explicit index & \`jurisdictionBaselines\` parity/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/dynamic \`scripts/\` test co-location via \`collectScriptFiles\` & \`STANDALONE_RUNNER_SCRIPTS\` across \`src/app/**\` & CLI/AST scripts/SemVer-9-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build + \`.next/routes-manifest.json\` security header audit + live \`next start\` loopback HTTP smoke probes).`,
     },
     'scripts/eslint-rules/bookarium-security.js': {
       name: 'eslint-rules/bookarium-security.js',
@@ -440,7 +440,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '`npm run matrix:generate` (in `docs:sync`)',
       nodeApis: '`fs`, `path`, `scripts/lib/ast-parser.js`',
       responsibility:
-        'Programmatically compiles content-idempotent docs/ARCHITECTURE.md, README.md executive diagrams, and SECURITY.md (`<!-- BEGIN:security-architecture -->`) directly from source AST, ESLint security rules, stateless SAST exports, SQL RLS schemas, databases, Node.js packages, dynamic workflow counts, and CLI automation scripts.',
+        'Programmatically compiles content-idempotent docs/ARCHITECTURE.md (hub TOC + Diagram 1) plus 7 modular subsystem specs under docs/architecture/*.md (Diagrams 2–15 & AST topology), README.md executive diagrams, SECURITY.md (`<!-- BEGIN:security-architecture -->`), and docs/GITHUB_ACTIONS.md tables directly from source AST, ESLint security rules, stateless SAST exports, SQL RLS schemas, Node.js packages, dynamic workflow counts, and CLI automation scripts.',
     },
     'scripts/generate-changelog.js': {
       name: 'generate-changelog.js',
@@ -768,7 +768,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'public/', role: `Progressive Web App Service Worker (\`public/sw.js\` \`${counts.swVersionLabel || 'v7'}\`) and multi-resolution soaring open book brand emblem icons (\`favicon.ico\`, \`icon.svg\`, \`public/icons/*.png\`).` },
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 47} RLS policies, ${counts.dbFunctionCount || 9} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 22} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), stateless SAST verification (\`lib/sast-validators.js\`), shared zero-dependency R2 SigV4 transport (\`lib/r2-sigv4.js\`), TTY/CI progress telemetry (\`lib/cli-progress.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), Cloudflare R2 delta syncing & read-only content scanning (\`sync-r2-assets.js\`, \`scan-r2-content.js\`), R2-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
-    { path: 'docs/', role: `Living architectural reference (\`ARCHITECTURE.md\`), ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser & behavioral contract specifications (\`GUTENBERG_PARSER.md\`, \`SYSTEM_CONTRACTS.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), infrastructure tiers & platform guardrails guide (\`INFRASTRUCTURE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
+    { path: 'docs/', role: `Living architectural hub (\`ARCHITECTURE.md\`) + 7 modular subsystem docs in \`docs/architecture/\`, ${adrCount} Architecture Decision Records (\`DECISIONS.md\`), AST-compiled parser & behavioral contract specifications (\`GUTENBERG_PARSER.md\`, \`SYSTEM_CONTRACTS.md\`), CI/CD runbook (\`PIPELINE_GUIDE.md\`), GitHub Actions operator runbook (\`GITHUB_ACTIONS.md\`), infrastructure tiers & platform guardrails guide (\`INFRASTRUCTURE.md\`), and live 7-Gateway quality telemetry (\`QUALITY_AUDIT_REPORT.md\`, \`quality-audit-results.json\`).` },
     { path: '.github/workflows/ & .husky/', role: 'Automated GitHub Actions CI/CD, security scanning & release publisher (`ci.yml`, `codeql.yml`, `dependency-review.yml`, `release.yml`, all 40-char commit-SHA pinned), unified Sunday sequential catalog/R2/translation/quote ingestion (`catalog-sync.yml` with permanent `catalog-cache` GitHub Release snapshot & `quote-diff.json` handoff), automated `catalog-cache` Git tag advancement (`catalog-tag-sync.yml`), on-demand manual maintenance, R2 backfill, R2 content scan & cache purge workflows (`r2-sync.yml`, `r2-content-scan.yml`, `translations-sync.yml`, `quotes-sync.yml`, `cache-purge.yml`), GitHub collaboration/automation templates (`ISSUE_TEMPLATE/*.yml`, `pull_request_template.md`, `dependabot.yml`, `FUNDING.yml`, `.github/assets/README.md`), plus Husky pre-commit quality gates.' },
   ];
 
@@ -801,7 +801,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
 
   const livingDocs = [
     { file: 'README.md', mode: 'Hybrid (Curated + Script-Synced)', generator: '`scripts/generate-changelog.js` & `scripts/generate-quality-report.js`', role: 'Primary project overview, system architecture diagrams, Supabase setup guide, and live test/coverage/release blocks.' },
-    { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated', generator: '`scripts/generate-architecture-matrix.js`', role: 'Complete 360° full-repository C4 architecture map, event/state-flow bus, temporal sequence workflows, external integration boundaries, failure/retry topology, edge deployment & 5-layer caching hierarchy, AST-verified environment variable bindings, component/store/hook/utility/config/type matrices, database schema & indexes, testing harness, and module dependency topology.' },
+    { file: 'docs/ARCHITECTURE.md', mode: '100% AST-Generated (Hub + `docs/architecture/` Slices)', generator: '`scripts/generate-architecture-matrix.js`', role: 'Modular 360° repository architecture suite: hub `docs/ARCHITECTURE.md` (Telemetry, End-to-End Diagram 1, Subsystem TOC & Gateway overview) linking 7 focused `docs/architecture/*.md` specifications housing Diagrams 2–15, event/state-flow bus, sequence workflows, integration/failure/caching/env matrices, component/store/hook/utility/config/type catalogs, database schema & indexes, testing harness, and AST dependency topology.' },
     { file: 'docs/DECISIONS.md', mode: 'Append-Only Governance Ledger', generator: '`_Append-Only Ledger_ (Validated in Pass 5)`', role: `Sequential Architectural Decision Records (ADR-001 through ${adrRangeEnd}) documenting context, trade-offs, and consequences.` },
     { file: 'docs/GUTENBERG_PARSER.md', mode: '100% AST-Generated', generator: '`scripts/generate-parser-docs.js`', role: 'Technical reference for the Gutenberg plain-text segmentation, paragraph reflow, virtual pagination, and passage extraction engine.' },
     { file: 'docs/SYSTEM_CONTRACTS.md', mode: '100% AST-Generated', generator: '`scripts/generate-contracts-docs.js`', role: 'Code-level `@scope`, `@invariant`, `@rationale`, and `@adr` behavioral contracts, AST blast radius, cross-boundary touchpoints, and priority contract queue across all `src/` and `scripts/` modules.' },
@@ -821,6 +821,112 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
   });
 
   return { directories, livingDocs };
+}
+
+const ARCH_SUBDOC_SPECS = [
+  {
+    file: 'docs/architecture/reader-components-and-state.md',
+    slug: 'reader-components-and-state.md',
+    title: 'Focus Reader, Components, Zustand State & Domain Contracts',
+    diagrams: 'Diagrams 2–3',
+    summary:
+      'Focus Reader state & typography (`Diagram 2`), Bookmarks & Continue Reading ledger (`Diagram 3`), Babel-extracted Component Props Matrix, 10 Zustand stores, config tokens, and TypeScript models.',
+  },
+  {
+    file: 'docs/architecture/event-bus-and-runtime-flows.md',
+    slug: 'event-bus-and-runtime-flows.md',
+    title: 'Event Bus, Reactive Signals & Runtime Execution Workflows',
+    diagrams: 'Diagrams 4–7',
+    summary:
+      'Cross-store/Worker/DOM Event Bus (`Diagram 4`), reactive signals & account erasure matrices, and temporal `sequenceDiagram` flows for Cold Launch, Focus Reader/R2 Stream, and Offline Replay (`Diagrams 5–7`).',
+  },
+  {
+    file: 'docs/architecture/routes-hooks-and-engines.md',
+    slug: 'routes-hooks-and-engines.md',
+    title: 'API Routes, App Router, Hooks, Domain Engines, Workers & Edge Proxy',
+    diagrams: '—',
+    summary:
+      'Edge & Serverless API route handlers, App Router entrypoints, TanStack Query & Reader hooks, pure domain engines, Web Worker + PWA Service Worker runtime, and `src/proxy.ts`.',
+  },
+  {
+    file: 'docs/architecture/database-and-pipelines.md',
+    slug: 'database-and-pipelines.md',
+    title: 'Background Data Pipelines, Database RLS & Query-to-Index Contracts',
+    diagrams: 'Diagram 8',
+    summary:
+      'GitHub Actions & Database Ingestion Topology (`Diagram 8`), CLI & workflow inventory, PostgreSQL RLS policies/functions/indexes, seed artifacts, and 78k-row anti-timeout query contracts.',
+  },
+  {
+    file: 'docs/architecture/integrations-failure-and-ops.md',
+    slug: 'integrations-failure-and-ops.md',
+    title: 'Caching Strategy, External Integrations, Failure Modes & Edge Ops',
+    diagrams: 'Diagrams 10–13',
+    summary:
+      'Multi-tier data pulling & caching strategy, External Integration Boundaries (`Diagram 10`), Failure Modes & Self-Healing (`Diagram 11`), Edge Routing & Weekly Cron (`Diagram 12`), 5-Layer CDN/R2 Caching (`Diagram 13`), and Performance Budgets.',
+  },
+  {
+    file: 'docs/architecture/security-and-fellowship.md',
+    slug: 'security-and-fellowship.md',
+    title: 'Environment Bindings, Security Trust Zones & Fellowship Topology',
+    diagrams: 'Diagrams 14–15',
+    summary:
+      'AST-verified `.env.example` bindings, Trust-Zone request-taint topology, Auth/Recovery & Session Revocation (`Diagram 14`), and Reader Circles, Symposium & Trigger Guards (`Diagram 15`).',
+  },
+  {
+    file: 'docs/architecture/ast-topology-and-tooling.md',
+    slug: 'ast-topology-and-tooling.md',
+    title: 'Testing Pipeline, Repository Topology, AST Call Graph & Node Tooling',
+    diagrams: 'Diagram 9',
+    summary:
+      'Hermetic Testing & SAST Pipeline (`Diagram 9`), suite distribution, Repository & Living Docs map, cross-boundary & `src/`/`scripts/` AST topology matrices, Node.js dependency stack, CLI tools, and workspace manifests.',
+  },
+];
+
+function relativizeArchitectureLinks(markdown, targetRelPath) {
+  const isSubdoc = targetRelPath.startsWith('docs/architecture/');
+  const docsPrefix = isSubdoc ? '../' : '';
+  const repoPrefix = isSubdoc ? '../../' : '../';
+  const out = [];
+  let inFence = false;
+  for (const line of String(markdown || '').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('```')) {
+      inFence = !inFence;
+      out.push(line);
+      continue;
+    }
+    if (inFence) {
+      out.push(line);
+      continue;
+    }
+    const rewritten = line.replace(/\]\(([^)\s]+)\)/g, (full, rawTarget) => {
+      if (
+        !rawTarget ||
+        /^(?:https?:|mailto:|file:|#|\.\.\/|\.\/|architecture\/)/i.test(rawTarget)
+      ) {
+        return full;
+      }
+      const hashIdx = rawTarget.indexOf('#');
+      const pathPart = hashIdx === -1 ? rawTarget : rawTarget.slice(0, hashIdx);
+      const hashPart = hashIdx === -1 ? '' : rawTarget.slice(hashIdx);
+      if (!pathPart) return full;
+      if (pathPart.startsWith('docs/architecture/')) {
+        const subName = pathPart.slice('docs/architecture/'.length);
+        return isSubdoc ? `](${subName}${hashPart})` : `](architecture/${subName}${hashPart})`;
+      }
+      if (pathPart.startsWith('docs/')) {
+        const docSub = pathPart.slice('docs/'.length);
+        return `](${docsPrefix}${docSub}${hashPart})`;
+      }
+      const diskCheckRel = pathPart.endsWith('/') ? pathPart.slice(0, -1) : pathPart;
+      if (diskCheckRel && fs.existsSync(path.join(rootDir, diskCheckRel))) {
+        return `](${repoPrefix}${pathPart}${hashPart})`;
+      }
+      return full;
+    });
+    out.push(rewritten);
+  }
+  return out.join('\n');
 }
 
 function generateMarkdown() {
@@ -869,7 +975,14 @@ function generateMarkdown() {
     totalLinks += data.imports.length;
   }
 
-  const lines = [
+  const sliceBuckets = new Map();
+  let lines = [];
+  const switchBucket = (bucketKey) => {
+    lines = [];
+    sliceBuckets.set(bucketKey, lines);
+  };
+  switchBucket('hubIntro');
+  lines.push(
     '# Architecture Matrix & Living Technical Reference — Bookarium',
     '',
     '> **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  ',
@@ -1183,9 +1296,10 @@ function generateMarkdown() {
     '    StoreAccolades -->|"Accolades Sync via RLS"| SupabaseCloud',
     '    Telemetry -.->|"Anonymous Metrics"| VercelEdge',
     '```',
-    '',
-    '---',
-    '',
+  );
+
+  switchBucket('readerDiagramsAndState');
+  lines.push(
     '### 2. Focus Reader State & Typography Engine',
     '',
     '```mermaid',
@@ -1338,7 +1452,7 @@ function generateMarkdown() {
     '',
     '| Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |',
     '| :--- | :--- | :--- | :--- | :--- |',
-  ];
+  );
 
   const formatComponentCategory = (cat) => {
     if (cat === 'ui') return 'UI';
@@ -1397,7 +1511,11 @@ function generateMarkdown() {
 
   lines.push(
     '---',
-    '',
+    ''
+  );
+
+  switchBucket('eventBusAndFlows');
+  lines.push(
     '## 🔄 Event Bus, Cross-Store Reactivity & State-Flow Topology',
     '',
     'Bookarium coordinates state transitions across 10 Zustand stores, IndexedDB, off-thread Web Workers, the PWA Service Worker, and Supabase Cloud via a deterministic reactive event bus:',
@@ -1667,9 +1785,10 @@ function generateMarkdown() {
     '    Cloud-->>Sync: 200 OK Confirmed',
     '    Sync->>Stores: Clear Replayed Outbox Entries & Reconcile Canonical Cloud State',
     '```',
-    '',
-    '---',
-    '',
+  );
+
+  switchBucket('routesHooksDomain');
+  lines.push(
     '## 🌐 API Routes, App Router Entrypoints, Query Hooks & Reader Engine',
     '',
     '### 1. API & Server Route Handlers (Edge Proxy, Auth & Telemetry)',
@@ -2017,10 +2136,8 @@ function generateMarkdown() {
     }
   }
 
+  switchBucket('pipelinesAndDb');
   lines.push(
-    '',
-    '---',
-    '',
     '## 🔄 Background Data Pipelines & Automation Engines',
     '',
     'Automated ingestion pipelines, periodic synchronization jobs, and GitHub Actions CI/CD workflows (outside `src/`):',
@@ -2186,10 +2303,8 @@ function generateMarkdown() {
     '| **7-Store Scholar Cloud Outbox Sync** ([`src/lib/sync-utils.ts`](src/lib/sync-utils.ts), `bookshelf-cloud-sync.ts`, `reader-cloud-sync.ts`, `annotation-cloud-sync.ts`, `fellowship-cloud-sync.ts`, `preferences-sync.ts`) | Pre-sync active JWT session check (`verifyActiveCloudSession`) + user-scoped `.eq(\'user_id\', user.id)` / `.or(\'requester_id.eq...,recipient_id.eq...\')` with per-user in-flight Promise coalescing (`coalesceInFlightByUser`) & batched multi-book `reading_progress` upsert (`upsertReadingProgressBatch`) | `idx_bookshelf_items_user_id`, `idx_user_annotations_user_book`, `idx_user_book_curation_user_book`, `idx_user_reading_habits_user`, `idx_user_accolades_user`, `idx_reader_circles_*`, `idx_symposium_sessions_*` | Per-user rows (`2,000ms` debounce on single-book `reading_progress`; `500ms` / `0ms` immediate on `profiles.preferences`; batched upsert on multi-book healing) | Every `WHERE user_id = (select auth.uid())` RLS policy is backed by a dedicated B-Tree index on `user_id` / participant ID and guarded against unauthenticated `42501` writes. |'
   );
 
+  switchBucket('configsAndTypes');
   lines.push(
-    '',
-    '---',
-    '',
     '## 📚 Configuration, Anthologies & Design Token Catalog',
     '',
     `Programmatically extracted from **${configs.length} Configuration Modules** in \`src/config/\` using Babel AST:`,
@@ -2223,10 +2338,8 @@ function generateMarkdown() {
     lines.push(`| **\`${t.name}\`** | [\`${t.file}\`](${t.file}) | ${ifacesStr} | ${aliasesStr} |`);
   }
 
+  switchBucket('workersAndProxy');
   lines.push(
-    '',
-    '---',
-    '',
     '## ⚙️ Background Web Worker, Offline PWA & Static Asset Pipeline (`src/workers/` & `public/`)',
     '',
     '### 1. Off-Thread Compute & Service Worker Runtime',
@@ -2261,8 +2374,10 @@ function generateMarkdown() {
     '| :--- | :--- | :--- |',
     '| **`proxy`** | [`src/proxy.ts`](src/proxy.ts) & [`src/lib/supabase/middleware.ts`](src/lib/supabase/middleware.ts) | Next.js 16 Edge proxy short-circuiting `/api/books/content*` browser deeplinks (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks with `403 no-store` (`guardContentAssetRequest` outside `type=card` and headerless crawlers, keeping `Vary` and `s-maxage` unfragmented), extracting client IP country (`x-vercel-ip-country`), forwarding `x-bookarium-country` on non-`/api/books/content*` routes and setting `bookarium-geo-country` cookie on page routes (delegating SSR refreshes to `updateSession` while skipping `/api/books*`, `/auth/*`, `/sw.js`, `/manifest.webmanifest`, Next.js `<Link>` prefetches, `x-bookarium-sw-precache: 1` warm requests, and public client-side RSC navigations `rsc: 1` outside `/account*` to preserve Vercel Edge CDN `s-maxage` caching and eliminate redundant Supabase Auth `GET /user` bursts; forwarding Edge-safe `sanitizeForwardedUserAgent` from `src/lib/supabase/client.ts` without `next/headers` leaks and stamping `bookarium-client-ip-sync` on rotated auth cookies), returning bare `NextResponse.next()` on unshared `/api/books/content*` requests (`!validShareToken`) so `x-middleware-override-headers` is omitted while forwarding validated `?s=<token>` share parameters via `x-bookarium-share-token` to Server Component layouts, handling development query override (`?country=XX`), and enforcing strict security headers. |',
     '',
-    '---',
-    '',
+  );
+
+  switchBucket('workspaceConfig');
+  lines.push(
     '## 🔧 Workspace Configuration, Styling, Deployment & Governance Matrix',
     '',
     `Root build, compiler, styling, deployment, static analysis, and multi-agent governance manifests verified across **${workspaceConfigs.length} Workspace Configuration Files**:`,
@@ -2275,10 +2390,8 @@ function generateMarkdown() {
     lines.push(`| **\`${wc.name}\`** | [\`${wc.file}\`](${wc.file}) | ${wc.layer} | ${wc.responsibility} |`);
   }
 
+  switchBucket('testingRepoAst');
   lines.push(
-    '',
-    '---',
-    '',
     '## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture',
     '',
     `Bookarium enforces a 4-tier hermetic testing and security verification architecture across **${testHarness.totalSuites} Test Suites** (\`${testHarness.srcSuiteCount}\` co-located \`src/**/*.test.{ts,tsx}\` suites + \`${testHarness.scriptSuites.length}\` CLI pipeline suites in \`scripts/\`) with zero external network calls:`,
@@ -2700,10 +2813,8 @@ function generateMarkdown() {
     );
   }
 
+  switchBucket('integrationsFailureOps');
   lines.push(
-    '',
-    '---',
-    '',
     '## ⚡ Data Pulling & Caching Strategy',
     '',
     '1. **Authoritative Supabase Catalog & Bundled Curated Fallback**: Primary search queries execute against dedicated Supabase PostgreSQL (`public.books`) using full-text GIN search (~1–2s catalog responses, <50ms single-book lookups), falling back cleanly to the bundled Curated Archive (`src/lib/catalog/curated-fallback.ts`) when Supabase is unconfigured without external third-party catalog REST dependencies, unconditionally enforcing `copyright=false`.',
@@ -2980,9 +3091,10 @@ function generateMarkdown() {
     `| **Global Stylized Cursor Tooltip Delay** | \`${runtimeSpec.hooks.tooltipDelayMs}ms\` hover delay (\`0ms\` instant on Favorite/Bookshelf action buttons) | [\`src/hooks/useCursorTooltip.ts\`](src/hooks/useCursorTooltip.ts), [\`src/components/ui/CursorTooltip.tsx\`](src/components/ui/CursorTooltip.tsx) | Eliminates accidental tooltip flicker during normal mouse traversal while providing instant feedback on primary actions. |`,
     '| **Debounced Cloud Sync Coalescing** | `2,000ms` debounce window (`reading_progress`) & `500ms` default / `0ms` immediate (`profiles.preferences` JSONB) | [`src/stores/useReaderStore.ts`](src/stores/useReaderStore.ts), [`src/lib/preferences-sync.ts`](src/lib/preferences-sync.ts) | Prevents rapid page flips, slider drags, or pinch-zoom frames from flooding Supabase PostgREST while preserving Last-Write-Wins accuracy. |',
     `| **API Sliding-Window Rate Limiters (\`globalThis\`)** | \`booksApiRateLimiter\`: \`${runtimeSpec.rateLimits.booksApi} req/min\` (\`/api/books\`, \`/api/books/translations\`) • \`bookContentRateLimiter\`: \`${runtimeSpec.rateLimits.bookContent} req/min\` (text) • \`bookCardRateLimiter\`: \`${runtimeSpec.rateLimits.bookCard} req/min\` (\`type=card\`) • \`bookCoverRateLimiter\`: \`${runtimeSpec.rateLimits.bookCover} req/min\` (\`type=cover\`) + companion Vercel WAF IP rules | [\`src/lib/rate-limiter.ts\`](src/lib/rate-limiter.ts), [\`src/app/api/books/content/route.ts\`](src/app/api/books/content/route.ts) | Mode-scoped \`globalThis\` buckets protect serverless compute and private R2 reads from scraping or OG compute abuse without starving text readers during cover/card bursts (keeping Vercel Attack Challenge Mode off). |`,
-    '',
-    '---',
-    '',
+  );
+
+  switchBucket('securityAndFellowship');
+  lines.push(
     '## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map',
     '',
     '### 1. AST-Extracted Environment Variable Binding Matrix (`.env.example` <-> Codebase AST)',
@@ -3083,9 +3195,10 @@ function generateMarkdown() {
     '    FelStores -->|"Symposium Active / Ended Events"| FelAnnot',
     '    FelAnnot <-->|"Scoped Fellow Highlight SELECT"| FelRLS',
     '```',
-    '',
-    '---',
-    '',
+  );
+
+  switchBucket('nodeAndCli');
+  lines.push(
     '## 🟢 Node.js Runtime, Dependency Stack & Supply-Chain Governance',
     ''
   );
@@ -3119,10 +3232,8 @@ function generateMarkdown() {
     lines.push(`| **\`${s.name}\`** | [\`${s.file}\`](${s.file}) | ${s.npmCommand} | ${s.nodeApis} | ${s.responsibility} |`);
   }
 
+  switchBucket('hubFooter');
   lines.push(
-    '',
-    '---',
-    '',
     '## 🛡️ 7-Gateway Quality Engine Architecture',
     '',
     'Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/verify-build.js` via `npm run verify`) gating all releases and commits:',
@@ -3134,8 +3245,8 @@ function generateMarkdown() {
     '| **Pass 1** | TypeScript Strict Compilation | `tsc --noEmit` | Strict type safety across all components, stores, hooks, and types |',
     '| **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |',
     `| **Pass 3** | Unit & Integration Test Suites | \`vitest run --coverage\` | Tiered ${runtimeSpec.coverageThresholds.lines}/${runtimeSpec.coverageThresholds.statements}/${runtimeSpec.coverageThresholds.functions}/${runtimeSpec.coverageThresholds.branches}% coverage floor across all co-located suites |`,
-    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
-    `| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, ${REQUIRED_GOVERNANCE_DOCS.length} mandatory governance docs, circular \`SECURITY.md\` symbol/table/feed parity (\`auditSecurityDocumentationParity\`), 0 broken Mermaid diagrams (\`validateMermaidDiagramsInMarkdown\`), \`@scope\`/\`@invariant\`/\`@adr\` behavioral contracts across ${PROTECTED_CONTRACTED_MODULES.length} Tier-1..Tier-4 protected modules + bidirectional \`docs/SYSTEM_CONTRACTS.md\` heading/count parity, semantic command/metric/workflow-count parity, dead-path & \`${GENERATOR_LOOKUP_MAP_COUNT}\`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 \`src/\`<->\`ARCHITECTURE.md\` inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located \`.test.ts(x)\` suites across \`src/\` & CLI/AST scripts |`,
+    '| **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md` hub, `7` `docs/architecture/*.md` subsystem specs, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |',
+    `| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, ${REQUIRED_GOVERNANCE_DOCS.length} mandatory governance docs, bidirectional \`docs/ARCHITECTURE.md\`<->\`docs/architecture/*.md\` TOC & corpus parity, circular \`SECURITY.md\` symbol/table/feed parity (\`auditSecurityDocumentationParity\`), 0 broken Mermaid diagrams (\`validateMermaidDiagramsInMarkdown\`), \`@scope\`/\`@invariant\`/\`@adr\` behavioral contracts across ${PROTECTED_CONTRACTED_MODULES.length} Tier-1..Tier-4 protected modules + bidirectional \`docs/SYSTEM_CONTRACTS.md\` heading/count parity, semantic command/metric/workflow-count parity, dead-path & \`${GENERATOR_LOOKUP_MAP_COUNT}\`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 \`src/\`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located \`.test.ts(x)\` suites across \`src/\` & CLI/AST scripts |`,
     `| **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | \`eslint . --max-warnings 0\` (\`bookarium-security\`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and ${getSecurityPluginRuleCount()} custom AST/taint security rules (\`src/\`, \`scripts/\`, \`public/sw.js\`, \`next.config.ts\` audited via Pass 0.75); zero dead files/exports |`,
     '| **Pass 7** | Production Application Build & Live HTTP Smoke Probe | `next build` + `.next/routes-manifest.json` + loopback `next start` probe | Optimized production Next.js bundle compilation within byte budget, compiled security header parity (`X-Frame-Options: DENY`, `object-src \'none\'`, `frame-ancestors \'none\'`), and live runtime HTTP verification of headers, `400` SSRF/param blocking, and origin-locked `/auth/callback` redirects |',
     '',
@@ -3147,47 +3258,131 @@ function generateMarkdown() {
     ''
   );
 
-  return lines.join('\n');
+  const cleanSlice = (arr) => {
+    const copy = [...(arr || [])];
+    while (copy.length > 0 && (copy[copy.length - 1] === '' || copy[copy.length - 1] === '---')) {
+      copy.pop();
+    }
+    while (copy.length > 0 && (copy[0] === '' || copy[0] === '---')) {
+      copy.shift();
+    }
+    return copy;
+  };
+
+  const joinSections = (...bucketKeys) => {
+    const combined = [];
+    for (let i = 0; i < bucketKeys.length; i++) {
+      const part = typeof bucketKeys[i] === 'string'
+        ? cleanSlice(sliceBuckets.get(bucketKeys[i]))
+        : cleanSlice(bucketKeys[i]);
+      if (part.length === 0) continue;
+      if (combined.length > 0) {
+        combined.push('', '---', '');
+      }
+      combined.push(...part);
+    }
+    return combined;
+  };
+
+  const tocLines = [
+    '## 📚 Modular Subsystem Architecture Directory',
+    '',
+    'Every subsystem matrix, temporal sequence flow, security boundary, and AST dependency catalog is compiled deterministically into focused documents under `docs/architecture/` while this entrypoint retains the global **Diagram 1** system overview:',
+    '',
+    '| Subsystem Reference Document | Diagrams Included | Architectural Coverage |',
+    '| :--- | :--- | :--- |',
+    ...ARCH_SUBDOC_SPECS.map(
+      (spec) => `| [**${spec.title}**](architecture/${spec.slug}) | ${spec.diagrams} | ${spec.summary} |`
+    ),
+  ];
+
+  const rawIndexMarkdown =
+    joinSections('hubIntro', tocLines, 'hubFooter').join('\n') + '\n';
+  const indexContent = relativizeArchitectureLinks(rawIndexMarkdown, 'docs/ARCHITECTURE.md');
+
+  const buildSubdoc = (spec, bodyLines) => {
+    const headerLines = [
+      `# ${spec.title} — Bookarium`,
+      '',
+      `> **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  `,
+      `> **Last Synchronized**: \`${timestamp}\`  `,
+      `> **Topology Health**: \`${graph.size}\` Modules Analyzed • \`${totalLinks}\` Static Linkages • \`${circularHealth.cycleCount}\` Circular Dependencies • \`${layerViolations.length}\` Layer Violations • \`${orphans.length}\` Orphaned Modules`,
+      '',
+      '---',
+      '',
+      ...bodyLines,
+      '',
+      '---',
+      '',
+      '> *Compiled from Source AST by [`scripts/generate-architecture-matrix.js`](../../scripts/generate-architecture-matrix.js) — [← Return to Architecture Hub](../ARCHITECTURE.md).*',
+    ];
+    return relativizeArchitectureLinks(headerLines.join('\n') + '\n', spec.file);
+  };
+
+  const readerHeadingPrefix = [
+    '## 🏛️ Focus Reader, Typography & Continue Reading Architecture',
+    '',
+    ...cleanSlice(sliceBuckets.get('readerDiagramsAndState')),
+  ];
+
+  const subdocBodies = new Map([
+    ['docs/architecture/reader-components-and-state.md', joinSections(readerHeadingPrefix, 'configsAndTypes')],
+    ['docs/architecture/event-bus-and-runtime-flows.md', joinSections('eventBusAndFlows')],
+    ['docs/architecture/routes-hooks-and-engines.md', joinSections('routesHooksDomain', 'workersAndProxy')],
+    ['docs/architecture/database-and-pipelines.md', joinSections('pipelinesAndDb')],
+    ['docs/architecture/integrations-failure-and-ops.md', joinSections('integrationsFailureOps')],
+    ['docs/architecture/security-and-fellowship.md', joinSections('securityAndFellowship')],
+    ['docs/architecture/ast-topology-and-tooling.md', joinSections('testingRepoAst', 'nodeAndCli', 'workspaceConfig')],
+  ]);
+
+  const subFiles = new Map();
+  for (const spec of ARCH_SUBDOC_SPECS) {
+    const bodyLines = subdocBodies.get(spec.file) || [];
+    subFiles.set(spec.file, buildSubdoc(spec, bodyLines));
+  }
+
+  const combinedContent = [indexContent, ...subFiles.values()].join('\n\n');
+  return { indexContent, subFiles, combinedContent };
 }
 
-function syncReadmeArchitectureDiagrams(architectureMarkdown) {
+function syncReadmeArchitectureDiagrams({ indexContent, combinedContent }) {
   const readmePath = path.join(rootDir, 'README.md');
   if (!fs.existsSync(readmePath)) return;
 
-  // Extract Diagram 1 (End-to-End System Context & Data Flow)
+  // Extract Diagram 1 (End-to-End System Context & Data Flow) from the hub document
   const startMarker = '### 1. End-to-End System Context & Data Flow';
-  const startIdx = architectureMarkdown.indexOf(startMarker);
+  const startIdx = indexContent.indexOf(startMarker);
   let diagram1Block = '';
   if (startIdx !== -1) {
-    const mermaidStart = architectureMarkdown.indexOf('```mermaid', startIdx);
-    const mermaidEnd = architectureMarkdown.indexOf('```', mermaidStart + 10);
+    const mermaidStart = indexContent.indexOf('```mermaid', startIdx);
+    const mermaidEnd = indexContent.indexOf('```', mermaidStart + 10);
     if (mermaidStart !== -1 && mermaidEnd !== -1) {
-      diagram1Block = architectureMarkdown.slice(mermaidStart, mermaidEnd + 3);
+      diagram1Block = indexContent.slice(mermaidStart, mermaidEnd + 3);
     }
   }
 
-  // Count total diagrams in docs/ARCHITECTURE.md
-  const totalArchDiagrams = (architectureMarkdown.match(/```mermaid/g) || []).length;
+  // Count total diagrams across docs/ARCHITECTURE.md + docs/architecture/*.md
+  const totalArchDiagrams = (combinedContent.match(/```mermaid/g) || []).length;
 
   const swMeta = extractServiceWorkerMetadata(rootDir);
   const directoryRows = [
     '| # | Architectural Diagram | Primary Layer & Subsystem | Living Architecture Specification |',
     '|---|---|---|---|',
-    '| **1** | **End-to-End System Context & Data Flow** | Global System Context, Edge Proxy & Client SPA | [docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow](docs/ARCHITECTURE.md) |',
-    '| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/ARCHITECTURE.md#2-focus-reader-state--typography-engine](docs/ARCHITECTURE.md) |',
-    '| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/ARCHITECTURE.md#3-bookmarks--continue-reading-ledger-architecture](docs/ARCHITECTURE.md) |',
-    '| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/ARCHITECTURE.md#1-cross-store-worker--dom-event-bus-diagram](docs/ARCHITECTURE.md) |',
-    '| **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/ARCHITECTURE.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/ARCHITECTURE.md) |',
-    '| **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/ARCHITECTURE.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/ARCHITECTURE.md) |',
-    `| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell ${swMeta.versionLabel}, IndexedDB & Outbox Queue | [docs/ARCHITECTURE.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/ARCHITECTURE.md) |`,
-    '| **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/ARCHITECTURE.md#1-github-actions--database-ingestion-topology](docs/ARCHITECTURE.md) |',
-    '| **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/ARCHITECTURE.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/ARCHITECTURE.md) |',
-    '| **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, CLI Mirror Feeds & Timeouts | [docs/ARCHITECTURE.md#1-external-integration-topology-diagram](docs/ARCHITECTURE.md) |',
-    '| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Strict R2 Delivery & Worker Fallback | [docs/ARCHITECTURE.md#1-multi-tier-failover--self-healing-decision-diagram](docs/ARCHITECTURE.md) |',
-    '| **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/ARCHITECTURE.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/ARCHITECTURE.md) |',
-    '| **13** | **Multi-Tier Caching, Egress Shielding & R2 Serving** | 5-Layer Cache Hierarchy, Edge TTLs & Cloudflare R2 Cover/Text Proxy | [docs/ARCHITECTURE.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving](docs/ARCHITECTURE.md) |',
-    '| **14** | **Auth, Password Recovery, Session Revocation & Origin Flow** | Edge Refresh Bypass, PKCE/OTP, JWT AMR & Pre-Null Teardown | [docs/ARCHITECTURE.md#3-authentication-password-recovery-session-revocation--origin-security-flow](docs/ARCHITECTURE.md) |',
-    '| **15** | **Literary Fellowship, Symposium & Marginalia Guard Topology** | Reader Circles, Symposiums, Fellow Highlights & DB Triggers | [docs/ARCHITECTURE.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards](docs/ARCHITECTURE.md) |',
+    '| **1** | **End-to-End System Context & Data Flow** | Global System Context, Edge Proxy & Client SPA | [docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow](docs/ARCHITECTURE.md#1-end-to-end-system-context--data-flow) |',
+    '| **2** | **Focus Reader State & Typography Engine** | Reader Runtime, Web Speech & Virtual Pagination | [docs/architecture/reader-components-and-state.md#2-focus-reader-state--typography-engine](docs/architecture/reader-components-and-state.md#2-focus-reader-state--typography-engine) |',
+    '| **3** | **Bookmarks & Continue Reading Ledger Architecture** | Offline Ledger, Row Snap & Metadata Curation | [docs/architecture/reader-components-and-state.md#3-bookmarks--continue-reading-ledger-architecture](docs/architecture/reader-components-and-state.md#3-bookmarks--continue-reading-ledger-architecture) |',
+    '| **4** | **Cross-Store, Worker & DOM Event Bus Diagram** | Reactivity, Custom Events & Worker IPC | [docs/architecture/event-bus-and-runtime-flows.md#1-cross-store-worker--dom-event-bus-diagram](docs/architecture/event-bus-and-runtime-flows.md#1-cross-store-worker--dom-event-bus-diagram) |',
+    '| **5** | **Cold Launch & 7-Store Cloud Reconciliation** | Edge Geo-IP, Hydration & RLS Outbox Replay | [docs/architecture/event-bus-and-runtime-flows.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation](docs/architecture/event-bus-and-runtime-flows.md#1-cold-launch-edge-geo-ip-resolution-hydration--7-store-cloud-outbox-reconciliation) |',
+    '| **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast) |',
+    `| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell ${swMeta.versionLabel}, IndexedDB & Outbox Queue | [docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay) |`,
+    '| **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology](docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology) |',
+    '| **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline) |',
+    '| **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, CLI Mirror Feeds & Timeouts | [docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram](docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram) |',
+    '| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Strict R2 Delivery & Worker Fallback | [docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram](docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram) |',
+    '| **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology) |',
+    '| **13** | **Multi-Tier Caching, Egress Shielding & R2 Serving** | 5-Layer Cache Hierarchy, Edge TTLs & Cloudflare R2 Cover/Text Proxy | [docs/architecture/integrations-failure-and-ops.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving](docs/architecture/integrations-failure-and-ops.md#2-multi-tier-caching-supabase-egress-shielding--cloudflare-r2-covertext-serving) |',
+    '| **14** | **Auth, Password Recovery, Session Revocation & Origin Flow** | Edge Refresh Bypass, PKCE/OTP, JWT AMR & Pre-Null Teardown | [docs/architecture/security-and-fellowship.md#3-authentication-password-recovery-session-revocation--origin-security-flow](docs/architecture/security-and-fellowship.md#3-authentication-password-recovery-session-revocation--origin-security-flow) |',
+    '| **15** | **Literary Fellowship, Symposium & Marginalia Guard Topology** | Reader Circles, Symposiums, Fellow Highlights & DB Triggers | [docs/architecture/security-and-fellowship.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards](docs/architecture/security-and-fellowship.md#1-reader-circles-symposium-lifecycle-fellow-marginalia--trigger-guards) |',
   ];
 
   const replacementBlock = [
@@ -3705,23 +3900,57 @@ function syncWorkflowRunbookDocument() {
   }
 }
 
-const outputPath = path.join(rootDir, 'docs', 'ARCHITECTURE.md');
-const content = generateMarkdown();
 const normalizeArchDoc = (text) =>
   String(text || '')
     .replace(/\r\n/g, '\n')
     .replace(/^>\s*\*\*Last Synchronized\*\*:\s*`?\d{4}-\d{2}-\d{2}`?.*$/m, '')
     .trim();
-const existingArch = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf-8') : '';
-if (existingArch && normalizeArchDoc(content) === normalizeArchDoc(existingArch)) {
-  syncReadmeArchitectureDiagrams(existingArch);
-  syncSecurityArchitectureDocument();
-  syncWorkflowRunbookDocument();
-  console.log('✔ [IDEMPOTENT] docs/ARCHITECTURE.md AST unchanged. Preserving existing matrix.');
+
+function writeArchitectureFileIdempotent(relPath, nextContent) {
+  const absPath = path.join(rootDir, relPath);
+  fs.mkdirSync(path.dirname(absPath), { recursive: true });
+  const existing = fs.existsSync(absPath) ? fs.readFileSync(absPath, 'utf-8') : '';
+  const lfNext = String(nextContent || '').replace(/\r\n/g, '\n');
+  if (existing && normalizeArchDoc(lfNext) === normalizeArchDoc(existing)) {
+    return { changed: false, effectiveContent: existing.replace(/\r\n/g, '\n') };
+  }
+  fs.writeFileSync(absPath, lfNext, 'utf-8');
+  return { changed: true, effectiveContent: lfNext };
+}
+
+const { indexContent, subFiles } = generateMarkdown();
+const archSubdirAbs = path.join(rootDir, 'docs', 'architecture');
+if (fs.existsSync(archSubdirAbs)) {
+  const expectedNames = new Set(Array.from(subFiles.keys()).map((rel) => path.basename(rel)));
+  for (const entry of fs.readdirSync(archSubdirAbs, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith('.md') && !expectedNames.has(entry.name)) {
+      fs.unlinkSync(path.join(archSubdirAbs, entry.name));
+    }
+  }
+}
+
+const hubResult = writeArchitectureFileIdempotent('docs/ARCHITECTURE.md', indexContent);
+let changedSubdocCount = 0;
+const effectiveAllContents = [hubResult.effectiveContent];
+for (const [subRel, subContent] of subFiles.entries()) {
+  const subResult = writeArchitectureFileIdempotent(subRel, subContent);
+  if (subResult.changed) changedSubdocCount++;
+  effectiveAllContents.push(subResult.effectiveContent);
+}
+
+syncReadmeArchitectureDiagrams({
+  indexContent: hubResult.effectiveContent,
+  combinedContent: effectiveAllContents.join('\n\n'),
+});
+syncSecurityArchitectureDocument();
+syncWorkflowRunbookDocument();
+
+if (!hubResult.changed && changedSubdocCount === 0) {
+  console.log(
+    `✔ [IDEMPOTENT] docs/ARCHITECTURE.md + ${subFiles.size} docs/architecture/*.md AST unchanged. Preserving existing files.`
+  );
 } else {
-  fs.writeFileSync(outputPath, content, 'utf-8');
-  syncReadmeArchitectureDiagrams(content);
-  syncSecurityArchitectureDocument();
-  syncWorkflowRunbookDocument();
-  console.log('✔ [SUCCESS] Comprehensive AST-driven docs/ARCHITECTURE.md generated successfully.');
+  console.log(
+    `✔ [SUCCESS] Comprehensive AST-driven docs/ARCHITECTURE.md hub + ${subFiles.size} docs/architecture/*.md specs generated successfully.`
+  );
 }
