@@ -776,4 +776,68 @@ describe('useReaderSession', () => {
     expect(result.current.bookmarkRow).toBe(19);
     mockRestore.mockRestore();
   });
+
+  it('exposes decoupled pinnedBookmark coordinates across page turns, clear, and restart', () => {
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 700,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+      })
+    );
+
+    expect(result.current.pinnedBookmark).toBeNull();
+
+    // Pin bookmark on Chapter 0, Page 1 at row 9
+    act(() => {
+      result.current.setBookmarkRow(9, 'Pinned sentence on page one');
+    });
+
+    expect(result.current.pinnedBookmark).toEqual(
+      expect.objectContaining({
+        chapterIndex: 0,
+        chapterPage: 1,
+        globalPage: 1,
+        bookmarkRow: 9,
+        bookmarkText: 'Pinned sentence on page one',
+      })
+    );
+
+    // Passive turn to Page 2 keeps pinnedBookmark pointing at Chapter 0, Page 1 while bookmarkRow resets to 0
+    act(() => {
+      result.current.handleNextPage();
+    });
+    expect(result.current.currentChapterPage).toBe(2);
+    expect(result.current.bookmarkRow).toBe(0);
+    expect(result.current.pinnedBookmark).toEqual(
+      expect.objectContaining({
+        chapterIndex: 0,
+        chapterPage: 1,
+        bookmarkRow: 9,
+        bookmarkText: 'Pinned sentence on page one',
+      })
+    );
+
+    // Jump back to Page 1 and clear bookmark -> pinnedBookmark returns to null
+    act(() => {
+      result.current.jumpTo(0, 1);
+    });
+    act(() => {
+      result.current.setBookmarkRow(0);
+    });
+    expect(result.current.pinnedBookmark).toBeNull();
+
+    // Set bookmark again and restart book -> pinnedBookmark returns to null
+    act(() => {
+      result.current.setBookmarkRow(4, 'Another pinned sentence');
+    });
+    expect(result.current.pinnedBookmark?.bookmarkRow).toBe(4);
+    act(() => {
+      result.current.handleRestart();
+    });
+    expect(result.current.pinnedBookmark).toBeNull();
+  });
 });

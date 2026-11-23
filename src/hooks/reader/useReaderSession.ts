@@ -2,10 +2,10 @@
 
 /**
  * @module
- * @scope Headless Reader session controller managing chapter pagination state, `bookmarkText`-first reflow-resilient auto-resume, bidirectional page navigation, and coordinate persistence.
- * @invariant Restore saved positions via `findCanonicalTextSpan` when `bookmarkText` shifts pages across font/viewport reflows, clamp out-of-bounds chapter/page indices safely, and separate layout adjustments (`isLayoutSync`) from user bookmark mutations (`hasUserModifiedSessionRef`).
+ * @scope Headless Reader session controller managing chapter pagination state, `bookmarkText`-first reflow-resilient auto-resume, bidirectional page navigation, active `pinnedBookmark` inspection, and coordinate persistence.
+ * @invariant Restore saved positions via `findCanonicalTextSpan` when `bookmarkText` shifts pages across font/viewport reflows, expose immutable `pinnedBookmark` coordinates (`PinnedBookmarkCoordinate`) while preserving them across passive page turns, clamp out-of-bounds chapter/page indices safely, and separate layout adjustments (`isLayoutSync`) from user bookmark mutations (`hasUserModifiedSessionRef`).
  * @invariant Flush position and percentage progress updates (`saveReadingPosition`, `setProgress`) synchronously on chapter/page navigation and unmount cleanup without dropping `bookmarkRow` or `bookmarkText`.
- * @rationale Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence.
+ * @rationale Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence, while exposing `pinnedBookmark` lets drawers display and jump back to the active silk bookmark across chapters.
  * @adr ADR-003, ADR-014, ADR-068
  */
 
@@ -53,6 +53,7 @@ export interface UseReaderSessionReturn {
   setActiveChapterIndex: React.Dispatch<React.SetStateAction<number>>;
   currentChapterPage: number;
   setCurrentChapterPage: React.Dispatch<React.SetStateAction<number>>;
+  pinnedBookmark: PinnedBookmarkCoordinate | null;
   bookmarkRow: number;
   bookmarkText?: string;
   setBookmarkRow: (
@@ -798,6 +799,7 @@ export function useReaderSession({
     setActiveChapterIndex,
     currentChapterPage,
     setCurrentChapterPage,
+    pinnedBookmark,
     bookmarkRow,
     bookmarkText,
     setBookmarkRow,

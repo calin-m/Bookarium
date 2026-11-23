@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sun, 22 Nov 2026 16:59:18 GMT  
+**Last Generated**: Mon, 23 Nov 2026 12:03:31 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 264 passed  
-**Total Verified Tests**: 2760 passed  
+**Total Verified Tests**: 2771 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2760 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2771 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.22%** (16344/16811) — *Target: $\ge$ 95%*
-- **Statements**: **95.96%** (17594/18333) — *Target: $\ge$ 95%*
-- **Functions**: **95.02%** (3515/3699) — *Target: $\ge$ 92%*
-- **Branches**: **88.43%** (16337/18473) — *Target: $\ge$ 85%*
+- **Lines**: **97.27%** (16439/16899) — *Target: $\ge$ 95%*
+- **Statements**: **96.01%** (17700/18435) — *Target: $\ge$ 95%*
+- **Functions**: **95.24%** (3542/3719) — *Target: $\ge$ 92%*
+- **Branches**: **88.42%** (16478/18635) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2760 Tests)
+## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2771 Tests)
 
-### 🚀 App Routes & Pages (30 Suites · 311 Tests)
+### 🚀 App Routes & Pages (30 Suites · 313 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -398,7 +398,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (48 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (50 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page when back button is clicked and exit modal is confirmed`
@@ -423,6 +423,7 @@
 - ✔ `automatically minimizes Read Aloud into mini-pill and docks at top when a reader drawer is opened`
 - ✔ `toggles Annotations & Notes drawer from reader header`
 - ✔ `renders selection popover on mouseUp and applies chosen highlight color`
+- ✔ `elevates tactile TextHighlightPopover above Read Aloud bar with zIndex 10002 when speech is open`
 - ✔ `attaches and saves a personal reflection note to an existing highlight`
 - ✔ `displays saved note in notes drawer and closes drawer upon jumping to passage`
 - ✔ `updates highlight color in-place without duplicating annotations in store`
@@ -448,6 +449,7 @@
 - ✔ `bypasses exit modal when a bookmark exists further ahead or when reminder is disabled`
 - ✔ `syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences`
 - ✔ `syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences`
+- ✔ `surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows`
 
 </details>
 
@@ -1356,7 +1358,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (22 Suites · 194 Tests)
+### 📖 In-Browser Focus Reader (22 Suites · 201 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1364,7 +1366,7 @@
 - ✔ `renders correctly when open with quote text and note preview`
 - ✔ `calls onClose when Cancel button is clicked`
 - ✔ `calls onConfirm when Delete Note button is clicked`
-- ✔ `supports custom title and description overrides`
+- ✔ `supports custom title, headline, description, confirmLabel, and confirmTestId overrides`
 
 </details>
 
@@ -1388,7 +1390,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (15 tests)</summary>
+<summary><b><code>src/components/reader/ReaderAnnotationsDrawer.test.tsx</code></b> (17 tests)</summary>
 
 - ✔ `renders annotations list with quotes and section pills`
 - ✔ `renders empty state when there are no annotations`
@@ -1405,6 +1407,8 @@
 - ✔ `merges overlapping own and fellow annotations into a unified item with both badges and reflections in All mode`
 - ✔ `renders Save to My Notes and + Add My Note buttons on standalone fellow annotation and invokes onSaveFellowAnnotation`
 - ✔ `renders In My Notes badge and Edit My Note when fellow annotation matches existing personal annotation in Fellows tab`
+- ✔ `renders pinned bookmark card, filters exclusively via Bookmark pill, hides in Fellows tab, and supports jump & clear`
+- ✔ `renders bookmark chapter fallback and suppresses empty state when annotations list is empty`
 
 </details>
 
@@ -1467,14 +1471,15 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderFloatingToolsPod.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/reader/ReaderFloatingToolsPod.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `toggles the floating quick tools menu and invokes search, theme, controls, annotations, speech, and translation callbacks`
+- ✔ `renders leather-brown bookmark indicator dot when hasPinnedBookmark is true and annotationsCount is 0, and hides dot behind numeric badge when highlights exist`
 
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderFooter.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/reader/ReaderFooter.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders global volume pagination and chapter title`
 - ✔ `triggers onPrevPage and onNextPage callbacks when buttons are clicked`
@@ -1484,11 +1489,12 @@
 - ✔ `renders contoured TOC button, [Search + Settings] mobile bar controls, and vertical draggable floating toolbar with modal auto-suspend/restore and idle translucency`
 - ✔ `renders Prev and Next buttons with visible labels and accessible touch target classes`
 - ✔ `slides footer down out of view as a fixed overlay when isHidden is true`
+- ✔ `forwards hasPinnedBookmark to floating tools pod badge when highlights count is zero`
 
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (20 tests)</summary>
+<summary><b><code>src/components/reader/ReaderHeader.test.tsx</code></b> (21 tests)</summary>
 
 - ✔ `renders book title, author, and progress metrics correctly`
 - ✔ `triggers onBack when back button is clicked`
@@ -1510,6 +1516,7 @@
 - ✔ `renders Read Aloud button and handles click toggles`
 - ✔ `forwards symposiumCompanion to the sub-header ribbon`
 - ✔ `slides header up out of view as a fixed overlay when isHidden is true`
+- ✔ `renders leather-brown bookmark indicator dot and updated tooltip when hasPinnedBookmark is true`
 
 </details>
 
@@ -1605,7 +1612,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (32 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (34 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1625,6 +1632,7 @@
 - ✔ `renders user annotations with designated highlight color marks and triggers onSelectAnnotation`
 - ✔ `renders multiple annotations with amber, mint, and rose colors alongside speech highlight`
 - ✔ `detects window text selection and triggers onTextSelected on mouseUp`
+- ✔ `uses multi-line getClientRects bounds to anchor horizontal center onto the final selected line`
 - ✔ `applies color-specific selection styling to highlight marks`
 - ✔ `triggers onTextSelected on selectionchange within reader content`
 - ✔ `ignores collapsed text selections on mouseUp`
@@ -1639,6 +1647,7 @@
 - ✔ `applies overscroll-y-contain and bottom clearance padding when isSpeechOpen is true even while paused`
 - ✔ `waits for bookmarkText layout resolution before centering the viewport on the reflowed row span and finalizes touch drag on touchcancel`
 - ✔ `deduplicates leading chapter heading and absorbed subtitle on Page 1 when the chapter banner is visible`
+- ✔ `re-centers the bookmark guide line and pulses its highlight ring on bookmarkJumpNonce increments in paginated and scroll modes`
 
 </details>
 
@@ -1668,8 +1677,8 @@
 - ✔ `allows canceling note edits to revert back to Read Mode`
 - ✔ `renders in sepia and dark themes without crashing`
 - ✔ `calls onClose when touchstart occurs outside the popover`
-- ✔ `positions docked at bottom on touch devices to avoid native mobile context menu collision`
-- ✔ `positions contextually near anchor on desktop devices`
+- ✔ `positions docked at bottom with layout centering and zIndex 10002 on touch devices, clearing Read Aloud and software keyboards`
+- ✔ `positions contextually near anchor on desktop devices, flips below top header, and clamps bottom edge`
 - ✔ `renders Read-Only Scholar Attribution view when isFellowOnly is true`
 - ✔ `allows 1-click saving of fellow highlight via fellow-popover-save-highlight-btn`
 - ✔ `renders 2-pill overlap switcher when both self and fellow annotations exist`
@@ -3131,7 +3140,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 350 Tests)
+### 🔄 Hooks & React Query (36 Suites · 351 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (19 tests)</summary>
@@ -3336,7 +3345,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -3355,6 +3364,7 @@
 - ✔ `self-heals chapterPage when bookmarkText shifts to an adjacent page after fontSize re-pagination`
 - ✔ `supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice`
 - ✔ `preserves localPos.lastReadAt on passive restore and adopts a newer cloud bookmark from another device`
+- ✔ `exposes decoupled pinnedBookmark coordinates across page turns, clear, and restart`
 
 </details>
 
@@ -3699,7 +3709,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (65 Suites · 304 Tests)
+### 🧩 UI Primitives & Motion (65 Suites · 305 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -4232,12 +4242,13 @@
 </details>
 
 <details>
-<summary><b><code>src/config/annotation-tokens.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/config/annotation-tokens.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `contains configurations for all 4 primary highlight colors`
 - ✔ `populates ANNOTATION_COLOR_LIST with all 4 items`
 - ✔ `provides complete styling tokens for each color theme`
 - ✔ `exports valid fallback class for all colors filter badge`
+- ✔ `exports proprietary BOOKMARK_DRAWER_TOKEN leather-brown styling separate from highlight colors`
 
 </details>
 

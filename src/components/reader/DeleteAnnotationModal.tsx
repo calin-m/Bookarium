@@ -17,12 +17,15 @@ export interface DeleteAnnotationModalProps {
   onConfirm: () => void | Promise<void>;
   annotation: DeleteAnnotationTarget | null;
   title?: string;
+  headline?: string;
   description?: string;
+  confirmLabel?: string;
+  confirmTestId?: string;
 }
 
 /**
- * Reusable modal for confirming the deletion of a saved annotation,
- * rendering the quote preview, warning iconography, and destructive action controls.
+ * Reusable modal for confirming the deletion of a saved annotation or pinned bookmark,
+ * rendering the passage preview, warning iconography, and destructive action controls.
  */
 export const DeleteAnnotationModal: React.FC<DeleteAnnotationModalProps> = ({
   isOpen,
@@ -30,7 +33,10 @@ export const DeleteAnnotationModal: React.FC<DeleteAnnotationModalProps> = ({
   onConfirm,
   annotation,
   title = 'Delete Saved Note & Highlight?',
+  headline = 'Are you sure you want to delete this saved quote?',
   description = 'This will remove this highlight and any attached personal reflection from your library. This action cannot be undone.',
+  confirmLabel = 'Delete Note',
+  confirmTestId,
 }) => {
   return (
     <Modal
@@ -47,7 +53,7 @@ export const DeleteAnnotationModal: React.FC<DeleteAnnotationModalProps> = ({
           </div>
           <div className="space-y-2">
             <p className="font-semibold text-foreground text-sm sm:text-base">
-              Are you sure you want to delete this saved quote?
+              {headline}
             </p>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               {description}
@@ -73,11 +79,12 @@ export const DeleteAnnotationModal: React.FC<DeleteAnnotationModalProps> = ({
           <Button
             variant="primary"
             size="sm"
+            data-testid={confirmTestId}
             onClick={onConfirm}
             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-transparent text-xs font-mono uppercase gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Delete Note
+            {confirmLabel}
           </Button>
         </div>
       </div>

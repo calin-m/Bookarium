@@ -412,7 +412,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '`npm run verify` & `npm run verify:build`',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/AST-env-parity across \`src/\` & \`scripts/\`/client-privilege-boundary/transitive-graph, Pass 0.75 lockfile/license/40-char-SHA & permissions workflow scanner/AST API-route, Pillar-3 XSS-eval deduplication, redirect, public-domain, Rule-9 auth-store parity, OWASP header, & Service Worker validators/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest ${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches}%, Pass 4 direct generator docs & \`SECURITY.md\` sync, Pass 5 ADR/checklist/circular-\`SECURITY.md\`-parity (\`auditSecurityDocumentationParity\`)/Mermaid diagram syntax & cycle parity (\`validateMermaidDiagramsInMarkdown\`)/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/1:1-test-co-location across \`src/app/**\` & CLI/AST scripts/SemVer-9-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build + \`.next/routes-manifest.json\` security header audit + live \`next start\` loopback HTTP smoke probes).`,
+        `Executes the 7-Gateway Closed-Loop Quality Engine (Pass 0.5 secrets/file-path/AST-env-parity across \`src/\` & \`scripts/\`/client-privilege-boundary/transitive-graph, Pass 0.75 lockfile/license/40-char-SHA & permissions workflow scanner/AST API-route, Pillar-3 XSS-eval deduplication, redirect, public-domain, Rule-9 auth-store parity, OWASP header, & Service Worker validators/${securityRuleCount}-rule-AST-taint, Pass 1 types, Pass 2 MSW, Pass 3 Vitest ${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches}%, Pass 4 direct generator docs & \`SECURITY.md\` sync, Pass 5 ADR/checklist/circular-\`SECURITY.md\`-parity (\`auditSecurityDocumentationParity\`)/\`README.md\` Diagram 1 & relative Markdown link parity/Mermaid diagram syntax & cycle parity (\`validateMermaidDiagramsInMarkdown\`)/SQL explicit index & \`jurisdictionBaselines\` parity/schema-parity/graph (\`hasCycles\`, \`getAstParseErrors\`, \`detectLayerViolations\`, cross-boundary custom-signal & DB-table caller parity, \`scripts/\` CommonJS parse check, placeholder guards)/dynamic \`scripts/\` test co-location via \`collectScriptFiles\` & \`STANDALONE_RUNNER_SCRIPTS\` across \`src/app/**\` & CLI/AST scripts/SemVer-9-file-parity, Pass 6 ESLint/Knip, Pass 7 Next.js build + \`.next/routes-manifest.json\` security header audit + live \`next start\` loopback HTTP smoke probes).`,
     },
     'scripts/eslint-rules/bookarium-security.js': {
       name: 'eslint-rules/bookarium-security.js',
@@ -426,7 +426,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '_Internal Generator Engine_',
       nodeApis: '`fs`, `path`, `@babel/parser`, `@babel/traverse`',
       responsibility:
-        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges with OS-independent `compareCodepoint` ordering and `getDeterministicTextOrBinaryBytes` LF-normalized asset sizing), CommonJS `scripts/**/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), `.env.example` AST variable bindings (`extractEnvironmentDependencyCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), quote-aware linear Mermaid syntax/cycle/HTML-tag verification (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
+        'Babel AST & SQL parsing engine extracting `src/` module graphs (runtime vs. `_(type)_` edges with OS-independent `compareCodepoint` ordering and `getDeterministicTextOrBinaryBytes` LF-normalized asset sizing), CommonJS `scripts/**/*.js` `require()` graphs (`analyzeScriptsDependencyGraph`), cross-boundary `.from()`/`.rpc()`/API/`CustomEvent`/`BroadcastChannel`/storage coupling (`extractCrossBoundaryCouplingCatalog`), behavioral `@scope`/`@invariant`/`@rationale`/`@adr` contract specs across `PROTECTED_CONTRACTED_MODULES` (`extractBehavioralContractsCatalog`), live runtime & catalog baseline specs (`extractRuntimeSpecConstants` incl. `jurisdictionBaselines`), `.env.example` AST variable bindings (`extractEnvironmentDependencyCatalog`), full `17`-map generator orphan lookup key checks (`findOrphanedGeneratorLookupKeys`), quote-aware linear Mermaid syntax/cycle/HTML-tag verification (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), inherited component `Props` & intersections, `persist` store keys, route HTTP verbs, layer-boundary violations (`detectLayerViolations`), parse-error checks (`getAstParseErrors`), balanced SQL schema entities (`extractSqlSchemaEntities`), AST test titles (`extractTestsFromSourceAst`), and static circular dependencies (`hasCycles`).',
     },
     'scripts/lib/sast-validators.js': {
       name: 'lib/sast-validators.js',
@@ -552,7 +552,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '`npm run gate:approve`',
       nodeApis: '`fs`, `path`',
       responsibility:
-        'Pre-commit governance gate validating `.agents/hooks.json` command definitions against `package.json` scripts prior to commit.',
+        'Pre-commit governance gate validating `.agents/hooks.json` command definitions against `package.json` scripts and verifying `.husky/pre-commit` hook integrity prior to commit.',
     },
     'scripts/open-browser.js': {
       name: 'open-browser.js',
@@ -937,7 +937,7 @@ function generateMarkdown() {
     '            SearchDrawer["ReaderSearchDrawer\\n(In-Volume Live Text Search)"]',
     '            ControlsDrawer["ReaderControls\\n(Typography, Speech & Themes)"]',
     '            LangDrawer["ReaderLanguageDrawer\\n(International Editions Handoff)"]',
-    '            AnnotDrawer["ReaderAnnotationsDrawer\\n(In-Volume Highlights, Notes & Deep Links)"]',
+    '            AnnotDrawer["ReaderAnnotationsDrawer\\n(In-Volume Highlights, Pinned Bookmark, Notes & Deep Links)"]',
     '            DownDrawer["DownloadDrawer\\n(Download Hub: Offline Cache, R2 .txt Export & Coming-Soon Formats)"]',
     '        end',
     '        ',
@@ -1232,7 +1232,7 @@ function generateMarkdown() {
     '        Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]',
     '        AudioBar["Speech Narration Bar (ReaderSpeechBar)\\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]',
     '        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]',
-    '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(4 Pastel Highlighters • Symposium Marginalia • Spoiler Shield)"]',
+    '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(4 Pastel Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]',
     '        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]',
     '        ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • reading-card-export.ts)"]',
     '    end',

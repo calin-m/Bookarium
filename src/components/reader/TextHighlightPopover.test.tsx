@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TextHighlightPopover } from './TextHighlightPopover';
 
@@ -205,60 +205,174 @@ describe('TextHighlightPopover', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('positions docked at bottom on touch devices to avoid native mobile context menu collision', () => {
+  it('positions docked at bottom with layout centering and zIndex 10002 on touch devices, clearing Read Aloud and software keyboards', () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
-      matches: query === '(pointer: coarse)',
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = window.visualViewport;
+    let resizeHandler: (() => void) | undefined;
 
-    render(
-      <TextHighlightPopover
-        {...defaultProps}
-        position={{ top: 250, left: 300, bottom: 270 }}
-      />
-    );
+    try {
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
 
-    const popover = screen.getByTestId('text-highlight-popover');
-    // On touch devices, popover docks at bottom: 6rem above the two-tier mobile footer with safe-area bottom margin and horizontally centered at 50%
-    expect(popover.style.bottom).toBe('6rem');
-    expect(popover).toHaveClass('mb-[env(safe-area-inset-bottom,0px)]');
-    expect(popover.style.left).toBe('50%');
+      Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+      const mockViewport = {
+        height: 800,
+        offsetTop: 0,
+        addEventListener: vi.fn((ev: string, cb: () => void) => {
+          if (ev === 'resize') resizeHandler = cb;
+        }),
+        removeEventListener: vi.fn(),
+      };
+      Object.defineProperty(window, 'visualViewport', {
+        value: mockViewport,
+        configurable: true,
+      });
 
-    window.matchMedia = originalMatchMedia;
+      const { rerender } = render(
+        <TextHighlightPopover
+          {...defaultProps}
+          position={{ top: 250, left: 300, bottom: 270 }}
+        />
+      );
+
+      const popover = screen.getByTestId('text-highlight-popover');
+      expect(popover.style.bottom).toBe('6rem');
+      expect(popover.style.zIndex).toBe('10002');
+      expect(popover.style.left).toBe('0px');
+      expect(popover.style.right).toBe('0px');
+      expect(popover.style.marginLeft).toBe('auto');
+      expect(popover.style.marginRight).toBe('auto');
+      expect(popover).toHaveClass('mb-[env(safe-area-inset-bottom,0px)]');
+
+      // When Read Aloud is active on compact phone, elevate cleanly above ReaderSpeechBar
+      rerender(
+        <TextHighlightPopover
+          {...defaultProps}
+          isSpeechOpen={true}
+          position={{ top: 250, left: 300, bottom: 270 }}
+        />
+      );
+      expect(screen.getByTestId('text-highlight-popover').style.bottom).toBe('11.5rem');
+
+      // Wide desktop-width tablet (>= 1024px) without Speech bar uses compact 4.75rem dock clearance
+      Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+      rerender(
+        <TextHighlightPopover
+          {...defaultProps}
+          isSpeechOpen={false}
+          position={{ top: 250, left: 300, bottom: 270 }}
+        />
+      );
+      expect(screen.getByTestId('text-highlight-popover').style.bottom).toBe('4.75rem');
+
+      // Opening software keyboard via visualViewport shrinks height by 320px and elevates dock directly above keyboard
+      Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+      mockViewport.height = 480;
+      act(() => {
+        resizeHandler?.();
+      });
+      rerender(
+        <TextHighlightPopover
+          {...defaultProps}
+          isSpeechOpen={true}
+          position={{ top: 250, left: 300, bottom: 270 }}
+        />
+      );
+      expect(screen.getByTestId('text-highlight-popover').style.bottom).toContain('320px');
+      expect(screen.getByTestId('text-highlight-popover')).not.toHaveClass(
+        'mb-[env(safe-area-inset-bottom,0px)]'
+      );
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+      Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+      Object.defineProperty(window, 'visualViewport', {
+        value: originalVisualViewport,
+        configurable: true,
+      });
+    }
   });
 
-  it('positions contextually near anchor on desktop devices', () => {
+  it('positions contextually near anchor on desktop devices, flips below top header, and clamps bottom edge', () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+    const originalInnerHeight = window.innerHeight;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let roCallback: ResizeObserverCallback | undefined;
 
-    render(
-      <TextHighlightPopover
-        {...defaultProps}
-        position={{ top: 250, left: 300, bottom: 270 }}
-      />
-    );
+    try {
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
 
-    const popover = screen.getByTestId('text-highlight-popover');
-    // On desktop, top is calculated using anchor
-    expect(popover.style.top).toBe('196px');
+      globalThis.ResizeObserver = class MockResizeObserver {
+        constructor(cb: ResizeObserverCallback) {
+          roCallback = cb;
+        }
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      } as unknown as typeof ResizeObserver;
 
-    window.matchMedia = originalMatchMedia;
+      const { rerender } = render(
+        <TextHighlightPopover
+          {...defaultProps}
+          position={{ top: 250, left: 300, bottom: 270 }}
+        />
+      );
+
+      const popover = screen.getByTestId('text-highlight-popover');
+      expect(popover.style.top).toBe('196px');
+      expect(popover.style.zIndex).toBe('10002');
+
+      // Anchor near top header flips cleanly below anchorBottom + 12
+      rerender(
+        <TextHighlightPopover
+          {...defaultProps}
+          position={{ top: 90, left: 300, bottom: 112 }}
+        />
+      );
+      expect(screen.getByTestId('text-highlight-popover').style.top).toBe('124px');
+
+      // Short viewport clamps measured height cleanly inside bottom viewport edge
+      Object.defineProperty(window, 'innerHeight', { value: 320, configurable: true });
+      act(() => {
+        roCallback?.(
+          [{ contentRect: { width: 256, height: 60 } } as ResizeObserverEntry],
+          {} as ResizeObserver
+        );
+      });
+      rerender(
+        <TextHighlightPopover
+          {...defaultProps}
+          position={{ top: 360, left: 300, bottom: 380 }}
+        />
+      );
+      expect(parseInt(screen.getByTestId('text-highlight-popover').style.top, 10)).toBeLessThanOrEqual(
+        244
+      );
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
   });
 
   it('renders Read-Only Scholar Attribution view when isFellowOnly is true', () => {

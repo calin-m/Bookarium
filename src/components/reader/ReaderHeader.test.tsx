@@ -495,5 +495,45 @@ describe('ReaderHeader', () => {
     expect(headerEl).toHaveAttribute('data-bars-hidden', 'true');
     expect(headerEl).toHaveClass('fixed', 'top-0', 'inset-x-0', '-translate-y-full', 'opacity-0', 'pointer-events-none');
   });
+
+  it('renders leather-brown bookmark indicator dot and updated tooltip when hasPinnedBookmark is true', () => {
+    const { rerender } = render(
+      <ReaderHeader
+        {...defaultProps}
+        onToggleAnnotations={vi.fn()}
+        annotationsCount={0}
+        hasPinnedBookmark={true}
+      />
+    );
+
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    expect(notesBtn).toHaveAttribute('title', 'View notes, highlights, and pinned bookmark');
+    expect(screen.getByTestId('reader-annotations-bookmark-dot')).toHaveClass('bg-primary');
+
+    rerender(
+      <ReaderHeader
+        {...defaultProps}
+        onToggleAnnotations={vi.fn()}
+        annotationsCount={2}
+        hasPinnedBookmark={true}
+      />
+    );
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-annotations-bookmark-dot')).toBeInTheDocument();
+
+    rerender(
+      <ReaderHeader
+        {...defaultProps}
+        onToggleAnnotations={vi.fn()}
+        annotationsCount={2}
+        hasPinnedBookmark={false}
+      />
+    );
+    expect(screen.getByTestId('reader-annotations-toggle-btn')).toHaveAttribute(
+      'title',
+      'View notes and highlighted passages'
+    );
+    expect(screen.queryByTestId('reader-annotations-bookmark-dot')).toBeNull();
+  });
 });
 

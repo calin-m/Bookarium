@@ -727,16 +727,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/hooks/reader/useReaderSession.ts`](../src/hooks/reader/useReaderSession.ts) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Headless Reader session controller managing chapter pagination state, `bookmarkText`-first reflow-resilient auto-resume, bidirectional page navigation, and coordinate persistence.
+- **Intended Scope (`@scope`)**: Headless Reader session controller managing chapter pagination state, `bookmarkText`-first reflow-resilient auto-resume, bidirectional page navigation, active `pinnedBookmark` inspection, and coordinate persistence.
 - **Behavioral Invariants (`@invariant`)**:
-  - Restore saved positions via `findCanonicalTextSpan` when `bookmarkText` shifts pages across font/viewport reflows, clamp out-of-bounds chapter/page indices safely, and separate layout adjustments (`isLayoutSync`) from user bookmark mutations (`hasUserModifiedSessionRef`).
+  - Restore saved positions via `findCanonicalTextSpan` when `bookmarkText` shifts pages across font/viewport reflows, expose immutable `pinnedBookmark` coordinates (`PinnedBookmarkCoordinate`) while preserving them across passive page turns, clamp out-of-bounds chapter/page indices safely, and separate layout adjustments (`isLayoutSync`) from user bookmark mutations (`hasUserModifiedSessionRef`).
   - Flush position and percentage progress updates (`saveReadingPosition`, `setProgress`) synchronously on chapter/page navigation and unmount cleanup without dropping `bookmarkRow` or `bookmarkText`.
 - **Design Rationale (`@rationale`)**:
-  - Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence.
+  - Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence, while exposing `pinnedBookmark` lets drawers display and jump back to the active silk bookmark across chapters.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/hooks/reader/useReaderSession.test.ts`](../src/hooks/reader/useReaderSession.test.ts) (17 tests)
+- **Test Contract**: [`src/hooks/reader/useReaderSession.test.ts`](../src/hooks/reader/useReaderSession.test.ts) (18 tests)
 
 #### [`src/hooks/useAccountSecurityActions.ts`](../src/hooks/useAccountSecurityActions.ts) *(Tier-3 Protected)*
 
@@ -953,11 +953,11 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`scripts/approval-gate.js`](../scripts/approval-gate.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Governance pre-commit gate validating `.agents/hooks.json` schema completeness (`preCommit`, `prePush`, `postBuild`) and npm script bindings against `package.json`.
+- **Intended Scope (`@scope`)**: Governance pre-commit gate validating `.agents/hooks.json` schema completeness (`preCommit`, `prePush`, `postBuild`), npm script bindings against `package.json`, and static `.husky/pre-commit` hook integrity.
 - **Behavioral Invariants (`@invariant`)**:
-  - Require non-empty `preCommit`, `prePush`, and `postBuild` arrays inside `.agents/hooks.json` and fail closed (`exit 1`) if any `npm run <script>` entry is absent from `package.json`.
+  - Require non-empty `preCommit`, `prePush`, and `postBuild` arrays inside `.agents/hooks.json`, fail closed (`exit 1`) if any `npm run <script>` entry is absent from `package.json`, and verify `.husky/pre-commit` (when present) still invokes `approval-gate.js` and `verify-build.js`.
 - **Design Rationale (`@rationale`)**:
-  - Prevents silent hook bypasses when npm scripts are renamed or `.agents/hooks.json` becomes malformed.
+  - Prevents silent hook bypasses when npm scripts are renamed, `.agents/hooks.json` becomes malformed, or `.husky/pre-commit` loses pre-commit gate bindings.
 - **Governing Decisions (`@adr`)**: [ADR-078](DECISIONS.md), [ADR-081](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
@@ -1119,7 +1119,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+  - Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
 - **Design Rationale (`@rationale`)**:
   - Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
 - **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
@@ -1156,6 +1156,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `15` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `3` | Pure / internal |
 | `14` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `7` / `0` | Pure / internal |
 | `14` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
+| `14` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `14` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
@@ -1170,7 +1171,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `10` | [`src/components/ui/RemoveOfflineBookModal.tsx`](../src/components/ui/RemoveOfflineBookModal.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/SegmentedControl.tsx`](../src/components/ui/SegmentedControl.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/StarRating.tsx`](../src/components/ui/StarRating.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
-| `10` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `5` / `0` | Pure / internal |
 | `10` | [`src/lib/accolades-engine.ts`](../src/lib/accolades-engine.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/content-advisory.ts`](../src/lib/content-advisory.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/reading-card-export.ts`](../src/lib/reading-card-export.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
@@ -1197,6 +1197,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `7` | [`src/hooks/useMobileViewSwipe.ts`](../src/hooks/useMobileViewSwipe.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useMobileViewportCardFocus.ts`](../src/hooks/useMobileViewportCardFocus.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useScrollDirection.ts`](../src/hooks/useScrollDirection.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
+| `7` | [`src/hooks/useVisualViewportKeyboard.ts`](../src/hooks/useVisualViewportKeyboard.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `6` | [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | API Calls: `/api/books/content` |
 | `6` | [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/presentation/BookshelfRack.tsx`](../src/components/presentation/BookshelfRack.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
@@ -1238,7 +1239,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `5` | [`src/hooks/useOfflineCatalogFallback.ts`](../src/hooks/useOfflineCatalogFallback.ts) | React Hooks & Queries | `1` / `0` | Leaf / pure |
 | `5` | [`src/hooks/usePersonalCollectionsController.ts`](../src/hooks/usePersonalCollectionsController.ts) | React Hooks & Queries | `1` / `0` | Leaf / pure |
 | `5` | [`src/hooks/useReadingTimer.ts`](../src/hooks/useReadingTimer.ts) | React Hooks & Queries | `1` / `0` | Leaf / pure |
-| `5` | [`src/hooks/useVisualViewportKeyboard.ts`](../src/hooks/useVisualViewportKeyboard.ts) | React Hooks & Queries | `1` / `0` | Leaf / pure |
 | `4` | [`src/app/account/page.tsx`](../src/app/account/page.tsx) | App Router Pages & Layouts | `1` / `0` | Leaf / pure |
 | `4` | [`src/components/accolades/ExLibrisBookplate.tsx`](../src/components/accolades/ExLibrisBookplate.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/bookshelf/ReadingStatusSelector.tsx`](../src/components/bookshelf/ReadingStatusSelector.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |

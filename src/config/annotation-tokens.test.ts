@@ -3,6 +3,7 @@ import {
   ANNOTATION_COLOR_CONFIG,
   ANNOTATION_COLOR_LIST,
   ALL_COLORS_FILTER_BADGE,
+  BOOKMARK_DRAWER_TOKEN,
 } from './annotation-tokens';
 import type { HighlightColor } from '@/stores/useAnnotationStore';
 
@@ -41,6 +42,20 @@ describe('annotation-tokens', () => {
 
   it('exports valid fallback class for all colors filter badge', () => {
     expect(ALL_COLORS_FILTER_BADGE).toContain('bg-stone-200');
+  });
+
+  it('exports proprietary BOOKMARK_DRAWER_TOKEN leather-brown styling separate from highlight colors', () => {
+    expect(BOOKMARK_DRAWER_TOKEN.id).toBe('bookmark');
+    expect(BOOKMARK_DRAWER_TOKEN.label).toBe('Bookmark');
+    expect(BOOKMARK_DRAWER_TOKEN.dotClass).toContain('bg-primary');
+    expect(BOOKMARK_DRAWER_TOKEN.pillActiveClass).toContain('border-primary-');
+    expect(BOOKMARK_DRAWER_TOKEN.badgeClass).toContain('bg-primary-');
+    expect(BOOKMARK_DRAWER_TOKEN.drawerCardClass).toContain('border-l-primary-');
+    expect(BOOKMARK_DRAWER_TOKEN.jumpLinkClass).toContain('text-primary');
+    expect(BOOKMARK_DRAWER_TOKEN.quoteHoverUnderlineClass).toContain('decoration-primary/');
+    expect(BOOKMARK_DRAWER_TOKEN.surfacePulseRingClass).toContain('ring-primary/');
+    expect(Object.keys(ANNOTATION_COLOR_CONFIG)).not.toContain('bookmark');
+    expect(ANNOTATION_COLOR_LIST.map((c) => c.id as string)).not.toContain('bookmark');
   });
 });
 

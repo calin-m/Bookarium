@@ -29,6 +29,7 @@ interface ReaderHeaderToolAction {
 }
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
+import { BOOKMARK_DRAWER_TOKEN } from '@/config/annotation-tokens';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import type { BookTranslationOption } from '@/hooks/queries/useBookTranslations';
@@ -69,6 +70,7 @@ export interface ReaderHeaderProps {
   isAnnotationsOpen?: boolean;
   onToggleAnnotations?: () => void;
   annotationsCount?: number;
+  hasPinnedBookmark?: boolean;
   theme?: ReaderTheme;
   totalChapters?: number;
   currentChapterIndex?: number;
@@ -104,6 +106,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   isAnnotationsOpen = false,
   onToggleAnnotations,
   annotationsCount = 0,
+  hasPinnedBookmark = false,
   theme = 'light',
   totalChapters = 1,
   currentChapterIndex = 0,
@@ -196,14 +199,27 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
             label: 'Notes',
             icon: Highlighter,
             ariaLabel: 'Notes & Highlights',
-            title: 'View notes and highlighted passages',
+            title: hasPinnedBookmark
+              ? 'View notes, highlights, and pinned bookmark'
+              : 'View notes and highlighted passages',
             isOpen: isAnnotationsOpen,
             onClick: onToggleAnnotations,
             desktopTestId: 'reader-annotations-toggle-btn',
             desktopBadge:
-              annotationsCount > 0 ? (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/10 text-primary">
-                  {annotationsCount}
+              annotationsCount > 0 || hasPinnedBookmark ? (
+                <span className="inline-flex items-center gap-1">
+                  {annotationsCount > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-primary/10 text-primary">
+                      {annotationsCount}
+                    </span>
+                  )}
+                  {hasPinnedBookmark && (
+                    <span
+                      data-testid="reader-annotations-bookmark-dot"
+                      aria-hidden="true"
+                      className={`w-1.5 h-1.5 rounded-full ${BOOKMARK_DRAWER_TOKEN.dotClass}`}
+                    />
+                  )}
                 </span>
               ) : undefined,
           },

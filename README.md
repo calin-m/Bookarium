@@ -14,8 +14,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-264%20Suites%20%7C%202760%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.22%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-264%20Suites%20%7C%202771%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.27%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -69,7 +69,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2760 tests across 264 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2771 tests across 264 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -112,12 +112,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.69)
+## 🛠️ Latest Improvements (v2.9.72)
 
-- **L1/L2 Client Query Parity & Single-Transaction IndexedDB Cover Reuse (`src/hooks/queries/useBookContent.ts`, `src/hooks/queries/useBookTranslations.ts`, `src/hooks/queries/useBooks.ts`, `src/lib/offline-storage.ts`, co-located tests)**: Aligned `useBookContent` `gcTime` with `BOOK_CONTENT_CACHE_TTL_MS` (`60m`), partitioned `db-book-translations` and `ast-book-translations` query keys by `effectiveCountry` via `useJurisdictionStore`, reused `>= 3`-spread `bookarium-extracted-passages-v1` entries read-only inside `fetchFeaturedQuotesMap` without mutating dynamic passage storage, refactored `getOfflineBookCover` into a single `openDB()` dual-store `[offline_books, cover_cache]` readonly transaction, and added `{ cache: "force-cache" }` to `warmCoverCache` and `fetchAndPatchOfflineCover` (`ADR-004`, `ADR-082`, `ADR-086`).
-- **L4 Jurisdictional Normalization, In-Flight Coalescing, Error-Safe Translations LRU & `globalThis` SSR Anchors (`src/lib/catalog/supabase-provider.ts`, `src/app/read/[id]/reader-layout-utils.ts`, `src/app/u/[username]/profile-layout-utils.ts`, co-located tests)**: Shared `fetchQuoteEnrichedPool` cache entries globally and normalized `searchBooks` + bounded `__bookariumTranslationCache` (`getBookTranslations`) keys by `jurisdictionRule` with caller `clientCountry` cloning and non-caching DB error guards, added per-key `inFlight` Promise coalescing with `hasInjectedClient` singleton tracking, and anchored `serverMetadataCache`, `confirmedNotFoundIds`, and `serverProfileCache` on `globalThis` (`ADR-086`).
-- **Passive Bootstrap & Token-Refresh Auth Profile Sync Deduplication (`src/stores/useAuthStore.ts`, `src/lib/sync-utils.ts`, `src/app/providers.tsx`, `docs/DECISIONS.md`, co-located tests)**: Added `lastProfileSyncByUser` + opt-in `{ minSyncIntervalMs }` cooldown (bypassed cleanly on `pendingProfileUpdates` or unthrottled callers) to `useAuthStore.syncWithCloud`, exported `PASSIVE_SYNC_COOLDOWN_MS` (`15_000ms`) + `authMinSyncIntervalMs` forwarding in `syncAllStoresWithCloud`, and applied passive auth cooldown on `Providers` mount and `bookarium:auth-token-refreshed` while keeping `visibilitychange` and `online` unthrottled (`ADR-086`).
-- **AST Runtime Cache Extraction, Architecture Parity & Documentation Refresh (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/generate-architecture-matrix.js`, `README.md`, `.agents/AGENTS.md`)**: Extended `extractRuntimeSpecConstants` to extract `BOOK_CONTENT_CACHE_TTL_MS` (`60m`) and `PASSIVE_SYNC_COOLDOWN_MS` (`15,000ms`) with live/fixture assertions; updated `providers.tsx` and Failure Mode Matrix #9 (`lastProfileSyncByUser`, per-key `inFlight` coalescing) in generated architecture diagrams; added the Cloudflare R2 badge and refreshed intro/baseline counts (`55,754` EU / `78,086` US) in `README.md`; and fixed PostgreSQL index parity (`22 explicit`) in `.agents/AGENTS.md` (`ADR-086`).
+- **Tactile & Desktop `TextHighlightPopover` Positioning, Keyboard Elevation & Stacking Layer (`src/components/reader/TextHighlightPopover.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/app/read/[id]/page.tsx`, `docs/DECISIONS.md`, co-located tests)**: Raised popover stacking to `zIndex: 10002` above `ReaderHeader` and `ReaderSpeechBar`, wired `useVisualViewportKeyboard()` + `isSpeechOpen` bottom clearance onto coarse-pointer docks, replaced `left: 50%` + `x: -50%` with layout centering and landscape height clamping, added `ResizeObserver` + desktop top/bottom viewport clamping, and refined multi-line `getClientRects()` + `<mark>` `bottom` rect coordinates (`ADR-019`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -245,7 +242,7 @@ flowchart TD
             SearchDrawer["ReaderSearchDrawer\n(In-Volume Live Text Search)"]
             ControlsDrawer["ReaderControls\n(Typography, Speech & Themes)"]
             LangDrawer["ReaderLanguageDrawer\n(International Editions Handoff)"]
-            AnnotDrawer["ReaderAnnotationsDrawer\n(In-Volume Highlights, Notes & Deep Links)"]
+            AnnotDrawer["ReaderAnnotationsDrawer\n(In-Volume Highlights, Pinned Bookmark, Notes & Deep Links)"]
             DownDrawer["DownloadDrawer\n(Download Hub: Offline Cache, R2 .txt Export & Coming-Soon Formats)"]
         end
         

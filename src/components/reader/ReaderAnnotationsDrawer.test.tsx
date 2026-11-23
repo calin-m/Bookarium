@@ -419,5 +419,138 @@ describe('ReaderAnnotationsDrawer', () => {
     const textarea = screen.getByTestId('drawer-reply-textarea-fellow-1') as HTMLTextAreaElement;
     expect(textarea.value).toBe('My existing reflection');
   });
+
+  it('renders pinned bookmark card, filters exclusively via Bookmark pill, hides in Fellows tab, and supports jump & clear', () => {
+    const onJumpToBookmark = vi.fn();
+    const onClearBookmark = vi.fn();
+    const onClose = vi.fn();
+    const sampleBookmark = {
+      chapterIndex: 1,
+      chapterPage: 4,
+      bookmarkRow: 5,
+      bookmarkText: 'A pinned line in the silk margin.',
+      chapterTitle: 'Chapter II',
+    };
+
+    const { rerender } = render(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        onClose={onClose}
+        pinnedBookmark={sampleBookmark}
+        isViewingPinnedBookmarkPage={true}
+        onJumpToBookmark={onJumpToBookmark}
+        onClearBookmark={onClearBookmark}
+      />
+    );
+
+    // Header keeps annotation count unchanged while bookmark card renders pinned first with proprietary leather-brown badge
+    expect(screen.getByText(/Notes & Highlights \(2\)/)).toBeInTheDocument();
+    expect(screen.getByTestId('filter-color-bookmark')).toHaveTextContent('Bookmark(1)');
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-bookmark-badge')).toHaveTextContent('Bookmark');
+    expect(screen.getByTestId('drawer-bookmark-badge')).toHaveClass('bg-primary-100', 'text-primary-900');
+    expect(screen.getByTestId('drawer-bookmark-active-badge')).toHaveTextContent('On this page');
+    expect(screen.getByText(/Sec 2 · Page 4 · Line 6/)).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-bookmark-quote-text')).toHaveTextContent(
+      'A pinned line in the silk margin.'
+    );
+
+    // Bookmark filter isolates only the bookmark card without triggering empty state
+    fireEvent.click(screen.getByTestId('filter-color-bookmark'));
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('annotation-item-ann-1')).toBeNull();
+    expect(screen.queryByTestId('annotation-item-ann-2')).toBeNull();
+    expect(screen.queryByTestId('annotations-empty-state')).toBeNull();
+
+    // Selecting Yellow hides the bookmark card and reveals matching highlights
+    fireEvent.click(screen.getByTestId('filter-color-yellow'));
+    expect(screen.queryByTestId('drawer-bookmark-item')).toBeNull();
+    expect(screen.getByTestId('annotation-item-ann-1')).toBeInTheDocument();
+
+    // Returning to Bookmark filter then clicking Jump triggers onJumpToBookmark & closes drawer
+    fireEvent.click(screen.getByTestId('filter-color-bookmark'));
+    fireEvent.click(screen.getByTestId('drawer-bookmark-jump-btn'));
+    expect(onJumpToBookmark).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    // Clicking quote text also triggers jump
+    fireEvent.click(screen.getByTestId('drawer-bookmark-quote-text'));
+    expect(onJumpToBookmark).toHaveBeenCalledTimes(2);
+
+    // Clicking Clear opens confirmation modal first; canceling keeps bookmark intact; confirming invokes onClearBookmark
+    fireEvent.click(screen.getByTestId('drawer-bookmark-clear-btn'));
+    expect(screen.getByText('Remove Silk Bookmark?')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-single-note-dialog')).toHaveTextContent(
+      'Sec 2 · Page 4 · Line 6'
+    );
+    expect(onClearBookmark).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(screen.queryByTestId('delete-single-note-dialog')).toBeNull();
+    expect(onClearBookmark).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('drawer-bookmark-clear-btn'));
+    fireEvent.click(screen.getByTestId('confirm-clear-bookmark-btn'));
+    expect(onClearBookmark).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('delete-single-note-dialog')).toBeNull();
+
+    // Search filters bookmark cleanly
+    fireEvent.click(screen.getByTestId('filter-color-all'));
+    const searchInput = screen.getByTestId('annotations-search-input');
+    fireEvent.change(searchInput, { target: { value: 'silk margin' } });
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('annotation-item-ann-1')).toBeNull();
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    // Symposium Fellows tab hides both bookmark card & bookmark filter pill and falls back to highlights
+    rerender(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        hasActiveSymposium={true}
+        marginaliaSourceFilter="fellows"
+        pinnedBookmark={sampleBookmark}
+        onJumpToBookmark={onJumpToBookmark}
+        onClearBookmark={onClearBookmark}
+      />
+    );
+    expect(screen.queryByTestId('filter-color-bookmark')).toBeNull();
+    expect(screen.queryByTestId('drawer-bookmark-item')).toBeNull();
+
+    // Clearing pinnedBookmark resets any active bookmark filter seamlessly back to highlights
+    rerender(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        pinnedBookmark={null}
+        onJumpToBookmark={onJumpToBookmark}
+        onClearBookmark={onClearBookmark}
+      />
+    );
+    expect(screen.queryByTestId('filter-color-bookmark')).toBeNull();
+    expect(screen.getByTestId('annotation-item-ann-1')).toBeInTheDocument();
+  });
+
+  it('renders bookmark chapter fallback and suppresses empty state when annotations list is empty', () => {
+    render(
+      <ReaderAnnotationsDrawer
+        {...defaultProps}
+        annotations={[]}
+        pinnedBookmark={{
+          chapterIndex: 2,
+          chapterPage: 1,
+          bookmarkRow: 0,
+          chapterTitle: 'Chapter III: The Letter',
+        }}
+        isViewingPinnedBookmarkPage={false}
+        onJumpToBookmark={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    expect(screen.queryByTestId('drawer-bookmark-active-badge')).toBeNull();
+    expect(screen.getByTestId('drawer-bookmark-chapter-fallback')).toHaveTextContent(
+      'Pinned in Chapter III: The Letter'
+    );
+    expect(screen.queryByTestId('annotations-empty-state')).toBeNull();
+  });
 });
 

@@ -547,6 +547,44 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     window.getSelection = originalGetSelection;
   });
 
+  it('elevates tactile TextHighlightPopover above Read Aloud bar with zIndex 10002 when speech is open', () => {
+    const originalMatchMedia = window.matchMedia;
+    const originalGetSelection = window.getSelection;
+
+    try {
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      window.getSelection = vi.fn().mockReturnValue({
+        isCollapsed: false,
+        toString: () => 'Pride and Prejudice',
+        getRangeAt: () => ({
+          getBoundingClientRect: () => ({ top: 200, bottom: 224, left: 300, width: 150, height: 24 }),
+        }),
+      });
+
+      render(<BookReaderPage />);
+
+      fireEvent.click(screen.getAllByLabelText('Read Aloud Narration')[0]);
+      expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+
+      fireEvent.mouseUp(screen.getByRole('article'));
+      const popover = screen.getByTestId('text-highlight-popover');
+      expect(popover.style.zIndex).toBe('10002');
+      expect(popover.style.bottom).toBe('9.75rem');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      window.getSelection = originalGetSelection;
+    }
+  });
+
   it('attaches and saves a personal reflection note to an existing highlight', async () => {
     useAnnotationStore.getState().addAnnotation({
       bookId: 1342,
@@ -1592,6 +1630,56 @@ describe('Dedicated Reader Page (/read/[id])', () => {
         useAuthStore.setState({ user: null, updateProfile: originalUpdateProfile });
       });
     }
+  });
+
+  it('surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows', async () => {
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 2,
+          chapterPage: 1,
+          globalPage: 3,
+          bookmarkRow: 2,
+          bookmarkText: 'Mr. Bennet was among the earliest of those who waited on Mr. Darcy.',
+          lastReadAt: '2026-10-30T10:00:00Z',
+        },
+      },
+    });
+
+    render(<BookReaderPage />);
+
+    // Auto-resumed to CHAPTER 2 (index 2) with indigo bookmark indicator dot in Header
+    expect(await screen.findByText(/Mr\. Bennet was among the earliest/)).toBeInTheDocument();
+    expect(screen.getByTestId('reader-annotations-bookmark-dot')).toBeInTheDocument();
+
+    // Navigate back to CHAPTER 1 (index 1) while keeping pinnedBookmark intact
+    fireEvent.click(screen.getByLabelText('Previous Page'));
+    expect(screen.getByText(/It is a truth universally acknowledged/)).toBeInTheDocument();
+
+    // Open Notes & Highlights drawer -> pinned Bookmark card appears without "On this page" badge
+    fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+    expect(screen.getByTestId('filter-color-bookmark')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    expect(screen.getByText(/Sec 3 · Page 1 · Line 3/)).toBeInTheDocument();
+    expect(screen.queryByTestId('drawer-bookmark-active-badge')).toBeNull();
+
+    // Click Jump to bookmark -> drawer closes and jumps straight back to CHAPTER 2
+    fireEvent.click(screen.getByTestId('drawer-bookmark-jump-btn'));
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+    expect(screen.getByText(/Mr\. Bennet was among the earliest/)).toBeInTheDocument();
+
+    // Reopen drawer on the bookmarked page -> shows "On this page" badge, then Clear bookmark opens confirmation modal and removes it everywhere on confirm
+    fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+    expect(screen.getByTestId('drawer-bookmark-active-badge')).toHaveTextContent('On this page');
+
+    fireEvent.click(screen.getByTestId('drawer-bookmark-clear-btn'));
+    expect(screen.getByText('Remove Silk Bookmark?')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-clear-bookmark-btn'));
+    expect(screen.queryByTestId('drawer-bookmark-item')).toBeNull();
+    expect(screen.queryByTestId('filter-color-bookmark')).toBeNull();
+    expect(screen.queryByTestId('reader-annotations-bookmark-dot')).toBeNull();
+    expect(useReaderStore.getState().getReadingPosition(1342)?.bookmarkRow).toBeUndefined();
   });
 });
 

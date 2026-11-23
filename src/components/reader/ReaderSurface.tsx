@@ -10,7 +10,7 @@ import {
 import type { FellowAnnotation } from '@/stores/useAnnotationStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
-import { ANNOTATION_COLOR_CONFIG } from '@/config/annotation-tokens';
+import { ANNOTATION_COLOR_CONFIG, BOOKMARK_DRAWER_TOKEN } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
 import {
   computeAnnotationSpans,
@@ -58,6 +58,7 @@ export interface ReaderSurfaceProps {
   highlightedSentence?: string;
   annotations?: AnyAnnotation[];
   targetAnnotationId?: string | null;
+  bookmarkJumpNonce?: number;
   onSelectAnnotation?: (
     annotation: AnyAnnotation,
     position?: { top: number; left: number },
@@ -96,6 +97,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   highlightedSentence,
   annotations = [],
   targetAnnotationId,
+  bookmarkJumpNonce = 0,
   onSelectAnnotation,
   onTextSelected,
 }) => {
@@ -118,6 +120,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   const lastEmittedReflowRowRef = useRef<number | null>(null);
   const lastAutoScrolledTargetRef = useRef<string | null>(null);
   const hasUserInteractedWithBookmarkRef = useRef(false);
+  const lastHandledBookmarkJumpNonceRef = useRef(bookmarkJumpNonce);
 
   useEffect(() => {
     latestDragRowRef.current = bookmarkRow;
@@ -155,6 +158,30 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     ? Math.max(activeSpan.startRow, activeSpan.endRow)
     : bookmarkRow;
   const bookmarkSpanRows = Math.max(1, effectiveEndRow - effectiveStartRow + 1);
+
+  const centerViewportOnBookmark = useCallback(
+    (behavior: ScrollBehavior): boolean => {
+      const mainEl = mainRef.current;
+      const bookmarkEl = bookmarkElRef.current;
+      if (!mainEl || !bookmarkEl) return false;
+      const contentEl = contentBodyRef.current;
+      if (contentEl && mainEl.clientHeight > 0) {
+        const mainRect = mainEl.getBoundingClientRect();
+        const contentRect = contentEl.getBoundingClientRect();
+        const contentOffsetTop = contentRect.top - mainRect.top + mainEl.scrollTop;
+        const spanCenterOffsetPx = ((effectiveStartRow + effectiveEndRow + 1) / 2) * lineStepPx;
+        const targetScrollTop = Math.max(
+          0,
+          Math.round(contentOffsetTop + spanCenterOffsetPx - mainEl.clientHeight / 2)
+        );
+        mainEl.scrollTo({ top: targetScrollTop, behavior });
+      } else {
+        bookmarkEl.scrollIntoView?.({ behavior, block: 'center' });
+      }
+      return true;
+    },
+    [effectiveStartRow, effectiveEndRow, lineStepPx]
+  );
 
   const getMaxBookmarkRows = useCallback(() => {
     const el = contentBodyRef.current;
@@ -415,28 +442,9 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       if (bookmarkRow > 0) {
         if (!isBookmarkLayoutReady || hasUserInteractedWithBookmarkRef.current) return;
         const targetKey = `${activeChapterIndex}:${chapterPage ?? 1}:${effectiveStartRow}:${effectiveEndRow}`;
-        if (lastAutoScrolledTargetRef.current !== targetKey && bookmarkElRef.current) {
-          lastAutoScrolledTargetRef.current = targetKey;
-          const mainEl = mainRef.current;
-          const contentEl = contentBodyRef.current;
-          if (contentEl && mainEl.clientHeight > 0) {
-            const mainRect = mainEl.getBoundingClientRect();
-            const contentRect = contentEl.getBoundingClientRect();
-            const contentOffsetTop = contentRect.top - mainRect.top + mainEl.scrollTop;
-            const spanCenterOffsetPx = ((effectiveStartRow + effectiveEndRow + 1) / 2) * lineStepPx;
-            const targetScrollTop = Math.max(
-              0,
-              Math.round(contentOffsetTop + spanCenterOffsetPx - mainEl.clientHeight / 2)
-            );
-            mainEl.scrollTo({
-              top: targetScrollTop,
-              behavior,
-            });
-          } else {
-            bookmarkElRef.current.scrollIntoView?.({
-              behavior,
-              block: 'center',
-            });
+        if (lastAutoScrolledTargetRef.current !== targetKey) {
+          if (centerViewportOnBookmark(behavior)) {
+            lastAutoScrolledTargetRef.current = targetKey;
           }
         }
       } else if (!bookmarkText) {
@@ -463,7 +471,49 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     lineStepPx,
     isBookmarkLayoutReady,
     isDraggingBookmark,
+    centerViewportOnBookmark,
   ]);
+
+  // Explicit jump-to-bookmark trigger: centers viewport (even on same-page or Scroll mode) and pulses guide line
+  useEffect(() => {
+    if (
+      bookmarkJumpNonce <= 0 ||
+      bookmarkJumpNonce === lastHandledBookmarkJumpNonceRef.current ||
+      isLoading ||
+      bookmarkRow <= 0
+    ) {
+      return;
+    }
+
+    lastHandledBookmarkJumpNonceRef.current = bookmarkJumpNonce;
+    lastAutoScrolledTargetRef.current = null;
+    hasUserInteractedWithBookmarkRef.current = false;
+
+    const behavior: ScrollBehavior =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth';
+
+    let clearPulseTimer: ReturnType<typeof setTimeout> | null = null;
+    const timer = setTimeout(() => {
+      centerViewportOnBookmark(behavior);
+      const guideEl = bookmarkElRef.current?.querySelector<HTMLElement>(
+        '[data-testid="reader-bookmark-guide-line"]'
+      );
+      if (guideEl) {
+        guideEl.classList.add('ring-2', BOOKMARK_DRAWER_TOKEN.surfacePulseRingClass, 'animate-pulse');
+        clearPulseTimer = setTimeout(() => {
+          guideEl.classList.remove('ring-2', BOOKMARK_DRAWER_TOKEN.surfacePulseRingClass, 'animate-pulse');
+        }, 2500);
+      }
+    }, 150);
+
+    return () => {
+      clearTimeout(timer);
+      if (clearPulseTimer) clearTimeout(clearPulseTimer);
+    };
+  }, [bookmarkJumpNonce, isLoading, bookmarkRow, centerViewportOnBookmark]);
 
   // Center and visually accent the targeted highlighted passage
   useEffect(() => {
@@ -519,14 +569,27 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       text = text.replace(/@[a-zA-Z0-9_-]+$/, '').trim();
       if (text.length < 2) return;
 
+      const clientRects =
+        typeof range.getClientRects === 'function'
+          ? Array.from(range.getClientRects()).filter(
+              (r) => r.width > 0 && r.height > 0
+            )
+          : [];
       const rect = range.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
+        const hasMultiLineRects = clientRects.length > 1;
+        const firstRect = hasMultiLineRects ? clientRects[0] : rect;
+        const lastRect = hasMultiLineRects
+          ? clientRects[clientRects.length - 1]
+          : rect;
         onTextSelected({
           text,
           position: {
-            top: rect.top,
-            bottom: rect.bottom,
-            left: rect.left + rect.width / 2,
+            top: hasMultiLineRects ? firstRect.top : rect.top,
+            bottom: hasMultiLineRects ? lastRect.bottom : rect.bottom,
+            left: hasMultiLineRects
+              ? lastRect.left + lastRect.width / 2
+              : rect.left + rect.width / 2,
           },
         });
       }
@@ -798,6 +861,7 @@ function renderContentWithAnnotations(
           const rect = e.currentTarget.getBoundingClientRect();
           const pos = {
             top: rect.top,
+            bottom: rect.bottom,
             left: rect.left + rect.width / 2,
           };
           if (hasOverlap && span.selfAnnotation && span.fellowAnnotation) {

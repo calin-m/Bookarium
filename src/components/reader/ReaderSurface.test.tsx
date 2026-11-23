@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import { ReaderSurface } from './ReaderSurface';
 import type { Annotation } from '@/stores/useAnnotationStore';
@@ -443,6 +443,7 @@ describe('ReaderSurface', () => {
       mockAnnotations[0],
       expect.objectContaining({
         top: expect.any(Number),
+        bottom: expect.any(Number),
         left: expect.any(Number),
       })
     );
@@ -537,6 +538,50 @@ describe('ReaderSurface', () => {
         top: 150,
         bottom: 170,
         left: 250, // left + width / 2
+      },
+    });
+
+    window.getSelection = originalGetSelection;
+  });
+
+  it('uses multi-line getClientRects bounds to anchor horizontal center onto the final selected line', () => {
+    const onTextSelected = vi.fn();
+    const originalGetSelection = window.getSelection;
+    const mockRange = {
+      getBoundingClientRect: () => ({
+        top: 120,
+        bottom: 168,
+        left: 40,
+        width: 460,
+        height: 48,
+      }),
+      getClientRects: () => [
+        { top: 120, bottom: 140, left: 200, width: 300, height: 20 },
+        { top: 148, bottom: 168, left: 40, width: 80, height: 20 },
+      ],
+    };
+
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Wrapped quote spanning two lines',
+      getRangeAt: () => mockRange,
+    });
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText="Wrapped quote spanning two lines of prose."
+        onTextSelected={onTextSelected}
+      />
+    );
+
+    fireEvent.mouseUp(screen.getByRole('article'));
+    expect(onTextSelected).toHaveBeenCalledWith({
+      text: 'Wrapped quote spanning two lines',
+      position: {
+        top: 120,
+        bottom: 168,
+        left: 80, // last line left (40) + width (80) / 2
       },
     });
 
@@ -1182,5 +1227,95 @@ describe('ReaderSurface', () => {
     expect(screen.getByRole('heading', { name: 'Chapter I: The Hired Car' })).toBeInTheDocument();
     const contentBody = screen.getByTestId('reader-content-body');
     expect(contentBody.textContent).toBe('Derby Day fell on the first Wednesday in June.');
+  });
+
+  it('re-centers the bookmark guide line and pulses its highlight ring on bookmarkJumpNonce increments in paginated and scroll modes', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <ReaderSurface
+          {...defaultProps}
+          readingMode="paginated"
+          fontSize={20}
+          lineHeight={2}
+          bookmarkRow={2}
+          bookmarkJumpNonce={0}
+          onBookmarkRowChange={vi.fn()}
+        />
+      );
+
+      const mainEl = screen.getByRole('main');
+      const scrollToSpy = vi.fn();
+      mainEl.scrollTo = scrollToSpy;
+      Object.defineProperty(mainEl, 'clientHeight', { value: 200, configurable: true });
+      Object.defineProperty(mainEl, 'scrollTop', { value: 0, configurable: true });
+
+      // Flush initial load centering
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      scrollToSpy.mockClear();
+
+      // Trigger jump to bookmark while already viewing the bookmarked page
+      rerender(
+        <ReaderSurface
+          {...defaultProps}
+          readingMode="paginated"
+          fontSize={20}
+          lineHeight={2}
+          bookmarkRow={2}
+          bookmarkJumpNonce={1}
+          onBookmarkRowChange={vi.fn()}
+        />
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(160);
+      });
+      expect(scrollToSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          behavior: 'smooth',
+        })
+      );
+
+      const guideLine = screen.getByTestId('reader-bookmark-guide-line');
+      expect(guideLine.className).toContain('ring-2');
+      expect(guideLine.className).toContain('ring-primary/80');
+      expect(guideLine.className).toContain('animate-pulse');
+
+      // Pulse clears after 2500ms timeout
+      act(() => {
+        vi.advanceTimersByTime(2550);
+      });
+      expect(guideLine.className).not.toContain('ring-2');
+      expect(guideLine.className).not.toContain('ring-primary/80');
+      expect(guideLine.className).not.toContain('animate-pulse');
+
+      // Scroll mode jump also centers and pulses guide line
+      scrollToSpy.mockClear();
+      rerender(
+        <ReaderSurface
+          {...defaultProps}
+          readingMode="scroll"
+          fontSize={20}
+          lineHeight={2}
+          bookmarkRow={2}
+          bookmarkJumpNonce={2}
+          onBookmarkRowChange={vi.fn()}
+        />
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(160);
+      });
+      expect(scrollToSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          behavior: 'smooth',
+        })
+      );
+      expect(screen.getByTestId('reader-bookmark-guide-line').className).toContain('ring-2');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

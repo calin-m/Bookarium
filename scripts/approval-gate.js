@@ -5,9 +5,9 @@
  * lifecycle commands map to valid `package.json` scripts prior to commit.
  *
  * @module scripts/approval-gate
- * @scope Governance pre-commit gate validating `.agents/hooks.json` schema completeness (`preCommit`, `prePush`, `postBuild`) and npm script bindings against `package.json`.
- * @invariant Require non-empty `preCommit`, `prePush`, and `postBuild` arrays inside `.agents/hooks.json` and fail closed (`exit 1`) if any `npm run <script>` entry is absent from `package.json`.
- * @rationale Prevents silent hook bypasses when npm scripts are renamed or `.agents/hooks.json` becomes malformed.
+ * @scope Governance pre-commit gate validating `.agents/hooks.json` schema completeness (`preCommit`, `prePush`, `postBuild`), npm script bindings against `package.json`, and static `.husky/pre-commit` hook integrity.
+ * @invariant Require non-empty `preCommit`, `prePush`, and `postBuild` arrays inside `.agents/hooks.json`, fail closed (`exit 1`) if any `npm run <script>` entry is absent from `package.json`, and verify `.husky/pre-commit` (when present) still invokes `approval-gate.js` and `verify-build.js`.
+ * @rationale Prevents silent hook bypasses when npm scripts are renamed, `.agents/hooks.json` becomes malformed, or `.husky/pre-commit` loses pre-commit gate bindings.
  * @adr ADR-078, ADR-081
  */
 
@@ -54,6 +54,21 @@ function verifyApprovalGate() {
         );
         process.exit(1);
       }
+    }
+  }
+
+  const preCommitPath = path.join(rootDir, '.husky', 'pre-commit');
+  if (fs.existsSync(preCommitPath)) {
+    const preCommitText = fs.readFileSync(preCommitPath, 'utf-8');
+    if (
+      !preCommitText.includes('scripts/approval-gate.js') ||
+      (!preCommitText.includes('scripts/verify-build.js') &&
+        !/\bnpm\s+run\s+verify(?::build)?\b/.test(preCommitText))
+    ) {
+      console.error(
+        '✖ [FAIL] .husky/pre-commit must invoke both scripts/approval-gate.js and scripts/verify-build.js (or npm run verify).'
+      );
+      process.exit(1);
     }
   }
 

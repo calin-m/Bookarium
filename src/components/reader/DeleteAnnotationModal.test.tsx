@@ -57,20 +57,28 @@ describe('DeleteAnnotationModal', () => {
     expect(handleConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('supports custom title and description overrides', () => {
+  it('supports custom title, headline, description, confirmLabel, and confirmTestId overrides', () => {
+    const handleConfirm = vi.fn();
     render(
       <DeleteAnnotationModal
         isOpen={true}
         onClose={vi.fn()}
-        onConfirm={vi.fn()}
+        onConfirm={handleConfirm}
         annotation={mockAnnotation}
         title="Custom Delete Title"
+        headline="Custom headline confirmation prompt?"
         description="Custom description warning message."
+        confirmLabel="Clear Bookmark"
+        confirmTestId="custom-confirm-action-btn"
       />
     );
 
     expect(screen.getByText('Custom Delete Title')).toBeInTheDocument();
+    expect(screen.getByText('Custom headline confirmation prompt?')).toBeInTheDocument();
     expect(screen.getByText('Custom description warning message.')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('custom-confirm-action-btn'));
+    expect(handleConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('custom-confirm-action-btn')).toHaveTextContent('Clear Bookmark');
   });
 });
 

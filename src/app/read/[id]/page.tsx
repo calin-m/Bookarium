@@ -31,7 +31,10 @@ import { ReaderSpeechBar } from '@/components/reader/ReaderSpeechBar';
 import { ReaderSurface } from '@/components/reader/ReaderSurface';
 import { ReaderLoadingView } from '@/components/reader/ReaderLoadingView';
 import { TextHighlightPopover } from '@/components/reader/TextHighlightPopover';
-import { ReaderAnnotationsDrawer } from '@/components/reader/ReaderAnnotationsDrawer';
+import {
+  ReaderAnnotationsDrawer,
+  type DrawerPinnedBookmark,
+} from '@/components/reader/ReaderAnnotationsDrawer';
 import { DeleteAnnotationModal } from '@/components/reader/DeleteAnnotationModal';
 import { VolumeCompletionModal } from '@/components/reader/VolumeCompletionModal';
 import { ReaderExitBookmarkModal } from '@/components/reader/ReaderExitBookmarkModal';
@@ -87,6 +90,7 @@ function BookReaderContent() {
   const urlPage = searchParams.get('page');
   const urlAnnotationId = searchParams.get('annotationId');
   const [activeAnnotationTargetId, setActiveAnnotationTargetId] = useState<string | null>(null);
+  const [bookmarkJumpNonce, setBookmarkJumpNonce] = useState(0);
   const targetAnnotationId = activeAnnotationTargetId || urlAnnotationId;
 
   // Hydrated Global Reader Store (Guarded with useHasMounted for zero SSR hydration mismatch)
@@ -357,6 +361,7 @@ function BookReaderContent() {
   const {
     activeChapterIndex,
     currentChapterPage,
+    pinnedBookmark,
     bookmarkRow,
     bookmarkText,
     setBookmarkRow,
@@ -587,6 +592,36 @@ function BookReaderContent() {
     updateBookMetadata,
   });
 
+  const resolvedPinnedBookmark = useMemo<DrawerPinnedBookmark | null>(() => {
+    if (!pinnedBookmark) return null;
+    const clampedChapterIndex =
+      chaptersWithPagination.length > 0
+        ? Math.max(0, Math.min(pinnedBookmark.chapterIndex, chaptersWithPagination.length - 1))
+        : pinnedBookmark.chapterIndex;
+    const targetChapter = chaptersWithPagination[clampedChapterIndex];
+    const resolvedPage = pinnedBookmark.bookmarkText
+      ? resolveReflowedAnnotationPage(
+          clampedChapterIndex,
+          pinnedBookmark.chapterPage,
+          pinnedBookmark.bookmarkText
+        )
+      : Math.max(1, Math.min(pinnedBookmark.chapterPage, targetChapter?.pages?.length || 1));
+
+    return {
+      chapterIndex: clampedChapterIndex,
+      chapterPage: resolvedPage,
+      bookmarkRow: pinnedBookmark.bookmarkRow,
+      bookmarkText: pinnedBookmark.bookmarkText,
+      chapterTitle: targetChapter?.displayTitle || targetChapter?.title,
+    };
+  }, [pinnedBookmark, chaptersWithPagination, resolveReflowedAnnotationPage]);
+
+  const isViewingPinnedBookmarkPage = Boolean(
+    resolvedPinnedBookmark &&
+      activeChapterIndex === resolvedPinnedBookmark.chapterIndex &&
+      currentChapterPage === resolvedPinnedBookmark.chapterPage
+  );
+
   const handleCloseAllDrawers = useCallback(() => {
     closeDrawer();
     dismissSelectionPopover();
@@ -660,6 +695,7 @@ function BookReaderContent() {
         isAnnotationsOpen={isAnnotationsOpen}
         onToggleAnnotations={() => handleToggleDrawer('annotations')}
         annotationsCount={totalUnifiedAnnotationsCount}
+        hasPinnedBookmark={Boolean(resolvedPinnedBookmark)}
         totalChapters={chaptersWithPagination.length || 1}
         currentChapterIndex={activeChapterIndex}
         theme={theme}
@@ -709,6 +745,7 @@ function BookReaderContent() {
         highlightedSentence={isSpeechOpen && speech.isPlaying && speechHighlightEnabled ? speech.currentSentence : undefined}
         annotations={[...activeChapterAnnotations, ...activeChapterFellowAnnotations]}
         targetAnnotationId={targetAnnotationId}
+        bookmarkJumpNonce={bookmarkJumpNonce}
         onSelectAnnotation={handleSelectAnnotation}
         onTextSelected={handleTextSelected}
       />
@@ -748,6 +785,7 @@ function BookReaderContent() {
         isTranslationsOpen={isTranslationsOpen}
         isSelectionPopoverOpen={selectionPopover.isOpen}
         annotationsCount={totalUnifiedAnnotationsCount}
+        hasPinnedBookmark={Boolean(resolvedPinnedBookmark)}
         isHidden={areBarsHidden}
       />
 
@@ -860,6 +898,7 @@ function BookReaderContent() {
         existingAnnotationId={selectionPopover.activeAnnotation?.id}
         fellowAnnotation={selectionPopover.fellowAnnotation}
         isFellowOnly={selectionPopover.isFellowOnly}
+        isSpeechOpen={isSpeechOpen}
         onSelectColor={handleSelectColor}
         onSaveNote={handleSaveNote}
         onDelete={handleDeleteAnnotation}
@@ -873,6 +912,16 @@ function BookReaderContent() {
         onClose={closeDrawer}
         annotations={bookAnnotations}
         fellowAnnotations={bookFellowAnnotations}
+        pinnedBookmark={resolvedPinnedBookmark}
+        isViewingPinnedBookmarkPage={isViewingPinnedBookmarkPage}
+        onJumpToBookmark={() => {
+          if (!resolvedPinnedBookmark) return;
+          setActiveAnnotationTargetId(null);
+          jumpTo(resolvedPinnedBookmark.chapterIndex, resolvedPinnedBookmark.chapterPage);
+          setBookmarkJumpNonce((n) => n + 1);
+          closeDrawer();
+        }}
+        onClearBookmark={() => setBookmarkRow(0)}
         hasActiveSymposium={Boolean(activeSymposium)}
         symposiumCompanionUsername={symposiumCompanion?.username}
         symposiumCompanionDisplayName={symposiumCompanion?.displayName}

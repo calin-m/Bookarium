@@ -194,6 +194,12 @@ interface RuntimeSpecConstants {
     scanDefaultTerms: string[];
     wikidataSparqlTimeoutMs: number;
   };
+  jurisdictionBaselines: {
+    usPublicDomain: number;
+    life70: number;
+    life80: number;
+    life100: number;
+  };
 }
 
 interface ContractBlock {
@@ -1267,6 +1273,14 @@ describe('ast-parser architectural & SQL verification engine', () => {
       'src/lib/sync-utils.ts': `
         export const PASSIVE_SYNC_COOLDOWN_MS = 22_500;
       `,
+      'src/lib/copyright-engine.ts': `
+        export const JURISDICTION_BASELINE_COUNTS: Record<string, number> = {
+          US_PUBLIC_DOMAIN: 80000,
+          LIFE_70: 56000,
+          LIFE_80: 51000,
+          LIFE_100: 43000,
+        };
+      `,
     });
 
     const spec = astParser.extractRuntimeSpecConstants(rootDir);
@@ -1305,6 +1319,12 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(spec.r2.maxBookMb).toBe(20);
     expect(spec.r2.maxCoverMb).toBe(4);
     expect(spec.r2.defaultTimeoutMs).toBe(12000);
+    expect(spec.jurisdictionBaselines).toEqual({
+      usPublicDomain: 80000,
+      life70: 56000,
+      life80: 51000,
+      life100: 43000,
+    });
   });
 
   it('extracts GitHub Actions workflows and Dependabot config from synthetic YAML fixtures', () => {
@@ -1461,6 +1481,12 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(liveSpec.routeCache.contentCover.sMaxAge).toBe(604800);
     expect(liveSpec.cli.r2MinActiveForPrune).toBe(50000);
     expect(liveSpec.cli.wikidataSparqlTimeoutMs).toBe(45000);
+    expect(liveSpec.jurisdictionBaselines).toEqual({
+      usPublicDomain: 78086,
+      life70: 55754,
+      life80: 50200,
+      life100: 42100,
+    });
 
     expect(liveWorkflows.workflows.length).toBeGreaterThanOrEqual(11);
     const releaseWf = liveWorkflows.workflows.find((w) => w.filename === 'release.yml');

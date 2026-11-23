@@ -71,4 +71,54 @@ describe('ReaderFloatingToolsPod', () => {
     );
     expect(onToggleTranslations).toHaveBeenCalledTimes(1);
   });
+
+  it('renders leather-brown bookmark indicator dot when hasPinnedBookmark is true and annotationsCount is 0, and hides dot behind numeric badge when highlights exist', () => {
+    const { rerender } = render(
+      <ReaderFloatingToolsPod
+        theme="light"
+        annotationsCount={0}
+        hasPinnedBookmark={true}
+        isTocOpen={false}
+        isAnnotationsOpen={false}
+        isSearchOpen={false}
+        isSpeechOpen={false}
+        isControlsOpen={false}
+        isTranslationsOpen={false}
+        onToggleSearch={vi.fn()}
+        onToggleControls={vi.fn()}
+        onToggleAnnotations={vi.fn()}
+        onToggleSpeech={vi.fn()}
+        onToggleTranslations={vi.fn()}
+        onThemeChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('footer-settings-toggle'));
+    const notesBtn = screen.getByRole('button', { name: 'Notes & Highlights' });
+    expect(notesBtn).toHaveAttribute('title', 'View Notes, Highlights & Bookmark');
+    expect(screen.getByTestId('footer-annotations-bookmark-dot')).toHaveClass('bg-primary');
+
+    rerender(
+      <ReaderFloatingToolsPod
+        theme="light"
+        annotationsCount={2}
+        hasPinnedBookmark={true}
+        isTocOpen={false}
+        isAnnotationsOpen={false}
+        isSearchOpen={false}
+        isSpeechOpen={false}
+        isControlsOpen={false}
+        isTranslationsOpen={false}
+        onToggleSearch={vi.fn()}
+        onToggleControls={vi.fn()}
+        onToggleAnnotations={vi.fn()}
+        onToggleSpeech={vi.fn()}
+        onToggleTranslations={vi.fn()}
+        onThemeChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('footer-annotations-badge')).toHaveTextContent('2');
+    expect(screen.queryByTestId('footer-annotations-bookmark-dot')).toBeNull();
+  });
 });

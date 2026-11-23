@@ -407,4 +407,40 @@ describe('ReaderFooter', () => {
     expect(footerEl).toHaveAttribute('data-bars-hidden', 'true');
     expect(footerEl).toHaveClass('fixed', 'bottom-0', 'inset-x-0', 'translate-y-full', 'opacity-0', 'pointer-events-none');
   });
+
+  it('forwards hasPinnedBookmark to floating tools pod badge when highlights count is zero', () => {
+    const { rerender } = render(
+      <ReaderFooter
+        {...defaultProps}
+        annotationsCount={0}
+        hasPinnedBookmark={true}
+        onToggleToc={vi.fn()}
+        onToggleSearch={vi.fn()}
+        onToggleSpeech={vi.fn()}
+        onToggleAnnotations={vi.fn()}
+        onToggleControls={vi.fn()}
+        onToggleTranslations={vi.fn()}
+        onThemeChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('footer-settings-toggle'));
+    expect(screen.getByTestId('footer-annotations-bookmark-dot')).toBeInTheDocument();
+
+    rerender(
+      <ReaderFooter
+        {...defaultProps}
+        annotationsCount={0}
+        hasPinnedBookmark={false}
+        onToggleToc={vi.fn()}
+        onToggleSearch={vi.fn()}
+        onToggleSpeech={vi.fn()}
+        onToggleAnnotations={vi.fn()}
+        onToggleControls={vi.fn()}
+        onToggleTranslations={vi.fn()}
+        onThemeChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId('footer-annotations-bookmark-dot')).toBeNull();
+  });
 });

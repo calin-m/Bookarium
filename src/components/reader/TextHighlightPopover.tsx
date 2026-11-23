@@ -8,6 +8,7 @@ import type { HighlightColor, FellowAnnotation } from '@/stores/useAnnotationSto
 import { isPlaceholderUsername } from '@/stores/useFellowshipStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
+import { useVisualViewportKeyboard } from '@/hooks/useVisualViewportKeyboard';
 import { Textarea } from '@/components/ui/Textarea';
 
 export interface TextHighlightPopoverProps {
@@ -19,6 +20,7 @@ export interface TextHighlightPopoverProps {
   existingAnnotationId?: string;
   fellowAnnotation?: FellowAnnotation | null;
   isFellowOnly?: boolean;
+  isSpeechOpen?: boolean;
   onSelectColor: (color: HighlightColor) => void;
   onSaveNote?: (note: string) => void;
   onDelete?: () => void;
@@ -50,6 +52,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   existingAnnotationId,
   fellowAnnotation = null,
   isFellowOnly = false,
+  isSpeechOpen = false,
   onSelectColor,
   onSaveNote,
   onDelete,
@@ -58,11 +61,13 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   theme = 'light',
 }) => {
   const hasMounted = useHasMounted();
+  const { keyboardHeight, isKeyboardOpen } = useVisualViewportKeyboard();
   const [isNoteExpanded, setIsNoteExpanded] = useState(Boolean(existingNote));
   const [isEditingNote, setIsEditingNote] = useState(!existingNote);
   const [noteText, setNoteText] = useState(existingNote);
   const [copied, setCopied] = useState(false);
   const [activeSourceTab, setActiveSourceTab] = useState<'mine' | 'fellow'>(isFellowOnly ? 'fellow' : 'mine');
+  const [measuredSize, setMeasuredSize] = useState<{ width: number; height: number } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const [prevProps, setPrevProps] = useState({ existingNote, isOpen, isFellowOnly });
@@ -76,7 +81,29 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
     setIsNoteExpanded(Boolean(existingNote));
     setIsEditingNote(!existingNote);
     setActiveSourceTab(isFellowOnly ? 'fellow' : 'mine');
+    setMeasuredSize(null);
   }
+
+  useEffect(() => {
+    if (!isOpen || typeof ResizeObserver === 'undefined') return;
+    const el = popoverRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const nextWidth = Math.round(entry.contentRect.width);
+      const nextHeight = Math.round(entry.contentRect.height);
+      if (nextWidth <= 0 || nextHeight <= 0) return;
+      setMeasuredSize((prev) =>
+        prev && prev.width === nextWidth && prev.height === nextHeight
+          ? prev
+          : { width: nextWidth, height: nextHeight }
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isOpen, isNoteExpanded, isEditingNote, activeSourceTab]);
 
   // Click outside to close
   useEffect(() => {
@@ -131,21 +158,43 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
 
   const isTouchDevice =
     typeof window !== 'undefined' &&
-    window.matchMedia &&
-    (window.matchMedia('(pointer: coarse)').matches || (window.innerWidth && window.innerWidth < 640));
+    Boolean(window.matchMedia) &&
+    (window.matchMedia('(pointer: coarse)').matches ||
+      (Boolean(window.innerWidth) && window.innerWidth < 640));
 
-  // Viewport bounding clamp and centered positioning for desktop
-  const popoverWidth = isNoteExpanded ? 288 : 256;
-  const halfWidth = popoverWidth / 2;
   const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+
+  const fallbackWidth = isNoteExpanded || fellowAnnotation ? 288 : 256;
+  const fallbackHeight = isNoteExpanded ? 130 : 54;
+  const popoverWidth = measuredSize?.width || fallbackWidth;
+  const popoverHeight = measuredSize?.height || fallbackHeight;
+  const halfWidth = popoverWidth / 2;
 
   // Center horizontally over the anchor point while preventing offscreen overflow
-  const safeLeft = Math.max(12, Math.min(position.left - halfWidth, windowWidth - popoverWidth - 12));
+  const safeLeft = Math.max(
+    12,
+    Math.min(position.left - halfWidth, windowWidth - popoverWidth - 12)
+  );
 
-  // Vertical placement for desktop: place below anchor if room, otherwise place above
+  // Vertical placement for desktop: place above anchor unless near top header, otherwise place below, and clamp to viewport
   const anchorBottom = position.bottom ?? position.top;
-  const showBelow = isNoteExpanded ? position.top < 160 : position.top < 120;
-  const safeTop = showBelow ? anchorBottom + 12 : Math.max(70, position.top - (isNoteExpanded ? 130 : 54));
+  const minTopClearance = 84;
+  const showBelow = position.top < minTopClearance + popoverHeight + 12;
+  const rawTop = showBelow ? anchorBottom + 12 : position.top - popoverHeight;
+  const maxTop = Math.max(minTopClearance, windowHeight - popoverHeight - 16);
+  const safeTop = Math.max(minTopClearance, Math.min(rawTop, maxTop));
+
+  // Dynamic tactile dock offset: clear software virtual keyboard, Read Aloud bar, or responsive footer
+  const dockedBottom = isKeyboardOpen
+    ? `calc(${keyboardHeight}px + 0.75rem + env(safe-area-inset-bottom, 0px))`
+    : isSpeechOpen
+      ? windowWidth >= 768
+        ? '9.75rem'
+        : '11.5rem'
+      : windowWidth >= 1024
+        ? '4.75rem'
+        : '6rem';
 
   const themeBg =
     theme === 'dark'
@@ -163,17 +212,17 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
         aria-label="Text selection tools"
         initial={
           isTouchDevice
-            ? { opacity: 0, scale: 0.9, x: '-50%', y: 8 }
+            ? { opacity: 0, scale: 0.96, y: 8 }
             : { opacity: 0, scale: 0.9, y: 6 }
         }
         animate={
           isTouchDevice
-            ? { opacity: 1, scale: 1, x: '-50%', y: 0 }
+            ? { opacity: 1, scale: 1, y: 0 }
             : { opacity: 1, scale: 1, y: 0 }
         }
         exit={
           isTouchDevice
-            ? { opacity: 0, scale: 0.9, x: '-50%', y: 8 }
+            ? { opacity: 0, scale: 0.96, y: 8 }
             : { opacity: 0, scale: 0.9, y: 4 }
         }
         transition={{ duration: 0.15 }}
@@ -181,19 +230,27 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
           isTouchDevice
             ? {
                 position: 'fixed',
-                bottom: '6rem',
-                left: '50%',
-                zIndex: 60,
+                bottom: dockedBottom,
+                left: 0,
+                right: 0,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                width: 'fit-content',
+                maxWidth: 'calc(100vw - 1.5rem)',
+                maxHeight: 'calc(100dvh - 5.5rem)',
+                overflowY: 'auto',
+                zIndex: 10002,
               }
             : {
                 position: 'fixed',
                 top: safeTop,
                 left: safeLeft,
-                zIndex: 60,
+                maxWidth: 'calc(100vw - 1.5rem)',
+                zIndex: 10002,
               }
         }
         className={`rounded-xl border p-1.5 flex flex-col gap-1.5 text-xs font-sans select-none backdrop-blur-md ${
-          isTouchDevice ? 'mb-[env(safe-area-inset-bottom,0px)]' : ''
+          isTouchDevice && !isKeyboardOpen ? 'mb-[env(safe-area-inset-bottom,0px)]' : ''
         } ${themeBg}`}
       >
         {/* 2-Pill Overlap Switcher when both user and Fellow Scholar highlighted the same passage */}

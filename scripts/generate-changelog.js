@@ -9,6 +9,37 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.72',
+    date: '2026-11-23',
+    title: 'Tactile & Desktop Selection Popover Visual-Viewport Elevation, Read Aloud Clearance & Stacking Hardening',
+    sections: {
+      Fixed: [
+        '**Tactile & Desktop `TextHighlightPopover` Positioning, Keyboard Elevation & Stacking Layer (`src/components/reader/TextHighlightPopover.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/app/read/[id]/page.tsx`, `docs/DECISIONS.md`, co-located tests)**: Raised popover stacking to `zIndex: 10002` above `ReaderHeader` and `ReaderSpeechBar`, wired `useVisualViewportKeyboard()` + `isSpeechOpen` bottom clearance onto coarse-pointer docks, replaced `left: 50%` + `x: -50%` with layout centering and landscape height clamping, added `ResizeObserver` + desktop top/bottom viewport clamping, and refined multi-line `getClientRects()` + `<mark>` `bottom` rect coordinates (`ADR-019`, `ADR-080`).',
+      ],
+    },
+  },
+  {
+    version: '2.9.71',
+    date: '2026-11-23',
+    title: 'Notes & Highlights Drawer Silk Bookmark Integration, Confirmation Modal & Leather-Brown Token',
+    sections: {
+      Added: [
+        '**Notes & Highlights Drawer Silk Bookmark Integration, Clear Confirmation Modal & Leather-Brown Token (`src/config/annotation-tokens.ts`, `src/hooks/reader/useReaderSession.ts`, `src/components/reader/DeleteAnnotationModal.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/components/reader/ReaderAnnotationsDrawer.tsx`, `src/components/reader/ReaderHeader.tsx`, `src/components/reader/ReaderFooter.tsx`, `src/components/reader/ReaderFloatingToolsPod.tsx`, `src/app/read/[id]/page.tsx`, `docs/DECISIONS.md`, co-located tests)**: Exposed immutable `pinnedBookmark` coordinates from `useReaderSession`, aligned `BOOKMARK_DRAWER_TOKEN` with Bookarium\'s leather-brown `primary` ribbon palette separate from the 4 pastel highlight colors, surfaced a pinned Bookmark card with `Bookmark (1)` pill (hidden under `Fellows` and highlight tabs), gated bookmark clearing behind `DeleteAnnotationModal`, added `bookmarkJumpNonce` centering + `ring-primary/80` pulse in paginated/scroll modes, and added Header/Footer bookmark dots (`ADR-014`, `ADR-068`).',
+      ],
+    },
+  },
+  {
+    version: '2.9.70',
+    date: '2026-11-22',
+    title: 'Non-Breaking Governance Parity Hardening, Scoped Link Validation & Cross-Script Discovery Rules',
+    sections: {
+      Changed: [
+        '**AST `jurisdictionBaselines` Extraction, Pass 5 Doc Parity Gates & Static Pre-Commit Guard (`scripts/lib/ast-parser.js`, `scripts/lib/ast-parser.test.ts`, `scripts/verify-build.js`, `scripts/approval-gate.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Extracted `JURISDICTION_BASELINE_COUNTS` (`jurisdictionBaselines`) into `extractRuntimeSpecConstants` (+ synthetic/live tests); enforced `README.md` Diagram 1 vs. `docs/ARCHITECTURE.md` parity, SQL explicit index & EU/US baseline parity, extension-scoped relative Markdown link checks, and dynamic `collectScriptFiles` `scripts/` test co-location via `STANDALONE_RUNNER_SCRIPTS` in `Pass 5`; and added static `.husky/pre-commit` verification to `scripts/approval-gate.js` (`ADR-078`, `ADR-079`, `ADR-081`).',
+        '**Cross-Script Search Protocols & `docs/INFRASTRUCTURE.md` Relative Link Repairs (`AGENTS.md`, `.agents/AGENTS.md`, `docs/INFRASTRUCTURE.md`)**: Repaired relative `../src/lib/rate-limiter.ts` and `../src/proxy.ts` links in `docs/INFRASTRUCTURE.md`, and codified **All-of-`scripts/` Semantic Search** + **Generator -> Verifier Reverse Impact** traceability directly inside `Rule 0` (`Stage 0`/`Stage 4`) and `Rule 1` (`ADR-079`, `ADR-081`).',
+      ],
+    },
+  },
+  {
     version: '2.9.69',
     date: '2026-11-22',
     title: 'Non-Breaking 5-Layer Caching Efficiency, In-Flight Request Coalescing & Passive Auth Sync Deduplication',

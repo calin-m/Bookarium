@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { getReaderTheme, NEXT_READER_THEME } from '@/config/reader-themes';
+import { BOOKMARK_DRAWER_TOKEN } from '@/config/annotation-tokens';
 
 export interface ReaderFloatingToolsPodProps {
   theme?: ReaderTheme;
@@ -39,6 +40,7 @@ export interface ReaderFloatingToolsPodProps {
   isTranslationsOpen?: boolean;
   isSelectionPopoverOpen?: boolean;
   annotationsCount?: number;
+  hasPinnedBookmark?: boolean;
   isHidden?: boolean;
   /** Optional ref for parent (e.g. TOC button) to trigger idle timer reset */
   scheduleIdleDimRef?: React.MutableRefObject<(() => void) | null>;
@@ -68,6 +70,7 @@ export const ReaderFloatingToolsPod: React.FC<
   isTranslationsOpen = false,
   isSelectionPopoverOpen = false,
   annotationsCount = 0,
+  hasPinnedBookmark = false,
   isHidden = false,
   scheduleIdleDimRef,
 }) => {
@@ -502,7 +505,11 @@ export const ReaderFloatingToolsPod: React.FC<
                   onToggleAnnotations();
                 }}
                 aria-label="Notes & Highlights"
-                title="View Notes & Highlights"
+                title={
+                  hasPinnedBookmark
+                    ? 'View Notes, Highlights & Bookmark'
+                    : 'View Notes & Highlights'
+                }
                 className={`relative p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
                   isAnnotationsOpen
                     ? activeTheme.activePill
@@ -510,14 +517,20 @@ export const ReaderFloatingToolsPod: React.FC<
                 }`}
               >
                 <Highlighter className="w-4 h-4" />
-                {annotationsCount > 0 && (
+                {annotationsCount > 0 ? (
                   <span
                     data-testid="footer-annotations-badge"
                     className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary-600 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-2xs"
                   >
                     {annotationsCount > 99 ? '99+' : annotationsCount}
                   </span>
-                )}
+                ) : hasPinnedBookmark ? (
+                  <span
+                    data-testid="footer-annotations-bookmark-dot"
+                    aria-hidden="true"
+                    className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${BOOKMARK_DRAWER_TOKEN.dotClass} border border-white dark:border-stone-900 shadow-2xs`}
+                  />
+                ) : null}
               </button>
             )}
 

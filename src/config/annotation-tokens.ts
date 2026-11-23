@@ -98,3 +98,30 @@ export const ANNOTATION_COLOR_LIST: readonly AnnotationColorTheme[] = Object.val
 export const ALL_COLORS_FILTER_BADGE =
   'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-border';
 
+export interface BookmarkDrawerTheme {
+  readonly id: 'bookmark';
+  readonly label: string;
+  readonly dotClass: string;
+  readonly pillActiveClass: string;
+  readonly badgeClass: string;
+  readonly drawerCardClass: string;
+  readonly jumpLinkClass: string;
+  readonly quoteHoverUnderlineClass: string;
+  readonly surfacePulseRingClass: string;
+}
+
+export const BOOKMARK_DRAWER_TOKEN: BookmarkDrawerTheme = {
+  id: 'bookmark',
+  label: 'Bookmark',
+  dotClass: 'bg-primary',
+  pillActiveClass:
+    'border-primary-700 bg-primary-100/80 text-primary-900 dark:border-primary-400 dark:bg-primary-900/40 dark:text-primary-200',
+  badgeClass:
+    'bg-primary-100 text-primary-900 border border-primary-300 dark:bg-primary-900/40 dark:text-primary-200 dark:border-primary-700/60',
+  drawerCardClass:
+    'border-l-primary-700 dark:border-l-primary-400 bg-primary/[0.07] dark:bg-primary/[0.12]',
+  jumpLinkClass: 'text-primary',
+  quoteHoverUnderlineClass: 'decoration-primary/50',
+  surfacePulseRingClass: 'ring-primary/80',
+};
+

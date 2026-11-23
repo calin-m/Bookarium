@@ -4531,6 +4531,10 @@ function extractRuntimeSpecConstants(rootDirPath) {
     path.join(rootDirPath, 'src', 'lib', 'sync-utils.ts'),
     ['PASSIVE_SYNC_COOLDOWN_MS']
   );
+  const copyrightEngineDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'lib', 'copyright-engine.ts'),
+    ['JURISDICTION_BASELINE_COUNTS']
+  );
   const translationsRouteDecl = collectDeclaredAstValues(
     path.join(rootDirPath, 'src', 'app', 'api', 'books', 'translations', 'route.ts'),
     ['MAX_BOOK_ID']
@@ -4685,6 +4689,15 @@ function extractRuntimeSpecConstants(rootDirPath) {
       scanDefaultTerms: scanR2Decl.arrays.get('DEFAULT_SCAN_TERMS') || ['asiafilm'],
       wikidataSparqlTimeoutMs: ingestTransDecl.scalars.get('WIKIDATA_SPARQL_TIMEOUT_MS') ?? 45000,
     },
+    jurisdictionBaselines: (() => {
+      const counts = copyrightEngineDecl.objects.get('JURISDICTION_BASELINE_COUNTS') || {};
+      return {
+        usPublicDomain: counts.US_PUBLIC_DOMAIN ?? 78086,
+        life70: counts.LIFE_70 ?? 55754,
+        life80: counts.LIFE_80 ?? 50200,
+        life100: counts.LIFE_100 ?? 42100,
+      };
+    })(),
   };
 }
 

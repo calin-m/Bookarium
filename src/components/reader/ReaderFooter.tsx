@@ -43,6 +43,7 @@ export interface ReaderFooterProps {
   isTranslationsOpen?: boolean;
   isSelectionPopoverOpen?: boolean;
   annotationsCount?: number;
+  hasPinnedBookmark?: boolean;
   isHidden?: boolean;
 }
 
@@ -77,6 +78,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
   isTranslationsOpen = false,
   isSelectionPopoverOpen = false,
   annotationsCount = 0,
+  hasPinnedBookmark = false,
   isHidden = false,
 }) => {
   const activeTheme = getReaderTheme(theme);
@@ -144,6 +146,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
           isTranslationsOpen={isTranslationsOpen}
           isSelectionPopoverOpen={isSelectionPopoverOpen}
           annotationsCount={annotationsCount}
+          hasPinnedBookmark={hasPinnedBookmark}
           isHidden={isHidden}
           scheduleIdleDimRef={scheduleIdleDimRef}
         />

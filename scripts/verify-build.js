@@ -1,7 +1,7 @@
 /**
  * @module scripts/verify-build
  * @scope 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
- * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+ * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, circular `SECURITY.md` symbol parity, `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
  * @rationale Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
  * @adr ADR-073, ADR-078, ADR-079, ADR-081
  */
@@ -12,7 +12,9 @@ const net = require('net');
 const path = require('path');
 const { execSync, execFileSync, spawn } = require('child_process');
 const {
+  collectScriptFiles,
   extractRuntimeSpecConstants,
+  extractSqlSchemaEntities,
   extractWorkflowSpecCatalog,
   REQUIRED_GOVERNANCE_DOCS,
 } = require('./lib/ast-parser');
@@ -1140,29 +1142,26 @@ function pass5AdrValidation() {
     verifyCoLocatedTests(dir);
   }
 
-  // Enforce 1:1 co-located *.test.ts coverage for CLI ingestion & security AST pipeline scripts
+  // Enforce 1:1 co-located *.test.ts coverage dynamically across scripts/ while exempting standalone dev/doc/build runners
   // (Dev/doc/build runners such as verify-build.js & generate-*.js are executed directly in Pass 4/5 to avoid circular Vitest invocation)
-  const requiredPipelineScriptTests = [
-    'scripts/ingest-catalog.js',
-    'scripts/ingest-translations.js',
-    'scripts/purge-vercel-cache.js',
-    'scripts/scan-r2-content.js',
-    'scripts/sync-r2-assets.js',
-    'scripts/sync-featured-quotes.js',
-    'scripts/sync-gutenberg-catalog.js',
-    'scripts/lib/ast-parser.js',
-    'scripts/lib/cli-progress.js',
-    'scripts/lib/r2-sigv4.js',
-    'scripts/lib/sast-validators.js',
-    'scripts/eslint-rules/bookarium-security.js',
-  ];
-  for (const relScript of requiredPipelineScriptTests) {
-    const absScript = path.join(rootDir, relScript);
-    if (!fs.existsSync(absScript)) continue;
-    const expectedTestRel = relScript.replace(/\.js$/, '.test.ts');
+  const STANDALONE_RUNNER_SCRIPTS = new Set([
+    'scripts/approval-gate.js',
+    'scripts/generate-architecture-matrix.js',
+    'scripts/generate-changelog.js',
+    'scripts/generate-contracts-docs.js',
+    'scripts/generate-parser-docs.js',
+    'scripts/generate-pwa-icons.js',
+    'scripts/generate-quality-report.js',
+    'scripts/generate-roadmap.js',
+    'scripts/open-browser.js',
+    'scripts/verify-build.js',
+  ]);
+  for (const scriptEntry of collectScriptFiles(rootDir)) {
+    if (STANDALONE_RUNNER_SCRIPTS.has(scriptEntry.rel)) continue;
+    const expectedTestRel = scriptEntry.rel.replace(/\.js$/, '.test.ts');
     if (!fs.existsSync(path.join(rootDir, expectedTestRel))) {
       docViolations.push(
-        `Missing mandatory co-located pipeline test suite for "${relScript}" (expected ${expectedTestRel}).`
+        `Missing mandatory co-located pipeline test suite for "${scriptEntry.rel}" (expected ${expectedTestRel}).`
       );
     }
   }
@@ -1266,7 +1265,6 @@ function pass5AdrValidation() {
       detectOrphanedModules,
       analyzeScriptsDependencyGraph,
       extractCrossBoundaryCouplingCatalog,
-      extractSqlSchemaEntities,
       TIER_1_CONTRACTED_MODULES,
       TIER_2_CONTRACTED_MODULES,
       TIER_3_CONTRACTED_MODULES,
@@ -1514,6 +1512,27 @@ function pass5AdrValidation() {
         );
       }
     }
+
+    // Verify explicit relative Markdown links resolving to repository files (.md, .sql, source, assets) exist on disk
+    const linkCheckText =
+      relDoc === 'README.md'
+        ? docText.replace(/<!-- BEGIN:latest-release -->[\s\S]*?<!-- END:latest-release -->/, '')
+        : docText;
+    const docLinkFileExtRe = /\.(?:md|sql|ts|tsx|js|jsx|css|yml|yaml|json|png|svg|ico|webp)$/i;
+    for (const linkMatch of linkCheckText.matchAll(/\]\(([^)\s]+)\)/g)) {
+      const rawTarget = linkMatch[1];
+      if (/^(?:https?:|mailto:|file:|#)/i.test(rawTarget)) continue;
+      const cleanTarget = rawTarget.split(/[?#]/)[0];
+      if (!cleanTarget || !docLinkFileExtRe.test(cleanTarget)) continue;
+      const resolvedTarget = cleanTarget.startsWith('/')
+        ? path.join(rootDir, cleanTarget.slice(1))
+        : path.resolve(path.dirname(fullDoc), cleanTarget);
+      if (!fs.existsSync(resolvedTarget)) {
+        docViolations.push(
+          `Broken relative documentation link "${rawTarget}" in ${relDoc} (target not found on disk).`
+        );
+      }
+    }
   }
 
   // Verify explicit src/... and scripts/... file paths across governance docs & runbooks exist on disk
@@ -1603,7 +1622,7 @@ function pass5AdrValidation() {
   }
 
   // Verify live V8 coverage threshold parity across engineering guides
-  const { coverageThresholds } = extractRuntimeSpecConstants(rootDir);
+  const { coverageThresholds, jurisdictionBaselines } = extractRuntimeSpecConstants(rootDir);
   const expectedCovTuple = `${coverageThresholds.lines}/${coverageThresholds.statements}/${coverageThresholds.functions}/${coverageThresholds.branches}`;
   const covDocChecks = [
     { rel: 'CONTRIBUTING.md', requireTuple: true, requireMetrics: true },
@@ -1657,6 +1676,48 @@ function pass5AdrValidation() {
       docViolations.push(
         `Stale test suite count in ${check.rel}: found ${matchSuite[1]}, expected ${actualSuiteCount} (run "npm run docs:sync").`
       );
+    }
+  }
+
+  // Verify SQL explicit index count and JURISDICTION_BASELINE_COUNTS parity across governance & README docs
+  const liveSqlEntities = fs.existsSync(schemaPath)
+    ? extractSqlSchemaEntities(fs.readFileSync(schemaPath, 'utf-8'))
+    : null;
+  const liveIndexCount = liveSqlEntities?.indexes?.length ?? 0;
+  if (liveIndexCount > 0) {
+    for (const idxDocRel of ['AGENTS.md', '.agents/AGENTS.md', 'README.md']) {
+      const absIdxDoc = path.join(rootDir, idxDocRel);
+      if (!fs.existsSync(absIdxDoc)) continue;
+      const idxDocText = fs.readFileSync(absIdxDoc, 'utf-8');
+      for (const idxMatch of idxDocText.matchAll(
+        /(\d+)\s+explicit\s+(?:GIN\/B-Tree\/unique\s+)?indexes/gi
+      )) {
+        const declaredIndexes = parseInt(idxMatch[1], 10);
+        if (declaredIndexes !== liveIndexCount) {
+          docViolations.push(
+            `Stale SQL index count "${idxMatch[0]}" in ${idxDocRel}: expected ${liveIndexCount} matching supabase/schema.sql.`
+          );
+        }
+      }
+    }
+  }
+
+  if (fs.existsSync(path.join(rootDir, 'README.md')) && jurisdictionBaselines) {
+    const readmeBaselineText = fs.readFileSync(path.join(rootDir, 'README.md'), 'utf-8');
+    const baselineMatch = readmeBaselineText.match(
+      /([\d,]+)\s+volumes\s+in\s+the\s+EU\s+vs\.\s+([\d,]+)\s+in\s+the\s+U\.S\./
+    );
+    if (baselineMatch) {
+      const docEu = parseInt(baselineMatch[1].replace(/,/g, ''), 10);
+      const docUs = parseInt(baselineMatch[2].replace(/,/g, ''), 10);
+      if (
+        docEu !== jurisdictionBaselines.life70 ||
+        docUs !== jurisdictionBaselines.usPublicDomain
+      ) {
+        docViolations.push(
+          `Stale jurisdiction catalog baseline counts in README.md: found EU=${docEu}, US=${docUs}, expected EU=${jurisdictionBaselines.life70}, US=${jurisdictionBaselines.usPublicDomain} (from src/lib/copyright-engine.ts).`
+        );
+      }
     }
   }
 
@@ -1986,6 +2047,27 @@ function pass5AdrValidation() {
           `README.md architecture directory count does not match docs/ARCHITECTURE.md (${archMermaidCount} diagrams; run "npm run docs:sync").`
         );
       }
+      const archDiag1Marker = '### 1. End-to-End System Context & Data Flow';
+      const archDiag1Start = archContent.indexOf(archDiag1Marker);
+      const archMermaidStart =
+        archDiag1Start !== -1 ? archContent.indexOf('```mermaid', archDiag1Start) : -1;
+      const archMermaidEnd =
+        archMermaidStart !== -1 ? archContent.indexOf('```', archMermaidStart + 10) : -1;
+      const archDiagram1Block =
+        archMermaidStart !== -1 && archMermaidEnd !== -1
+          ? archContent.slice(archMermaidStart, archMermaidEnd + 3).replace(/\r\n/g, '\n').trim()
+          : '';
+      const readmeArchBlockMatch = readmeText.match(
+        /<!-- BEGIN:architecture-diagrams -->[\s\S]*?(```mermaid[\s\S]*?```)[\s\S]*?<!-- END:architecture-diagrams -->/
+      );
+      const readmeDiagram1Block = readmeArchBlockMatch
+        ? readmeArchBlockMatch[1].replace(/\r\n/g, '\n').trim()
+        : '';
+      if (archDiagram1Block && (!readmeDiagram1Block || readmeDiagram1Block !== archDiagram1Block)) {
+        docViolations.push(
+          'README.md Diagram 1 block inside <!-- BEGIN:architecture-diagrams --> is out of sync with docs/ARCHITECTURE.md (run "npm run docs:sync").'
+        );
+      }
     }
 
     // Mermaid Syntax, Subgraph Cycle & HTML-Tag Safety Verification across Markdown Docs
@@ -2250,7 +2332,6 @@ function pass5AdrValidation() {
           const sastExports = Object.keys(require('./lib/sast-validators'));
           const securityPlugin = require('./eslint-rules/bookarium-security');
           const eslintRuleNames = Object.keys((securityPlugin && securityPlugin.rules) || {});
-          const { extractSqlSchemaEntities } = require('./lib/ast-parser');
           const sqlEntities = fs.existsSync(schemaPath)
             ? extractSqlSchemaEntities(fs.readFileSync(schemaPath, 'utf-8'))
             : { tableNames: [], hasMigrationLedger: false };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Highlighter, Search, Trash2, Edit3, ArrowRight, BookOpen, Check, X, Shield, Unlock, Feather } from 'lucide-react';
+import { Highlighter, Bookmark, Search, Trash2, Edit3, ArrowRight, BookOpen, Check, X, Shield, Unlock, Feather } from 'lucide-react';
 import { ReaderDrawerShell } from './ReaderDrawerShell';
 import type { Annotation, FellowAnnotation, HighlightColor, MarginaliaSourceFilter } from '@/stores/useAnnotationStore';
 import {
@@ -13,17 +13,31 @@ import {
 import type { ReaderTheme } from '@/stores/useReaderStore';
 import { formatFellowScholarLabel } from '@/stores/useFellowshipStore';
 import { getReaderTheme } from '@/config/reader-themes';
-import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST } from '@/config/annotation-tokens';
+import { ANNOTATION_COLOR_CONFIG, ANNOTATION_COLOR_LIST, BOOKMARK_DRAWER_TOKEN } from '@/config/annotation-tokens';
 import { attachHorizontalDragAndWheelScroll } from '@/lib/scroll-utils';
 import { DeleteAnnotationModal } from './DeleteAnnotationModal';
 import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
 import { Textarea } from '@/components/ui/Textarea';
+
+export interface DrawerPinnedBookmark {
+  chapterIndex: number;
+  chapterPage: number;
+  bookmarkRow: number;
+  bookmarkText?: string;
+  chapterTitle?: string;
+}
+
+export type DrawerFilterColor = HighlightColor | 'bookmark' | 'all';
 
 export interface ReaderAnnotationsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   annotations: Annotation[];
   fellowAnnotations?: FellowAnnotation[];
+  pinnedBookmark?: DrawerPinnedBookmark | null;
+  isViewingPinnedBookmarkPage?: boolean;
+  onJumpToBookmark?: () => void;
+  onClearBookmark?: () => void;
   hasActiveSymposium?: boolean;
   symposiumCompanionUsername?: string;
   symposiumCompanionDisplayName?: string;
@@ -50,6 +64,10 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   onClose,
   annotations,
   fellowAnnotations = [],
+  pinnedBookmark = null,
+  isViewingPinnedBookmarkPage = false,
+  onJumpToBookmark,
+  onClearBookmark,
   hasActiveSymposium = false,
   symposiumCompanionUsername,
   symposiumCompanionDisplayName,
@@ -66,7 +84,7 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   onSaveFellowAnnotation,
 }) => {
   const activeTheme = getReaderTheme(theme);
-  const [selectedColorFilter, setSelectedColorFilter] = useState<HighlightColor | 'all'>('all');
+  const [selectedColorFilter, setSelectedColorFilter] = useState<DrawerFilterColor>('all');
   const [localSourceFilter, setLocalSourceFilter] = useState<MarginaliaSourceFilter>('all');
   const [localSpoilerShield, setLocalSpoilerShield] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,9 +93,14 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
   const [savingFellowId, setSavingFellowId] = useState<string | null>(null);
   const [savingFellowText, setSavingFellowText] = useState('');
   const [itemToDelete, setItemToDelete] = useState<Annotation | null>(null);
+  const [isConfirmingClearBookmark, setIsConfirmingClearBookmark] = useState(false);
 
   const effectiveSourceFilter = marginaliaSourceFilter ?? localSourceFilter;
   const effectiveSpoilerShield = spoilerShieldEnabled ?? localSpoilerShield;
+  const activeColorFilter: DrawerFilterColor =
+    selectedColorFilter === 'bookmark' && (!pinnedBookmark || effectiveSourceFilter === 'fellows')
+      ? 'all'
+      : selectedColorFilter;
 
   const handleSourceChange = (next: MarginaliaSourceFilter) => {
     setLocalSourceFilter(next);
@@ -116,19 +139,37 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
     );
   }, [annotations, visibleFellowAnnotations, effectiveSourceFilter]);
 
+  const canShowBookmarkBySource = Boolean(pinnedBookmark) && effectiveSourceFilter !== 'fellows';
+  const normalizedSearch = searchQuery.toLowerCase().trim();
+  const isBookmarkVisible = useMemo(() => {
+    if (!pinnedBookmark || !canShowBookmarkBySource) return false;
+    if (activeColorFilter !== 'all' && activeColorFilter !== 'bookmark') return false;
+    if (!normalizedSearch) return true;
+    const coordLabel = `sec ${pinnedBookmark.chapterIndex + 1} · page ${pinnedBookmark.chapterPage} · line ${pinnedBookmark.bookmarkRow + 1}`;
+    return (
+      'bookmark'.includes(normalizedSearch) ||
+      coordLabel.includes(normalizedSearch) ||
+      (pinnedBookmark.chapterTitle?.toLowerCase().includes(normalizedSearch) ?? false) ||
+      (pinnedBookmark.bookmarkText?.toLowerCase().includes(normalizedSearch) ?? false)
+    );
+  }, [pinnedBookmark, canShowBookmarkBySource, activeColorFilter, normalizedSearch]);
+
   const filteredAnnotations = useMemo(() => {
+    if (activeColorFilter === 'bookmark') return [];
     return combinedSourceAnnotations.filter((a) => {
-      const matchesColor = selectedColorFilter === 'all' || a.color === selectedColorFilter;
-      const q = searchQuery.toLowerCase().trim();
+      const matchesColor = activeColorFilter === 'all' || a.color === activeColorFilter;
       const matchesSearch =
-        !q ||
-        a.selectedText.toLowerCase().includes(q) ||
-        (a.note && a.note.toLowerCase().includes(q)) ||
-        (a.pairedFellowAnnotation?.note && a.pairedFellowAnnotation.note.toLowerCase().includes(q)) ||
-        (a.pairedFellowAnnotation?.selectedText && a.pairedFellowAnnotation.selectedText.toLowerCase().includes(q));
+        !normalizedSearch ||
+        a.selectedText.toLowerCase().includes(normalizedSearch) ||
+        (a.note && a.note.toLowerCase().includes(normalizedSearch)) ||
+        (a.pairedFellowAnnotation?.note && a.pairedFellowAnnotation.note.toLowerCase().includes(normalizedSearch)) ||
+        (a.pairedFellowAnnotation?.selectedText && a.pairedFellowAnnotation.selectedText.toLowerCase().includes(normalizedSearch));
       return matchesColor && matchesSearch;
     });
-  }, [combinedSourceAnnotations, selectedColorFilter, searchQuery]);
+  }, [combinedSourceAnnotations, activeColorFilter, normalizedSearch]);
+
+  const totalAllItemsCount =
+    combinedSourceAnnotations.length + (canShowBookmarkBySource ? 1 : 0);
 
   const handleStartEdit = (a: Annotation) => {
     setEditingNoteId(a.id);
@@ -142,6 +183,11 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
 
   const handleJump = (item: AnyAnnotation) => {
     onJumpToAnnotation(item.chapterIndex, item.chapterPage, item.id);
+    onClose();
+  };
+
+  const handleJumpBookmark = () => {
+    onJumpToBookmark?.();
     onClose();
   };
 
@@ -264,16 +310,32 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
               data-testid="filter-color-all"
               onClick={() => setSelectedColorFilter('all')}
               className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-                selectedColorFilter === 'all'
+                activeColorFilter === 'all'
                   ? 'bg-primary-600 border-primary-600 text-white'
                   : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
             >
-              All ({combinedSourceAnnotations.length})
+              All ({totalAllItemsCount})
             </button>
+            {canShowBookmarkBySource && (
+              <button
+                type="button"
+                data-testid="filter-color-bookmark"
+                onClick={() => setSelectedColorFilter('bookmark')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+                  activeColorFilter === 'bookmark'
+                    ? BOOKMARK_DRAWER_TOKEN.pillActiveClass
+                    : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${BOOKMARK_DRAWER_TOKEN.dotClass}`} />
+                <span>{BOOKMARK_DRAWER_TOKEN.label}</span>
+                <span className="text-[10px] opacity-70">(1)</span>
+              </button>
+            )}
             {ANNOTATION_COLOR_LIST.map((c) => {
               const count = combinedSourceAnnotations.filter((a) => a.color === c.id).length;
-              const isSelected = selectedColorFilter === c.id;
+              const isSelected = activeColorFilter === c.id;
               return (
                 <button
                   key={c.id}
@@ -300,20 +362,96 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
             className={`flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 ${activeTheme.scrollbarClass}`}
           >
             <ContentCrossfade
-              transitionKey={`annotations-list-${selectedColorFilter}-${effectiveSourceFilter}-${searchQuery.trim().toLowerCase()}`}
+              transitionKey={`annotations-list-${activeColorFilter}-${effectiveSourceFilter}-${normalizedSearch}`}
               className="space-y-3"
             >
-              {filteredAnnotations.length === 0 ? (
+              {isBookmarkVisible && pinnedBookmark && (
+                <div
+                  data-testid="drawer-bookmark-item"
+                  className={`rounded-xl border border-stone-200 dark:border-stone-800 border-l-4 p-3.5 flex flex-col gap-2.5 transition-all shadow-xs ${BOOKMARK_DRAWER_TOKEN.drawerCardClass}`}
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5 flex-wrap font-mono text-[11px]">
+                      <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 font-semibold text-stone-700 dark:text-stone-300">
+                        Sec {pinnedBookmark.chapterIndex + 1} · Page {pinnedBookmark.chapterPage} · Line {pinnedBookmark.bookmarkRow + 1}
+                      </span>
+                      <span
+                        data-testid="drawer-bookmark-badge"
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold ${BOOKMARK_DRAWER_TOKEN.badgeClass}`}
+                      >
+                        <Bookmark className="w-2.5 h-2.5 fill-current" />
+                        <span>{BOOKMARK_DRAWER_TOKEN.label}</span>
+                      </span>
+                      {isViewingPinnedBookmarkPage && (
+                        <span
+                          data-testid="drawer-bookmark-active-badge"
+                          className="px-2 py-0.5 rounded-md bg-stone-200/70 dark:bg-stone-800/90 text-stone-700 dark:text-stone-300 font-semibold"
+                        >
+                          On this page
+                        </span>
+                      )}
+                    </div>
+                    {onClearBookmark && (
+                      <button
+                        type="button"
+                        data-testid="drawer-bookmark-clear-btn"
+                        aria-label="Clear bookmark"
+                        onClick={() => setIsConfirmingClearBookmark(true)}
+                        className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-600 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {pinnedBookmark.bookmarkText ? (
+                    <blockquote
+                      data-testid="drawer-bookmark-quote-text"
+                      onClick={onJumpToBookmark ? handleJumpBookmark : undefined}
+                      className={`font-serif italic text-sm text-foreground/90 leading-relaxed ${
+                        onJumpToBookmark
+                          ? `cursor-pointer hover:underline ${BOOKMARK_DRAWER_TOKEN.quoteHoverUnderlineClass} underline-offset-2`
+                          : ''
+                      }`}
+                    >
+                      &ldquo;{pinnedBookmark.bookmarkText}&rdquo;
+                    </blockquote>
+                  ) : pinnedBookmark.chapterTitle ? (
+                    <p
+                      data-testid="drawer-bookmark-chapter-fallback"
+                      className="text-xs font-serif text-foreground/80"
+                    >
+                      Pinned in {pinnedBookmark.chapterTitle}
+                    </p>
+                  ) : null}
+
+                  {onJumpToBookmark && (
+                    <button
+                      type="button"
+                      data-testid="drawer-bookmark-jump-btn"
+                      onClick={handleJumpBookmark}
+                      className={`flex items-center gap-1 text-[11px] font-medium ${BOOKMARK_DRAWER_TOKEN.jumpLinkClass} hover:underline pt-0.5 self-start cursor-pointer`}
+                    >
+                      <span>Jump to bookmark</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {filteredAnnotations.length === 0 && !isBookmarkVisible ? (
                 <div
                   data-testid="annotations-empty-state"
                   className={`text-center py-16 px-4 rounded-xl border border-dashed ${activeTheme.border} ${activeTheme.textMuted}`}
                 >
                   <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-40" />
                   <p className="font-serif text-sm font-semibold text-inherit mb-1">
-                    {combinedSourceAnnotations.length === 0 ? 'No Highlights Yet' : 'No Matching Highlights'}
+                    {combinedSourceAnnotations.length === 0 && !canShowBookmarkBySource
+                      ? 'No Highlights Yet'
+                      : 'No Matching Highlights'}
                   </p>
                   <p className="text-xs max-w-xs mx-auto leading-relaxed">
-                    {combinedSourceAnnotations.length === 0
+                    {combinedSourceAnnotations.length === 0 && !canShowBookmarkBySource
                       ? 'Select any passage of text while reading to highlight quotes, choose colors, or attach personal scholarly notes.'
                       : 'Try adjusting your color filter or search query.'}
                   </p>
@@ -592,6 +730,32 @@ export const ReaderAnnotationsDrawer: React.FC<ReaderAnnotationsDrawerProps> = (
       annotation={itemToDelete}
       title="Delete Saved Highlight & Note?"
       description="This will remove the highlight and any attached personal reflection from your saved notes. This action cannot be undone."
+    />
+
+    {/* Clear Silk Bookmark Confirmation Modal (Rendered outside drawer transform hierarchy) */}
+    <DeleteAnnotationModal
+      isOpen={isConfirmingClearBookmark && pinnedBookmark !== null}
+      onClose={() => setIsConfirmingClearBookmark(false)}
+      onConfirm={() => {
+        setIsConfirmingClearBookmark(false);
+        onClearBookmark?.();
+      }}
+      annotation={
+        pinnedBookmark
+          ? {
+              selectedText:
+                pinnedBookmark.bookmarkText ||
+                pinnedBookmark.chapterTitle ||
+                'Silk Ribbon Bookmark',
+              note: `Sec ${pinnedBookmark.chapterIndex + 1} · Page ${pinnedBookmark.chapterPage} · Line ${pinnedBookmark.bookmarkRow + 1}`,
+            }
+          : null
+      }
+      title="Remove Silk Bookmark?"
+      headline="Are you sure you want to clear your silk bookmark?"
+      description="This will reset your saved reading line ribbon back to Line 1 for this volume. Highlights and personal notes will remain untouched."
+      confirmLabel="Clear Bookmark"
+      confirmTestId="confirm-clear-bookmark-btn"
     />
   </>
 );
