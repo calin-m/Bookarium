@@ -3389,7 +3389,7 @@ function syncReadmeArchitectureDiagrams({ indexContent, combinedContent }) {
     '<!-- BEGIN:architecture-diagrams -->',
     '## 🏛️ System Architecture',
     '',
-    '> For the complete living specification, comprehensive C4 models, temporal sequence workflows, and failure recovery trees, see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).',
+    '> For the modular architecture hub (`Diagram 1` + Subsystem TOC linking all 7 `docs/architecture/` specifications with `Diagrams 2–15`, C4 models, temporal sequence workflows, and failure recovery trees), see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).',
     '',
     '### 1. End-to-End System Context & Data Flow',
     '',

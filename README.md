@@ -15,7 +15,7 @@
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Vitest](https://img.shields.io/badge/Vitest-264%20Suites%20%7C%202772%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.26%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -71,7 +71,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 |---|---|---|
 | 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2772 tests across 264 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
-| 🏛️ **Living Architecture Matrix (C4)** | AST-driven component inventory, route handlers, Zustand state, and dependency graphs. | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–15`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across `src/`, CLI modules, `next.config.ts`, & `public/sw.js` (`82` Tier-1..Tier-4 protected). | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
@@ -186,7 +186,7 @@ Bookarium is structured around six core engineering pillars:
 <!-- BEGIN:architecture-diagrams -->
 ## 🏛️ System Architecture
 
-> For the complete living specification, comprehensive C4 models, temporal sequence workflows, and failure recovery trees, see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).
+> For the modular architecture hub (`Diagram 1` + Subsystem TOC linking all 7 `docs/architecture/` specifications with `Diagrams 2–15`, C4 models, temporal sequence workflows, and failure recovery trees), see [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md).
 
 ### 1. End-to-End System Context & Data Flow
 
@@ -734,7 +734,7 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run lint` | Runs ESLint 10 rules and Core Web Vitals checks (`--max-warnings 0`) |
 | `npm run knip` | Audits repository for unused exports and dead dependencies |
 | `npm run audit:detailed` | Executes ESLint zero-warning check paired with Knip dead-code analysis |
-| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/GITHUB_ACTIONS.md` workflow/SHA tables, `ROADMAP.md`, `CHANGELOG.md`, `SECURITY.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST & YAML |
+| `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md` (+ `docs/architecture/*.md`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/GITHUB_ACTIONS.md` workflow/SHA tables, `ROADMAP.md`, `CHANGELOG.md`, `SECURITY.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST & YAML |
 | `npm run report` | Regenerates `docs/QUALITY_AUDIT_REPORT.md` & `docs/quality-audit-results.json` standalone |
 | `npm run catalog:sync` | Synchronizes Project Gutenberg's catalog feed into Supabase via cached RAM diffs and emits quote-diff candidates ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
 | `npm run r2:sync` | Synchronizes missing public-domain `.txt.gz` texts & `.jpg` covers into private Cloudflare R2 via `ListObjectsV2` + `rsync --files-from` / HTTPS (with checkpointed state protection, bounded concurrency, and conditional `covers`/`book-content` purge tags) and prunes copyrighted/withdrawn keys ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
