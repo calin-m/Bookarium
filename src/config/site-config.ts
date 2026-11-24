@@ -135,6 +135,10 @@ export const SITE_CONFIG = {
     `https://www.gutenberg.org/ebooks/${id}` as const,
 } as const;
 
+export const SCHOLAR_BIO_MAX_LENGTH = 400;
+export const SCHOLAR_BIO_BOOK_TITLE_MAX_LENGTH = 300;
+export const SCHOLAR_BIO_BOOK_AUTHOR_MAX_LENGTH = 200;
+
 export const STORAGE_KEYS = {
   BOOKSHELF: 'bookarium-bookshelf-storage',
   READER_SETTINGS: 'bookarium-reader-preferences',

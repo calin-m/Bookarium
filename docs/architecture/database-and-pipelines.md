@@ -1,8 +1,8 @@
 # Background Data Pipelines, Database RLS & Query-to-Index Contracts — Bookarium
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
-> **Last Synchronized**: `2026-11-23`  
-> **Topology Health**: `256` Modules Analyzed • `1063` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Last Synchronized**: `2026-11-24`  
+> **Topology Health**: `257` Modules Analyzed • `1079` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -107,12 +107,12 @@ flowchart TD
 
 ## 🗄️ Database Architecture & Row Level Security (RLS) Policies
 
-Bookarium uses Supabase PostgreSQL for optional cloud synchronization and dedicated database catalog serving, verified across **14 Database Tables** (47 RLS policies & 7 payload ceiling CHECK constraints) with strict Row Level Security (Rule 9):
+Bookarium uses Supabase PostgreSQL for optional cloud synchronization and dedicated database catalog serving, verified across **14 Database Tables** (47 RLS policies & 10 payload ceiling CHECK constraints) with strict Row Level Security (Rule 9):
 
 | Table Name | Read Access / RLS | Write Authority & Mutating Actors | Runtime Consumers (Stores, Providers & CLI) | Domain Role & Security Description |
 | :--- | :--- | :--- | :--- | :--- |
 | **`supabase_migrations.schema_migrations`** | Enabled (`No Client Access`) | `service_role` / Supabase Migration Runner | _Supabase CLI / Studio Tracker_ | Internal Supabase migration ledger preventing `42P01` dashboard warnings and tracking applied DDL versions with RLS enabled. |
-| **`public.profiles`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useAuthStore` / `usePreferencesStore` / `useFellowshipStore` (`fellowship-cloud-sync.ts`) / `/u/[username]` (`page.tsx`, `profile-layout-utils.ts`) | User profile display name, `@username` handle, theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with opt-in `is_public` anonymous SSR/client reads for `/u/[username]` (`serverProfileCache` 5m LRU + SQL `ILIKE` wildcard post-filter) and companion identity RLS resolution for Reader Circles & Symposiums). |
+| **`public.profiles`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useAuthStore` / `usePreferencesStore` / `useFellowshipStore` (`fellowship-cloud-sync.ts`) / `/u/[username]` (`page.tsx`, `profile-layout-utils.ts`) | User profile display name, `@username` handle, bio with optional highlighted volume attribution (`bio_book_id`, `bio_book_title`, `bio_book_author`), theme preferences, typography choices, and unified `preferences` JSONB (`active` & `customDefaults` presets, auto-created on signup, with opt-in `is_public` anonymous SSR/client reads for `/u/[username]` (`serverProfileCache` 5m LRU + SQL `ILIKE` wildcard post-filter) and companion identity RLS resolution for Reader Circles & Symposiums). |
 | **`public.bookshelves`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Default master "General" shelf and custom user-created named shelves. |
 | **`public.bookshelf_items`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Books filed in specific shelves with user-scoped uniqueness constraints. |
 | **`public.user_favorites`** | Enabled (`auth.uid()`) | `auth.uid() = user_id` (Authenticated Scholar) | `useBookshelfStore` (`bookshelf-cloud-sync.ts`) | Cross-device synchronized favorited titles. |
@@ -175,7 +175,7 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 
 | Artifact File | Classification | File Size | Architectural Responsibility |
 | :--- | :--- | :--- | :--- |
-| [`supabase/schema.sql`](../../supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `53.8 KB` | Single source of truth defining all 14 database tables, 47 granular RLS policies (with `(select auth.uid())` `InitPlan` scalar subquery wrapping and single-permissive-policy-per-action consolidation), 9 stored functions/triggers (5 row triggers), 7 payload ceiling CHECK constraints, and 22 explicit search/uniqueness indexes. |
+| [`supabase/schema.sql`](../../supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `54.8 KB` | Single source of truth defining all 14 database tables, 47 granular RLS policies (with `(select auth.uid())` `InitPlan` scalar subquery wrapping and single-permissive-policy-per-action consolidation), 9 stored functions/triggers (5 row triggers), 10 payload ceiling CHECK constraints, and 22 explicit search/uniqueness indexes. |
 | [`supabase/seed_books.sql`](../../supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.2 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
 | [`supabase/seed_translations.sql`](../../supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
 | [`scripts/data/wikidata-translations-cache.json`](../../scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |

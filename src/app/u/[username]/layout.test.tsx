@@ -100,4 +100,42 @@ describe('PublicProfileLayout and generateMetadata', () => {
     expect(meta.title).toBe('Scholar Sanctuary');
     expect(meta.robots).toBeUndefined();
   });
+
+  it('includes book attribution in OpenGraph and Schema.org descriptions when bio originates from a highlight', async () => {
+    vi.spyOn(profileUtils, 'fetchPublicScholarProfileSummary').mockResolvedValue({
+      status: 'public',
+      profile: {
+        username: 'jane_austen',
+        display_name: 'Jane Austen',
+        bio: 'Vanity and pride are different things.',
+        bio_book_id: 1342,
+        bio_book_title: 'Pride and Prejudice',
+        bio_book_author: 'Jane Austen',
+        is_public: true,
+      },
+    });
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ username: 'jane_austen' }),
+    });
+
+    expect(meta.description).toBe(
+      '“Vanity and pride are different things.” — Pride and Prejudice'
+    );
+    expect(meta.openGraph?.description).toBe(
+      '“Vanity and pride are different things.” — Pride and Prejudice'
+    );
+
+    const layoutJsx = await PublicProfileLayout({
+      params: Promise.resolve({ username: 'jane_austen' }),
+      children: <div>Profile Body</div>,
+    });
+    render(layoutJsx);
+
+    const script = document.querySelector('script[type="application/ld+json"]');
+    const parsed = JSON.parse(script!.textContent || '{}');
+    expect(parsed.mainEntity.description).toBe(
+      '“Vanity and pride are different things.” — Pride and Prejudice'
+    );
+  });
 });

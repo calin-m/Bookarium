@@ -245,6 +245,9 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
         display_name: 'Local Scholar Self',
         username: 'jane_austen',
         bio: 'Local fallback bio',
+        bio_book_id: 1342,
+        bio_book_title: 'Pride and Prejudice',
+        bio_book_author: 'Jane Austen',
         is_public: true,
         show_streak: false,
         show_challenge: false,
@@ -258,6 +261,7 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: 'Local Scholar Self' })).toBeInTheDocument();
     });
+    expect(screen.getByTestId('public-bio-read-link')).toHaveAttribute('href', '/read/1342');
   });
 
   it('filters out private bookshelves and respects show_saved_books and show_custom_shelves toggles', async () => {

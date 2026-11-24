@@ -75,6 +75,9 @@ describe('profile-layout-utils', () => {
         display_name: 'Jane Austen',
         username: 'Jane_Austen',
         bio: 'Regency novelist.',
+        bio_book_id: null,
+        bio_book_title: null,
+        bio_book_author: null,
         is_public: true,
       },
     });
@@ -165,5 +168,47 @@ describe('profile-layout-utils', () => {
     expect(globalCache?.has('persisted_scholar')).toBe(true);
     clearServerProfileCache();
     expect(globalCache?.size).toBe(0);
+  });
+
+  it('preserves attributed highlight metadata on public scholar profile summaries', async () => {
+    vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+
+    const maybeSingle = vi.fn().mockResolvedValueOnce({
+      data: {
+        display_name: 'Mary Shelley',
+        username: 'mary_shelley',
+        bio: 'Beware; for I am fearless.',
+        bio_book_id: 84,
+        bio_book_title: 'Frankenstein',
+        bio_book_author: 'Mary Shelley',
+        is_public: true,
+      },
+      error: null,
+    });
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          ilike: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              abortSignal: vi.fn().mockReturnValue({ maybeSingle }),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as MockSupabaseClient);
+
+    const res = await fetchPublicScholarProfileSummary('mary_shelley');
+    expect(res).toEqual({
+      status: 'public',
+      profile: {
+        display_name: 'Mary Shelley',
+        username: 'mary_shelley',
+        bio: 'Beware; for I am fearless.',
+        bio_book_id: 84,
+        bio_book_title: 'Frankenstein',
+        bio_book_author: 'Mary Shelley',
+        is_public: true,
+      },
+    });
   });
 });

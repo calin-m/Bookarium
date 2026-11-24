@@ -854,6 +854,9 @@ function pass075SecurityAndSastAudit() {
 
     const mandatoryCeilingConstraints = [
       'chk_profiles_bio_length',
+      'chk_profiles_bio_book_id_positive',
+      'chk_profiles_bio_book_title_length',
+      'chk_profiles_bio_book_author_length',
       'chk_user_annotations_note_length',
       'chk_user_annotations_selected_text_length',
       'chk_user_reading_habits_active_dates_bound',

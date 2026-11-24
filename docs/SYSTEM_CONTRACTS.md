@@ -26,11 +26,11 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `280` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
-- **Annotated Contract Modules**: `82` (**29.3%** coverage; `19` Tier-1 + `20` Tier-2 + `23` Tier-3 + `20` Tier-4 = `82` Protected)
+- **Total Scanned Executable Modules**: `281` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
+- **Annotated Contract Modules**: `82` (**29.2%** coverage; `19` Tier-1 + `20` Tier-2 + `23` Tier-3 + `20` Tier-4 = `82` Protected)
 - **Extracted Module Invariants**: `145`
 - **Symbol-Level Contracts**: `1`
-- **Pending Annotation Queue**: `198` *(auto-ranked below by AST blast radius & external boundary exposure)*
+- **Pending Annotation Queue**: `199` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
@@ -40,7 +40,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 | **React Hooks & Queries** | `36` | `11` | `25` | 30.6% |
 | **Web Workers** | `2` | `2` | `0` | 100.0% |
 | **App Router Pages & Layouts** | `25` | `6` | `19` | 24.0% |
-| **UI & Feature Components** | `114` | `1` | `113` | 0.9% |
+| **UI & Feature Components** | `115` | `1` | `114` | 0.9% |
 | **Config & Type Contracts** | `18` | `1` | `17` | 5.6% |
 | **CLI Pipelines & Governance** | `22` | `14` | `8` | 63.6% |
 
@@ -167,7 +167,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
 - **Governing Decisions (`@adr`)**: [ADR-070](DECISIONS.md), [ADR-074](DECISIONS.md)
-- **AST Blast Radius**: 19 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), …)
+- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/book-metadata.test.ts`](../src/lib/book-metadata.test.ts) (17 tests)
 
@@ -560,7 +560,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Separating persisted LWW `lastAnnotationSyncAt` anchors from ephemeral passive cooldowns prevents multi-device highlight count divergence without re-fetching unchanged marginalia on drawer switches.
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-055](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 11 runtime, 11 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
+- **AST Blast Radius**: 12 runtime, 11 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.user_annotations` · Storage/Cookies: `bookarium-annotations-storage`
 - **Test Contract**: [`src/stores/useAnnotationStore.test.ts`](../src/stores/useAnnotationStore.test.ts) (38 tests)
 
@@ -574,7 +574,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 21 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), …)
+- **AST Blast Radius**: 22 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.reader_circles`, `public.reading_progress`, `public.symposium_sessions`, `public.user_accolades`, `public.user_annotations`, `public.user_book_curation`, `public.user_favorites`, `public.user_reading_habits` · RPCs: `public.delete_current_user()`, `public.get_active_sessions()`, `public.revoke_user_session()` · API Calls: `/auth/callback` · Signals: emits `CustomEvent:bookarium:auth-token-refreshed` · Storage/Cookies: `bookarium-auth-hint`, `bookarium-auth-profile`, `bookarium-client-ip-sync`, `bookarium-pending-store-cleanup`, `bookarium_auto_heal_attempted` · Env Vars: `NODE_ENV`
 - **Test Contract**: [`src/stores/useAuthStore.test.ts`](../src/stores/useAuthStore.test.ts) (52 tests)
 
@@ -587,7 +587,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, and outbox + tombstone separation keeps offline edits deterministic across multi-device syncs.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 25 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), …)
+- **AST Blast Radius**: 26 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.user_book_curation`, `public.user_favorites` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `bookarium-bookshelf-storage`
 - **Test Contract**: [`src/stores/useBookshelfStore.test.ts`](../src/stores/useBookshelfStore.test.ts) (50 tests)
 
@@ -785,7 +785,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Prevents React hydration mismatch warnings while keeping navbar indicators, catalog fallbacks, and offline guards reactive to browser connectivity changes.
 - **Governing Decisions (`@adr`)**: [ADR-069](DECISIONS.md)
-- **AST Blast Radius**: 19 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountPublicProfileSection.tsx`](../src/components/account/AccountPublicProfileSection.tsx), …)
+- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountPublicProfileSection.tsx`](../src/components/account/AccountPublicProfileSection.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/hooks/useNetworkStatus.test.ts`](../src/hooks/useNetworkStatus.test.ts) (4 tests)
 
@@ -798,7 +798,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Static pre-warming avoids `ChunkLoadError` when opening a downloaded volume offline, while `syncEpochRef` and signature diffs prevent stale IndexedDB snapshots from overwriting newer updates.
 - **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-070](DECISIONS.md)
-- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/account/AccountSymposiumSection.tsx`](../src/components/account/AccountSymposiumSection.tsx), [`src/components/presentation/BookCard.tsx`](../src/components/presentation/BookCard.tsx), [`src/components/presentation/BookGrid.tsx`](../src/components/presentation/BookGrid.tsx), …)
+- **AST Blast Radius**: 11 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/account/AccountSymposiumSection.tsx`](../src/components/account/AccountSymposiumSection.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), [`src/components/presentation/BookCard.tsx`](../src/components/presentation/BookCard.tsx), …)
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content` · Signals: emits `CustomEvent:bookarium:offline-downloading`, `CustomEvent:bookarium:offline-updated`; listens `CustomEvent:bookarium:offline-downloading`, `CustomEvent:bookarium:offline-updated`
 - **Test Contract**: [`src/hooks/useOfflineBooks.test.ts`](../src/hooks/useOfflineBooks.test.ts) (17 tests)
 
@@ -916,7 +916,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-053](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx))
 - **Cross-Boundary Coupling**: DB Tables: `public.profiles`
-- **Test Contract**: [`src/app/u/[username]/profile-layout-utils.test.ts`](../src/app/u/[username]/profile-layout-utils.test.ts) (7 tests)
+- **Test Contract**: [`src/app/u/[username]/profile-layout-utils.test.ts`](../src/app/u/[username]/profile-layout-utils.test.ts) (8 tests)
 
 
 ### Layer: UI & Feature Components (1 Contracted)
@@ -1129,7 +1129,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ---
 
-## 📋 AST-Prioritized Pending Contract Queue (198 Modules)
+## 📋 AST-Prioritized Pending Contract Queue (199 Modules)
 
 Unannotated modules ranked automatically by AST **fan-in blast radius** and **cross-boundary exposure** (`Supabase DB`, `RPC`, `/api/*`, `CustomEvent`/`BroadcastChannel`, `localStorage`/Cookies, `process.env.*`):
 
@@ -1137,16 +1137,16 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
-| `90` | [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx) | UI & Feature Components | `45` / `0` | Pure / internal |
-| `88` | [`src/config/site-config.ts`](../src/config/site-config.ts) | Config & Type Contracts | `32` / `0` | Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_LEGAL_CONTACT_FORM`, `NEXT_PUBLIC_SITE_URL` |
-| `66` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `31` / `0` | Pure / internal |
+| `92` | [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx) | UI & Feature Components | `46` / `0` | Pure / internal |
+| `92` | [`src/config/site-config.ts`](../src/config/site-config.ts) | Config & Type Contracts | `34` / `0` | Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_LEGAL_CONTACT_FORM`, `NEXT_PUBLIC_SITE_URL` |
+| `68` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `32` / `0` | Pure / internal |
 | `60` | [`src/config/routes.ts`](../src/config/routes.ts) | Config & Type Contracts | `30` / `0` | Pure / internal |
-| `43` | [`src/types/book.types.ts`](../src/types/book.types.ts) | Config & Type Contracts | `0` / `43` | Pure / internal |
+| `44` | [`src/types/book.types.ts`](../src/types/book.types.ts) | Config & Type Contracts | `0` / `44` | Pure / internal |
 | `37` | [`src/hooks/useHasMounted.ts`](../src/hooks/useHasMounted.ts) | React Hooks & Queries | `17` / `0` | Pure / internal |
-| `34` | [`src/config/featured-books.ts`](../src/config/featured-books.ts) | Config & Type Contracts | `16` / `2` | Pure / internal |
+| `36` | [`src/config/featured-books.ts`](../src/config/featured-books.ts) | Config & Type Contracts | `17` / `2` | Pure / internal |
 | `32` | [`src/config/reader-themes.ts`](../src/config/reader-themes.ts) | Config & Type Contracts | `15` / `2` | Pure / internal |
 | `30` | [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) | UI & Feature Components | `11` / `0` | Signals: emits `CustomEvent:bookarium:book-link-copied`; listens `CustomEvent:bookarium:book-link-copied` |
-| `28` | [`src/components/ui/Modal.tsx`](../src/components/ui/Modal.tsx) | UI & Feature Components | `14` / `0` | Pure / internal |
+| `30` | [`src/components/ui/Modal.tsx`](../src/components/ui/Modal.tsx) | UI & Feature Components | `15` / `0` | Pure / internal |
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
 | `22` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `22` | Pure / internal |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
@@ -1162,19 +1162,19 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `14` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `12` | [`src/components/presentation/Footer.tsx`](../src/components/presentation/Footer.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
 | `12` | [`src/components/reader/ReaderDrawerShell.tsx`](../src/components/reader/ReaderDrawerShell.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
+| `12` | [`src/components/ui/Input.tsx`](../src/components/ui/Input.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
 | `12` | [`src/config/api-endpoints.ts`](../src/config/api-endpoints.ts) | Config & Type Contracts | `6` / `0` | Pure / internal |
+| `12` | [`src/lib/smart-search.ts`](../src/lib/smart-search.ts) | Domain Engines & Adapters | `4` / `0` | Pure / internal |
 | `11` | [`src/config/catalog-filters.ts`](../src/config/catalog-filters.ts) | Config & Type Contracts | `5` / `1` | Pure / internal |
 | `11` | [`src/hooks/useDialogFocusTrap.ts`](../src/hooks/useDialogFocusTrap.ts) | React Hooks & Queries | `4` / `0` | Pure / internal |
 | `10` | [`src/components/motion/ContentCrossfade.tsx`](../src/components/motion/ContentCrossfade.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx) | UI & Feature Components | `3` / `0` | API Calls: `/api/books/content` |
-| `10` | [`src/components/ui/Input.tsx`](../src/components/ui/Input.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/RemoveOfflineBookModal.tsx`](../src/components/ui/RemoveOfflineBookModal.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/SegmentedControl.tsx`](../src/components/ui/SegmentedControl.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/StarRating.tsx`](../src/components/ui/StarRating.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/lib/accolades-engine.ts`](../src/lib/accolades-engine.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/content-advisory.ts`](../src/lib/content-advisory.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/reading-card-export.ts`](../src/lib/reading-card-export.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
-| `10` | [`src/lib/smart-search.ts`](../src/lib/smart-search.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/speech-utils.ts`](../src/lib/speech-utils.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useAmbientDockScrollState.ts`](../src/hooks/useAmbientDockScrollState.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useCursorTooltip.ts`](../src/hooks/useCursorTooltip.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
@@ -1188,7 +1188,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `8` | [`src/config/views.config.ts`](../src/config/views.config.ts) | Config & Type Contracts | `3` / `2` | Pure / internal |
 | `8` | [`src/lib/book-tags.ts`](../src/lib/book-tags.ts) | Domain Engines & Adapters | `2` / `0` | Pure / internal |
 
-<details><summary>Standard & Leaf Modules Pending Optional Annotation (148 Modules)</summary>
+<details><summary>Standard & Leaf Modules Pending Optional Annotation (149 Modules)</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
@@ -1286,6 +1286,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/account/AccountSecuritySection.tsx`](../src/components/account/AccountSecuritySection.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountSymposiumSection.tsx`](../src/components/account/AccountSymposiumSection.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/symposium/FellowshipInvitationsSubTab.tsx`](../src/components/account/symposium/FellowshipInvitationsSubTab.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/symposium/ReaderCircleSubTab.tsx`](../src/components/account/symposium/ReaderCircleSubTab.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/symposium/SymposiumPactsSubTab.tsx`](../src/components/account/symposium/SymposiumPactsSubTab.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |

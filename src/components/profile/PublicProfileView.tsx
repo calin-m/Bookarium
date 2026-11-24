@@ -41,6 +41,9 @@ export interface PublicScholarProfile {
   display_name: string | null;
   username: string | null;
   bio: string | null;
+  bio_book_id?: number | null;
+  bio_book_title?: string | null;
+  bio_book_author?: string | null;
   is_public: boolean;
   show_streak: boolean;
   show_challenge: boolean;
@@ -273,10 +276,56 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
         {/* Scholar Bio / Motto */}
         {profile.bio && (
-          <div className="mt-6 pt-5 border-t border-border">
+          <div className="mt-6 pt-5 border-t border-border space-y-3">
             <p className="font-serif italic text-sm sm:text-base text-foreground/90 max-w-3xl leading-relaxed">
               &ldquo;{profile.bio}&rdquo;
             </p>
+            {typeof profile.bio_book_id === 'number' &&
+              Number.isInteger(profile.bio_book_id) &&
+              profile.bio_book_id > 0 && (() => {
+                const bioBookId = profile.bio_book_id;
+                const isBioBookUnavailableOffline = isOffline && !isBookOffline(bioBookId);
+                const sourceTitle = profile.bio_book_title?.trim() || `Volume #${bioBookId}`;
+                const sourceAuthor = profile.bio_book_author?.trim() || null;
+
+                return (
+                  <div
+                    data-testid="public-profile-bio-attribution"
+                    className="flex flex-wrap items-center justify-between gap-3 pt-1"
+                  >
+                    <p className="text-xs font-sans text-muted-foreground min-w-0">
+                      —{' '}
+                      <span className="font-serif font-semibold text-foreground">
+                        {sourceTitle}
+                      </span>
+                      {sourceAuthor ? `, ${sourceAuthor}` : ''}
+                    </p>
+
+                    {isBioBookUnavailableOffline ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        data-testid="public-bio-read-disabled"
+                        className="inline-flex items-center gap-1.5 text-xs font-mono opacity-60 cursor-not-allowed shrink-0"
+                      >
+                        <WifiOff className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Unavailable Offline</span>
+                      </Button>
+                    ) : (
+                      <Link
+                        href={ROUTES.READ(bioBookId)}
+                        data-testid="public-bio-read-link"
+                        className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-mono bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors shrink-0"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Read Book</span>
+                      </Link>
+                    )}
+                  </div>
+                );
+              })()}
           </div>
         )}
       </header>

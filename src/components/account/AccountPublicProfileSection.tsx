@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Globe,
@@ -20,16 +21,29 @@ import {
   User as UserIcon,
   Mail,
   Pencil,
+  Highlighter,
+  BookOpen,
+  X,
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/database.types';
 import { useAuthStore, validateUsername } from '@/stores/useAuthStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { ROUTES } from '@/config/routes';
+import { SCHOLAR_BIO_MAX_LENGTH } from '@/config/site-config';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Switch } from '@/components/ui/Switch';
+import type { SelectedHighlightMotto } from '@/components/account/HighlightBioPickerModal';
+
+const HighlightBioPickerModal = dynamic(
+  () =>
+    import('@/components/account/HighlightBioPickerModal').then(
+      (mod) => mod.HighlightBioPickerModal
+    ),
+  { ssr: false }
+);
 
 export interface AccountPublicProfileSectionProps {
   user: User;
@@ -38,6 +52,9 @@ export interface AccountPublicProfileSectionProps {
     display_name?: string;
     username?: string | null;
     bio?: string | null;
+    bio_book_id?: number | null;
+    bio_book_title?: string | null;
+    bio_book_author?: string | null;
     is_public?: boolean;
     show_streak?: boolean;
     show_challenge?: boolean;
@@ -51,6 +68,9 @@ interface ProfileFormState {
   displayName: string;
   username: string;
   bio: string;
+  bioBookId: number | null;
+  bioBookTitle: string | null;
+  bioBookAuthor: string | null;
   isPublic: boolean;
   showStreak: boolean;
   showChallenge: boolean;
@@ -63,11 +83,20 @@ function resolveBaselineProfileState(user: User, profile: Profile | null): Profi
     typeof user?.user_metadata?.display_name === 'string'
       ? user.user_metadata.display_name
       : '';
+  const validBookId =
+    typeof profile?.bio_book_id === 'number' &&
+    Number.isInteger(profile.bio_book_id) &&
+    profile.bio_book_id > 0
+      ? profile.bio_book_id
+      : null;
 
   return {
     displayName: profile?.display_name ?? fallbackDisplayName ?? '',
     username: profile?.username || '',
     bio: profile?.bio || '',
+    bioBookId: validBookId,
+    bioBookTitle: validBookId ? profile?.bio_book_title || null : null,
+    bioBookAuthor: validBookId ? profile?.bio_book_author || null : null,
     isPublic: profile?.is_public ?? false,
     showStreak: profile?.show_streak ?? true,
     showChallenge: profile?.show_challenge ?? true,
@@ -88,17 +117,23 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
   const [draft, setDraft] = useState<ProfileFormState>(() =>
     resolveBaselineProfileState(user, profile)
   );
+  const [committedProfile, setCommittedProfile] = useState<ProfileFormState>(() =>
+    resolveBaselineProfileState(user, profile)
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isHighlightPickerOpen, setIsHighlightPickerOpen] = useState(false);
 
   const [prevProfile, setPrevProfile] = useState(profile);
   if (profile !== prevProfile) {
     setPrevProfile(profile);
-    setDraft(resolveBaselineProfileState(user, profile));
+    const nextBaseline = resolveBaselineProfileState(user, profile);
+    setCommittedProfile(nextBaseline);
+    setDraft(nextBaseline);
   }
 
   const handleUsernameChange = (val: string) => {
@@ -115,14 +150,46 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
   const handleEnterEdit = () => {
     setSaveError(null);
     setSaveSuccess(false);
+    setIsHighlightPickerOpen(false);
     setIsEditing(true);
   };
 
   const handleCancelEdit = () => {
-    setDraft(resolveBaselineProfileState(user, profile));
+    setDraft(committedProfile);
     setUsernameError(null);
     setSaveError(null);
+    setIsHighlightPickerOpen(false);
     setIsEditing(false);
+  };
+
+  const handleBioChange = (value: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      bio: value,
+      // Any manual edit switches to custom prose and clears linked book attribution
+      bioBookId: null,
+      bioBookTitle: null,
+      bioBookAuthor: null,
+    }));
+  };
+
+  const handleSelectHighlightMotto = (selection: SelectedHighlightMotto) => {
+    setDraft((prev) => ({
+      ...prev,
+      bio: selection.bio,
+      bioBookId: selection.bookId,
+      bioBookTitle: selection.bookTitle,
+      bioBookAuthor: selection.bookAuthor,
+    }));
+  };
+
+  const handleClearBioAttribution = () => {
+    setDraft((prev) => ({
+      ...prev,
+      bioBookId: null,
+      bioBookTitle: null,
+      bioBookAuthor: null,
+    }));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -152,12 +219,23 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
       }
     }
 
+    const trimmedBio = draft.bio.trim().slice(0, SCHOLAR_BIO_MAX_LENGTH) || null;
+    const hasValidAttribution = Boolean(
+      trimmedBio &&
+        draft.bioBookId &&
+        Number.isInteger(draft.bioBookId) &&
+        draft.bioBookId > 0
+    );
+
     setIsSaving(true);
     try {
       const { error } = await updateFn({
         display_name: trimmedDisplayName,
         username: trimmedUsername || null,
-        bio: draft.bio.trim() || null,
+        bio: trimmedBio,
+        bio_book_id: hasValidAttribution ? draft.bioBookId : null,
+        bio_book_title: hasValidAttribution ? draft.bioBookTitle : null,
+        bio_book_author: hasValidAttribution ? draft.bioBookAuthor : null,
         is_public: draft.isPublic,
         show_streak: draft.showStreak,
         show_challenge: draft.showChallenge,
@@ -169,6 +247,18 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
       if (error) {
         setSaveError(error.message);
       } else {
+        const committedState: ProfileFormState = {
+          ...draft,
+          displayName: trimmedDisplayName,
+          username: trimmedUsername,
+          bio: trimmedBio || '',
+          bioBookId: hasValidAttribution ? draft.bioBookId : null,
+          bioBookTitle: hasValidAttribution ? draft.bioBookTitle : null,
+          bioBookAuthor: hasValidAttribution ? draft.bioBookAuthor : null,
+        };
+        setCommittedProfile(committedState);
+        setDraft(committedState);
+        setIsHighlightPickerOpen(false);
         setIsEditing(false);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3500);
@@ -493,25 +583,64 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
           <div className="space-y-1.5">
             {isEditing ? (
               <>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <label
                     htmlFor="scholar-bio-input"
                     className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground"
                   >
                     Scholar Bio & Literary Motto
                   </label>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    {draft.bio.length}/200
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsHighlightPickerOpen(true)}
+                      data-testid="pick-highlight-bio-btn"
+                      className="font-mono text-xs h-7 px-2.5"
+                    >
+                      <Highlighter className="w-3.5 h-3.5 mr-1.5 text-primary" aria-hidden="true" />
+                      <span>Pick from Highlights</span>
+                    </Button>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      {draft.bio.length}/{SCHOLAR_BIO_MAX_LENGTH}
+                    </span>
+                  </div>
                 </div>
                 <Textarea
                   id="scholar-bio-input"
                   rows={3}
-                  maxLength={200}
-                  placeholder="A brief reflection, favorite literary era, or personal reading motto..."
+                  maxLength={SCHOLAR_BIO_MAX_LENGTH}
+                  placeholder="Write a custom bio, literary motto, or pick a saved highlight..."
                   value={draft.bio}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, bio: e.target.value }))}
+                  onChange={(e) => handleBioChange(e.target.value)}
                 />
+                {draft.bioBookId && draft.bio.trim() && (
+                  <div
+                    data-testid="scholar-bio-attribution-edit-pill"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-primary/5 px-3 py-2 text-xs"
+                  >
+                    <span className="flex items-center gap-1.5 text-foreground min-w-0">
+                      <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+                      <span className="truncate font-sans">
+                        Highlighted from{' '}
+                        <span className="font-serif font-bold">
+                          &ldquo;{draft.bioBookTitle || `Volume #${draft.bioBookId}`}&rdquo;
+                        </span>
+                        {draft.bioBookAuthor ? ` by ${draft.bioBookAuthor}` : ''}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleClearBioAttribution}
+                      aria-label="Remove highlighted book link"
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-muted-foreground hover:text-destructive transition-colors cursor-pointer shrink-0"
+                    >
+                      <X className="w-3 h-3" aria-hidden="true" />
+                      <span>Remove book link</span>
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -520,10 +649,27 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
                 </span>
                 <div
                   data-testid="scholar-bio-indicator"
-                  className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm font-sans text-foreground/90 leading-relaxed min-h-[72px]"
+                  className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm font-sans text-foreground/90 leading-relaxed min-h-[72px] space-y-2"
                 >
                   {draft.bio.trim() ? (
-                    <p className="whitespace-pre-line">{draft.bio.trim()}</p>
+                    <>
+                      <p className="whitespace-pre-line">{draft.bio.trim()}</p>
+                      {draft.bioBookId && (
+                        <p
+                          data-testid="scholar-bio-source-indicator"
+                          className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+                          <span>
+                            From{' '}
+                            <span className="font-serif font-semibold text-foreground">
+                              {draft.bioBookTitle || `Volume #${draft.bioBookId}`}
+                            </span>
+                            {draft.bioBookAuthor ? ` by ${draft.bioBookAuthor}` : ''}
+                          </span>
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <p className="text-muted-foreground italic text-xs">
                       No literary motto or scholar bio added yet.
@@ -736,6 +882,16 @@ export const AccountPublicProfileSection: React.FC<AccountPublicProfileSectionPr
           </div>
         </div>
       </form>
+
+      {isEditing && isHighlightPickerOpen && (
+        <HighlightBioPickerModal
+          isOpen={isHighlightPickerOpen}
+          onClose={() => setIsHighlightPickerOpen(false)}
+          currentBio={draft.bio}
+          currentBookId={draft.bioBookId}
+          onSelectHighlight={handleSelectHighlightMotto}
+        />
+      )}
     </section>
   );
 };

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Mon, 23 Nov 2026 20:24:33 GMT  
+**Last Generated**: Tue, 24 Nov 2026 11:53:49 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 264 passed  
-**Total Verified Tests**: 2772 passed  
+**Total Test Suites**: 265 passed  
+**Total Verified Tests**: 2780 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **264/264 test suites passed** (2772 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **265/265 test suites passed** (2780 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.24%** (16433/16899) — *Target: $\ge$ 95%*
-- **Statements**: **95.99%** (17697/18435) — *Target: $\ge$ 95%*
-- **Functions**: **95.1%** (3537/3719) — *Target: $\ge$ 92%*
-- **Branches**: **88.45%** (16484/18635) — *Target: $\ge$ 85%*
+- **Lines**: **97.3%** (16559/17018) — *Target: $\ge$ 95%*
+- **Statements**: **96.06%** (17837/18567) — *Target: $\ge$ 95%*
+- **Functions**: **95.17%** (3573/3754) — *Target: $\ge$ 92%*
+- **Branches**: **88.37%** (16637/18825) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (264 Suites / 2772 Tests)
+## 🧪 Comprehensive Test Suite Catalog (265 Suites / 2780 Tests)
 
-### 🚀 App Routes & Pages (30 Suites · 313 Tests)
+### 🚀 App Routes & Pages (30 Suites · 315 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -493,11 +493,12 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/layout.test.tsx</code></b> (3 tests)</summary>
+<summary><b><code>src/app/u/[username]/layout.test.tsx</code></b> (4 tests)</summary>
 
 - ✔ `generates rich profile metadata, canonical URL, Twitter card, and ProfilePage JSON-LD for public scholars`
 - ✔ `emits identical anti-enumeration noindex metadata and omits JSON-LD for private or nonexistent handles`
 - ✔ `bypasses database lookup on uncached client-side RSC navigations without locking noindex`
+- ✔ `includes book attribution in OpenGraph and Schema.org descriptions when bio originates from a highlight`
 
 </details>
 
@@ -518,7 +519,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (7 tests)</summary>
+<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `normalizes URL-encoded scholar handles safely`
 - ✔ `collapses malformed handles directly to private_or_missing without querying Supabase`
@@ -527,6 +528,7 @@
 - ✔ `neutralizes SQL ILIKE underscore wildcard matches and caches hidden accounts uniformly`
 - ✔ `returns unavailable without caching when query errors or throws`
 - ✔ `anchors serverProfileCache on globalThis for warm serverless reuse`
+- ✔ `preserves attributed highlight metadata on public scholar profile summaries`
 
 </details>
 
@@ -3710,7 +3712,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (65 Suites · 305 Tests)
+### 🧩 UI Primitives & Motion (66 Suites · 311 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3829,7 +3831,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/account/AccountPublicProfileSection.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `defaults to read-only View Mode data indicators with two 2-column identity rows, full-width bio, and footer Edit button`
 - ✔ `renders Private Shield and Hidden indicators plus empty fallbacks when profile fields are unset or hidden`
@@ -3843,6 +3845,7 @@
 - ✔ `uses solid border-border without fractional borders in both View Mode and Edit Mode`
 - ✔ `syncs reactive state when profile prop updates, toggles all privacy checkboxes, and recovers from thrown errors`
 - ✔ `disables @username input and shows offline hint when entering Edit Mode offline while keeping bio and privacy editable`
+- ✔ `picks a saved highlight as motto, saves book attribution, and clears attribution on manual edit or removal`
 
 </details>
 
@@ -3879,6 +3882,16 @@
 - ✔ `renders live editorial specimen preview with active theme, font, size, line height, and brightness`
 - ✔ `invokes typeface, font size, line spacing, brightness, reading mode, column width, and spoiler shield callbacks`
 - ✔ `renders exit bookmark prompt options and invokes onExitBookmarkReminderChange`
+
+</details>
+
+<details>
+<summary><b><code>src/components/account/HighlightBioPickerModal.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `normalizes whitespace and truncates highlights cleanly at word boundaries`
+- ✔ `resolves non-placeholder book titles and authors without falling back to Anonymous`
+- ✔ `renders empty state and passively syncs annotations online when local list is empty`
+- ✔ `searches highlights via multi-token matching, filters no-match queries, and emits clean selection payload`
 
 </details>
 
@@ -3966,7 +3979,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
 - ✔ `renders PrivateProfileNotice when is_public is false`
@@ -3980,6 +3993,7 @@
 - ✔ `renders empty bookshelves message, empty shelf items, and anonymous author fallback`
 - ✔ `uses solid border-border across header, telemetry tiles, and bookshelf items without fractional border-border/* or hover:border-primary/40`
 - ✔ `enforces offline parity: disables fellowship actions and uncached bookshelf items when offline`
+- ✔ `displays Read Book link with offline parity exclusively when bio originates from a highlight`
 
 </details>
 

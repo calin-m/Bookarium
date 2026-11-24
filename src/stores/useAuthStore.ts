@@ -332,6 +332,9 @@ export interface AuthState {
     preferences?: Json;
     username?: string | null;
     bio?: string | null;
+    bio_book_id?: number | null;
+    bio_book_title?: string | null;
+    bio_book_author?: string | null;
     is_public?: boolean;
     show_streak?: boolean;
     show_challenge?: boolean;

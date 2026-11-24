@@ -13,6 +13,9 @@ export interface PublicScholarMetadataSummary {
   username: string;
   display_name: string | null;
   bio: string | null;
+  bio_book_id?: number | null;
+  bio_book_title?: string | null;
+  bio_book_author?: string | null;
   is_public: boolean;
 }
 
@@ -112,7 +115,7 @@ export async function fetchPublicScholarProfileSummary(
     const supabase = createClient();
     const { data, error } = await supabase
       .from('profiles')
-      .select('display_name, username, bio, is_public')
+      .select('display_name, username, bio, bio_book_id, bio_book_title, bio_book_author, is_public')
       .ilike('username', normalized)
       .eq('is_public', true)
       .abortSignal(AbortSignal.timeout(1500))
@@ -140,6 +143,9 @@ export async function fetchPublicScholarProfileSummary(
         username: data.username,
         display_name: data.display_name,
         bio: data.bio,
+        bio_book_id: data.bio_book_id ?? null,
+        bio_book_title: data.bio_book_title ?? null,
+        bio_book_author: data.bio_book_author ?? null,
         is_public: data.is_public,
       },
     };

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.74] - 2026-11-24
+### *Scholar Bio & Literary Motto Highlight Picker with Attributed Public Reader Links*
+
+### Added
+- **Searchable Highlight Bio Picker & Self-Contained `public.profiles` Book Attribution (`supabase/schema.sql`, `src/types/database.types.ts`, `src/config/site-config.ts`, `src/components/account/HighlightBioPickerModal.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/stores/useAuthStore.ts`)**: Added nullable snapshot columns (`bio_book_id`, `bio_book_title`, `bio_book_author`) and idempotent payload `CHECK` constraints onto `public.profiles` without exposing owner-only `user_annotations`; raised UI motto capacity to `400` chars (`SCHOLAR_BIO_MAX_LENGTH`); added lazy-loaded `HighlightBioPickerModal` (`next/dynamic`) with NFD multi-token search across highlights (`formatHighlightForScholarBio` word-boundary truncation, non-placeholder title/author enrichment, private `note` exclusion, and offline support); and added automatic attribution clearing on manual bio editing or `"Remove book link"` (`ADR-033`).
+- **Attributed `/u/[username]` Literary Motto `Read Book` CTA & Metadata (`src/components/profile/PublicProfileView.tsx`, `src/app/u/[username]/page.tsx`, `src/app/u/[username]/layout.tsx`, `src/app/u/[username]/profile-layout-utils.ts`, `scripts/verify-build.js`, co-located tests)**: Rendered volume attribution (`— Title, Author`) and an offline-aware `"Read Book"` CTA (`/read/<bio_book_id>` with `Unavailable Offline` parity when uncached offline) exclusively for highlight-attributed mottos while keeping custom prose bios button-free, projected attribution fields cleanly across `/u/[username]` SSR/client queries and OpenGraph/JSON-LD metadata, and registered `chk_profiles_bio_book_*` constraints in Pass 0.75 (`ADR-033`).
+
+
 ## [2.9.73] - 2026-11-23
 ### *Modular Hub-and-Subdoc Architecture Topology Split (docs/ARCHITECTURE.md + 7 docs/architecture/*.md Slices)*
 

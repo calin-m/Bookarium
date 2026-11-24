@@ -76,7 +76,7 @@ export default function PublicScholarProfilePage() {
         // 1. Fetch public scholar profile
         const { data: profileRow, error: _profileErr } = await supabase
           .from('profiles')
-          .select('id, display_name, username, bio, is_public, show_streak, show_challenge, show_bookshelves, show_saved_books, show_custom_shelves, created_at')
+          .select('id, display_name, username, bio, bio_book_id, bio_book_title, bio_book_author, is_public, show_streak, show_challenge, show_bookshelves, show_saved_books, show_custom_shelves, created_at')
           .ilike('username', normalizedUsername)
           .eq('is_public', true)
           .maybeSingle();
@@ -100,6 +100,9 @@ export default function PublicScholarProfilePage() {
               display_name: authProfile.display_name,
               username: authProfile.username,
               bio: authProfile.bio,
+              bio_book_id: authProfile.bio_book_id ?? null,
+              bio_book_title: authProfile.bio_book_title ?? null,
+              bio_book_author: authProfile.bio_book_author ?? null,
               is_public: authProfile.is_public,
               show_streak: authProfile.show_streak,
               show_challenge: authProfile.show_challenge,

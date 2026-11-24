@@ -1,8 +1,8 @@
 # Focus Reader, Components, Zustand State & Domain Contracts — Bookarium
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
-> **Last Synchronized**: `2026-11-23`  
-> **Topology Health**: `256` Modules Analyzed • `1063` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Last Synchronized**: `2026-11-24`  
+> **Topology Health**: `257` Modules Analyzed • `1079` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -156,7 +156,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **114 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **115 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -173,6 +173,7 @@ Auto-extracted dynamically from **114 Production UI Components** using Babel AST
 | **`AccountSecuritySection`** | Account | `AccountSecuritySectionProps` | `currentPassword`, `newPassword`, `confirmPassword`, `showPassword`, `copiedPassword`, `isUpdatingPassword`, `passwordSuccess`, `passwordError`, `strength`, `isRecoveryMode`, `isSendingResetEmail`, `resetEmailSent`, `resetEmailError`, `resetCooldown`, `onCurrentPasswordChange`, `onNewPasswordChange`, `onConfirmPasswordChange`, `onToggleShowPassword`, `onGeneratePassword`, `onUpdatePassword`, `onRequestPasswordReset`, `onSignOut`, `onOpenDeleteModal`, `userEmail`, `hasGoogleIdentity`, `hasPasswordIdentity`, `canUnlinkGoogle`, `googleIdentityEmail`, `isLinkingGoogle`, `isUnlinkingGoogle`, `identitySuccess`, `identityError`, `onLinkGoogle`, `onUnlinkGoogle`, `sessions`, `isLoadingSessions`, `hasLoadedSessions`, `isSessionsRpcUnavailable`, `sessionsError`, `sessionsSuccess`, `revokingSessionId`, `isSigningOutScope`, `isSignOutAllModalOpen`, `onOpenSignOutAllModal`, `onCloseSignOutAllModal`, `onRefreshSessions`, `onRevokeSession`, `onSignOutOtherDevices`, `onSignOutAllDevices` | [`src/components/account/AccountSecuritySection.tsx`](../../src/components/account/AccountSecuritySection.tsx) |
 | **`AccountSymposiumSection`** | Account | `AccountSymposiumSectionProps` | `userId` | [`src/components/account/AccountSymposiumSection.tsx`](../../src/components/account/AccountSymposiumSection.tsx) |
 | **`AccountTypographySubPanel`** | Account | `AccountTypographySubPanelProps` | `theme`, `fontFamily`, `onFontFamilyChange`, `fontSize`, `onFontSizeChange`, `lineHeight`, `onLineHeightChange`, `brightness`, `onBrightnessChange`, `readingMode`, `onReadingModeChange`, `columnWidth`, `onColumnWidthChange`, `spoilerShieldEnabled`, `onSpoilerShieldChange`, `exitBookmarkReminderEnabled`, `onExitBookmarkReminderChange` | [`src/components/account/AccountTypographySubPanel.tsx`](../../src/components/account/AccountTypographySubPanel.tsx) |
+| **`HighlightBioPickerModal`** | Account | `HighlightBioPickerModalProps` | `isOpen`, `onClose`, `currentBio`, `currentBookId`, `onSelectHighlight` | [`src/components/account/HighlightBioPickerModal.tsx`](../../src/components/account/HighlightBioPickerModal.tsx) |
 | **`FellowshipInvitationsSubTab`** | Account/symposium | `FellowshipInvitationsSubTabProps` | `userId`, `pendingCircles`, `pendingSymposiums`, `isOffline`, `onAcceptCircleInvite`, `onDeclineCircleInvite`, `onCancelCircleInvite`, `onAcceptSymposiumInvite`, `onDeclineSymposiumInvite`, `onCancelSymposiumInvite` | [`src/components/account/symposium/FellowshipInvitationsSubTab.tsx`](../../src/components/account/symposium/FellowshipInvitationsSubTab.tsx) |
 | **`ReaderCircleSubTab`** | Account/symposium | `ReaderCircleSubTabProps` | `acceptedFellows`, `isOffline`, `inviteHandle`, `onInviteHandleChange`, `isInviting`, `inviteError`, `inviteSuccess`, `onInviteSubmit`, `onOpenSymposiumWithFellow`, `onRequestRemoveFellow` | [`src/components/account/symposium/ReaderCircleSubTab.tsx`](../../src/components/account/symposium/ReaderCircleSubTab.tsx) |
 | **`SymposiumPactsSubTab`** | Account/symposium | `SymposiumPactsSubTabProps` | `userId`, `activeSymposiums`, `isOffline`, `isBookOffline`, `onOpenNewSymposiumModal`, `onRequestLeaveSymposium` | [`src/components/account/symposium/SymposiumPactsSubTab.tsx`](../../src/components/account/symposium/SymposiumPactsSubTab.tsx) |
@@ -339,7 +340,7 @@ Programmatically extracted from **13 Configuration Modules** in `src/config/` us
 | **`reader-config`** | [`src/config/reader-config.ts`](../../src/config/reader-config.ts) | `READER_FONT_CONFIG`, `READER_GESTURE_CONFIG` | `resolveDefaultReaderFontSize` | _None_ |
 | **`reader-themes`** | [`src/config/reader-themes.ts`](../../src/config/reader-themes.ts) | `NEXT_READER_THEME`, `READER_THEMES` | `getReaderTheme` | `ReaderThemeConfig` |
 | **`routes`** | [`src/config/routes.ts`](../../src/config/routes.ts) | `ROUTES` | _None_ | _None_ |
-| **`site-config`** | [`src/config/site-config.ts`](../../src/config/site-config.ts) | `SITE_CONFIG`, `STORAGE_KEYS` | `normalizeSiteOrigin`, `resolveSiteUrl`, `resolveSiteHost`, `resolveRepositoryUrl`, `buildDescriptiveUserAgent`, `resolveGoogleSiteVerification` | _None_ |
+| **`site-config`** | [`src/config/site-config.ts`](../../src/config/site-config.ts) | `SITE_CONFIG`, `SCHOLAR_BIO_MAX_LENGTH`, `SCHOLAR_BIO_BOOK_TITLE_MAX_LENGTH`, `SCHOLAR_BIO_BOOK_AUTHOR_MAX_LENGTH`, `STORAGE_KEYS` | `normalizeSiteOrigin`, `resolveSiteUrl`, `resolveSiteHost`, `resolveRepositoryUrl`, `buildDescriptiveUserAgent`, `resolveGoogleSiteVerification` | _None_ |
 | **`translation-languages`** | [`src/config/translation-languages.ts`](../../src/config/translation-languages.ts) | `POPULAR_TRANSLATION_LANGUAGES (18 items)`, `ALL_TRANSLATION_LANGUAGES` | `resolveTranslationLanguage` | `TranslationLanguage` |
 | **`views.config`** | [`src/config/views.config.ts`](../../src/config/views.config.ts) | `NAV_ITEMS`, `NAVBAR_VIEW_CONFIG`, `VIEW_CONTENT_CONFIG` | _None_ | `NavViewId`, `ViewId`, `NavItemConfig`, `ViewContentStrategy` |
 

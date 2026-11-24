@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   display_name TEXT,
   username TEXT UNIQUE,
   bio TEXT,
+  bio_book_id INTEGER,
+  bio_book_title TEXT,
+  bio_book_author TEXT,
   is_public BOOLEAN NOT NULL DEFAULT false,
   show_streak BOOLEAN NOT NULL DEFAULT true,
   show_challenge BOOLEAN NOT NULL DEFAULT true,
@@ -46,6 +49,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
   ADD COLUMN IF NOT EXISTS bio TEXT,
+  ADD COLUMN IF NOT EXISTS bio_book_id INTEGER,
+  ADD COLUMN IF NOT EXISTS bio_book_title TEXT,
+  ADD COLUMN IF NOT EXISTS bio_book_author TEXT,
   ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS show_streak BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS show_challenge BOOLEAN NOT NULL DEFAULT true,
@@ -1161,6 +1167,15 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_bio_length') THEN
     ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_bio_length CHECK (bio IS NULL OR char_length(bio) <= 1000);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_bio_book_id_positive') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_bio_book_id_positive CHECK (bio_book_id IS NULL OR bio_book_id > 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_bio_book_title_length') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_bio_book_title_length CHECK (bio_book_title IS NULL OR char_length(bio_book_title) <= 300);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_bio_book_author_length') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_bio_book_author_length CHECK (bio_book_author IS NULL OR char_length(bio_book_author) <= 200);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bookshelves_name_length') THEN
     ALTER TABLE public.bookshelves ADD CONSTRAINT chk_bookshelves_name_length CHECK (char_length(name) <= 100);

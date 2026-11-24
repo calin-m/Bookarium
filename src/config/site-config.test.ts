@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   SITE_CONFIG,
   STORAGE_KEYS,
+  SCHOLAR_BIO_MAX_LENGTH,
+  SCHOLAR_BIO_BOOK_TITLE_MAX_LENGTH,
+  SCHOLAR_BIO_BOOK_AUTHOR_MAX_LENGTH,
   normalizeSiteOrigin,
   resolveSiteUrl,
   resolveSiteHost,
@@ -180,5 +183,8 @@ describe('SITE_CONFIG & STORAGE_KEYS', () => {
     expect(STORAGE_KEYS.PENDING_STORE_CLEANUP).toBe('bookarium-pending-store-cleanup');
     expect(STORAGE_KEYS.HABITS).toBe('bookarium-habits-storage');
     expect(STORAGE_KEYS.ACCOLADES).toBe('bookarium-accolades-storage');
+    expect(SCHOLAR_BIO_MAX_LENGTH).toBe(400);
+    expect(SCHOLAR_BIO_BOOK_TITLE_MAX_LENGTH).toBe(300);
+    expect(SCHOLAR_BIO_BOOK_AUTHOR_MAX_LENGTH).toBe(200);
   });
 });

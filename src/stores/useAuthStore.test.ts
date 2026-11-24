@@ -1293,16 +1293,23 @@ describe('useAuthStore', () => {
       const res = await useAuthStore.getState().updateProfile({
         display_name: 'Edited Offline',
         bio: 'Offline biography note',
+        bio_book_id: 1342,
+        bio_book_title: 'Pride and Prejudice',
+        bio_book_author: 'Jane Austen',
         is_public: true,
       });
 
       expect(res.error).toBeNull();
       expect(useAuthStore.getState().profile?.display_name).toBe('Edited Offline');
       expect(useAuthStore.getState().profile?.bio).toBe('Offline biography note');
+      expect(useAuthStore.getState().profile?.bio_book_id).toBe(1342);
       expect(useAuthStore.getState().pendingProfileUpdates).toEqual(
         expect.objectContaining({
           display_name: 'Edited Offline',
           bio: 'Offline biography note',
+          bio_book_id: 1342,
+          bio_book_title: 'Pride and Prejudice',
+          bio_book_author: 'Jane Austen',
           is_public: true,
         })
       );

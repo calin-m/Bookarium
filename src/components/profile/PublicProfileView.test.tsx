@@ -395,4 +395,76 @@ describe('PublicProfileView', () => {
       });
     }
   });
+
+  it('displays Read Book link with offline parity exclusively when bio originates from a highlight', () => {
+    // 1. Custom prose bio omits Read Book attribution CTA
+    const { rerender } = render(
+      <PublicProfileView
+        profile={{
+          ...mockProfile,
+          bio_book_id: null,
+          bio_book_title: null,
+          bio_book_author: null,
+        }}
+      />
+    );
+    expect(screen.queryByTestId('public-profile-bio-attribution')).toBeNull();
+    expect(screen.queryByRole('link', { name: /read book/i })).toBeNull();
+
+    // 2. Highlighted motto shows attribution + Read Book link online
+    rerender(
+      <PublicProfileView
+        profile={{
+          ...mockProfile,
+          bio: 'It is a truth universally acknowledged.',
+          bio_book_id: 1342,
+          bio_book_title: 'Pride and Prejudice',
+          bio_book_author: 'Jane Austen',
+        }}
+      />
+    );
+
+    const attrRow = screen.getByTestId('public-profile-bio-attribution');
+    expect(attrRow).toHaveTextContent('Pride and Prejudice, Jane Austen');
+    expect(screen.getByTestId('public-bio-read-link')).toHaveAttribute('href', '/read/1342');
+
+    // 3. Offline parity: uncached volume disables CTA; cached volume remains readable
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    mockProfileOfflineIds = [];
+    try {
+      rerender(
+        <PublicProfileView
+          profile={{
+            ...mockProfile,
+            bio: 'It is a truth universally acknowledged.',
+            bio_book_id: 1342,
+            bio_book_title: 'Pride and Prejudice',
+            bio_book_author: null,
+          }}
+        />
+      );
+      expect(screen.getByTestId('public-bio-read-disabled')).toBeDisabled();
+      expect(screen.getByTestId('public-bio-read-disabled')).toHaveTextContent(
+        'Unavailable Offline'
+      );
+
+      mockProfileOfflineIds = [1342];
+      rerender(
+        <PublicProfileView
+          profile={{
+            ...mockProfile,
+            bio: 'It is a truth universally acknowledged.',
+            bio_book_id: 1342,
+            bio_book_title: null,
+            bio_book_author: null,
+          }}
+        />
+      );
+      expect(screen.getByTestId('public-profile-bio-attribution')).toHaveTextContent('Volume #1342');
+      expect(screen.getByTestId('public-bio-read-link')).toHaveAttribute('href', '/read/1342');
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+    }
+  });
 });

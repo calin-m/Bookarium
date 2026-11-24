@@ -225,6 +225,9 @@ describe('AccountPublicProfileSection', () => {
         display_name: 'Jane Austen CBE',
         username: 'jane_austen',
         bio: 'Updated literary motto.',
+        bio_book_id: null,
+        bio_book_title: null,
+        bio_book_author: null,
         is_public: true,
         show_streak: true,
         show_challenge: true,
@@ -428,6 +431,104 @@ describe('AccountPublicProfileSection', () => {
     } finally {
       Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
     }
+  });
+
+  it('picks a saved highlight as motto, saves book attribution, and clears attribution on manual edit or removal', async () => {
+    const { useAnnotationStore } = await import('@/stores/useAnnotationStore');
+    const onUpdateProfileMock = vi.fn().mockResolvedValue({ error: null });
+
+    useAnnotationStore.setState({
+      annotations: [
+        {
+          id: 'hl-bio-1',
+          bookId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          chapterIndex: 0,
+          chapterPage: 0,
+          selectedText: 'My courage always rises at every attempt to intimidate me.',
+          color: 'amber',
+          createdAt: '2026-01-12T10:00:00Z',
+          updatedAt: '2026-01-12T10:00:00Z',
+        },
+      ],
+    });
+
+    render(
+      <AccountPublicProfileSection
+        user={mockUser}
+        profile={{
+          ...mockProfile,
+          bio: 'Original custom motto',
+          bio_book_id: null,
+          bio_book_title: null,
+          bio_book_author: null,
+        }}
+        onUpdateProfile={onUpdateProfileMock}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(screen.getByText(`${'Original custom motto'.length}/400`)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('pick-highlight-bio-btn'));
+    expect(await screen.findByTestId('highlight-bio-picker-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /use highlight/i }));
+
+    expect(screen.getByLabelText(/scholar bio & literary motto/i)).toHaveValue(
+      'My courage always rises at every attempt to intimidate me.'
+    );
+    expect(screen.getByTestId('scholar-bio-attribution-edit-pill')).toHaveTextContent(
+      /Pride and Prejudice/i
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(onUpdateProfileMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bio: 'My courage always rises at every attempt to intimidate me.',
+          bio_book_id: 1342,
+          bio_book_title: 'Pride and Prejudice',
+          bio_book_author: 'Jane Austen',
+        })
+      );
+    });
+
+    expect(screen.getByTestId('scholar-bio-source-indicator')).toHaveTextContent(
+      /From Pride and Prejudice by Jane Austen/i
+    );
+
+    // Re-enter Edit Mode -> Remove book link clears attribution without clearing motto text
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /remove highlighted book link/i }));
+    expect(screen.queryByTestId('scholar-bio-attribution-edit-pill')).toBeNull();
+    expect(screen.getByLabelText(/scholar bio & literary motto/i)).toHaveValue(
+      'My courage always rises at every attempt to intimidate me.'
+    );
+
+    // Cancel reverts back to previously committed state; picking and editing clears attribution cleanly
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.getByTestId('scholar-bio-source-indicator')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    fireEvent.change(screen.getByLabelText(/scholar bio & literary motto/i), {
+      target: { value: 'Purely personal literary note.' },
+    });
+    expect(screen.queryByTestId('scholar-bio-attribution-edit-pill')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await waitFor(() => {
+      expect(onUpdateProfileMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          bio: 'Purely personal literary note.',
+          bio_book_id: null,
+          bio_book_title: null,
+          bio_book_author: null,
+        })
+      );
+    });
   });
 });
 

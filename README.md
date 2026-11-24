@@ -14,8 +14,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-264%20Suites%20%7C%202772%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-265%20Suites%20%7C%202780%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -69,7 +69,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2772 tests across 264 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2780 tests across 265 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–15`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -112,10 +112,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.73)
+## 🛠️ Latest Improvements (v2.9.74)
 
-- **Modular Hub-and-Subdoc Architecture Output & Relative Link Compiler (`scripts/generate-architecture-matrix.js`, `scripts/lib/ast-parser.js`, `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `README.md`, `docs/DECISIONS.md`)**: Split the 2,247-line single-file `docs/ARCHITECTURE.md` compilation into a compact hub entrypoint (retaining `Diagram 1`, health banner, clickable Subsystem TOC, and 7-Gateway overview) paired with `7` domain-focused subsystem documents under `docs/architecture/*.md` housing Diagrams `2`–`15` and 100% of existing AST matrices with zero data removed, added fence-safe `relativizeArchitectureLinks()` rewriting (`../` in hub, `../../` in sub-docs), per-file CRLF/`Last Synchronized` idempotency with stale-file cleanup, `loadArchitectureCorpus()` in `ast-parser.js`, and direct sub-doc + `#anchor` links across Rows `1`–`15` of `README.md` (`ADR-079`, `ADR-081`).
-- **Corpus-Aware Pass 5 Parity, TOC Integrity, Pre-Commit Staging & CI Drift Enforcement (`scripts/verify-build.js`, `scripts/lib/ast-parser.test.ts`, `.husky/pre-commit`, `.github/workflows/ci.yml`, `docs/GITHUB_ACTIONS.md`, `docs/PIPELINE_GUIDE.md`)**: Upgraded `Pass 5` in `scripts/verify-build.js` to validate bidirectional hub TOC parity, combined-corpus AST/SQL/SW/workflow/env/coverage coverage, ReDoS-safe `../` target normalization, per-file directory-relative links, and live Mermaid validation across all `8` architecture documents (`loadArchitectureCorpus` unit & live tests in `ast-parser.test.ts`), while adding `docs/architecture` to `.husky/pre-commit` and `docs/architecture/` to `.github/workflows/ci.yml` `git diff --exit-code` (`ADR-079`, `ADR-081`).
+- **Searchable Highlight Bio Picker & Self-Contained `public.profiles` Book Attribution (`supabase/schema.sql`, `src/types/database.types.ts`, `src/config/site-config.ts`, `src/components/account/HighlightBioPickerModal.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/stores/useAuthStore.ts`)**: Added nullable snapshot columns (`bio_book_id`, `bio_book_title`, `bio_book_author`) and idempotent payload `CHECK` constraints onto `public.profiles` without exposing owner-only `user_annotations`; raised UI motto capacity to `400` chars (`SCHOLAR_BIO_MAX_LENGTH`); added lazy-loaded `HighlightBioPickerModal` (`next/dynamic`) with NFD multi-token search across highlights (`formatHighlightForScholarBio` word-boundary truncation, non-placeholder title/author enrichment, private `note` exclusion, and offline support); and added automatic attribution clearing on manual bio editing or `"Remove book link"` (`ADR-033`).
+- **Attributed `/u/[username]` Literary Motto `Read Book` CTA & Metadata (`src/components/profile/PublicProfileView.tsx`, `src/app/u/[username]/page.tsx`, `src/app/u/[username]/layout.tsx`, `src/app/u/[username]/profile-layout-utils.ts`, `scripts/verify-build.js`, co-located tests)**: Rendered volume attribution (`— Title, Author`) and an offline-aware `"Read Book"` CTA (`/read/<bio_book_id>` with `Unavailable Offline` parity when uncached offline) exclusively for highlight-attributed mottos while keeping custom prose bios button-free, projected attribution fields cleanly across `/u/[username]` SSR/client queries and OpenGraph/JSON-LD metadata, and registered `chk_profiles_bio_book_*` constraints in Pass 0.75 (`ADR-033`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -229,7 +229,7 @@ flowchart TD
             AccView["Account Hub (/account)\n(4-Tab Scholar Profile-First Layout, AccountBottomDock & Cloud Sync)"]
             PrivacyView["Privacy Architecture (/privacy)\n(Zero-Tracker Manifesto, 3-Tier Data Erasure, COPPA & Geo-Cookies)"]
             CopyrightView["Copyright Governance (/copyright)\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]
-            ProfileCard["AccountPublicProfileSection.tsx & AccountSymposiumSection.tsx\n(View/Edit Scholar Profile Indicators, Footer Edit/Cancel/Save, Reader Circles & Symposium Pacts)"]
+            ProfileCard["AccountPublicProfileSection.tsx, HighlightBioPickerModal.tsx & AccountSymposiumSection.tsx\n(View/Edit Scholar Profile Indicators, Highlight Motto Picker, Footer Edit/Cancel/Save & Symposium Pacts)"]
             AccountDockNode["AccountBottomDock.tsx\n(Context-Aware Ambient Capsule: Section Jumps, Accolades Filter Popover & Theme Cycler)"]
             HabitsCard["AccountHabitsCard.tsx & AccountAccoladesCard.tsx\n(Reading Streaks, Annual Challenge, Showcase & Ex-Libris Bookplates)"]
             SecurityCard["AccountSecuritySection.tsx\n(Active Device Sessions, Duplicate-Origin Hints, Turnstile Recovery, Google Disconnect & Confirm-Guarded Sign-Out)"]
@@ -584,7 +584,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 
 | Database Object | Type | Purpose & Security Governance |
 |---|---|---|
-| `public.profiles` | Table (RLS) | Scholar display name, unique `@username`, bio, public sanctuary toggles (`is_public`, `show_saved_books`, `show_custom_shelves`), and `preferences` JSONB (`active` & `customDefaults`). |
+| `public.profiles` | Table (RLS) | Scholar display name, unique `@username`, bio (plus optional highlighted volume snapshot `bio_book_id`/`bio_book_title`/`bio_book_author`), public sanctuary toggles (`is_public`, `show_saved_books`, `show_custom_shelves`), and `preferences` JSONB (`active` & `customDefaults`). |
 | `public.bookshelves` | Table (RLS) | Default `'General'` shelf and custom collection shelves with granular public/private visibility (`is_public = true`) and owner-only write RLS. |
 | `public.bookshelf_items` | Table (RLS) | Volumes filed in bookshelves with parent shelf ownership verification, public shelf read isolation, and cascade-indexed `user_id`. |
 | `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited titles with authenticated user isolation. |

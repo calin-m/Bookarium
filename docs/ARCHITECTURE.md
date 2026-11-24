@@ -1,8 +1,8 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-11-23`  
-> **Topology Health**: `256` Modules Analyzed • `1063` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Last Synchronized**: `2026-11-24`  
+> **Topology Health**: `257` Modules Analyzed • `1079` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -51,7 +51,7 @@ flowchart TD
             AccView["Account Hub (/account)\n(4-Tab Scholar Profile-First Layout, AccountBottomDock & Cloud Sync)"]
             PrivacyView["Privacy Architecture (/privacy)\n(Zero-Tracker Manifesto, 3-Tier Data Erasure, COPPA & Geo-Cookies)"]
             CopyrightView["Copyright Governance (/copyright)\n(Public Domain Manifesto, Multi-Jurisdiction Rules & DMCA Channel)"]
-            ProfileCard["AccountPublicProfileSection.tsx & AccountSymposiumSection.tsx\n(View/Edit Scholar Profile Indicators, Footer Edit/Cancel/Save, Reader Circles & Symposium Pacts)"]
+            ProfileCard["AccountPublicProfileSection.tsx, HighlightBioPickerModal.tsx & AccountSymposiumSection.tsx\n(View/Edit Scholar Profile Indicators, Highlight Motto Picker, Footer Edit/Cancel/Save & Symposium Pacts)"]
             AccountDockNode["AccountBottomDock.tsx\n(Context-Aware Ambient Capsule: Section Jumps, Accolades Filter Popover & Theme Cycler)"]
             HabitsCard["AccountHabitsCard.tsx & AccountAccoladesCard.tsx\n(Reading Streaks, Annual Challenge, Showcase & Ex-Libris Bookplates)"]
             SecurityCard["AccountSecuritySection.tsx\n(Active Device Sessions, Duplicate-Origin Hints, Turnstile Recovery, Google Disconnect & Confirm-Guarded Sign-Out)"]

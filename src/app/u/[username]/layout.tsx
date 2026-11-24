@@ -39,8 +39,13 @@ export async function generateMetadata({
     const { profile } = resolution;
     const displayName = profile.display_name?.trim() || `@${profile.username}`;
     const pageTitle = `${displayName} (@${profile.username})`;
+    const trimmedBio = profile.bio?.trim();
+    const formattedBioDescription =
+      trimmedBio && profile.bio_book_id && profile.bio_book_title?.trim()
+        ? `“${trimmedBio}” — ${profile.bio_book_title.trim()}`
+        : trimmedBio;
     const description =
-      profile.bio?.trim() ||
+      formattedBioDescription ||
       `Explore ${displayName}'s public reading sanctuary, pinned Ex-Libris bookplates, and curated classic shelves on Bookarium.`;
     const canonicalPath = `/u/${encodeURIComponent(profile.username.toLowerCase())}`;
 
@@ -94,6 +99,11 @@ export default async function PublicProfileLayout({
   if (resolution.status === 'public') {
     const { profile } = resolution;
     const displayName = profile.display_name?.trim() || `@${profile.username}`;
+    const trimmedBio = profile.bio?.trim();
+    const formattedBioDescription =
+      trimmedBio && profile.bio_book_id && profile.bio_book_title?.trim()
+        ? `“${trimmedBio}” — ${profile.bio_book_title.trim()}`
+        : trimmedBio;
     const profileUrl = `${SITE_CONFIG.SITE_URL}/u/${encodeURIComponent(profile.username.toLowerCase())}`;
 
     profileJsonLd = {
@@ -103,7 +113,7 @@ export default async function PublicProfileLayout({
         '@type': 'Person',
         name: displayName,
         alternateName: `@${profile.username}`,
-        ...(profile.bio?.trim() ? { description: profile.bio.trim() } : {}),
+        ...(formattedBioDescription ? { description: formattedBioDescription } : {}),
         url: profileUrl,
       },
     };
