@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Sparkles, Quote, RotateCw, BookOpen, X } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
 import { Button } from '@/components/ui/Button';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
@@ -14,8 +14,8 @@ import { HeroFeaturedBook2DCard } from './HeroFeaturedBook2DCard';
 import { OpenBookLeftPageSpread } from './OpenBookLeftPageSpread';
 
 export interface HeroFeaturedBook3DProps {
-  featuredBook: FeaturedHeroBook & { rawBook?: GutendexBook };
-  onReadFeaturedBook?: (book: GutendexBook | FeaturedHeroBook) => void;
+  featuredBook: FeaturedHeroBook & { rawBook?: CatalogBook };
+  onReadFeaturedBook?: (book: CatalogBook | FeaturedHeroBook) => void;
   /**
    * `false` while the shared quote pool is still resolving: quote areas stay invisible (space reserved)
    * so static fallback text is never swapped for database text in place, then reveal once.

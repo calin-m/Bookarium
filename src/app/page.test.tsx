@@ -1689,7 +1689,7 @@ describe('Home page integration', () => {
     }
   });
 
-  it('preserves direct GutendexBook author metadata when reading the offline Hero spotlight book', () => {
+  it('preserves direct CatalogBook author metadata when reading the offline Hero spotlight book', () => {
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true, writable: true });
     mockOfflineBooks = [pageMockBooks[0]];
     mockIsBookOffline.mockImplementation((id: number) => id === pageMockBooks[0].id);

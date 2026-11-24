@@ -8,7 +8,7 @@
  * @adr ADR-070, ADR-074
  */
 
-import type { GutendexBook, GutendexResponse, Book, Author } from '@/types/book.types';
+import type { CatalogBook, CatalogResponse, Book, Author } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
@@ -29,8 +29,8 @@ export interface ResolvedBookIdentity {
 
 export interface ResolveBookMetadataParams {
   id: number;
-  currentBook?: GutendexBook | Book | null;
-  booksData?: GutendexResponse | null;
+  currentBook?: CatalogBook | Book | null;
+  booksData?: CatalogResponse | null;
   extractedMeta?: { title?: string; author?: string; language?: string } | null;
 }
 
@@ -131,9 +131,9 @@ export function hasAuthorLifespans(
 }
 
 /**
- * Converts a curated `FeaturedHeroBook` fixture (or partial hero metadata) into a canonical `GutendexBook` payload.
+ * Converts a curated `FeaturedHeroBook` fixture (or partial hero metadata) into a canonical `CatalogBook` payload.
  */
-export function featuredHeroToGutendexBook(
+export function featuredHeroToCatalogBook(
   hero: {
     id: number;
     title: string;
@@ -146,7 +146,7 @@ export function featuredHeroToGutendexBook(
     formats?: Record<string, string>;
     downloadCount?: number;
   }
-): GutendexBook {
+): CatalogBook {
   return {
     id: hero.id,
     title: hero.title,
@@ -191,7 +191,7 @@ export function resolveBookMetadata({
   const storeBook = currentBook?.id === numericId ? currentBook : undefined;
 
   // Tier 3: REST API Query Results
-  const apiBook = booksData?.results?.find((b: GutendexBook) => b.id === numericId);
+  const apiBook = booksData?.results?.find((b: CatalogBook) => b.id === numericId);
 
   // Author Resolution Priority: Store -> Fixture -> API -> Raw Text Header
   const rawStoreAuthor = storeBook?.authors ? formatAuthorNames(storeBook.authors) : '';
@@ -322,7 +322,7 @@ export function resolveBookMetadata({
     storeNormalizedAuthors.some((a) => a.birth_year != null || a.death_year != null)
   ) {
     resolvedAuthors = storeNormalizedAuthors;
-    resolvedTranslators = (storeBook as GutendexBook)?.translators || [];
+    resolvedTranslators = (storeBook as CatalogBook)?.translators || [];
   }
   // Tier C: Curated static fixture (with authorBirthYear / authorDeathYear)
   else if (featuredFixture) {
@@ -338,7 +338,7 @@ export function resolveBookMetadata({
   // Tier D: Fallback to storeBook if present
   else if (storeNormalizedAuthors && storeNormalizedAuthors.length > 0) {
     resolvedAuthors = storeNormalizedAuthors;
-    resolvedTranslators = (storeBook as GutendexBook)?.translators || [];
+    resolvedTranslators = (storeBook as CatalogBook)?.translators || [];
   }
   // Tier E: Plain resolvedAuthor string
   else if (resolvedAuthor) {

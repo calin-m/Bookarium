@@ -17,10 +17,10 @@ import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
-import { hasAuthorLifespans, featuredHeroToGutendexBook } from '@/lib/book-metadata';
+import { hasAuthorLifespans, featuredHeroToCatalogBook } from '@/lib/book-metadata';
 import { patchOfflineBookAuthors } from '@/lib/offline-storage';
 import { formatAuthorNames } from '@/lib/utils';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 export interface CollectionAutoHealResult {
   isHealing: boolean;
@@ -29,7 +29,7 @@ export interface CollectionAutoHealResult {
   totalMissingCount: number;
 }
 
-function isBookIncomplete(b: GutendexBook): boolean {
+function isBookIncomplete(b: CatalogBook): boolean {
   return !hasAuthorLifespans(b.authors);
 }
 
@@ -123,12 +123,12 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
 
     if (candidateIds.size === 0) return;
 
-    const heroBooksToEnrich: GutendexBook[] = [];
+    const heroBooksToEnrich: CatalogBook[] = [];
     for (const id of candidateIds) {
       const hero = findFeaturedHero(id);
       if (hero) {
         heroBooksToEnrich.push(
-          featuredHeroToGutendexBook(hero, {
+          featuredHeroToCatalogBook(hero, {
             formats: existingFormats.get(hero.id) || {},
             downloadCount: existingDownloads.get(hero.id) || 0,
           })

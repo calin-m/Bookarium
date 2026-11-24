@@ -9,7 +9,7 @@ import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 vi.mock('@/hooks/queries/useBooks', () => ({
   useBooks: vi.fn(() => ({ data: undefined })),
@@ -81,7 +81,7 @@ describe('useNotebookMetadataResolver', () => {
   });
 
   it('resolves metadata from savedBooks/offlineBooks pools and enforces LIFE_70 copyright restriction in GB', () => {
-    const christieBook: GutendexBook = {
+    const christieBook: CatalogBook = {
       id: 863,
       title: 'The Mysterious Affair at Styles',
       authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
@@ -125,7 +125,7 @@ describe('useNotebookMetadataResolver', () => {
   });
 
   it('queries remote useBooks for unindexed volume IDs, auto-heals local stores, and hydrates Fellow Scholar profiles when online', async () => {
-    const remoteBook: GutendexBook = {
+    const remoteBook: CatalogBook = {
       id: 9999,
       title: 'The Odyssey',
       authors: [{ name: 'Homer', birth_year: -800, death_year: -701 }],

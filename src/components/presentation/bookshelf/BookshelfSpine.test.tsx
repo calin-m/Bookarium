@@ -2,10 +2,10 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BookshelfSpine } from './BookshelfSpine';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { CatalogBook } from '@/mocks/handlers';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
 
-const mockBook: GutendexBook = {
+const mockBook: CatalogBook = {
   id: 1342,
   title: 'Pride and Prejudice',
   authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -184,7 +184,7 @@ describe('BookshelfSpine Component', () => {
       useJurisdictionStore.setState({ country: 'RO' });
     });
 
-    const restrictedBook: GutendexBook = {
+    const restrictedBook: CatalogBook = {
       id: 863,
       title: 'The Mysterious Affair at Styles',
       authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
@@ -241,7 +241,7 @@ describe('BookshelfSpine Component', () => {
 
     const onMoveBookToShelf = vi.fn().mockResolvedValue(true);
     const onSpineClick = vi.fn();
-    const anonymousBook: GutendexBook = {
+    const anonymousBook: CatalogBook = {
       ...mockBook,
       authors: [],
     };

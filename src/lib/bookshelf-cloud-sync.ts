@@ -7,12 +7,12 @@
  * @module src/lib/bookshelf-cloud-sync
  * @scope Supabase bi-directional synchronization and offline outbox engine for `bookshelves`, `bookshelf_items`, `user_favorites`, and `user_book_curation`.
  * @invariant Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
- * @invariant Preserve richer local `GutendexBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
+ * @invariant Preserve richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
  * @rationale Single-commit atomic state reconciliation plus snapshot-safe dirty-outbox queues prevent offline additions or custom shelf moves from flickering or being overwritten by concurrent pulls.
  * @adr ADR-005, ADR-069, ADR-071, ADR-080
  */
 
-import type { GutendexBook, ReadingStatus } from '@/types/book.types';
+import type { CatalogBook, ReadingStatus } from '@/types/book.types';
 import { createClient } from '@/lib/supabase/client';
 import {
   coalesceInFlightByUser,
@@ -20,7 +20,7 @@ import {
   verifyActiveCloudSession,
 } from '@/stores/useAuthStore';
 import type { Bookshelf, BookshelfItem, Database } from '@/types/database.types';
-import { toGutendexBookFromCloudRow, toCloudBookInsert } from '@/lib/adapters/book.adapter';
+import { toCatalogBookFromCloudRow, toCloudBookInsert } from '@/lib/adapters/book.adapter';
 
 export type OutboxActionInput =
   | {
@@ -90,8 +90,8 @@ export type OutboxAction = OutboxActionInput & {
 };
 
 export interface BookshelfSyncSlice {
-  savedBooks: GutendexBook[];
-  favoriteBooks: GutendexBook[];
+  savedBooks: CatalogBook[];
+  favoriteBooks: CatalogBook[];
   favoriteBookIds: number[];
   bookRatings: Record<number, number>;
   bookStatuses: Record<number, ReadingStatus>;
@@ -190,14 +190,14 @@ export function applyDeterministicItemOrdering<
 }
 
 /**
- * Merges a cloud-reconstructed GutendexBook stub with an existing rich local GutendexBook
+ * Merges a cloud-reconstructed CatalogBook stub with an existing rich local CatalogBook
  * so subjects, bookshelves, translators, languages, authentic download_count, and formats
  * are never wiped during authoritative cloud synchronization.
  */
 export function mergeCloudBookWithLocal(
-  cloudBook: GutendexBook,
-  localBook?: GutendexBook
-): GutendexBook {
+  cloudBook: CatalogBook,
+  localBook?: CatalogBook
+): CatalogBook {
   if (!localBook) return cloudBook;
 
   const cloudHasLifespans = Boolean(
@@ -439,7 +439,7 @@ export async function executeBookshelfCloudSync(
 
         // Build lookup map of existing rich local books by id to prevent metadata loss on cloud sync
         const initialState = get();
-        const localBookLookup = new Map<number, GutendexBook>();
+        const localBookLookup = new Map<number, CatalogBook>();
         for (const b of initialState.favoriteBooks) {
           localBookLookup.set(b.id, b);
         }
@@ -487,11 +487,11 @@ export async function executeBookshelfCloudSync(
 
           // Deduplicate reconstructed books by book_id and merge with rich local metadata
           const seenBookIds = new Set<number>();
-          const reconstructedBooks: GutendexBook[] = [];
+          const reconstructedBooks: CatalogBook[] = [];
           for (const row of items || []) {
             if (!seenBookIds.has(row.book_id)) {
               seenBookIds.add(row.book_id);
-              const stub = toGutendexBookFromCloudRow(row);
+              const stub = toCatalogBookFromCloudRow(row);
               reconstructedBooks.push(
                 mergeCloudBookWithLocal(stub, localBookLookup.get(row.book_id))
               );
@@ -514,13 +514,13 @@ export async function executeBookshelfCloudSync(
             );
           }
 
-          let finalSavedBooks: GutendexBook[];
+          let finalSavedBooks: CatalogBook[];
 
           if (!lastBookshelfSyncAt) {
             // Initial sync: merge local guest books into remote books and upload unsynced ones
             const localSaved = get().savedBooks.filter((b) => !deletedBookIds[b.id]);
             const merged = [...activeReconstructed];
-            const unSyncedLocalBooks: GutendexBook[] = [];
+            const unSyncedLocalBooks: CatalogBook[] = [];
 
             for (const lb of localSaved) {
               if (!merged.some((b) => b.id === lb.id)) {
@@ -613,11 +613,11 @@ export async function executeBookshelfCloudSync(
         console.error('Failed to sync favorites from cloud:', favoritesError);
       } else if (!favoritesRes.unmocked) {
         const seenFavIds = new Set<number>();
-        const reconstructedFavorites: GutendexBook[] = [];
+        const reconstructedFavorites: CatalogBook[] = [];
         for (const row of favorites || []) {
           if (!seenFavIds.has(row.book_id)) {
             seenFavIds.add(row.book_id);
-            const stub = toGutendexBookFromCloudRow(row);
+            const stub = toCatalogBookFromCloudRow(row);
             reconstructedFavorites.push(
               mergeCloudBookWithLocal(stub, localBookLookup.get(row.book_id))
             );
@@ -648,10 +648,10 @@ export async function executeBookshelfCloudSync(
           );
         }
 
-        let finalFavorites: GutendexBook[];
+        let finalFavorites: CatalogBook[];
 
         if (!lastFavoritesSyncAt) {
-          const unSyncedFavorites: GutendexBook[] = [];
+          const unSyncedFavorites: CatalogBook[] = [];
           const mergedFavorites = [...activeReconstructedFavorites];
 
           for (const lb of localFavorites) {

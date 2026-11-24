@@ -10,9 +10,9 @@ import { useAnnotationStore, type Annotation } from '@/stores/useAnnotationStore
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { SCHOLAR_BIO_MAX_LENGTH } from '@/config/site-config';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
-let mockOfflineBooksList: GutendexBook[] = [];
+let mockOfflineBooksList: CatalogBook[] = [];
 vi.mock('@/hooks/useOfflineBooks', () => ({
   useOfflineBooks: () => ({
     offlineBooks: mockOfflineBooksList,

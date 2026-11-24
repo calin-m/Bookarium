@@ -5,7 +5,7 @@ import { Zap } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HeroSearch, HeroFeatureTypewriter } from './HeroSearch';
 import { getHourlyHeroBook } from '@/config/featured-books';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { CatalogBook } from '@/mocks/handlers';
 
 const createTestWrapper = () => {
   const queryClient = new QueryClient({
@@ -237,7 +237,7 @@ describe('HeroSearch component', () => {
 
   it('should accept dynamic books prop from API, render open-book spread, and handle read featured book', () => {
     const handleReadFeatured = vi.fn();
-    const mockBook: GutendexBook = {
+    const mockBook: CatalogBook = {
       id: 1342,
       title: 'Pride and Prejudice',
       authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -266,7 +266,7 @@ describe('HeroSearch component', () => {
   });
 
   it('should accept dynamic books prop from API and render the active volume', () => {
-    const mockApiBooks: GutendexBook[] = [
+    const mockApiBooks: CatalogBook[] = [
       {
         id: 84,
         title: 'Frankenstein',

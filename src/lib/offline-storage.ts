@@ -10,7 +10,7 @@
  * @adr ADR-020, ADR-069, ADR-070, ADR-080, ADR-082, ADR-086
  */
 
-import type { Author, GutendexBook } from '@/types/book.types';
+import type { Author, CatalogBook } from '@/types/book.types';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
@@ -787,11 +787,11 @@ export async function patchOfflineBookAuthors(bookId: number, authors: Author[])
 }
 
 /**
- * Reconstructs GutendexBook objects from IndexedDB offline metadata records.
+ * Reconstructs CatalogBook objects from IndexedDB offline metadata records.
  */
-export async function getAllOfflineBookMetas(): Promise<GutendexBook[]> {
+export async function getAllOfflineBookMetas(): Promise<CatalogBook[]> {
   const records = await getAllOfflineBooks();
-  const metas: GutendexBook[] = [];
+  const metas: CatalogBook[] = [];
 
   for (const rec of records) {
     let authors = rec.authors;

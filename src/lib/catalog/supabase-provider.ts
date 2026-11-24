@@ -15,7 +15,7 @@ import type {
   CatalogQueryResult,
 } from '@/types/catalog.types';
 import { CatalogProviderError } from '@/types/catalog.types';
-import type { GutendexBook, Author, BookPassage } from '@/types/book.types';
+import type { CatalogBook, Author, BookPassage } from '@/types/book.types';
 import type { Database, DatabaseBook } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -97,7 +97,7 @@ const translationQueryCache =
   globalForCatalogCache.__bookariumTranslationCache ??
   (globalForCatalogCache.__bookariumTranslationCache = new Map<string, TranslationQueryCacheEntry>());
 
-function warmBookMetadataCache(books: GutendexBook[]): void {
+function warmBookMetadataCache(books: CatalogBook[]): void {
   if (!books || books.length === 0) return;
   const metadataCache =
     globalForCatalogCache.__bookariumMetadataCache ??
@@ -202,7 +202,7 @@ export function filterValidBookPassages(rawQuotes: unknown): BookPassage[] {
   );
 }
 
-export function sortQuoteEnrichedBooksDeterministically(books: GutendexBook[]): GutendexBook[] {
+export function sortQuoteEnrichedBooksDeterministically(books: CatalogBook[]): CatalogBook[] {
   return [...books].sort((a, b) => {
     const idxA = FEATURED_HERO_ORDER_MAP.get(a.id);
     const idxB = FEATURED_HERO_ORDER_MAP.get(b.id);
@@ -251,10 +251,10 @@ export function isStatementTimeoutError(err: unknown): boolean {
 }
 
 /**
- * Maps a database row from `public.books` to standard GutendexBook format.
+ * Maps a database row from `public.books` to standard CatalogBook format.
  */
-export function mapDatabaseBookToGutendexBook(row: DatabaseBook): GutendexBook {
-  const mapped: GutendexBook = {
+export function mapDatabaseBookToCatalogBook(row: DatabaseBook): CatalogBook {
+  const mapped: CatalogBook = {
     id: row.id,
     title: row.title,
     authors: (Array.isArray(row.authors) ? (row.authors as unknown as Author[]) : []),
@@ -471,19 +471,19 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
     country: string,
     currentYear: number
   ): {
-    validBooks: GutendexBook[];
+    validBooks: CatalogBook[];
     restrictedCount: number;
     sentinelCount: number;
   } {
-    const gutendexBooks = rawRows.map(mapDatabaseBookToGutendexBook);
+    const catalogBooks = rawRows.map(mapDatabaseBookToCatalogBook);
     const filteredResults = options.includeRestrictedMetadata
-      ? gutendexBooks
-      : gutendexBooks.filter((b) => {
+      ? catalogBooks
+      : catalogBooks.filter((b) => {
           const evalResult = isBookPublicDomainInJurisdiction(b, country, currentYear);
           return evalResult.isAllowed;
         });
 
-    const restrictedCount = gutendexBooks.length - filteredResults.length;
+    const restrictedCount = catalogBooks.length - filteredResults.length;
 
     const mimeTypes = options.mimeType
       ? options.mimeType.split(',').map((m) => m.trim()).filter(Boolean)
@@ -707,7 +707,7 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
           this.lastHealthCheckTime = Date.now();
           this.lastHealthCheckResult = true;
 
-          const books: GutendexBook[] = [];
+          const books: CatalogBook[] = [];
           for (const row of data) {
             if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
             if (row.copyright === true) continue;
@@ -722,10 +722,10 @@ export class SupabaseCatalogProvider implements ICatalogProvider {
               id: row.id,
               title: row.title,
               authors: Array.isArray(row.authors)
-                ? (row.authors as unknown as GutendexBook['authors'])
+                ? (row.authors as unknown as CatalogBook['authors'])
                 : [],
               translators: Array.isArray(row.translators)
-                ? (row.translators as unknown as GutendexBook['translators'])
+                ? (row.translators as unknown as CatalogBook['translators'])
                 : [],
               subjects: Array.isArray(row.subjects) ? row.subjects : [],
               bookshelves: Array.isArray((row as { bookshelves?: string[] }).bookshelves)

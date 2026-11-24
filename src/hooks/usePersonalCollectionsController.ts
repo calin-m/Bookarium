@@ -17,7 +17,7 @@ import {
 } from '@/lib/book-sorting';
 import { VIEW_CONTENT_CONFIG } from '@/config/views.config';
 import type { CatalogView } from '@/hooks/useCatalogFilters';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 export interface UsePersonalCollectionsControllerOptions {
   hasMounted: boolean;
@@ -25,9 +25,9 @@ export interface UsePersonalCollectionsControllerOptions {
   isMobile: boolean;
   isOffline: boolean;
   isBookOffline: (bookId: number) => boolean;
-  offlineBooks: GutendexBook[];
-  catalogResults?: GutendexBook[];
-  removeAllOfflineBooks?: (books: GutendexBook[]) => Promise<void> | void;
+  offlineBooks: CatalogBook[];
+  catalogResults?: CatalogBook[];
+  removeAllOfflineBooks?: (books: CatalogBook[]) => Promise<void> | void;
 }
 
 export function usePersonalCollectionsController({
@@ -86,8 +86,8 @@ export function usePersonalCollectionsController({
         readingProgress: rawReadingProgress,
       }
     : {
-        savedBooks: [] as GutendexBook[],
-        favoriteBooks: [] as GutendexBook[],
+        savedBooks: [] as CatalogBook[],
+        favoriteBooks: [] as CatalogBook[],
         favoriteBookIds: [] as number[],
         activeBookshelfId: null as string | null,
         cloudBookshelves: [] as typeof rawCloudBookshelves,

@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { QueryClientContext } from '@tanstack/react-query';
-import type { GutendexBook, Book, Author } from '@/types/book.types';
+import type { CatalogBook, Book, Author } from '@/types/book.types';
 import {
   getOfflineBookIds,
   getAllOfflineBooks,
@@ -44,7 +44,7 @@ function broadcastDownloadingBookId(bookId: number | null): void {
   }
 }
 
-function normalizeOfflineAuthors(book: GutendexBook | Book): Author[] {
+function normalizeOfflineAuthors(book: CatalogBook | Book): Author[] {
   let rawList: (Author | string)[] =
     'authorDetails' in book && Array.isArray(book.authorDetails) && book.authorDetails.length > 0
       ? book.authorDetails
@@ -113,7 +113,7 @@ function areIdArraysEqual(a: number[], b: number[]): boolean {
 
 async function readOfflineIdsAndMetas(): Promise<{
   idsResult: PromiseSettledResult<number[]>;
-  metasResult: PromiseSettledResult<GutendexBook[] | null>;
+  metasResult: PromiseSettledResult<CatalogBook[] | null>;
 }> {
   const [idsResult, metasResult] = await Promise.allSettled([
     getOfflineBookIds(),
@@ -127,13 +127,13 @@ async function readOfflineIdsAndMetas(): Promise<{
 export function useOfflineBooks() {
   const queryClient = useContext(QueryClientContext);
   const [offlineBookIds, setOfflineBookIds] = useState<number[]>([]);
-  const [offlineBooks, setOfflineBooks] = useState<GutendexBook[]>([]);
+  const [offlineBooks, setOfflineBooks] = useState<CatalogBook[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [storageQuota, setStorageQuota] = useState<StorageQuotaInfo | null>(null);
   const [downloadingBookId, setDownloadingBookId] = useState<number | null>(null);
 
   const offlineIdsRef = useRef<number[]>([]);
-  const offlineBooksRef = useRef<GutendexBook[]>([]);
+  const offlineBooksRef = useRef<CatalogBook[]>([]);
   const storageQuotaRef = useRef<StorageQuotaInfo | null>(null);
   const isMountedRef = useRef(true);
   const syncEpochRef = useRef(0);
@@ -145,8 +145,8 @@ export function useOfflineBooks() {
     }
   }, []);
 
-  const updateOfflineBooksState = useCallback((metas: GutendexBook[]) => {
-    const formatMetaSig = (list: GutendexBook[]) =>
+  const updateOfflineBooksState = useCallback((metas: CatalogBook[]) => {
+    const formatMetaSig = (list: CatalogBook[]) =>
       list.map((b) => `${b.id}:${b.authors.map((a) => a.name).join('|')}`).join(',');
     if (formatMetaSig(offlineBooksRef.current) !== formatMetaSig(metas)) {
       offlineBooksRef.current = metas;
@@ -180,7 +180,7 @@ export function useOfflineBooks() {
   const applyOfflineSnapshot = useCallback(
     (
       idsResult: PromiseSettledResult<number[]>,
-      metasResult: PromiseSettledResult<GutendexBook[] | null>,
+      metasResult: PromiseSettledResult<CatalogBook[] | null>,
       options: { markLoaded: boolean; forceLoaded?: boolean }
     ) => {
       if (idsResult.status === 'fulfilled') {
@@ -310,7 +310,7 @@ export function useOfflineBooks() {
   }, []);
 
   const downloadBook = useCallback(
-    async (book: GutendexBook | Book): Promise<boolean> => {
+    async (book: CatalogBook | Book): Promise<boolean> => {
       setDownloadingBookId(book.id);
       broadcastDownloadingBookId(book.id);
       try {
@@ -346,7 +346,7 @@ export function useOfflineBooks() {
         try {
           const store = useBookshelfStore.getState();
           if (!store.isBookSaved(book.id)) {
-            const gutendexPayload: GutendexBook =
+            const catalogBookPayload: CatalogBook =
               'formats' in book
                 ? book
                 : {
@@ -367,7 +367,7 @@ export function useOfflineBooks() {
                     },
                     download_count: book.downloadCount ?? 0,
                   };
-            await store.toggleSaveBook(gutendexPayload);
+            await store.toggleSaveBook(catalogBookPayload);
           }
         } catch {
           // Non-blocking fallback
@@ -401,7 +401,7 @@ export function useOfflineBooks() {
   );
 
   const removeAll = useCallback(
-    async (books: GutendexBook[]): Promise<void> => {
+    async (books: CatalogBook[]): Promise<void> => {
       if (books.length === 0) return;
       for (const book of books) {
         await removeOfflineBook(book.id);

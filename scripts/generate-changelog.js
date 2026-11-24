@@ -9,6 +9,16 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.77',
+    date: '2026-11-24',
+    title: 'Canonical CatalogBook & CatalogResponse Type System Rename',
+    sections: {
+      Changed: [
+        '**Non-Breaking `CatalogBook` & `CatalogResponse` DTO & Helper Refactor (`src/types/book.types.ts`, `src/types/catalog.types.ts`, `src/lib/adapters/book.adapter.ts`, `src/config/featured-books.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/mocks/handlers.ts`, `40` production/mock modules, `25` test suites, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`)**: Renamed internal `GutendexBook` / `GutendexResponse` interfaces, helper exports (`toCatalogBook`, `toCatalogBookFromCloudRow`, `featuredHeroToCatalogBook`, `catalogBookToFeaturedHeroBook`, `mapDatabaseBookToCatalogBook`), local variables (`catalogBooks`, `isDirectCatalogBook`, `catalogBookPayload`), `@invariant` JSDoc contracts, and roadmap/architecture descriptions across `69` source/test/doc references while keeping HTTP wire payloads, IndexedDB/Supabase schemas, security AST URL bans (`checkStringForRetiredGutendexUrl`), and negative UI tests unchanged (`ADR-080`, `ADR-088`).',
+      ],
+    },
+  },
+  {
     version: '2.9.76',
     date: '2026-11-24',
     title: 'PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning & Cloud Cover URL Normalization',

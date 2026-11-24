@@ -201,7 +201,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Supabase bi-directional synchronization and offline outbox engine for `bookshelves`, `bookshelf_items`, `user_favorites`, and `user_book_curation`.
 - **Behavioral Invariants (`@invariant`)**:
   - Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
-  - Preserve richer local `GutendexBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
+  - Preserve richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
 - **Design Rationale (`@rationale`)**:
   - Single-commit atomic state reconciliation plus snapshot-safe dirty-outbox queues prevent offline additions or custom shelf moves from flickering or being overwritten by concurrent pulls.
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md)

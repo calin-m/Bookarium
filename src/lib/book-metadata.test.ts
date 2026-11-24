@@ -6,9 +6,9 @@ import {
   cleanBookTitle,
   hasAuthenticAuthors,
   hasAuthorLifespans,
-  featuredHeroToGutendexBook,
+  featuredHeroToCatalogBook,
 } from './book-metadata';
-import type { GutendexBook, GutendexResponse } from '@/mocks/handlers';
+import type { CatalogBook, CatalogResponse } from '@/mocks/handlers';
 
 describe('src/lib/book-metadata', () => {
   describe('cleanBookTitle', () => {
@@ -72,7 +72,7 @@ describe('src/lib/book-metadata', () => {
     });
 
     it('resolves metadata from Zustand client store (Tier 2) when matching ID', () => {
-      const storeBook: GutendexBook = {
+      const storeBook: CatalogBook = {
         id: 9999,
         title: 'Custom Local Novel',
         authors: [{ name: 'Smith, John', birth_year: null, death_year: null }],
@@ -94,7 +94,7 @@ describe('src/lib/book-metadata', () => {
     });
 
     it('resolves metadata from REST API response (Tier 3)', () => {
-      const booksData: GutendexResponse = {
+      const booksData: CatalogResponse = {
         count: 1,
         next: null,
         previous: null,
@@ -137,7 +137,7 @@ describe('src/lib/book-metadata', () => {
     });
 
     it('bypasses store placeholder authors and uses authentic API/header authors', () => {
-      const placeholderStoreBook: GutendexBook = {
+      const placeholderStoreBook: CatalogBook = {
         id: 64317,
         title: 'The Great Gatsby',
         authors: [{ name: 'Unknown', birth_year: null, death_year: null }],
@@ -175,7 +175,7 @@ describe('src/lib/book-metadata', () => {
 
     it('resolves languages correctly with strict ID-guarding from store, API, and header metadata', () => {
       // 1. Store book with matching ID
-      const matchingStoreBook: GutendexBook = {
+      const matchingStoreBook: CatalogBook = {
         id: 25946,
         title: 'Gevoel en verstand',
         authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -195,7 +195,7 @@ describe('src/lib/book-metadata', () => {
       expect(resultStore.languages).toEqual(['nl']);
 
       // 2. Store book with mismatched ID (stale previous route)
-      const staleStoreBook: GutendexBook = {
+      const staleStoreBook: CatalogBook = {
         id: 1342,
         title: 'Pride and Prejudice',
         authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -393,7 +393,7 @@ describe('src/lib/book-metadata', () => {
     });
   });
 
-  describe('hasAuthenticAuthors, hasAuthorLifespans & featuredHeroToGutendexBook', () => {
+  describe('hasAuthenticAuthors, hasAuthorLifespans & featuredHeroToCatalogBook', () => {
     it('evaluates hasAuthenticAuthors across strings, Author objects, and placeholders', () => {
       expect(hasAuthenticAuthors(null)).toBe(false);
       expect(hasAuthenticAuthors([])).toBe(false);
@@ -415,8 +415,8 @@ describe('src/lib/book-metadata', () => {
       expect(hasAuthorLifespans([{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }])).toBe(true);
     });
 
-    it('converts a FeaturedHeroBook into a canonical GutendexBook with default and custom overrides', () => {
-      const defaultBook = featuredHeroToGutendexBook({
+    it('converts a FeaturedHeroBook into a canonical CatalogBook with default and custom overrides', () => {
+      const defaultBook = featuredHeroToCatalogBook({
         id: 1342,
         title: 'Pride and Prejudice',
         author: 'Jane Austen',
@@ -432,7 +432,7 @@ describe('src/lib/book-metadata', () => {
       expect(defaultBook.formats['image/jpeg']).toContain('pg1342.cover.medium.jpg');
       expect(defaultBook.download_count).toBe(0);
 
-      const fallbackBook = featuredHeroToGutendexBook(
+      const fallbackBook = featuredHeroToCatalogBook(
         { id: 99, title: 'Untitled' },
         { formats: {}, downloadCount: 50000 }
       );

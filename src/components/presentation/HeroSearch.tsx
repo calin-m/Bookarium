@@ -13,11 +13,11 @@ import {
 import { Button } from '@/components/ui/Button';
 import { HERO_POPULAR_TOPICS } from '@/config/catalog-filters';
 import {
-  gutendexBookToFeaturedHeroBook,
+  catalogBookToFeaturedHeroBook,
   selectHourlyHeroFromPool,
   type FeaturedHeroBook,
 } from '@/config/featured-books';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
 import { LanguageSelector } from './LanguageSelector';
@@ -50,9 +50,9 @@ export interface HeroSearchProps {
   onTopicSelect?: (topic: string) => void;
   selectedLanguage?: string;
   onLanguageChange?: (lang: string) => void;
-  onReadFeaturedBook?: (book?: FeaturedHeroBook | GutendexBook) => void;
-  featuredBook?: GutendexBook | FeaturedHeroBook;
-  books?: GutendexBook[];
+  onReadFeaturedBook?: (book?: FeaturedHeroBook | CatalogBook) => void;
+  featuredBook?: CatalogBook | FeaturedHeroBook;
+  books?: CatalogBook[];
 }
 
 const FEATURES = [
@@ -273,15 +273,15 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
   }
 
   // Stable active Featured Book: selects from the full database pool of books with quotes when available
-  const activeFeatured: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
-    const dbBooksById = new Map<number, GutendexBook>(
+  const activeFeatured: FeaturedHeroBook & { rawBook?: CatalogBook } = useMemo(() => {
+    const dbBooksById = new Map<number, CatalogBook>(
       (quoteEnrichedBooks || []).map((b) => [b.id, b])
     );
 
-    const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: GutendexBook } => {
+    const toHeroWithRawBook = (b: FeaturedHeroBook): FeaturedHeroBook & { rawBook: CatalogBook } => {
       const dbMatch = dbBooksById.get(b.id);
       if (dbMatch && Array.isArray(dbMatch.quotes) && dbMatch.quotes.length > 0) {
-        return gutendexBookToFeaturedHeroBook(dbMatch);
+        return catalogBookToFeaturedHeroBook(dbMatch);
       }
       return {
         ...b,
@@ -301,17 +301,17 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
           formats: {},
           download_count: 50000,
           quotes: b.quotes,
-        } as GutendexBook),
+        } as CatalogBook),
       };
     };
 
     const targetCustom = featuredBook || (books && books.length > 0 ? books[0] : null);
     if (targetCustom) {
       if ('rawBook' in targetCustom && targetCustom.rawBook) {
-        return targetCustom as FeaturedHeroBook & { rawBook?: GutendexBook };
+        return targetCustom as FeaturedHeroBook & { rawBook?: CatalogBook };
       }
       if ('authors' in targetCustom) {
-        return gutendexBookToFeaturedHeroBook(targetCustom as GutendexBook);
+        return catalogBookToFeaturedHeroBook(targetCustom as CatalogBook);
       }
       return toHeroWithRawBook(targetCustom as FeaturedHeroBook);
     }
@@ -319,7 +319,7 @@ export const HeroSearch: React.FC<HeroSearchProps> = ({
     if (lockedPoolSelection?.key === selectionKey) {
       const lockedMatch = dbBooksById.get(lockedPoolSelection.bookId);
       if (lockedMatch && Array.isArray(lockedMatch.quotes) && lockedMatch.quotes.length > 0) {
-        return gutendexBookToFeaturedHeroBook(lockedMatch);
+        return catalogBookToFeaturedHeroBook(lockedMatch);
       }
     }
 

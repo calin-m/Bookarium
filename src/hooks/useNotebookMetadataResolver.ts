@@ -24,12 +24,12 @@ import {
   isPlaceholderAuthor,
   isPlaceholderTitle,
   hasAuthorLifespans,
-  featuredHeroToGutendexBook,
+  featuredHeroToCatalogBook,
 } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
-const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
+const EMPTY_OFFLINE_BOOKS: CatalogBook[] = [];
 
 export interface ResolvedNotebookBookDetails {
   title: string;
@@ -57,7 +57,7 @@ export function useNotebookMetadataResolver(
   const { isBookOffline, offlineBooks = EMPTY_OFFLINE_BOOKS } = useOfflineBooks();
   const { isOnline, isOffline } = useNetworkStatus();
   const [attemptedMetadataIds, setAttemptedMetadataIds] = useState<Set<number>>(() => new Set());
-  const [resolvedRemoteBooks, setResolvedRemoteBooks] = useState<Map<number, GutendexBook>>(
+  const [resolvedRemoteBooks, setResolvedRemoteBooks] = useState<Map<number, CatalogBook>>(
     () => new Map()
   );
 
@@ -79,7 +79,7 @@ export function useNotebookMetadataResolver(
 
       if (hasValidTitle && hasValidAuthor && (country === 'US' || annHasLifespan)) continue;
 
-      const hasVerifiedStoreAuthors = (b: GutendexBook) => {
+      const hasVerifiedStoreAuthors = (b: CatalogBook) => {
         if (country === 'US') return true;
         return hasAuthorLifespans(b.authors);
       };
@@ -125,7 +125,7 @@ export function useNotebookMetadataResolver(
   if (remoteBooksData?.results && remoteBooksData.results !== prevRemoteResults) {
     setPrevRemoteResults(remoteBooksData.results);
     if (remoteBooksData.results.length > 0) {
-      let nextMap: Map<number, GutendexBook> | null = null;
+      let nextMap: Map<number, CatalogBook> | null = null;
       for (const book of remoteBooksData.results) {
         if (resolvedRemoteBooks.get(book.id) !== book) {
           if (!nextMap) nextMap = new Map(resolvedRemoteBooks);
@@ -343,7 +343,7 @@ export function useNotebookMetadataResolver(
       } else {
         const fromFeatured = FEATURED_HERO_BOOKS.find((b: FeaturedHeroBook) => b.id === bookId);
         if (fromFeatured) {
-          useReaderStore.getState().openReader(featuredHeroToGutendexBook(fromFeatured));
+          useReaderStore.getState().openReader(featuredHeroToCatalogBook(fromFeatured));
         }
       }
     },

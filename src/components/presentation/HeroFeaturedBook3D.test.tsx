@@ -483,7 +483,7 @@ describe('HeroFeaturedBook3D', () => {
             commentary: 'Pool comm 2.',
           },
         ],
-      } as unknown as import('@/types/book.types').GutendexBook,
+      } as unknown as import('@/types/book.types').CatalogBook,
     };
 
     renderWithClient(<HeroFeaturedBook3D featuredBook={bookWithPoolAndIncipit} />);

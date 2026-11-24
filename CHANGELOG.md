@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.77] - 2026-11-24
+### *Canonical CatalogBook & CatalogResponse Type System Rename*
+
+### Changed
+- **Non-Breaking `CatalogBook` & `CatalogResponse` DTO & Helper Refactor (`src/types/book.types.ts`, `src/types/catalog.types.ts`, `src/lib/adapters/book.adapter.ts`, `src/config/featured-books.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/mocks/handlers.ts`, `40` production/mock modules, `25` test suites, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`)**: Renamed internal `GutendexBook` / `GutendexResponse` interfaces, helper exports (`toCatalogBook`, `toCatalogBookFromCloudRow`, `featuredHeroToCatalogBook`, `catalogBookToFeaturedHeroBook`, `mapDatabaseBookToCatalogBook`), local variables (`catalogBooks`, `isDirectCatalogBook`, `catalogBookPayload`), `@invariant` JSDoc contracts, and roadmap/architecture descriptions across `69` source/test/doc references while keeping HTTP wire payloads, IndexedDB/Supabase schemas, security AST URL bans (`checkStringForRetiredGutendexUrl`), and negative UI tests unchanged (`ADR-080`, `ADR-088`).
+
+
 ## [2.9.76] - 2026-11-24
 ### *PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning & Cloud Cover URL Normalization*
 
@@ -1662,3 +1669,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-085: Fault-Tolerant Data Pipeline Orchestration, Resumable R2 Checkpointing, Fail-Closed Copyright Guards & Content CDN Cache Tagging**
 - **ADR-086: Non-Breaking 5-Layer Caching Optimization, Jurisdictional Query Normalization, In-Flight Request Coalescing & Passive Auth Sync Deduplication**
 - **ADR-087: PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning & Redundant Cloud Cover Normalization**
+- **ADR-088: Canonical `CatalogBook` & `CatalogResponse` Type System Rename (Completing `ADR-080`)**

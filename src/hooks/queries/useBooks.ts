@@ -16,7 +16,7 @@ import {
   QueryClientContext,
 } from '@tanstack/react-query';
 import React, { useEffect } from 'react';
-import type { GutendexBook, GutendexResponse, BookPassage } from '@/types/book.types';
+import type { CatalogBook, CatalogResponse, BookPassage } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { SITE_CONFIG } from '@/config/site-config';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
@@ -101,7 +101,7 @@ export function shouldRetryCatalogQuery(
   return failureCount < 1;
 }
 
-export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexResponse> {
+export async function fetchBooks(params: UseBooksParams = {}): Promise<CatalogResponse> {
   const searchParams = new URLSearchParams();
 
   // Always enforce upstream public domain clearance
@@ -175,7 +175,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
     );
   }
 
-  let data: GutendexResponse;
+  let data: CatalogResponse;
   try {
     data = await res.json();
   } catch {
@@ -195,7 +195,7 @@ export async function fetchBooks(params: UseBooksParams = {}): Promise<GutendexR
   const originalResults = Array.isArray(data.results) ? data.results : [];
   const filteredResults = params.includeRestrictedMetadata
     ? originalResults
-    : originalResults.filter((b: GutendexBook) => {
+    : originalResults.filter((b: CatalogBook) => {
         if (b.copyright !== true) {
           const evaluation = isBookPublicDomainInJurisdiction(b, clientCountry);
           return evaluation.isAllowed;
@@ -379,8 +379,8 @@ export async function fetchFeaturedQuotesMap(
       const json = (await res.json()) as { results?: unknown; source?: string };
       if (Array.isArray(json?.results)) {
         for (const item of json.results) {
-          if (item && typeof item === 'object' && typeof (item as GutendexBook).id === 'number') {
-            const b = item as GutendexBook;
+          if (item && typeof item === 'object' && typeof (item as CatalogBook).id === 'number') {
+            const b = item as CatalogBook;
             if (b.copyright === true) continue;
             const validPassages = filterValidBookPassages(b.quotes);
             if (validPassages.length > 0) {
@@ -431,7 +431,7 @@ export const QUOTE_ENRICHED_BOOKS_CACHE_KEY = 'bookarium-quote-enriched-books-v1
 
 export function readCachedQuoteEnrichedBooks(
   limit: number = DEFAULT_QUOTE_POOL_LIMIT
-): { books: GutendexBook[]; updatedAt: number; isFresh?: boolean } | undefined {
+): { books: CatalogBook[]; updatedAt: number; isFresh?: boolean } | undefined {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
     return undefined;
   }
@@ -443,7 +443,7 @@ export function readCachedQuoteEnrichedBooks(
       return undefined;
     }
     const validBooks = sortQuoteEnrichedBooksDeterministically(
-      (parsed.books as GutendexBook[]).filter(
+      (parsed.books as CatalogBook[]).filter(
         (b) => b && typeof b.id === 'number' && typeof b.title === 'string' && b.copyright !== true
       )
     ).slice(0, Math.max(1, Math.min(DEFAULT_QUOTE_POOL_LIMIT, limit)));
@@ -462,7 +462,7 @@ export function readCachedQuoteEnrichedBooks(
   }
 }
 
-export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
+export function writeCachedQuoteEnrichedBooks(books: CatalogBook[]): void {
   if (
     typeof window === 'undefined' ||
     typeof window.localStorage === 'undefined' ||
@@ -488,7 +488,7 @@ export function writeCachedQuoteEnrichedBooks(books: GutendexBook[]): void {
  */
 export async function fetchQuoteEnrichedBooks(
   limit: number = DEFAULT_QUOTE_POOL_LIMIT
-): Promise<GutendexBook[]> {
+): Promise<CatalogBook[]> {
   const boundedLimit = Math.max(1, Math.min(DEFAULT_QUOTE_POOL_LIMIT, limit));
 
   if (!isSupabaseConfigured()) {
@@ -507,10 +507,10 @@ export async function fetchQuoteEnrichedBooks(
     if (res.ok) {
       const json = (await res.json()) as { results?: unknown };
       if (Array.isArray(json?.results) && json.results.length > 0) {
-        const books: GutendexBook[] = [];
+        const books: CatalogBook[] = [];
         for (const item of json.results) {
-          if (item && typeof item === 'object' && typeof (item as GutendexBook).id === 'number') {
-            const b = item as GutendexBook;
+          if (item && typeof item === 'object' && typeof (item as CatalogBook).id === 'number') {
+            const b = item as CatalogBook;
             if (b.copyright === true) continue;
             const validPassages = filterValidBookPassages(b.quotes);
             if (validPassages.length > 0) {
@@ -593,7 +593,7 @@ export async function fetchQuoteEnrichedBooks(
       return readCachedQuoteEnrichedBooks(boundedLimit)?.books ?? [];
     }
 
-    const books: GutendexBook[] = [];
+    const books: CatalogBook[] = [];
     for (const row of data) {
       if (!row || typeof row.id !== 'number' || typeof row.title !== 'string') continue;
       if (row.copyright === true) continue;
@@ -608,10 +608,10 @@ export async function fetchQuoteEnrichedBooks(
         id: row.id,
         title: row.title,
         authors: Array.isArray(row.authors)
-          ? (row.authors as unknown as GutendexBook['authors'])
+          ? (row.authors as unknown as CatalogBook['authors'])
           : [],
         translators: Array.isArray(row.translators)
-          ? (row.translators as unknown as GutendexBook['translators'])
+          ? (row.translators as unknown as CatalogBook['translators'])
           : [],
         subjects: Array.isArray(row.subjects) ? row.subjects : [],
         bookshelves: Array.isArray((row as { bookshelves?: string[] }).bookshelves)

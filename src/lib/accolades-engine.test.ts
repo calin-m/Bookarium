@@ -8,11 +8,11 @@ import {
   evaluateAccolades,
 } from './accolades-engine';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import type { Annotation } from '@/stores/useAnnotationStore';
 
 describe('accolades-engine', () => {
-  const sampleAncientBook: GutendexBook = {
+  const sampleAncientBook: CatalogBook = {
     id: 100,
     title: 'Meditations',
     authors: [{ name: 'Marcus Aurelius', birth_year: 121, death_year: 180 }],
@@ -26,7 +26,7 @@ describe('accolades-engine', () => {
     download_count: 50000,
   };
 
-  const sampleVictorianBook: GutendexBook = {
+  const sampleVictorianBook: CatalogBook = {
     id: 200,
     title: 'Pride and Prejudice',
     authors: [{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }],
@@ -40,7 +40,7 @@ describe('accolades-engine', () => {
     download_count: 100000,
   };
 
-  const sampleRenaissanceBook: GutendexBook = {
+  const sampleRenaissanceBook: CatalogBook = {
     id: 300,
     title: 'Hamlet',
     authors: [{ name: 'William Shakespeare', birth_year: 1564, death_year: 1616 }],
@@ -68,7 +68,7 @@ describe('accolades-engine', () => {
     });
 
     it('falls back to subjects and languages when author years are null', () => {
-      const latinBook: GutendexBook = {
+      const latinBook: CatalogBook = {
         ...sampleAncientBook,
         authors: [{ name: 'Anonymous', birth_year: null, death_year: null }],
         languages: ['la'],
@@ -79,7 +79,7 @@ describe('accolades-engine', () => {
     });
 
     it('returns null if no era markers can be inferred', () => {
-      const unknownBook: GutendexBook = {
+      const unknownBook: CatalogBook = {
         ...sampleAncientBook,
         authors: [{ name: 'Unknown Author', birth_year: null, death_year: null }],
         languages: ['en'],
@@ -109,7 +109,7 @@ describe('accolades-engine', () => {
         })
       ).toBe('early-20th');
 
-      const baseDateless: GutendexBook = {
+      const baseDateless: CatalogBook = {
         ...sampleAncientBook,
         authors: [],
         languages: ['en'],

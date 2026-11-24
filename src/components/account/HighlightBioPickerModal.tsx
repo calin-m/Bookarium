@@ -27,7 +27,7 @@ import {
 } from '@/lib/book-metadata';
 import { matchesSmartSearch } from '@/lib/smart-search';
 import { formatAuthorNames } from '@/lib/utils';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 export interface SelectedHighlightMotto {
   bio: string;
@@ -44,7 +44,7 @@ export interface HighlightBioPickerModalProps {
   onSelectHighlight: (selection: SelectedHighlightMotto) => void;
 }
 
-const EMPTY_BOOK_LIST: GutendexBook[] = [];
+const EMPTY_BOOK_LIST: CatalogBook[] = [];
 
 /**
  * Normalizes and truncates a saved highlight passage so it fits the Scholar Bio limit
@@ -75,10 +75,10 @@ export function formatHighlightForScholarBio(
 export function resolveHighlightBookAttribution(
   annotation: Pick<Annotation, 'bookId' | 'bookTitle' | 'bookAuthor'>,
   pools: {
-    savedBooks?: GutendexBook[];
-    favoriteBooks?: GutendexBook[];
-    recentBooks?: GutendexBook[];
-    offlineBooks?: GutendexBook[];
+    savedBooks?: CatalogBook[];
+    favoriteBooks?: CatalogBook[];
+    recentBooks?: CatalogBook[];
+    offlineBooks?: CatalogBook[];
   }
 ): { bookId: number; title: string; author: string | null } {
   const bookId = annotation.bookId;
@@ -89,7 +89,7 @@ export function resolveHighlightBookAttribution(
     pools.offlineBooks || EMPTY_BOOK_LIST,
   ];
 
-  let matchedBook: GutendexBook | undefined;
+  let matchedBook: CatalogBook | undefined;
   for (const pool of candidatePools) {
     const found = pool.find((b) => b.id === bookId);
     if (found) {

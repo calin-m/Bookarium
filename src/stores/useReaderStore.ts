@@ -10,7 +10,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { GutendexBook, Book, Author } from '@/types/book.types';
+import type { CatalogBook, Book, Author } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 import {
   useAuthStore,
@@ -46,7 +46,7 @@ export type ReaderReadingMode = 'paginated' | 'scroll';
 export type ReaderColumnWidth = 'narrow' | 'normal' | 'wide';
 
 export interface ReaderState {
-  currentBook: GutendexBook | Book | null;
+  currentBook: CatalogBook | Book | null;
   isOpen: boolean;
   fontSize: number;
   isFontSizeCustomized: boolean;
@@ -67,7 +67,7 @@ export interface ReaderState {
    * Sets the active book identity in memory prior to navigating to /read/[id].
    * Also sets isOpen: true for compatibility.
    */
-  openReader: (book: GutendexBook | Book) => void;
+  openReader: (book: CatalogBook | Book) => void;
   /**
    * Resets active reading state flag.
    */
@@ -89,7 +89,7 @@ export interface ReaderState {
     userId?: string,
     options?: { immediateCloudSync?: boolean }
   ) => void;
-  enrichReadingPositions: (freshBooks: GutendexBook[]) => void;
+  enrichReadingPositions: (freshBooks: CatalogBook[]) => void;
   getReadingPosition: (bookId: number) => BookReadingPosition | null;
   clearReadingPosition: (bookId: number, userId?: string) => Promise<void>;
   clearAllVolumes: (userId?: string) => Promise<void>;
@@ -273,7 +273,7 @@ export const useReaderStore = create<ReaderState>()(
               };
             }
             return {
-              currentBook: { ...(book as GutendexBook), authors: preservedAuthors },
+              currentBook: { ...(book as CatalogBook), authors: preservedAuthors },
               isOpen: true,
             };
           }
@@ -1085,7 +1085,7 @@ export function useHydratedReader() {
         activeReadingCount: getActiveReadingCount({ readingPositions, readingProgress }),
       }
     : {
-        currentBook: null as GutendexBook | Book | null,
+        currentBook: null as CatalogBook | Book | null,
         isOpen: false,
         fontSize: 18,
         lineHeight: 1.75,

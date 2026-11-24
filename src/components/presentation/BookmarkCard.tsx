@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Trash2, Bookmark as BookmarkIcon, RotateCcw, Lock, AlertTriangle, Handshake, HardDriveDownload, Loader2, WifiOff, Heart, Library } from 'lucide-react';
-import type { ActiveReadingVolume, LedgerItemStatus, GutendexBook, Book } from '@/types/book.types';
+import type { ActiveReadingVolume, LedgerItemStatus, CatalogBook, Book } from '@/types/book.types';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import {
@@ -15,7 +15,7 @@ import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/compone
 import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore, useIsBookSaved, useIsBookFavorite } from '@/stores/useBookshelfStore';
-import { toGutendexBook } from '@/lib/adapters/book.adapter';
+import { toCatalogBook } from '@/lib/adapters/book.adapter';
 import { useBookCopyright } from '@/hooks/useBookCopyright';
 import { useOfflineCoverImage } from '@/hooks/useOfflineCoverImage';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -33,7 +33,7 @@ export interface BookmarkCardProps {
   isActive?: boolean;
   onActivate?: (bookId: number) => void;
   onDeactivate?: (bookId: number) => void;
-  onToggleOffline?: (book: GutendexBook | Book) => void;
+  onToggleOffline?: (book: CatalogBook | Book) => void;
   onResume?: (bookId: number) => void;
   onStatusChange?: (bookId: number, status: LedgerItemStatus) => void;
   onClear?: (bookId: number) => void;
@@ -251,7 +251,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                       if (isFavorite) {
                         setPendingRemoval('favorite');
                       } else {
-                        toggleFavoriteBook(toGutendexBook(book));
+                        toggleFavoriteBook(toCatalogBook(book));
                       }
                     }}
                     aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
@@ -273,7 +273,7 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
                       if (isSaved) {
                         setPendingRemoval('bookshelf');
                       } else {
-                        toggleSaveBook(toGutendexBook(book));
+                        toggleSaveBook(toCatalogBook(book));
                       }
                     }}
                     aria-label={isSaved ? 'Remove from bookshelf' : 'Save to bookshelf'}
@@ -539,9 +539,9 @@ export const BookmarkCard: React.FC<BookmarkCardProps> = ({
         onClose={() => setPendingRemoval(null)}
         onConfirm={() => {
           if (pendingRemoval === 'favorite') {
-            toggleFavoriteBook(toGutendexBook(book));
+            toggleFavoriteBook(toCatalogBook(book));
           } else if (pendingRemoval === 'bookshelf') {
-            toggleSaveBook(toGutendexBook(book));
+            toggleSaveBook(toCatalogBook(book));
           }
           setPendingRemoval(null);
         }}

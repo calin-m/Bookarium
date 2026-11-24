@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Download, Library, Heart, Sparkles, X, CheckCircle2, HardDriveDownload, AlertTriangle, Loader2, Trash2, WifiOff } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
@@ -26,7 +26,7 @@ import { formatAuthorNames } from '@/lib/utils';
 import { ROUTES } from '@/config/routes';
 
 export interface BookshelfMobileModalProps {
-  selectedMobileBook: GutendexBook | null;
+  selectedMobileBook: CatalogBook | null;
   isClosingMobileSheet?: boolean;
   onClose: () => void;
   readingProgress?: number;
@@ -34,11 +34,11 @@ export interface BookshelfMobileModalProps {
   isFavorite?: boolean;
   isOffline?: boolean;
   isDownloadingOffline?: boolean;
-  onToggleSave?: (book: GutendexBook) => void;
-  onToggleFavorite?: (book: GutendexBook) => void;
-  onToggleOffline?: (book: GutendexBook) => void;
-  onBookClick?: (book: GutendexBook) => void;
-  onDownloadClick?: (book: GutendexBook) => void;
+  onToggleSave?: (book: CatalogBook) => void;
+  onToggleFavorite?: (book: CatalogBook) => void;
+  onToggleOffline?: (book: CatalogBook) => void;
+  onBookClick?: (book: CatalogBook) => void;
+  onDownloadClick?: (book: CatalogBook) => void;
   cloudBookshelves?: Bookshelf[];
   cloudBookshelfItems?: BookshelfItem[];
   defaultShelfId?: string;

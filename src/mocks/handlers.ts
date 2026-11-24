@@ -1,9 +1,9 @@
 import { http, HttpResponse } from 'msw';
-import type { GutendexBook, GutendexResponse } from '@/types/book.types';
+import type { CatalogBook, CatalogResponse } from '@/types/book.types';
 
-export type { GutendexBook, GutendexResponse };
+export type { CatalogBook, CatalogResponse };
 
-export const mockBooks: GutendexBook[] = [
+export const mockBooks: CatalogBook[] = [
   {
     id: 1342,
     title: 'Pride and Prejudice',

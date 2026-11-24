@@ -4,7 +4,7 @@ import React from 'react';
 import { DownloadDrawer } from './DownloadDrawer';
 import { mockBooks } from '@/mocks/handlers';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 vi.mock('@/lib/offline-storage', () => ({
   getOfflineBookIds: vi.fn().mockResolvedValue([]),
@@ -83,7 +83,7 @@ describe('DownloadDrawer component', () => {
       useJurisdictionStore.getState().setCountry('GB');
     });
 
-    const christieBook: GutendexBook = {
+    const christieBook: CatalogBook = {
       id: 863,
       title: 'The Mysterious Affair at Styles',
       authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
@@ -225,7 +225,7 @@ describe('DownloadDrawer component', () => {
   });
 
   it('should render content advisory banner when book contains mature subjects', () => {
-    const matureBook: GutendexBook = {
+    const matureBook: CatalogBook = {
       ...mockBooks[0],
       id: 99999,
       title: 'Memoirs of a Woman of Pleasure',

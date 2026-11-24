@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useOfflineCatalogFallback } from './useOfflineCatalogFallback';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 describe('useOfflineCatalogFallback', () => {
-  const sampleBooks: GutendexBook[] = [
+  const sampleBooks: CatalogBook[] = [
     {
       id: 1342,
       title: 'Pride and Prejudice',

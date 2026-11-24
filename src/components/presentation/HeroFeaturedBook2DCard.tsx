@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Sparkles, Quote, RotateCw, BookOpen } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import type { FeaturedHeroBook } from '@/config/featured-books';
 import { Button } from '@/components/ui/Button';
 import {
@@ -12,8 +12,8 @@ import {
 import { formatCleanQuote } from '@/lib/gutenberg/passages';
 
 export interface HeroFeaturedBook2DCardProps {
-  featuredBook: FeaturedHeroBook & { rawBook?: GutendexBook };
-  onReadFeaturedBook?: (book: GutendexBook | FeaturedHeroBook) => void;
+  featuredBook: FeaturedHeroBook & { rawBook?: CatalogBook };
+  onReadFeaturedBook?: (book: CatalogBook | FeaturedHeroBook) => void;
   coverQuote?: string;
   coverLineClampClass: string;
   quoteRevealClass: string;

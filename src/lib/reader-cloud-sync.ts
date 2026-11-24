@@ -7,7 +7,7 @@
  * @adr ADR-014, ADR-068, ADR-070, ADR-080
  */
 
-import type { GutendexBook, Book, Author } from '@/types/book.types';
+import type { CatalogBook, Book, Author } from '@/types/book.types';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { hasAuthorLifespans } from '@/lib/book-metadata';
 
@@ -105,7 +105,7 @@ export function decodeRemoteReadingPosition(
 }
 
 export function extractVerifiedAuthors(
-  book: GutendexBook | Book | null | undefined,
+  book: CatalogBook | Book | null | undefined,
   pos?: BookReadingPosition
 ): Author[] | undefined {
   if (book) {

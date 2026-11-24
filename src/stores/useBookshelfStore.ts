@@ -9,7 +9,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { GutendexBook, ReadingStatus } from '@/types/book.types';
+import type { CatalogBook, ReadingStatus } from '@/types/book.types';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { createClient } from '@/lib/supabase/client';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
@@ -45,11 +45,11 @@ import {
 export { applyDeterministicItemOrdering, type OutboxActionInput, type OutboxAction };
 
 export interface BookshelfState {
-  savedBooks: GutendexBook[];
-  readingQueue: GutendexBook[];
-  favoriteBooks: GutendexBook[];
+  savedBooks: CatalogBook[];
+  readingQueue: CatalogBook[];
+  favoriteBooks: CatalogBook[];
   favoriteBookIds: number[];
-  recentBooks: GutendexBook[];
+  recentBooks: CatalogBook[];
 
   // Personal Curation State (1-5 Star Ratings & Reading Statuses)
   bookRatings: Record<number, number>;
@@ -72,18 +72,18 @@ export interface BookshelfState {
   flushOutbox: (userId: string) => Promise<void>;
 
   // Actions
-  toggleSaveBook: (book: GutendexBook, userId?: string) => Promise<void>;
+  toggleSaveBook: (book: CatalogBook, userId?: string) => Promise<void>;
   isBookSaved: (id: number) => boolean;
   clearSavedBooks: () => void;
-  enrichSavedBooks: (books: GutendexBook[]) => Promise<void>;
-  addToQueue: (book: GutendexBook) => void;
+  enrichSavedBooks: (books: CatalogBook[]) => Promise<void>;
+  addToQueue: (book: CatalogBook) => void;
   removeFromQueue: (id: number) => void;
   isInQueue: (id: number) => boolean;
-  toggleFavoriteBook: (bookOrId: GutendexBook | number, userId?: string) => Promise<void>;
+  toggleFavoriteBook: (bookOrId: CatalogBook | number, userId?: string) => Promise<void>;
   isBookFavorite: (id: number) => boolean;
-  syncFavoriteBooks: (books: GutendexBook[]) => void;
+  syncFavoriteBooks: (books: CatalogBook[]) => void;
   clearFavoriteBooks: () => void;
-  addRecentBook: (book: GutendexBook) => void;
+  addRecentBook: (book: CatalogBook) => void;
   clearBookshelf: () => void;
 
   // Curation Actions
@@ -326,14 +326,14 @@ export const useBookshelfStore = create<BookshelfState>()(
           return;
         }
 
-        const freshMap = new Map<number, GutendexBook>();
+        const freshMap = new Map<number, CatalogBook>();
         for (const fb of freshBooks) {
           if (fb && typeof fb.id === 'number') {
             freshMap.set(fb.id, fb);
           }
         }
 
-        const enrichBookItem = (item: GutendexBook, markChanged: () => void): GutendexBook => {
+        const enrichBookItem = (item: CatalogBook, markChanged: () => void): CatalogBook => {
           const fresh = freshMap.get(item.id);
           if (!fresh) return item;
 
@@ -498,7 +498,7 @@ export const useBookshelfStore = create<BookshelfState>()(
                 .eq('book_id', id);
               if (error) throw error;
             } else if (!isNumeric) {
-              const book = bookOrId as GutendexBook;
+              const book = bookOrId as CatalogBook;
               const payload = toCloudBookInsert(book, currentUserId);
               const { error } = await supabase.from('user_favorites').upsert(payload);
               if (error) throw error;
@@ -511,7 +511,7 @@ export const useBookshelfStore = create<BookshelfState>()(
                 payload: { user_id: currentUserId, book_id: id },
               });
             } else if (!isNumeric) {
-              const book = bookOrId as GutendexBook;
+              const book = bookOrId as CatalogBook;
               get().queueOutboxAction({
                 type: 'UPSERT_FAVORITE',
                 payload: toCloudBookInsert(book, currentUserId),
@@ -844,11 +844,11 @@ export function useHydratedBookshelf() {
     : {
         isSaved: () => false,
         isFavorite: () => false,
-        savedBooks: [] as GutendexBook[],
-        readingQueue: [] as GutendexBook[],
-        favoriteBooks: [] as GutendexBook[],
+        savedBooks: [] as CatalogBook[],
+        readingQueue: [] as CatalogBook[],
+        favoriteBooks: [] as CatalogBook[],
         favoriteBookIds: [] as number[],
-        recentBooks: [] as GutendexBook[],
+        recentBooks: [] as CatalogBook[],
         bookRatings: {} as Record<number, number>,
         bookStatuses: {} as Record<number, ReadingStatus>,
         curationHistory: {} as Record<number, string>,

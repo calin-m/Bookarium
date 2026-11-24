@@ -13,14 +13,14 @@ import {
 } from '@/types/accolades.types';
 import { ACCOLADES_CATALOG } from '@/config/accolades-config';
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
-import type { GutendexBook, ReadingStatus } from '@/types/book.types';
+import type { CatalogBook, ReadingStatus } from '@/types/book.types';
 import type { Annotation } from '@/stores/useAnnotationStore';
 import type { HabitsState } from '@/stores/useHabitsStore';
 
 /**
  * Maps author birth/death year or book metadata to a historical literary era.
  */
-export function determineBookEra(book: GutendexBook): string | null {
+export function determineBookEra(book: CatalogBook): string | null {
   // Check author birth or death year
   const author = book.authors?.[0];
   const year = author?.death_year ?? author?.birth_year ?? null;
@@ -62,7 +62,7 @@ export function determineBookEra(book: GutendexBook): string | null {
 /**
  * Determines whether a book belongs to Antiquity or the Middle Ages (pre-1400 CE).
  */
-export function isAncientBook(book: GutendexBook): boolean {
+export function isAncientBook(book: CatalogBook): boolean {
   const era = determineBookEra(book);
   return era === 'antiquity' || era === 'middle-ages';
 }
@@ -73,7 +73,7 @@ export interface BuildAccoladeContextParams {
     longestStreak?: number;
     annualGoalPercent?: number;
   };
-  savedBooks?: GutendexBook[];
+  savedBooks?: CatalogBook[];
   bookStatuses?: Record<number, ReadingStatus>;
   readingProgress?: Record<number, number>;
   annotations?: Annotation[];

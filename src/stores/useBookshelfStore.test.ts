@@ -13,7 +13,7 @@ import {
   applyDeterministicItemOrdering,
 } from './useBookshelfStore';
 import { mockBooks } from '@/mocks/handlers';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 const mockFrom = vi.fn();
 vi.mock('@/lib/supabase/client', () => ({
@@ -1615,7 +1615,7 @@ describe('useBookshelfStore', () => {
     });
 
     it('enriches savedBooks and recentBooks with author lifespans and translators', async () => {
-      const incompleteBook: GutendexBook = {
+      const incompleteBook: CatalogBook = {
         id: 1727,
         title: 'The Odyssey',
         authors: [{ name: 'Homer', birth_year: null, death_year: null }],
@@ -1634,7 +1634,7 @@ describe('useBookshelfStore', () => {
         recentBooks: [incompleteBook],
       });
 
-      const freshBook: GutendexBook = {
+      const freshBook: CatalogBook = {
         id: 1727,
         title: 'The Odyssey',
         authors: [{ name: 'Homer', birth_year: -800, death_year: -750 }],
@@ -1669,7 +1669,7 @@ describe('useBookshelfStore', () => {
 
     it('covers syncFavoriteBooks, authenticated curation deletion/error outbox fallbacks, and toggleSaveBook insert outbox', async () => {
       // 1. syncFavoriteBooks branches
-      const incompleteFav: GutendexBook = {
+      const incompleteFav: CatalogBook = {
         ...mockBooks[0],
         id: 1342,
         authors: [{ name: 'Jane Austen', birth_year: null, death_year: null }],
@@ -1680,17 +1680,17 @@ describe('useBookshelfStore', () => {
         favoriteBooks: [incompleteFav],
       });
 
-      const freshFav1342: GutendexBook = {
+      const freshFav1342: CatalogBook = {
         ...mockBooks[0],
         id: 1342,
         authors: [{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }],
         translators: [{ name: 'Editor', birth_year: 1900, death_year: 1980 }],
       };
-      const freshFav84: GutendexBook = {
+      const freshFav84: CatalogBook = {
         ...mockBooks[1],
         id: 84,
       };
-      const ignoredBook: GutendexBook = {
+      const ignoredBook: CatalogBook = {
         ...mockBooks[0],
         id: 9999,
       };
@@ -1942,7 +1942,7 @@ describe('useBookshelfStore', () => {
         }),
       });
 
-      const freshBooks: GutendexBook[] = [
+      const freshBooks: CatalogBook[] = [
         {
           id: 700,
           title: 'Book 700',

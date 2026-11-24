@@ -3,7 +3,7 @@ import {
   SupabaseCatalogProvider,
   isSupabaseConfigured,
   isStatementTimeoutError,
-  mapDatabaseBookToGutendexBook,
+  mapDatabaseBookToCatalogBook,
   CATALOG_METADATA_COLUMNS,
   CATALOG_WITH_QUOTES_COLUMNS,
   QUOTE_POOL_COLUMNS,
@@ -54,7 +54,7 @@ describe('SupabaseCatalogProvider', () => {
     });
   });
 
-  describe('mapDatabaseBookToGutendexBook', () => {
+  describe('mapDatabaseBookToCatalogBook', () => {
     it('correctly maps all fields and defaults nullish values', () => {
       const dbRow: DatabaseBook = {
         id: 1342,
@@ -76,7 +76,7 @@ describe('SupabaseCatalogProvider', () => {
         updated_at: '2026-01-01T00:00:00Z',
       };
 
-      const mapped = mapDatabaseBookToGutendexBook(dbRow);
+      const mapped = mapDatabaseBookToCatalogBook(dbRow);
 
       expect(mapped.id).toBe(1342);
       expect(mapped.title).toBe('Pride and Prejudice');
@@ -102,7 +102,7 @@ describe('SupabaseCatalogProvider', () => {
           },
         ],
       } as unknown as DatabaseBook;
-      expect(mapDatabaseBookToGutendexBook(sentinelOnlyRow).quotes).toBeUndefined();
+      expect(mapDatabaseBookToCatalogBook(sentinelOnlyRow).quotes).toBeUndefined();
     });
 
     it('handles non-array or nullish authors, formats, and download count', () => {
@@ -124,7 +124,7 @@ describe('SupabaseCatalogProvider', () => {
         updated_at: '2026-01-01T00:00:00Z',
       } as unknown as DatabaseBook;
 
-      const mapped = mapDatabaseBookToGutendexBook(dbRow);
+      const mapped = mapDatabaseBookToCatalogBook(dbRow);
 
       expect(mapped.authors).toEqual([]);
       expect(mapped.translators).toEqual([]);
@@ -1139,9 +1139,9 @@ describe('SupabaseCatalogProvider', () => {
       expect(gbResults[0].bookId).toBe(1342);
     });
 
-    it('maps optional quotes JSONB array in mapDatabaseBookToGutendexBook when present', async () => {
-      const { mapDatabaseBookToGutendexBook } = await import('./supabase-provider');
-      const mappedWithQuotes = mapDatabaseBookToGutendexBook({
+    it('maps optional quotes JSONB array in mapDatabaseBookToCatalogBook when present', async () => {
+      const { mapDatabaseBookToCatalogBook } = await import('./supabase-provider');
+      const mappedWithQuotes = mapDatabaseBookToCatalogBook({
         id: 1342,
         title: 'Pride and Prejudice',
         authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],

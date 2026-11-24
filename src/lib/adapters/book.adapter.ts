@@ -1,4 +1,4 @@
-import type { GutendexBook, Author, Book } from '@/types/book.types';
+import type { CatalogBook, Author, Book } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { formatAuthorName } from '@/lib/utils';
 import { cleanBookTitle } from '@/lib/book-metadata';
@@ -107,11 +107,11 @@ export function isCanonicalBook(entity: unknown): entity is Book {
 }
 
 /**
- * Transforms an upstream GutendexBook or partial representation into a canonical Book domain entity.
+ * Transforms a raw CatalogBook or partial representation into a canonical Book domain entity.
  * Guaranteed idempotent: passing an already-canonical Book returns an identical canonical Book.
  */
 export function toCanonicalBook(
-  input: GutendexBook | Book | Partial<GutendexBook & Book> | null | undefined
+  input: CatalogBook | Book | Partial<CatalogBook & Book> | null | undefined
 ): Book {
   if (!input) {
     return {
@@ -236,8 +236,8 @@ export function toCanonicalBook(
   const downloadCount =
     typeof (input as { downloadCount?: number }).downloadCount === 'number'
       ? (input as { downloadCount: number }).downloadCount
-      : typeof (input as GutendexBook).download_count === 'number'
-      ? (input as GutendexBook).download_count
+      : typeof (input as CatalogBook).download_count === 'number'
+      ? (input as CatalogBook).download_count
       : 0;
 
   return {
@@ -258,10 +258,10 @@ export function toCanonicalBook(
 }
 
 /**
- * Converts a canonical Book or raw GutendexBook into a standard GutendexBook entity,
+ * Converts a canonical Book or raw CatalogBook into a standard CatalogBook entity,
  * preserving author lifespans (`authorDetails` or parsed date strings) and format URLs.
  */
-export function toGutendexBook(input: Book | GutendexBook): GutendexBook {
+export function toCatalogBook(input: Book | CatalogBook): CatalogBook {
   if (!isCanonicalBook(input)) {
     return input;
   }
@@ -348,10 +348,10 @@ export function formatAuthorWithLifespan(author: string | Author): string {
 }
 
 /**
- * Reconstructs a full GutendexBook from a cloud database row (bookshelf_items or user_favorites).
+ * Reconstructs a full CatalogBook from a cloud database row (bookshelf_items or user_favorites).
  * Preserves author lifespans and applies fallback regex extraction from author strings.
  */
-export function toGutendexBookFromCloudRow(item: CloudBookRow): GutendexBook {
+export function toCatalogBookFromCloudRow(item: CloudBookRow): CatalogBook {
   const authors: Author[] = [];
 
   if (Array.isArray(item.book_authors)) {
@@ -413,20 +413,20 @@ export interface CloudBookshelfItemInsertPayload extends CloudFavoriteInsertPayl
 export type CloudBookInsertPayload = CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload;
 
 /**
- * Transforms a GutendexBook entity into a normalized Supabase insert payload,
+ * Transforms a CatalogBook entity into a normalized Supabase insert payload,
  * preserving author lifespans in JSON/string representations.
  */
 export function toCloudBookInsert(
-  book: GutendexBook,
+  book: CatalogBook,
   userId: string,
   bookshelfId: string
 ): CloudBookshelfItemInsertPayload;
 export function toCloudBookInsert(
-  book: GutendexBook,
+  book: CatalogBook,
   userId: string
 ): CloudFavoriteInsertPayload;
 export function toCloudBookInsert(
-  book: GutendexBook,
+  book: CatalogBook,
   userId: string,
   bookshelfId?: string
 ): CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload {

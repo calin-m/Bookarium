@@ -18,7 +18,7 @@
  * @adr ADR-002, ADR-036, ADR-044, ADR-070
  */
 
-import type { Author, GutendexBook } from '@/types/book.types';
+import type { Author, CatalogBook } from '@/types/book.types';
 export type { Author };
 
 export type JurisdictionRule = 'US_PUBLIC_DOMAIN' | 'LIFE_70' | 'LIFE_80' | 'LIFE_100';
@@ -465,7 +465,7 @@ export function getJurisdictionShortLabel(rule: JurisdictionRule, countryCode: s
   }
 }
 
-export interface PartitionedBooks<T extends GenericBookInput = GutendexBook> {
+export interface PartitionedBooks<T extends GenericBookInput = CatalogBook> {
   downloadableBooks: T[];
   restrictedBooks: T[];
 }
@@ -474,7 +474,7 @@ export interface PartitionedBooks<T extends GenericBookInput = GutendexBook> {
  * Partitions a collection of books into downloadable/public domain titles
  * and copyright-restricted titles based on the user's jurisdiction.
  */
-export function partitionBooksByJurisdiction<T extends GenericBookInput = GutendexBook>(
+export function partitionBooksByJurisdiction<T extends GenericBookInput = CatalogBook>(
   books: T[],
   countryCode?: string | null,
   currentYear?: number

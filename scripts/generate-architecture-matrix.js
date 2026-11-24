@@ -1937,7 +1937,7 @@ function generateMarkdown() {
     'accolades-engine':
       'Historical literary accolades evaluation engine, criteria matching, milestone progress calculation, summary aggregation (`computeAccoladesSummary`), and era determination.',
     'book.adapter':
-      'Bidirectional domain transformation between internal catalog DTO schemas (`GutendexBook` / `GutendexResponse`), canonical Book models, and Supabase cloud persistence payloads (`toCloudBookInsert`, `GUTENBERG_COVER_HOSTS`, and `normalizeCloudCoverUrl` stripping derivable Gutenberg/proxy cover strings).',
+      'Bidirectional domain transformation between internal catalog DTO schemas (`CatalogBook` / `CatalogResponse`), canonical Book models, and Supabase cloud persistence payloads (`toCatalogBook`, `toCatalogBookFromCloudRow`, `toCloudBookInsert`, `GUTENBERG_COVER_HOSTS`, and `normalizeCloudCoverUrl`).',
     'api-utils':
       'Server-side API route helpers, IP address extraction (`resolveClientIp`), HTTPS proxy/URL detection (`isHttpsRequest`) for protocol-aware `Secure` cookies, `ApiCorpPolicy` / `buildApiSecurityHeaders` (`Cross-Origin-Resource-Policy` & `nosniff`), strict query allowlisting (`hasUnexpectedQueryParams`), W3C Fetch Metadata anti-deeplink & cross-site asset guards (`isBlockedContentAssetRequest`, `guardContentAssetRequest`), `createNoStoreErrorResponse`, and `no-store` `same-origin` `429` rate-limit responses.',
     'bookshelf-cloud-sync':

@@ -3,9 +3,9 @@ import { renderHook, act } from '@testing-library/react';
 import { usePersonalCollectionsController } from './usePersonalCollectionsController';
 import { DOWNLOADED_SHELF_ID } from '@/components/presentation/BookshelfRack';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
-const sampleBooks: GutendexBook[] = [
+const sampleBooks: CatalogBook[] = [
   {
     id: 1342,
     title: 'Pride and Prejudice',

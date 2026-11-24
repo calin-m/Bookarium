@@ -1,4 +1,4 @@
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 /**
  * Normalizes text for search indexing and matching:
@@ -46,9 +46,9 @@ export function matchesSmartSearch<T>(
 }
 
 /**
- * Builds a comprehensive search haystack for a GutendexBook object.
+ * Builds a comprehensive search haystack for a CatalogBook object.
  */
-export function getBookSearchHaystack(book: GutendexBook): string {
+export function getBookSearchHaystack(book: CatalogBook): string {
   const parts: string[] = [
     book.title || '',
     ...(book.authors || []).map((a) => a.name || ''),
@@ -61,9 +61,9 @@ export function getBookSearchHaystack(book: GutendexBook): string {
 }
 
 /**
- * Filters an array of GutendexBook items using order-independent multi-token search.
+ * Filters an array of CatalogBook items using order-independent multi-token search.
  */
-export function filterBooksSmart(books: GutendexBook[], query: string): GutendexBook[] {
+export function filterBooksSmart(books: CatalogBook[], query: string): CatalogBook[] {
   if (!query || !query.trim()) return books;
   return books.filter((book) =>
     matchesSmartSearch(book, query, getBookSearchHaystack)

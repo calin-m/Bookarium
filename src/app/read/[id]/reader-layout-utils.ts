@@ -7,17 +7,17 @@
  */
 
 import { cache } from 'react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { SITE_CONFIG } from '@/config/site-config';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import {
   isSupabaseConfigured,
-  mapDatabaseBookToGutendexBook,
+  mapDatabaseBookToCatalogBook,
   CATALOG_METADATA_COLUMNS,
 } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 import {
-  featuredHeroToGutendexBook,
+  featuredHeroToCatalogBook,
   isPlaceholderAuthor,
   type ResolvedBookIdentity,
 } from '@/lib/book-metadata';
@@ -31,13 +31,13 @@ export { isClientSideNavigation };
 export const MAX_SERVER_METADATA_CACHE_ENTRIES = 500;
 
 const globalForReaderMetadata = globalThis as typeof globalThis & {
-  __bookariumServerMetadataCache?: Map<number, GutendexBook>;
+  __bookariumServerMetadataCache?: Map<number, CatalogBook>;
   __bookariumConfirmedNotFoundIds?: Set<number>;
 };
 
 export const serverMetadataCache =
   globalForReaderMetadata.__bookariumServerMetadataCache ??
-  (globalForReaderMetadata.__bookariumServerMetadataCache = new Map<number, GutendexBook>());
+  (globalForReaderMetadata.__bookariumServerMetadataCache = new Map<number, CatalogBook>());
 
 const confirmedNotFoundIds =
   globalForReaderMetadata.__bookariumConfirmedNotFoundIds ??
@@ -63,7 +63,7 @@ export function clearConfirmedNotFoundCache(): void {
   confirmedNotFoundIds.clear();
 }
 
-export function setServerMetadataCache(bookId: number, book: GutendexBook): void {
+export function setServerMetadataCache(bookId: number, book: CatalogBook): void {
   confirmedNotFoundIds.delete(bookId);
   if (serverMetadataCache.has(bookId)) {
     serverMetadataCache.delete(bookId);
@@ -81,7 +81,7 @@ export function clearServerMetadataCache(): void {
   confirmedNotFoundIds.clear();
 }
 
-export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook | null> => {
+export const fetchBookData = cache(async (bookId: number): Promise<CatalogBook | null> => {
   if (!bookId || isNaN(bookId)) return null;
 
   // Tier 1: In-memory LRU server cache
@@ -106,7 +106,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
         .maybeSingle();
 
       if (!error && data) {
-        const book = mapDatabaseBookToGutendexBook(data as unknown as DatabaseBook);
+        const book = mapDatabaseBookToCatalogBook(data as unknown as DatabaseBook);
         setServerMetadataCache(bookId, book);
         return book;
       }
@@ -122,7 +122,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<GutendexBook 
 
   // Tier 3: Bundled curated classics fallback (zero external HTTP requests)
   if (featured) {
-    const fallbackBook = featuredHeroToGutendexBook(featured, {
+    const fallbackBook = featuredHeroToCatalogBook(featured, {
       formats: {
         'text/plain; charset=utf-8': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.txt`,
         'text/html': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}-images.html`,

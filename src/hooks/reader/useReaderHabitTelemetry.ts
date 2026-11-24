@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import type { GutendexBook, GutendexResponse, ReadingStatus } from '@/types/book.types';
+import type { CatalogBook, CatalogResponse, ReadingStatus } from '@/types/book.types';
 import {
   type ResolvedBookIdentity,
   isPlaceholderTitle,
@@ -35,7 +35,7 @@ export interface UseReaderHabitTelemetryParams {
     chapterIndex: number,
     progress: number
   ) => void | Promise<void>;
-  booksData?: GutendexResponse;
+  booksData?: CatalogResponse;
   resolvedIdentity: ResolvedBookIdentity;
   refetch: () => unknown;
   updateBookMetadata: (bookId: number, bookTitle: string, bookAuthor: string) => void;
@@ -117,7 +117,7 @@ export function useReaderHabitTelemetry({
         (resolvedHasLifespans && !existingRecentHasLifespans))
     ) {
       initializedBookIdRef.current = numericId;
-      const bookObj: GutendexBook = {
+      const bookObj: CatalogBook = {
         id: numericId,
         title: resolvedIdentity.title,
         authors: resolvedIdentity.authors?.length

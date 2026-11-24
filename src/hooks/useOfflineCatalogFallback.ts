@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { filterBooksSmart } from '@/lib/smart-search';
 
 export interface UseOfflineCatalogFallbackParams {
   isOffline: boolean;
-  resolvedOfflineBooks: GutendexBook[];
+  resolvedOfflineBooks: CatalogBook[];
   search: string;
   topic: string;
   language: string;

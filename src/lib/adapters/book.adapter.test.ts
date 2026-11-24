@@ -4,14 +4,14 @@ import {
   extractFormatUrl,
   isCanonicalBook,
   toCanonicalBook,
-  toGutendexBook,
-  toGutendexBookFromCloudRow,
+  toCatalogBook,
+  toCatalogBookFromCloudRow,
   toCloudBookInsert,
   formatAuthorWithLifespan,
   normalizeCloudCoverUrl,
   GUTENBERG_COVER_HOSTS,
 } from './book.adapter';
-import type { GutendexBook, Book } from '@/types/book.types';
+import type { CatalogBook, Book } from '@/types/book.types';
 
 describe('book.adapter', () => {
   describe('normalizeAuthorName', () => {
@@ -72,8 +72,8 @@ describe('book.adapter', () => {
       expect(isCanonicalBook(canonical)).toBe(true);
     });
 
-    it('rejects raw GutendexBook or non-book values', () => {
-      const raw: GutendexBook = {
+    it('rejects raw CatalogBook or non-book values', () => {
+      const raw: CatalogBook = {
         id: 1342,
         title: 'Pride and Prejudice',
         authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -93,8 +93,8 @@ describe('book.adapter', () => {
   });
 
   describe('toCanonicalBook', () => {
-    it('transforms GutendexBook into canonical Book with normalized authors and format URLs', () => {
-      const raw: GutendexBook = {
+    it('transforms CatalogBook into canonical Book with normalized authors and format URLs', () => {
+      const raw: CatalogBook = {
         id: 84,
         title: 'Frankenstein; Or, The Modern Prometheus',
         authors: [{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }],
@@ -188,8 +188,8 @@ describe('book.adapter', () => {
     });
   });
 
-  describe('toGutendexBookFromCloudRow', () => {
-    it('reconstructs GutendexBook with Gutenberg format URLs and normalized author objects', () => {
+  describe('toCatalogBookFromCloudRow', () => {
+    it('reconstructs CatalogBook with Gutenberg format URLs and normalized author objects', () => {
       const row = {
         book_id: 1342,
         book_title: 'Pride and Prejudice',
@@ -197,7 +197,7 @@ describe('book.adapter', () => {
         cover_url: 'https://example.com/cover.jpg',
       };
 
-      const result = toGutendexBookFromCloudRow(row);
+      const result = toCatalogBookFromCloudRow(row);
       expect(result.id).toBe(1342);
       expect(result.title).toBe('Pride and Prejudice');
       expect(result.authors).toEqual([{ name: 'Jane Austen', birth_year: null, death_year: null }]);
@@ -219,7 +219,7 @@ describe('book.adapter', () => {
         cover_url: null,
       };
 
-      const result = toGutendexBookFromCloudRow(row);
+      const result = toCatalogBookFromCloudRow(row);
       expect(result.id).toBe(99);
       expect(result.authors).toEqual([]);
       expect(result.formats['image/jpeg']).toBeUndefined();
@@ -227,8 +227,8 @@ describe('book.adapter', () => {
   });
 
   describe('toCloudBookInsert', () => {
-    it('formats a GutendexBook into a standardized Supabase insert payload', () => {
-      const book: GutendexBook = {
+    it('formats a CatalogBook into a standardized Supabase insert payload', () => {
+      const book: CatalogBook = {
         id: 84,
         title: 'Frankenstein',
         authors: [{ name: 'Mary Wollstonecraft Shelley', birth_year: null, death_year: null }],
@@ -256,7 +256,7 @@ describe('book.adapter', () => {
     });
 
     it('preserves birth and death years in author strings when present', () => {
-      const bookWithDates: GutendexBook = {
+      const bookWithDates: CatalogBook = {
         id: 1342,
         title: 'Pride and Prejudice',
         authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -274,7 +274,7 @@ describe('book.adapter', () => {
       expect(insertPayload.book_authors).toEqual(['Austen, Jane, 1775-1817']);
 
       // Reconstruct and verify lifespans are recovered
-      const reconstructed = toGutendexBookFromCloudRow({
+      const reconstructed = toCatalogBookFromCloudRow({
         book_id: 1342,
         book_title: 'Pride and Prejudice',
         book_authors: insertPayload.book_authors,
@@ -286,7 +286,7 @@ describe('book.adapter', () => {
     });
 
     it('omits bookshelf_id when not provided', () => {
-      const book: GutendexBook = {
+      const book: CatalogBook = {
         id: 11,
         title: 'Alice in Wonderland',
         authors: [{ name: 'Lewis Carroll', birth_year: null, death_year: null }],
@@ -307,7 +307,7 @@ describe('book.adapter', () => {
 
     it('strips derivable Project Gutenberg and same-origin proxy cover URLs from cloud inserts while preserving custom URLs', () => {
       for (const host of GUTENBERG_COVER_HOSTS) {
-        const pgBook: GutendexBook = {
+        const pgBook: CatalogBook = {
           id: 1342,
           title: 'Pride and Prejudice',
           authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -381,7 +381,7 @@ describe('book.adapter', () => {
       );
       expect(formatAuthorWithLifespan(null as unknown as string)).toBe('Anonymous');
 
-      const cloudRowWithObjects = toGutendexBookFromCloudRow({
+      const cloudRowWithObjects = toCatalogBookFromCloudRow({
         book_id: 1342,
         book_title: 'Pride',
         book_authors: [
@@ -448,9 +448,9 @@ describe('book.adapter', () => {
     });
   });
 
-  describe('toGutendexBook', () => {
-    it('returns an existing GutendexBook unchanged', () => {
-      const raw: GutendexBook = {
+  describe('toCatalogBook', () => {
+    it('returns an existing CatalogBook unchanged', () => {
+      const raw: CatalogBook = {
         id: 1342,
         title: 'Pride and Prejudice',
         authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -463,10 +463,10 @@ describe('book.adapter', () => {
         formats: { 'image/jpeg': 'https://example.com/1342.jpg' },
         download_count: 50000,
       };
-      expect(toGutendexBook(raw)).toBe(raw);
+      expect(toCatalogBook(raw)).toBe(raw);
     });
 
-    it('converts a canonical Book with authorDetails, translators, and explicit URLs to a GutendexBook', () => {
+    it('converts a canonical Book with authorDetails, translators, and explicit URLs to a CatalogBook', () => {
       const canonical: Book = {
         id: 1342,
         title: 'Pride and Prejudice',
@@ -486,7 +486,7 @@ describe('book.adapter', () => {
         downloadCount: 42000,
       };
 
-      const result = toGutendexBook(canonical);
+      const result = toCatalogBook(canonical);
       expect(result.id).toBe(1342);
       expect(result.title).toBe('Pride and Prejudice');
       expect(result.authors).toEqual([
@@ -520,7 +520,7 @@ describe('book.adapter', () => {
         downloadCount: 0,
       };
 
-      const result = toGutendexBook(canonicalWithoutDetails);
+      const result = toCatalogBook(canonicalWithoutDetails);
       expect(result.authors).toEqual([
         { name: 'Mary Shelley (1797-1851)', birth_year: 1797, death_year: 1851 },
       ]);
@@ -544,7 +544,7 @@ describe('book.adapter', () => {
         txtUrl: null,
         downloadCount: Number.NaN as unknown as number,
       };
-      const result = toGutendexBook(emptyAuthorsBook);
+      const result = toCatalogBook(emptyAuthorsBook);
       expect(result.authors).toEqual([]);
       expect(result.download_count).toBe(0);
     });

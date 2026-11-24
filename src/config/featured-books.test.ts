@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import {
   FEATURED_HERO_BOOKS,
   FEATURED_HERO_BOOK,
@@ -9,7 +9,7 @@ import {
   getHourlyHeroBook,
   getDailyEditorialBook,
   isClassicCatalogBook,
-  gutendexBookToFeaturedHeroBook,
+  catalogBookToFeaturedHeroBook,
   selectHourlyHeroFromPool,
   selectDailyClassicFromPool,
 } from './featured-books';
@@ -153,7 +153,7 @@ describe('featured-books configuration & passage selectors', () => {
     });
   });
 
-  describe('isClassicCatalogBook, gutendexBookToFeaturedHeroBook & DB-First Pool Selectors', () => {
+  describe('isClassicCatalogBook, catalogBookToFeaturedHeroBook & DB-First Pool Selectors', () => {
     const mockClassicDbBook = {
       id: 1400,
       title: 'Great Expectations',
@@ -210,8 +210,8 @@ describe('featured-books configuration & passage selectors', () => {
       expect(isClassicCatalogBook(null as unknown as { id: number })).toBe(false);
     });
 
-    it('maps GutendexBook to FeaturedHeroBook using exclusively database quotes', () => {
-      const mapped = gutendexBookToFeaturedHeroBook(mockClassicDbBook);
+    it('maps CatalogBook to FeaturedHeroBook using exclusively database quotes', () => {
+      const mapped = catalogBookToFeaturedHeroBook(mockClassicDbBook);
       expect(mapped.id).toBe(1400);
       expect(mapped.author).toBe('Charles Dickens');
       expect(mapped.year).toBe('1812–1870');
@@ -271,12 +271,12 @@ describe('featured-books configuration & passage selectors', () => {
       );
 
       // Morning cache slice contains curated FEATURED_HERO_BOOKS from the prior 12h window, but NOT the 12:00 UTC fallback ID
-      const morningHeroDbBookA: GutendexBook = {
+      const morningHeroDbBookA: CatalogBook = {
         ...mockClassicDbBook,
         id: FEATURED_HERO_BOOKS[2].id,
         title: FEATURED_HERO_BOOKS[2].title,
       };
-      const morningHeroDbBookB: GutendexBook = {
+      const morningHeroDbBookB: CatalogBook = {
         ...mockClassicDbBook,
         id: FEATURED_HERO_BOOKS[3].id,
         title: FEATURED_HERO_BOOKS[3].title,
@@ -307,7 +307,7 @@ describe('featured-books configuration & passage selectors', () => {
       expect(preservedDaily.title).toBe(expectedDailyFallback.title);
 
       // When the pool includes the exact SSR fallback ID (ssrMatch), it enriches with DB quotes while preserving Spread 0
-      const matchingHourlyDbBook: GutendexBook = {
+      const matchingHourlyDbBook: CatalogBook = {
         ...mockClassicDbBook,
         id: expectedHourlyFallback.id,
         title: expectedHourlyFallback.title,
@@ -319,7 +319,7 @@ describe('featured-books configuration & passage selectors', () => {
           },
         ],
       };
-      const matchingDailyDbBook: GutendexBook = {
+      const matchingDailyDbBook: CatalogBook = {
         ...mockClassicDbBook,
         id: expectedDailyFallback.id,
         title: expectedDailyFallback.title,

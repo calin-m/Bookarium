@@ -12,7 +12,7 @@ import {
   buildReaderSeoMetadataPayload,
 } from './reader-layout-utils';
 import { resolveBookMetadata } from '@/lib/book-metadata';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),
@@ -28,7 +28,7 @@ describe('reader-layout-utils', () => {
   describe('clearServerMetadataCache', () => {
     it('clears all cached items from serverMetadataCache and enforces LRU eviction at MAX_SERVER_METADATA_CACHE_ENTRIES', () => {
       for (let i = 1; i <= MAX_SERVER_METADATA_CACHE_ENTRIES + 2; i++) {
-        setServerMetadataCache(i, { id: i, title: `Book ${i}` } as GutendexBook);
+        setServerMetadataCache(i, { id: i, title: `Book ${i}` } as CatalogBook);
       }
       expect(serverMetadataCache.size).toBe(MAX_SERVER_METADATA_CACHE_ENTRIES);
       expect(serverMetadataCache.has(1)).toBe(false);
@@ -36,7 +36,7 @@ describe('reader-layout-utils', () => {
       expect(serverMetadataCache.has(3)).toBe(true);
 
       // Updating an existing key refreshes its LRU position without growing size
-      setServerMetadataCache(3, { id: 3, title: 'Book 3 Updated' } as GutendexBook);
+      setServerMetadataCache(3, { id: 3, title: 'Book 3 Updated' } as CatalogBook);
       expect(serverMetadataCache.get(3)?.title).toBe('Book 3 Updated');
 
       clearServerMetadataCache();
@@ -83,7 +83,7 @@ describe('reader-layout-utils', () => {
     });
 
     it('returns cached book immediately if present in serverMetadataCache', async () => {
-      const mockBook = { id: 42, title: 'Cached Hitchhiker' } as GutendexBook;
+      const mockBook = { id: 42, title: 'Cached Hitchhiker' } as CatalogBook;
       serverMetadataCache.set(42, mockBook);
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -344,9 +344,9 @@ describe('reader-layout-utils', () => {
   });
 
   it('anchors serverMetadataCache and confirmedNotFoundIds on globalThis', () => {
-    setServerMetadataCache(1342, { id: 1342, title: 'Pride and Prejudice' } as GutendexBook);
+    setServerMetadataCache(1342, { id: 1342, title: 'Pride and Prejudice' } as CatalogBook);
     const g = globalThis as typeof globalThis & {
-      __bookariumServerMetadataCache?: Map<number, GutendexBook>;
+      __bookariumServerMetadataCache?: Map<number, CatalogBook>;
       __bookariumConfirmedNotFoundIds?: Set<number>;
     };
     expect(g.__bookariumServerMetadataCache).toBe(serverMetadataCache);

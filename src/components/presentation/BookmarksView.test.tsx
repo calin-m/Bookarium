@@ -5,7 +5,7 @@ import React from 'react';
 import { BookmarksView } from './BookmarksView';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -28,7 +28,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 let mockOfflineBookIds: number[] = [];
-let mockOfflineBooks: GutendexBook[] = [];
+let mockOfflineBooks: CatalogBook[] = [];
 const mockDownloadBook = vi.fn();
 const mockRemoveBook = vi.fn();
 vi.mock('@/hooks/useOfflineBooks', () => ({
@@ -42,7 +42,7 @@ vi.mock('@/hooks/useOfflineBooks', () => ({
   }),
 }));
 
-const mockBook: GutendexBook = {
+const mockBook: CatalogBook = {
   id: 1342,
   title: 'Pride and Prejudice',
   authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -690,7 +690,7 @@ describe('BookmarksView', () => {
   });
 
   it('filters active volumes to only offline books when Downloaded filter option is selected', () => {
-    const secondBook: GutendexBook = {
+    const secondBook: CatalogBook = {
       ...mockBook,
       id: 84,
       title: 'Frankenstein',
@@ -866,7 +866,7 @@ describe('BookmarksView', () => {
     const originalWidth = window.innerWidth;
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 });
 
-    const thirteenBooks: GutendexBook[] = Array.from({ length: 13 }, (_, i) => ({
+    const thirteenBooks: CatalogBook[] = Array.from({ length: 13 }, (_, i) => ({
       ...mockBook,
       id: 2000 + i,
       title: `Volume ${i + 1}`,
@@ -934,7 +934,7 @@ describe('BookmarksView', () => {
     });
     const cafSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
 
-    const secondBook: GutendexBook = { ...mockBook, id: 84, title: 'Frankenstein' };
+    const secondBook: CatalogBook = { ...mockBook, id: 84, title: 'Frankenstein' };
     useBookshelfStore.setState({ savedBooks: [mockBook, secondBook] });
     useReaderStore.setState({
       readingPositions: {
@@ -1041,7 +1041,7 @@ describe('BookmarksView', () => {
   });
 
   it('supports mobile bottom dock floating search, filter drawer direction sorting, and reset all', () => {
-    const secondBook: GutendexBook = {
+    const secondBook: CatalogBook = {
       ...mockBook,
       id: 84,
       title: 'Frankenstein',

@@ -3,7 +3,7 @@
 import React from 'react';
 import { QueryClientContext } from '@tanstack/react-query';
 import { Download, FileText, Globe, Smartphone, ShieldCheck, AlertTriangle, HardDriveDownload, CheckCircle2, Loader2, Trash2, WifiOff } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { formatAuthorNames } from '@/lib/utils';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { getOfflineBook } from '@/lib/offline-storage';
@@ -23,7 +23,7 @@ import { evaluateContentAdvisory } from '@/lib/content-advisory';
 import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 
 export interface DownloadDrawerProps {
-  book: GutendexBook | null;
+  book: CatalogBook | null;
   isOpen: boolean;
   onClose: () => void;
 }

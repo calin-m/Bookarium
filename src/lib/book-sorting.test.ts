@@ -12,9 +12,9 @@ import {
   resolveBookSortKey,
   decomposeBookSortKey,
 } from './book-sorting';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
-const mockBookA: GutendexBook = {
+const mockBookA: CatalogBook = {
   id: 1,
   title: 'The Project Gutenberg eBook of Alice in Wonderland',
   authors: [{ name: 'Carroll, Lewis', birth_year: 1832, death_year: 1898 }],
@@ -28,7 +28,7 @@ const mockBookA: GutendexBook = {
   download_count: 5000,
 };
 
-const mockBookB: GutendexBook = {
+const mockBookB: CatalogBook = {
   id: 2,
   title: 'Moby Dick; Or, The Whale',
   authors: [{ name: 'Melville, Herman', birth_year: 1819, death_year: 1891 }],
@@ -42,7 +42,7 @@ const mockBookB: GutendexBook = {
   download_count: 20000,
 };
 
-const mockBookC: GutendexBook = {
+const mockBookC: CatalogBook = {
   id: 3,
   title: 'Frankenstein; Or, The Modern Prometheus',
   authors: [{ name: 'Shelley, Mary Wollstonecraft', birth_year: 1797, death_year: 1851 }],
@@ -56,7 +56,7 @@ const mockBookC: GutendexBook = {
   download_count: 12000,
 };
 
-const mockBookWithoutAuthor: GutendexBook = {
+const mockBookWithoutAuthor: CatalogBook = {
   id: 4,
   title: 'Anonymous Ancient Folktales',
   authors: [],
@@ -82,7 +82,7 @@ describe('book-sorting utility', () => {
   });
 
   it('handles empty arrays, undefined inputs, and single-item arrays safely', () => {
-    expect(sortBooks(undefined as unknown as GutendexBook[], 'title_asc')).toEqual([]);
+    expect(sortBooks(undefined as unknown as CatalogBook[], 'title_asc')).toEqual([]);
     expect(sortBooks([], 'title_asc')).toEqual([]);
     expect(sortBooks([mockBookA], 'title_asc')).toEqual([mockBookA]);
   });
@@ -348,14 +348,14 @@ describe('book-sorting utility', () => {
     });
 
     it('overlays local blob cover URLs from offlineBooks onto savedBooks in mergeDownloadedShelfBooks', () => {
-      const savedWithRemoteCover: GutendexBook = {
+      const savedWithRemoteCover: CatalogBook = {
         ...mockBookA,
         subjects: ['Fantasy', 'Classics'],
         formats: {
           'image/jpeg': 'https://www.gutenberg.org/cache/epub/1/pg1.cover.medium.jpg',
         },
       };
-      const offlineWithBlobCover: GutendexBook = {
+      const offlineWithBlobCover: CatalogBook = {
         ...mockBookA,
         subjects: [],
         formats: {

@@ -1,5 +1,5 @@
 /**
- * Canonical Domain Types for Project Gutenberg Catalog Entities (retaining GutendexBook DTO aliases non-breaking)
+ * Canonical Domain & Catalog DTO Types for Project Gutenberg Entities
  */
 
 export interface Author {
@@ -19,7 +19,7 @@ export interface BookPassage {
   commentary?: string;
 }
 
-export interface GutendexBook {
+export interface CatalogBook {
   id: number;
   title: string;
   authors: Author[];
@@ -34,11 +34,11 @@ export interface GutendexBook {
   quotes?: BookPassage[];
 }
 
-export interface GutendexResponse {
+export interface CatalogResponse {
   count: number;
   next: string | null;
   previous: string | null;
-  results: GutendexBook[];
+  results: CatalogBook[];
   source?: 'cache' | 'supabase';
   latencyMs?: number;
   clientCountry?: string;

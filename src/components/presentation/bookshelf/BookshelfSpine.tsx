@@ -9,7 +9,7 @@ import {
   handleCopyBookLinkClick,
 } from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Library, Heart, Sparkles, HardDriveDownload, Star, AlertTriangle, Loader2, Trash2, WifiOff } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import type { Bookshelf, BookshelfItem } from '@/types/database.types';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookRating, useBookshelfStore } from '@/stores/useBookshelfStore';
@@ -33,19 +33,19 @@ export const SPINE_PALETTES = [
 ];
 
 export interface BookshelfSpineProps {
-  book: GutendexBook;
+  book: CatalogBook;
   bookIndex: number;
   readingProgress?: number;
   isSaved: boolean;
   isFavorite: boolean;
   isOffline?: boolean;
   isDownloadingOffline?: boolean;
-  onToggleSave: (book: GutendexBook) => void;
-  onToggleFavorite: (book: GutendexBook) => void;
-  onToggleOffline?: (book: GutendexBook) => void;
-  onSpineClick: (book: GutendexBook) => void;
-  onBookClick?: (book: GutendexBook) => void;
-  onDownloadClick?: (book: GutendexBook) => void;
+  onToggleSave: (book: CatalogBook) => void;
+  onToggleFavorite: (book: CatalogBook) => void;
+  onToggleOffline?: (book: CatalogBook) => void;
+  onSpineClick: (book: CatalogBook) => void;
+  onBookClick?: (book: CatalogBook) => void;
+  onDownloadClick?: (book: CatalogBook) => void;
   cloudBookshelves?: Bookshelf[];
   cloudBookshelfItems?: BookshelfItem[];
   defaultShelfId?: string;

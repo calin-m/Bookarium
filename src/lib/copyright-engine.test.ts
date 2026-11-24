@@ -10,7 +10,7 @@ import {
   partitionBooksByJurisdiction,
   parseLifespansFromName,
 } from './copyright-engine';
-import type { GutendexBook, Book } from '@/types/book.types';
+import type { CatalogBook, Book } from '@/types/book.types';
 
 describe('copyright-engine', () => {
   const currentYear = 2026;
@@ -64,7 +64,7 @@ describe('copyright-engine', () => {
   });
 
   describe('isBookPublicDomainInJurisdiction - Literary Authors & Jurisdictions', () => {
-    const agathaChristieBook: GutendexBook = {
+    const agathaChristieBook: CatalogBook = {
       id: 863,
       title: 'The Mysterious Affair at Styles',
       authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
@@ -78,7 +78,7 @@ describe('copyright-engine', () => {
       download_count: 5000,
     };
 
-    const ernestHemingwayBook: GutendexBook = {
+    const ernestHemingwayBook: CatalogBook = {
       id: 67138,
       title: 'The Sun Also Rises',
       authors: [{ name: 'Hemingway, Ernest', birth_year: 1899, death_year: 1961 }],
@@ -92,7 +92,7 @@ describe('copyright-engine', () => {
       download_count: 4000,
     };
 
-    const fScottFitzgeraldBook: GutendexBook = {
+    const fScottFitzgeraldBook: CatalogBook = {
       id: 64317,
       title: 'The Great Gatsby',
       authors: [{ name: 'Fitzgerald, F. Scott (Francis Scott)', birth_year: 1896, death_year: 1940 }],
@@ -106,7 +106,7 @@ describe('copyright-engine', () => {
       download_count: 10000,
     };
 
-    const arthurConanDoyleBook: GutendexBook = {
+    const arthurConanDoyleBook: CatalogBook = {
       id: 1661,
       title: 'The Adventures of Sherlock Holmes',
       authors: [{ name: 'Doyle, Arthur Conan', birth_year: 1859, death_year: 1930 }],
@@ -120,7 +120,7 @@ describe('copyright-engine', () => {
       download_count: 8000,
     };
 
-    const janeAustenBook: GutendexBook = {
+    const janeAustenBook: CatalogBook = {
       id: 1342,
       title: 'Pride and Prejudice',
       authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -208,7 +208,7 @@ describe('copyright-engine', () => {
 
   describe('Joint Authorship (Berne Art. 7bis)', () => {
     it('withholds work if any co-author died within the regional copyright period', () => {
-      const jointBook: GutendexBook = {
+      const jointBook: CatalogBook = {
         id: 99999,
         title: 'Collaborative Treatise',
         authors: [
@@ -234,7 +234,7 @@ describe('copyright-engine', () => {
 
   describe('Translators (Berne Art. 2(3))', () => {
     it('withholds ancient work if modern translator died within regional term', () => {
-      const translatedPlato: GutendexBook = {
+      const translatedPlato: CatalogBook = {
         id: 1497,
         title: 'The Republic',
         authors: [{ name: 'Plato', birth_year: -428, death_year: -348 }],
@@ -255,7 +255,7 @@ describe('copyright-engine', () => {
     });
 
     it('allows ancient work if translator died long ago', () => {
-      const historicalPlato: GutendexBook = {
+      const historicalPlato: CatalogBook = {
         id: 1498,
         title: 'The Republic',
         authors: [{ name: 'Plato', birth_year: -428, death_year: -348 }],
@@ -276,7 +276,7 @@ describe('copyright-engine', () => {
 
   describe('Longevity Heuristic for Missing Death Years', () => {
     it('blocks author born in 1890 with null death year in Life + 70', () => {
-      const unlistedDeathAuthor: GutendexBook = {
+      const unlistedDeathAuthor: CatalogBook = {
         id: 12345,
         title: 'Mysterious Novel',
         authors: [{ name: 'Obscure Writer', birth_year: 1890, death_year: null }],
@@ -296,7 +296,7 @@ describe('copyright-engine', () => {
     });
 
     it('clears author born in 1840 with null death year in Life + 70', () => {
-      const ancientAuthor: GutendexBook = {
+      const ancientAuthor: CatalogBook = {
         id: 12346,
         title: 'Victorian Chronicle',
         // 2026 - 70 - 100 - 1 = 1855. Born in 1840 means they could at most have lived to 1940 (died 86 years ago).
@@ -316,7 +316,7 @@ describe('copyright-engine', () => {
     });
 
     it('withholds book outside US if both birth and death years are null (fail-closed)', () => {
-      const anonymousAuthor: GutendexBook = {
+      const anonymousAuthor: CatalogBook = {
         id: 12347,
         title: 'Folklore of the Highlands',
         authors: [{ name: 'Anonymous Chronicler', birth_year: null, death_year: null }],
@@ -348,7 +348,7 @@ describe('copyright-engine', () => {
     });
 
     it('blocks book in US if copyright === true', () => {
-      const copyrightedBook: GutendexBook = {
+      const copyrightedBook: CatalogBook = {
         id: 9999,
         title: 'Modern Licensed Volume',
         authors: [{ name: 'Living Author', birth_year: 1980, death_year: null }],
@@ -490,7 +490,7 @@ describe('copyright-engine', () => {
 
   describe('partitionBooksByJurisdiction', () => {
     const currentYear = 2026;
-    const prideAndPrejudice: GutendexBook = {
+    const prideAndPrejudice: CatalogBook = {
       id: 1342,
       title: 'Pride and Prejudice',
       authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -504,7 +504,7 @@ describe('copyright-engine', () => {
       download_count: 50000,
     };
 
-    const deathOnTheNile: GutendexBook = {
+    const deathOnTheNile: CatalogBook = {
       id: 9999,
       title: 'Death on the Nile',
       authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],

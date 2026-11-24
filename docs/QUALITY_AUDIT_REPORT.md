@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 24 Nov 2026 13:50:20 GMT  
+**Last Generated**: Tue, 24 Nov 2026 15:11:24 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 270 passed  
 **Total Verified Tests**: 2805 passed  
@@ -18,7 +18,7 @@
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2805 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 87 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,10 +26,10 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.24%** (16849/17327) — *Target: $\ge$ 95%*
-- **Statements**: **95.99%** (18136/18893) — *Target: $\ge$ 95%*
-- **Functions**: **95.22%** (3612/3793) — *Target: $\ge$ 92%*
-- **Branches**: **88.3%** (16865/19098) — *Target: $\ge$ 85%*
+- **Lines**: **97.29%** (16858/17327) — *Target: $\ge$ 95%*
+- **Statements**: **96.05%** (18147/18893) — *Target: $\ge$ 95%*
+- **Functions**: **95.17%** (3610/3793) — *Target: $\ge$ 92%*
+- **Branches**: **88.26%** (16856/19098) — *Target: $\ge$ 85%*
 
 ---
 
@@ -342,7 +342,7 @@
 - ✔ `renders CatalogOfflineView when offline and 0 books are downloaded, allowing navigation to Bookshelf`
 - ✔ `serves downloaded books locally in Catalog with an Offline Mode banner when offline and downloaded books exist`
 - ✔ `filters offline catalog by topic, language, era, and sort order, and supports clearing Downloaded and Custom shelves`
-- ✔ `preserves direct GutendexBook author metadata when reading the offline Hero spotlight book`
+- ✔ `preserves direct CatalogBook author metadata when reading the offline Hero spotlight book`
 - ✔ `renders mobile capsule dock, handles floating search, filter drawer, and direction toggle on Bookshelf`
 - ✔ `preserves scroll position when toggling 2-state sort on mobile sticky dock`
 - ✔ `eliminates standalone BackToTop button in favor of the universal bottom capsule dock`
@@ -2096,22 +2096,22 @@
 - ✔ `extracts partial/prefix match if exact match is absent`
 - ✔ `returns null when no preferred MIME is available or formats is invalid`
 - ✔ `identifies valid canonical Book object`
-- ✔ `rejects raw GutendexBook or non-book values`
-- ✔ `transforms GutendexBook into canonical Book with normalized authors and format URLs`
+- ✔ `rejects raw CatalogBook or non-book values`
+- ✔ `transforms CatalogBook into canonical Book with normalized authors and format URLs`
 - ✔ `is idempotent when given an already-canonical Book`
 - ✔ `handles missing or empty fields safely with reasonable fallbacks`
 - ✔ `cleans Gutenberg title preambles and normalizes author names with dates`
-- ✔ `reconstructs GutendexBook with Gutenberg format URLs and normalized author objects`
+- ✔ `reconstructs CatalogBook with Gutenberg format URLs and normalized author objects`
 - ✔ `handles null cover_url and empty authors gracefully`
-- ✔ `formats a GutendexBook into a standardized Supabase insert payload`
+- ✔ `formats a CatalogBook into a standardized Supabase insert payload`
 - ✔ `preserves birth and death years in author strings when present`
 - ✔ `omits bookshelf_id when not provided`
 - ✔ `strips derivable Project Gutenberg and same-origin proxy cover URLs from cloud inserts while preserving custom URLs`
 - ✔ `formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans`
 - ✔ `extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates`
 - ✔ `covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books`
-- ✔ `returns an existing GutendexBook unchanged`
-- ✔ `converts a canonical Book with authorDetails, translators, and explicit URLs to a GutendexBook`
+- ✔ `returns an existing CatalogBook unchanged`
+- ✔ `converts a canonical Book with authorDetails, translators, and explicit URLs to a CatalogBook`
 - ✔ `falls back to parsing author string lifespans and standard Gutenberg format URLs when authorDetails or URLs are absent`
 - ✔ `handles empty authors array gracefully`
 
@@ -2184,7 +2184,7 @@
 - ✔ `resolves subjects and bookshelves across fixture, store, API, and empty fallbacks`
 - ✔ `evaluates hasAuthenticAuthors across strings, Author objects, and placeholders`
 - ✔ `evaluates hasAuthorLifespans for both numeric fields and embedded name lifespans`
-- ✔ `converts a FeaturedHeroBook into a canonical GutendexBook with default and custom overrides`
+- ✔ `converts a FeaturedHeroBook into a canonical CatalogBook with default and custom overrides`
 
 </details>
 
@@ -2307,7 +2307,7 @@
 - ✔ `returns translations when cluster exists, verifies query args, and sorts by isCurrent -> isOriginal -> download_count DESC`
 - ✔ `gracefully returns empty array on database error`
 - ✔ `filters out translation editions that are copyrighted or restricted in the caller jurisdiction`
-- ✔ `maps optional quotes JSONB array in mapDatabaseBookToGutendexBook when present`
+- ✔ `maps optional quotes JSONB array in mapDatabaseBookToCatalogBook when present`
 - ✔ `projects only mapped catalog metadata columns and rotates 12-hour quote pool candidate slices deterministically`
 - ✔ `hits Quote Pool cache, expires stale TTL entries, handles partial scan chains, skips invalid rows, and wraps Quote Pool failures`
 - ✔ `handles backfill error/empty/saturation break paths, LRU cache eviction, and unexpected search exceptions`
@@ -4350,7 +4350,7 @@
 - ✔ `deterministically rotates the hourly hero book every 3,600,000 ms`
 - ✔ `advances getDailyEditorialBook to the next candidate when it collides with heroBookId and wraps around at the end`
 - ✔ `identifies Classics by canonical ID, pre-1900 author death_year, or classical taxonomy`
-- ✔ `maps GutendexBook to FeaturedHeroBook using exclusively database quotes`
+- ✔ `maps CatalogBook to FeaturedHeroBook using exclusively database quotes`
 - ✔ `selects Featured Book from the entire quoteEnrichedBooks pool and supports topic/language filters`
 - ✔ `selects Classic of the Day strictly from Classics in quoteEnrichedBooks and avoids heroBookId collision`
 - ✔ `enriches SSR fallback when ssrMatch is present and preserves SSR fallback across 12-hour cache window boundaries without swapping`

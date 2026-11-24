@@ -10,7 +10,7 @@ import {
   handleCopyBookLinkClick,
 } from '@/components/ui/CursorTooltip';
 import { BookOpen, Download, Library, Heart, Sparkles, Trash2, AlertTriangle, X, CheckCircle2, WifiOff } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { extractBookFormats, formatAuthorNames, formatDownloadCount } from '@/lib/utils';
 import { resolveBookTags } from '@/lib/book-tags';
 import {
@@ -34,12 +34,12 @@ import { RemoveOfflineBookModal } from '@/components/ui/RemoveOfflineBookModal';
 import { RemoveCollectionBookModal, type CollectionRemovalType } from '@/components/ui/RemoveCollectionBookModal';
 
 export interface BookCardProps {
-  book: GutendexBook;
+  book: CatalogBook;
   isOffline?: boolean;
   hideOfflineBadge?: boolean;
-  onDownloadClick?: (book: GutendexBook) => void;
-  onRemoveOfflineClick?: (book: GutendexBook) => void;
-  onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
+  onDownloadClick?: (book: CatalogBook) => void;
+  onRemoveOfflineClick?: (book: CatalogBook) => void;
+  onPreviewClick?: (book: CatalogBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   isPreviewActive?: boolean;
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   onTopicClick?: (topic: string) => void;

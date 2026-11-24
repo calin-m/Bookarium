@@ -7,7 +7,7 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 // Mock useBooks hook
 const mockUseBooks = vi.fn();
@@ -31,7 +31,7 @@ function createWrapper() {
   );
 }
 
-const mockCompleteBook: GutendexBook = {
+const mockCompleteBook: CatalogBook = {
   id: 161,
   title: 'Sense and Sensibility',
   authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -45,7 +45,7 @@ const mockCompleteBook: GutendexBook = {
   download_count: 1000,
 };
 
-const mockIncompleteBook: GutendexBook = {
+const mockIncompleteBook: CatalogBook = {
   id: 21839,
   title: 'Sense and Sensibility (Incomplete)',
   authors: [{ name: 'Austen, Jane', birth_year: null, death_year: null }],
@@ -170,7 +170,7 @@ describe('useCollectionAutoHeal', () => {
       { enabled: true }
     );
 
-    const healedBook: GutendexBook = {
+    const healedBook: CatalogBook = {
       ...mockIncompleteBook,
       authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
     };
@@ -230,7 +230,7 @@ describe('useCollectionAutoHeal', () => {
   });
 
   it('synchronously enriches featured hero books without firing network queries', async () => {
-    const incompleteHomer: GutendexBook = {
+    const incompleteHomer: CatalogBook = {
       id: 1727,
       title: 'The Odyssey',
       authors: [{ name: 'Homer', birth_year: null, death_year: null }],
@@ -265,7 +265,7 @@ describe('useCollectionAutoHeal', () => {
   });
 
   it('detects incomplete books with empty authors array and queries /api/books', () => {
-    const bookWithNoAuthors: GutendexBook = {
+    const bookWithNoAuthors: CatalogBook = {
       ...mockIncompleteBook,
       id: 9999,
       authors: [],
@@ -349,7 +349,7 @@ describe('useCollectionAutoHeal', () => {
     expect(result.current.incompleteSavedIds).toEqual([161]);
     expect(result.current.totalMissingCount).toBe(2);
 
-    const healedFavorite: GutendexBook = {
+    const healedFavorite: CatalogBook = {
       ...mockIncompleteBook,
       authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
     };
@@ -423,7 +423,7 @@ describe('useCollectionAutoHeal', () => {
     expect(useAnnotationStore.getState().fellowAnnotations[0].bookTitle).toBe("Alice's Adventures in Wonderland");
     expect(useAnnotationStore.getState().fellowAnnotations[0].bookAuthor).toBe('Lewis Carroll');
 
-    const kingInYellowBook: GutendexBook = {
+    const kingInYellowBook: CatalogBook = {
       ...mockCompleteBook,
       id: 55179,
       title: 'The King in Yellow',

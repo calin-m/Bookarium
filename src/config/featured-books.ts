@@ -5,7 +5,7 @@
 
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { isBookPublicDomainInJurisdiction, type Author } from '@/lib/copyright-engine';
-import type { BookPassage, GutendexBook } from '@/types/book.types';
+import type { BookPassage, CatalogBook } from '@/types/book.types';
 export type { BookPassage };
 
 export interface FeaturedHeroBook {
@@ -448,7 +448,7 @@ const FEATURED_HERO_ID_SET = new Set<number>(FEATURED_HERO_BOOKS.map((b) => b.id
 
 function toFallbackHeroWithRawBook(
   fallback: FeaturedHeroBook
-): FeaturedHeroBook & { rawBook: GutendexBook } {
+): FeaturedHeroBook & { rawBook: CatalogBook } {
   return {
     ...fallback,
     rawBook: {
@@ -624,12 +624,12 @@ export function isClassicCatalogBook(book: {
 }
 
 /**
- * Maps a quote-enriched GutendexBook from Supabase into a FeaturedHeroBook
+ * Maps a quote-enriched CatalogBook from Supabase into a FeaturedHeroBook
  * using exclusively its database `quotes` array (never prepending static spreads).
  */
-export function gutendexBookToFeaturedHeroBook(
-  book: GutendexBook
-): FeaturedHeroBook & { rawBook: GutendexBook } {
+export function catalogBookToFeaturedHeroBook(
+  book: CatalogBook
+): FeaturedHeroBook & { rawBook: CatalogBook } {
   const validQuotes = Array.isArray(book.quotes) ? book.quotes : [];
   const firstPassage = validQuotes[0];
   const featuredMeta = FEATURED_HERO_BOOKS.find((f) => f.id === book.id);
@@ -691,11 +691,11 @@ export function gutendexBookToFeaturedHeroBook(
  * Falls back to static `FEATURED_HERO_BOOKS` only when `quoteEnrichedBooks` has no valid matches.
  */
 export function selectHourlyHeroFromPool(
-  quoteEnrichedBooks: GutendexBook[] | undefined,
+  quoteEnrichedBooks: CatalogBook[] | undefined,
   timestamp: number = Date.now(),
   countryCode: string = 'US',
   options?: { topic?: string; language?: string }
-): FeaturedHeroBook & { rawBook?: GutendexBook } {
+): FeaturedHeroBook & { rawBook?: CatalogBook } {
   const hourlyIndex = Math.max(0, Math.floor(timestamp / (1000 * 60 * 60)));
 
   const safeDbPool = (quoteEnrichedBooks || []).filter(
@@ -715,7 +715,7 @@ export function selectHourlyHeroFromPool(
     if (!cleanTopic && !cleanLang) {
       const ssrMatch = safeDbPool.find((b) => b.id === fallback.id);
       if (ssrMatch) {
-        return gutendexBookToFeaturedHeroBook(ssrMatch);
+        return catalogBookToFeaturedHeroBook(ssrMatch);
       }
       if (safeDbPool.filter((b) => FEATURED_HERO_ID_SET.has(b.id)).length >= 2) {
         return toFallbackHeroWithRawBook(fallback);
@@ -740,7 +740,7 @@ export function selectHourlyHeroFromPool(
     }
 
     const selected = filteredPool[hourlyIndex % filteredPool.length];
-    return gutendexBookToFeaturedHeroBook(selected);
+    return catalogBookToFeaturedHeroBook(selected);
   }
 
   return toFallbackHeroWithRawBook(fallback);
@@ -752,11 +752,11 @@ export function selectHourlyHeroFromPool(
  * Falls back to static `getDailyEditorialBook` only when the database pool is empty.
  */
 export function selectDailyClassicFromPool(
-  quoteEnrichedBooks: GutendexBook[] | undefined,
+  quoteEnrichedBooks: CatalogBook[] | undefined,
   heroBookId?: number,
   timestamp: number = Date.now(),
   countryCode: string = 'US'
-): FeaturedHeroBook & { rawBook?: GutendexBook } {
+): FeaturedHeroBook & { rawBook?: CatalogBook } {
   const dayIndex = Math.max(0, Math.floor(timestamp / (1000 * 60 * 60 * 24)));
 
   const safeDbPool = (quoteEnrichedBooks || []).filter(
@@ -776,7 +776,7 @@ export function selectDailyClassicFromPool(
       (b) => b.id === fallback.id && (heroBookId === undefined || b.id !== heroBookId)
     );
     if (ssrMatch) {
-      return gutendexBookToFeaturedHeroBook(ssrMatch);
+      return catalogBookToFeaturedHeroBook(ssrMatch);
     }
     if (activePool.filter((b) => FEATURED_HERO_ID_SET.has(b.id)).length >= 2) {
       return fallback;
@@ -790,7 +790,7 @@ export function selectDailyClassicFromPool(
     ) {
       candidateIndex = (candidateIndex + 1) % activePool.length;
     }
-    return gutendexBookToFeaturedHeroBook(activePool[candidateIndex]);
+    return catalogBookToFeaturedHeroBook(activePool[candidateIndex]);
   }
 
   return fallback;

@@ -5,10 +5,10 @@ import React from 'react';
 import { useContinueReadingLedger } from './useContinueReadingLedger';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 let mockOfflineBookIds: number[] = [];
-let mockOfflineBooks: GutendexBook[] = [];
+let mockOfflineBooks: CatalogBook[] = [];
 vi.mock('@/hooks/useOfflineBooks', () => ({
   useOfflineBooks: () => ({
     offlineBookIds: mockOfflineBookIds,
@@ -39,7 +39,7 @@ function renderLedgerHook() {
   return { ...hookResult, queryClient };
 }
 
-const mockBook: GutendexBook = {
+const mockBook: CatalogBook = {
   id: 1342,
   title: 'Pride and Prejudice',
   authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -294,7 +294,7 @@ describe('useContinueReadingLedger', () => {
   });
 
   it('filters volumes by search query across title, author, and subject', () => {
-    const book2: GutendexBook = {
+    const book2: CatalogBook = {
       ...mockBook,
       id: 84,
       title: 'Frankenstein; Or, The Modern Prometheus',

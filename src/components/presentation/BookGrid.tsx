@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { BookCard } from './BookCard';
 import { BookshelfRack } from './BookshelfRack';
 import { CollectionEmptyState, COLLECTION_EMPTY_ACTION_CLASS } from './CollectionEmptyState';
@@ -13,16 +13,16 @@ import { LayoutGrid, Library, RotateCcw, AlertTriangle, BookOpen, Heart, Chevron
 export type BookViewMode = 'grid' | 'shelf';
 
 export interface BookGridProps {
-  books?: GutendexBook[];
+  books?: CatalogBook[];
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
   page?: number;
   onPageChange?: (page: number) => void;
   hasNextPage?: boolean;
-  onDownloadClick?: (book: GutendexBook) => void;
-  onRemoveOfflineClick?: (book: GutendexBook) => void;
-  onPreviewClick?: (book: GutendexBook, rect?: { top: number; left: number; width: number; height: number }) => void;
+  onDownloadClick?: (book: CatalogBook) => void;
+  onRemoveOfflineClick?: (book: CatalogBook) => void;
+  onPreviewClick?: (book: CatalogBook, rect?: { top: number; left: number; width: number; height: number }) => void;
   activePreviewBookId?: number | null;
   emptyTitle?: string;
   emptyDescription?: string;

@@ -7,7 +7,7 @@
  * @adr ADR-062, ADR-066, ADR-071, ADR-080
  */
 
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { cleanBookTitle } from '@/lib/book-metadata';
 import { formatAuthorNames } from '@/lib/utils';
 import type { SortOption } from '@/components/presentation/CollectionSortDropdown';
@@ -170,10 +170,10 @@ export function decomposeBookSortKey(sortKey: string): {
  * Handles alphabetical title sorting, natural author names, reading progress, and download counts.
  */
 export function sortBooks(
-  books: GutendexBook[],
+  books: CatalogBook[],
   sortBy: string,
   readingProgress?: Record<number, number>
-): GutendexBook[] {
+): CatalogBook[] {
   if (!books || books.length <= 1) return books ? [...books] : [];
   const list = [...books];
 
@@ -242,11 +242,11 @@ export function sortBooks(
  * preserving `savedBooks` order first followed by any additional offline volumes.
  */
 export function mergeDownloadedShelfBooks(
-  savedBooks: GutendexBook[],
-  offlineBooks: GutendexBook[],
+  savedBooks: CatalogBook[],
+  offlineBooks: CatalogBook[],
   isBookOffline: (id: number) => boolean
-): GutendexBook[] {
-  const map = new Map<number, GutendexBook>();
+): CatalogBook[] {
+  const map = new Map<number, CatalogBook>();
   for (const b of savedBooks) {
     if (isBookOffline(b.id)) {
       map.set(b.id, b);
@@ -313,10 +313,10 @@ export function resolveBookshelfViewState<TShelf extends { id: string; is_defaul
  * Filters a book collection to only the books assigned to a specific custom shelf ID.
  */
 export function filterCustomShelfBooks(
-  books: GutendexBook[],
+  books: CatalogBook[],
   cloudBookshelfItems: ReadonlyArray<{ bookshelf_id: string; book_id: number }>,
   currentActiveShelfId?: string | null
-): GutendexBook[] {
+): CatalogBook[] {
   const currentShelfBookIds = new Set(
     cloudBookshelfItems
       .filter((item) => item.bookshelf_id === currentActiveShelfId)

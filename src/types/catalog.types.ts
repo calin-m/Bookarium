@@ -3,7 +3,7 @@
  * Bookarium (Strangler Fig Pattern)
  */
 
-import type { GutendexBook } from './book.types';
+import type { CatalogBook } from './book.types';
 import type { JurisdictionRule } from '@/lib/copyright-engine';
 
 export interface CatalogQueryOptions {
@@ -27,7 +27,7 @@ export interface CatalogQueryResult {
   count: number;
   next: string | null;
   previous: string | null;
-  results: GutendexBook[];
+  results: CatalogBook[];
   source: 'supabase' | 'cache';
   latencyMs: number;
   clientCountry: string;

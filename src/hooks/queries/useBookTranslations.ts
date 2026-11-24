@@ -15,7 +15,7 @@ import { resolveTranslationLanguage } from '@/config/translation-languages';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import { normalizeCountryCode } from '@/lib/copyright-engine';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 export interface BookTranslationOption {
   bookId: number;
@@ -176,7 +176,7 @@ export function useBookTranslations(
     data: astData,
     isLoading: isAstLoading,
     isError: isAstError,
-  } = useQuery<{ results: GutendexBook[] }>({
+  } = useQuery<{ results: CatalogBook[] }>({
     queryKey: ['ast-book-translations', currentBookId, searchQuery, effectiveCountry],
     queryFn: async () => {
       if (!searchQuery) return { results: [] };

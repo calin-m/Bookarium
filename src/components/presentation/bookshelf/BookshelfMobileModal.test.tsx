@@ -3,9 +3,9 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { BookshelfMobileModal } from './BookshelfMobileModal';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { CatalogBook } from '@/mocks/handlers';
 
-const mockBook: GutendexBook = {
+const mockBook: CatalogBook = {
   id: 1342,
   title: 'Pride and Prejudice',
   authors: [{ name: 'Austen, Jane (1775-1817)', birth_year: 1775, death_year: 1817 }],
@@ -183,7 +183,7 @@ describe('BookshelfMobileModal Component', () => {
       useJurisdictionStore.setState({ country: 'RO' });
     });
 
-    const restrictedBook: GutendexBook = {
+    const restrictedBook: CatalogBook = {
       id: 863,
       title: 'The Mysterious Affair at Styles',
       authors: [{ name: 'Christie, Agatha (1890-1976)', birth_year: 1890, death_year: 1976 }],
@@ -333,7 +333,7 @@ describe('BookshelfMobileModal Component', () => {
   });
 
   it('clears pending removal when switching to a different selected book ID', () => {
-    const secondBook: GutendexBook = { ...mockBook, id: 1343, title: 'Emma' };
+    const secondBook: CatalogBook = { ...mockBook, id: 1343, title: 'Emma' };
     const { rerender } = render(
       <BookshelfMobileModal
         selectedMobileBook={mockBook}

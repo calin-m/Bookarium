@@ -28,13 +28,13 @@ import type {
   ActiveReadingVolume,
   Author,
   Book,
-  GutendexBook,
+  CatalogBook,
   LedgerFilter,
   LedgerItemStatus,
   ReadingStatus,
 } from '@/types/book.types';
 
-const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
+const EMPTY_OFFLINE_BOOKS: CatalogBook[] = [];
 
 export type BookmarksSortOption =
   | 'recent'
@@ -65,7 +65,7 @@ export interface UseContinueReadingLedgerReturn {
   };
   isLoading: boolean;
   isBookOffline: (bookId: number) => boolean;
-  downloadBook: (book: GutendexBook | Book) => Promise<boolean>;
+  downloadBook: (book: CatalogBook | Book) => Promise<boolean>;
   removeBook: (bookId: number) => Promise<void>;
   downloadingBookId: number | null;
   updateVolumeStatus: (bookId: number, status: LedgerItemStatus) => Promise<void>;
@@ -83,7 +83,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<BookmarksSortOption>('recent');
   const [attemptedMissingIds, setAttemptedMissingIds] = useState<Set<number>>(() => new Set());
-  const [resolvedMissingBooks, setResolvedMissingBooks] = useState<Map<number, GutendexBook>>(
+  const [resolvedMissingBooks, setResolvedMissingBooks] = useState<Map<number, CatalogBook>>(
     () => new Map()
   );
   const {

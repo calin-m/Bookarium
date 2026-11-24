@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Library, Plus, Edit2, Trash2, Lock, AlertTriangle } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { useHydratedBookshelf } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -29,9 +29,9 @@ import { ROUTES } from '@/config/routes';
 export const DOWNLOADED_SHELF_ID = '__downloaded__';
 
 export interface BookshelfRackProps {
-  books: GutendexBook[];
-  onBookClick?: (book: GutendexBook) => void;
-  onDownloadClick?: (book: GutendexBook) => void;
+  books: CatalogBook[];
+  onBookClick?: (book: CatalogBook) => void;
+  onDownloadClick?: (book: CatalogBook) => void;
   onBrowseCatalog?: () => void;
   searchQuery?: string;
   onClearSearch?: () => void;
@@ -56,7 +56,7 @@ export function calculateShelfCapacity(viewportWidth: number): number {
   return Math.max(6, Math.floor(availableWidth / 62));
 }
 
-const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
+const EMPTY_OFFLINE_BOOKS: CatalogBook[] = [];
 
 export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   books,
@@ -101,9 +101,9 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const { isOffline: isNetworkOffline } = useNetworkStatus();
   const isTouchDevice = useTouchDevice();
 
-  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
+  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<CatalogBook | null>(null);
 
-  const handleToggleOffline = async (book: GutendexBook) => {
+  const handleToggleOffline = async (book: CatalogBook) => {
     if (isBookOffline(book.id)) {
       setBookToRemoveOffline(book);
     } else {
@@ -119,7 +119,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
   const [editingShelfIsPublic, setEditingShelfIsPublic] = useState(true);
   const [deletingShelfId, setDeletingShelfId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedMobileBook, setSelectedMobileBook] = useState<GutendexBook | null>(null);
+  const [selectedMobileBook, setSelectedMobileBook] = useState<CatalogBook | null>(null);
   const [activeSpineBookId, setActiveSpineBookId] = useState<number | null>(null);
   const openModalTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -175,7 +175,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
     setActiveSpineBookId(null);
   };
 
-  const handleSpineClick = (book: GutendexBook) => {
+  const handleSpineClick = (book: CatalogBook) => {
     const isRestricted = !isBookPublicDomainInJurisdiction(book, country).isAllowed;
     const isUnavailableOffline = isNetworkOffline && !isBookOffline(book.id);
     const hasTouchTabletViewport =
@@ -309,7 +309,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
     if (showShelfControls) {
       const effectiveRowLimit = shelfCapacity;
-      const result: GutendexBook[][] = [];
+      const result: CatalogBook[][] = [];
       for (let i = 0; i < effectiveShelfBooks.length; i += effectiveRowLimit) {
         result.push(effectiveShelfBooks.slice(i, i + effectiveRowLimit));
       }
@@ -322,7 +322,7 @@ export const BookshelfRack: React.FC<BookshelfRackProps> = ({
 
     const targetShelves = Math.ceil(effectiveShelfBooks.length / shelfCapacity);
     const balancedCapacity = Math.ceil(effectiveShelfBooks.length / targetShelves);
-    const result: GutendexBook[][] = [];
+    const result: CatalogBook[][] = [];
     for (let i = 0; i < effectiveShelfBooks.length; i += balancedCapacity) {
       result.push(effectiveShelfBooks.slice(i, i + balancedCapacity));
     }

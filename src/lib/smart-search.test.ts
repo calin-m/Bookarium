@@ -6,9 +6,9 @@ import {
   getBookSearchHaystack,
   filterBooksSmart,
 } from './smart-search';
-import type { GutendexBook } from '@/mocks/handlers';
+import type { CatalogBook } from '@/mocks/handlers';
 
-const mockBooks: GutendexBook[] = [
+const mockBooks: CatalogBook[] = [
   {
     id: 1342,
     title: 'Pride and Prejudice',

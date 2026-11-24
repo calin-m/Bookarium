@@ -48,7 +48,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useCollectionAutoHeal } from '@/hooks/useCollectionAutoHeal';
 import { usePersonalCollectionsController } from '@/hooks/usePersonalCollectionsController';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { Trash2, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CollectionToolbar } from '@/components/presentation/CollectionToolbar';
@@ -61,7 +61,7 @@ import {
   resolveBookSortKey,
   type FavoritesSortOption,
 } from '@/lib/book-sorting';
-import { featuredHeroToGutendexBook } from '@/lib/book-metadata';
+import { featuredHeroToCatalogBook } from '@/lib/book-metadata';
 import { ROUTES } from '@/config/routes';
 import { SITE_CONFIG } from '@/config/site-config';
 import { NAVBAR_VIEW_CONFIG, VIEW_CONTENT_CONFIG } from '@/config/views.config';
@@ -74,7 +74,7 @@ const NAVBAR_TRANSITION_ORDER: readonly CatalogView[] = [
   'bookmarks',
 ] as const;
 
-const EMPTY_OFFLINE_BOOKS: GutendexBook[] = [];
+const EMPTY_OFFLINE_BOOKS: CatalogBook[] = [];
 
 function HomeContent() {
   const router = useRouter();
@@ -86,8 +86,8 @@ function HomeContent() {
   const { isHeaderVisible, isToolbarVisible, isDocked } = useScrollDirection({
     enabled: stickyScrollEnabled,
   });
-  const [selectedDownloadBook, setSelectedDownloadBook] = useState<GutendexBook | null>(null);
-  const [selectedPreviewBook, setSelectedPreviewBook] = useState<GutendexBook | null>(null);
+  const [selectedDownloadBook, setSelectedDownloadBook] = useState<CatalogBook | null>(null);
+  const [selectedPreviewBook, setSelectedPreviewBook] = useState<CatalogBook | null>(null);
   const [activePreviewBookId, setActivePreviewBookId] = useState<number | null>(null);
   const [previewOriginRect, setPreviewOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [isCatalogSearchOpen, setIsCatalogSearchOpen] = useState(false);
@@ -102,8 +102,8 @@ function HomeContent() {
     offlineBookIds,
     offlineBooks = EMPTY_OFFLINE_BOOKS,
   } = useOfflineBooks();
-  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<GutendexBook | null>(null);
-  const handleToggleOffline = async (book: GutendexBook) => {
+  const [bookToRemoveOffline, setBookToRemoveOffline] = useState<CatalogBook | null>(null);
+  const handleToggleOffline = async (book: CatalogBook) => {
     if (isBookOffline(book.id)) {
       setBookToRemoveOffline(book);
     } else {
@@ -572,19 +572,19 @@ function HomeContent() {
             onReadFeaturedBook={(featured) => {
               if (featured) {
                 const featuredMeta = featured as {
-                  rawBook?: GutendexBook;
-                  authors?: GutendexBook['authors'];
+                  rawBook?: CatalogBook;
+                  authors?: CatalogBook['authors'];
                   author?: string;
                   authorBirthYear?: number;
                   authorDeathYear?: number;
                   primarySubject?: string;
                 };
-                const isDirectGutendexBook =
+                const isDirectCatalogBook =
                   Array.isArray(featuredMeta.authors) && !featuredMeta.rawBook;
-                const bookPayload: GutendexBook = isDirectGutendexBook
-                  ? (featured as GutendexBook)
+                const bookPayload: CatalogBook = isDirectCatalogBook
+                  ? (featured as CatalogBook)
                   : featuredMeta.rawBook ||
-                    featuredHeroToGutendexBook(
+                    featuredHeroToCatalogBook(
                       {
                         id: featured.id,
                         title: featured.title,
@@ -877,7 +877,7 @@ function HomeContent() {
           setActivePreviewBookId(null);
           setPreviewOriginRect(null);
         };
-        const readPreviewBook = (book: GutendexBook) => {
+        const readPreviewBook = (book: CatalogBook) => {
           closePreview();
           useReaderStore.getState().openReader(book);
           router.push(ROUTES.READ(book.id));

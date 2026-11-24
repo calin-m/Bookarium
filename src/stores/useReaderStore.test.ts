@@ -717,7 +717,7 @@ describe('useReaderStore', () => {
         { name: 'Carroll, Lewis, 1832-1898', birth_year: 1832, death_year: 1898 },
       ]);
 
-      // 3. openReader with a GutendexBook whose authors have null lifespans recovers lifespans from readingPositions
+      // 3. openReader with a CatalogBook whose authors have null lifespans recovers lifespans from readingPositions
       useReaderStore.setState({
         currentBook: null,
         readingPositions: {

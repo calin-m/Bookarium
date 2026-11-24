@@ -1,11 +1,11 @@
 import type { CatalogQueryOptions, CatalogQueryResult } from '@/types/catalog.types';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
-import { featuredHeroToGutendexBook } from '@/lib/book-metadata';
+import { featuredHeroToCatalogBook } from '@/lib/book-metadata';
 import { getJurisdictionRule, isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
 
-function toCuratedCatalogBook(hero: FeaturedHeroBook, index: number): GutendexBook {
-  const baseBook = featuredHeroToGutendexBook(hero, {
+function toCuratedCatalogBook(hero: FeaturedHeroBook, index: number): CatalogBook {
+  const baseBook = featuredHeroToCatalogBook(hero, {
     formats: {
       'text/plain; charset=utf-8': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}.txt`,
       'text/html': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}-images.html`,
@@ -34,7 +34,7 @@ function toCuratedCatalogBook(hero: FeaturedHeroBook, index: number): GutendexBo
 }
 
 function matchesAuthorEra(
-  book: GutendexBook,
+  book: CatalogBook,
   authorYearStart?: number,
   authorYearEnd?: number
 ): boolean {

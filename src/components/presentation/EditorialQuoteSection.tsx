@@ -13,7 +13,7 @@ import { ROUTES } from '@/config/routes';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import { useFeaturedQuotes, useQuoteEnrichedBooks } from '@/hooks/queries/useBooks';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 const subscribeHourly = (callback: () => void) => {
   const interval = setInterval(callback, 60 * 1000);
@@ -47,7 +47,7 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
 
   const { data: quoteEnrichedBooks, isPoolSettled } = useQuoteEnrichedBooks();
 
-  const book: FeaturedHeroBook & { rawBook?: GutendexBook } = useMemo(() => {
+  const book: FeaturedHeroBook & { rawBook?: CatalogBook } = useMemo(() => {
     const activeHeroId =
       heroBookId ?? selectHourlyHeroFromPool(quoteEnrichedBooks, hourlyTimestamp, country).id;
     return selectDailyClassicFromPool(quoteEnrichedBooks, activeHeroId, hourlyTimestamp, country);
@@ -70,7 +70,7 @@ export const EditorialQuoteSection: React.FC<EditorialQuoteSectionProps> = ({
   }, [featuredQuotesMap, book.id, book.quotes, book.quoteExcerpt]);
 
   const handleStartReading = () => {
-    const bookPayload: GutendexBook = {
+    const bookPayload: CatalogBook = {
       id: book.id,
       title: book.title,
       authors: [

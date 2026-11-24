@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { RotateCw, BookOpen } from 'lucide-react';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 import { useBookPassageShuffle } from '@/hooks/useBookPassageShuffle';
 import { useFeaturedQuotes } from '@/hooks/queries/useBooks';
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
@@ -25,16 +25,16 @@ export interface ElementRect {
 }
 
 export interface BookPreviewModalProps {
-  book: GutendexBook | null;
+  book: CatalogBook | null;
   originRect?: ElementRect | null;
   isOpen: boolean;
   activeView?: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks';
   isOffline?: boolean;
   isDownloadingOffline?: boolean;
-  onToggleOffline?: (book: GutendexBook) => void;
+  onToggleOffline?: (book: CatalogBook) => void;
   onWillClose?: () => void;
   onClose: () => void;
-  onReadBook?: (book: GutendexBook) => void;
+  onReadBook?: (book: CatalogBook) => void;
 }
 
 export const BookPreviewModal: React.FC<BookPreviewModalProps> = ({

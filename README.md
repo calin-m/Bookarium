@@ -15,7 +15,7 @@
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202805%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.29%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -76,7 +76,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 | 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across `src/`, CLI modules, `next.config.ts`, & `public/sw.js` (`82` Tier-1..Tier-4 protected). | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 87 validated ADRs (`ADR-001` through `ADR-087`) governing end-user keyless reading, self-hosted Cloudflare R2 delivery, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, mirror-only Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 88 validated ADRs (`ADR-001` through `ADR-088`) governing end-user keyless reading, self-hosted Cloudflare R2 delivery, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, mirror-only Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
@@ -112,10 +112,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.76)
+## 🛠️ Latest Improvements (v2.9.77)
 
-- **PostgreSQL Duplicate Index Pruning, `NOT VALID` Payload Ceilings & Conflict-Aware Per-User Row Quotas (`supabase/schema.sql`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `README.md`, `.agents/AGENTS.md`)**: Dropped duplicate B-Tree indexes `idx_user_reading_habits_user` and `idx_user_accolades_user` (`22 -> 20` explicit indexes, covered by `UNIQUE(user_id)` and `unique_user_accolade`); added `6` non-breaking `NOT VALID` payload ceiling `CHECK` constraints across `profiles.preferences`, `user_accolades.metadata`, `bookshelf_items`, `user_favorites`, `reading_progress`, and `symposium_sessions`; and provisioned `public.enforce_user_row_quota()` (`BEFORE INSERT`, conflict-aware `.upsert()` bypass, `SECURITY DEFINER SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`) enforcing row quotas across 6 user tables (`ADR-087`).
-- **Redundant Cloud `cover_url` Normalization (`src/lib/adapters/book.adapter.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/stores/useReaderStore.ts`, co-located tests)**: Exported shared `GUTENBERG_COVER_HOSTS` and `normalizeCloudCoverUrl()` to strip derivable Project Gutenberg mirror URLs, same-origin `/api/books/content` proxy paths, and transient `blob:`/`data:` URIs to `null` inside `toCloudBookInsert()` and `buildReadingProgressCloudRow()` while preserving custom third-party URLs and read-time `extractBookFormats()` / `useContinueReadingLedger` R2 derivation (`ADR-082`, `ADR-087`).
+- **Non-Breaking `CatalogBook` & `CatalogResponse` DTO & Helper Refactor (`src/types/book.types.ts`, `src/types/catalog.types.ts`, `src/lib/adapters/book.adapter.ts`, `src/config/featured-books.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/mocks/handlers.ts`, `40` production/mock modules, `25` test suites, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`)**: Renamed internal `GutendexBook` / `GutendexResponse` interfaces, helper exports (`toCatalogBook`, `toCatalogBookFromCloudRow`, `featuredHeroToCatalogBook`, `catalogBookToFeaturedHeroBook`, `mapDatabaseBookToCatalogBook`), local variables (`catalogBooks`, `isDirectCatalogBook`, `catalogBookPayload`), `@invariant` JSDoc contracts, and roadmap/architecture descriptions across `69` source/test/doc references while keeping HTTP wire payloads, IndexedDB/Supabase schemas, security AST URL bans (`checkStringForRetiredGutendexUrl`), and negative UI tests unchanged (`ADR-080`, `ADR-088`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

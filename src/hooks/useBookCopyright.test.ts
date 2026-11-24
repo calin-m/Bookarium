@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBookCopyright } from './useBookCopyright';
 import { useJurisdictionStore } from '@/stores/useJurisdictionStore';
-import type { GutendexBook } from '@/types/book.types';
+import type { CatalogBook } from '@/types/book.types';
 
 describe('useBookCopyright', () => {
-  const janeAustenBook: GutendexBook = {
+  const janeAustenBook: CatalogBook = {
     id: 1342,
     title: 'Pride and Prejudice',
     authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
@@ -19,7 +19,7 @@ describe('useBookCopyright', () => {
     download_count: 50000,
   };
 
-  const agathaChristieBook: GutendexBook = {
+  const agathaChristieBook: CatalogBook = {
     id: 9999,
     title: 'Death on the Nile',
     authors: [{ name: 'Christie, Agatha', birth_year: 1890, death_year: 1976 }],
