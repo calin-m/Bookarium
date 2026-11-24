@@ -1,7 +1,11 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { SITE_CONFIG } from '@/config/site-config';
+import { ROUTES } from '@/config/routes';
 import { isClientSideNavigation } from '@/lib/server-rsc-nav';
+import { CARD_DIMENSIONS } from '@/lib/share-card-primitives';
+import { decodeProfileCardShareToken } from '@/lib/profile-card-export';
 import {
   fetchPublicScholarProfileSummary,
   hasCachedScholarProfile,
@@ -49,6 +53,21 @@ export async function generateMetadata({
       `Explore ${displayName}'s public reading sanctuary, pinned Ex-Libris bookplates, and curated classic shelves on Bookarium.`;
     const canonicalPath = `/u/${encodeURIComponent(profile.username.toLowerCase())}`;
 
+    let validShareToken: string | null = null;
+    try {
+      const headersList = await headers();
+      const rawToken = headersList.get('x-bookarium-share-token');
+      if (rawToken && decodeProfileCardShareToken(profile.username, rawToken)) {
+        validShareToken = rawToken;
+      }
+    } catch {
+      // Non-blocking fallback outside request context
+    }
+
+    const cardImageUrl = `${SITE_CONFIG.SITE_URL}${ROUTES.API_PROFILE_CARD}?username=${encodeURIComponent(
+      profile.username.toLowerCase()
+    )}${validShareToken ? `&s=${validShareToken}` : ''}`;
+
     return {
       title: pageTitle,
       description,
@@ -62,11 +81,20 @@ export async function generateMetadata({
         title: `${pageTitle} | ${SITE_CONFIG.NAME}`,
         description,
         url: `${SITE_CONFIG.SITE_URL}${canonicalPath}`,
+        images: [
+          {
+            url: cardImageUrl,
+            width: CARD_DIMENSIONS.width,
+            height: CARD_DIMENSIONS.height,
+            alt: `${pageTitle} — Bookarium Scholar Card`,
+          },
+        ],
       },
       twitter: {
-        card: 'summary',
+        card: 'summary_large_image',
         title: `${pageTitle} | ${SITE_CONFIG.NAME}`,
         description,
+        images: [cardImageUrl],
       },
     };
   }

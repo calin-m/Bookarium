@@ -2489,6 +2489,7 @@ const TIER_1_CONTRACTED_MODULES = [
   'src/proxy.ts',
   'src/app/api/books/route.ts',
   'src/app/api/books/content/route.ts',
+  'src/app/api/profiles/card/route.ts',
   'src/lib/api-utils.ts',
   'src/lib/catalog/query-parser.ts',
   'src/lib/r2-client.ts',
@@ -2526,6 +2527,8 @@ const TIER_2_CONTRACTED_MODULES = [
   'src/lib/auth-recovery.ts',
   'src/lib/redirect-sanitizer.ts',
   'src/lib/rate-limiter.ts',
+  'src/lib/share-card-primitives.ts',
+  'src/lib/profile-card-export.ts',
 ];
 
 const TIER_3_CONTRACTED_MODULES = [
@@ -4476,7 +4479,13 @@ function extractRuntimeSpecConstants(rootDirPath) {
   );
   const rateLimitDecl = collectDeclaredAstValues(
     path.join(rootDirPath, 'src', 'lib', 'rate-limiter.ts'),
-    ['booksApiRateLimiter', 'bookContentRateLimiter', 'bookCardRateLimiter', 'bookCoverRateLimiter']
+    [
+      'booksApiRateLimiter',
+      'bookContentRateLimiter',
+      'bookCardRateLimiter',
+      'bookCoverRateLimiter',
+      'profileCardRateLimiter',
+    ]
   );
   const queryParserDecl = collectDeclaredAstValues(
     path.join(rootDirPath, 'src', 'lib', 'catalog', 'query-parser.ts'),
@@ -4655,6 +4664,7 @@ function extractRuntimeSpecConstants(rootDirPath) {
       bookContent: rateLimitDecl.rateLimiterRequests.get('bookContentRateLimiter') ?? 30,
       bookCard: rateLimitDecl.rateLimiterRequests.get('bookCardRateLimiter') ?? 20,
       bookCover: rateLimitDecl.rateLimiterRequests.get('bookCoverRateLimiter') ?? 60,
+      profileCard: rateLimitDecl.rateLimiterRequests.get('profileCardRateLimiter') ?? 20,
     },
     queryLimits: {
       defaultQuotePoolLimit: queryParserDecl.scalars.get('DEFAULT_QUOTE_POOL_LIMIT') ?? 48,

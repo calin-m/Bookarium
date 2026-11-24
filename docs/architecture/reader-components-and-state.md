@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
 > **Last Synchronized**: `2026-11-24`  
-> **Topology Health**: `257` Modules Analyzed • `1079` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `262` Modules Analyzed • `1108` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -56,7 +56,7 @@ flowchart LR
         HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]
         AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
-        ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • reading-card-export.ts)"]
+        ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • SocialSharePanel.tsx • reading-card-export.ts)"]
     end
 
     subgraph Persistence ["Browser LocalStorage, IndexedDB & Supabase Cloud"]
@@ -156,7 +156,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **115 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **117 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -227,6 +227,7 @@ Auto-extracted dynamically from **115 Production UI Components** using Babel AST
 | **`QuickColorSwatchPopover`** | Presentation/notebook | `QuickColorSwatchPopoverProps` | `annotationId`, `activeColor`, `savedColor`, `isEditing`, `onSelectColor` | [`src/components/presentation/notebook/QuickColorSwatchPopover.tsx`](../../src/components/presentation/notebook/QuickColorSwatchPopover.tsx) |
 | **`PinnedAccoladesShelf`** | Profile | `PinnedAccoladesShelfProps` | `pinnedItems` | [`src/components/profile/PinnedAccoladesShelf.tsx`](../../src/components/profile/PinnedAccoladesShelf.tsx) |
 | **`PrivateProfileNotice`** | Profile | `PrivateProfileNoticeProps` | `username` | [`src/components/profile/PrivateProfileNotice.tsx`](../../src/components/profile/PrivateProfileNotice.tsx) |
+| **`ProfileShareModal`** | Profile | `ProfileShareModalProps` | `isOpen`, `onClose`, `username`, `displayName`, `initials`, `memberSince`, `bio`, `bioBookTitle`, `bioBookAuthor`, `statsPills` | [`src/components/profile/ProfileShareModal.tsx`](../../src/components/profile/ProfileShareModal.tsx) |
 | **`PublicProfileView`** | Profile | `PublicProfileViewProps` | `profile`, `pinnedAccolades`, `habits`, `bookshelves` | [`src/components/profile/PublicProfileView.tsx`](../../src/components/profile/PublicProfileView.tsx) |
 | **`ServiceWorkerRegister`** | Pwa | _Autonomous_ | None (Self-Contained) | [`src/components/pwa/ServiceWorkerRegister.tsx`](../../src/components/pwa/ServiceWorkerRegister.tsx) |
 | **`DeleteAnnotationModal`** | Reader | `DeleteAnnotationModalProps` | `isOpen`, `onClose`, `onConfirm`, `annotation`, `title`, `headline`, `description`, `confirmLabel`, `confirmTestId` | [`src/components/reader/DeleteAnnotationModal.tsx`](../../src/components/reader/DeleteAnnotationModal.tsx) |
@@ -251,6 +252,7 @@ Auto-extracted dynamically from **115 Production UI Components** using Babel AST
 | **`ReaderTocDrawer`** | Reader | `ReaderTocDrawerProps` | `isOpen`, `onClose`, `chapters`, `activeChapterIndex`, `onSelectChapter`, `bookTitle`, `theme` | [`src/components/reader/ReaderTocDrawer.tsx`](../../src/components/reader/ReaderTocDrawer.tsx) |
 | **`TextHighlightPopover`** | Reader | `TextHighlightPopoverProps` | `isOpen`, `selectedText`, `position`, `activeColor`, `existingNote`, `existingAnnotationId`, `fellowAnnotation`, `isFellowOnly`, `isSpeechOpen`, `onSelectColor`, `onSaveNote`, `onDelete`, `onCopyQuote`, `onClose`, `theme` | [`src/components/reader/TextHighlightPopover.tsx`](../../src/components/reader/TextHighlightPopover.tsx) |
 | **`VolumeCompletionModal`** | Reader | `VolumeCompletionModalProps` | `isOpen`, `onClose`, `bookTitle`, `bookRating`, `onRateChange`, `onOpenBookshelf` | [`src/components/reader/VolumeCompletionModal.tsx`](../../src/components/reader/VolumeCompletionModal.tsx) |
+| **`SocialSharePanel`** | Share | `SocialSharePanelProps` | `shareUrl`, `shareText`, `socialTitle`, `nativeShareTitle`, `downloadFilename`, `nativeShareFilename`, `exportCardBlob`, `themeClasses`, `copyLinkLabel`, `cardKindLabel` | [`src/components/share/SocialSharePanel.tsx`](../../src/components/share/SocialSharePanel.tsx) |
 | **`SymposiumInviteModal`** | Symposium | `SymposiumInviteModalProps` | `isOpen`, `onClose`, `bookId`, `bookTitle`, `preselectedFellow` | [`src/components/symposium/SymposiumInviteModal.tsx`](../../src/components/symposium/SymposiumInviteModal.tsx) |
 | **`Alert`** | UI | `AlertProps` | `variant`, `role`, `icon`, `footer`, `headerClassName`, `dataTestId`, `data-testid`, `className`, `children` | [`src/components/ui/Alert.tsx`](../../src/components/ui/Alert.tsx) |
 | **`AmbientCapsuleDock`** | UI | `AmbientCapsuleDockProps` | `effectiveVisible`, `isDockDimmed`, `asideTestId`, `auraTestId`, `ariaLabel`, `maxWidthClass`, `className`, `onPointerEnter`, `onPointerLeave`, `onPointerDown`, `children` | [`src/components/ui/AmbientCapsuleDock.tsx`](../../src/components/ui/AmbientCapsuleDock.tsx) |

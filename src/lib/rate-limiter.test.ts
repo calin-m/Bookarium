@@ -5,6 +5,7 @@ import {
   bookContentRateLimiter,
   bookCardRateLimiter,
   bookCoverRateLimiter,
+  profileCardRateLimiter,
 } from './rate-limiter';
 
 describe('InMemoryRateLimiter', () => {
@@ -138,18 +139,21 @@ describe('InMemoryRateLimiter', () => {
     bookContentRateLimiter.reset();
     bookCardRateLimiter.reset();
     bookCoverRateLimiter.reset();
+    profileCardRateLimiter.reset();
 
     expect(booksApiRateLimiter.check('ip-1').limit).toBe(60);
     expect(bookContentRateLimiter.check('ip-1').limit).toBe(30);
     expect(bookCardRateLimiter.check('ip-1').limit).toBe(20);
     expect(bookCoverRateLimiter.check('ip-1').limit).toBe(60);
+    expect(profileCardRateLimiter.check('ip-1').limit).toBe(20);
 
-    // Exhausting bookCardRateLimiter (20/min) does not starve bookCoverRateLimiter
+    // Exhausting bookCardRateLimiter (20/min) does not starve bookCoverRateLimiter or profileCardRateLimiter
     for (let i = 1; i < 20; i++) {
       expect(bookCardRateLimiter.check('ip-1').success).toBe(true);
     }
     expect(bookCardRateLimiter.check('ip-1').success).toBe(false);
     expect(bookCoverRateLimiter.check('ip-1').success).toBe(true);
+    expect(profileCardRateLimiter.check('ip-1').success).toBe(true);
   });
 });
 

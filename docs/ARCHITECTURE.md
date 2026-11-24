@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-11-24`  
-> **Topology Health**: `257` Modules Analyzed • `1079` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `262` Modules Analyzed • `1108` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -40,7 +40,7 @@ flowchart TD
         CatalogOfflineNode["CatalogOfflineView.tsx\n(Offline Catalog Notice & Collection Quick-Links)"]
         SymposiumInviteModalNode["SymposiumInviteModal.tsx\n(1-on-1 Literary Symposium Companion Picker)"]
         AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]
-        PublicSanctuaryNodes["PublicProfileView.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]
+        PublicSanctuaryNodes["PublicProfileView.tsx • ProfileShareModal.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
             Grid["Catalog View (/)\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]
@@ -113,6 +113,7 @@ flowchart TD
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]
         LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
         ProfileLayoutServer["Server Layout (/u/[username])\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]
+        ProxyProfileCard["GET /api/profiles/card\n(Stateless 1200x630 Scholar OG PNG • Visual ?s= Token • ADR-033 Neutral Fallback)"]
         StaticSeoRoutes["SSR Metadata & Crawler Gateways\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • sitemap.ts)"]
     end
 
@@ -213,6 +214,8 @@ flowchart TD
     ProfileCard --> StoreFellowship
     ProfilePage --> PublicSanctuaryNodes
     PublicSanctuaryNodes --> StoreFellowship
+    ProfileLayoutServer -.->|"OpenGraph summary_large_image"| ProxyProfileCard
+    ProxyProfileCard -->|"Live Public Summary (is_public=true)"| SupabaseCloud
     SyncCoordinator --> StoreShelf
     SyncCoordinator --> StoreReader
     SyncCoordinator --> StoreAnnot
@@ -342,7 +345,7 @@ Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/
 | **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |
 | **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |
 | **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md` hub, `7` `docs/architecture/*.md` subsystem specs, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |
-| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 19 mandatory governance docs, bidirectional `docs/ARCHITECTURE.md`<->`docs/architecture/*.md` TOC & corpus parity, circular `SECURITY.md` symbol/table/feed parity (`auditSecurityDocumentationParity`), 0 broken Mermaid diagrams (`validateMermaidDiagramsInMarkdown`), `@scope`/`@invariant`/`@adr` behavioral contracts across 82 Tier-1..Tier-4 protected modules + bidirectional `docs/SYSTEM_CONTRACTS.md` heading/count parity, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |
+| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 19 mandatory governance docs, bidirectional `docs/ARCHITECTURE.md`<->`docs/architecture/*.md` TOC & corpus parity, circular `SECURITY.md` symbol/table/feed parity (`auditSecurityDocumentationParity`), 0 broken Mermaid diagrams (`validateMermaidDiagramsInMarkdown`), `@scope`/`@invariant`/`@adr` behavioral contracts across 85 Tier-1..Tier-4 protected modules + bidirectional `docs/SYSTEM_CONTRACTS.md` heading/count parity, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |
 | **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | `eslint . --max-warnings 0` (`bookarium-security`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and 9 custom AST/taint security rules (`src/`, `scripts/`, `public/sw.js`, `next.config.ts` audited via Pass 0.75); zero dead files/exports |
 | **Pass 7** | Production Application Build & Live HTTP Smoke Probe | `next build` + `.next/routes-manifest.json` + loopback `next start` probe | Optimized production Next.js bundle compilation within byte budget, compiled security header parity (`X-Frame-Options: DENY`, `object-src 'none'`, `frame-ancestors 'none'`), and live runtime HTTP verification of headers, `400` SSRF/param blocking, and origin-locked `/auth/callback` redirects |
 

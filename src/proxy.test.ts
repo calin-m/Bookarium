@@ -108,7 +108,7 @@ describe('Root Proxy (Next.js 16)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching', async () => {
+  it('skips updateSession and Set-Cookie on /api/books* and /api/profiles* routes to preserve Vercel Edge CDN s-maxage caching', async () => {
     const updateSessionSpy = vi.spyOn(supabaseMiddleware, 'updateSession');
 
     const req = new NextRequest('https://bookarium.vercel.app/api/books/1342/content', {
@@ -120,6 +120,15 @@ describe('Root Proxy (Next.js 16)', () => {
     expect(res.cookies.get(GEO_COOKIE_NAME)).toBeUndefined();
     expect(res.headers.get('set-cookie')).toBeNull();
     expect(res.headers.get('x-bookarium-country')).toBe('DE');
+
+    const profileCardReq = new NextRequest(
+      'https://bookarium.vercel.app/api/profiles/card?username=jane_austen',
+      { headers: { 'x-vercel-ip-country': 'FR' } }
+    );
+    const profileCardRes = await proxy(profileCardReq);
+    expect(updateSessionSpy).not.toHaveBeenCalled();
+    expect(profileCardRes.cookies.get(GEO_COOKIE_NAME)).toBeUndefined();
+    expect(profileCardRes.headers.get('set-cookie')).toBeNull();
   });
 
   it('forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens', async () => {

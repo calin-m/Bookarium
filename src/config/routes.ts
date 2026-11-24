@@ -28,5 +28,6 @@ export const ROUTES = {
   // API Proxy Routes
   API_BOOKS: '/api/books',
   API_CONTENT: '/api/books/content',
+  API_PROFILE_CARD: '/api/profiles/card',
 } as const;
 

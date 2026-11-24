@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.75',
+    date: '2026-11-24',
+    title: 'u/[username] Scholar Sanctuary Share Canvas, Shared Social Export Primitives & Stateless Profile OpenGraph Cards',
+    sections: {
+      Added: [
+        '**Shared Card Primitives & Scholar Profile Canvas Engine (`src/lib/share-card-primitives.ts`, `src/lib/profile-card-export.ts`, `src/lib/reading-card-export.ts`, `src/components/share/SocialSharePanel.tsx`, `src/components/reader/ReaderShareModal.tsx`)**: Extracted shared `1200×630` archival `<canvas>` frame/ornament/footer helpers, color palettes, Web Intent builders, Base64URL helpers, salted FNV-1a signatures, and the 8-platform `SocialSharePanel` UI with 100% backwards-compatible `reading-card-export` re-exports and zero DOM drift in `ReaderShareModal`; implemented `renderProfileCardToCanvas` (monogram crest seal, Display Name, `@username`, Scholar Since date, motto + optional highlight volume attribution, privacy-gated stats pills, and canonical `SITE_CONFIG.SITE_HOST` footer) alongside visual-only handle-bound `?s=` tokens (`ADR-033`, `ADR-080`).',
+        '**Lazy-Loaded `ProfileShareModal`, Stateless `GET /api/profiles/card` & `/u/[username]` OpenGraph Unfurling (`src/components/profile/ProfileShareModal.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/app/api/profiles/card/route.ts`, `src/app/u/[username]/profile-layout-utils.ts`, `src/app/u/[username]/layout.tsx`, `src/lib/rate-limiter.ts`, `src/proxy.ts`, `src/config/routes.ts`, co-located tests)**: Upgraded `/u/[username]` `"Share Profile"` to open lazy-loaded `ProfileShareModal` (`Light`/`Sepia`/`Dark` palette switcher defaulting to active app theme, privacy-aware `"Include Public Stats"` toggle, PNG clipboard/download/Device Share, `"Copy Profile Link"`, and 8 social targets); provisioned `GET /api/profiles/card` (`ImageResponse`, `profileCardRateLimiter` `20/min`, `/api/profiles*` session/geo-cookie skip in `proxy.ts`, `CORP: cross-origin`, identical neutral Bookarium card for private/missing/unavailable handles) and `summary_large_image` OG/Twitter metadata (`ADR-033`, `ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.74',
     date: '2026-11-24',
     title: 'Scholar Bio & Literary Motto Highlight Picker with Attributed Public Reader Links',

@@ -30,9 +30,18 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
+import {
+  buildProfileCardStatPills,
+  resolveScholarInitials,
+} from '@/lib/profile-card-export';
 
 const SymposiumInviteModal = dynamic(
   () => import('@/components/symposium/SymposiumInviteModal').then((mod) => mod.SymposiumInviteModal),
+  { ssr: false }
+);
+
+const ProfileShareModal = dynamic(
+  () => import('@/components/profile/ProfileShareModal').then((mod) => mod.ProfileShareModal),
   { ssr: false }
 );
 
@@ -88,9 +97,9 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   habits = null,
   bookshelves = [],
 }) => {
-  const [copiedLink, setCopiedLink] = useState(false);
   const [circleSent, setCircleSent] = useState(false);
   const [isSymposiumModalOpen, setIsSymposiumModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const user = useAuthStore((s) => s.user);
   const circles = useFellowshipStore((s) => s.circles);
@@ -133,25 +142,35 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   })();
 
   // Generate Monogram Initials
-  const initials = (() => {
-    if (profile.display_name?.trim()) {
-      const parts = profile.display_name.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-      }
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-    if (profile.username?.trim()) {
-      return profile.username.trim().slice(0, 2).toUpperCase();
-    }
-    return 'BS';
-  })();
+  const initials = resolveScholarInitials(profile.display_name, profile.username);
+
+  const hasValidBioBook =
+    typeof profile.bio_book_id === 'number' &&
+    Number.isInteger(profile.bio_book_id) &&
+    profile.bio_book_id > 0;
+  const resolvedBioBookTitle = hasValidBioBook
+    ? profile.bio_book_title?.trim() || `Volume #${profile.bio_book_id}`
+    : null;
+  const resolvedBioBookAuthor = hasValidBioBook ? profile.bio_book_author?.trim() || null : null;
+
+  const profileCardStatsPills = buildProfileCardStatPills({
+    showStreak: Boolean(profile.show_streak),
+    showChallenge: Boolean(profile.show_challenge),
+    showBookshelves: Boolean(profile.show_bookshelves),
+    currentStreak: habits?.current_streak ?? null,
+    annualGoal: habits?.annual_goal ?? null,
+    completedBooksCount: habits?.completed_books_count ?? null,
+    pinnedAccoladesCount: pinnedAccolades.length,
+    publicShelvesCount: bookshelves.length,
+  });
 
   const handleShare = () => {
+    if (profile.username?.trim()) {
+      setIsShareModalOpen(true);
+      return;
+    }
     if (typeof window === 'undefined' || !navigator.clipboard) return;
     navigator.clipboard.writeText(window.location.href);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   const hasTelemetry =
@@ -256,20 +275,13 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
               variant="outline"
               size="sm"
               onClick={handleShare}
-              aria-label="Share scholar profile link"
+              aria-label="Share scholar profile"
+              aria-haspopup={profile.username?.trim() ? 'dialog' : undefined}
+              data-testid="public-profile-share-btn"
               className="font-mono text-xs uppercase flex items-center gap-1.5"
             >
-              {copiedLink ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-success" />
-                  <span>Link Copied</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>Share Profile</span>
-                </>
-              )}
+              <Share2 className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Share Profile</span>
             </Button>
           </div>
         </div>
@@ -339,6 +351,21 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             username: profile.username,
             displayName: profile.display_name || profile.username,
           }}
+        />
+      )}
+
+      {isShareModalOpen && profile.username && (
+        <ProfileShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          username={profile.username}
+          displayName={displayName}
+          initials={initials}
+          memberSince={memberSince}
+          bio={profile.bio}
+          bioBookTitle={resolvedBioBookTitle}
+          bioBookAuthor={resolvedBioBookAuthor}
+          statsPills={profileCardStatsPills}
         />
       )}
 

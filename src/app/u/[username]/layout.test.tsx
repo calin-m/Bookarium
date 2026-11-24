@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import PublicProfileLayout, { generateMetadata } from './layout';
 import * as profileUtils from './profile-layout-utils';
 import { SITE_CONFIG } from '@/config/site-config';
+import { encodeProfileCardShareToken } from '@/lib/profile-card-export';
 
 vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),
@@ -40,10 +41,18 @@ describe('PublicProfileLayout and generateMetadata', () => {
       siteName: SITE_CONFIG.NAME,
       title: `Jane Austen (@jane_austen) | ${SITE_CONFIG.NAME}`,
       url: `${SITE_CONFIG.SITE_URL}/u/jane_austen`,
+      images: [
+        {
+          url: `${SITE_CONFIG.SITE_URL}/api/profiles/card?username=jane_austen`,
+          width: 1200,
+          height: 630,
+        },
+      ],
     });
     expect(meta.twitter).toMatchObject({
-      card: 'summary',
+      card: 'summary_large_image',
       title: `Jane Austen (@jane_austen) | ${SITE_CONFIG.NAME}`,
+      images: [`${SITE_CONFIG.SITE_URL}/api/profiles/card?username=jane_austen`],
     });
 
     const layoutJsx = await PublicProfileLayout({
@@ -77,6 +86,8 @@ describe('PublicProfileLayout and generateMetadata', () => {
 
     expect(meta.title).toBe('Scholar Sanctuary');
     expect(meta.robots).toEqual({ index: false, follow: false });
+    expect(meta.openGraph).toBeUndefined();
+    expect(meta.twitter).toBeUndefined();
 
     const layoutJsx = await PublicProfileLayout({
       params: Promise.resolve({ username: 'private_or_ghost' }),
@@ -137,5 +148,51 @@ describe('PublicProfileLayout and generateMetadata', () => {
     expect(parsed.mainEntity.description).toBe(
       '“Vanity and pride are different things.” — Pride and Prejudice'
     );
+  });
+
+  it('forwards verified x-bookarium-share-token onto profile OpenGraph image URL and drops tampered tokens', async () => {
+    vi.spyOn(profileUtils, 'fetchPublicScholarProfileSummary').mockResolvedValue({
+      status: 'public',
+      profile: {
+        username: 'jane_austen',
+        display_name: 'Jane Austen',
+        bio: 'Regency satirist & novelist.',
+        is_public: true,
+      },
+    });
+
+    const validToken = encodeProfileCardShareToken({
+      username: 'jane_austen',
+      theme: 'sepia',
+      includeStats: true,
+    });
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({ 'x-bookarium-share-token': validToken })
+    );
+
+    const signedMeta = await generateMetadata({
+      params: Promise.resolve({ username: 'jane_austen' }),
+    });
+    expect(signedMeta.twitter).toMatchObject({
+      card: 'summary_large_image',
+      images: [`${SITE_CONFIG.SITE_URL}/api/profiles/card?username=jane_austen&s=${validToken}`],
+    });
+
+    const foreignToken = encodeProfileCardShareToken({
+      username: 'other_scholar',
+      theme: 'dark',
+      includeStats: false,
+    });
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({ 'x-bookarium-share-token': foreignToken })
+    );
+
+    const fallbackMeta = await generateMetadata({
+      params: Promise.resolve({ username: 'jane_austen' }),
+    });
+    expect(fallbackMeta.twitter).toMatchObject({
+      card: 'summary_large_image',
+      images: [`${SITE_CONFIG.SITE_URL}/api/profiles/card?username=jane_austen`],
+    });
   });
 });

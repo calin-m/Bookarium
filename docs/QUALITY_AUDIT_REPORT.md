@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 24 Nov 2026 11:53:49 GMT  
+**Last Generated**: Tue, 24 Nov 2026 13:04:57 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 265 passed  
-**Total Verified Tests**: 2780 passed  
+**Total Test Suites**: 270 passed  
+**Total Verified Tests**: 2804 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **265/265 test suites passed** (2780 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2804 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 82 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.3%** (16559/17018) — *Target: $\ge$ 95%*
-- **Statements**: **96.06%** (17837/18567) — *Target: $\ge$ 95%*
-- **Functions**: **95.17%** (3573/3754) — *Target: $\ge$ 92%*
-- **Branches**: **88.37%** (16637/18825) — *Target: $\ge$ 85%*
+- **Lines**: **97.29%** (16845/17314) — *Target: $\ge$ 95%*
+- **Statements**: **96.04%** (18133/18879) — *Target: $\ge$ 95%*
+- **Functions**: **95.17%** (3609/3792) — *Target: $\ge$ 92%*
+- **Branches**: **88.26%** (16842/19082) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (265 Suites / 2780 Tests)
+## 🧪 Comprehensive Test Suite Catalog (270 Suites / 2804 Tests)
 
-### 🚀 App Routes & Pages (30 Suites · 315 Tests)
+### 🚀 App Routes & Pages (31 Suites · 321 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -167,6 +167,15 @@
 - ✔ `returns 200 with edge caching when translations are retrieved successfully`
 - ✔ `returns 429 when rate limited`
 - ✔ `returns 500 with no-store cache when provider throws an unexpected error`
+
+</details>
+
+<details>
+<summary><b><code>src/app/api/profiles/card/route.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `enforces profileCardRateLimiter (20/min) and rejects unexpected query parameters with 400 no-store`
+- ✔ `collapses missing, private, malformed, and unavailable handles uniformly into a neutral PNG card (ADR-033)`
+- ✔ `renders a themed 1200x630 PNG scholar card honoring handle-signed ?s= visual flags and ignoring tampered tokens`
 
 </details>
 
@@ -493,12 +502,13 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/layout.test.tsx</code></b> (4 tests)</summary>
+<summary><b><code>src/app/u/[username]/layout.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `generates rich profile metadata, canonical URL, Twitter card, and ProfilePage JSON-LD for public scholars`
 - ✔ `emits identical anti-enumeration noindex metadata and omits JSON-LD for private or nonexistent handles`
 - ✔ `bypasses database lookup on uncached client-side RSC navigations without locking noindex`
 - ✔ `includes book attribution in OpenGraph and Schema.org descriptions when bio originates from a highlight`
+- ✔ `forwards verified x-bookarium-share-token onto profile OpenGraph image URL and drops tampered tokens`
 
 </details>
 
@@ -519,7 +529,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/app/u/[username]/profile-layout-utils.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `normalizes URL-encoded scholar handles safely`
 - ✔ `collapses malformed handles directly to private_or_missing without querying Supabase`
@@ -529,6 +539,8 @@
 - ✔ `returns unavailable without caching when query errors or throws`
 - ✔ `anchors serverProfileCache on globalThis for warm serverless reuse`
 - ✔ `preserves attributed highlight metadata on public scholar profile summaries`
+- ✔ `collapses malformed handles to private_or_missing and returns unavailable when Supabase is disabled`
+- ✔ `resolves server-verified identity, attribution, and privacy-gated summary counts for public scholars`
 
 </details>
 
@@ -2052,7 +2064,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (58 Suites · 741 Tests)
+### 📚 Gutenberg Parsers & Metadata (60 Suites · 752 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2548,6 +2560,18 @@
 </details>
 
 <details>
+<summary><b><code>src/lib/profile-card-export.test.ts</code></b> (6 tests)</summary>
+
+- ✔ `derives monogram initials cleanly across full names, single handles, and missing values`
+- ✔ `builds at most 4 privacy-gated scholar metric pills respecting visibility toggles`
+- ✔ `encodes visual-only share tokens bound to normalized handle and rejects cross-handle replays or tampering`
+- ✔ `builds canonical share URLs and literary share copy with motto excerpt or default fallback`
+- ✔ `renders Scholar Sanctuary 1200x630 canvas with monogram seal, motto attribution, and stats pills`
+- ✔ `renders fallback literary copy and hides stat pills when includeStats is false`
+
+</details>
+
+<details>
 <summary><b><code>src/lib/r2-client.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `validates R2 env configuration and rejects malformed account IDs or bucket names`
@@ -2754,6 +2778,17 @@
 - ✔ `masks IPv6 addresses to /48 prefix and preserves already-masked IPv6 values`
 - ✔ `labels loopback addresses locally and returns null for empty or invalid values`
 - ✔ `formats valid ISO timestamps and falls back to Unknown for invalid dates`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/share-card-primitives.test.ts</code></b> (5 tests)</summary>
+
+- ✔ `wraps text lines cleanly and truncates overflow with ellipsis at maxLines`
+- ✔ `draws archival borders, corner ornaments, and footer bar cleanly onto 1200x630 canvas`
+- ✔ `guards unsafe jsdom canvas getContext and throwing toBlob exports gracefully`
+- ✔ `encodes Base64URL payloads, verifies salted signatures, and maps theme codes safely`
+- ✔ `builds encoded Web Intent URLs for all 8 supported platforms`
 
 </details>
 
@@ -3712,7 +3747,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (66 Suites · 311 Tests)
+### 🧩 UI Primitives & Motion (68 Suites · 318 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3979,6 +4014,16 @@
 </details>
 
 <details>
+<summary><b><code>src/components/profile/ProfileShareModal.test.tsx</code></b> (4 tests)</summary>
+
+- ✔ `initializes canvas preview from active app theme and renders bio attribution plus stats toggle`
+- ✔ `switches card themes, toggles public stats visibility, and copies canonical profile URL`
+- ✔ `hides stats toggle when privacy settings expose zero metric pills and resets theme override on close`
+- ✔ `exports PNG blob via shared primitives when copying card image`
+
+</details>
+
+<details>
 <summary><b><code>src/components/profile/PublicProfileView.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `renders public scholar view with profile info, telemetry, and bookshelves`
@@ -3987,7 +4032,7 @@
 - ✔ `respects granular privacy toggles by omitting telemetry and bookshelves`
 - ✔ `falls back to username handle when display_name is missing`
 - ✔ `falls back to Bookarium Scholar when both display_name and username are missing`
-- ✔ `copies public profile link when share button is clicked`
+- ✔ `opens the Scholar Share Canvas modal when Share Profile is clicked and copies the canonical profile link`
 - ✔ `renders Invite to Reader Circle button for authenticated visitor and dispatches invite`
 - ✔ `renders Start Symposium button when visitor is already an accepted Fellow Scholar and closes modal`
 - ✔ `renders empty bookshelves message, empty shelf items, and anonymous author fallback`
@@ -4008,6 +4053,15 @@
 - ✔ `handles install static precache + HTML asset discovery and activate stale cache cleanup`
 - ✔ `sanitizes CACHE_URLS messages (dropping //, cross-origin, /auth/, /api/ and enforcing 100-URL cap)`
 - ✔ `enforces cross-origin & /auth/ pass-through, /api/ 503 offline fallback, /read/* offline shell fallback, and _rsc anti-HTML guard`
+
+</details>
+
+<details>
+<summary><b><code>src/components/share/SocialSharePanel.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders primary share actions, copyable caption, and 8 rel="noopener noreferrer" social intent links`
+- ✔ `copies profile link, caption, and PNG card image via clipboard APIs with user feedback`
+- ✔ `downloads rendered PNG image and surfaces actionable fallback messages on errors or AbortError`
 
 </details>
 
@@ -4404,7 +4458,7 @@
 - ✔ `falls back to existing cookie when no IP headers are present in production`
 - ✔ `infers country from system timezone in development when no override or edge header exists`
 - ✔ `defaults to US when no geo signals exist in production`
-- ✔ `skips updateSession and Set-Cookie on /api/books* routes to preserve Vercel Edge CDN s-maxage caching`
+- ✔ `skips updateSession and Set-Cookie on /api/books* and /api/profiles* routes to preserve Vercel Edge CDN s-maxage caching`
 - ✔ `forwards valid ?s= share token into x-bookarium-share-token header and ignores malformed tokens`
 - ✔ `skips updateSession for auth callback routes, service worker precache, and background link prefetches`
 - ✔ `skips updateSession on public-route client RSC navigations while preserving full checks on /account and document requests`

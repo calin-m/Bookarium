@@ -159,14 +159,34 @@ describe('PublicProfileView', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Bookarium Scholar' })).toBeInTheDocument();
   });
 
-  it('copies public profile link when share button is clicked', () => {
-    render(<PublicProfileView profile={mockProfile} />);
+  it('opens the Scholar Share Canvas modal when Share Profile is clicked and copies the canonical profile link', async () => {
+    render(
+      <PublicProfileView
+        profile={mockProfile}
+        habits={mockHabits}
+        bookshelves={mockBookshelves}
+      />
+    );
 
-    const shareBtn = screen.getByRole('button', { name: /share scholar profile link/i });
-    fireEvent.click(shareBtn);
+    const shareBtn = screen.getByTestId('public-profile-share-btn');
+    await act(async () => {
+      fireEvent.click(shareBtn);
+    });
 
-    expect(writeTextMock).toHaveBeenCalled();
-    expect(screen.getByText('Link Copied')).toBeInTheDocument();
+    const modal = await screen.findByTestId('profile-share-modal');
+    expect(modal).toBeInTheDocument();
+    expect(screen.getByTestId('profile-card-canvas')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('share-copy-link-btn'));
+    expect(writeTextMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/u\/jane_austen\?s=[A-Za-z0-9_-]+$/)
+    );
+    expect(screen.getByText('Link Copied!')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('profile-share-backdrop'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('profile-share-modal')).toBeNull();
+    });
   });
 
   it('renders Invite to Reader Circle button for authenticated visitor and dispatches invite', async () => {

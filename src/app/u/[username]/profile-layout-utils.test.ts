@@ -5,6 +5,7 @@ import {
   setServerProfileCache,
   clearServerProfileCache,
   fetchPublicScholarProfileSummary,
+  fetchPublicScholarCardPayload,
   MAX_PROFILE_CACHE_ENTRIES,
 } from './profile-layout-utils';
 import * as supabaseClientModule from '@/lib/supabase/client';
@@ -209,6 +210,116 @@ describe('profile-layout-utils', () => {
         bio_book_author: 'Mary Shelley',
         is_public: true,
       },
+    });
+  });
+
+  describe('fetchPublicScholarCardPayload', () => {
+    it('collapses malformed handles to private_or_missing and returns unavailable when Supabase is disabled', async () => {
+      expect(await fetchPublicScholarCardPayload('invalid handle!')).toEqual({
+        status: 'private_or_missing',
+      });
+      vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(false);
+      expect(await fetchPublicScholarCardPayload('jane_austen')).toEqual({
+        status: 'unavailable',
+      });
+    });
+
+    it('resolves server-verified identity, attribution, and privacy-gated summary counts for public scholars', async () => {
+      vi.spyOn(supabaseProviderModule, 'isSupabaseConfigured').mockReturnValue(true);
+
+      const profileRow = {
+        id: 'scholar-uuid-1',
+        display_name: 'Jane Austen',
+        username: 'Jane_Austen',
+        bio: 'Vanity and pride are different things.',
+        bio_book_id: 1342,
+        bio_book_title: 'Pride and Prejudice',
+        bio_book_author: 'Jane Austen',
+        is_public: true,
+        show_streak: true,
+        show_challenge: true,
+        show_bookshelves: true,
+        show_saved_books: true,
+        show_custom_shelves: false,
+        created_at: '2025-06-15T00:00:00.000Z',
+      };
+
+      const fromMock = vi.fn((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              ilike: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  abortSignal: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({ data: profileRow, error: null }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'user_accolades') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  abortSignal: vi.fn().mockResolvedValue({
+                    data: [{ accolade_id: 'night_owl' }, { accolade_id: 'polymath' }],
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'user_reading_habits') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                abortSignal: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: {
+                      annual_goal: 20,
+                      active_dates: [],
+                      completed_books_count: 8,
+                    },
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              abortSignal: vi.fn().mockResolvedValue({
+                data: [
+                  { id: 's1', is_default: true, is_public: true },
+                  { id: 's2', is_default: false, is_public: true },
+                ],
+              }),
+            }),
+          }),
+        };
+      });
+
+      vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+        from: fromMock,
+      } as unknown as MockSupabaseClient);
+
+      const res = await fetchPublicScholarCardPayload('jane_austen');
+      expect(res).toEqual({
+        status: 'public',
+        card: {
+          username: 'Jane_Austen',
+          displayName: 'Jane Austen',
+          initials: 'JA',
+          memberSince: 'June 2025',
+          bio: 'Vanity and pride are different things.',
+          bioBookTitle: 'Pride and Prejudice',
+          bioBookAuthor: 'Jane Austen',
+          statsPills: ['0d Streak', '8/20 Goal', '2 Bookplates', '1 Shelf'],
+        },
+      });
     });
   });
 });

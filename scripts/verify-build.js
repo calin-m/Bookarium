@@ -2775,6 +2775,16 @@ async function probeCompiledNextServer(rootDirPath) {
       },
       {
         spec: {
+          path: '/api/profiles/card?unknown_param=1',
+          expectedStatus: 400,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(port, '/api/profiles/card?unknown_param=1'),
+      },
+      {
+        spec: {
           path: '/api/books/content?id=1342&type=cover (Sec-Fetch-Dest: document)',
           expectedStatus: 403,
           expectNoStoreCache: true,

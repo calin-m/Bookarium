@@ -116,7 +116,7 @@ interface RuntimeSpecConstants {
     };
   };
   featuredHeroBookCount: number;
-  rateLimits: { booksApi: number; bookContent: number; bookCard: number; bookCover: number };
+  rateLimits: { booksApi: number; bookContent: number; bookCard: number; bookCover: number; profileCard: number };
   queryLimits: {
     defaultQuotePoolLimit: number;
     maxCatalogPage: number;
@@ -883,11 +883,11 @@ describe('ast-parser architectural & SQL verification engine', () => {
     const catalog = astParser.extractBehavioralContractsCatalog(repoSrc, repoRoot);
     expect(catalog.parseErrors).toEqual([]);
     expect(catalog.validationIssues).toEqual([]);
-    expect(astParser.TIER_1_CONTRACTED_MODULES.length).toBe(19);
-    expect(astParser.TIER_2_CONTRACTED_MODULES.length).toBe(20);
+    expect(astParser.TIER_1_CONTRACTED_MODULES.length).toBe(20);
+    expect(astParser.TIER_2_CONTRACTED_MODULES.length).toBe(22);
     expect(astParser.TIER_3_CONTRACTED_MODULES.length).toBe(23);
     expect(astParser.TIER_4_CONTRACTED_MODULES.length).toBe(20);
-    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(82);
+    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(85);
 
     const byFile = new Map(catalog.modules.map((m) => [m.file, m]));
     expect(byFile.get('next.config.ts')?.isTier1Protected).toBe(true);
@@ -1277,6 +1277,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
         export const bookContentRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 45 });
         export const bookCardRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 15 });
         export const bookCoverRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 90 });
+        export const profileCardRateLimiter = new InMemoryRateLimiter({ windowMs: 60000, maxRequests: 25 });
       `,
       'src/hooks/usePerformanceTier.ts': `
         export function getClientSnapshot() {
@@ -1354,6 +1355,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
       bookContent: 45,
       bookCard: 15,
       bookCover: 90,
+      profileCard: 25,
     });
     expect(spec.performanceTier).toEqual({
       lowMaxCores: 1,
@@ -1515,6 +1517,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
       bookContent: 30,
       bookCard: 20,
       bookCover: 60,
+      profileCard: 20,
     });
     expect(liveSpec.performanceTier).toEqual({
       lowMaxCores: 2,

@@ -3,11 +3,11 @@
  * Protects upstream public domain APIs without requiring external services or API keys.
  *
  * @module src/lib/rate-limiter
- * @scope Route-mode-scoped sliding-window rate limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) anchored on `globalThis`.
- * @invariant Anchor singleton limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`) on `globalThis` with bounded `maxKeys` capacity and periodic `pruneStaleRecords` eviction to prevent unbounded memory growth.
- * @invariant Keep `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`, and `booksApiRateLimiter` buckets isolated so cover or card bursts never starve reader text requests.
+ * @scope Route-mode-scoped sliding-window rate limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`, `profileCardRateLimiter`) anchored on `globalThis`.
+ * @invariant Anchor singleton limiters (`booksApiRateLimiter`, `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`, `profileCardRateLimiter`) on `globalThis` with bounded `maxKeys` capacity and periodic `pruneStaleRecords` eviction to prevent unbounded memory growth.
+ * @invariant Keep `bookContentRateLimiter`, `bookCardRateLimiter`, `bookCoverRateLimiter`, `booksApiRateLimiter`, and `profileCardRateLimiter` buckets isolated so cover or card bursts never starve reader text requests.
  * @rationale Zero-dependency `globalThis` persistence preserves quota tracking across hot reloads and warm serverless invocations without requiring external Redis infrastructure.
- * @adr ADR-016, ADR-022, ADR-080
+ * @adr ADR-016, ADR-022, ADR-033, ADR-080
  */
 
 interface RateLimitRecord {
@@ -121,6 +121,7 @@ const globalForRateLimiters = globalThis as typeof globalThis & {
   __bookariumBookContentRateLimiter?: InMemoryRateLimiter;
   __bookariumBookCardRateLimiter?: InMemoryRateLimiter;
   __bookariumBookCoverRateLimiter?: InMemoryRateLimiter;
+  __bookariumProfileCardRateLimiter?: InMemoryRateLimiter;
 };
 
 export const booksApiRateLimiter =
@@ -149,5 +150,12 @@ export const bookCoverRateLimiter =
   (globalForRateLimiters.__bookariumBookCoverRateLimiter = new InMemoryRateLimiter({
     windowMs: 60_000,
     maxRequests: 60, // 60 cover thumbnail fetches/minute
+  }));
+
+export const profileCardRateLimiter =
+  globalForRateLimiters.__bookariumProfileCardRateLimiter ??
+  (globalForRateLimiters.__bookariumProfileCardRateLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    maxRequests: 20, // 20 CPU-rendered OpenGraph scholar profile PNG cards/minute
   }));
 

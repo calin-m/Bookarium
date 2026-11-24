@@ -14,8 +14,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-265%20Suites%20%7C%202780%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.3%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202804%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.29%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -69,7 +69,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2780 tests across 265 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2804 tests across 270 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–15`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -112,10 +112,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.74)
+## 🛠️ Latest Improvements (v2.9.75)
 
-- **Searchable Highlight Bio Picker & Self-Contained `public.profiles` Book Attribution (`supabase/schema.sql`, `src/types/database.types.ts`, `src/config/site-config.ts`, `src/components/account/HighlightBioPickerModal.tsx`, `src/components/account/AccountPublicProfileSection.tsx`, `src/stores/useAuthStore.ts`)**: Added nullable snapshot columns (`bio_book_id`, `bio_book_title`, `bio_book_author`) and idempotent payload `CHECK` constraints onto `public.profiles` without exposing owner-only `user_annotations`; raised UI motto capacity to `400` chars (`SCHOLAR_BIO_MAX_LENGTH`); added lazy-loaded `HighlightBioPickerModal` (`next/dynamic`) with NFD multi-token search across highlights (`formatHighlightForScholarBio` word-boundary truncation, non-placeholder title/author enrichment, private `note` exclusion, and offline support); and added automatic attribution clearing on manual bio editing or `"Remove book link"` (`ADR-033`).
-- **Attributed `/u/[username]` Literary Motto `Read Book` CTA & Metadata (`src/components/profile/PublicProfileView.tsx`, `src/app/u/[username]/page.tsx`, `src/app/u/[username]/layout.tsx`, `src/app/u/[username]/profile-layout-utils.ts`, `scripts/verify-build.js`, co-located tests)**: Rendered volume attribution (`— Title, Author`) and an offline-aware `"Read Book"` CTA (`/read/<bio_book_id>` with `Unavailable Offline` parity when uncached offline) exclusively for highlight-attributed mottos while keeping custom prose bios button-free, projected attribution fields cleanly across `/u/[username]` SSR/client queries and OpenGraph/JSON-LD metadata, and registered `chk_profiles_bio_book_*` constraints in Pass 0.75 (`ADR-033`).
+- **Shared Card Primitives & Scholar Profile Canvas Engine (`src/lib/share-card-primitives.ts`, `src/lib/profile-card-export.ts`, `src/lib/reading-card-export.ts`, `src/components/share/SocialSharePanel.tsx`, `src/components/reader/ReaderShareModal.tsx`)**: Extracted shared `1200×630` archival `<canvas>` frame/ornament/footer helpers, color palettes, Web Intent builders, Base64URL helpers, salted FNV-1a signatures, and the 8-platform `SocialSharePanel` UI with 100% backwards-compatible `reading-card-export` re-exports and zero DOM drift in `ReaderShareModal`; implemented `renderProfileCardToCanvas` (monogram crest seal, Display Name, `@username`, Scholar Since date, motto + optional highlight volume attribution, privacy-gated stats pills, and canonical `SITE_CONFIG.SITE_HOST` footer) alongside visual-only handle-bound `?s=` tokens (`ADR-033`, `ADR-080`).
+- **Lazy-Loaded `ProfileShareModal`, Stateless `GET /api/profiles/card` & `/u/[username]` OpenGraph Unfurling (`src/components/profile/ProfileShareModal.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/app/api/profiles/card/route.ts`, `src/app/u/[username]/profile-layout-utils.ts`, `src/app/u/[username]/layout.tsx`, `src/lib/rate-limiter.ts`, `src/proxy.ts`, `src/config/routes.ts`, co-located tests)**: Upgraded `/u/[username]` `"Share Profile"` to open lazy-loaded `ProfileShareModal` (`Light`/`Sepia`/`Dark` palette switcher defaulting to active app theme, privacy-aware `"Include Public Stats"` toggle, PNG clipboard/download/Device Share, `"Copy Profile Link"`, and 8 social targets); provisioned `GET /api/profiles/card` (`ImageResponse`, `profileCardRateLimiter` `20/min`, `/api/profiles*` session/geo-cookie skip in `proxy.ts`, `CORP: cross-origin`, identical neutral Bookarium card for private/missing/unavailable handles) and `summary_large_image` OG/Twitter metadata (`ADR-033`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -134,7 +134,7 @@ Bookarium offers a **100% Free, End-User Zero-Key Reading Experience** powered b
 | **Wikidata SPARQL Knowledge Graph** | [`query.wikidata.org`](https://query.wikidata.org/) • [`CC0 1.0`](https://www.wikidata.org/) | Open public-domain bibliographic knowledge graph (`wdt:P2034` Project Gutenberg eBook ID, `wdt:P407` / `wdt:P424` language of work) powering relational FRBR work clustering across multilingual editions (`public.book_translations`). |
 | **Supabase (Auth, Sync & Catalog)** | [`supabase.com`](https://supabase.com/) | Cloud authentication, user library synchronization (bookshelves, annotations, progress, streaks, accolades) with RLS user isolation, and dedicated public domain catalog. |
 | **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, global CDN delivery, and cookie-less aggregate performance telemetry (Vercel Web Analytics & Speed Insights). |
-| **Public Domain Archive Proxies** | `/api/books`, `/api/books/content` & `/api/books/translations` | Next.js server-side route proxies providing multi-tier Vercel Edge CDN caching (`12h` 48-volume rotating quote pool, `24h` 11-column catalog & plain-text/OG card streams, `7d` quote/metadata ID batches, FRBR translations, and strict R2-only `?type=cover` asset streaming with `404` dark typographic fallback on misses), Supabase/curated-fallback catalog resolution, and guaranteed public domain integrity before client delivery. |
+| **Public Domain & Profile API Proxies** | `/api/books`, `/api/books/content`, `/api/books/translations` & `/api/profiles/card` | Next.js server-side route handlers providing multi-tier Vercel Edge CDN caching (`12h` 48-volume rotating quote pool, `24h` 11-column catalog & plain-text/OG card streams, `7d` quote/metadata ID batches, FRBR translations, strict R2-only `?type=cover` asset streaming with `404` dark typographic fallback on misses, and stateless `1200×630` Scholar Sanctuary PNG cards with `ADR-033` neutral fallback), Supabase/curated-fallback catalog resolution, and guaranteed public domain integrity before client delivery. |
 
 ---
 
@@ -175,7 +175,7 @@ Bookarium is structured around six core engineering pillars:
 ### 5. 🤝 Reader Circles, Literary Symposiums & Scholarly Honors
 * **Mutual Reader Circle Fellowships (`public.reader_circles`)**: Opt-in two-way fellowship connections (`useFellowshipStore.ts`, `AccountSymposiumSection.tsx`) with zero-PII `@username` lookup (`public.lookup_scholar_by_username`) and automated profile identity sync triggers (`handle_profile_identity_sync`).
 * **Per-Volume Literary Symposium Pacts (`public.symposium_sessions`)**: Co-read specific volumes (`SymposiumInviteModal.tsx`) with synchronized companion progress micro-pills, layered dual-band in-book highlights, `All | Mine | Fellows` filters, and a chapter-bound **Spoiler Shield**.
-* **Deterministic Literary Accolades, Ex-Libris Bookplates & Public Sanctuaries (`/u/[username]`)**: Client-side accolades engine (`src/lib/accolades-engine.ts`) unlocking 3D woodcut **Ex-Libris Bookplates** (`ExLibrisBookplate.tsx`) and opt-in public scholar profiles (`PublicProfileView.tsx`) protected by strict `is_public` Row-Level Security.
+* **Deterministic Literary Accolades, Ex-Libris Bookplates, Highlight Mottos & Public Sanctuaries (`/u/[username]`)**: Client-side accolades engine (`src/lib/accolades-engine.ts`) unlocking 3D woodcut **Ex-Libris Bookplates** (`ExLibrisBookplate.tsx`), opt-in public scholar profiles (`PublicProfileView.tsx`) protected by strict `is_public` Row-Level Security, searchable **Highlight Motto** picking (`HighlightBioPickerModal.tsx`) with attributed `/u/[username]` `"Read Book"` links, and the **`1200×630` Scholar Share Canvas** (`ProfileShareModal.tsx`, `profile-card-export.ts`, handle-salted visual `?s=` tokens, and `/api/profiles/card` OpenGraph previews).
 
 ### 6. ⚖️ 100% Airtight Jurisdictional Copyright Governance & Legal Compliance
 * **Autonomous Multi-Jurisdiction Engine (`src/lib/copyright-engine.ts` & `useBookCopyright.ts`)**: Enforces global Project Gutenberg `<dcterms:rights>` exclusion (`copyright === false`, synchronized from `rdf-files.tar.bz2`) alongside statutory public domain cutoffs by visitor country (year 2026): **United States** (`published <= 1930` and `copyright === false`), **Life + 70** (EU, UK, CA, AU, NZ, JP: `death <= 1955`), **Life + 80** (CO, ES pre-1987: `death <= 1945`), and **Life + 100** (MX, CI: `death <= 1925`), including Joint Authorship (Berne Art. 7bis), Translator Protection (Berne Art. 2(3)), and fail-closed longevity heuristics.
@@ -218,7 +218,7 @@ flowchart TD
         CatalogOfflineNode["CatalogOfflineView.tsx\n(Offline Catalog Notice & Collection Quick-Links)"]
         SymposiumInviteModalNode["SymposiumInviteModal.tsx\n(1-on-1 Literary Symposium Companion Picker)"]
         AccoladesEngine["accolades-engine.ts • ExLibrisBookplate.tsx • AccoladeCelebrationModal.tsx"]
-        PublicSanctuaryNodes["PublicProfileView.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]
+        PublicSanctuaryNodes["PublicProfileView.tsx • ProfileShareModal.tsx • PinnedAccoladesShelf.tsx • PrivateProfileNotice.tsx"]
         
         subgraph Views ["Primary Application Views (/ & Edge Rewrites)"]
             Grid["Catalog View (/)\n(Smooth Scroll Navigation, Adaptive Offline Downloaded Dataset, 2-Col Mobile Grid & 3D Hardwood Shelf)"]
@@ -291,6 +291,7 @@ flowchart TD
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]
         LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
         ProfileLayoutServer["Server Layout (/u/[username])\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]
+        ProxyProfileCard["GET /api/profiles/card\n(Stateless 1200x630 Scholar OG PNG • Visual ?s= Token • ADR-033 Neutral Fallback)"]
         StaticSeoRoutes["SSR Metadata & Crawler Gateways\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • sitemap.ts)"]
     end
 
@@ -391,6 +392,8 @@ flowchart TD
     ProfileCard --> StoreFellowship
     ProfilePage --> PublicSanctuaryNodes
     PublicSanctuaryNodes --> StoreFellowship
+    ProfileLayoutServer -.->|"OpenGraph summary_large_image"| ProxyProfileCard
+    ProxyProfileCard -->|"Live Public Summary (is_public=true)"| SupabaseCloud
     SyncCoordinator --> StoreShelf
     SyncCoordinator --> StoreReader
     SyncCoordinator --> StoreAnnot

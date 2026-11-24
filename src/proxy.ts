@@ -1,10 +1,10 @@
 /**
  * @module src/proxy
  * @scope Edge middleware proxy coordinating Fetch Metadata anti-deeplink/cross-site isolation on `/api/books/content*`, jurisdiction resolution (`x-vercel-ip-country` / `bookarium-geo-country`), share token forwarding (`?s=`), and conditional Supabase SSR session refresh.
- * @invariant Short-circuit direct browser deeplinks (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks on `/api/books/content*` (outside `type=card`) with `403 no-store` (`guardContentAssetRequest`) ahead of origin execution while leaving missing-header crawlers and `Vary` keys untouched; never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches; configure browser-readable geo/override cookies with `sameSite: 'lax'` and protocol-aware `secure: isHttpsRequest(request)`.
+ * @invariant Short-circuit direct browser deeplinks (`Sec-Fetch-Dest: document|iframe|frame|embed|object|fencedframe`, `Sec-Fetch-Mode: navigate`) and `cross-site` subresource hotlinks on `/api/books/content*` (outside `type=card`) with `403 no-store` (`guardContentAssetRequest`) ahead of origin execution while leaving missing-header crawlers and `Vary` keys untouched; never execute `updateSession` or set `bookarium-geo-country` cookies on public `/api/books*` and `/api/profiles*` paths, `/auth/*` routes, service-worker precaches, or Next.js router prefetches; configure browser-readable geo/override cookies with `sameSite: 'lax'` and protocol-aware `secure: isHttpsRequest(request)`.
  * @invariant Bypass SSR token rotation on App Router RSC navigations (`rsc: 1`) outside `/account` and `/account/*`; only set `x-middleware-override-headers` when `validShareToken` is present.
  * @rationale Rejecting browser deeplinks and cross-site hotlinks at the Edge via Fetch Metadata protects private Cloudflare R2 assets without altering `Vary` or fragmenting `s-maxage` CDN keys, while skipping cookies and `x-middleware-override-headers` on public API and RSC requests preserves Edge caching and prevents concurrent OAuth refresh races.
- * @adr ADR-035, ADR-042, ADR-080, ADR-082
+ * @adr ADR-033, ADR-035, ADR-042, ADR-080, ADR-082
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
@@ -30,6 +30,7 @@ export function shouldSkipSessionRefresh(request: NextRequest): boolean {
 
   if (
     pathname.startsWith('/api/books') ||
+    pathname.startsWith('/api/profiles') ||
     pathname.startsWith('/auth/') ||
     pathname === '/sw.js' ||
     pathname === '/manifest.webmanifest'
@@ -63,8 +64,10 @@ export function shouldSkipSessionRefresh(request: NextRequest): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  const isPublicBookApi = request.nextUrl.pathname.startsWith('/api/books');
-  const isContentAssetApi = isPublicBookApi && request.nextUrl.pathname.includes('/content');
+  const { pathname } = request.nextUrl;
+  const isPublicBookApi = pathname.startsWith('/api/books');
+  const isPublicStatelessApi = isPublicBookApi || pathname.startsWith('/api/profiles');
+  const isContentAssetApi = isPublicBookApi && pathname.includes('/content');
   if (isContentAssetApi) {
     const blockedAssetResponse = guardContentAssetRequest(request);
     if (blockedAssetResponse) {
@@ -102,7 +105,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (!isPublicBookApi && !isSwPrecache) {
+  if (!isPublicStatelessApi && !isSwPrecache) {
     const secureCookie = isHttpsRequest(request);
     // If in development and the user passed ?country=XX, persist it to dev override cookie
     const isDev = process.env.NODE_ENV !== 'production';
