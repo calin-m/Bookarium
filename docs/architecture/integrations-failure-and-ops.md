@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
 > **Last Synchronized**: `2026-11-24`  
-> **Topology Health**: `262` Modules Analyzed • `1108` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `262` Modules Analyzed • `1110` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -161,7 +161,7 @@ flowchart TD
 
     subgraph USCompute ["Pinned US-East Compute & Data Region (Washington D.C. — iad1)"]
         Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\n• /api/books, /api/books/content, /api/books/translations, /auth/callback\n• In-Memory 24h Metadata LRU (1,000 entries), 20-Book Text LRU & Rate Limiters"]
-        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\n• 14 RLS Tables • 22 B-Tree/GIN Indexes • 9 Stored Functions")]
+        SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\n• 14 RLS Tables • 20 B-Tree/GIN Indexes • 10 Stored Functions")]
         CloudflareR2US[("☁️ Cloudflare R2 Private Bucket\n(Zero-Egress covers/*.jpg & books/*.txt.gz)")]
         GutenbergUS["🏛️ Official PG rsync & PGLAF Mirrors\n(CLI Sync & Weekly Feeds Only)"]
     end
@@ -232,7 +232,7 @@ flowchart TD
     end
 
     subgraph L5_Origins ["L5: Primary Origins (Supabase PostgreSQL & Cloudflare R2)"]
-        SupaOrigin[("🗄️ Supabase PostgreSQL (public.books & book_translations)\n• (select auth.uid()) InitPlan RLS & 22 B-Tree/GIN Indexes\n• PostgREST quote0:quotes->0, quote1:quotes->1 Slicing")]
+        SupaOrigin[("🗄️ Supabase PostgreSQL (public.books & book_translations)\n• (select auth.uid()) InitPlan RLS & 20 B-Tree/GIN Indexes\n• PostgREST quote0:quotes->0, quote1:quotes->1 Slicing")]
         R2Origin[("☁️ Cloudflare R2 Private Storage\n(covers/{id}.jpg • books/{id}.txt.gz • AWS SigV4)")]
     end
 
@@ -266,7 +266,7 @@ flowchart TD
 | **L2: Browser Persistent** | `localStorage` (10 stores + `bookarium-quote-enriched-books-v1` + `bookarium-extracted-passages-v1`), `IndexedDB` (`BookariumOfflineDB` v2: `offline_books` + `cover_cache`), `CacheStorage` (`bookarium-app-shell-v7`) | User collections/outboxes, 48-volume (`DEFAULT_QUOTE_POOL_LIMIT = 48`) rotating quote pool (`12h` fresh), read-only `>= 3`-spread reuse of 30-day `bookarium-extracted-passages-v1` (`100` books max), single-tx dual-store `getOfflineBookCover` + `{ cache: "force-cache" }` R2-backed cover LRU (`300` covers max, `30d` TTL via `offline-storage.ts`), and PWA App Shell (`bookarium-app-shell-v7`) | Persistent across restarts; `30d` TTL / `100` passage & `300` cover LRU bounds; SW `activate` prunes old caches | Origin-locked; IndexedDB texts verified against active jurisdiction on read |
 | **L3: Vercel Edge CDN** | Global Edge PoP HTTP Cache (`Cache-Control` & `Vercel-Cache-Tag`) | `GET /api/books` (`max-age=300, s-maxage=86400, swr=604800`, tag `catalog`/`catalog,quotes`; `max-age=3600, s-maxage=43200, swr=604800` `?pool=quotes`, tag `quotes`; `max-age=86400, s-maxage=604800, swr=2592000` `?ids=...&has_quotes=true` tag `catalog,quotes` & `include_restricted_metadata=true` tag `catalog`); `GET /api/books/content` (`max-age=86400, s-maxage=86400` text/`type=card`, tag `book-content` on plain text; `max-age=604800, s-maxage=604800` `type=cover`, tag `covers`) & `/translations` (`max-age=86400, s-maxage=604800, swr=2592000`, tag `translations`) | 12h fresh (Quote Pool); 24h fresh / 7d SWR (Catalog & Content); 7d browser+Edge / 30d SWR (Covers, Quote IDs & Translations); instant CI `dangerously-delete-by-tags` purge (conditional on R2 delete/`--force`) | `Vary: Accept-Encoding` (Global Quote Pool, Restricted-Metadata & `type=cover` Lookups) / `Vary: x-vercel-ip-country` (`/translations`) / `Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding` (Catalog) / `Vary: x-vercel-ip-country, Accept-Encoding` (`/content` text & OG cards) |
 | **L4: Serverless & `globalThis` Caches** | Node.js Serverless Instance (`iad1`) | Contributor lifespans ([`src/app/api/books/content/metadata-cache.ts`](../../src/app/api/books/content/metadata-cache.ts), pre-warmed by `supabase-provider.ts`), 20-book text LRU & in-flight R2/upstream coalescing ([`src/app/api/books/content/route.ts`](../../src/app/api/books/content/route.ts)), 5m / 64-entry global Quote Pool & `jurisdictionRule`-normalized catalog/translations LRUs (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`) + per-key `inFlight` coalescing + 60s healthcheck (`supabase-provider.ts`), and `globalThis` SSR anchors `__bookariumServerMetadataCache` / `__bookariumConfirmedNotFoundIds` ([`src/app/read/[id]/reader-layout-utils.ts`](../../src/app/read/[id]/reader-layout-utils.ts)) + `__bookariumServerProfileCache` ([`src/app/u/[username]/profile-layout-utils.ts`](../../src/app/u/[username]/profile-layout-utils.ts)) | `5m` / `64` entries (Catalog & Translations LRUs); `5m` / `500` max entries (`serverProfileCache`); `500` max entries LRU (`serverMetadataCache` / `confirmedNotFoundIds`); `24h` / `1,000` max entries (Metadata LRU); `24h` / `20` max books `<= 1.8M` chars (`bookContentLruCache`); `60s` TTL (Healthcheck); `24h` ISR (`/read/[id]`) | Keyed by normalized query + `jurisdictionRule` / global Quote Pool, `[bookId, jurisdictionRule]`, Gutenberg `bookId`, or normalized lowercase `@username` |
-| **L5: Cloud Object Storage, DB & Seeds** | Private Cloudflare R2, Supabase PostgreSQL & `supabase/seed_*.sql` | Pre-seeded R2 `covers/<id>.jpg` & `books/<id>.txt.gz`, `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 564` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | R2 served via SigV4 (`s-maxage=604800` covers / `86400` texts); PostgreSQL catalog updated weekly via GitHub Actions | R2 bucket `covers/` + `books/` prefix keys; Supabase indexed by 22 explicit B-Tree & GIN `search_vector` indexes |
+| **L5: Cloud Object Storage, DB & Seeds** | Private Cloudflare R2, Supabase PostgreSQL & `supabase/seed_*.sql` | Pre-seeded R2 `covers/<id>.jpg` & `books/<id>.txt.gz`, `78,000+` catalog rows (`public.books`), Two-Tier Bounded Quote Pool (`<= 564` books in `public.books.quotes`), FRBR clusters (`public.book_translations`), and offline Wikidata cache | R2 served via SigV4 (`s-maxage=604800` covers / `86400` texts); PostgreSQL catalog updated weekly via GitHub Actions | R2 bucket `covers/` + `books/` prefix keys; Supabase indexed by 20 explicit B-Tree & GIN `search_vector` indexes |
 
 ### 4. Runtime Performance Budgets, Thresholds & Hardware-Tier Adaptation Matrix
 

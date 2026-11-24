@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.76] - 2026-11-24
+### *PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning & Cloud Cover URL Normalization*
+
+### Changed
+- **PostgreSQL Duplicate Index Pruning, `NOT VALID` Payload Ceilings & Conflict-Aware Per-User Row Quotas (`supabase/schema.sql`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `README.md`, `.agents/AGENTS.md`)**: Dropped duplicate B-Tree indexes `idx_user_reading_habits_user` and `idx_user_accolades_user` (`22 -> 20` explicit indexes, covered by `UNIQUE(user_id)` and `unique_user_accolade`); added `6` non-breaking `NOT VALID` payload ceiling `CHECK` constraints across `profiles.preferences`, `user_accolades.metadata`, `bookshelf_items`, `user_favorites`, `reading_progress`, and `symposium_sessions`; and provisioned `public.enforce_user_row_quota()` (`BEFORE INSERT`, conflict-aware `.upsert()` bypass, `SECURITY DEFINER SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`) enforcing row quotas across 6 user tables (`ADR-087`).
+- **Redundant Cloud `cover_url` Normalization (`src/lib/adapters/book.adapter.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/stores/useReaderStore.ts`, co-located tests)**: Exported shared `GUTENBERG_COVER_HOSTS` and `normalizeCloudCoverUrl()` to strip derivable Project Gutenberg mirror URLs, same-origin `/api/books/content` proxy paths, and transient `blob:`/`data:` URIs to `null` inside `toCloudBookInsert()` and `buildReadingProgressCloudRow()` while preserving custom third-party URLs and read-time `extractBookFormats()` / `useContinueReadingLedger` R2 derivation (`ADR-082`, `ADR-087`).
+
+
 ## [2.9.75] - 2026-11-24
 ### *u/[username] Scholar Sanctuary Share Canvas, Shared Social Export Primitives & Stateless Profile OpenGraph Cards*
 
@@ -1653,3 +1661,4 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-084: Strict Self-Hosted Cloudflare R2 Runtime Delivery, Zero-PG Runtime Policy, Mirror-Only Weekly Feeds & End-User vs. Developer Credential Boundary**
 - **ADR-085: Fault-Tolerant Data Pipeline Orchestration, Resumable R2 Checkpointing, Fail-Closed Copyright Guards & Content CDN Cache Tagging**
 - **ADR-086: Non-Breaking 5-Layer Caching Optimization, Jurisdictional Query Normalization, In-Flight Request Coalescing & Passive Auth Sync Deduplication**
+- **ADR-087: PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning & Redundant Cloud Cover Normalization**

@@ -285,7 +285,7 @@ describe('useReaderStore', () => {
           book_id: 1342,
           book_title: 'Pride and Prejudice',
           book_authors: ['Austen, Jane, 1775-1817'],
-          cover_url: 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+          cover_url: null,
           progress_percent: 10,
         }),
         { onConflict: 'user_id,book_id' }

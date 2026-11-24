@@ -8,6 +8,8 @@ import {
   toGutendexBookFromCloudRow,
   toCloudBookInsert,
   formatAuthorWithLifespan,
+  normalizeCloudCoverUrl,
+  GUTENBERG_COVER_HOSTS,
 } from './book.adapter';
 import type { GutendexBook, Book } from '@/types/book.types';
 
@@ -301,6 +303,37 @@ describe('book.adapter', () => {
       const result = toCloudBookInsert(book, 'user-123');
       expect('bookshelf_id' in result).toBe(false);
       expect(result.cover_url).toBeNull();
+    });
+
+    it('strips derivable Project Gutenberg and same-origin proxy cover URLs from cloud inserts while preserving custom URLs', () => {
+      for (const host of GUTENBERG_COVER_HOSTS) {
+        const pgBook: GutendexBook = {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {
+            'image/jpeg': `https://${host}/cache/epub/1342/pg1342.cover.medium.jpg`,
+          },
+          download_count: 50000,
+        };
+        expect(toCloudBookInsert(pgBook, 'user-1', 'shelf-1').cover_url).toBeNull();
+      }
+
+      expect(normalizeCloudCoverUrl('/api/books/content?id=1342&type=cover')).toBeNull();
+      expect(normalizeCloudCoverUrl('https://bookarium.app/api/books/content?id=1342&type=cover')).toBeNull();
+      expect(normalizeCloudCoverUrl('blob:https://bookarium.app/temp-uuid')).toBeNull();
+      expect(normalizeCloudCoverUrl('data:image/jpeg;base64,abc')).toBeNull();
+      expect(normalizeCloudCoverUrl('   ')).toBeNull();
+      expect(normalizeCloudCoverUrl('https://example.com/custom-cover.jpg')).toBe(
+        'https://example.com/custom-cover.jpg'
+      );
+      expect(normalizeCloudCoverUrl('/custom/cover.jpg')).toBe('/custom/cover.jpg');
     });
   });
 

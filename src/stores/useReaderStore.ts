@@ -23,7 +23,7 @@ import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
+import { formatAuthorWithLifespan, normalizeCloudCoverUrl } from '@/lib/adapters/book.adapter';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import {
   type ReaderTheme,
@@ -157,7 +157,7 @@ function buildReadingProgressCloudRow(
     book_id: bookId,
     book_title: position.bookTitle || null,
     book_authors: position.bookAuthors || [],
-    cover_url: position.coverUrl || null,
+    cover_url: normalizeCloudCoverUrl(position.coverUrl),
     current_chapter_index: position.chapterIndex,
     progress_percent: progress,
     scroll_offset: encodedScrollOffset,

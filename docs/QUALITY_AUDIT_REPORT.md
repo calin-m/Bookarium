@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Tue, 24 Nov 2026 13:04:57 GMT  
+**Last Generated**: Tue, 24 Nov 2026 13:50:20 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 270 passed  
-**Total Verified Tests**: 2804 passed  
+**Total Verified Tests**: 2805 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2804 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2805 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 86 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 87 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.29%** (16845/17314) — *Target: $\ge$ 95%*
-- **Statements**: **96.04%** (18133/18879) — *Target: $\ge$ 95%*
-- **Functions**: **95.17%** (3609/3792) — *Target: $\ge$ 92%*
-- **Branches**: **88.26%** (16842/19082) — *Target: $\ge$ 85%*
+- **Lines**: **97.24%** (16849/17327) — *Target: $\ge$ 95%*
+- **Statements**: **95.99%** (18136/18893) — *Target: $\ge$ 95%*
+- **Functions**: **95.22%** (3612/3793) — *Target: $\ge$ 92%*
+- **Branches**: **88.3%** (16865/19098) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (270 Suites / 2804 Tests)
+## 🧪 Comprehensive Test Suite Catalog (270 Suites / 2805 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 321 Tests)
 
@@ -2064,7 +2064,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (60 Suites · 752 Tests)
+### 📚 Gutenberg Parsers & Metadata (60 Suites · 753 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2087,7 +2087,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (24 tests)</summary>
+<summary><b><code>src/lib/adapters/book.adapter.test.ts</code></b> (25 tests)</summary>
 
 - ✔ `normalizes "LastName, FirstName" to "FirstName LastName"`
 - ✔ `returns single word or standard formatted names unchanged`
@@ -2106,6 +2106,7 @@
 - ✔ `formats a GutendexBook into a standardized Supabase insert payload`
 - ✔ `preserves birth and death years in author strings when present`
 - ✔ `omits bookshelf_id when not provided`
+- ✔ `strips derivable Project Gutenberg and same-origin proxy cover URLs from cloud inserts while preserving custom URLs`
 - ✔ `formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans`
 - ✔ `extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates`
 - ✔ `covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books`

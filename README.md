@@ -14,8 +14,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202804%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.29%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202805%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -69,14 +69,14 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2804 tests across 270 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2805 tests across 270 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–15`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
 | 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across `src/`, CLI modules, `next.config.ts`, & `public/sw.js` (`82` Tier-1..Tier-4 protected). | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
-| ⚖️ **Architecture Decision Records (ADRs)** | 86 validated ADRs (`ADR-001` through `ADR-086`) governing end-user keyless reading, self-hosted Cloudflare R2 delivery, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, mirror-only Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
+| ⚖️ **Architecture Decision Records (ADRs)** | 87 validated ADRs (`ADR-001` through `ADR-087`) governing end-user keyless reading, self-hosted Cloudflare R2 delivery, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, mirror-only Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
 | 🔒 **Security Policy & Responsible Disclosure** | Supported versions, vulnerability reporting protocols, and architectural safeguards. | [`SECURITY.md`](SECURITY.md) |
 | 🤝 **Contributor Guidelines** | Onboarding guide, local development quickstart, testing protocols, and conventional commits. | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | 🕊️ **Code of Conduct** | Contributor Covenant v2.1 standards for an inclusive, welcoming community. | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
@@ -112,10 +112,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.75)
+## 🛠️ Latest Improvements (v2.9.76)
 
-- **Shared Card Primitives & Scholar Profile Canvas Engine (`src/lib/share-card-primitives.ts`, `src/lib/profile-card-export.ts`, `src/lib/reading-card-export.ts`, `src/components/share/SocialSharePanel.tsx`, `src/components/reader/ReaderShareModal.tsx`)**: Extracted shared `1200×630` archival `<canvas>` frame/ornament/footer helpers, color palettes, Web Intent builders, Base64URL helpers, salted FNV-1a signatures, and the 8-platform `SocialSharePanel` UI with 100% backwards-compatible `reading-card-export` re-exports and zero DOM drift in `ReaderShareModal`; implemented `renderProfileCardToCanvas` (monogram crest seal, Display Name, `@username`, Scholar Since date, motto + optional highlight volume attribution, privacy-gated stats pills, and canonical `SITE_CONFIG.SITE_HOST` footer) alongside visual-only handle-bound `?s=` tokens (`ADR-033`, `ADR-080`).
-- **Lazy-Loaded `ProfileShareModal`, Stateless `GET /api/profiles/card` & `/u/[username]` OpenGraph Unfurling (`src/components/profile/ProfileShareModal.tsx`, `src/components/profile/PublicProfileView.tsx`, `src/app/api/profiles/card/route.ts`, `src/app/u/[username]/profile-layout-utils.ts`, `src/app/u/[username]/layout.tsx`, `src/lib/rate-limiter.ts`, `src/proxy.ts`, `src/config/routes.ts`, co-located tests)**: Upgraded `/u/[username]` `"Share Profile"` to open lazy-loaded `ProfileShareModal` (`Light`/`Sepia`/`Dark` palette switcher defaulting to active app theme, privacy-aware `"Include Public Stats"` toggle, PNG clipboard/download/Device Share, `"Copy Profile Link"`, and 8 social targets); provisioned `GET /api/profiles/card` (`ImageResponse`, `profileCardRateLimiter` `20/min`, `/api/profiles*` session/geo-cookie skip in `proxy.ts`, `CORP: cross-origin`, identical neutral Bookarium card for private/missing/unavailable handles) and `summary_large_image` OG/Twitter metadata (`ADR-033`, `ADR-080`).
+- **PostgreSQL Duplicate Index Pruning, `NOT VALID` Payload Ceilings & Conflict-Aware Per-User Row Quotas (`supabase/schema.sql`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, `README.md`, `.agents/AGENTS.md`)**: Dropped duplicate B-Tree indexes `idx_user_reading_habits_user` and `idx_user_accolades_user` (`22 -> 20` explicit indexes, covered by `UNIQUE(user_id)` and `unique_user_accolade`); added `6` non-breaking `NOT VALID` payload ceiling `CHECK` constraints across `profiles.preferences`, `user_accolades.metadata`, `bookshelf_items`, `user_favorites`, `reading_progress`, and `symposium_sessions`; and provisioned `public.enforce_user_row_quota()` (`BEFORE INSERT`, conflict-aware `.upsert()` bypass, `SECURITY DEFINER SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`) enforcing row quotas across 6 user tables (`ADR-087`).
+- **Redundant Cloud `cover_url` Normalization (`src/lib/adapters/book.adapter.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/stores/useReaderStore.ts`, co-located tests)**: Exported shared `GUTENBERG_COVER_HOSTS` and `normalizeCloudCoverUrl()` to strip derivable Project Gutenberg mirror URLs, same-origin `/api/books/content` proxy paths, and transient `blob:`/`data:` URIs to `null` inside `toCloudBookInsert()` and `buildReadingProgressCloudRow()` while preserving custom third-party URLs and read-time `extractBookFormats()` / `useContinueReadingLedger` R2 derivation (`ADR-082`, `ADR-087`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -583,7 +583,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 ### Step 2: Run Database Schema Script
 1. In your Supabase Dashboard, open the **SQL Editor** from the left sidebar.
 2. Click **New Query**, copy and paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**.
-3. The script is **100% idempotent** and safely provisions all `14` database tables, `47` consolidated `(select auth.uid())` Row Level Security (RLS) policies, `22` explicit indexes, and `9` stored functions/triggers (`5` row triggers):
+3. The script is **100% idempotent** and safely provisions all `14` database tables, `47` consolidated `(select auth.uid())` Row Level Security (RLS) policies, `20` explicit indexes, and `10` stored functions/triggers (`11` row triggers):
 
 | Database Object | Type | Purpose & Security Governance |
 |---|---|---|
@@ -603,6 +603,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 | `public.handle_new_user()` | Trigger | Provisions `public.profiles` and the default `'General'` shelf on `auth.users` insert (`SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`). |
 | `public.handle_profile_identity_sync()` | Trigger | Propagates updated scholar `username` and `display_name` across active `symposium_sessions` and `user_annotations` (`SET search_path = ''`). |
 | `public.enforce_fellowship_update_guard()` | Trigger | Enforces anti-spoofing ownership/status integrity across `reader_circles` and `symposium_sessions` updates (`SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`). |
+| `public.enforce_user_row_quota()` | Trigger | Enforces conflict-aware per-scholar `BEFORE INSERT` row quotas across `bookshelves` (`50`), `bookshelf_items` (`2,000`), `user_favorites` (`2,000`), `user_annotations` (`5,000`), `reader_circles` (`500`), and `symposium_sessions` (`200`) (`SET search_path = ''`, execute revoked from `PUBLIC, anon, authenticated`). |
 | `public.delete_current_user()` | RPC Function | Atomic 11-table + `storage.objects` user data erasure prior to `auth.users` deletion (`authenticated`-only, `SET search_path = ''`). |
 | `public.lookup_scholar_by_username()` | RPC Function | Zero-PII handle resolution returning minimal `(id, username, display_name)` for Reader Circle invitations (`authenticated`-only, `SET search_path = ''`). |
 | `public.get_active_sessions()` | RPC Function | Owner-scoped (`(select auth.uid())`) active device session inspection returning masked IP addresses (IPv4 `.x`, IPv6 `/48 ::x`), user-agent strings, and `"isCurrent"` UUID claim matching (`authenticated`-only, `SET search_path = ''`). |

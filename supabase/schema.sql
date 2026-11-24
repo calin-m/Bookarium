@@ -619,8 +619,7 @@ CREATE POLICY "Users can delete their own reading habits"
   TO authenticated
   USING ((select auth.uid()) = user_id);
 
-CREATE INDEX IF NOT EXISTS idx_user_reading_habits_user 
-  ON public.user_reading_habits(user_id);
+DROP INDEX IF EXISTS public.idx_user_reading_habits_user;
 
 -- ============================================================================
 -- 9. User Accolades Table (Literary Accolades & Ex-Libris Bookplates)
@@ -639,8 +638,7 @@ CREATE TABLE IF NOT EXISTS public.user_accolades (
 CREATE UNIQUE INDEX IF NOT EXISTS unique_user_accolade 
   ON public.user_accolades(user_id, accolade_id);
 
-CREATE INDEX IF NOT EXISTS idx_user_accolades_user 
-  ON public.user_accolades(user_id);
+DROP INDEX IF EXISTS public.idx_user_accolades_user;
 
 ALTER TABLE public.user_accolades ENABLE ROW LEVEL SECURITY;
 
@@ -1192,7 +1190,127 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_reading_habits_active_dates_bound') THEN
     ALTER TABLE public.user_reading_habits ADD CONSTRAINT chk_user_reading_habits_active_dates_bound CHECK (jsonb_typeof(active_dates) = 'array' AND jsonb_array_length(active_dates) <= 5000);
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_preferences_bound') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_preferences_bound CHECK (preferences IS NULL OR octet_length(preferences::text) <= 32768) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_accolades_metadata_bound') THEN
+    ALTER TABLE public.user_accolades ADD CONSTRAINT chk_user_accolades_metadata_bound CHECK (metadata IS NULL OR octet_length(metadata::text) <= 8192) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bookshelf_items_payload_bound') THEN
+    ALTER TABLE public.bookshelf_items ADD CONSTRAINT chk_bookshelf_items_payload_bound CHECK (char_length(book_title) <= 1000 AND (cover_url IS NULL OR char_length(cover_url) <= 2048) AND (book_authors IS NULL OR octet_length(book_authors::text) <= 8192)) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_favorites_payload_bound') THEN
+    ALTER TABLE public.user_favorites ADD CONSTRAINT chk_user_favorites_payload_bound CHECK (char_length(book_title) <= 1000 AND (cover_url IS NULL OR char_length(cover_url) <= 2048) AND (book_authors IS NULL OR (COALESCE(array_length(book_authors, 1), 0) <= 50 AND char_length(array_to_string(book_authors, ',')) <= 8192))) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_reading_progress_payload_bound') THEN
+    ALTER TABLE public.reading_progress ADD CONSTRAINT chk_reading_progress_payload_bound CHECK ((book_title IS NULL OR char_length(book_title) <= 1000) AND (cover_url IS NULL OR char_length(cover_url) <= 2048) AND (book_authors IS NULL OR (COALESCE(array_length(book_authors, 1), 0) <= 50 AND char_length(array_to_string(book_authors, ',')) <= 8192))) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_symposium_sessions_title_length') THEN
+    ALTER TABLE public.symposium_sessions ADD CONSTRAINT chk_symposium_sessions_title_length CHECK (book_title IS NULL OR char_length(book_title) <= 1000) NOT VALID;
+  END IF;
 END $$;
+
+-- Shared Per-User Storage Quota Trigger (Protects Free/Pro DB against unbounded insert abuse)
+CREATE OR REPLACE FUNCTION public.enforce_user_row_quota()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_max_rows INTEGER := COALESCE(NULLIF(TG_ARGV[0], '')::INTEGER, 0);
+  v_current_count BIGINT := 0;
+BEGIN
+  IF pg_trigger_depth() > 1 OR v_max_rows <= 0 THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_TABLE_NAME = 'bookshelves' THEN
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.bookshelves
+    WHERE user_id = NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'bookshelf_items' THEN
+    IF (NEW.id IS NOT NULL AND EXISTS (SELECT 1 FROM public.bookshelf_items WHERE id = NEW.id))
+       OR EXISTS (SELECT 1 FROM public.bookshelf_items WHERE bookshelf_id = NEW.bookshelf_id AND book_id = NEW.book_id) THEN
+      RETURN NEW;
+    END IF;
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.bookshelf_items
+    WHERE user_id = NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'user_favorites' THEN
+    IF EXISTS (SELECT 1 FROM public.user_favorites WHERE user_id = NEW.user_id AND book_id = NEW.book_id) THEN
+      RETURN NEW;
+    END IF;
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.user_favorites
+    WHERE user_id = NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'user_annotations' THEN
+    IF NEW.id IS NOT NULL AND EXISTS (SELECT 1 FROM public.user_annotations WHERE id = NEW.id) THEN
+      RETURN NEW;
+    END IF;
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.user_annotations
+    WHERE user_id = NEW.user_id;
+  ELSIF TG_TABLE_NAME = 'reader_circles' THEN
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.reader_circles
+    WHERE requester_id = NEW.requester_id;
+  ELSIF TG_TABLE_NAME = 'symposium_sessions' THEN
+    SELECT COUNT(*) INTO v_current_count
+    FROM public.symposium_sessions
+    WHERE host_id = NEW.host_id;
+  ELSE
+    RETURN NEW;
+  END IF;
+
+  IF v_current_count >= v_max_rows THEN
+    RAISE EXCEPTION 'Per-user storage quota (% rows) exceeded on table %', v_max_rows, TG_TABLE_NAME
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.enforce_user_row_quota() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.enforce_user_row_quota() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.enforce_user_row_quota() FROM authenticated;
+
+DROP TRIGGER IF EXISTS trg_bookshelves_row_quota ON public.bookshelves;
+CREATE TRIGGER trg_bookshelves_row_quota
+  BEFORE INSERT ON public.bookshelves
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_user_row_quota('50');
+
+DROP TRIGGER IF EXISTS trg_bookshelf_items_row_quota ON public.bookshelf_items;
+CREATE TRIGGER trg_bookshelf_items_row_quota
+  BEFORE INSERT ON public.bookshelf_items
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_user_row_quota('2000');
+
+DROP TRIGGER IF EXISTS trg_user_favorites_row_quota ON public.user_favorites;
+CREATE TRIGGER trg_user_favorites_row_quota
+  BEFORE INSERT ON public.user_favorites
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_user_row_quota('2000');
+
+DROP TRIGGER IF EXISTS trg_user_annotations_row_quota ON public.user_annotations;
+CREATE TRIGGER trg_user_annotations_row_quota
+  BEFORE INSERT ON public.user_annotations
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_user_row_quota('5000');
+
+DROP TRIGGER IF EXISTS trg_reader_circles_row_quota ON public.reader_circles;
+CREATE TRIGGER trg_reader_circles_row_quota
+  BEFORE INSERT ON public.reader_circles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_user_row_quota('500');
+
+DROP TRIGGER IF EXISTS trg_symposium_sessions_row_quota ON public.symposium_sessions;
+CREATE TRIGGER trg_symposium_sessions_row_quota
+  BEFORE INSERT ON public.symposium_sessions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_user_row_quota('200');
 
 -- Owner-Scoped Active Device Session Inspector (Account Security)
 CREATE OR REPLACE FUNCTION public.get_active_sessions()

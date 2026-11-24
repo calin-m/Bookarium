@@ -9,20 +9,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { GUTENBERG_COVER_HOSTS } from '@/lib/adapters/book.adapter';
 import {
   getOfflineBookCover,
   getMemoryCachedCoverUrl,
   getOrCreateMemoryCoverUrl,
   warmCoverCache,
 } from '@/lib/offline-storage';
-
-const GUTENBERG_COVER_HOSTS = new Set([
-  'www.gutenberg.org',
-  'gutenberg.org',
-  'aleph.gutenberg.org',
-  'gutenberg.pglaf.org',
-  'gutenberg.readingroo.ms',
-]);
 
 /**
  * Resolves a cover URL cleanly without external Project Gutenberg hotlinking:

@@ -1,7 +1,58 @@
 import type { GutendexBook, Author, Book } from '@/types/book.types';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
 import { formatAuthorName } from '@/lib/utils';
 import { cleanBookTitle } from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
+
+/**
+ * Known Project Gutenberg & official mirror hostnames whose cover image URLs can always be
+ * deterministically derived from `book_id` via `extractBookFormats()` -> `/api/books/content?type=cover`.
+ */
+export const GUTENBERG_COVER_HOSTS: ReadonlySet<string> = new Set([
+  'www.gutenberg.org',
+  'gutenberg.org',
+  'aleph.gutenberg.org',
+  'gutenberg.pglaf.org',
+  'gutenberg.readingroo.ms',
+]);
+
+/**
+ * Strips derivable Project Gutenberg cover URLs, same-origin R2 cover proxy paths, and transient
+ * client `blob:` / `data:` URIs down to `null` before cloud persistence while keeping custom URLs intact.
+ */
+export function normalizeCloudCoverUrl(url?: string | null): string | null {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return null;
+
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith('blob:') || lower.startsWith('data:')) {
+    return null;
+  }
+
+  if (
+    trimmed === API_ENDPOINTS.INTERNAL_API_CONTENT ||
+    trimmed.startsWith(`${API_ENDPOINTS.INTERNAL_API_CONTENT}?`) ||
+    trimmed.startsWith(`${API_ENDPOINTS.INTERNAL_API_CONTENT}/`)
+  ) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const isHttp = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    if (
+      isHttp &&
+      (GUTENBERG_COVER_HOSTS.has(parsed.hostname.toLowerCase()) ||
+        parsed.pathname === API_ENDPOINTS.INTERNAL_API_CONTENT)
+    ) {
+      return null;
+    }
+  } catch {
+    // Relative non-proxy custom URLs are preserved cleanly
+  }
+
+  return trimmed;
+}
 
 /**
  * Normalizes Gutenberg author name formatting ("Austen, Jane" -> "Jane Austen")
@@ -386,7 +437,7 @@ export function toCloudBookInsert(
     book_id: book.id,
     book_title: book.title,
     book_authors: formattedAuthors,
-    cover_url: book.formats?.['image/jpeg'] || null,
+    cover_url: normalizeCloudCoverUrl(book.formats?.['image/jpeg']),
   };
   if (bookshelfId) {
     return {

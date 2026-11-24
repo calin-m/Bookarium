@@ -852,11 +852,38 @@ function pass075SecurityAndSastAudit() {
       );
     }
 
+    if (!schemaSql.includes('public.enforce_user_row_quota')) {
+      rlsViolations.push(
+        'Missing trigger function public.enforce_user_row_quota() in supabase/schema.sql.'
+      );
+    }
+    const mandatoryQuotaTriggers = [
+      'trg_bookshelves_row_quota',
+      'trg_bookshelf_items_row_quota',
+      'trg_user_favorites_row_quota',
+      'trg_user_annotations_row_quota',
+      'trg_reader_circles_row_quota',
+      'trg_symposium_sessions_row_quota',
+    ];
+    for (const triggerName of mandatoryQuotaTriggers) {
+      if (!schemaSql.includes(triggerName)) {
+        rlsViolations.push(
+          `Missing per-user storage quota trigger "${triggerName}" in supabase/schema.sql.`
+        );
+      }
+    }
+
     const mandatoryCeilingConstraints = [
       'chk_profiles_bio_length',
       'chk_profiles_bio_book_id_positive',
       'chk_profiles_bio_book_title_length',
       'chk_profiles_bio_book_author_length',
+      'chk_profiles_preferences_bound',
+      'chk_user_accolades_metadata_bound',
+      'chk_bookshelf_items_payload_bound',
+      'chk_user_favorites_payload_bound',
+      'chk_reading_progress_payload_bound',
+      'chk_symposium_sessions_title_length',
       'chk_user_annotations_note_length',
       'chk_user_annotations_selected_text_length',
       'chk_user_reading_habits_active_dates_bound',
