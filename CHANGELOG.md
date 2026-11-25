@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.83] - 2026-11-25
+### *Deterministic MSW Query Polling in useBookPassageShuffle CI Suite*
+
+### Fixed
+- **Deterministic Async Passage Polling in CI (`src/hooks/useBookPassageShuffle.test.ts`, `docs/DECISIONS.md`)**: Replaced the hardcoded `50ms` `setTimeout` wait in `useBookPassageShuffle.test.ts` with `@testing-library/react` `waitFor(...)` polling over the same dynamic-passage assertions (`passages.length > 0`, `openingLine`, non-placeholder `chapterLabel`), eliminating timing races under slower 2-vCPU GitHub Actions Ubuntu runners (`270` suites / `2,806` tests) without touching runtime hook code (`ADR-080`).
+
+
 ## [2.9.82] - 2026-11-25
 ### *Tier-2 Wave 2C: Vitest 5, jest-dom 8 & jsdom 31 Upgrade + npm 10 CI Lockfile Parity*
 

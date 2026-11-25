@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import {
@@ -134,15 +134,12 @@ describe('useBookPassageShuffle', () => {
     // Initial state before query resolution shows the single bibliographic edition spread
     expect(result.current.currentPassage.chapterLabel).toContain('Volume Information');
 
-    // Wait for useBookContent query to resolve from MSW
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
+    // Wait deterministically for useBookContent query to resolve from MSW and populate dynamic passages
+    await waitFor(() => {
+      expect(result.current.passages.length).toBeGreaterThan(0);
+      expect(result.current.currentPassage.openingLine).toBeDefined();
+      expect(result.current.currentPassage.chapterLabel).not.toContain('Volume Information');
     });
-
-    // Once rawBookText is resolved, dynamic passages take over Spread 1 (passages[0])
-    expect(result.current.passages.length).toBeGreaterThan(0);
-    expect(result.current.currentPassage.openingLine).toBeDefined();
-    expect(result.current.currentPassage.chapterLabel).not.toContain('Volume Information');
   });
 
   it('automatically resets isTurningLeaf after 450ms safety timeout and normalizes string authors / id=0 fallback', () => {

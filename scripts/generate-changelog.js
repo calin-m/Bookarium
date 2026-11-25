@@ -9,6 +9,16 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.83',
+    date: '2026-11-25',
+    title: 'Deterministic MSW Query Polling in useBookPassageShuffle CI Suite',
+    sections: {
+      Fixed: [
+        '**Deterministic Async Passage Polling in CI (`src/hooks/useBookPassageShuffle.test.ts`, `docs/DECISIONS.md`)**: Replaced the hardcoded `50ms` `setTimeout` wait in `useBookPassageShuffle.test.ts` with `@testing-library/react` `waitFor(...)` polling over the same dynamic-passage assertions (`passages.length > 0`, `openingLine`, non-placeholder `chapterLabel`), eliminating timing races under slower 2-vCPU GitHub Actions Ubuntu runners (`270` suites / `2,806` tests) without touching runtime hook code (`ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.82',
     date: '2026-11-25',
     title: 'Tier-2 Wave 2C: Vitest 5, jest-dom 8 & jsdom 31 Upgrade + npm 10 CI Lockfile Parity',
