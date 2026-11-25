@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { Variants } from 'framer-motion';
 import {
   motionTokens,
   fadeInVariants,
@@ -21,6 +22,10 @@ describe('src/components/motion/motion-config', () => {
   });
 
   it('defines fadeInVariants and staggerContainerVariants using motionTokens', () => {
+    const typedFadeIn: Variants = fadeInVariants satisfies Variants;
+    const typedStagger: Variants = staggerContainerVariants satisfies Variants;
+    expect(typedFadeIn.hidden).toEqual({ opacity: 0, y: 12 });
+    expect(typedStagger.hidden).toEqual({ opacity: 0 });
     expect(fadeInVariants.hidden).toEqual({ opacity: 0, y: 12 });
     expect(fadeInVariants.visible.opacity).toBe(1);
     expect(fadeInVariants.visible.y).toBe(0);

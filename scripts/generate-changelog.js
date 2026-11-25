@@ -9,6 +9,37 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.81',
+    date: '2026-11-25',
+    title: 'README Stack Badges & Protected Contract Count Parity',
+    sections: {
+      Changed: [
+        '**README Stack Badges & 9-Package Auto-Sync Parity (`README.md`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, auto-synced `docs/architecture/ast-topology-and-tooling.md`)**: Added **TanStack Query**, **Zustand**, **Framer Motion**, and **MSW** Shields.io stack badges to `README.md`, refactored `scripts/generate-quality-report.js` into a declarative `badgeSpecs` table synchronizing all `9` `package.json` dependency/engine badges (`Next.js`, `React`, `TypeScript`, `Tailwind CSS`, `TanStack Query`, `Zustand`, `Framer Motion`, `Node.js`, `MSW`), and extended Pass 5 `expectedBadgeTokens` in `scripts/verify-build.js` for zero-drift verification (`ADR-080`).',
+        '**Protected Contract Count README Sync & Pass 5 Parity (`README.md`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Wired `PROTECTED_CONTRACTED_MODULES.length` (`85` Tier-1..Tier-4) auto-sync into `scripts/generate-quality-report.js` and Pass 5 reverse verification into `scripts/verify-build.js`, updating the stale `82` count in `README.md` (`ADR-080`).',
+      ],
+    },
+  },
+  {
+    version: '2.9.80',
+    date: '2026-11-25',
+    title: 'Tier-2 Wave 2B: MSW v3 Upgrade & Fail-Closed Unhandled Frame Interception',
+    sections: {
+      Changed: [
+        '**Tier-2 Wave 2B: MSW v3 (`^3.0.7`) Upgrade & Node Engine Alignment (`package.json`, `package-lock.json`, `src/test/setup.ts`, `src/mocks/handlers.ts`, `src/mocks/handlers.test.ts`, `scripts/`, `docs/DECISIONS.md`, auto-synced `README.md` & `docs/architecture/ast-topology-and-tooling.md`)**: Upgraded `msw` (`^2.15.0` → `^3.0.7`) and raised `engines.node` (`>=22.0.0` → `>=22.12.0`); migrated `src/test/setup.ts` from `onUnhandledRequest` to `onUnhandledFrame: handleUnhandledMswFrame` and added `assertUnhandledMswFrameAllowed` / `handleUnhandledMswFrame` (`UnhandledFrameHandle`) in `src/mocks/handlers.ts` to inspect unmocked HTTP requests (`frame.data.request`) and WebSocket handshakes (`connection.client.url`) with fail-closed blocking, preserving `handleUnhandledMswRequest`, all `270` Vitest suites (`2,806` tests), and zero-CVE health (`ADR-080`).',
+      ],
+    },
+  },
+  {
+    version: '2.9.79',
+    date: '2026-11-25',
+    title: 'Tier-2 Wave 2A: Framer Motion v14 Upgrade & Motion Token Tuple Narrowing',
+    sections: {
+      Changed: [
+        '**Tier-2 Wave 2A: Non-Breaking `framer-motion` `^14.14.0` Upgrade (`package.json`, `package-lock.json`, `src/components/motion/motion-config.ts`, `src/components/motion/motion-config.test.ts`, `docs/DECISIONS.md`, auto-synced `README.md` & `docs/architecture/ast-topology-and-tooling.md`)**: Upgraded `framer-motion` from `^11.18.2` to `^14.14.0` (`motion-dom@14.14.0` / `motion-utils@14.7.0`, `0` CVEs across `npm audit` and `npm audit --omit=dev --audit-level=high`), added `as const` to `motionTokens` in `src/components/motion/motion-config.ts` so `ease` Bezier curves satisfy `motion-dom@14` `BezierDefinition` (`readonly [number, number, number, number]`) without widening `fadeInVariants`, added compile-time `satisfies Variants` assertions in `motion-config.test.ts`, and verified `typecheck`, `eslint --max-warnings 0`, `knip`, all `17` motion Vitest suites (`183` tests), `npx next build --webpack`, and live production UI animations (`ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.78',
     date: '2026-11-25',
     title: 'Tier-1 Non-Breaking In-Range Dependency Updates',

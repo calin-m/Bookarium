@@ -332,7 +332,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 264) {
     husky: 'Git hooks orchestration gating pre-commit verification.',
     jsdom: 'Headless browser DOM environment for Node.js Vitest test execution.',
     knip: 'Static analysis auditor detecting unused dependencies, dead exports, and orphaned files.',
-    msw: 'Mock Service Worker v2 intercepting network requests for isolated deterministic testing.',
+    msw: 'Mock Service Worker v3 intercepting network requests for isolated deterministic testing.',
     postcss: 'CSS transformer tool for Tailwind CSS v4 processing.',
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
@@ -389,7 +389,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 264) {
   }
 
   return {
-    engines: pkg.engines || { node: '>=22.0.0', npm: '>=10.0.0' },
+    engines: pkg.engines || { node: '>=22.12.0', npm: '>=10.0.0' },
     packages,
   };
 }
@@ -471,7 +471,7 @@ function extractNodeScriptsCatalog(rootDirPath = rootDir) {
       npmCommand: '`npm run audit:quality`, `npm run report` (in `docs:sync`)',
       nodeApis: '`fs`, `path`, `child_process`',
       responsibility:
-        'Collects test coverage, suite catalogs, ADR counts, and ESLint/Knip metrics, synchronizes README.md framework/engine version badges (`Next.js`, `React`, `TypeScript`, `Tailwind CSS`, `Node.js`) from `package.json`, and generates docs/QUALITY_AUDIT_REPORT.md and docs/quality-audit-results.json.',
+        'Collects test coverage, suite catalogs, ADR & protected-contract counts, and ESLint/Knip metrics, synchronizes 9 README.md stack/engine version badges (`Next.js`, `React`, `TypeScript`, `Tailwind CSS`, `TanStack Query`, `Zustand`, `Framer Motion`, `Node.js`, `MSW`) from `package.json`, and generates docs/QUALITY_AUDIT_REPORT.md and docs/quality-audit-results.json.',
     },
     'scripts/generate-roadmap.js': {
       name: 'generate-roadmap.js',
@@ -767,7 +767,7 @@ function extractRepositoryTopologyAndDocsCatalog(rootDirPath, counts = {}) {
     { path: 'src/config/', role: `${counts.configCount || 13} centralized design token, routing, theme, language, era, literary quote, and ${counts.featuredHeroBookCount || runtimeSpec.featuredHeroBookCount}-masterwork curated anthology configuration modules.` },
     { path: 'src/types/', role: `${counts.typeCount || 4} canonical TypeScript type contract modules (\`book.types.ts\`, \`database.types.ts\`, \`catalog.types.ts\`, \`accolades.types.ts\`) defining zero-any domain and PostgreSQL row schemas.` },
     { path: 'src/workers/', role: 'Dedicated off-thread Web Worker (`gutenberg.worker.ts`) executing Gutenberg plain-text segmentation and virtual page layout calculations.' },
-    { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v2 Node interception server (`server.ts`, `handlers.ts`, `handlers.test.ts`, fail-closed `handleUnhandledMswRequest`) and JSDOM test environment bootstrap (`setup.ts`).' },
+    { path: 'src/mocks/ & src/test/', role: 'Hermetic MSW v3 Node interception server (`server.ts`, `handlers.ts`, `handlers.test.ts`, fail-closed `handleUnhandledMswFrame` / `assertUnhandledMswFrameAllowed` / `handleUnhandledMswRequest`) and JSDOM test environment bootstrap (`setup.ts`).' },
     { path: 'public/', role: `Progressive Web App Service Worker (\`public/sw.js\` \`${counts.swVersionLabel || 'v7'}\`) and multi-resolution soaring open book brand emblem icons (\`favicon.ico\`, \`icon.svg\`, \`public/icons/*.png\`).` },
     { path: 'supabase/', role: `Idempotent PostgreSQL schema (\`schema.sql\`) with ${counts.dbTableCount || 14} tables, ${counts.dbPolicyCount || 47} RLS policies, ${counts.dbFunctionCount || 9} functions/triggers, and ${counts.dbIndexCount || 21} explicit indexes, plus offline SQL seeds (\`seed_books.sql\`, \`seed_translations.sql\`).` },
     { path: 'scripts/', role: `${counts.nodeScriptCount || 22} Node.js CLI automation, Babel AST documentation compilation (\`lib/ast-parser.js\`), stateless SAST verification (\`lib/sast-validators.js\`), shared zero-dependency R2 SigV4 transport (\`lib/r2-sigv4.js\`), TTY/CI progress telemetry (\`lib/cli-progress.js\`), custom ESLint AST & request-taint security rules (\`eslint-rules/bookarium-security.js\`), 7-Gateway verification (\`verify-build.js\`), Gutenberg catalog streaming (\`sync-gutenberg-catalog.js\`), Cloudflare R2 delta syncing & read-only content scanning (\`sync-r2-assets.js\`, \`scan-r2-content.js\`), R2-first featured quotes extraction (\`sync-featured-quotes.js\`), and Wikidata FRBR translation clustering (\`ingest-translations.js\`) tools, plus offline authority cache (\`scripts/data/\`) and CLI test suites.` },
@@ -2405,11 +2405,11 @@ function generateMarkdown() {
 
   switchBucket('testingRepoAst');
   lines.push(
-    '## 🧪 Hermetic Testing, MSW v2 Network Isolation & Coverage Architecture',
+    '## 🧪 Hermetic Testing, MSW v3 Network Isolation & Coverage Architecture',
     '',
     `Bookarium enforces a 4-tier hermetic testing and security verification architecture across **${testHarness.totalSuites} Test Suites** (\`${testHarness.srcSuiteCount}\` co-located \`src/**/*.test.{ts,tsx}\` suites + \`${testHarness.scriptSuites.length}\` CLI pipeline suites in \`scripts/\`) with zero external network calls:`,
     '',
-    '### 1. Hermetic Testing, MSW v2 Interception, SAST/OWASP & V8 Coverage Pipeline',
+    '### 1. Hermetic Testing, MSW v3 Interception, SAST/OWASP & V8 Coverage Pipeline',
     '',
     '```mermaid',
     'flowchart TD',
@@ -2420,8 +2420,8 @@ function generateMarkdown() {
     '',
     '    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]',
     '        VitestCfg["⚙️ vitest.config.mts\\n• jsdom environment • maxWorkers: 4\\n• @/* path alias • V8 Coverage Provider"]',
-    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed handleUnhandledMswRequest\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
-    '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v2 setupServer(...handlers) lifecycle + fail-closed guard\\n• GET /api/books, /api/books/content, /api/books/translations\\n• Supabase/*.co/:54321 503 catch-all (Zero external PG mocks)\\n• mockBooks fixtures (0 external network calls)"]',
+    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
+    '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v3 setupServer(...handlers) lifecycle + handleUnhandledMswFrame\\n• GET /api/books, /api/books/content, /api/books/translations\\n• Supabase/*.co/:54321 503 catch-all (Zero external PG mocks)\\n• mockBooks fixtures (0 external network calls)"]',
     '    end',
     '',
     `    subgraph TestTiers ["4-Tier Co-Located Test Suites (${testHarness.totalSuites} Suites)"]`,
@@ -2816,9 +2816,9 @@ function generateMarkdown() {
           : '_Bootstraps All Vitest Suites_';
     const hRoleTitle =
       harnessNode.file === 'src/mocks/handlers.ts'
-        ? 'MSW v2 Mock Handlers & Fixtures'
+        ? 'MSW v3 Mock Handlers & Fixtures'
         : harnessNode.file === 'src/mocks/server.ts'
-          ? 'MSW v2 Node Server Instance'
+          ? 'MSW v3 Node Server Instance'
           : 'Vitest JSDOM & MSW Bootstrap';
 
     lines.push(
@@ -3219,7 +3219,7 @@ function generateMarkdown() {
   const nodeEcosystem = extractNodeEcosystemCatalog(rootDir, testHarness.totalSuites);
   const activeNodeMajor = Number.parseInt(String(runtimeSpec.engines?.nodeMajor || '22'), 10) || 22;
   lines.push(
-    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=22.0.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node ${activeNodeMajor} LTS / Node ${activeNodeMajor + 2} LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
+    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=22.12.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node ${activeNodeMajor} LTS / Node ${activeNodeMajor + 2} LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
     '',
     '| Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |',
     '| :--- | :--- | :--- | :--- |'
@@ -3389,7 +3389,7 @@ function syncReadmeArchitectureDiagrams({ indexContent, combinedContent }) {
     '| **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast) |',
     `| **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell ${swMeta.versionLabel}, IndexedDB & Outbox Queue | [docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay) |`,
     '| **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology](docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology) |',
-    '| **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline) |',
+    '| **9** | **Hermetic Testing, MSW v3 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v3-interception-sastowasp--v8-coverage-pipeline](docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v3-interception-sastowasp--v8-coverage-pipeline) |',
     '| **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, CLI Mirror Feeds & Timeouts | [docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram](docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram) |',
     '| **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Strict R2 Delivery & Worker Fallback | [docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram](docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram) |',
     '| **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology) |',

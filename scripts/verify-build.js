@@ -17,6 +17,7 @@ const {
   extractSqlSchemaEntities,
   extractWorkflowSpecCatalog,
   loadArchitectureCorpus,
+  PROTECTED_CONTRACTED_MODULES,
   REQUIRED_GOVERNANCE_DOCS,
 } = require('./lib/ast-parser');
 const {
@@ -977,7 +978,7 @@ function pass2ServerMocks() {
     logFail('MSW server mock or query hook test failed.');
     return false;
   }
-  logPass('MSW v2 network interception and React Query hooks verified.');
+  logPass('MSW v3 network interception and React Query hooks verified.');
   return true;
 }
 
@@ -1300,7 +1301,6 @@ function pass5AdrValidation() {
       TIER_2_CONTRACTED_MODULES,
       TIER_3_CONTRACTED_MODULES,
       TIER_4_CONTRACTED_MODULES,
-      PROTECTED_CONTRACTED_MODULES,
       extractBehavioralContractsCatalog,
       findOrphanedGeneratorLookupKeys,
     } = require('./lib/ast-parser');
@@ -1695,7 +1695,7 @@ function pass5AdrValidation() {
     { rel: 'README.md', regex: /across (\d+) test suites\./ },
     { rel: 'CONTRIBUTING.md', regex: /across `(\d+)` suites\)/ },
     { rel: 'docs/PIPELINE_GUIDE.md', regex: /Asserts all `(\d+)` unit\/integration test suites/ },
-    { rel: 'AGENTS.md', regex: /with `@testing-library\/react` and MSW v2 \(`(\d+)` suites\)/ },
+    { rel: 'AGENTS.md', regex: /with `@testing-library\/react` and MSW v3 \(`(\d+)` suites\)/ },
     { rel: '.agents/AGENTS.md', regex: /across all executable files \(`(\d+)` suites\)/ },
   ];
   for (const check of suiteCountDocChecks) {
@@ -2396,9 +2396,19 @@ function pass5AdrValidation() {
           { label: 'TypeScript', token: `badge/TypeScript-${cleanDepVer(pkgMeta.devDependencies?.typescript)}-3178C6` },
           { label: 'Tailwind CSS', token: `badge/Tailwind%20CSS-${cleanDepVer(pkgMeta.devDependencies?.tailwindcss)}-38B2AC` },
           {
-            label: 'Node.js',
-            token: `badge/Node.js-%3E%3D${(cleanDepVer(pkgMeta.engines?.node || '22.0.0').split('.')[0] || '22')}%20LTS`,
+            label: 'TanStack Query',
+            token: `badge/TanStack%20Query-${cleanDepVer(pkgMeta.dependencies?.['@tanstack/react-query'])}-FF4154`,
           },
+          { label: 'Zustand', token: `badge/Zustand-${cleanDepVer(pkgMeta.dependencies?.zustand)}-443E38` },
+          {
+            label: 'Framer Motion',
+            token: `badge/Framer%20Motion-${cleanDepVer(pkgMeta.dependencies?.['framer-motion'])}-0055FF`,
+          },
+          {
+            label: 'Node.js',
+            token: `badge/Node.js-%3E%3D${(cleanDepVer(pkgMeta.engines?.node || '22.12.0').split('.')[0] || '22')}%20LTS`,
+          },
+          { label: 'MSW', token: `badge/MSW-${cleanDepVer(pkgMeta.devDependencies?.msw)}-FF6A33` },
         ];
         for (const badge of expectedBadgeTokens) {
           if (!readmeFull.includes(badge.token)) {
@@ -2473,6 +2483,11 @@ function pass5AdrValidation() {
         if (!readmeText.includes('.sha256')) {
           docViolations.push(
             'Catalog integrity drift in README.md: catalog-cache workflow description should reference .sha256 verification.'
+          );
+        }
+        if (!readmeText.includes(`\`${PROTECTED_CONTRACTED_MODULES.length}\` Tier-1..Tier-4 protected`)) {
+          docViolations.push(
+            `Protected contract count drift in README.md: expected "\`${PROTECTED_CONTRACTED_MODULES.length}\` Tier-1..Tier-4 protected" (run "npm run docs:sync").`
           );
         }
       }

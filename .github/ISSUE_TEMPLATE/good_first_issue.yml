@@ -30,7 +30,7 @@ body:
         - "Tailwind CSS & Responsive Layout (Mobile / Tablet / Desktop)"
         - "Zustand State, IndexedDB & Web Workers"
         - "Backend / Supabase Schema & Next.js API Routes"
-        - "Testing & Verification (Vitest, @testing-library/react, MSW v2)"
+        - "Testing & Verification (Vitest, @testing-library/react, MSW v3)"
         - "Documentation & Developer Tooling"
     validations:
       required: true

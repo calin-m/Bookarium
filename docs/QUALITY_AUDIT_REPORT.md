@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 25 Nov 2026 15:12:01 GMT  
+**Last Generated**: Wed, 25 Nov 2026 17:03:17 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 270 passed  
-**Total Verified Tests**: 2805 passed  
+**Total Verified Tests**: 2806 passed  
 
 ---
 
@@ -14,8 +14,8 @@
 | **Pass 0.5** | Secret, File/Path, Env & Graph Scanner | ✅ Passed | 0 exposed tokens/JWTs, forbidden files, undocumented `NEXT_PUBLIC_*` vars, or transitive client->server leaks |
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
-| **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2805 total tests) |
+| **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2806 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.24%** (16849/17327) — *Target: $\ge$ 95%*
-- **Statements**: **95.98%** (18134/18893) — *Target: $\ge$ 95%*
-- **Functions**: **95.09%** (3607/3793) — *Target: $\ge$ 92%*
-- **Branches**: **88.27%** (16859/19098) — *Target: $\ge$ 85%*
+- **Lines**: **97.27%** (16854/17327) — *Target: $\ge$ 95%*
+- **Statements**: **96%** (18139/18893) — *Target: $\ge$ 95%*
+- **Functions**: **95.2%** (3611/3793) — *Target: $\ge$ 92%*
+- **Branches**: **88.29%** (16863/19098) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (270 Suites / 2805 Tests)
+## 🧪 Comprehensive Test Suite Catalog (270 Suites / 2806 Tests)
 
 ### 🚀 App Routes & Pages (31 Suites · 321 Tests)
 
@@ -3748,7 +3748,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (68 Suites · 318 Tests)
+### 🧩 UI Primitives & Motion (68 Suites · 319 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -4439,12 +4439,13 @@
 </details>
 
 <details>
-<summary><b><code>src/mocks/handlers.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/mocks/handlers.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `intercepts hosted Supabase endpoints across rest, auth, storage, realtime, functions, and graphql with 503 offline fallback`
 - ✔ `intercepts local Supabase CLI :54321 endpoints cleanly without live socket I/O`
 - ✔ `provides deterministic catalog and content mocks via MSW`
 - ✔ `throws fail-closed when handleUnhandledMswRequest sees unmocked Supabase, :54321, or external URLs`
+- ✔ `enforces fail-closed MSW v3 frame interception across HTTP and WebSocket frames`
 
 </details>
 

@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, type UnhandledFrameHandle } from 'msw';
 import type { CatalogBook, CatalogResponse } from '@/types/book.types';
 
 export type { CatalogBook, CatalogResponse };
@@ -300,6 +300,53 @@ export const handlers = [
   ),
 ];
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRequestLike(value: unknown): value is Request {
+  return (
+    value instanceof Request ||
+    (isRecord(value) && typeof value.url === 'string' && typeof value.method === 'string')
+  );
+}
+
+function extractWebSocketUrl(frameData: unknown): string | null {
+  if (!isRecord(frameData)) return null;
+  const { connection } = frameData;
+  if (!isRecord(connection)) return null;
+  const { client } = connection;
+  if (!isRecord(client)) return null;
+  const { url } = client;
+  if (url instanceof URL) return url.toString();
+  return typeof url === 'string' ? url : null;
+}
+
+function isDisallowedUnhandledUrl(url: string): boolean {
+  const parsed = new URL(url, 'http://localhost');
+  const isLocalSupabasePort =
+    (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
+    parsed.port === '54321';
+  const isHostedSupabase = /\.supabase\.co$/i.test(parsed.hostname);
+  const isExternalNetworkHost =
+    (parsed.protocol === 'http:' ||
+      parsed.protocol === 'https:' ||
+      parsed.protocol === 'ws:' ||
+      parsed.protocol === 'wss:') &&
+    parsed.hostname !== 'localhost' &&
+    parsed.hostname !== '127.0.0.1';
+  const isUnhandledInternalApi =
+    (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+    parsed.pathname.startsWith('/api/');
+
+  return (
+    isHostedSupabase ||
+    isLocalSupabasePort ||
+    isExternalNetworkHost ||
+    isUnhandledInternalApi
+  );
+}
+
 /**
  * Fail-closed MSW unhandled-request guard for Vitest.
  * Prevents tests from accidentally leaking HTTP/HTTPS requests to live Supabase projects,
@@ -307,28 +354,37 @@ export const handlers = [
  */
 export function handleUnhandledMswRequest(request: Request): void {
   const url = request.url;
-  const parsed = new URL(url, 'http://localhost');
-  const isLocalSupabasePort =
-    (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
-    parsed.port === '54321';
-  const isHostedSupabase = /\.supabase\.co$/i.test(parsed.hostname);
-  const isExternalNetworkHost =
-    (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
-    parsed.hostname !== 'localhost' &&
-    parsed.hostname !== '127.0.0.1';
-  const isUnhandledInternalApi =
-    (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
-    parsed.pathname.startsWith('/api/');
-
-  if (
-    isHostedSupabase ||
-    isLocalSupabasePort ||
-    isExternalNetworkHost ||
-    isUnhandledInternalApi
-  ) {
+  if (isDisallowedUnhandledUrl(url)) {
     throw new Error(
       `[MSW Fail-Closed] Unhandled network request blocked in tests: ${request.method} ${url}`
     );
   }
 }
+
+/**
+ * Inspects an arbitrary MSW v3 network frame (`http` or `ws`) and enforces fail-closed
+ * isolation against unmocked Supabase, `:54321`, external, or internal `/api/*` targets.
+ */
+export function assertUnhandledMswFrameAllowed(frame: { protocol: string; data: unknown }): void {
+  if (frame.protocol === 'http' && isRecord(frame.data) && isRequestLike(frame.data.request)) {
+    handleUnhandledMswRequest(frame.data.request);
+    return;
+  }
+
+  if (frame.protocol === 'ws') {
+    const wsUrl = extractWebSocketUrl(frame.data);
+    if (wsUrl && isDisallowedUnhandledUrl(wsUrl)) {
+      throw new Error(
+        `[MSW Fail-Closed] Unhandled WebSocket request blocked in tests: ${wsUrl}`
+      );
+    }
+  }
+}
+
+/**
+ * MSW v3 `onUnhandledFrame` adapter registered with `setupServer().listen(...)`.
+ */
+export const handleUnhandledMswFrame: UnhandledFrameHandle = ({ frame }) => {
+  assertUnhandledMswFrameAllowed(frame);
+};
 

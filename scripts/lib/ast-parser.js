@@ -1268,18 +1268,18 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'setup',
       file: 'src/test/setup.ts',
       layer: 'JSDOM & Browser API Test Bootstrap',
-      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v2 server lifecycle (`handleUnhandledMswRequest`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`).',
+      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v3 server lifecycle (`onUnhandledFrame: handleUnhandledMswFrame`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`).',
     },
     {
       name: 'handlers',
       file: 'src/mocks/handlers.ts',
-      layer: 'MSW v2 HTTP Interception Handlers',
-      role: 'Canonical Mock Service Worker v2 HTTP request handlers, fail-closed `handleUnhandledMswRequest` guard (blocking unmocked external/PG/Supabase URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, and `/api/books/translations` for zero-network deterministic testing.',
+      layer: 'MSW v3 HTTP Interception Handlers',
+      role: 'Canonical Mock Service Worker v3 HTTP request handlers, fail-closed `handleUnhandledMswFrame` / `assertUnhandledMswFrameAllowed` & `handleUnhandledMswRequest` guards (blocking unmocked external/PG/Supabase HTTP & WebSocket URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, and `/api/books/translations` for zero-network deterministic testing.',
     },
     {
       name: 'server',
       file: 'src/mocks/server.ts',
-      layer: 'MSW v2 Node Server Instance',
+      layer: 'MSW v3 Node Server Instance',
       role: 'Node.js `setupServer(...handlers)` singleton providing hermetic request interception across all unit and integration test suites.',
     },
     {
@@ -1347,7 +1347,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Custom Hooks & TanStack Queries',
       scope: '`src/hooks/**/*.test.{ts,tsx}`',
       match: (f) => f.startsWith('src/hooks/'),
-      strategy: '`renderHook` with `QueryClientProvider` + MSW v2 network interception, IndexedDB offline-first reads, Web Speech TTS, and reading ledger hydration.',
+      strategy: '`renderHook` with `QueryClientProvider` + MSW v3 network interception, IndexedDB offline-first reads, Web Speech TTS, and reading ledger hydration.',
     },
     {
       id: 'lib',
@@ -1375,7 +1375,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Hermetic Network Mocks & Test Interception',
       scope: '`src/mocks/*.test.ts`',
       match: (f) => f.startsWith('src/mocks/'),
-      strategy: 'Fail-closed MSW v2 request/response handler unit contracts, internal route fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
+      strategy: 'Fail-closed MSW v3 frame/request handler unit contracts (`handleUnhandledMswFrame`, `assertUnhandledMswFrameAllowed`, `handleUnhandledMswRequest`), internal route fixtures, and Supabase 503 safety-net verification (`src/mocks/handlers.test.ts`).',
     },
     {
       id: 'scripts',
@@ -4547,12 +4547,12 @@ function extractRuntimeSpecConstants(rootDirPath) {
     path.join(rootDirPath, 'src', 'hooks', 'useCursorTooltip.ts'),
     ['DEFAULT_TOOLTIP_DELAY_MS']
   );
-  let pkgEngines = { node: '>=22.0.0', npm: '>=10.0.0', nodeMajor: '22' };
+  let pkgEngines = { node: '>=22.12.0', npm: '>=10.0.0', nodeMajor: '22' };
   const pkgPath = path.join(rootDirPath, 'package.json');
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-      const nodeSpec = String(pkg.engines?.node || '>=22.0.0').trim();
+      const nodeSpec = String(pkg.engines?.node || '>=22.12.0').trim();
       const npmSpec = String(pkg.engines?.npm || '>=10.0.0').trim();
       const nodeMajorMatch = nodeSpec.match(/\d+/);
       pkgEngines = {

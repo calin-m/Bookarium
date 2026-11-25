@@ -13,7 +13,7 @@ export const motionTokens = {
     normal: 0.25,
     slow: 0.4,
   },
-};
+} as const;
 
 export const fadeInVariants = {
   hidden: { opacity: 0, y: 12 },

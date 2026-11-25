@@ -7,6 +7,9 @@
 [![React](https://img.shields.io/badge/React-19.3.1-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.3.5-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![TanStack Query](https://img.shields.io/badge/TanStack%20Query-5.108.4-FF4154?style=flat-square&logo=reactquery&logoColor=white)](https://tanstack.com/query)
+[![Zustand](https://img.shields.io/badge/Zustand-5.1.0-443E38?style=flat-square)](https://github.com/pmndrs/zustand)
+[![Framer Motion](https://img.shields.io/badge/Framer%20Motion-14.14.0-0055FF?style=flat-square&logo=framer&logoColor=white)](https://motion.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22%20LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20Sync-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Cloudflare R2](https://img.shields.io/badge/Cloudflare%20R2-Zero--Egress%20Storage-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/r2/)
@@ -14,8 +17,9 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202805%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202806%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![MSW](https://img.shields.io/badge/MSW-3.0.7-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.27%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -69,11 +73,11 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2805 tests across 270 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2806 tests across 270 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–15`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
-| 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across `src/`, CLI modules, `next.config.ts`, & `public/sw.js` (`82` Tier-1..Tier-4 protected). | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
+| 🛡️ **System Contracts & Behavioral Invariants** | AST-compiled code-level `@scope`, `@invariant`, `@rationale`, `@adr` links, blast radius, and priority contract queue across `src/`, CLI modules, `next.config.ts`, & `public/sw.js` (`85` Tier-1..Tier-4 protected). | [`docs/SYSTEM_CONTRACTS.md`](docs/SYSTEM_CONTRACTS.md) |
 | 🗺️ **Living Product Roadmap** | AST-verified roadmap with 0% drift, feature milestone tracking, and live progress metrics. | [`ROADMAP.md`](ROADMAP.md) |
 | 📜 **Living Changelog** | Keep a Changelog 1.0.0 & SemVer release history across all milestones. | [`CHANGELOG.md`](CHANGELOG.md) |
 | ⚖️ **Architecture Decision Records (ADRs)** | 88 validated ADRs (`ADR-001` through `ADR-088`) governing end-user keyless reading, self-hosted Cloudflare R2 delivery, 10-store offline-first & 7-store Supabase cloud sync, multi-jurisdiction copyright compliance, 3D reader & typography AST, OWASP/AST security gates, multi-tier Edge CDN caching, mirror-only Gutenberg ingestion, and AST-compiled code contracts. | [`docs/DECISIONS.md`](docs/DECISIONS.md) |
@@ -98,7 +102,7 @@ The repository enforces a closed-loop quality verification engine before any rel
 | Pass 0.5  | Secret & Boundary   | Secrets, env parity & AST graph isolation |
 | Pass 0.75 | 7-Pillar SAST/OWASP | CVEs, GPL/AGPL, CLI & 9-rule AST/SAST   |
 | Pass 1    | TypeScript Engine   | Strict typecheck with 0 compile errors    |
-| Pass 2    | Vitest Server Mocks | Validates MSW v2 handlers and query hooks |
+| Pass 2    | Vitest Server Mocks | Validates MSW v3 handlers and query hooks |
 | Pass 3    | Vitest Client UI    | Unit & integration tests (95/95/92/85 cov)|
 | Pass 4    | Living Docs Sync    | Auto-updates ARCHITECTURE, SECURITY & CHG |
 | Pass 5    | ADR & Parity Gate   | ADRs, SECURITY, SQL<->TS & 1:1 test parity|
@@ -112,9 +116,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.78)
+## 🛠️ Latest Improvements (v2.9.81)
 
-- **Tier-1 Non-Breaking In-Range Dependency Updates (`package.json`, `package-lock.json`, `docs/DECISIONS.md`, auto-synced `README.md` & `docs/architecture/ast-topology-and-tooling.md`)**: Raised `15` semver-compatible `^` package bounds to latest patch/minor releases — runtime (`@supabase/supabase-js` `^2.119.2`, `@tanstack/react-query` `^5.108.4`, `lucide-react` `^1.80.0`, `next` `^16.4.6`, `tailwind-merge` `^3.7.1`) and dev/tooling (`@babel/parser` `^8.1.3`, `@babel/traverse` `^8.1.3`, `@testing-library/user-event` `^14.6.13`, `@types/node` `^22.20.7`, `@types/react` `^19.3.2`, `@vitejs/plugin-react` `^6.3.0`, `eslint` `^10.15.0`, `eslint-config-next` `^16.4.6`, `knip` `^6.48.0`, `postcss` `^8.5.33`) — keeping `0` CVEs across `npm audit` and `npm audit --omit=dev --audit-level=high`, while deferring Tier-2 breaking majors (`framer-motion` `14`, `vitest`/`@vitest/*` `5`, `@testing-library/jest-dom` `8`, `msw` `3`, `jsdom` `31`) and Tier-3 pinned toolchains (`typescript` `5.9.3`, `@types/node` `22.x`) (`ADR-080`).
+- **README Stack Badges & 9-Package Auto-Sync Parity (`README.md`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, auto-synced `docs/architecture/ast-topology-and-tooling.md`)**: Added **TanStack Query**, **Zustand**, **Framer Motion**, and **MSW** Shields.io stack badges to `README.md`, refactored `scripts/generate-quality-report.js` into a declarative `badgeSpecs` table synchronizing all `9` `package.json` dependency/engine badges (`Next.js`, `React`, `TypeScript`, `Tailwind CSS`, `TanStack Query`, `Zustand`, `Framer Motion`, `Node.js`, `MSW`), and extended Pass 5 `expectedBadgeTokens` in `scripts/verify-build.js` for zero-drift verification (`ADR-080`).
+- **Protected Contract Count README Sync & Pass 5 Parity (`README.md`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Wired `PROTECTED_CONTRACTED_MODULES.length` (`85` Tier-1..Tier-4) auto-sync into `scripts/generate-quality-report.js` and Pass 5 reverse verification into `scripts/verify-build.js`, updating the stale `82` count in `README.md` (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -506,7 +511,7 @@ flowchart TD
 | **6** | **Focus Reader Launch & R2 Stream** | HTTP 451 Gatekeeping, Cloudflare R2 & Worker AST | [docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast](docs/architecture/event-bus-and-runtime-flows.md#2-focus-reader-launch-jurisdictional-gatekeeping-http-451-cloudflare-r2-streaming--worker-ast) |
 | **7** | **Offline Mutation Queueing & Reconnect Replay** | PWA App Shell v7, IndexedDB & Outbox Queue | [docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay](docs/architecture/event-bus-and-runtime-flows.md#3-offline-mutation-queueing-adaptive-offline-catalog--reconnect-outbox-replay) |
 | **8** | **GitHub Actions & Database Ingestion Topology** | Cron Pipelines, Concurrency Locks, Feeds & Service-Role Upserts | [docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology](docs/architecture/database-and-pipelines.md#1-github-actions--database-ingestion-topology) |
-| **9** | **Hermetic Testing, MSW v2 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline](docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v2-interception-sastowasp--v8-coverage-pipeline) |
+| **9** | **Hermetic Testing, MSW v3 & V8 Coverage Pipeline** | 4-Tier Test Suites, AST Taint & 7 Gateways | [docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v3-interception-sastowasp--v8-coverage-pipeline](docs/architecture/ast-topology-and-tooling.md#1-hermetic-testing-msw-v3-interception-sastowasp--v8-coverage-pipeline) |
 | **10** | **External Integration Topology Diagram** | Cloudflare R2, Supabase, CLI Mirror Feeds & Timeouts | [docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram](docs/architecture/integrations-failure-and-ops.md#1-external-integration-topology-diagram) |
 | **11** | **Multi-Tier Failover & Self-Healing Decision Diagram** | Circuit Breakers, Strict R2 Delivery & Worker Fallback | [docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram](docs/architecture/integrations-failure-and-ops.md#1-multi-tier-failover--self-healing-decision-diagram) |
 | **12** | **Edge Routing, Regional Compute & Cron Topology** | Vercel Edge PoPs, iad1 Serverless & Weekly Cron | [docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology](docs/architecture/integrations-failure-and-ops.md#1-edge-routing-regional-compute-pinning-iad1--autonomous-cron-topology) |
@@ -520,7 +525,7 @@ flowchart TD
 ## ⚡ Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: `>= 22.0.0` (Node 22 LTS or Node 24 LTS recommended)
+- **Node.js**: `>= 22.12.0` (Node 22 LTS or Node 24 LTS recommended)
 - **npm**: `>= 10.0.0`
 
 ### 2. Installation & Local Development

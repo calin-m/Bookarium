@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from './server';
-import { handleUnhandledMswRequest, mockBooks, sampleBookText } from './handlers';
+import {
+  assertUnhandledMswFrameAllowed,
+  handleUnhandledMswRequest,
+  mockBooks,
+  sampleBookText,
+} from './handlers';
 
 describe('MSW test isolation handlers & fail-closed guard', () => {
   it('intercepts hosted Supabase endpoints across rest, auth, storage, realtime, functions, and graphql with 503 offline fallback', async () => {
@@ -72,5 +77,71 @@ describe('MSW test isolation handlers & fail-closed guard', () => {
     expect(() =>
       handleUnhandledMswRequest(new Request(new URL('/_next/static/chunk.js', 'http://localhost:3000')))
     ).not.toThrow();
+  });
+
+  it('enforces fail-closed MSW v3 frame interception across HTTP and WebSocket frames', async () => {
+    expect(() =>
+      assertUnhandledMswFrameAllowed({
+        protocol: 'http',
+        data: { id: 'req-1', request: new Request('https://abc.supabase.co/rest/v2/unknown') },
+      })
+    ).toThrow(/\[MSW Fail-Closed\]/);
+
+    expect(() =>
+      assertUnhandledMswFrameAllowed({
+        protocol: 'http',
+        data: {
+          id: 'req-2',
+          request: new Request(new URL('/_next/static/chunk.js', 'http://localhost:3000')),
+        },
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      assertUnhandledMswFrameAllowed({
+        protocol: 'ws',
+        data: {
+          connection: {
+            client: { url: new URL('wss://abc.supabase.co/realtime/v1') },
+          },
+        },
+      })
+    ).toThrow(/\[MSW Fail-Closed\] Unhandled WebSocket/);
+
+    expect(() =>
+      assertUnhandledMswFrameAllowed({
+        protocol: 'ws',
+        data: {
+          connection: {
+            client: { url: 'ws://127.0.0.1:54321/realtime/v1' },
+          },
+        },
+      })
+    ).toThrow(/\[MSW Fail-Closed\] Unhandled WebSocket/);
+
+    expect(() =>
+      assertUnhandledMswFrameAllowed({
+        protocol: 'ws',
+        data: {
+          connection: {
+            client: { url: new URL('ws://localhost:3000/_next/webpack-hmr') },
+          },
+        },
+      })
+    ).not.toThrow();
+
+    const blockedSupabaseResponse = await fetch('https://abc.supabase.co/rest/v2/unknown');
+    expect(blockedSupabaseResponse.status).toBe(500);
+    expect(blockedSupabaseResponse.statusText).toBe('Unhandled Exception');
+    await expect(blockedSupabaseResponse.json()).resolves.toMatchObject({
+      message: expect.stringContaining('[MSW Fail-Closed]'),
+    });
+
+    const blockedExternalResponse = await fetch('https://api.external-service.example/data');
+    expect(blockedExternalResponse.status).toBe(500);
+    expect(blockedExternalResponse.statusText).toBe('Unhandled Exception');
+    await expect(blockedExternalResponse.json()).resolves.toMatchObject({
+      message: expect.stringContaining('[MSW Fail-Closed]'),
+    });
   });
 });

@@ -276,20 +276,70 @@ try {
 
 // Synchronize README.md and static governance docs with live package.json versions & test/suite/rule metrics (safe: only writes if changed)
 const pkgJsonPath = path.join(rootDir, 'package.json');
-let pkgVersions = null;
+let readmeDependencyBadges = [];
 if (fs.existsSync(pkgJsonPath)) {
   try {
     const pkgMeta = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
     const cleanVer = (raw) => String(raw || '').replace(/^[~^>=<\s]+/, '').trim();
-    const nodeEngineRaw = cleanVer(pkgMeta.engines?.node || '22.0.0');
+    const nodeEngineRaw = cleanVer(pkgMeta.engines?.node || '22.12.0');
     const nodeMajorVer = nodeEngineRaw.split('.')[0] || '22';
-    pkgVersions = {
-      nextVer: cleanVer(pkgMeta.dependencies?.next),
-      reactVer: cleanVer(pkgMeta.dependencies?.react),
-      tsVer: cleanVer(pkgMeta.devDependencies?.typescript),
-      tailwindVer: cleanVer(pkgMeta.devDependencies?.tailwindcss),
-      nodeMajorVer,
-    };
+    const badgeSpecs = [
+      {
+        version: cleanVer(pkgMeta.dependencies?.next),
+        pattern: /\[!\[Next\.js\]\(https:\/\/img\.shields\.io\/badge\/Next\.js-.*?\)\]\(https:\/\/nextjs\.org\/\)/,
+        format: (v) =>
+          `[![Next.js](https://img.shields.io/badge/Next.js-${v}%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)`,
+      },
+      {
+        version: cleanVer(pkgMeta.dependencies?.react),
+        pattern: /\[!\[React\]\(https:\/\/img\.shields\.io\/badge\/React-[^)]+\)\]\(https:\/\/react\.dev\/\)/,
+        format: (v) =>
+          `[![React](https://img.shields.io/badge/React-${v}-blue?style=flat-square&logo=react)](https://react.dev/)`,
+      },
+      {
+        version: cleanVer(pkgMeta.devDependencies?.typescript),
+        pattern: /\[!\[TypeScript\]\(https:\/\/img\.shields\.io\/badge\/TypeScript-[^)]+\)\]\(https:\/\/www\.typescriptlang\.org\/\)/,
+        format: (v) =>
+          `[![TypeScript](https://img.shields.io/badge/TypeScript-${v}-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)`,
+      },
+      {
+        version: cleanVer(pkgMeta.devDependencies?.tailwindcss),
+        pattern: /\[!\[Tailwind CSS\]\(https:\/\/img\.shields\.io\/badge\/Tailwind%20CSS-[^)]+\)\]\(https:\/\/tailwindcss\.com\/\)/,
+        format: (v) =>
+          `[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-${v}-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)`,
+      },
+      {
+        version: cleanVer(pkgMeta.dependencies?.['@tanstack/react-query']),
+        pattern: /\[!\[TanStack Query\]\(https:\/\/img\.shields\.io\/badge\/TanStack%20Query-[^)]+\)\]\(https:\/\/tanstack\.com\/query\)/,
+        format: (v) =>
+          `[![TanStack Query](https://img.shields.io/badge/TanStack%20Query-${v}-FF4154?style=flat-square&logo=reactquery&logoColor=white)](https://tanstack.com/query)`,
+      },
+      {
+        version: cleanVer(pkgMeta.dependencies?.zustand),
+        pattern: /\[!\[Zustand\]\(https:\/\/img\.shields\.io\/badge\/Zustand-[^)]+\)\]\(https:\/\/github\.com\/pmndrs\/zustand\)/,
+        format: (v) =>
+          `[![Zustand](https://img.shields.io/badge/Zustand-${v}-443E38?style=flat-square)](https://github.com/pmndrs/zustand)`,
+      },
+      {
+        version: cleanVer(pkgMeta.dependencies?.['framer-motion']),
+        pattern: /\[!\[Framer Motion\]\(https:\/\/img\.shields\.io\/badge\/Framer%20Motion-[^)]+\)\]\(https:\/\/motion\.dev\/\)/,
+        format: (v) =>
+          `[![Framer Motion](https://img.shields.io/badge/Framer%20Motion-${v}-0055FF?style=flat-square&logo=framer&logoColor=white)](https://motion.dev/)`,
+      },
+      {
+        version: nodeMajorVer,
+        pattern: /\[!\[Node\.js\]\(https:\/\/img\.shields\.io\/badge\/Node\.js-[^)]+\)\]\(https:\/\/nodejs\.org\/\)/,
+        format: (v) =>
+          `[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D${v}%20LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)`,
+      },
+      {
+        version: cleanVer(pkgMeta.devDependencies?.msw),
+        pattern: /\[!\[MSW\]\(https:\/\/img\.shields\.io\/badge\/MSW-[^)]+\)\]\(https:\/\/mswjs\.io\/\)/,
+        format: (v) =>
+          `[![MSW](https://img.shields.io/badge/MSW-${v}-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)`,
+      },
+    ];
+    readmeDependencyBadges = badgeSpecs.filter((spec) => Boolean(spec.version));
   } catch (_e) {}
 }
 
@@ -297,37 +347,8 @@ const readmePath = path.join(rootDir, 'README.md');
 if (fs.existsSync(readmePath)) {
   let readme = fs.readFileSync(readmePath, 'utf-8');
   const originalReadme = readme;
-  if (pkgVersions) {
-    if (pkgVersions.nextVer) {
-      readme = readme.replace(
-        /\[!\[Next\.js\]\(https:\/\/img\.shields\.io\/badge\/Next\.js-.*?\)\]\(https:\/\/nextjs\.org\/\)/,
-        `[![Next.js](https://img.shields.io/badge/Next.js-${pkgVersions.nextVer}%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)`
-      );
-    }
-    if (pkgVersions.reactVer) {
-      readme = readme.replace(
-        /\[!\[React\]\(https:\/\/img\.shields\.io\/badge\/React-[^)]+\)\]\(https:\/\/react\.dev\/\)/,
-        `[![React](https://img.shields.io/badge/React-${pkgVersions.reactVer}-blue?style=flat-square&logo=react)](https://react.dev/)`
-      );
-    }
-    if (pkgVersions.tsVer) {
-      readme = readme.replace(
-        /\[!\[TypeScript\]\(https:\/\/img\.shields\.io\/badge\/TypeScript-[^)]+\)\]\(https:\/\/www\.typescriptlang\.org\/\)/,
-        `[![TypeScript](https://img.shields.io/badge/TypeScript-${pkgVersions.tsVer}-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)`
-      );
-    }
-    if (pkgVersions.tailwindVer) {
-      readme = readme.replace(
-        /\[!\[Tailwind CSS\]\(https:\/\/img\.shields\.io\/badge\/Tailwind%20CSS-[^)]+\)\]\(https:\/\/tailwindcss\.com\/\)/,
-        `[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-${pkgVersions.tailwindVer}-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)`
-      );
-    }
-    if (pkgVersions.nodeMajorVer) {
-      readme = readme.replace(
-        /\[!\[Node\.js\]\(https:\/\/img\.shields\.io\/badge\/Node\.js-[^)]+\)\]\(https:\/\/nodejs\.org\/\)/,
-        `[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D${pkgVersions.nodeMajorVer}%20LTS-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)`
-      );
-    }
+  for (const badge of readmeDependencyBadges) {
+    readme = readme.replace(badge.pattern, badge.format(badge.version));
   }
   readme = readme.replace(
     /\[!\[Vitest\]\(https:\/\/img\.shields\.io\/badge\/Vitest-[^)]+\)\]\(docs\/QUALITY_AUDIT_REPORT\.md\)/,
@@ -345,12 +366,16 @@ if (fs.existsSync(readmePath)) {
     /\d+ validated ADRs \(`?ADR-001`? through `?ADR-\d+`?\)/,
     `${adrCount} validated ADRs (\`ADR-001\` through \`ADR-${String(adrCount).padStart(3, '0')}\`)`
   );
+  readme = readme.replace(
+    /\(`?\d+`? Tier-1\.\.Tier-4 protected\)/,
+    `(\`${PROTECTED_CONTRACTED_MODULES.length}\` Tier-1..Tier-4 protected)`
+  );
   if (readme !== originalReadme) {
     fs.writeFileSync(readmePath, readme, 'utf-8');
   }
 }
 
-const cleanMinNode = String(engines?.node || '>=22.0.0').replace(/^>=\s*/, '>= ');
+const cleanMinNode = String(engines?.node || '>=22.12.0').replace(/^>=\s*/, '>= ');
 const nodeMajor = engines?.nodeMajor || '22';
 const formattedTotalTests = Number(totalTestCount).toLocaleString('en-US');
 const governanceDocSyncTargets = [
@@ -389,7 +414,7 @@ const governanceDocSyncTargets = [
   {
     relFile: 'AGENTS.md',
     replacements: [
-      [/with `@testing-library\/react` and MSW v2 \(`\d+` suites\)/g, `with \`@testing-library/react\` and MSW v2 (\`${totalSuitesCount}\` suites)`],
+      [/with `@testing-library\/react` and MSW v3 \(`\d+` suites\)/g, `with \`@testing-library/react\` and MSW v3 (\`${totalSuitesCount}\` suites)`],
       [/\b\d+-suite\b/g, `${totalSuitesCount}-suite`],
       [/\b\d+-rule `bookarium-security`/gi, `${securityRuleCount}-rule \`bookarium-security\``],
     ],
@@ -439,7 +464,7 @@ let mdContent = `# Quality Audit & Test Suite Catalog Report
 | **Pass 0.5** | Secret, File/Path, Env & Graph Scanner | ✅ Passed | 0 exposed tokens/JWTs, forbidden files, undocumented \`NEXT_PUBLIC_*\` vars, or transitive client->server leaks |
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline \`GPL\`/\`AGPL\` License SCA + GitHub Actions Workflow Guard + \`sast-validators.js\` AST Suite + ${securityRuleCount}-Rule AST & Request-Taint verification across \`src/\` & \`scripts/\` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (\`tsc --noEmit\`) 0 errors |
-| **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v2 network interception verified |
+| **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
 | **Pass 3** | Vitest Test Suite | ✅ Passed | **${totalSuitesCount}/${totalSuitesCount} test suites passed** (${totalTestCount} total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\\ge$ ${coverageThresholds.lines}%, Statements $\\ge$ ${coverageThresholds.statements}%, Functions $\\ge$ ${coverageThresholds.functions}%, Branches $\\ge$ ${coverageThresholds.branches}%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent \`docs/ARCHITECTURE.md\`, \`docs/architecture/*.md\`, \`SECURITY.md\` (\`<!-- BEGIN:security-architecture -->\`), \`docs/GUTENBERG_PARSER.md\`, \`docs/SYSTEM_CONTRACTS.md\`, \`CHANGELOG.md\`, \`ROADMAP.md\`, & \`docs/QUALITY_AUDIT_REPORT.md\` synced |
@@ -525,7 +550,7 @@ const auditResults = {
     pass05_secrets: { status: 'PASSED', exposedKeys: 0 },
     pass075_sast_owasp: { status: 'PASSED', pillarsVerified: 7 },
     pass1_typecheck: { status: 'PASSED', errors: 0 },
-    pass2_server_mocks: { status: 'PASSED', mswVersion: 'v2' },
+    pass2_server_mocks: { status: 'PASSED', mswVersion: 'v3' },
     pass3_coverage: {
       status: 'PASSED',
       totalSuites: totalSuitesCount,

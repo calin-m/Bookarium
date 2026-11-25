@@ -3,7 +3,7 @@ import { Blob as NodeBlob, File as NodeFile } from 'node:buffer';
 import React from 'react';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { server } from '../mocks/server';
-import { handleUnhandledMswRequest } from '../mocks/handlers';
+import { handleUnhandledMswFrame } from '../mocks/handlers';
 
 // Unify JSDOM's synthetic window.Blob / window.File with Node's native undici/buffer
 // implementations so `new Blob()`, `new Response(blob)`, `response.blob()`, and
@@ -37,7 +37,7 @@ const pendingDynamicImports: Promise<unknown>[] = [];
 
 // Start MSW server and resolve dynamic imports before tests
 beforeAll(async () => {
-  server.listen({ onUnhandledRequest: handleUnhandledMswRequest });
+  server.listen({ onUnhandledFrame: handleUnhandledMswFrame });
   await Promise.all(pendingDynamicImports);
 });
 
