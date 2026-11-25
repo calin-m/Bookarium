@@ -1,7 +1,7 @@
 # Testing Pipeline, Repository Topology, AST Call Graph & Node Tooling — Bookarium
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
-> **Last Synchronized**: `2026-11-24`  
+> **Last Synchronized**: `2026-11-25`  
 > **Topology Health**: `262` Modules Analyzed • `1110` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
@@ -495,38 +495,38 @@ Bookarium executes on **Node.js `>=22.0.0`** with **npm `>=10.0.0`** (Node 22 LT
 | Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |
 | :--- | :--- | :--- | :--- |
 | **`@supabase/ssr`** | `^0.12.7` | Production Runtime | Server-Side Rendering (SSR) cookie-based authentication and Supabase client creation. |
-| **`@supabase/supabase-js`** | `^2.119.0` | Production Runtime | Universal client for PostgreSQL, Row-Level Security, GIN search & cloud synchronization. |
-| **`@tanstack/react-query`** | `^5.107.1` | Production Runtime | Asynchronous server-state management, cache deduplication & windowed predictive prefetching. |
+| **`@supabase/supabase-js`** | `^2.119.2` | Production Runtime | Universal client for PostgreSQL, Row-Level Security, GIN search & cloud synchronization. |
+| **`@tanstack/react-query`** | `^5.108.4` | Production Runtime | Asynchronous server-state management, cache deduplication & windowed predictive prefetching. |
 | **`@vercel/analytics`** | `^2.0.1` | Production Runtime | Privacy-preserving, cookie-less audience telemetry on Vercel Edge. |
 | **`@vercel/speed-insights`** | `^2.1.0` | Production Runtime | Real User Monitoring (RUM) for Core Web Vitals (LCP, FID, CLS, INP). |
 | **`clsx`** | `^2.1.1` | Production Runtime | Utility for constructing conditional classNames efficiently. |
 | **`framer-motion`** | `^11.18.2` | Production Runtime | Hardware-accelerated 3D leaf-flip, FLIP modal geometry and page transitions. |
-| **`lucide-react`** | `^1.70.0` | Production Runtime | Accessible SVG icon primitives across reading workbench and UI dialogs. |
-| **`next`** | `^16.4.5` | Production Runtime | Next.js 16 App Router full-stack framework with React Server Components and Turbopack. |
+| **`lucide-react`** | `^1.80.0` | Production Runtime | Accessible SVG icon primitives across reading workbench and UI dialogs. |
+| **`next`** | `^16.4.6` | Production Runtime | Next.js 16 App Router full-stack framework with React Server Components and Turbopack. |
 | **`react`** | `^19.3.1` | Production Runtime | React 19 declarative component and rendering engine. |
 | **`react-dom`** | `^19.3.1` | Production Runtime | DOM renderer for React 19. |
-| **`tailwind-merge`** | `^3.7.0` | Production Runtime | Deterministic conflict resolution for Tailwind utility classes with custom shadow groups. |
+| **`tailwind-merge`** | `^3.7.1` | Production Runtime | Deterministic conflict resolution for Tailwind utility classes with custom shadow groups. |
 | **`zustand`** | `^5.1.0` | Production Runtime | Lightweight client-side persistent state stores (IndexedDB, localStorage, outbox reconciliation). |
-| **`@babel/parser`** | `^8.1.0` | Development & AST Tooling | Babel parser generating ESTree AST for living documentation and architectural analysis. |
-| **`@babel/traverse`** | `^8.1.0` | Development & AST Tooling | AST node traversal for programmatic dependency graph and import/export extraction. |
+| **`@babel/parser`** | `^8.1.3` | Development & AST Tooling | Babel parser generating ESTree AST for living documentation and architectural analysis. |
+| **`@babel/traverse`** | `^8.1.3` | Development & AST Tooling | AST node traversal for programmatic dependency graph and import/export extraction. |
 | **`@tailwindcss/postcss`** | `^4.3.5` | Development & AST Tooling | PostCSS integration for Tailwind CSS v4 Oxide compilation. |
 | **`@testing-library/jest-dom`** | `^7.0.1` | Development & AST Tooling | Custom DOM matchers for accessible assertion verification. |
 | **`@testing-library/react`** | `^16.1.0` | Development & AST Tooling | Framework-agnostic React component testing verifying authentic user journeys. |
-| **`@testing-library/user-event`** | `^14.6.8` | Development & AST Tooling | Simulates authentic pointer and keyboard interactions in test suites. |
-| **`@types/node`** | `^22.20.5` | Development & AST Tooling | TypeScript definitions for Node.js runtime and standard library APIs. |
-| **`@types/react`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React 19 core primitives. |
+| **`@testing-library/user-event`** | `^14.6.13` | Development & AST Tooling | Simulates authentic pointer and keyboard interactions in test suites. |
+| **`@types/node`** | `^22.20.7` | Development & AST Tooling | TypeScript definitions for Node.js runtime and standard library APIs. |
+| **`@types/react`** | `^19.3.2` | Development & AST Tooling | TypeScript definitions for React 19 core primitives. |
 | **`@types/react-dom`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React DOM. |
-| **`@vitejs/plugin-react`** | `^6.2.1` | Development & AST Tooling | Fast React transform plugin for Vitest test execution. |
+| **`@vitejs/plugin-react`** | `^6.3.0` | Development & AST Tooling | Fast React transform plugin for Vitest test execution. |
 | **`@vitest/coverage-v8`** | `^4.1.12` | Development & AST Tooling | Native V8 code coverage provider enforcing tiered 95/95/92/85% test thresholds. |
 | **`@vitest/ui`** | `^4.1.12` | Development & AST Tooling | Interactive graphical browser interface for Vitest execution. |
 | **`concurrently`** | `^10.0.7` | Development & AST Tooling | Parallel task orchestration for dev servers, watchers, and browser launchers. |
-| **`eslint`** | `^10.14.0` | Development & AST Tooling | Supply-chain override upgrading transitive minimatch in eslint to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249). |
-| **`eslint-config-next`** | `^16.4.5` | Development & AST Tooling | Next.js 16 ESLint ruleset enforcing App Router, Core Web Vitals, and TypeScript standards. |
+| **`eslint`** | `^10.15.0` | Development & AST Tooling | Supply-chain override upgrading transitive minimatch in eslint to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249). |
+| **`eslint-config-next`** | `^16.4.6` | Development & AST Tooling | Next.js 16 ESLint ruleset enforcing App Router, Core Web Vitals, and TypeScript standards. |
 | **`husky`** | `^9.1.7` | Development & AST Tooling | Git hooks orchestration gating pre-commit verification. |
 | **`jsdom`** | `^25.0.1` | Development & AST Tooling | Headless browser DOM environment for Node.js Vitest test execution. |
-| **`knip`** | `^6.44.2` | Development & AST Tooling | Static analysis auditor detecting unused dependencies, dead exports, and orphaned files. |
+| **`knip`** | `^6.48.0` | Development & AST Tooling | Static analysis auditor detecting unused dependencies, dead exports, and orphaned files. |
 | **`msw`** | `^2.15.0` | Development & AST Tooling | Mock Service Worker v2 intercepting network requests for isolated deterministic testing. |
-| **`postcss`** | `^8.5.32` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
+| **`postcss`** | `^8.5.33` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
 | **`tailwindcss`** | `^4.3.5` | Development & AST Tooling | Utility-first CSS framework v4 with Oxide compiler engine. |
 | **`typescript`** | `^5.9.3` | Development & AST Tooling | Static type system verifying strict compile-time safety (zero any). |
 | **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 270 unit and integration suites. |

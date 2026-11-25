@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.78] - 2026-11-25
+### *Tier-1 Non-Breaking In-Range Dependency Updates*
+
+### Changed
+- **Tier-1 Non-Breaking In-Range Dependency Updates (`package.json`, `package-lock.json`, `docs/DECISIONS.md`, auto-synced `README.md` & `docs/architecture/ast-topology-and-tooling.md`)**: Raised `15` semver-compatible `^` package bounds to latest patch/minor releases — runtime (`@supabase/supabase-js` `^2.119.2`, `@tanstack/react-query` `^5.108.4`, `lucide-react` `^1.80.0`, `next` `^16.4.6`, `tailwind-merge` `^3.7.1`) and dev/tooling (`@babel/parser` `^8.1.3`, `@babel/traverse` `^8.1.3`, `@testing-library/user-event` `^14.6.13`, `@types/node` `^22.20.7`, `@types/react` `^19.3.2`, `@vitejs/plugin-react` `^6.3.0`, `eslint` `^10.15.0`, `eslint-config-next` `^16.4.6`, `knip` `^6.48.0`, `postcss` `^8.5.33`) — keeping `0` CVEs across `npm audit` and `npm audit --omit=dev --audit-level=high`, while deferring Tier-2 breaking majors (`framer-motion` `14`, `vitest`/`@vitest/*` `5`, `@testing-library/jest-dom` `8`, `msw` `3`, `jsdom` `31`) and Tier-3 pinned toolchains (`typescript` `5.9.3`, `@types/node` `22.x`) (`ADR-080`).
+
+
 ## [2.9.77] - 2026-11-24
 ### *Canonical CatalogBook & CatalogResponse Type System Rename*
 

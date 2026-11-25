@@ -3,7 +3,7 @@
 > **Pure Literature. Zero Paywalls. Zero Reader API Keys Required.**
 
 [![Developed with Antigravity](https://img.shields.io/badge/Developed%20with-Google%20AI%20%2F%20Antigravity-4285F4?style=flat-square&logo=google)](https://antigravity.google)
-[![Next.js](https://img.shields.io/badge/Next.js-16.4.5%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.6%20(Turbopack)-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.3.1-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.3.5-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -15,7 +15,7 @@
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202805%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.29%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.24%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -112,9 +112,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.77)
+## 🛠️ Latest Improvements (v2.9.78)
 
-- **Non-Breaking `CatalogBook` & `CatalogResponse` DTO & Helper Refactor (`src/types/book.types.ts`, `src/types/catalog.types.ts`, `src/lib/adapters/book.adapter.ts`, `src/config/featured-books.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/mocks/handlers.ts`, `40` production/mock modules, `25` test suites, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`)**: Renamed internal `GutendexBook` / `GutendexResponse` interfaces, helper exports (`toCatalogBook`, `toCatalogBookFromCloudRow`, `featuredHeroToCatalogBook`, `catalogBookToFeaturedHeroBook`, `mapDatabaseBookToCatalogBook`), local variables (`catalogBooks`, `isDirectCatalogBook`, `catalogBookPayload`), `@invariant` JSDoc contracts, and roadmap/architecture descriptions across `69` source/test/doc references while keeping HTTP wire payloads, IndexedDB/Supabase schemas, security AST URL bans (`checkStringForRetiredGutendexUrl`), and negative UI tests unchanged (`ADR-080`, `ADR-088`).
+- **Tier-1 Non-Breaking In-Range Dependency Updates (`package.json`, `package-lock.json`, `docs/DECISIONS.md`, auto-synced `README.md` & `docs/architecture/ast-topology-and-tooling.md`)**: Raised `15` semver-compatible `^` package bounds to latest patch/minor releases — runtime (`@supabase/supabase-js` `^2.119.2`, `@tanstack/react-query` `^5.108.4`, `lucide-react` `^1.80.0`, `next` `^16.4.6`, `tailwind-merge` `^3.7.1`) and dev/tooling (`@babel/parser` `^8.1.3`, `@babel/traverse` `^8.1.3`, `@testing-library/user-event` `^14.6.13`, `@types/node` `^22.20.7`, `@types/react` `^19.3.2`, `@vitejs/plugin-react` `^6.3.0`, `eslint` `^10.15.0`, `eslint-config-next` `^16.4.6`, `knip` `^6.48.0`, `postcss` `^8.5.33`) — keeping `0` CVEs across `npm audit` and `npm audit --omit=dev --audit-level=high`, while deferring Tier-2 breaking majors (`framer-motion` `14`, `vitest`/`@vitest/*` `5`, `@testing-library/jest-dom` `8`, `msw` `3`, `jsdom` `31`) and Tier-3 pinned toolchains (`typescript` `5.9.3`, `@types/node` `22.x`) (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
