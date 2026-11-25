@@ -8,7 +8,7 @@ This document outlines the automated governance, security analysis, linting, tes
 
 Bookarium executes and compiles on Node.js with strict engine boundaries defined in `package.json`:
 
-- **Node.js Runtime**: `>= 22.12.0` (Node 22 LTS or Node 24 LTS recommended)
+- **Node.js Runtime**: `>= 22.22.2` (Node 22 LTS or Node 24 LTS recommended)
 - **Package Manager**: npm `>= 10.0.0`
 - **CI Environment**: Node.js 22 on Ubuntu Latest (`.github/workflows/ci.yml`)
 

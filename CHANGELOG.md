@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.82] - 2026-11-25
+### *Tier-2 Wave 2C: Vitest 5, jest-dom 8 & jsdom 31 Upgrade + npm 10 CI Lockfile Parity*
+
+### Changed
+- **Tier-2 Wave 2C: Test Runner & DOM Engine Upgrade (`package.json`, `package-lock.json`, `vitest.config.mts`, `.gitignore`, `src/test/setup.ts`, `4` test suites, `scripts/`, `README.md`, `docs/DECISIONS.md`, auto-synced `docs/architecture/ast-topology-and-tooling.md`)**: Upgraded `vitest`, `@vitest/coverage-v8`, and `@vitest/ui` (`^4.1.12` → `^5.1.2`), `@testing-library/jest-dom` (`^7.0.1` → `^8.0.0`), and `jsdom` (`^25.0.1` → `^31.0.1`), raised `engines.node` (`>=22.12.0` → `>=22.22.2`), resolved `@vitest/mocker` ↔ `msw@^3.0.7` across both `npm 10` (Node 22 CI) and `npm 11`, pinned `coverage.reportsDirectory: './coverage'`, added an `AnimationEvent` polyfill in `src/test/setup.ts`, aligned `Navbar.test.tsx`, `CursorTooltip.test.tsx`, `ReaderSurface.test.tsx`, and `useReadingTimer.test.ts` without touching app code, and verified all `270` suites (`2,806` tests) (`ADR-080`).
+
+
 ## [2.9.81] - 2026-11-25
 ### *README Stack Badges & Protected Contract Count Parity*
 

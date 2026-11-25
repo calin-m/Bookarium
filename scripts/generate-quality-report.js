@@ -281,7 +281,7 @@ if (fs.existsSync(pkgJsonPath)) {
   try {
     const pkgMeta = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
     const cleanVer = (raw) => String(raw || '').replace(/^[~^>=<\s]+/, '').trim();
-    const nodeEngineRaw = cleanVer(pkgMeta.engines?.node || '22.12.0');
+    const nodeEngineRaw = cleanVer(pkgMeta.engines?.node || '22.22.2');
     const nodeMajorVer = nodeEngineRaw.split('.')[0] || '22';
     const badgeSpecs = [
       {
@@ -375,7 +375,7 @@ if (fs.existsSync(readmePath)) {
   }
 }
 
-const cleanMinNode = String(engines?.node || '>=22.12.0').replace(/^>=\s*/, '>= ');
+const cleanMinNode = String(engines?.node || '>=22.22.2').replace(/^>=\s*/, '>= ');
 const nodeMajor = engines?.nodeMajor || '22';
 const formattedTotalTests = Number(totalTestCount).toLocaleString('en-US');
 const governanceDocSyncTargets = [

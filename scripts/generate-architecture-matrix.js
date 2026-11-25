@@ -389,7 +389,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 264) {
   }
 
   return {
-    engines: pkg.engines || { node: '>=22.12.0', npm: '>=10.0.0' },
+    engines: pkg.engines || { node: '>=22.22.2', npm: '>=10.0.0' },
     packages,
   };
 }
@@ -2418,9 +2418,9 @@ function generateMarkdown() {
     `        Pass075["🛡️ Pass 0.75: 7-Pillar SAST, Lockfile & Full AST Suite\\n• Lockfile SHA-512 & HTTPS npm registry + 0 High/Crit CVEs\\n• ${getSecurityPluginRuleCount()}-Rule AST Taint + AST API/Redirect/Filter/Rule-9/SW Guards\\n• MIT / copyright=false • ${dbCatalog.tables.length}-Table RLS, Write-Policy & search_path\\n• 7 OWASP HTTP Security Headers & AST Service Worker Guard"]`,
     '    end',
     '',
-    '    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]',
-    '        VitestCfg["⚙️ vitest.config.mts\\n• jsdom environment • maxWorkers: 4\\n• @/* path alias • V8 Coverage Provider"]',
-    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
+    '    subgraph TestRunner ["Vitest 5 Runner & JSDOM Bootstrap"]',
+    '        VitestCfg["⚙️ vitest.config.mts\\n• jsdom 31 environment • maxWorkers: 4\\n• @/* path alias • V8 Coverage (./coverage)"]',
+    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver, AnimationEvent)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
     '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v3 setupServer(...handlers) lifecycle + handleUnhandledMswFrame\\n• GET /api/books, /api/books/content, /api/books/translations\\n• Supabase/*.co/:54321 503 catch-all (Zero external PG mocks)\\n• mockBooks fixtures (0 external network calls)"]',
     '    end',
     '',
@@ -3219,7 +3219,7 @@ function generateMarkdown() {
   const nodeEcosystem = extractNodeEcosystemCatalog(rootDir, testHarness.totalSuites);
   const activeNodeMajor = Number.parseInt(String(runtimeSpec.engines?.nodeMajor || '22'), 10) || 22;
   lines.push(
-    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=22.12.0'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node ${activeNodeMajor} LTS / Node ${activeNodeMajor + 2} LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
+    `Bookarium executes on **Node.js \`${nodeEcosystem.engines.node || '>=22.22.2'}\`** with **npm \`${nodeEcosystem.engines.npm || '>=10.0.0'}\`** (Node ${activeNodeMajor} LTS / Node ${activeNodeMajor + 2} LTS recommended). All dependency versions are programmatically synchronized from \`package.json\` via AST compilation (Rule 2):`,
     '',
     '| Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |',
     '| :--- | :--- | :--- | :--- |'

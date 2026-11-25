@@ -19,7 +19,7 @@
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202806%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![MSW](https://img.shields.io/badge/MSW-3.0.7-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.27%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.13%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -116,10 +116,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.81)
+## 🛠️ Latest Improvements (v2.9.82)
 
-- **README Stack Badges & 9-Package Auto-Sync Parity (`README.md`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`, auto-synced `docs/architecture/ast-topology-and-tooling.md`)**: Added **TanStack Query**, **Zustand**, **Framer Motion**, and **MSW** Shields.io stack badges to `README.md`, refactored `scripts/generate-quality-report.js` into a declarative `badgeSpecs` table synchronizing all `9` `package.json` dependency/engine badges (`Next.js`, `React`, `TypeScript`, `Tailwind CSS`, `TanStack Query`, `Zustand`, `Framer Motion`, `Node.js`, `MSW`), and extended Pass 5 `expectedBadgeTokens` in `scripts/verify-build.js` for zero-drift verification (`ADR-080`).
-- **Protected Contract Count README Sync & Pass 5 Parity (`README.md`, `scripts/generate-quality-report.js`, `scripts/verify-build.js`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Wired `PROTECTED_CONTRACTED_MODULES.length` (`85` Tier-1..Tier-4) auto-sync into `scripts/generate-quality-report.js` and Pass 5 reverse verification into `scripts/verify-build.js`, updating the stale `82` count in `README.md` (`ADR-080`).
+- **Tier-2 Wave 2C: Test Runner & DOM Engine Upgrade (`package.json`, `package-lock.json`, `vitest.config.mts`, `.gitignore`, `src/test/setup.ts`, `4` test suites, `scripts/`, `README.md`, `docs/DECISIONS.md`, auto-synced `docs/architecture/ast-topology-and-tooling.md`)**: Upgraded `vitest`, `@vitest/coverage-v8`, and `@vitest/ui` (`^4.1.12` → `^5.1.2`), `@testing-library/jest-dom` (`^7.0.1` → `^8.0.0`), and `jsdom` (`^25.0.1` → `^31.0.1`), raised `engines.node` (`>=22.12.0` → `>=22.22.2`), resolved `@vitest/mocker` ↔ `msw@^3.0.7` across both `npm 10` (Node 22 CI) and `npm 11`, pinned `coverage.reportsDirectory: './coverage'`, added an `AnimationEvent` polyfill in `src/test/setup.ts`, aligned `Navbar.test.tsx`, `CursorTooltip.test.tsx`, `ReaderSurface.test.tsx`, and `useReadingTimer.test.ts` without touching app code, and verified all `270` suites (`2,806` tests) (`ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -525,7 +524,7 @@ flowchart TD
 ## ⚡ Quick Start
 
 ### 1. Prerequisites
-- **Node.js**: `>= 22.12.0` (Node 22 LTS or Node 24 LTS recommended)
+- **Node.js**: `>= 22.22.2` (Node 22 LTS or Node 24 LTS recommended)
 - **npm**: `>= 10.0.0`
 
 ### 2. Installation & Local Development

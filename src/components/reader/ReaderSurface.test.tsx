@@ -71,14 +71,16 @@ describe('ReaderSurface', () => {
     const contentBody = screen.getByTestId('reader-content-body');
     expect(contentBody).toHaveStyle({
       fontSize: '22px',
-      lineHeight: '2.2',
+      lineHeight: '48.4px',
     });
+    expect(contentBody.style.lineHeight).toBe('2.2');
 
     rerender(<ReaderSurface {...defaultProps} fontSize={14} lineHeight={1.4} />);
     expect(contentBody).toHaveStyle({
       fontSize: '14px',
-      lineHeight: '1.4',
+      lineHeight: '19.6px',
     });
+    expect(contentBody.style.lineHeight).toBe('1.4');
   });
 
   it('renders loading spinner and status message when isLoading is true', () => {

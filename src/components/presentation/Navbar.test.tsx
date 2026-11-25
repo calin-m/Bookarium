@@ -491,7 +491,7 @@ describe('Navbar component', () => {
       expect(indicator).toHaveClass('h-8', 'rounded', 'border-b-2', 'border-destructive');
       expect(indicator).not.toHaveClass('bg-destructive');
       expect(indicator.className).not.toMatch(/shadow-/);
-      expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(120px, 0px, 0px)');
       expect(indicator.style.width).toBe('80px');
 
       // Active button should now have transparent border to avoid duplicate lines
@@ -548,7 +548,7 @@ describe('Navbar component', () => {
 
       const { rerender } = render(<Navbar activeView="catalog" />);
       const indicator = screen.getByTestId('navbar-active-indicator');
-      expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(10px, 0px, 0px)');
       expect(indicator.style.width).toBe('80px');
       expect(indicator).toHaveClass('rounded');
 
@@ -556,7 +556,7 @@ describe('Navbar component', () => {
       currentLeft = 120;
       rerender(<Navbar activeView="favorites" />);
 
-      expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(120px, 0px, 0px)');
       expect(indicator.style.width).toBe('80px');
       expect(indicator).toHaveClass('rounded');
       expect(indicator).toHaveClass('border-destructive');
@@ -592,7 +592,7 @@ describe('Navbar component', () => {
       currentLeft = 10;
       rerender(<Navbar activeView="catalog" />);
 
-      expect(indicator.style.transform).toBe('translate3d(10px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(10px, 0px, 0px)');
       expect(indicator.style.width).toBe('80px');
       expect(indicator).toHaveClass('rounded');
     });
@@ -627,7 +627,7 @@ describe('Navbar component', () => {
       rerender(<Navbar activeView="favorites" />);
 
       // On medium tier, it immediately sets targetRect without bridging width
-      expect(indicator.style.transform).toBe('translate3d(120px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(120px, 0px, 0px)');
       expect(indicator.style.width).toBe('80px');
       expect(indicator).toHaveClass('rounded');
     });
@@ -671,14 +671,14 @@ describe('Navbar component', () => {
 
       render(<Navbar activeView="catalog" />);
       const indicator = screen.getByTestId('navbar-active-indicator');
-      expect(indicator.style.transform).toBe('translate3d(50px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(50px, 0px, 0px)');
 
       currentOffsetLeft = 75;
       act(() => {
         window.dispatchEvent(new Event('resize'));
       });
 
-      expect(indicator.style.transform).toBe('translate3d(75px, 0, 0)');
+      expect(indicator.style.transform).toBe('translate3d(75px, 0px, 0px)');
     });
 
     it('disables gliding indicator and stays on fallback border when prefers-reduced-motion is active', () => {

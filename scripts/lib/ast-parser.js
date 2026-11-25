@@ -1268,7 +1268,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'setup',
       file: 'src/test/setup.ts',
       layer: 'JSDOM & Browser API Test Bootstrap',
-      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v3 server lifecycle (`onUnhandledFrame: handleUnhandledMswFrame`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`).',
+      role: 'Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v3 server lifecycle (`onUnhandledFrame: handleUnhandledMswFrame`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `AnimationEvent`, `SpeechSynthesis`, `IndexedDB`).',
     },
     {
       name: 'handlers',
@@ -4547,12 +4547,12 @@ function extractRuntimeSpecConstants(rootDirPath) {
     path.join(rootDirPath, 'src', 'hooks', 'useCursorTooltip.ts'),
     ['DEFAULT_TOOLTIP_DELAY_MS']
   );
-  let pkgEngines = { node: '>=22.12.0', npm: '>=10.0.0', nodeMajor: '22' };
+  let pkgEngines = { node: '>=22.22.2', npm: '>=10.0.0', nodeMajor: '22' };
   const pkgPath = path.join(rootDirPath, 'package.json');
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-      const nodeSpec = String(pkg.engines?.node || '>=22.12.0').trim();
+      const nodeSpec = String(pkg.engines?.node || '>=22.22.2').trim();
       const npmSpec = String(pkg.engines?.npm || '>=10.0.0').trim();
       const nodeMajorMatch = nodeSpec.match(/\d+/);
       pkgEngines = {

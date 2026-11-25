@@ -12,6 +12,7 @@ dist/
 
 # Test Coverage & Audit Artifacts
 coverage/
+.vitest/
 .nyc_output/
 
 # Environment Variables

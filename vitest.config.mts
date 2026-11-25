@@ -17,6 +17,7 @@ export default defineConfig({
     css: false,
     coverage: {
       provider: 'v8',
+      reportsDirectory: './coverage',
       reporter: ['text', 'json', 'json-summary', 'html'],
       thresholds: {
         lines: 95,

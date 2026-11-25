@@ -29,7 +29,7 @@ describe('useReadingTimer', () => {
   });
 
   it('accumulates reading seconds and flushes on interval', () => {
-    renderHook(() =>
+    const { unmount } = renderHook(() =>
       useReadingTimer({
         enabled: true,
         bookId: 789,
@@ -46,11 +46,15 @@ describe('useReadingTimer', () => {
     // Before flush interval, store still has 0 uncommitted
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(0);
 
-    // Advance 1 more second to hit 5s flush interval
+    // Advance 1 more second to hit 5s flush interval (Vitest 5 runs flush before 5th tick at t=5000ms)
     act(() => {
       vi.advanceTimersByTime(1000);
     });
 
+    expect(useHabitsStore.getState().totalReadingSeconds).toBe(4);
+
+    // Unmount flushes the 5th second recorded on t=5000ms
+    unmount();
     expect(useHabitsStore.getState().totalReadingSeconds).toBe(5);
   });
 

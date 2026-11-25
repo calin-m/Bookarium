@@ -2406,7 +2406,7 @@ function pass5AdrValidation() {
           },
           {
             label: 'Node.js',
-            token: `badge/Node.js-%3E%3D${(cleanDepVer(pkgMeta.engines?.node || '22.12.0').split('.')[0] || '22')}%20LTS`,
+            token: `badge/Node.js-%3E%3D${(cleanDepVer(pkgMeta.engines?.node || '22.22.2').split('.')[0] || '22')}%20LTS`,
           },
           { label: 'MSW', token: `badge/MSW-${cleanDepVer(pkgMeta.devDependencies?.msw)}-FF6A33` },
         ];

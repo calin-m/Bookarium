@@ -97,6 +97,11 @@ if (typeof window !== 'undefined') {
     Element.prototype.scrollIntoView = vi.fn();
   }
 
+  // Polyfill AnimationEvent in JSDOM 31 so React 19 registers unprefixed 'animationend'
+  if (typeof window.AnimationEvent === 'undefined') {
+    window.AnimationEvent = Event as unknown as typeof AnimationEvent;
+  }
+
   // Mock window.location for JSDOM
   Object.defineProperty(window, 'location', {
     configurable: true,

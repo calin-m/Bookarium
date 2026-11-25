@@ -54,7 +54,7 @@ describe('CursorTooltip', () => {
     expect(tooltip).toHaveTextContent('Preview Mode');
     expect(tooltip.style.left).toBe('200px');
     expect(tooltip.style.top).toBe('300px');
-    expect(tooltip.style.transform).toBe('translate3d(12px, 14px, 0)');
+    expect(tooltip.style.transform).toBe('translate3d(12px, 14px, 0px)');
   });
 
   it('flips horizontal and vertical transform offsets near right and bottom viewport edges and supports multiline wrapping', () => {
@@ -69,7 +69,7 @@ describe('CursorTooltip', () => {
     );
 
     const tooltip = screen.getByTestId('cursor-tooltip');
-    expect(tooltip.style.transform).toBe('translate3d(calc(-100% - 12px), calc(-100% - 14px), 0)');
+    expect(tooltip.style.transform).toBe('translate3d(calc(-100% - 12px), calc(-100% - 14px), 0px)');
     expect(tooltip.firstElementChild?.className).toContain('whitespace-normal');
   });
 });

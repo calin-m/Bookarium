@@ -19,9 +19,9 @@ flowchart TD
         Pass075["🛡️ Pass 0.75: 7-Pillar SAST, Lockfile & Full AST Suite\n• Lockfile SHA-512 & HTTPS npm registry + 0 High/Crit CVEs\n• 9-Rule AST Taint + AST API/Redirect/Filter/Rule-9/SW Guards\n• MIT / copyright=false • 14-Table RLS, Write-Policy & search_path\n• 7 OWASP HTTP Security Headers & AST Service Worker Guard"]
     end
 
-    subgraph TestRunner ["Vitest 4 Runner & JSDOM Bootstrap"]
-        VitestCfg["⚙️ vitest.config.mts\n• jsdom environment • maxWorkers: 4\n• @/* path alias • V8 Coverage Provider"]
-        TestSetup["🧰 src/test/setup.ts\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\n• framer-motion synchronous forwardRef mock\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver)\n• Per-test localStorage.clear() & vi.clearAllMocks()"]
+    subgraph TestRunner ["Vitest 5 Runner & JSDOM Bootstrap"]
+        VitestCfg["⚙️ vitest.config.mts\n• jsdom 31 environment • maxWorkers: 4\n• @/* path alias • V8 Coverage (./coverage)"]
+        TestSetup["🧰 src/test/setup.ts\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\n• framer-motion synchronous forwardRef mock\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver, AnimationEvent)\n• Per-test localStorage.clear() & vi.clearAllMocks()"]
         MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\n• MSW v3 setupServer(...handlers) lifecycle + handleUnhandledMswFrame\n• GET /api/books, /api/books/content, /api/books/translations\n• Supabase/*.co/:54321 503 catch-all (Zero external PG mocks)\n• mockBooks fixtures (0 external network calls)"]
     end
 
@@ -56,7 +56,7 @@ flowchart TD
 
 | Test Harness Module | Source File | Testing Layer | Architectural Responsibility |
 | :--- | :--- | :--- | :--- |
-| **`setup`** | [`src/test/setup.ts`](../../src/test/setup.ts) | JSDOM & Browser API Test Bootstrap | Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v3 server lifecycle (`onUnhandledFrame: handleUnhandledMswFrame`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `SpeechSynthesis`, `IndexedDB`). |
+| **`setup`** | [`src/test/setup.ts`](../../src/test/setup.ts) | JSDOM & Browser API Test Bootstrap | Global Vitest setup bootstrapping `@testing-library/jest-dom/vitest`, fail-closed MSW v3 server lifecycle (`onUnhandledFrame: handleUnhandledMswFrame`, `resetHandlers`, `close`), pre-test `next/dynamic` chunk resolution (`pendingDynamicImports`), `localStorage` sanitization, and deterministic JSDOM polyfills (`matchMedia`, `ResizeObserver`, `IntersectionObserver`, `scrollTo`, `AnimationEvent`, `SpeechSynthesis`, `IndexedDB`). |
 | **`handlers`** | [`src/mocks/handlers.ts`](../../src/mocks/handlers.ts) | MSW v3 HTTP Interception Handlers | Canonical Mock Service Worker v3 HTTP request handlers, fail-closed `handleUnhandledMswFrame` / `assertUnhandledMswFrameAllowed` & `handleUnhandledMswRequest` guards (blocking unmocked external/PG/Supabase HTTP & WebSocket URLs and same-origin `/api/*` calls), hosted `*.supabase.co` & local `:54321` `(rest|auth|storage|realtime|functions|graphql)/v1` 503 catch-alls, and `mockBooks` fixtures intercepting `/api/books`, `/api/books/content`, and `/api/books/translations` for zero-network deterministic testing. |
 | **`server`** | [`src/mocks/server.ts`](../../src/mocks/server.ts) | MSW v3 Node Server Instance | Node.js `setupServer(...handlers)` singleton providing hermetic request interception across all unit and integration test suites. |
 | **`vitest.config.mts`** | [`vitest.config.mts`](../../vitest.config.mts) | Vitest Runner & Tiered V8 Coverage Engine (95/95/92/85) | Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard tiered V8 coverage floor (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`) while excluding non-executable type contracts and barrels. |
@@ -490,7 +490,7 @@ Every source file is analyzed for upstream imports, downstream consumers, Babel 
 
 ## 🟢 Node.js Runtime, Dependency Stack & Supply-Chain Governance
 
-Bookarium executes on **Node.js `>=22.12.0`** with **npm `>=10.0.0`** (Node 22 LTS / Node 24 LTS recommended). All dependency versions are programmatically synchronized from `package.json` via AST compilation (Rule 2):
+Bookarium executes on **Node.js `>=22.22.2`** with **npm `>=10.0.0`** (Node 22 LTS / Node 24 LTS recommended). All dependency versions are programmatically synchronized from `package.json` via AST compilation (Rule 2):
 
 | Package | Live Version | Classification & Tier | Architectural Responsibility in Bookarium |
 | :--- | :--- | :--- | :--- |
@@ -510,26 +510,26 @@ Bookarium executes on **Node.js `>=22.12.0`** with **npm `>=10.0.0`** (Node 22 L
 | **`@babel/parser`** | `^8.1.3` | Development & AST Tooling | Babel parser generating ESTree AST for living documentation and architectural analysis. |
 | **`@babel/traverse`** | `^8.1.3` | Development & AST Tooling | AST node traversal for programmatic dependency graph and import/export extraction. |
 | **`@tailwindcss/postcss`** | `^4.3.5` | Development & AST Tooling | PostCSS integration for Tailwind CSS v4 Oxide compilation. |
-| **`@testing-library/jest-dom`** | `^7.0.1` | Development & AST Tooling | Custom DOM matchers for accessible assertion verification. |
+| **`@testing-library/jest-dom`** | `^8.0.0` | Development & AST Tooling | Custom DOM matchers for accessible assertion verification. |
 | **`@testing-library/react`** | `^16.1.0` | Development & AST Tooling | Framework-agnostic React component testing verifying authentic user journeys. |
 | **`@testing-library/user-event`** | `^14.6.13` | Development & AST Tooling | Simulates authentic pointer and keyboard interactions in test suites. |
 | **`@types/node`** | `^22.20.7` | Development & AST Tooling | TypeScript definitions for Node.js runtime and standard library APIs. |
 | **`@types/react`** | `^19.3.2` | Development & AST Tooling | TypeScript definitions for React 19 core primitives. |
 | **`@types/react-dom`** | `^19.3.0` | Development & AST Tooling | TypeScript definitions for React DOM. |
 | **`@vitejs/plugin-react`** | `^6.3.0` | Development & AST Tooling | Fast React transform plugin for Vitest test execution. |
-| **`@vitest/coverage-v8`** | `^4.1.12` | Development & AST Tooling | Native V8 code coverage provider enforcing tiered 95/95/92/85% test thresholds. |
-| **`@vitest/ui`** | `^4.1.12` | Development & AST Tooling | Interactive graphical browser interface for Vitest execution. |
+| **`@vitest/coverage-v8`** | `^5.1.2` | Development & AST Tooling | Native V8 code coverage provider enforcing tiered 95/95/92/85% test thresholds. |
+| **`@vitest/ui`** | `^5.1.2` | Development & AST Tooling | Interactive graphical browser interface for Vitest execution. |
 | **`concurrently`** | `^10.0.7` | Development & AST Tooling | Parallel task orchestration for dev servers, watchers, and browser launchers. |
 | **`eslint`** | `^10.15.0` | Development & AST Tooling | Supply-chain override upgrading transitive minimatch in eslint to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249). |
 | **`eslint-config-next`** | `^16.4.6` | Development & AST Tooling | Next.js 16 ESLint ruleset enforcing App Router, Core Web Vitals, and TypeScript standards. |
 | **`husky`** | `^9.1.7` | Development & AST Tooling | Git hooks orchestration gating pre-commit verification. |
-| **`jsdom`** | `^25.0.1` | Development & AST Tooling | Headless browser DOM environment for Node.js Vitest test execution. |
+| **`jsdom`** | `^31.0.1` | Development & AST Tooling | Headless browser DOM environment for Node.js Vitest test execution. |
 | **`knip`** | `^6.48.0` | Development & AST Tooling | Static analysis auditor detecting unused dependencies, dead exports, and orphaned files. |
 | **`msw`** | `^3.0.7` | Development & AST Tooling | Mock Service Worker v3 intercepting network requests for isolated deterministic testing. |
 | **`postcss`** | `^8.5.33` | Development & AST Tooling | CSS transformer tool for Tailwind CSS v4 processing. |
 | **`tailwindcss`** | `^4.3.5` | Development & AST Tooling | Utility-first CSS framework v4 with Oxide compiler engine. |
 | **`typescript`** | `^5.9.3` | Development & AST Tooling | Static type system verifying strict compile-time safety (zero any). |
-| **`vitest`** | `^4.1.12` | Development & AST Tooling | Fast Vite-native test runner executing all 270 unit and integration suites. |
+| **`vitest`** | `^5.1.2` | Development & AST Tooling | Fast Vite-native test runner executing all 270 unit and integration suites. |
 | **`postcss-selector-parser`** | `^7.1.6` | Supply-Chain Security Override | Supply-chain override pinning selector parser to patched secure release. |
 | **`fast-glob`** | `npm:tinyglobby@^0.2.17` | Supply-Chain Security Override | Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities. |
 | **`@typescript-eslint/typescript-estree`** | `minimatch: ^11.0.1` | Supply-Chain Security Override | Supply-chain override upgrading transitive minimatch in typescript-estree to >=11.0.1 to remediate glob pattern amplification (GHSA-g3hv-75wg-m249). |
