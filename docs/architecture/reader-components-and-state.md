@@ -1,7 +1,7 @@
 # Focus Reader, Components, Zustand State & Domain Contracts — Bookarium
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
-> **Last Synchronized**: `2026-11-24`  
+> **Last Synchronized**: `2026-11-26`  
 > **Topology Health**: `262` Modules Analyzed • `1110` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
@@ -54,7 +54,7 @@ flowchart LR
         Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]
         AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
         HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]
-        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(4 Pastel Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]
+        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(7 Archival Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
         ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • SocialSharePanel.tsx • reading-card-export.ts)"]
     end

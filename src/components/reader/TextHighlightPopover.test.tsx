@@ -15,7 +15,7 @@ describe('TextHighlightPopover', () => {
     onClose: vi.fn(),
   };
 
-  it('renders all 4 color choices and action buttons', () => {
+  it('renders all 7 color choices and action buttons', () => {
     render(<TextHighlightPopover {...defaultProps} />);
 
     expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
@@ -23,6 +23,9 @@ describe('TextHighlightPopover', () => {
     expect(screen.getByTestId('highlight-color-amber')).toBeInTheDocument();
     expect(screen.getByTestId('highlight-color-mint')).toBeInTheDocument();
     expect(screen.getByTestId('highlight-color-rose')).toBeInTheDocument();
+    expect(screen.getByTestId('highlight-color-sky')).toBeInTheDocument();
+    expect(screen.getByTestId('highlight-color-lavender')).toBeInTheDocument();
+    expect(screen.getByTestId('highlight-color-indigo')).toBeInTheDocument();
     expect(screen.getByTestId('highlight-add-note-btn')).toBeInTheDocument();
     expect(screen.getByTestId('highlight-copy-btn')).toBeInTheDocument();
   });
@@ -33,6 +36,9 @@ describe('TextHighlightPopover', () => {
 
     fireEvent.click(screen.getByTestId('highlight-color-mint'));
     expect(onSelectColor).toHaveBeenCalledWith('mint');
+
+    fireEvent.click(screen.getByTestId('highlight-color-sky'));
+    expect(onSelectColor).toHaveBeenCalledWith('sky');
   });
 
   it('expands note input and calls onSaveNote with entered text', () => {

@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Wed, 25 Nov 2026 19:12:32 GMT  
+**Last Generated**: Thu, 26 Nov 2026 09:59:57 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 270 passed  
 **Total Verified Tests**: 2806 passed  
@@ -26,10 +26,10 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.13%** (16823/17319) — *Target: $\ge$ 95%*
-- **Statements**: **95.85%** (18103/18885) — *Target: $\ge$ 95%*
-- **Functions**: **94.77%** (3595/3793) — *Target: $\ge$ 92%*
-- **Branches**: **88.15%** (16836/19098) — *Target: $\ge$ 85%*
+- **Lines**: **97.14%** (16825/17320) — *Target: $\ge$ 95%*
+- **Statements**: **95.86%** (18105/18886) — *Target: $\ge$ 95%*
+- **Functions**: **94.8%** (3597/3794) — *Target: $\ge$ 92%*
+- **Branches**: **88.15%** (16832/19094) — *Target: $\ge$ 85%*
 
 ---
 
@@ -1679,7 +1679,7 @@
 <details>
 <summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (18 tests)</summary>
 
-- ✔ `renders all 4 color choices and action buttons`
+- ✔ `renders all 7 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
 - ✔ `expands note input and calls onSaveNote with entered text`
 - ✔ `calls onCopyQuote when copy button is clicked`
@@ -4314,8 +4314,8 @@
 <details>
 <summary><b><code>src/config/annotation-tokens.test.ts</code></b> (5 tests)</summary>
 
-- ✔ `contains configurations for all 4 primary highlight colors`
-- ✔ `populates ANNOTATION_COLOR_LIST with all 4 items`
+- ✔ `contains configurations for all 7 archival highlight colors`
+- ✔ `populates ANNOTATION_COLOR_LIST with all 7 items`
 - ✔ `provides complete styling tokens for each color theme`
 - ✔ `exports valid fallback class for all colors filter badge`
 - ✔ `exports proprietary BOOKMARK_DRAWER_TOKEN leather-brown styling separate from highlight colors`

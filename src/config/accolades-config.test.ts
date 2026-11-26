@@ -61,6 +61,8 @@ describe('src/config/accolades-config', () => {
     expect(byId['century-voyager']).toBe(4);
     expect(byId['commonplace-scholar']).toBe(18);
     expect(byId['palette-virtuoso']).toBe(4);
+    const paletteAccolade = ACCOLADES_CATALOG.find((d) => d.id === 'palette-virtuoso');
+    expect(paletteAccolade?.evaluate({ highlightColorsUsed: ['sky', 'lavender', 'indigo', 'mint'] })).toBe(4);
     expect(byId['symposium-companion']).toBe(2);
     expect(byId['bibliophile-novice']).toBe(55);
     expect(byId['canonical-scholar']).toBe(55);

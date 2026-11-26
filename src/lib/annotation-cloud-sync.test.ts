@@ -241,6 +241,28 @@ describe('annotation-cloud-sync', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     };
 
+    for (const extendedColor of ['sky', 'lavender', 'indigo'] as const) {
+      expect(toAnnotationDbRow({ ...sampleAnn, color: extendedColor }, 'u1').color).toBe(
+        extendedColor
+      );
+      expect(
+        mapRowToFellowAnnotation(
+          {
+            id: `fellow-${extendedColor}`,
+            user_id: 'fellow-host',
+            book_id: 1342,
+            chapter_index: 0,
+            chapter_page: 1,
+            selected_text: 'Quote',
+            color: extendedColor,
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+          },
+          mergedMap
+        ).color
+      ).toBe(extendedColor);
+    }
+
     const queued: unknown[] = [];
     const executeSpy = vi.fn().mockResolvedValue({ error: null });
     await syncAnnotationMutation(sampleAnn, 'u1', executeSpy, (action) => queued.push(action));

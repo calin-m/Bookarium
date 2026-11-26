@@ -249,7 +249,7 @@ describe('accolades-engine', () => {
         hasCompletedAncientBook: true,
         historicalErasExplored: ['antiquity', 'middle-ages', 'renaissance'],
         totalAnnotationsCount: 15,
-        highlightColorsUsed: ['yellow', 'amber', 'mint', 'rose'],
+        highlightColorsUsed: ['yellow', 'amber', 'mint', 'rose', 'sky', 'lavender', 'indigo'],
         completedSymposiumsCount: 1,
         completedBooksCount: 52,
       };

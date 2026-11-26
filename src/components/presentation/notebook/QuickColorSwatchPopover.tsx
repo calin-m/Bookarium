@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Palette } from 'lucide-react';
 import type { HighlightColor } from '@/stores/useAnnotationStore';
 import {
-  ANNOTATION_COLOR_CONFIG,
   ANNOTATION_COLOR_LIST,
+  type AnnotationColorTheme,
 } from '@/config/annotation-tokens';
 
 export const HIGHLIGHT_COLOR_SWATCHES = ANNOTATION_COLOR_LIST.map((c) => ({
@@ -18,28 +18,16 @@ export const HIGHLIGHT_COLOR_SWATCHES = ANNOTATION_COLOR_LIST.map((c) => ({
 export const HIGHLIGHT_CARD_COLORS: Record<
   HighlightColor,
   { border: string; bg: string; text: string }
-> = {
-  yellow: {
-    border: ANNOTATION_COLOR_CONFIG.yellow.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.yellow.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.yellow.cardTextClass,
-  },
-  amber: {
-    border: ANNOTATION_COLOR_CONFIG.amber.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.amber.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.amber.cardTextClass,
-  },
-  mint: {
-    border: ANNOTATION_COLOR_CONFIG.mint.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.mint.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.mint.cardTextClass,
-  },
-  rose: {
-    border: ANNOTATION_COLOR_CONFIG.rose.cardBorderClass,
-    bg: ANNOTATION_COLOR_CONFIG.rose.cardBgClass,
-    text: ANNOTATION_COLOR_CONFIG.rose.cardTextClass,
-  },
-};
+> = Object.fromEntries(
+  ANNOTATION_COLOR_LIST.map((c: AnnotationColorTheme) => [
+    c.id,
+    {
+      border: c.cardBorderClass,
+      bg: c.cardBgClass,
+      text: c.cardTextClass,
+    },
+  ])
+) as Record<HighlightColor, { border: string; bg: string; text: string }>;
 
 export interface QuickColorSwatchPopoverProps {
   annotationId: string;

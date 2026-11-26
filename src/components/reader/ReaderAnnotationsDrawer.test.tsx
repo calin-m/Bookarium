@@ -60,6 +60,10 @@ describe('ReaderAnnotationsDrawer', () => {
   it('filters annotations by color tab', () => {
     render(<ReaderAnnotationsDrawer {...defaultProps} />);
 
+    expect(screen.getByTestId('filter-color-sky')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-color-lavender')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-color-indigo')).toBeInTheDocument();
+
     // Click Yellow filter
     fireEvent.click(screen.getByTestId('filter-color-yellow'));
     expect(screen.getByTestId('annotation-item-ann-1')).toBeInTheDocument();

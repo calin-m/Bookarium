@@ -165,7 +165,7 @@ export const ACCOLADES_CATALOG: AccoladeDefinition[] = [
     id: 'palette-virtuoso',
     title: 'Palette Virtuoso',
     latinMotto: 'Quattuor Colores',
-    description: 'Employ all 4 archival highlighter colors (Canary, Amber, Mint, Rose) in your scholarship.',
+    description: 'Employ at least 4 archival highlighter colors (Yellow, Amber, Mint, Rose, Sky, Lavender, Indigo) in your scholarship.',
     tier: 'silver',
     category: 'scholarship',
     iconName: 'Palette',

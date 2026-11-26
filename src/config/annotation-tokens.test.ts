@@ -8,14 +8,14 @@ import {
 import type { HighlightColor } from '@/stores/useAnnotationStore';
 
 describe('annotation-tokens', () => {
-  const expectedColors: HighlightColor[] = ['yellow', 'amber', 'mint', 'rose'];
+  const expectedColors: HighlightColor[] = ['yellow', 'amber', 'mint', 'rose', 'sky', 'lavender', 'indigo'];
 
-  it('contains configurations for all 4 primary highlight colors', () => {
+  it('contains configurations for all 7 archival highlight colors', () => {
     expect(Object.keys(ANNOTATION_COLOR_CONFIG)).toEqual(expectedColors);
   });
 
-  it('populates ANNOTATION_COLOR_LIST with all 4 items', () => {
-    expect(ANNOTATION_COLOR_LIST).toHaveLength(4);
+  it('populates ANNOTATION_COLOR_LIST with all 7 items', () => {
+    expect(ANNOTATION_COLOR_LIST).toHaveLength(7);
     expect(ANNOTATION_COLOR_LIST.map((c) => c.id)).toEqual(expectedColors);
   });
 

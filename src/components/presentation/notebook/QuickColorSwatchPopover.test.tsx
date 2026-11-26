@@ -1,10 +1,10 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QuickColorSwatchPopover } from './QuickColorSwatchPopover';
 
 describe('QuickColorSwatchPopover', () => {
-  it('toggles color picker popover and invokes onSelectColor when a swatch is chosen', () => {
+  it('toggles color picker popover and invokes onSelectColor when a swatch is chosen', async () => {
     const onSelectColor = vi.fn();
 
     render(
@@ -23,8 +23,14 @@ describe('QuickColorSwatchPopover', () => {
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('quick-color-popover-ann-1')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-color-btn-ann-1-sky')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-color-btn-ann-1-lavender')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-color-btn-ann-1-indigo')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('quick-color-btn-ann-1-mint'));
-    expect(onSelectColor).toHaveBeenCalledWith('ann-1', 'mint');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('quick-color-btn-ann-1-indigo'));
+    });
+    expect(onSelectColor).toHaveBeenCalledWith('ann-1', 'indigo');
+    expect(screen.queryByTestId('quick-color-popover-ann-1')).not.toBeInTheDocument();
   });
 });

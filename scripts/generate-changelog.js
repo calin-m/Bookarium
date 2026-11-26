@@ -9,6 +9,16 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.84',
+    date: '2026-11-26',
+    title: 'Extended 7-Color Archival Highlight Palette (Sky, Lavender & Indigo)',
+    sections: {
+      Added: [
+        '**7-Color Archival Highlight Palette (`src/lib/annotation-cloud-sync.ts`, `src/config/annotation-tokens.ts`, `src/app/globals.css`, `src/components/presentation/notebook/QuickColorSwatchPopover.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/config/accolades-config.ts`, `supabase/schema.sql`, `docs/DECISIONS.md`, auto-synced `docs/architecture/`)**: Extended `HighlightColor` and `ANNOTATION_COLOR_CONFIG` from `4` to `7` archival colors by adding `sky` (`Cerulean Sky`), `lavender` (`Soft Lavender`), and `indigo` (`Cobalt Indigo`) alongside `yellow`, `amber`, `mint`, and `rose`; derived `HIGHLIGHT_CARD_COLORS` dynamically from `ANNOTATION_COLOR_LIST`, added Light/Dark/Sepia `::selection` CSS rules, widened `TextHighlightPopover` fallback width (`340px`) with wrap safety, preserved `Palette Virtuoso` at `4` colors, and updated `public.user_annotations` with an idempotent `chk_user_annotations_color_valid` migration (`ADR-019`, `ADR-080`).',
+      ],
+    },
+  },
+  {
     version: '2.9.83',
     date: '2026-11-25',
     title: 'Deterministic MSW Query Polling in useBookPassageShuffle CI Suite',

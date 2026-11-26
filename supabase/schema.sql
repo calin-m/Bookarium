@@ -372,7 +372,7 @@ CREATE TABLE IF NOT EXISTS public.user_annotations (
   chapter_index INTEGER NOT NULL,
   chapter_page INTEGER NOT NULL,
   selected_text TEXT NOT NULL,
-  color TEXT NOT NULL CHECK (color IN ('yellow', 'amber', 'mint', 'rose')),
+  color TEXT NOT NULL CHECK (color IN ('yellow', 'amber', 'mint', 'rose', 'sky', 'lavender', 'indigo')),
   note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
@@ -1186,6 +1186,19 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_annotations_note_length') THEN
     ALTER TABLE public.user_annotations ADD CONSTRAINT chk_user_annotations_note_length CHECK (note IS NULL OR char_length(note) <= 10000);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'chk_user_annotations_color_valid'
+      AND conrelid = 'public.user_annotations'::regclass
+      AND pg_get_constraintdef(oid) LIKE '%indigo%'
+  ) THEN
+    ALTER TABLE public.user_annotations DROP CONSTRAINT IF EXISTS user_annotations_color_check;
+    ALTER TABLE public.user_annotations DROP CONSTRAINT IF EXISTS chk_user_annotations_color_valid;
+    ALTER TABLE public.user_annotations
+      ADD CONSTRAINT chk_user_annotations_color_valid
+      CHECK (color IN ('yellow', 'amber', 'mint', 'rose', 'sky', 'lavender', 'indigo'));
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_reading_habits_active_dates_bound') THEN
     ALTER TABLE public.user_reading_habits ADD CONSTRAINT chk_user_reading_habits_active_dates_bound CHECK (jsonb_typeof(active_dates) = 'array' AND jsonb_array_length(active_dates) <= 5000);

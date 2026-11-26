@@ -21,6 +21,9 @@ describe('NotebookFilterStrip', () => {
           { color: 'yellow' },
           { color: 'amber' },
           { color: 'yellow' },
+          { color: 'sky' },
+          { color: 'lavender' },
+          { color: 'indigo' },
         ]}
       />
     );
@@ -32,12 +35,15 @@ describe('NotebookFilterStrip', () => {
     expect(screen.getByTestId('notebook-source-all')).toHaveTextContent('All Marginalia4');
     expect(screen.getByTestId('notebook-source-mine')).toHaveTextContent('My Marginalia3');
     expect(screen.getByTestId('notebook-source-fellows')).toHaveTextContent("Fellows' Marginalia2");
+    expect(screen.getByTestId('notebook-filter-sky')).toHaveTextContent('Sky1');
+    expect(screen.getByTestId('notebook-filter-lavender')).toHaveTextContent('Lavender1');
+    expect(screen.getByTestId('notebook-filter-indigo')).toHaveTextContent('Indigo1');
 
     fireEvent.click(screen.getByTestId('notebook-source-fellows'));
     expect(onSelectSourceFilter).toHaveBeenCalledWith('fellows');
 
-    fireEvent.click(screen.getByTestId('notebook-filter-yellow'));
-    expect(onSelectColor).toHaveBeenCalledWith('yellow');
+    fireEvent.click(screen.getByTestId('notebook-filter-indigo'));
+    expect(onSelectColor).toHaveBeenCalledWith('indigo');
   });
 });
 

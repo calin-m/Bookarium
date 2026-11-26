@@ -15,7 +15,7 @@ import {
   fetchScholarProfilesMap,
 } from '@/lib/fellowship-cloud-sync';
 
-export type HighlightColor = 'yellow' | 'amber' | 'mint' | 'rose';
+export type HighlightColor = 'yellow' | 'amber' | 'mint' | 'rose' | 'sky' | 'lavender' | 'indigo';
 export type MarginaliaSourceFilter = 'all' | 'mine' | 'fellows';
 
 export interface Annotation {

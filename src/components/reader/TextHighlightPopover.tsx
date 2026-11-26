@@ -165,7 +165,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
   const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
 
-  const fallbackWidth = isNoteExpanded || fellowAnnotation ? 288 : 256;
+  const fallbackWidth = 340;
   const fallbackHeight = isNoteExpanded ? 130 : 54;
   const popoverWidth = measuredSize?.width || fallbackWidth;
   const popoverHeight = measuredSize?.height || fallbackHeight;
@@ -391,8 +391,8 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
           </div>
         ) : (
           <>
-            {/* Main Action Bar: 4 Color Swatches + Note + Copy + Delete */}
-            <div className="flex items-center gap-1.5">
+            {/* Main Action Bar: 7 Color Swatches + Note + Copy + Delete */}
+            <div className="flex flex-wrap items-center gap-1.5">
               <div className="flex items-center gap-1 pr-1.5 border-r border-stone-200/50 dark:border-stone-700/50">
                 {HIGHLIGHT_COLORS.map((c) => {
                   const isSelected = activeColor === c.id;
