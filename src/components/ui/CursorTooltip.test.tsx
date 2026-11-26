@@ -51,6 +51,7 @@ describe('CursorTooltip', () => {
 
     const tooltip = screen.getByTestId('cursor-tooltip');
     expect(tooltip).toBeInTheDocument();
+    expect(tooltip.className).toContain('z-[10020]');
     expect(tooltip).toHaveTextContent('Preview Mode');
     expect(tooltip.style.left).toBe('200px');
     expect(tooltip.style.top).toBe('300px');

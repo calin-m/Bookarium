@@ -1,28 +1,45 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { BookOpen, ZoomIn } from 'lucide-react';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import {
   stripDuplicateLeadingChapterHeading,
   type ChapterSection,
 } from '@/lib/gutenberg-parser';
-import type { FellowAnnotation } from '@/stores/useAnnotationStore';
+import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
 import { getReaderTheme } from '@/config/reader-themes';
 import { READER_FONT_CONFIG } from '@/config/reader-config';
 import { ANNOTATION_COLOR_CONFIG, BOOKMARK_DRAWER_TOKEN } from '@/config/annotation-tokens';
 import { useReaderGestures } from '@/hooks/reader/useReaderGestures';
 import {
+  MIN_ADJUSTED_SELECTION_LENGTH,
+  MAX_ADJUSTED_SELECTION_LENGTH,
   computeAnnotationSpans,
+  resolveInitialSelectionOffsets,
+  snapOffsetToWordBoundary,
+  stepSelectionBoundaryByWord,
+  expandSpanToSentenceBounds,
+  expandSpanToParagraphBounds,
+  countSpanOccurrencesInText,
   type AnyAnnotation,
 } from '@/lib/reader-annotator';
 import {
+  collectContentTextSegments,
+  buildSourceToDomOffsetMap,
   extractRowTextFromElement,
   resolveTextRowSpanInElement,
+  resolveTextOffsetFromClientPoint,
+  stepDomOffsetByRow,
+  measureSelectionEndpointRects,
 } from '@/lib/reader-bookmark-geometry';
 import { ReaderErrorView } from './ReaderErrorView';
 import { ReaderLoadingView } from './ReaderLoadingView';
 import { ReaderRowBookmark } from './ReaderRowBookmark';
+import {
+  ReaderHighlightAdjustOverlay,
+  type EndpointOverlayBox,
+} from './ReaderHighlightAdjustOverlay';
 
 export interface ReaderSurfaceProps {
   theme: ReaderTheme;
@@ -65,6 +82,9 @@ export interface ReaderSurfaceProps {
     overlappingFellow?: FellowAnnotation
   ) => void;
   onTextSelected?: (selection: { text: string; position: { top: number; left: number; bottom?: number } }) => void;
+  adjustingAnnotation?: Annotation | null;
+  onCommitAdjustSelection?: (selectedText: string) => Promise<void> | void;
+  onCancelAdjustSelection?: () => void;
 }
 
 export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
@@ -100,11 +120,28 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   bookmarkJumpNonce = 0,
   onSelectAnnotation,
   onTextSelected,
+  adjustingAnnotation = null,
+  onCommitAdjustSelection,
+  onCancelAdjustSelection,
 }) => {
   const activeTheme = getReaderTheme(theme);
   const mainRef = useRef<HTMLElement>(null);
+  const overlayContainerRef = useRef<HTMLDivElement>(null);
   const contentBodyRef = useRef<HTMLDivElement>(null);
   const bookmarkElRef = useRef<HTMLDivElement>(null);
+  const [draggingAdjustEdge, setDraggingAdjustEdge] = useState<'start' | 'end' | null>(null);
+  const [customDraftSpan, setCustomDraftSpan] = useState<{
+    key: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [endpointLayout, setEndpointLayout] = useState<{
+    key: string;
+    startBox: EndpointOverlayBox | null;
+    endBox: EndpointOverlayBox | null;
+    containerSize: { width: number; height: number };
+  } | null>(null);
+  const latestDraftSpanRef = useRef<{ start: number; end: number } | null>(null);
   const [isDraggingBookmark, setIsDraggingBookmark] = useState(false);
   const [resolvedBookmarkSpan, setResolvedBookmarkSpan] = useState<{
     text: string;
@@ -138,6 +175,309 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     isChapterBannerVisible && isFirstPageOfSection
       ? stripDuplicateLeadingChapterHeading(rawContentToDisplay, chapter)
       : rawContentToDisplay;
+
+  const adjustSessionKey =
+    adjustingAnnotation && contentToDisplay
+      ? `${adjustingAnnotation.id}:${activeChapterIndex}:${chapterPage ?? 1}:${contentToDisplay.length}`
+      : null;
+
+  const initialAdjustOffsets = useMemo(() => {
+    if (!adjustingAnnotation || !contentToDisplay) return null;
+    return resolveInitialSelectionOffsets(contentToDisplay, adjustingAnnotation.selectedText);
+  }, [adjustingAnnotation, contentToDisplay]);
+
+  const activeDraftSpan = useMemo(() => {
+    if (!adjustSessionKey) return null;
+    if (customDraftSpan && customDraftSpan.key === adjustSessionKey) {
+      return { start: customDraftSpan.start, end: customDraftSpan.end };
+    }
+    return initialAdjustOffsets
+      ? { start: initialAdjustOffsets.start, end: initialAdjustOffsets.end }
+      : null;
+  }, [adjustSessionKey, customDraftSpan, initialAdjustOffsets]);
+
+  useEffect(() => {
+    latestDraftSpanRef.current = activeDraftSpan;
+  }, [activeDraftSpan]);
+
+  const draftSelectedText = activeDraftSpan
+    ? contentToDisplay.slice(activeDraftSpan.start, activeDraftSpan.end).trim()
+    : '';
+  const draftOccurrenceCount = useMemo(
+    () =>
+      draftSelectedText
+        ? countSpanOccurrencesInText(contentToDisplay, draftSelectedText)
+        : 0,
+    [contentToDisplay, draftSelectedText]
+  );
+  const hasDraftChanged = Boolean(
+    adjustingAnnotation &&
+      activeDraftSpan &&
+      draftSelectedText.length >= MIN_ADJUSTED_SELECTION_LENGTH &&
+      draftSelectedText.length <= MAX_ADJUSTED_SELECTION_LENGTH &&
+      draftSelectedText !== adjustingAnnotation.selectedText.trim()
+  );
+
+  const effectiveAnnotations = useMemo(() => {
+    if (
+      !adjustingAnnotation ||
+      !activeDraftSpan ||
+      draftSelectedText.length < MIN_ADJUSTED_SELECTION_LENGTH ||
+      draftSelectedText.length > MAX_ADJUSTED_SELECTION_LENGTH
+    ) {
+      return annotations;
+    }
+    return annotations.map((ann) =>
+      ann.id === adjustingAnnotation.id && !('isFellow' in ann && ann.isFellow)
+        ? { ...ann, selectedText: draftSelectedText }
+        : ann
+    );
+  }, [annotations, adjustingAnnotation, activeDraftSpan, draftSelectedText]);
+
+  const applyAdjustedSpan = useCallback(
+    (nextStart: number, nextEnd: number) => {
+      if (!adjustSessionKey) return;
+      let s = Math.max(0, Math.min(nextStart, contentToDisplay.length));
+      let e = Math.max(s, Math.min(nextEnd, contentToDisplay.length));
+      while (s < e && /\s/.test(contentToDisplay[s])) s++;
+      while (e > s && /\s/.test(contentToDisplay[e - 1])) e--;
+      const trimmedLen = contentToDisplay.slice(s, e).trim().length;
+      if (
+        trimmedLen < MIN_ADJUSTED_SELECTION_LENGTH ||
+        trimmedLen > MAX_ADJUSTED_SELECTION_LENGTH
+      ) {
+        return;
+      }
+      latestDraftSpanRef.current = { start: s, end: e };
+      setCustomDraftSpan({ key: adjustSessionKey, start: s, end: e });
+    },
+    [adjustSessionKey, contentToDisplay]
+  );
+
+  const handleStepAdjustWord = useCallback(
+    (edge: 'start' | 'end', direction: -1 | 1) => {
+      const curSpan = latestDraftSpanRef.current;
+      if (!curSpan || !contentToDisplay) return;
+      const stepped = stepSelectionBoundaryByWord(
+        contentToDisplay,
+        curSpan.start,
+        curSpan.end,
+        edge,
+        direction
+      );
+      if (stepped.start !== curSpan.start || stepped.end !== curSpan.end) {
+        applyAdjustedSpan(stepped.start, stepped.end);
+      }
+    },
+    [contentToDisplay, applyAdjustedSpan]
+  );
+
+  const handleStepAdjustRow = useCallback(
+    (edge: 'start' | 'end', direction: -1 | 1) => {
+      const el = contentBodyRef.current;
+      const curSpan = latestDraftSpanRef.current;
+      if (!el || !curSpan || !contentToDisplay) return;
+      const segments = collectContentTextSegments(el);
+      const { sourceToDom, domToSource, domTotalChars } = buildSourceToDomOffsetMap(
+        contentToDisplay,
+        segments
+      );
+      if (domTotalChars <= 0) return;
+
+      const sourceAnchor =
+        edge === 'start' ? curSpan.start : Math.max(curSpan.start, curSpan.end - 1);
+      const currentDom = Math.min(domTotalChars - 1, Math.max(0, sourceToDom[sourceAnchor] ?? 0));
+      const nextDom = stepDomOffsetByRow(el, currentDom, direction);
+      if (nextDom === null) return;
+
+      const rawSource =
+        domToSource[Math.max(0, Math.min(nextDom, domToSource.length - 1))] ?? sourceAnchor;
+      const snapped = snapOffsetToWordBoundary(contentToDisplay, rawSource, edge);
+      if (edge === 'start' && snapped < curSpan.end) {
+        applyAdjustedSpan(snapped, curSpan.end);
+      } else if (edge === 'end' && snapped > curSpan.start) {
+        applyAdjustedSpan(curSpan.start, snapped);
+      }
+    },
+    [contentToDisplay, applyAdjustedSpan]
+  );
+
+  const handleExpandAdjustSentence = useCallback(() => {
+    const curSpan = latestDraftSpanRef.current;
+    if (!curSpan || !contentToDisplay) return;
+    const expanded = expandSpanToSentenceBounds(contentToDisplay, curSpan.start, curSpan.end);
+    applyAdjustedSpan(expanded.start, expanded.end);
+  }, [contentToDisplay, applyAdjustedSpan]);
+
+  const handleExpandAdjustParagraph = useCallback(() => {
+    const curSpan = latestDraftSpanRef.current;
+    if (!curSpan || !contentToDisplay) return;
+    const expanded = expandSpanToParagraphBounds(contentToDisplay, curSpan.start, curSpan.end);
+    applyAdjustedSpan(expanded.start, expanded.end);
+  }, [contentToDisplay, applyAdjustedSpan]);
+
+  const handleCommitAdjust = useCallback(() => {
+    if (!hasDraftChanged || !draftSelectedText) return;
+    void onCommitAdjustSelection?.(draftSelectedText);
+  }, [hasDraftChanged, draftSelectedText, onCommitAdjustSelection]);
+
+  const canExpandSentence = useMemo(() => {
+    if (!activeDraftSpan || !contentToDisplay) return false;
+    const next = expandSpanToSentenceBounds(
+      contentToDisplay,
+      activeDraftSpan.start,
+      activeDraftSpan.end
+    );
+    return next.start < activeDraftSpan.start || next.end > activeDraftSpan.end;
+  }, [activeDraftSpan, contentToDisplay]);
+
+  const canExpandParagraph = useMemo(() => {
+    if (!activeDraftSpan || !contentToDisplay) return false;
+    const next = expandSpanToParagraphBounds(
+      contentToDisplay,
+      activeDraftSpan.start,
+      activeDraftSpan.end
+    );
+    return next.start < activeDraftSpan.start || next.end > activeDraftSpan.end;
+  }, [activeDraftSpan, contentToDisplay]);
+
+  const isMaxLengthReached = useMemo(() => {
+    if (!activeDraftSpan || !contentToDisplay) return false;
+    if (draftSelectedText.length >= MAX_ADJUSTED_SELECTION_LENGTH) return true;
+    const bounded = expandSpanToParagraphBounds(
+      contentToDisplay,
+      activeDraftSpan.start,
+      activeDraftSpan.end
+    );
+    const unbounded = expandSpanToParagraphBounds(
+      contentToDisplay,
+      activeDraftSpan.start,
+      activeDraftSpan.end,
+      Number.MAX_SAFE_INTEGER
+    );
+    return unbounded.end - unbounded.start > bounded.end - bounded.start;
+  }, [activeDraftSpan, contentToDisplay, draftSelectedText]);
+
+  // Measure endpoint bounding rects for start/end crop handles & toolbar
+  useEffect(() => {
+    if (!adjustSessionKey || !activeDraftSpan || !contentToDisplay) return;
+    const bodyEl = contentBodyRef.current;
+    const containerEl = overlayContainerRef.current;
+    if (!bodyEl || !containerEl || typeof window === 'undefined') return;
+
+    const syncEndpointLayout = () => {
+      const containerRect = containerEl.getBoundingClientRect();
+      const containerSize = {
+        width: containerRect.width || containerEl.clientWidth || 640,
+        height: containerRect.height || containerEl.clientHeight || 0,
+      };
+      const endpoints = measureSelectionEndpointRects(
+        bodyEl,
+        contentToDisplay,
+        activeDraftSpan.start,
+        activeDraftSpan.end
+      );
+      const toRelativeBox = (r: DOMRect): EndpointOverlayBox => ({
+        top: r.top - containerRect.top,
+        left: r.left - containerRect.left,
+        bottom: r.bottom - containerRect.top,
+        right: r.right - containerRect.left,
+        width: r.width,
+        height: r.height,
+      });
+      setEndpointLayout({
+        key: adjustSessionKey,
+        startBox: endpoints ? toRelativeBox(endpoints.startRect) : null,
+        endBox: endpoints ? toRelativeBox(endpoints.endRect) : null,
+        containerSize,
+      });
+    };
+
+    syncEndpointLayout();
+    const rafId = window.requestAnimationFrame(syncEndpointLayout);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(syncEndpointLayout);
+      observer.observe(bodyEl);
+    }
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      observer?.disconnect();
+    };
+  }, [
+    adjustSessionKey,
+    activeDraftSpan,
+    contentToDisplay,
+    fontSize,
+    lineHeight,
+    fontFamily,
+    columnWidth,
+  ]);
+
+  // Window drag listeners for Start/End crop handles (row-snapped vertical + word-snapped horizontal)
+  useEffect(() => {
+    if (!draggingAdjustEdge || !adjustSessionKey || !contentToDisplay) return;
+
+    const updateFromClientPoint = (clientX: number, clientY: number) => {
+      const bodyEl = contentBodyRef.current;
+      const curSpan = latestDraftSpanRef.current;
+      if (!bodyEl || !curSpan) return;
+
+      const domOffset = resolveTextOffsetFromClientPoint(bodyEl, clientX, clientY);
+      if (domOffset === null) return;
+
+      const segments = collectContentTextSegments(bodyEl);
+      const { domToSource } = buildSourceToDomOffsetMap(contentToDisplay, segments);
+      const rawSourceOffset =
+        domToSource[Math.max(0, Math.min(domOffset, domToSource.length - 1))] ?? 0;
+      const snapped = snapOffsetToWordBoundary(
+        contentToDisplay,
+        rawSourceOffset,
+        draggingAdjustEdge
+      );
+
+      if (draggingAdjustEdge === 'start') {
+        if (snapped < curSpan.end) {
+          applyAdjustedSpan(snapped, curSpan.end);
+        }
+      } else if (snapped > curSpan.start) {
+        applyAdjustedSpan(curSpan.start, snapped);
+      }
+    };
+
+    const handlePointerMove = (e: PointerEvent | MouseEvent) => {
+      updateFromClientPoint(e.clientX, e.clientY);
+    };
+    const handleTouchMoveWindow = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        if (e.cancelable) e.preventDefault();
+        updateFromClientPoint(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const handleDragEnd = () => {
+      setDraggingAdjustEdge(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('touchmove', handleTouchMoveWindow, { passive: false });
+    window.addEventListener('pointerup', handleDragEnd);
+    window.addEventListener('pointercancel', handleDragEnd);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchend', handleDragEnd);
+    window.addEventListener('touchcancel', handleDragEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('touchmove', handleTouchMoveWindow);
+      window.removeEventListener('pointerup', handleDragEnd);
+      window.removeEventListener('pointercancel', handleDragEnd);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchend', handleDragEnd);
+      window.removeEventListener('touchcancel', handleDragEnd);
+    };
+  }, [draggingAdjustEdge, adjustSessionKey, contentToDisplay, applyAdjustedSpan]);
   const estimatedMaxBookmarkRows = Math.max(10, Math.ceil((contentToDisplay?.length || 800) / 65));
   const isBookmarkActive = bookmarkRow > 0 || isDraggingBookmark;
   const activeSpan =
@@ -537,7 +877,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   }, [targetAnnotationId, currentPageText, activeChapterIndex, isLoading, readingMode]);
 
   const handleSelection = useCallback(() => {
-    if (typeof window === 'undefined' || !onTextSelected) return;
+    if (typeof window === 'undefined' || !onTextSelected || adjustingAnnotation) return;
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
@@ -596,7 +936,7 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
     } catch {
       // Non-blocking fallback
     }
-  }, [onTextSelected]);
+  }, [onTextSelected, adjustingAnnotation]);
 
   // Listen to standard selectionchange event (essential for mobile & tactile touch selection handles)
   useEffect(() => {
@@ -721,8 +1061,8 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
             </header>
           ) : null}
 
-          {/* Standard Reading Body with Interactive Margin Row Bookmark */}
-          <div className="relative">
+          {/* Standard Reading Body with Interactive Margin Row Bookmark & Highlight Adjust Overlay */}
+          <div ref={overlayContainerRef} className="relative">
             {contentToDisplay && (
               <ReaderRowBookmark
                 bookmarkElRef={bookmarkElRef}
@@ -743,6 +1083,45 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
               />
             )}
 
+            {adjustingAnnotation && activeDraftSpan && contentToDisplay && (
+              <ReaderHighlightAdjustOverlay
+                annotation={adjustingAnnotation}
+                draftStart={activeDraftSpan.start}
+                draftEnd={activeDraftSpan.end}
+                totalTextLength={contentToDisplay.length}
+                draftText={draftSelectedText}
+                occurrenceCount={draftOccurrenceCount}
+                hasChanged={hasDraftChanged}
+                canExpandSentence={canExpandSentence}
+                canExpandParagraph={canExpandParagraph}
+                isMaxLengthReached={isMaxLengthReached}
+                startBox={
+                  endpointLayout?.key === adjustSessionKey ? endpointLayout.startBox : null
+                }
+                endBox={
+                  endpointLayout?.key === adjustSessionKey ? endpointLayout.endBox : null
+                }
+                containerSize={
+                  endpointLayout?.key === adjustSessionKey
+                    ? endpointLayout.containerSize
+                    : { width: 640, height: 0 }
+                }
+                draggingEdge={draggingAdjustEdge}
+                theme={theme}
+                onStartDrag={(edge) => setDraggingAdjustEdge(edge)}
+                onStepWord={handleStepAdjustWord}
+                onStepRow={handleStepAdjustRow}
+                onExpandSentence={handleExpandAdjustSentence}
+                onExpandParagraph={handleExpandAdjustParagraph}
+                onSave={handleCommitAdjust}
+                onCancel={() => {
+                  setDraggingAdjustEdge(null);
+                  setCustomDraftSpan(null);
+                  onCancelAdjustSelection?.();
+                }}
+              />
+            )}
+
             <div
               ref={contentBodyRef}
               data-testid="reader-content-body"
@@ -755,10 +1134,11 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
               {contentToDisplay ? (
                 renderContentWithAnnotations(
                   contentToDisplay,
-                  annotations,
+                  effectiveAnnotations,
                   highlightedSentence,
                   theme,
-                  onSelectAnnotation
+                  adjustingAnnotation ? undefined : onSelectAnnotation,
+                  adjustingAnnotation?.id
                 )
               ) : (
                 <div className={`p-8 text-center text-xs font-mono ${activeTheme.textMuted}`}>
@@ -782,7 +1162,8 @@ function renderContentWithAnnotations(
     annotation: AnyAnnotation,
     position?: { top: number; left: number },
     overlappingFellow?: FellowAnnotation
-  ) => void
+  ) => void,
+  priorityAnnotationId?: string
 ): React.ReactNode {
   if (!highlightedSentence && (!annotations || annotations.length === 0)) {
     return text;
@@ -815,7 +1196,11 @@ function renderContentWithAnnotations(
     );
   };
 
-  const cleanSpans = computeAnnotationSpans(text, annotations || []);
+  const cleanSpans = computeAnnotationSpans(
+    text,
+    annotations || [],
+    priorityAnnotationId ? { priorityAnnotationId } : undefined
+  );
 
   if (cleanSpans.length === 0) {
     return renderSliceWithSpeechHighlight(text, 'text-full');

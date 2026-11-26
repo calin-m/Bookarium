@@ -1778,6 +1778,89 @@ describe('useAnnotationStore', () => {
       vi.useRealTimers();
     }
   });
+
+  it('updates highlight selection boundaries locally, syncs to Supabase for signed-in users, queues outbox on failure, and enforces length/no-op guards', async () => {
+    const created = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'sky',
+      note: 'Opening reflection',
+    });
+
+    // Reject < 2 chars or missing ID cleanly without mutating state
+    await expect(
+      useAnnotationStore.getState().updateAnnotationSelection(created.id, ' a ')
+    ).resolves.toBe(false);
+    await expect(
+      useAnnotationStore.getState().updateAnnotationSelection('missing-id', 'valid text')
+    ).resolves.toBe(false);
+    expect(useAnnotationStore.getState().annotations[0].selectedText).toBe(
+      'It is a truth universally acknowledged'
+    );
+
+    // No-op when normalized selectedText and chapterPage match existing state
+    const noOpResult = await useAnnotationStore
+      .getState()
+      .updateAnnotationSelection(created.id, '  It is a truth universally acknowledged  ', 1, 'user-1');
+    expect(noOpResult).toBe(true);
+    expect(mockUpdate).not.toHaveBeenCalled();
+
+    // Valid shrink/expand updates optimistic local store and persists selected_text & chapter_page to Supabase
+    const mockEqUser = vi.fn().mockResolvedValue({ error: null });
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqUser });
+    mockUpdate.mockReturnValueOnce({ eq: mockEqId });
+
+    const ok = await useAnnotationStore
+      .getState()
+      .updateAnnotationSelection(
+        created.id,
+        '  It is a truth universally acknowledged, that a single man in possession of a good fortune.  ',
+        2,
+        'user-1'
+      );
+
+    expect(ok).toBe(true);
+    const updated = useAnnotationStore.getState().annotations[0];
+    expect(updated.selectedText).toBe(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune.'
+    );
+    expect(updated.chapterPage).toBe(2);
+    expect(updated.note).toBe('Opening reflection');
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selected_text:
+          'It is a truth universally acknowledged, that a single man in possession of a good fortune.',
+        chapter_page: 2,
+      })
+    );
+    expect(mockEqId).toHaveBeenCalledWith('id', created.id);
+    expect(mockEqUser).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(useAnnotationStore.getState().outbox).toHaveLength(0);
+
+    // Cloud failure queues UPSERT_ANNOTATION outbox item while retaining optimistic local selection
+    const failEqUser = vi.fn().mockResolvedValue({ error: { message: 'network offline' } });
+    const failEqId = vi.fn().mockReturnValue({ eq: failEqUser });
+    mockUpdate.mockReturnValueOnce({ eq: failEqId });
+
+    const queuedOk = await useAnnotationStore
+      .getState()
+      .updateAnnotationSelection(created.id, 'a single man', 2, 'user-1');
+    expect(queuedOk).toBe(true);
+    expect(useAnnotationStore.getState().annotations[0].selectedText).toBe('a single man');
+    expect(useAnnotationStore.getState().outbox).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'UPSERT_ANNOTATION',
+          payload: expect.objectContaining({
+            id: created.id,
+            selected_text: 'a single man',
+          }),
+        }),
+      ])
+    );
+  });
 });
 
 

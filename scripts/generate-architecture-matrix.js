@@ -1063,7 +1063,7 @@ function generateMarkdown() {
     '            StoreTheme[("🎨 useThemeStore\\n(day, sepia, obsidian)")]',
     '            StoreAuth[("🔐 useAuthStore\\n(session, cloud migration, profile)")]',
     '            StorePref[("⚙️ usePreferencesStore\\n(sticky scroll, layout choices, customDefaults)")]',
-    '            StoreAnnot[("🖍️ useAnnotationStore\\n(pastel highlights, notes, tags)")]',
+    '            StoreAnnot[("🖍️ useAnnotationStore\\n(7-color highlights, notes, boundary updates, tags)")]',
     '            StoreHabits[("🔥 useHabitsStore\\n(streak, 5m threshold, dual immersion, cloud)")]',
     '            StoreAccolades[("🎖️ useAccoladesStore\\n(accolades, showcase pinning, celebrations, cloud)")]',
     '            StoreFellowship[("🤝 useFellowshipStore\\n(reader circles, symposiums, companion progress, cloud)")]',
@@ -1079,7 +1079,7 @@ function generateMarkdown() {
     '            TimerHook["⏱️ useReadingTimer\\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]',
     '            WorkerHook["⚙️ useGutenbergParserWorker\\n(Persistent Worker Chapter AST)"]',
     '            LedgerHook["🔖 useContinueReadingLedger\\n(Two-Way Hydration & 0ms Resume)"]',
-    '            AnnotatorEngine["🖍️ reader-annotator.ts & reader-bookmark-geometry.ts\\n(Interval Partitioning, Canonical Span Matcher & Row Geometry)"]',
+    '            AnnotatorEngine["🖍️ reader-annotator.ts & reader-bookmark-geometry.ts\\n(Interval Partitioning, Span Boundary Snapping & Row Geometry)"]',
     '        end',
     '        ',
     '        HookCopyright["⚖️ useBookCopyright\\n(Declarative Facade: Rules, Lifespans & Status)"]',
@@ -1342,7 +1342,7 @@ function generateMarkdown() {
     '    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx • useReaderHabitTelemetry)"]',
     '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Share Action + Desktop lg: Tools • Tactile Slide)"]',
     '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]',
-    '        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • reader-bookmark-geometry.ts • startRow->endRow Span)"]',
+    '        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • ReaderHighlightAdjustOverlay • reader-bookmark-geometry.ts)"]',
     '        ProgressBar["Top Reading Progress Indicator"]',
     '        ResumeToast["Exact-Page Auto-Resume Toast"]',
     '        FooterBar["Sticky Bottom Pagination, Page Jump & Unified Mobile/Tablet (<1024px) Tools Pod (ReaderFooter • Tactile Slide)"]',
@@ -1351,7 +1351,7 @@ function generateMarkdown() {
     '        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]',
     '        Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]',
     '        AudioBar["Speech Narration Bar (ReaderSpeechBar)\\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]',
-    '        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]',
+    '        HighlightPop["Highlight & Selection Adjust Overlays (TextHighlightPopover • ReaderHighlightAdjustOverlay • + Sentence/+ Paragraph)"]',
     '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(7 Archival Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]',
     '        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]',
     '        ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • SocialSharePanel.tsx • reading-card-export.ts)"]',
@@ -1487,7 +1487,7 @@ function generateMarkdown() {
     useAccoladesStore:
       `Deterministic literary accolades evaluation, celebration queues, personal showcase pinning (max ${runtimeSpec.stores.maxPinnedAccolades} bookplates), offline pin mutation queue (\`pendingPinUpdates\`), per-user coalesced (\`coalesceInFlightByUser\`) Supabase cloud synchronization with dirty-rerun tracking, and opt-in \`15,000ms\` passive mount cooldown (\`lastAccoladesSyncByUser\`, \`invalidateAccoladesSyncCooldown\`).`,
     useAnnotationStore:
-      'Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), per-user coalesced (`coalesceInFlightByUser`) cloud outbox synchronization with retry-loop-safe dirty tracking, and opt-in `15,000ms` passive mount/drawer cooldowns (`lastPassiveAnnotationSyncByUser`, `lastFellowBookSyncByKey`, `invalidateAnnotationSyncCooldown`) decoupled from persisted `lastAnnotationSyncAt` LWW tracking.',
+      'Scholar marginalia, categorical archival highlights across 7 colors (Yellow, Amber, Mint, Rose, Sky, Lavender, Indigo), Save-gated boundary resizing (`updateAnnotationSelection` with `localStorage` + `user_annotations` outbox sync), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), per-user coalesced (`coalesceInFlightByUser`) cloud outbox synchronization with retry-loop-safe dirty tracking, and opt-in `15,000ms` passive mount/drawer cooldowns (`lastPassiveAnnotationSyncByUser`, `lastFellowBookSyncByKey`, `invalidateAnnotationSyncCooldown`) decoupled from persisted `lastAnnotationSyncAt` LWW tracking.',
     useAuthStore:
       'Supabase session authentication with module-scoped `inFlightInitialUserCheck` Strict-Mode deduplication and synchronous `INITIAL_SESSION` racing protection, Google OAuth PKCE (`signInWithOAuth`), connected identities linking/unlinking (`linkOAuthIdentity`, `unlinkOAuthIdentity`), anti-lockout protection (`hasPasswordIdentity`), transient reload error resilience (`sessionData.session.user` preservation), Cloudflare Turnstile `captchaToken` forwarding (`signInWithPassword`, `signUpWithPassword`, `signInWithOtp`, `resetPasswordForEmail`, `resendVerificationEmail`), fail-closed password recovery verification (`verifyPasswordRecoverySession`, `isPasswordRecovery` validated via Supabase JWT `amr` claims + `3600s` TTL and single-use `bookarium-consumed-recovery` markers via `markRecoveryConsumed` / `clearConsumedRecoveryMarker` in `src/lib/auth-recovery.ts`), anonymous local `getSession()` guard before `getUser()`, scoped sign-out (`signOut(scope = \'local\')` default preserving remote/sibling-origin sessions, plus `signOutOtherDevices()` with `{ scope: \'others\' }` verifying `verifyActiveSessionValidity({ force: true })` and explicit `{ scope: \'global\' }` in `deleteAccount()`), active session inspection and strict per-device revocation (`listActiveSessions`, `revokeSession` via `get_active_sessions`/`revoke_user_session` RPCs checking missing `isCurrent` and explicit boolean `false` already-ended results with graceful `PGRST202`/`42883` fallback), throttled coalesced remote session validation (`verifyActiveSessionValidity` enforcing pre-commit local store teardown via coalesced `resetClientAuthState` on `400/401/403 session_not_found` while preserving transient offline/`5xx` errors), durable reload-safe teardown recovery (`bookarium-pending-store-cleanup` via `STORAGE_KEYS.PENDING_STORE_CLEANUP` stamped synchronously across `resetClientAuthState` and `onAuthStateChange` and flushed cleanly inside `initializeAuth` when interrupted mid-reload), non-blocking server-origin IP/UA reconciliation (`reconcileClientSessionOrigin` consuming `bookarium-client-ip-sync`), pre-sync active JWT session verification (`hasSupabaseAuthCookie`, `shouldVerifyCloudSession`, `verifyActiveCloudSession`) invoking full coalesced `resetClientAuthState` (`wipeDeviceStorage: false`) when cookies are cleared (`bookarium-auth-hint=guest`), offline-persisted profile & user state (`bookarium-auth-profile`), optimistic offline profile outbox (`pendingProfileUpdates`), shared `coalesceInFlightByUser` profile coalescing with opt-in passive cooldown (`lastProfileSyncByUser`, `minSyncIntervalMs`), OWASP current-password re-authentication (`updatePassword`), complete 10-store session teardown & IndexedDB/speech/sessionStorage erasure on account deletion (`clearLocalUserStores`), and cloud profile synchronization with live companion identity propagation.',
     useBookshelfStore:
@@ -1910,7 +1910,7 @@ function generateMarkdown() {
     useOfflineCoverImage: 'Shared local-first cover cache & same-origin R2 routing hook (`getMemoryCachedCoverUrl` -> IndexedDB `offline_books`/`cover_cache` -> `resolveBookCoverUrl` mapping all Gutenberg/mirror URLs strictly to same-origin `/api/books/content?id=<bookId>&type=cover`), with immediate `imageError = true` fallback to dark typographic card artwork on failure, background `warmCoverCache` persistence on load (`onLoad`), and owned `URL.revokeObjectURL` unmount cleanup (`BookCard`, `BookmarkCard`, `BookPreviewModal`).',
     usePersonalCollectionsController:
       'Centralized controller hook for Bookshelf and Favorites filtering (`!is_default` drawer shelf deduplication, unified top-bar `Favorites` dropdown preset + orthogonal monochrome drawer `shelfFavoritesOnly` switch composable with sort & direction, and contextual empty states), bidirectional sorting, custom shelf resolution, pagination reset, and clear-confirmation modal state (`src/app/page.tsx`).',
-    useReaderAnnotationActions: 'Encapsulated Focus Reader text-selection popover state, overlapping fellow/own annotation matching (`matchedPopoverAnnotations`), and highlight/note CRUD handlers (`src/app/read/[id]/page.tsx`).',
+    useReaderAnnotationActions: 'Encapsulated Focus Reader text-selection popover state, overlapping fellow/own annotation matching (`matchedPopoverAnnotations`), Save-gated interactive highlight selection boundary editing (`adjustingAnnotation`, `startAdjustingSelection`, `cancelAdjustingSelection`, `commitAdjustedSelection`), and highlight/note CRUD handlers (`src/app/read/[id]/page.tsx`).',
     useReaderExitBookmark: 'Encapsulated reader exit interception, cross-device `findCanonicalTextSpan` bookmark-ahead reflow resolution (`hasBookmarkAhead`), layered drawer-first & `Escape` key dismissal, 3-page activation threshold modal gating, and line-1 bookmark placement (`src/app/read/[id]/page.tsx`).',
     useDialogFocusTrap: 'Shared accessible overlay focus-trap, Escape-key dismissal, and trigger-element focus-restoration hook (`autoFocus?: boolean`, `{ preventScroll: true }`) used across `Modal`, `AuthModal`, `BottomSheetDrawerShell`, and `AccoladeCelebrationModal`.',
   };
@@ -1981,7 +1981,7 @@ function generateMarkdown() {
     'rate-limiter':
       'Zero-dependency `globalThis`-anchored sliding-window rate limiters (`booksApiRateLimiter` 60/min, `bookContentRateLimiter` 30/min, `bookCardRateLimiter` 20/min, `bookCoverRateLimiter` 60/min, `profileCardRateLimiter` 20/min) with automatic 30s GC and warm-instance persistence.',
     'reader-annotator':
-      'Scholarly marginalia interval partitioning, character-index-mapped canonical span matching (`findCanonicalTextSpan`, `findAllCanonicalTextSpans`), overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`).',
+      'Scholarly marginalia interval partitioning (`computeAnnotationSpans` with optional `priorityAnnotationId` live adjust precedence), character-index-mapped canonical span matching (`findCanonicalTextSpan`, `findAllCanonicalTextSpans`), interactive boundary helpers (`resolveInitialSelectionOffsets`, `snapOffsetToWordBoundary`, `stepSelectionBoundaryByWord`, `expandSpanToSentenceBounds`, `expandSpanToParagraphBounds` with whitespace-padded blank-line support and `5,000`-char sentence/word ceiling clamping, `countSpanOccurrencesInText`), overlapping annotation pairing (`pairOverlappingAnnotations`), and shared quote span segmentation (`computeSharedQuoteSegments`).',
     'reading-analytics':
       'Streak calculation, 5-minute immersion thresholds, reading speed metrics, annual reading goal progress, deduplicated completed volume counting (`calculateCompletedBooksCount`), and public scholar habit telemetry resolution (`resolvePublicReadingHabits`).',
     'auth-recovery':
@@ -2019,7 +2019,7 @@ function generateMarkdown() {
     'reader-layout-utils':
       '2-tier server-side metadata resolution (`fetchBookData`: `Supabase public.books` -> bundled `FEATURED_HERO_BOOKS` with zero external HTTP calls), `globalThis`-anchored metadata LRU (`__bookariumServerMetadataCache`) and confirmed-missing ID tracking (`__bookariumConfirmedNotFoundIds` / `isConfirmedMissingBook`), re-exported `isClientSideNavigation`, and non-visual SEO payload builder (`buildReaderSeoMetadataPayload` with featured `openingLine` hooks, lifespan contributors, and encoding MIME formats) for `/read/[id]` OpenGraph, Twitter Card, and Schema.org JSON-LD generation.',
     'reader-bookmark-geometry':
-      'DOM text-node walker (`collectContentTextSegments`), character range measurement (`measureCharRect`), ratio-weighted passage matching (`findBestTextMatch`), and binary-searched row text/span resolution (`extractRowTextFromElement`, `resolveTextRowSpanInElement`).',
+      'DOM text-node walker (`collectContentTextSegments`), source-to-DOM character alignment (`buildSourceToDomOffsetMap`), character range measurement (`measureCharRect`), ratio-weighted passage matching (`findBestTextMatch`), binary-searched row text/span resolution (`extractRowTextFromElement`, `resolveTextRowSpanInElement`), and row-snapped highlight crop endpoint geometry (`resolveTextOffsetFromClientPoint`, `stepDomOffsetByRow`, `measureSelectionEndpointRects`).',
     'annotation-cloud-sync':
       'Scholarly annotation and fellow marginalia cloud synchronization helpers, RFC 4122 v4 UUID generator (`generateValidAnnotationUuid`), non-regressive scholar handle resolution (`setOrUpdateFellowMapEntry`, `buildFellowScholarsMap`), and outbox payload mappers.',
     'fellowship-cloud-sync':

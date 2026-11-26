@@ -8,6 +8,12 @@ import {
   findMatchingOwnAnnotation,
   findCanonicalTextSpan,
   findAllCanonicalTextSpans,
+  resolveInitialSelectionOffsets,
+  countSpanOccurrencesInText,
+  snapOffsetToWordBoundary,
+  stepSelectionBoundaryByWord,
+  expandSpanToSentenceBounds,
+  expandSpanToParagraphBounds,
 } from './reader-annotator';
 import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
 
@@ -632,6 +638,144 @@ describe('filterAndPairAnnotationsBySource', () => {
       isExact: true,
       fullQuote: 'Unrelated one',
     });
+  });
+
+  it('resolves initial offsets, snaps word boundaries, and expands abbreviation-safe sentence and paragraph spans', () => {
+    const chapter =
+      'Mr. Bennet was among the earliest of those who waited on Mr. Bingley. He had always intended to visit him.\n\nMrs. Bennet smiled—warmly indeed—while tea was served.';
+
+    const initial = resolveInitialSelectionOffsets(chapter, 'earliest of those');
+    expect(initial).not.toBeNull();
+    expect(chapter.slice(initial!.start, initial!.end)).toBe('earliest of those');
+    expect(initial!.occurrenceCount).toBe(1);
+
+    // Repeating short snippet surfaces ambiguity count accurately
+    expect(countSpanOccurrencesInText(chapter, 'Bennet')).toBe(2);
+
+    // Mid-word offsets snap outward/inward cleanly without slicing words or keeping spaces
+    expect(snapOffsetToWordBoundary(chapter, initial!.start + 3, 'start')).toBe(initial!.start);
+    expect(snapOffsetToWordBoundary(chapter, initial!.end - 2, 'end')).toBe(initial!.end);
+    const emDashStart = chapter.indexOf('warmly');
+    const snappedAfterDash = snapOffsetToWordBoundary(chapter, emDashStart, 'start');
+    expect(chapter.slice(snappedAfterDash, emDashStart + 6)).toBe('warmly');
+
+    // Keyboard step nudges expand/shrink cleanly word-by-word without shrinking below 2 chars
+    const expandedRight = stepSelectionBoundaryByWord(
+      chapter,
+      initial!.start,
+      initial!.end,
+      'end',
+      1
+    );
+    expect(chapter.slice(expandedRight.start, expandedRight.end)).toBe('earliest of those who');
+
+    const shrunkRight = stepSelectionBoundaryByWord(
+      chapter,
+      expandedRight.start,
+      expandedRight.end,
+      'end',
+      -1
+    );
+    expect(chapter.slice(shrunkRight.start, shrunkRight.end)).toBe('earliest of those');
+
+    // + Sentence respects Mr./Mrs. abbreviations without breaking mid-sentence, and second click appends next sentence
+    const oneSentence = expandSpanToSentenceBounds(chapter, initial!.start, initial!.end);
+    expect(chapter.slice(oneSentence.start, oneSentence.end)).toBe(
+      'Mr. Bennet was among the earliest of those who waited on Mr. Bingley.'
+    );
+
+    const twoSentences = expandSpanToSentenceBounds(chapter, oneSentence.start, oneSentence.end);
+    expect(chapter.slice(twoSentences.start, twoSentences.end)).toBe(
+      'Mr. Bennet was among the earliest of those who waited on Mr. Bingley. He had always intended to visit him.'
+    );
+
+    // + Paragraph expands to trimmed paragraph break, then appends second paragraph on repeat click
+    const oneParagraph = expandSpanToParagraphBounds(chapter, initial!.start, initial!.end);
+    expect(chapter.slice(oneParagraph.start, oneParagraph.end)).toBe(
+      'Mr. Bennet was among the earliest of those who waited on Mr. Bingley. He had always intended to visit him.'
+    );
+
+    const twoParagraphs = expandSpanToParagraphBounds(
+      chapter,
+      oneParagraph.start,
+      oneParagraph.end
+    );
+    expect(chapter.slice(twoParagraphs.start, twoParagraphs.end)).toBe(chapter);
+
+    // Step Start boundary left/right, respect e.g. abbreviations & ellipsis, and clamp minimum bounds
+    const startExpandedLeft = stepSelectionBoundaryByWord(chapter, initial!.start, initial!.end, 'start', -1);
+    expect(chapter.slice(startExpandedLeft.start, startExpandedLeft.end)).toBe('the earliest of those');
+    const startShrunkRight = stepSelectionBoundaryByWord(
+      chapter,
+      startExpandedLeft.start,
+      startExpandedLeft.end,
+      'start',
+      1
+    );
+    expect(chapter.slice(startShrunkRight.start, startShrunkRight.end)).toBe('earliest of those');
+
+    const abbrevProse = 'Wait... Dr. J. Smith wrote (e.g. notes) "quoted here." Next line!';
+    const abbrevSpan = resolveInitialSelectionOffsets(abbrevProse, 'quoted here');
+    expect(abbrevSpan).not.toBeNull();
+    const sent = expandSpanToSentenceBounds(abbrevProse, abbrevSpan!.start, abbrevSpan!.end);
+    expect(abbrevProse.slice(sent.start, sent.end)).toBe(
+      'Wait... Dr. J. Smith wrote (e.g. notes) "quoted here."'
+    );
+
+    // Guard short/empty inputs cleanly
+    expect(resolveInitialSelectionOffsets('', 'none')).toBeNull();
+    expect(countSpanOccurrencesInText('', 'none')).toBe(0);
+    expect(snapOffsetToWordBoundary('', 0, 'start')).toBe(0);
+    expect(stepSelectionBoundaryByWord('Hi there', 0, 2, 'end', -1)).toEqual({ start: 0, end: 2 });
+
+    // + Paragraph handles space-padded blank lines (\n  \n) and clamps within maxLength instead of silent no-op
+    const paddedChapter = 'First para sentence one.\n  \nSecond para sentence one. Second para sentence two.';
+    const paddedSpan = resolveInitialSelectionOffsets(paddedChapter, 'First para');
+    const paddedPara = expandSpanToParagraphBounds(
+      paddedChapter,
+      paddedSpan!.start,
+      paddedSpan!.end
+    );
+    expect(paddedChapter.slice(paddedPara.start, paddedPara.end)).toBe('First para sentence one.');
+
+    const longBlock = `${'Alpha word. '.repeat(20)}Target phrase here. ${'Omega word. '.repeat(20)}`;
+    const targetSpan = resolveInitialSelectionOffsets(longBlock, 'Target phrase here.');
+    const cappedPara = expandSpanToParagraphBounds(longBlock, targetSpan!.start, targetSpan!.end, 160);
+    expect(cappedPara.end - cappedPara.start).toBeLessThanOrEqual(160);
+    expect(cappedPara.start).toBeLessThanOrEqual(targetSpan!.start);
+    expect(cappedPara.end).toBeGreaterThanOrEqual(targetSpan!.end);
+    expect(longBlock.slice(cappedPara.start, cappedPara.end)).toContain('Target phrase here.');
+
+    // priorityAnnotationId keeps expanded paragraph highlight visible even when earlier highlight shares paraStart
+    const paraWithTwo = 'Opening phrase and continuing sentence to paragraph end.';
+    const earlierSelf: Annotation = {
+      id: 'earlier-self',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Opening phrase',
+      color: 'yellow',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    const expandedPriority: Annotation = {
+      id: 'expanded-self',
+      bookId: 1,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: paraWithTwo,
+      color: 'sky',
+      createdAt: '2026-01-01T00:01:00Z',
+      updatedAt: '2026-01-01T00:01:00Z',
+    };
+    const withoutPriority = computeAnnotationSpans(paraWithTwo, [earlierSelf, expandedPriority]);
+    expect(withoutPriority[0].annotation.id).toBe('earlier-self');
+    const withPriority = computeAnnotationSpans(paraWithTwo, [earlierSelf, expandedPriority], {
+      priorityAnnotationId: 'expanded-self',
+    });
+    expect(withPriority).toHaveLength(1);
+    expect(withPriority[0].annotation.id).toBe('expanded-self');
+    expect(withPriority[0].end).toBe(paraWithTwo.length);
   });
 });
 

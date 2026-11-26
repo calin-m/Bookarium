@@ -149,7 +149,7 @@ export const CursorTooltip: React.FC<CursorTooltipProps> = ({
   return createPortal(
     <div
       data-testid={testId}
-      className={`fixed z-[9999] pointer-events-none items-center transition-opacity duration-150 animate-in fade-in select-none ${className}`}
+      className={`fixed z-[10020] pointer-events-none items-center transition-opacity duration-150 animate-in fade-in select-none ${className}`}
       style={{
         left: `${mousePos.x}px`,
         top: `${mousePos.y}px`,

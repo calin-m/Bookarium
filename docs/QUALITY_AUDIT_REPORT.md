@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 26 Nov 2026 09:59:57 GMT  
+**Last Generated**: Thu, 26 Nov 2026 11:39:32 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 270 passed  
-**Total Verified Tests**: 2806 passed  
+**Total Test Suites**: 271 passed  
+**Total Verified Tests**: 2818 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **270/270 test suites passed** (2806 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **271/271 test suites passed** (2818 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.14%** (16825/17320) — *Target: $\ge$ 95%*
-- **Statements**: **95.86%** (18105/18886) — *Target: $\ge$ 95%*
-- **Functions**: **94.8%** (3597/3794) — *Target: $\ge$ 92%*
-- **Branches**: **88.15%** (16832/19094) — *Target: $\ge$ 85%*
+- **Lines**: **96.83%** (17453/18023) — *Target: $\ge$ 95%*
+- **Statements**: **95.38%** (18764/19672) — *Target: $\ge$ 95%*
+- **Functions**: **94.81%** (3676/3877) — *Target: $\ge$ 92%*
+- **Branches**: **87.76%** (17374/19795) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (270 Suites / 2806 Tests)
+## 🧪 Comprehensive Test Suite Catalog (271 Suites / 2818 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 321 Tests)
+### 🚀 App Routes & Pages (31 Suites · 322 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -407,7 +407,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (50 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (51 tests)</summary>
 
 - ✔ `renders header, reading surface, and sticky footer with metadata`
 - ✔ `navigates back to origin page when back button is clicked and exit modal is confirmed`
@@ -459,6 +459,7 @@
 - ✔ `syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences`
 - ✔ `syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences`
 - ✔ `surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows`
+- ✔ `allows adjusting an existing personal highlight selection via Crop button, previews without saving on Cancel, and persists resized text on Save`
 
 </details>
 
@@ -1372,7 +1373,7 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (22 Suites · 201 Tests)
+### 📖 In-Browser Focus Reader (23 Suites · 208 Tests)
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1535,6 +1536,15 @@
 </details>
 
 <details>
+<summary><b><code>src/components/reader/ReaderHighlightAdjustOverlay.test.tsx</code></b> (3 tests)</summary>
+
+- ✔ `renders accessible crop sliders, supports keyboard word/row navigation, and invokes sentence/paragraph/save/cancel controls`
+- ✔ `displays repeated-passage warning badge when occurrenceCount > 1 and disables Save when unchanged or under minimum length`
+- ✔ `supports touch drag initiation, Cancel click, sepia/dark palettes, null fallback rects, and flips toolbar above bottom edges`
+
+</details>
+
+<details>
 <summary><b><code>src/components/reader/ReaderLanguageDrawer.test.tsx</code></b> (6 tests)</summary>
 
 - ✔ `does not render content when isOpen is false`
@@ -1626,7 +1636,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (34 tests)</summary>
+<summary><b><code>src/components/reader/ReaderSurface.test.tsx</code></b> (37 tests)</summary>
 
 - ✔ `renders archival frontispiece banner on opening section and standard chapter banner on subsequent sections`
 - ✔ `applies dynamic fontSize and lineHeight directly to the content body`
@@ -1662,6 +1672,9 @@
 - ✔ `waits for bookmarkText layout resolution before centering the viewport on the reflowed row span and finalizes touch drag on touchcancel`
 - ✔ `deduplicates leading chapter heading and absorbed subtitle on Page 1 when the chapter banner is visible`
 - ✔ `re-centers the bookmark guide line and pulses its highlight ring on bookmarkJumpNonce increments in paginated and scroll modes`
+- ✔ `renders live preview and interactive crop handles in adjust mode, supports + Sentence / Cancel / Save, and drags handles cleanly`
+- ✔ `drags Start and End crop handles across multi-row coordinates, steps rows via keyboard, and snaps + Paragraph`
+- ✔ `keeps expanded + Paragraph preview highlighted even when an earlier highlight begins at the paragraph start, and expands across paragraphs on repeat click`
 
 </details>
 
@@ -1677,7 +1690,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (18 tests)</summary>
+<summary><b><code>src/components/reader/TextHighlightPopover.test.tsx</code></b> (19 tests)</summary>
 
 - ✔ `renders all 7 color choices and action buttons`
 - ✔ `calls onSelectColor when a color button is clicked`
@@ -1697,6 +1710,7 @@
 - ✔ `allows 1-click saving of fellow highlight via fellow-popover-save-highlight-btn`
 - ✔ `renders 2-pill overlap switcher when both self and fellow annotations exist`
 - ✔ `renders privacy-aware fallback text when fellow annotation has no note`
+- ✔ `shows Adjust selection boundaries button strictly for editable personal highlights and invokes callback`
 
 </details>
 
@@ -1760,7 +1774,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 242 Tests)
+### ⚡ Zustand State Stores (10 Suites · 243 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1780,7 +1794,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (38 tests)</summary>
+<summary><b><code>src/stores/useAnnotationStore.test.ts</code></b> (39 tests)</summary>
 
 - ✔ `initializes with empty annotations and outbox`
 - ✔ `adds an annotation in guest mode (offline/local only)`
@@ -1820,6 +1834,7 @@
 - ✔ `prunes and reconciles fellowAnnotations when fellows or symposiums are removed or deleted`
 - ✔ `prunes flushed tombstones after syncWithCloud and drops remotely deleted user annotations based on lastAnnotationSyncAt`
 - ✔ `respects opt-in minSyncIntervalMs passive cooldown when clean and bypasses on dirty queues, explicit sync, or invalidation`
+- ✔ `updates highlight selection boundaries locally, syncs to Supabase for signed-in users, queues outbox on failure, and enforces length/no-op guards`
 
 </details>
 
@@ -2064,7 +2079,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (60 Suites · 753 Tests)
+### 📚 Gutenberg Parsers & Metadata (60 Suites · 755 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2599,7 +2614,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (27 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (28 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -2628,11 +2643,12 @@
 - ✔ `pairs and deduplicates overlapping items under "all"`
 - ✔ `matches boundary-straddling highlights split across virtual page breaks`
 - ✔ `normalizes curly single quotes, padded needles, empty text guards, and symmetric quote overlap containment`
+- ✔ `resolves initial offsets, snaps word boundaries, and expands abbreviation-safe sentence and paragraph spans`
 
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-bookmark-geometry.test.ts</code></b> (8 tests)</summary>
+<summary><b><code>src/lib/reader-bookmark-geometry.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `collects contiguous text segments while excluding fellow scholar highlight badges`
 - ✔ `returns null when needle or haystack is empty or needle is not found`
@@ -2642,6 +2658,7 @@
 - ✔ `disambiguates duplicate phrases on the same page by picking the occurrence closest to fallbackRow`
 - ✔ `resolves legacy bookmark_text containing -- dashes and _italic_ wrappers against reflowed content`
 - ✔ `falls back to nearest row slice in extractRowTextFromElement when targetRow falls in an inter-line gap`
+- ✔ `resolves row-snapped DOM client points, steps vertically by row, and aligns source-to-DOM endpoint rects around fellow badges`
 
 </details>
 
@@ -3179,7 +3196,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 351 Tests)
+### 🔄 Hooks & React Query (36 Suites · 352 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (19 tests)</summary>
@@ -3313,9 +3330,10 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderAnnotationActions.test.ts</code></b> (1 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderAnnotationActions.test.ts</code></b> (2 tests)</summary>
 
 - ✔ `handles text selection, existing annotation matching, color/note saves, and deletion queueing`
+- ✔ `starts, cancels, commits, and page-auto-resets interactive highlight selection adjustment mode`
 
 </details>
 

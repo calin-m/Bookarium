@@ -1,13 +1,16 @@
 /**
  * @module
- * @scope Canonical text span matching (`findAllCanonicalTextSpans`), dual-band self+fellow overlap interval slicing, and highlight reconciliation utilities.
+ * @scope Canonical text span matching (`findAllCanonicalTextSpans`), dual-band self+fellow overlap interval slicing, word/sentence/paragraph selection boundary helpers, and highlight reconciliation utilities.
  * @invariant Execute an `O(N)` exact `indexOf` fast path first before falling back to `buildCanonicalIndexMap` (`--` <-> `—`, `_italic_`, whitespace, curly <-> straight quote equivalence) so saved annotations and bookmarks remain resilient across typography updates.
- * @invariant Slice overlapping personal and fellow marginalia into non-overlapping `AnnotationSpan` segments while filtering PII (`isFellowAnnotation`) cleanly.
- * @rationale Character-index-mapped canonical search prevents annotation orphaning across reflow changes without slowing down common exact-match highlights.
- * @adr ADR-019, ADR-059, ADR-060
+ * @invariant Slice overlapping personal and fellow marginalia into non-overlapping `AnnotationSpan` segments while filtering PII (`isFellowAnnotation`) cleanly, honoring `priorityAnnotationId` precedence during live crop previews, and keeping adjusted selections word-aligned and clamped cleanly within `[MIN_ADJUSTED_SELECTION_LENGTH, MAX_ADJUSTED_SELECTION_LENGTH]`.
+ * @rationale Character-index-mapped canonical search and pure boundary-snapping helpers prevent annotation orphaning across reflow changes and keep interactive highlight resizing deterministic and zero-DOM.
+ * @adr ADR-019, ADR-059, ADR-060, ADR-080
  */
 
 import type { Annotation, FellowAnnotation } from '@/stores/useAnnotationStore';
+
+export const MIN_ADJUSTED_SELECTION_LENGTH = 2;
+export const MAX_ADJUSTED_SELECTION_LENGTH = 5000;
 
 export type AnyAnnotation = Annotation | FellowAnnotation;
 
@@ -467,30 +470,69 @@ export function filterAndPairAnnotationsBySource(
  */
 export function computeAnnotationSpans(
   text: string,
-  annotations: AnyAnnotation[]
+  annotations: AnyAnnotation[],
+  options?: { priorityAnnotationId?: string }
 ): AnnotationSpan[] {
   if (!text || !annotations || annotations.length === 0) {
     return [];
   }
 
-  // 1. Build disjoint non-overlapping intervals for self-annotations (prioritizing earlier matches)
-  const rawSelfSpans: Array<{ start: number; end: number; annotation: Annotation }> = [];
+  // 1. Build disjoint non-overlapping intervals for self-annotations, giving live adjust preview precedence
+  const rawSelfSpans: Array<{
+    start: number;
+    end: number;
+    annotation: Annotation;
+    isPriority: boolean;
+  }> = [];
   const selfAnnotations = annotations.filter((a): a is Annotation => !isFellowAnnotation(a));
+  const priorityId = options?.priorityAnnotationId;
   for (const ann of selfAnnotations) {
     if (!ann.selectedText) continue;
+    const isPriority = Boolean(priorityId && ann.id === priorityId);
     const matches = findAllCanonicalTextSpans(text, ann.selectedText, { allowBoundaryPartial: true });
     for (const m of matches) {
       rawSelfSpans.push({
         start: m.start,
         end: m.end,
         annotation: ann,
+        isPriority,
       });
     }
   }
-  rawSelfSpans.sort((a, b) => a.start - b.start || a.end - b.end);
-  const selfSpans: typeof rawSelfSpans = [];
+
+  const candidateSelfSpans: Array<{ start: number; end: number; annotation: Annotation }> = [];
+  if (priorityId) {
+    const prioritySpans = rawSelfSpans
+      .filter((s) => s.isPriority)
+      .sort((a, b) => a.start - b.start || a.end - b.end);
+    let lastPriorityEnd = 0;
+    for (const p of prioritySpans) {
+      if (p.start >= lastPriorityEnd) {
+        candidateSelfSpans.push({ start: p.start, end: p.end, annotation: p.annotation });
+        lastPriorityEnd = p.end;
+      }
+    }
+    const nonPrioritySpans = rawSelfSpans
+      .filter((s) => !s.isPriority)
+      .sort((a, b) => a.start - b.start || a.end - b.end);
+    for (const s of nonPrioritySpans) {
+      const overlapsPriority = candidateSelfSpans.some(
+        (acc) => s.start < acc.end && s.end > acc.start
+      );
+      if (!overlapsPriority) {
+        candidateSelfSpans.push({ start: s.start, end: s.end, annotation: s.annotation });
+      }
+    }
+  } else {
+    for (const s of rawSelfSpans) {
+      candidateSelfSpans.push({ start: s.start, end: s.end, annotation: s.annotation });
+    }
+  }
+
+  candidateSelfSpans.sort((a, b) => a.start - b.start || a.end - b.end);
+  const selfSpans: Array<{ start: number; end: number; annotation: Annotation }> = [];
   let lastSelfEnd = 0;
-  for (const s of rawSelfSpans) {
+  for (const s of candidateSelfSpans) {
     if (s.start >= lastSelfEnd) {
       selfSpans.push(s);
       lastSelfEnd = s.end;
@@ -578,4 +620,472 @@ export function computeAnnotationSpans(
   }
 
   return resultSpans;
+}
+
+const LITERARY_ABBREVIATIONS = new Set([
+  'mr',
+  'mrs',
+  'ms',
+  'dr',
+  'prof',
+  'rev',
+  'st',
+  'capt',
+  'col',
+  'gen',
+  'lt',
+  'sgt',
+  'hon',
+  'esq',
+  'jr',
+  'sr',
+  'no',
+  'vol',
+  'ch',
+  'fig',
+  'p',
+  'pp',
+  'vs',
+  'etc',
+  'eg',
+  'ie',
+]);
+
+function isWordTokenSeparator(text: string, idx: number): boolean {
+  if (idx < 0 || idx >= text.length) return true;
+  const ch = text[idx];
+  if (/[\s\u2014\u2013]/.test(ch)) return true;
+  if (ch === '-' && (text[idx - 1] === '-' || text[idx + 1] === '-')) {
+    return true;
+  }
+  return false;
+}
+
+function isSentenceClosingWrapper(ch: string | undefined): boolean {
+  return Boolean(ch && /["'”’)\]]/.test(ch));
+}
+
+function isAbbreviationDot(text: string, dotIdx: number): boolean {
+  if (text[dotIdx] !== '.') return false;
+  let cursor = dotIdx - 1;
+  while (cursor >= 0 && /[A-Za-z.]/.test(text[cursor])) {
+    cursor--;
+  }
+  const token = text
+    .slice(cursor + 1, dotIdx)
+    .toLowerCase()
+    .replace(/\./g, '');
+  if (!token) return false;
+  if (token.length === 1 && /[A-Za-z]/.test(text[dotIdx - 1])) {
+    return true;
+  }
+  return LITERARY_ABBREVIATIONS.has(token);
+}
+
+function isSentenceTerminalAt(text: string, idx: number): boolean {
+  const ch = text[idx];
+  if (ch !== '.' && ch !== '!' && ch !== '?') return false;
+  // Ellipsis (`...`) continues across both forward and backward boundary scans
+  if (ch === '.' && (text[idx - 1] === '.' || text[idx + 1] === '.')) return false;
+  if (ch === '.' && isAbbreviationDot(text, idx)) return false;
+
+  let after = idx + 1;
+  while (after < text.length && isSentenceClosingWrapper(text[after])) {
+    after++;
+  }
+  return after >= text.length || /\s/.test(text[after]);
+}
+
+function trimSpanWhitespace(
+  text: string,
+  start: number,
+  end: number
+): { start: number; end: number } {
+  let s = Math.max(0, Math.min(start, text.length));
+  let e = Math.max(s, Math.min(end, text.length));
+  while (s < e && /\s/.test(text[s])) s++;
+  while (e > s && /\s/.test(text[e - 1])) e--;
+  return { start: s, end: e };
+}
+
+/**
+ * Resolves initial `[start, end)` character offsets and chapter/page occurrence count
+ * for an existing annotation inside `chapterText`.
+ */
+export function resolveInitialSelectionOffsets(
+  chapterText: string,
+  selectedText: string,
+  occurrenceHint = 0
+): { start: number; end: number; occurrenceCount: number } | null {
+  const trimmed = selectedText?.trim() || '';
+  if (!trimmed || !chapterText) return null;
+
+  const spans = findAllCanonicalTextSpans(chapterText, trimmed);
+  if (spans.length === 0) return null;
+
+  const clampedIdx = Math.max(0, Math.min(occurrenceHint, spans.length - 1));
+  const chosen = spans[clampedIdx];
+  return {
+    start: chosen.start,
+    end: chosen.end,
+    occurrenceCount: spans.length,
+  };
+}
+
+/**
+ * Returns how many canonical matches `spanText` produces inside `text`.
+ */
+export function countSpanOccurrencesInText(text: string, spanText: string): number {
+  const trimmed = spanText?.trim() || '';
+  if (!trimmed || !text) return 0;
+  return findAllCanonicalTextSpans(text, trimmed).length;
+}
+
+/**
+ * Snaps a raw character offset to whole-word/token boundaries in `text`
+ * without leaving dangling whitespace or slicing words mid-syllable.
+ */
+export function snapOffsetToWordBoundary(
+  text: string,
+  offset: number,
+  edge: 'start' | 'end'
+): number {
+  if (!text) return 0;
+  const len = text.length;
+
+  if (edge === 'start') {
+    let idx = Math.max(0, Math.min(offset, len - 1));
+    if (isWordTokenSeparator(text, idx)) {
+      let forward = idx;
+      while (forward < len && isWordTokenSeparator(text, forward)) {
+        forward++;
+      }
+      if (forward < len) {
+        idx = forward;
+      } else {
+        let backward = idx;
+        while (backward > 0 && isWordTokenSeparator(text, backward)) {
+          backward--;
+        }
+        idx = backward;
+      }
+    }
+    while (idx > 0 && !isWordTokenSeparator(text, idx - 1)) {
+      idx--;
+    }
+    return idx;
+  }
+
+  let probe = offset >= len ? len - 1 : Math.max(0, offset);
+  if (offset > 0 && offset < len && isWordTokenSeparator(text, offset)) {
+    probe = offset - 1;
+  }
+  if (isWordTokenSeparator(text, probe)) {
+    let backward = probe;
+    while (backward > 0 && isWordTokenSeparator(text, backward)) {
+      backward--;
+    }
+    if (!isWordTokenSeparator(text, backward)) {
+      probe = backward;
+    } else {
+      let forward = probe;
+      while (forward < len && isWordTokenSeparator(text, forward)) {
+        forward++;
+      }
+      if (forward >= len) return len;
+      probe = forward;
+    }
+  }
+  let end = probe + 1;
+  while (end < len && !isWordTokenSeparator(text, end)) {
+    end++;
+  }
+  return end;
+}
+
+/**
+ * Steps either the `start` or `end` boundary cleanly left or right by one whole word
+ * while preserving `[MIN_ADJUSTED_SELECTION_LENGTH, maxLength]` bounds.
+ */
+export function stepSelectionBoundaryByWord(
+  text: string,
+  currentStart: number,
+  currentEnd: number,
+  edge: 'start' | 'end',
+  direction: -1 | 1,
+  maxLength = MAX_ADJUSTED_SELECTION_LENGTH
+): { start: number; end: number } {
+  if (!text) return { start: currentStart, end: currentEnd };
+  const len = text.length;
+
+  if (edge === 'start') {
+    if (direction === -1) {
+      let cursor = currentStart - 1;
+      while (cursor >= 0 && isWordTokenSeparator(text, cursor)) {
+        cursor--;
+      }
+      if (cursor < 0) return { start: currentStart, end: currentEnd };
+      const nextStart = snapOffsetToWordBoundary(text, cursor, 'start');
+      if (
+        currentEnd - nextStart <= maxLength &&
+        text.slice(nextStart, currentEnd).trim().length >= MIN_ADJUSTED_SELECTION_LENGTH
+      ) {
+        return { start: nextStart, end: currentEnd };
+      }
+      return { start: currentStart, end: currentEnd };
+    }
+
+    let cursor = currentStart;
+    while (cursor < currentEnd && !isWordTokenSeparator(text, cursor)) {
+      cursor++;
+    }
+    while (cursor < currentEnd && isWordTokenSeparator(text, cursor)) {
+      cursor++;
+    }
+    if (cursor >= currentEnd) return { start: currentStart, end: currentEnd };
+    const nextStart = snapOffsetToWordBoundary(text, cursor, 'start');
+    if (
+      nextStart < currentEnd &&
+      text.slice(nextStart, currentEnd).trim().length >= MIN_ADJUSTED_SELECTION_LENGTH
+    ) {
+      return { start: nextStart, end: currentEnd };
+    }
+    return { start: currentStart, end: currentEnd };
+  }
+
+  if (direction === -1) {
+    let cursor = currentEnd - 1;
+    while (cursor > currentStart && isWordTokenSeparator(text, cursor)) {
+      cursor--;
+    }
+    while (cursor > currentStart && !isWordTokenSeparator(text, cursor)) {
+      cursor--;
+    }
+    while (cursor > currentStart && isWordTokenSeparator(text, cursor)) {
+      cursor--;
+    }
+    if (cursor <= currentStart) return { start: currentStart, end: currentEnd };
+    const nextEnd = snapOffsetToWordBoundary(text, cursor, 'end');
+    if (
+      nextEnd > currentStart &&
+      nextEnd < currentEnd &&
+      text.slice(currentStart, nextEnd).trim().length >= MIN_ADJUSTED_SELECTION_LENGTH
+    ) {
+      return { start: currentStart, end: nextEnd };
+    }
+    return { start: currentStart, end: currentEnd };
+  }
+
+  let cursor = currentEnd;
+  while (cursor < len && isWordTokenSeparator(text, cursor)) {
+    cursor++;
+  }
+  if (cursor >= len) return { start: currentStart, end: currentEnd };
+  const nextEnd = snapOffsetToWordBoundary(text, cursor, 'end');
+  if (
+    nextEnd > currentEnd &&
+    nextEnd - currentStart <= maxLength &&
+    text.slice(currentStart, nextEnd).trim().length >= MIN_ADJUSTED_SELECTION_LENGTH
+  ) {
+    return { start: currentStart, end: nextEnd };
+  }
+  return { start: currentStart, end: currentEnd };
+}
+
+function findSentenceStartBefore(text: string, fromOffset: number): number {
+  let cursor = Math.max(0, Math.min(fromOffset, text.length));
+  while (cursor > 0) {
+    if (text[cursor - 1] === '\n' && text[cursor - 2] === '\n') {
+      break;
+    }
+    if (cursor - 1 < fromOffset && isSentenceTerminalAt(text, cursor - 1)) {
+      let after = cursor;
+      while (after < fromOffset && isSentenceClosingWrapper(text[after])) {
+        after++;
+      }
+      if (after <= fromOffset) {
+        cursor = after;
+        break;
+      }
+    }
+    cursor--;
+  }
+  while (cursor < text.length && /\s/.test(text[cursor])) {
+    cursor++;
+  }
+  return cursor;
+}
+
+function findSentenceEndAfter(text: string, fromOffset: number): number {
+  let cursor = Math.max(0, Math.min(fromOffset, text.length));
+  while (cursor < text.length) {
+    if (text[cursor] === '\n' && text[cursor + 1] === '\n') {
+      break;
+    }
+    if (isSentenceTerminalAt(text, cursor)) {
+      let end = cursor + 1;
+      while (end < text.length && isSentenceClosingWrapper(text[end])) {
+        end++;
+      }
+      return end;
+    }
+    cursor++;
+  }
+  while (cursor > 0 && /\s/.test(text[cursor - 1])) {
+    cursor--;
+  }
+  return cursor;
+}
+
+function clampExpandedSpanToMaxLength(
+  text: string,
+  base: { start: number; end: number },
+  targetStart: number,
+  targetEnd: number,
+  maxLength: number
+): { start: number; end: number } {
+  const trimmed = trimSpanWhitespace(text, targetStart, targetEnd);
+  if (trimmed.end - trimmed.start <= maxLength) {
+    if (text.slice(trimmed.start, trimmed.end).trim().length < MIN_ADJUSTED_SELECTION_LENGTH) {
+      return base;
+    }
+    return trimmed;
+  }
+
+  // When paragraph/sentence exceeds maxLength (e.g. Scroll mode or 5k ceiling), expand up to maxLength around base
+  const minAllowedStart = Math.max(trimmed.start, base.end - maxLength);
+  let candStart = trimmed.start;
+  if (candStart < minAllowedStart) {
+    candStart = Math.min(base.start, snapOffsetToWordBoundary(text, minAllowedStart, 'start'));
+    if (base.end - candStart > maxLength) {
+      candStart = Math.min(base.start, minAllowedStart);
+    }
+  }
+
+  const maxAllowedEnd = Math.min(trimmed.end, candStart + maxLength);
+  let candEnd = maxAllowedEnd;
+  if (candEnd < trimmed.end) {
+    const latestSentenceEnd = findSentenceStartBefore(text, maxAllowedEnd);
+    const snappedWordEnd =
+      maxAllowedEnd > candStart && !isWordTokenSeparator(text, maxAllowedEnd)
+        ? snapOffsetToWordBoundary(text, Math.max(candStart, maxAllowedEnd - 1), 'start')
+        : snapOffsetToWordBoundary(text, Math.max(candStart, maxAllowedEnd - 1), 'end');
+    if (latestSentenceEnd > base.end && latestSentenceEnd <= maxAllowedEnd) {
+      candEnd = latestSentenceEnd;
+    } else if (snappedWordEnd >= base.end && snappedWordEnd <= maxAllowedEnd) {
+      candEnd = snappedWordEnd;
+    }
+  }
+
+  const finalSpan = trimSpanWhitespace(text, Math.min(candStart, base.start), Math.max(candEnd, base.end));
+  if (
+    finalSpan.end - finalSpan.start > maxLength ||
+    text.slice(finalSpan.start, finalSpan.end).trim().length < MIN_ADJUSTED_SELECTION_LENGTH
+  ) {
+    return base;
+  }
+  return finalSpan;
+}
+
+/**
+ * Expands `[start, end)` to cover the enclosing sentence(s) safely around Gutenberg
+ * abbreviations and paragraph breaks. When `[start, end)` already aligns with sentence
+ * bounds, extends `end` to append the next sentence (clamped cleanly within `maxLength`).
+ */
+export function expandSpanToSentenceBounds(
+  text: string,
+  start: number,
+  end: number,
+  maxLength = MAX_ADJUSTED_SELECTION_LENGTH
+): { start: number; end: number } {
+  if (!text) return { start, end };
+  const clamped = trimSpanWhitespace(text, start, Math.max(start + 1, end));
+  const sentStart = findSentenceStartBefore(text, clamped.start);
+  let sentEnd = findSentenceEndAfter(text, Math.max(clamped.start, clamped.end - 1));
+
+  if (sentStart === clamped.start && sentEnd <= clamped.end) {
+    let nextProbe = clamped.end;
+    while (nextProbe < text.length && /\s/.test(text[nextProbe])) {
+      nextProbe++;
+    }
+    if (nextProbe < text.length) {
+      sentEnd = findSentenceEndAfter(text, nextProbe);
+    }
+  }
+
+  return clampExpandedSpanToMaxLength(text, clamped, sentStart, sentEnd, maxLength);
+}
+
+function findParagraphBreakBefore(text: string, fromOffset: number): number {
+  let cursor = Math.max(0, Math.min(fromOffset, text.length));
+  while (cursor > 0) {
+    if (text[cursor - 1] === '\n') {
+      let check = cursor - 2;
+      while (
+        check >= 0 &&
+        (text[check] === '\r' || text[check] === ' ' || text[check] === '\t')
+      ) {
+        check--;
+      }
+      if (check >= 0 && text[check] === '\n') {
+        break;
+      }
+    }
+    cursor--;
+  }
+  while (cursor < text.length && /\s/.test(text[cursor])) {
+    cursor++;
+  }
+  return cursor;
+}
+
+function findParagraphBreakAfter(text: string, fromOffset: number): number {
+  let cursor = Math.max(0, Math.min(fromOffset, text.length));
+  while (cursor < text.length) {
+    if (text[cursor] === '\n') {
+      let next = cursor + 1;
+      while (
+        next < text.length &&
+        (text[next] === '\r' || text[next] === ' ' || text[next] === '\t')
+      ) {
+        next++;
+      }
+      if (next < text.length && text[next] === '\n') {
+        break;
+      }
+    }
+    cursor++;
+  }
+  while (cursor > 0 && /\s/.test(text[cursor - 1])) {
+    cursor--;
+  }
+  return cursor;
+}
+
+/**
+ * Expands `[start, end)` to trimmed paragraph boundaries (`\n\n` or whitespace-padded blank lines).
+ * When already paragraph-aligned, appends the following paragraph (clamped cleanly within `maxLength`).
+ */
+export function expandSpanToParagraphBounds(
+  text: string,
+  start: number,
+  end: number,
+  maxLength = MAX_ADJUSTED_SELECTION_LENGTH
+): { start: number; end: number } {
+  if (!text) return { start, end };
+  const clamped = trimSpanWhitespace(text, start, Math.max(start + 1, end));
+  const paraStart = findParagraphBreakBefore(text, clamped.start);
+  let paraEnd = findParagraphBreakAfter(text, Math.max(clamped.start, clamped.end - 1));
+
+  if (paraStart === clamped.start && paraEnd <= clamped.end) {
+    let nextProbe = clamped.end;
+    while (nextProbe < text.length && /\s/.test(text[nextProbe])) {
+      nextProbe++;
+    }
+    if (nextProbe < text.length) {
+      paraEnd = findParagraphBreakAfter(text, nextProbe);
+    }
+  }
+
+  return clampExpandedSpanToMaxLength(text, clamped, paraStart, paraEnd, maxLength);
 }

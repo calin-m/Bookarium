@@ -9,6 +9,7 @@ import { useReaderStore, useHydratedReader } from '@/stores/useReaderStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import {
   extractGutenbergHeaderMetadata,
+  stripDuplicateLeadingChapterHeading,
 } from '@/lib/gutenberg-parser';
 import { useGutenbergParserWorker } from '@/hooks/reader/useGutenbergParserWorker';
 import { getReaderTheme } from '@/config/reader-themes';
@@ -20,6 +21,7 @@ import {
 import {
   findCanonicalTextSpan,
   pairOverlappingAnnotations,
+  resolveInitialSelectionOffsets,
 } from '@/lib/reader-annotator';
 import { ReaderHeader } from '@/components/reader/ReaderHeader';
 import { ReaderFooter } from '@/components/reader/ReaderFooter';
@@ -185,6 +187,7 @@ function BookReaderContent() {
     addAnnotation,
     updateAnnotationColor,
     updateAnnotationNote,
+    updateAnnotationSelection,
     deleteAnnotation,
     syncWithCloud,
     fetchFellowAnnotationsForBook,
@@ -423,6 +426,10 @@ function BookReaderContent() {
     annotationToDelete,
     setAnnotationToDelete,
     selectionPopover,
+    adjustingAnnotation,
+    startAdjustingSelection,
+    cancelAdjustingSelection,
+    commitAdjustedSelection,
     dismissSelectionPopover,
     handleTextSelected,
     handleSelectAnnotation,
@@ -442,22 +449,57 @@ function BookReaderContent() {
     addAnnotation,
     updateAnnotationColor,
     updateAnnotationNote,
+    updateAnnotationSelection,
   });
 
-  // Dismiss floating text selection popover whenever a reader drawer is toggled
+  // Compute exact visible surface text so split-page highlights safely skip Adjust Mode when partial
+  const canAdjustActivePopoverSelection = useMemo(() => {
+    if (!selectionPopover.activeAnnotation || selectionPopover.isFellowOnly) {
+      return false;
+    }
+    const isChapterBannerVisible = Boolean(
+      activeChapter && !(activeChapterIndex === 0 && (bookTitle || bookAuthor))
+    );
+    const isFirstPageOfSection = readingMode !== 'paginated' || currentChapterPage === 1;
+    const rawVisible =
+      readingMode === 'paginated' ? currentPageText : (activeChapter?.content || '');
+    const visibleText =
+      isChapterBannerVisible && isFirstPageOfSection
+        ? stripDuplicateLeadingChapterHeading(rawVisible, activeChapter)
+        : rawVisible;
+    return Boolean(
+      resolveInitialSelectionOffsets(
+        visibleText,
+        selectionPopover.activeAnnotation.selectedText
+      )
+    );
+  }, [
+    selectionPopover.activeAnnotation,
+    selectionPopover.isFellowOnly,
+    activeChapter,
+    activeChapterIndex,
+    bookTitle,
+    bookAuthor,
+    readingMode,
+    currentChapterPage,
+    currentPageText,
+  ]);
+
+  // Dismiss floating text selection popover and selection adjust overlay whenever a reader drawer is toggled
   const handleToggleDrawer = useCallback(
     (drawer: Parameters<typeof toggleDrawer>[0]) => {
       setIsImmersiveBarsHidden(false);
       dismissSelectionPopover();
+      cancelAdjustingSelection();
       toggleDrawer(drawer);
     },
-    [toggleDrawer, dismissSelectionPopover]
+    [toggleDrawer, dismissSelectionPopover, cancelAdjustingSelection]
   );
 
   const handleTapReaderSurface = useCallback(() => {
-    if (activeDrawer || selectionPopover.isOpen) return;
+    if (activeDrawer || selectionPopover.isOpen || adjustingAnnotation) return;
     setIsImmersiveBarsHidden((prev) => !prev);
-  }, [activeDrawer, selectionPopover.isOpen]);
+  }, [activeDrawer, selectionPopover.isOpen, adjustingAnnotation]);
 
   // Keyboard shortcut: Ctrl+F / Cmd+F or '/' to toggle search
   useEffect(() => {
@@ -748,6 +790,9 @@ function BookReaderContent() {
         bookmarkJumpNonce={bookmarkJumpNonce}
         onSelectAnnotation={handleSelectAnnotation}
         onTextSelected={handleTextSelected}
+        adjustingAnnotation={adjustingAnnotation}
+        onCommitAdjustSelection={commitAdjustedSelection}
+        onCancelAdjustSelection={cancelAdjustingSelection}
       />
 
       {/* Fixed Sticky 0-CLS Bottom Pagination Footer */}
@@ -902,6 +947,11 @@ function BookReaderContent() {
         onSelectColor={handleSelectColor}
         onSaveNote={handleSaveNote}
         onDelete={handleDeleteAnnotation}
+        onAdjustSelection={
+          canAdjustActivePopoverSelection
+            ? () => startAdjustingSelection(selectionPopover.activeAnnotation)
+            : undefined
+        }
         onClose={dismissSelectionPopover}
         theme={theme}
       />

@@ -125,4 +125,73 @@ describe('useReaderAnnotationActions', () => {
     expect(result.current.annotationToDelete?.id).toBe('ann-1');
     expect(result.current.selectionPopover.isOpen).toBe(false);
   });
+
+  it('starts, cancels, commits, and page-auto-resets interactive highlight selection adjustment mode', async () => {
+    const updateAnnotationSelection = vi.fn().mockResolvedValue(true);
+
+    const { result, rerender } = renderHook(
+      ({ chapterPage }: { chapterPage: number }) =>
+        useReaderAnnotationActions({
+          numericId: 1342,
+          bookTitle: 'Pride and Prejudice',
+          bookAuthor: 'Jane Austen',
+          userId: 'user-1',
+          activeChapterIndex: 0,
+          currentChapterPage: chapterPage,
+          activeChapterAnnotations: [existingAnnotation],
+          activeChapterFellowAnnotations: [fellowAnnotation],
+          addAnnotation: vi.fn().mockResolvedValue(existingAnnotation),
+          updateAnnotationColor: vi.fn().mockResolvedValue(true),
+          updateAnnotationNote: vi.fn().mockResolvedValue(true),
+          updateAnnotationSelection,
+        }),
+      { initialProps: { chapterPage: 1 } }
+    );
+
+    act(() => {
+      result.current.handleSelectAnnotation(existingAnnotation, { top: 120, left: 220 });
+    });
+    expect(result.current.selectionPopover.isOpen).toBe(true);
+
+    // Entering adjust mode closes popover cleanly and targets existing annotation
+    act(() => {
+      result.current.startAdjustingSelection();
+    });
+    expect(result.current.selectionPopover.isOpen).toBe(false);
+    expect(result.current.adjustingAnnotation?.id).toBe('ann-1');
+
+    // Cancelling discards adjustment without invoking store mutation
+    act(() => {
+      result.current.cancelAdjustingSelection();
+    });
+    expect(result.current.adjustingAnnotation).toBeNull();
+    expect(updateAnnotationSelection).not.toHaveBeenCalled();
+
+    // Re-enter adjust mode and flip page -> auto-resets adjustingAnnotation without committing
+    act(() => {
+      result.current.startAdjustingSelection(existingAnnotation);
+    });
+    expect(result.current.adjustingAnnotation?.id).toBe('ann-1');
+    rerender({ chapterPage: 2 });
+    expect(result.current.adjustingAnnotation).toBeNull();
+
+    // Re-enter on page 1 and commit resized text
+    rerender({ chapterPage: 1 });
+    act(() => {
+      result.current.startAdjustingSelection(existingAnnotation);
+    });
+    await act(async () => {
+      await result.current.commitAdjustedSelection(
+        'It is a truth universally acknowledged, that a single man'
+      );
+    });
+
+    expect(updateAnnotationSelection).toHaveBeenCalledWith(
+      'ann-1',
+      'It is a truth universally acknowledged, that a single man',
+      1,
+      'user-1'
+    );
+    expect(result.current.adjustingAnnotation).toBeNull();
+  });
 });

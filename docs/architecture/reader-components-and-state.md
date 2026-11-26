@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
 > **Last Synchronized**: `2026-11-26`  
-> **Topology Health**: `262` Modules Analyzed • `1110` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `263` Modules Analyzed • `1115` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -44,7 +44,7 @@ flowchart LR
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx • useReaderHabitTelemetry)"]
         Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Share Action + Desktop lg: Tools • Tactile Slide)"]
         SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
-        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • reader-bookmark-geometry.ts • startRow->endRow Span)"]
+        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • ReaderHighlightAdjustOverlay • reader-bookmark-geometry.ts)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
         FooterBar["Sticky Bottom Pagination, Page Jump & Unified Mobile/Tablet (<1024px) Tools Pod (ReaderFooter • Tactile Slide)"]
@@ -53,7 +53,7 @@ flowchart LR
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
         Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]
         AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
-        HighlightPop["Highlight & Fellow Attribution Popover (TextHighlightPopover)"]
+        HighlightPop["Highlight & Selection Adjust Overlays (TextHighlightPopover • ReaderHighlightAdjustOverlay • + Sentence/+ Paragraph)"]
         AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(7 Archival Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
         ShareModal["Social Share & Canvas Reading Card Modal (ReaderShareModal • SocialSharePanel.tsx • reading-card-export.ts)"]
@@ -156,7 +156,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **117 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **118 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -241,6 +241,7 @@ Auto-extracted dynamically from **117 Production UI Components** using Babel AST
 | **`ReaderFloatingToolsPod`** | Reader | `ReaderFloatingToolsPodProps` | `theme`, `onToggleSearch`, `onToggleControls`, `onToggleAnnotations`, `onToggleSpeech`, `onToggleTranslations`, `onThemeChange`, `isTocOpen`, `isSearchOpen`, `isControlsOpen`, `isAnnotationsOpen`, `isSpeechOpen`, `isTranslationsOpen`, `isSelectionPopoverOpen`, `annotationsCount`, `hasPinnedBookmark`, `isHidden`, `scheduleIdleDimRef` | [`src/components/reader/ReaderFloatingToolsPod.tsx`](../../src/components/reader/ReaderFloatingToolsPod.tsx) |
 | **`ReaderFooter`** | Reader | `ReaderFooterProps` | `globalPage`, `totalBookPages`, `chapterTitle`, `chapterPage`, `chapterPageCount`, `onPrevPage`, `onNextPage`, `onPageJump`, `isPrevDisabled`, `isNextDisabled`, `readingMode`, `theme`, `currentChapterIndex`, `totalChapters`, `onSelectChapter`, `onToggleToc`, `onToggleControls`, `onToggleSearch`, `onToggleSpeech`, `onToggleAnnotations`, `onToggleTranslations`, `onThemeChange`, `isTocOpen`, `isControlsOpen`, `isSearchOpen`, `isSpeechOpen`, `isAnnotationsOpen`, `isTranslationsOpen`, `isSelectionPopoverOpen`, `annotationsCount`, `hasPinnedBookmark`, `isHidden` | [`src/components/reader/ReaderFooter.tsx`](../../src/components/reader/ReaderFooter.tsx) |
 | **`ReaderHeader`** | Reader | `ReaderHeaderProps` | `title`, `author`, `bookId`, `progress`, `onBack`, `isTocOpen`, `onToggleToc`, `isSearchOpen`, `onToggleSearch`, `isControlsOpen`, `onToggleControls`, `isTranslationsOpen`, `onToggleTranslations`, `isSpeechOpen`, `onToggleSpeech`, `isAnnotationsOpen`, `onToggleAnnotations`, `annotationsCount`, `hasPinnedBookmark`, `theme`, `totalChapters`, `currentChapterIndex`, `onThemeChange`, `resumeNotice`, `onRestart`, `onDismissResume`, `translations`, `isTranslationsLoading`, `onSelectTranslation`, `symposiumCompanion`, `symposiumMilestoneNotice`, `onDismissSymposiumMilestone`, `isHidden` | [`src/components/reader/ReaderHeader.tsx`](../../src/components/reader/ReaderHeader.tsx) |
+| **`ReaderHighlightAdjustOverlay`** | Reader | `ReaderHighlightAdjustOverlayProps` | `annotation`, `draftStart`, `draftEnd`, `totalTextLength`, `draftText`, `occurrenceCount`, `hasChanged`, `canExpandSentence`, `canExpandParagraph`, `isMaxLengthReached`, `startBox`, `endBox`, `containerSize`, `draggingEdge`, `theme`, `onStartDrag`, `onStepWord`, `onStepRow`, `onExpandSentence`, `onExpandParagraph`, `onSave`, `onCancel` | [`src/components/reader/ReaderHighlightAdjustOverlay.tsx`](../../src/components/reader/ReaderHighlightAdjustOverlay.tsx) |
 | **`ReaderLanguageDrawer`** | Reader | `ReaderLanguageDrawerProps` | `isOpen`, `onClose`, `translations`, `onSelectTranslation`, `theme` | [`src/components/reader/ReaderLanguageDrawer.tsx`](../../src/components/reader/ReaderLanguageDrawer.tsx) |
 | **`ReaderLoadingView`** | Reader | `ReaderLoadingViewProps` | `activeTheme` | [`src/components/reader/ReaderLoadingView.tsx`](../../src/components/reader/ReaderLoadingView.tsx) |
 | **`ReaderRowBookmark`** | Reader | `ReaderRowBookmarkProps` | `bookmarkElRef`, `effectiveStartRow`, `effectiveEndRow`, `bookmarkSpanRows`, `estimatedMaxBookmarkRows`, `lineStepPx`, `isBookmarkActive`, `isDraggingBookmark`, `getMaxBookmarkRows`, `computeRowFromClientY`, `onStartDrag`, `onEmitRowChange` | [`src/components/reader/ReaderRowBookmark.tsx`](../../src/components/reader/ReaderRowBookmark.tsx) |
@@ -248,9 +249,9 @@ Auto-extracted dynamically from **117 Production UI Components** using Babel AST
 | **`ReaderShareModal`** | Reader | `ReaderShareModalProps` | `isOpen`, `onClose`, `bookId`, `title`, `author`, `theme`, `progress`, `currentChapterIndex`, `totalChapters` | [`src/components/reader/ReaderShareModal.tsx`](../../src/components/reader/ReaderShareModal.tsx) |
 | **`ReaderSpeechBar`** | Reader | `ReaderSpeechBarProps` | `speech`, `isOpen`, `onClose`, `isDrawerOpen`, `isPlaying`, `isPaused`, `currentSentenceIndex`, `totalSentences`, `rate`, `availableVoices`, `naturalVoices`, `standardVoices`, `selectedVoice`, `onPlay`, `onPause`, `onResume`, `onSkipNext`, `onSkipPrev`, `onRateChange`, `onVoiceChange`, `theme`, `bookTitle`, `currentPage`, `totalPages`, `isPrevDisabled`, `isNextDisabled` | [`src/components/reader/ReaderSpeechBar.tsx`](../../src/components/reader/ReaderSpeechBar.tsx) |
 | **`ReaderSubHeaderRibbon`** | Reader | `ReaderSubHeaderRibbonProps` | `bookId`, `progress`, `totalChapters`, `currentChapterIndex`, `theme`, `resumeNotice`, `onRestart`, `onDismissResume`, `onOpenInfoModal`, `symposiumCompanion`, `symposiumMilestoneNotice`, `onDismissSymposiumMilestone` | [`src/components/reader/ReaderSubHeaderRibbon.tsx`](../../src/components/reader/ReaderSubHeaderRibbon.tsx) |
-| **`ReaderSurface`** | Reader | `ReaderSurfaceProps` | `theme`, `brightness`, `fontFamily`, `fontSize`, `lineHeight`, `columnWidth`, `readingMode`, `chapter`, `currentPageText`, `chapterPage`, `bookmarkRow`, `bookmarkText`, `onBookmarkRowChange`, `activeChapterIndex`, `totalChapters`, `isLoading`, `isError`, `error`, `onRetry`, `bookTitle`, `bookAuthor`, `onPreviousPage`, `onNextPage`, `onFontSizeChange`, `onTapSurface`, `isSpeechOpen`, `highlightedSentence`, `annotations`, `targetAnnotationId`, `bookmarkJumpNonce`, `onSelectAnnotation`, `onTextSelected` | [`src/components/reader/ReaderSurface.tsx`](../../src/components/reader/ReaderSurface.tsx) |
+| **`ReaderSurface`** | Reader | `ReaderSurfaceProps` | `theme`, `brightness`, `fontFamily`, `fontSize`, `lineHeight`, `columnWidth`, `readingMode`, `chapter`, `currentPageText`, `chapterPage`, `bookmarkRow`, `bookmarkText`, `onBookmarkRowChange`, `activeChapterIndex`, `totalChapters`, `isLoading`, `isError`, `error`, `onRetry`, `bookTitle`, `bookAuthor`, `onPreviousPage`, `onNextPage`, `onFontSizeChange`, `onTapSurface`, `isSpeechOpen`, `highlightedSentence`, `annotations`, `targetAnnotationId`, `bookmarkJumpNonce`, `onSelectAnnotation`, `onTextSelected`, `adjustingAnnotation`, `onCommitAdjustSelection`, `onCancelAdjustSelection` | [`src/components/reader/ReaderSurface.tsx`](../../src/components/reader/ReaderSurface.tsx) |
 | **`ReaderTocDrawer`** | Reader | `ReaderTocDrawerProps` | `isOpen`, `onClose`, `chapters`, `activeChapterIndex`, `onSelectChapter`, `bookTitle`, `theme` | [`src/components/reader/ReaderTocDrawer.tsx`](../../src/components/reader/ReaderTocDrawer.tsx) |
-| **`TextHighlightPopover`** | Reader | `TextHighlightPopoverProps` | `isOpen`, `selectedText`, `position`, `activeColor`, `existingNote`, `existingAnnotationId`, `fellowAnnotation`, `isFellowOnly`, `isSpeechOpen`, `onSelectColor`, `onSaveNote`, `onDelete`, `onCopyQuote`, `onClose`, `theme` | [`src/components/reader/TextHighlightPopover.tsx`](../../src/components/reader/TextHighlightPopover.tsx) |
+| **`TextHighlightPopover`** | Reader | `TextHighlightPopoverProps` | `isOpen`, `selectedText`, `position`, `activeColor`, `existingNote`, `existingAnnotationId`, `fellowAnnotation`, `isFellowOnly`, `isSpeechOpen`, `onSelectColor`, `onSaveNote`, `onDelete`, `onAdjustSelection`, `onCopyQuote`, `onClose`, `theme` | [`src/components/reader/TextHighlightPopover.tsx`](../../src/components/reader/TextHighlightPopover.tsx) |
 | **`VolumeCompletionModal`** | Reader | `VolumeCompletionModalProps` | `isOpen`, `onClose`, `bookTitle`, `bookRating`, `onRateChange`, `onOpenBookshelf` | [`src/components/reader/VolumeCompletionModal.tsx`](../../src/components/reader/VolumeCompletionModal.tsx) |
 | **`SocialSharePanel`** | Share | `SocialSharePanelProps` | `shareUrl`, `shareText`, `socialTitle`, `nativeShareTitle`, `downloadFilename`, `nativeShareFilename`, `exportCardBlob`, `themeClasses`, `copyLinkLabel`, `cardKindLabel` | [`src/components/share/SocialSharePanel.tsx`](../../src/components/share/SocialSharePanel.tsx) |
 | **`SymposiumInviteModal`** | Symposium | `SymposiumInviteModalProps` | `isOpen`, `onClose`, `bookId`, `bookTitle`, `preselectedFellow` | [`src/components/symposium/SymposiumInviteModal.tsx`](../../src/components/symposium/SymposiumInviteModal.tsx) |
@@ -290,7 +291,7 @@ Zustand client-side state stores programmatically verified across **10 Persisten
 
 ### 2. `useAnnotationStore` ([`src/stores/useAnnotationStore.ts`](../../src/stores/useAnnotationStore.ts))
 * **Storage Key**: `STORAGE_KEYS.ANNOTATIONS` (localStorage)
-* **Role & State**: Scholar marginalia, categorical pastel highlights (Yellow, Amber, Mint, Rose), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), per-user coalesced (`coalesceInFlightByUser`) cloud outbox synchronization with retry-loop-safe dirty tracking, and opt-in `15,000ms` passive mount/drawer cooldowns (`lastPassiveAnnotationSyncByUser`, `lastFellowBookSyncByKey`, `invalidateAnnotationSyncCooldown`) decoupled from persisted `lastAnnotationSyncAt` LWW tracking.
+* **Role & State**: Scholar marginalia, categorical archival highlights across 7 colors (Yellow, Amber, Mint, Rose, Sky, Lavender, Indigo), Save-gated boundary resizing (`updateAnnotationSelection` with `localStorage` + `user_annotations` outbox sync), co-reader Fellow Marginalia (`fellowAnnotations`), cross-volume global fellow marginalia sync (`fetchAllFellowAnnotations`), companion profile enrichment & placeholder protection (`enrichFellowAnnotations`, `resolveStaleFellowProfiles`), chapter-bound Spoiler Shield (`spoilerShieldEnabled`), per-user coalesced (`coalesceInFlightByUser`) cloud outbox synchronization with retry-loop-safe dirty tracking, and opt-in `15,000ms` passive mount/drawer cooldowns (`lastPassiveAnnotationSyncByUser`, `lastFellowBookSyncByKey`, `invalidateAnnotationSyncCooldown`) decoupled from persisted `lastAnnotationSyncAt` LWW tracking.
 
 ### 3. `useAuthStore` ([`src/stores/useAuthStore.ts`](../../src/stores/useAuthStore.ts))
 * **Storage Key**: `bookarium-auth-profile` (localStorage)

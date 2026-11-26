@@ -1,8 +1,8 @@
 # Architecture Matrix & Living Technical Reference — Bookarium
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-11-24`  
-> **Topology Health**: `262` Modules Analyzed • `1110` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Last Synchronized**: `2026-11-26`  
+> **Topology Health**: `263` Modules Analyzed • `1115` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -75,7 +75,7 @@ flowchart TD
             StoreTheme[("🎨 useThemeStore\n(day, sepia, obsidian)")]
             StoreAuth[("🔐 useAuthStore\n(session, cloud migration, profile)")]
             StorePref[("⚙️ usePreferencesStore\n(sticky scroll, layout choices, customDefaults)")]
-            StoreAnnot[("🖍️ useAnnotationStore\n(pastel highlights, notes, tags)")]
+            StoreAnnot[("🖍️ useAnnotationStore\n(7-color highlights, notes, boundary updates, tags)")]
             StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
             StoreFellowship[("🤝 useFellowshipStore\n(reader circles, symposiums, companion progress, cloud)")]
@@ -91,7 +91,7 @@ flowchart TD
             TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
             WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
             LedgerHook["🔖 useContinueReadingLedger\n(Two-Way Hydration & 0ms Resume)"]
-            AnnotatorEngine["🖍️ reader-annotator.ts & reader-bookmark-geometry.ts\n(Interval Partitioning, Canonical Span Matcher & Row Geometry)"]
+            AnnotatorEngine["🖍️ reader-annotator.ts & reader-bookmark-geometry.ts\n(Interval Partitioning, Span Boundary Snapping & Row Geometry)"]
         end
         
         HookCopyright["⚖️ useBookCopyright\n(Declarative Facade: Rules, Lifespans & Status)"]

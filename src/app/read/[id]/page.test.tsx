@@ -1681,6 +1681,66 @@ describe('Dedicated Reader Page (/read/[id])', () => {
     expect(screen.queryByTestId('reader-annotations-bookmark-dot')).toBeNull();
     expect(useReaderStore.getState().getReadingPosition(1342)?.bookmarkRow).toBeUndefined();
   });
+
+  it('allows adjusting an existing personal highlight selection via Crop button, previews without saving on Cancel, and persists resized text on Save', async () => {
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 2,
+          lastReadAt: '2026-11-26T10:00:00Z',
+        },
+      },
+    });
+    const seeded = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'universally acknowledged',
+      color: 'sky',
+    });
+
+    render(<BookReaderPage />);
+
+    const highlightMark = await screen.findByTestId('user-annotation-highlight');
+    expect(highlightMark).toHaveTextContent('universally acknowledged');
+
+    // Open highlight popover and enter interactive Adjust Selection Mode
+    fireEvent.click(highlightMark);
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('highlight-adjust-selection-btn'));
+
+    expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+    expect(screen.getByTestId('highlight-adjust-overlay')).toBeInTheDocument();
+
+    // Expanding to + Sentence previews live in ReaderSurface while leaving store untouched until Save
+    fireEvent.click(screen.getByTestId('adjust-expand-sentence-btn'));
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.'
+    );
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === seeded.id)?.selectedText).toBe(
+      'universally acknowledged'
+    );
+
+    // Cancelling exits adjust mode and restores original highlight cleanly
+    fireEvent.click(screen.getByTestId('adjust-cancel-btn'));
+    expect(screen.queryByTestId('highlight-adjust-overlay')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent('universally acknowledged');
+
+    // Re-enter adjust mode, expand to + Sentence, and Save -> updates store cleanly
+    fireEvent.click(screen.getByTestId('user-annotation-highlight'));
+    fireEvent.click(screen.getByTestId('highlight-adjust-selection-btn'));
+    fireEvent.click(screen.getByTestId('adjust-expand-sentence-btn'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('adjust-save-btn'));
+    });
+
+    expect(screen.queryByTestId('highlight-adjust-overlay')).not.toBeInTheDocument();
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === seeded.id)?.selectedText).toBe(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.'
+    );
+  });
 });
 
 

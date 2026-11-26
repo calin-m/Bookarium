@@ -2,7 +2,7 @@
  * @module src/stores/useAnnotationStore
  * @scope Personal Commonplace highlights/notes, Fellow Marginalia feed, chapter Spoiler Shield state, and queued annotation outbox sync.
  * @invariant Prune flushed deletion `tombstones` after cloud delete confirmation while advancing `lastAnnotationSyncAt` so stale local tombstones never block restored annotations or resurrect remotely deleted highlights.
- * @invariant Exclude internal `upsertError` retries from marking `dirty*Users` retry loops, enforce `MAX_ANNOTATION_TEXT_LENGTH` / `MAX_ANNOTATION_NOTE_LENGTH` bounds, and coalesce reads via `coalesceInFlightByUser` (`15,000ms` passive cooldowns).
+ * @invariant Exclude internal `upsertError` retries from marking `dirty*Users` retry loops, enforce `MAX_ANNOTATION_TEXT_LENGTH` / `MAX_ANNOTATION_NOTE_LENGTH` bounds (plus `MIN_ANNOTATION_TEXT_LENGTH` `>= 2` and no-op parity on `updateAnnotationSelection`), and coalesce reads via `coalesceInFlightByUser` (`15,000ms` passive cooldowns).
  * @rationale Separating persisted LWW `lastAnnotationSyncAt` anchors from ephemeral passive cooldowns prevents multi-device highlight count divergence without re-fetching unchanged marginalia on drawer switches.
  * @adr ADR-019, ADR-055, ADR-059, ADR-080
  */
@@ -109,6 +109,12 @@ export interface AnnotationState {
 
   updateAnnotationColor: (id: string, color: HighlightColor, userId?: string) => Promise<boolean>;
   updateAnnotationNote: (id: string, note: string, userId?: string) => Promise<boolean>;
+  updateAnnotationSelection: (
+    id: string,
+    selectedText: string,
+    chapterPage?: number,
+    userId?: string
+  ) => Promise<boolean>;
   deleteAnnotation: (id: string, userId?: string) => Promise<boolean>;
 
   getAnnotationsForBook: (bookId: number) => Annotation[];
@@ -615,6 +621,64 @@ export const useAnnotationStore = create<AnnotationState>()(
         return true;
       },
 
+      updateAnnotationSelection: async (id, selectedText, chapterPage, userId) => {
+        const normalizedText = selectedText.trim();
+        if (normalizedText.length < 2 || normalizedText.length > MAX_ANNOTATION_TEXT_LENGTH) {
+          return false;
+        }
+
+        const existing = get().annotations.find((a) => a.id === id);
+        if (!existing) {
+          return false;
+        }
+
+        const nextChapterPage = chapterPage ?? existing.chapterPage;
+        if (
+          existing.selectedText === normalizedText &&
+          existing.chapterPage === nextChapterPage
+        ) {
+          return true;
+        }
+
+        const now = new Date().toISOString();
+
+        // 1. Optimistic local update
+        set((state) => ({
+          annotations: state.annotations.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  selectedText: normalizedText,
+                  chapterPage: nextChapterPage,
+                  updatedAt: now,
+                }
+              : a
+          ),
+        }));
+
+        // 2. Cloud synchronization if logged in
+        const target = userId ? get().annotations.find((a) => a.id === id) : undefined;
+        if (userId && target) {
+          await syncAnnotationMutation(
+            target,
+            userId,
+            (sb) =>
+              sb
+                .from('user_annotations')
+                .update({
+                  selected_text: normalizedText,
+                  chapter_page: nextChapterPage,
+                  updated_at: now,
+                })
+                .eq('id', id)
+                .eq('user_id', userId),
+            withUserOutboxDirty(get, userId)
+          );
+        }
+
+        return true;
+      },
+
       deleteAnnotation: async (id, userId) => {
         // 1. Optimistic local update & tombstone record to prevent zombie resurrection
         set((state) => ({
@@ -914,6 +978,7 @@ export function useHydratedAnnotations() {
   const addAnnotation = useAnnotationStore((s) => s.addAnnotation);
   const updateAnnotationColor = useAnnotationStore((s) => s.updateAnnotationColor);
   const updateAnnotationNote = useAnnotationStore((s) => s.updateAnnotationNote);
+  const updateAnnotationSelection = useAnnotationStore((s) => s.updateAnnotationSelection);
   const deleteAnnotation = useAnnotationStore((s) => s.deleteAnnotation);
   const getAnnotationsForBook = useAnnotationStore((s) => s.getAnnotationsForBook);
   const getAnnotationsForPage = useAnnotationStore((s) => s.getAnnotationsForPage);
@@ -949,6 +1014,7 @@ export function useHydratedAnnotations() {
     addAnnotation,
     updateAnnotationColor,
     updateAnnotationNote,
+    updateAnnotationSelection,
     deleteAnnotation,
     getAnnotationsForBook,
     getAnnotationsForPage,

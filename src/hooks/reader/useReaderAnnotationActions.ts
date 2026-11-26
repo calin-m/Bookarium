@@ -50,11 +50,18 @@ export interface UseReaderAnnotationActionsOptions {
     note: string,
     userId?: string
   ) => Promise<unknown> | unknown;
+  updateAnnotationSelection?: (
+    id: string,
+    selectedText: string,
+    chapterPage?: number,
+    userId?: string
+  ) => Promise<unknown> | unknown;
 }
 
 /**
  * Encapsulates reader text-selection popover state, overlapping fellow/own annotation matching,
- * and highlight/note CRUD handlers for `src/app/read/[id]/page.tsx`.
+ * interactive highlight selection boundary adjustment state, and highlight/note CRUD handlers
+ * for `src/app/read/[id]/page.tsx`.
  */
 export function useReaderAnnotationActions({
   numericId,
@@ -68,9 +75,15 @@ export function useReaderAnnotationActions({
   addAnnotation,
   updateAnnotationColor,
   updateAnnotationNote,
+  updateAnnotationSelection,
 }: UseReaderAnnotationActionsOptions) {
   const [annotationToDelete, setAnnotationToDelete] =
     useState<Annotation | null>(null);
+  const [adjustingSession, setAdjustingSession] = useState<{
+    annotation: Annotation;
+    chapterIndex: number;
+    chapterPage: number;
+  } | null>(null);
   const [selectionPopover, setSelectionPopover] =
     useState<SelectionPopoverState>({
       isOpen: false,
@@ -81,11 +94,55 @@ export function useReaderAnnotationActions({
       isFellowOnly: false,
     });
 
+  const adjustingAnnotation =
+    adjustingSession &&
+    adjustingSession.chapterIndex === activeChapterIndex &&
+    adjustingSession.chapterPage === currentChapterPage &&
+    activeChapterAnnotations.some((a) => a.id === adjustingSession.annotation.id)
+      ? adjustingSession.annotation
+      : null;
+
   const dismissSelectionPopover = useCallback(() => {
     setSelectionPopover((prev) =>
       prev.isOpen ? { ...prev, isOpen: false } : prev
     );
   }, []);
+
+  const startAdjustingSelection = useCallback(
+    (annotation?: Annotation | null) => {
+      const target = annotation || selectionPopover.activeAnnotation;
+      if (!target) return;
+      setAdjustingSession({
+        annotation: target,
+        chapterIndex: activeChapterIndex,
+        chapterPage: currentChapterPage,
+      });
+      setSelectionPopover((prev) => ({ ...prev, isOpen: false }));
+      if (typeof window !== 'undefined') {
+        window.getSelection()?.removeAllRanges();
+      }
+    },
+    [selectionPopover.activeAnnotation, activeChapterIndex, currentChapterPage]
+  );
+
+  const cancelAdjustingSelection = useCallback(() => {
+    setAdjustingSession(null);
+  }, []);
+
+  const commitAdjustedSelection = useCallback(
+    async (selectedText: string) => {
+      const target = adjustingAnnotation;
+      setAdjustingSession(null);
+      if (!target || !updateAnnotationSelection) return;
+      await updateAnnotationSelection(
+        target.id,
+        selectedText,
+        currentChapterPage,
+        userId
+      );
+    },
+    [adjustingAnnotation, updateAnnotationSelection, currentChapterPage, userId]
+  );
 
   const handleTextSelected = useCallback(
     (selection: {
@@ -254,6 +311,10 @@ export function useReaderAnnotationActions({
     setAnnotationToDelete,
     selectionPopover,
     setSelectionPopover,
+    adjustingAnnotation,
+    startAdjustingSelection,
+    cancelAdjustingSelection,
+    commitAdjustedSelection,
     dismissSelectionPopover,
     handleTextSelected,
     handleSelectAnnotation,

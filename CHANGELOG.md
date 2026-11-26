@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.85] - 2026-11-26
+### *Interactive Crop-Handle Highlight Selection Adjustment (+ Word/Row Snap & + Sentence/+ Paragraph)*
+
+### Added
+- **Crop-Style Highlight Boundary Resizing, Single-Row Toolbar & Tooltip Layering (`src/components/reader/ReaderHighlightAdjustOverlay.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/components/ui/CursorTooltip.tsx`, `src/lib/reader-annotator.ts`, `src/lib/reader-bookmark-geometry.ts`, `src/hooks/reader/useReaderAnnotationActions.ts`, `src/stores/useAnnotationStore.ts`, `src/app/read/[id]/page.tsx`, `docs/DECISIONS.md`)**: Added **Adjust selection boundaries** (`Crop`) on editable personal highlights with draggable `role="slider"` Start/End handles (horizontal word-snapping, vertical row snapping via `resolveTextOffsetFromClientPoint`, keyboard navigation), `+ Sentence` & whitespace-tolerant `+ Paragraph` bounds clamped cleanly to `5,000` chars (`priorityAnnotationId` preview precedence preventing overlap drops), single-row `w-max` right-edge toolbar clamping + isolated status pills, uniform popover tooltips rendered via `CursorTooltip` at `z-[10020]`, and Save-gated `updateAnnotationSelection` sync (`ADR-019`, `ADR-080`).
+
+
 ## [2.9.84] - 2026-11-26
 ### *Extended 7-Color Archival Highlight Palette (Sky, Lavender & Indigo)*
 

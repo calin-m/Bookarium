@@ -17,9 +17,9 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-270%20Suites%20%7C%202806%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-271%20Suites%20%7C%202818%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![MSW](https://img.shields.io/badge/MSW-3.0.7-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.14%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-96.83%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -73,7 +73,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2806 tests across 270 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2818 tests across 271 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–15`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -116,9 +116,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.84)
+## 🛠️ Latest Improvements (v2.9.85)
 
-- **7-Color Archival Highlight Palette (`src/lib/annotation-cloud-sync.ts`, `src/config/annotation-tokens.ts`, `src/app/globals.css`, `src/components/presentation/notebook/QuickColorSwatchPopover.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/config/accolades-config.ts`, `supabase/schema.sql`, `docs/DECISIONS.md`, auto-synced `docs/architecture/`)**: Extended `HighlightColor` and `ANNOTATION_COLOR_CONFIG` from `4` to `7` archival colors by adding `sky` (`Cerulean Sky`), `lavender` (`Soft Lavender`), and `indigo` (`Cobalt Indigo`) alongside `yellow`, `amber`, `mint`, and `rose`; derived `HIGHLIGHT_CARD_COLORS` dynamically from `ANNOTATION_COLOR_LIST`, added Light/Dark/Sepia `::selection` CSS rules, widened `TextHighlightPopover` fallback width (`340px`) with wrap safety, preserved `Palette Virtuoso` at `4` colors, and updated `public.user_annotations` with an idempotent `chk_user_annotations_color_valid` migration (`ADR-019`, `ADR-080`).
+- **Crop-Style Highlight Boundary Resizing, Single-Row Toolbar & Tooltip Layering (`src/components/reader/ReaderHighlightAdjustOverlay.tsx`, `src/components/reader/TextHighlightPopover.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/components/ui/CursorTooltip.tsx`, `src/lib/reader-annotator.ts`, `src/lib/reader-bookmark-geometry.ts`, `src/hooks/reader/useReaderAnnotationActions.ts`, `src/stores/useAnnotationStore.ts`, `src/app/read/[id]/page.tsx`, `docs/DECISIONS.md`)**: Added **Adjust selection boundaries** (`Crop`) on editable personal highlights with draggable `role="slider"` Start/End handles (horizontal word-snapping, vertical row snapping via `resolveTextOffsetFromClientPoint`, keyboard navigation), `+ Sentence` & whitespace-tolerant `+ Paragraph` bounds clamped cleanly to `5,000` chars (`priorityAnnotationId` preview precedence preventing overlap drops), single-row `w-max` right-edge toolbar clamping + isolated status pills, uniform popover tooltips rendered via `CursorTooltip` at `z-[10020]`, and Save-gated `updateAnnotationSelection` sync (`ADR-019`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -171,7 +171,7 @@ Bookarium is structured around six core engineering pillars:
 ### 4. ⚡ Offline-First Persistence, Cloud Sync & Data Sovereignty
 * **Native IndexedDB Offline Storage, Same-Origin R2 Cover LRU & Adaptive Offline Catalog**: Persists unabridged book texts (`offline_books`) and local binary cover `Blob`s (`BookariumOfflineDB` v2: downloaded `offline_books` + bounded `300`-entry / `30d` `cover_cache` LRU, resolved via `useOfflineCoverImage.ts` ahead of same-origin `/api/books/content?type=cover` R2 reads with zero external cover hotlinking) for `0ms` offline reading. Includes App Shell `v7` Service Worker caching (`public/sw.js`), an **Adaptive Offline Catalog** (`useOfflineCatalogFallback.ts`), the **`Downloaded (N)` Smart Shelf**, and unified `Downloaded` filtering across all personal collections.
 * **Bookmarks & Continue Reading Ledger (`/bookmarks`)**: 2-column archival reading ledger with silk ribbon markers, live progress percentages, multi-attribute sorting, status filtering, completed book progress latching (`Read Again` flow), and 7-layer author lifespan self-healing (`isPlaceholderAuthor` guardrails).
-* **In-Reader Highlighting, Dual-State Marginalia & Commonplace Notebook (`/notebook`)**: 7 archival highlighters (Yellow, Amber, Mint, Rose, Sky, Lavender, Indigo) with page-boundary partial span matching, a **Dual-State Read/Edit Marginalia Popover** (`TextHighlightPopover.tsx`), composite union cards for overlapping personal + Fellow Scholar highlights (`pairOverlappingAnnotations`), and 1-click academic citation export.
+* **In-Reader Highlighting, Interactive Crop-Boundary Resizing, Dual-State Marginalia & Commonplace Notebook (`/notebook`)**: 7 archival highlighters (Yellow, Amber, Mint, Rose, Sky, Lavender, Indigo) with page-boundary partial span matching, a **Dual-State Read/Edit Marginalia Popover** (`TextHighlightPopover.tsx`) with Save-gated Start/End crop-handle resizing (`ReaderHighlightAdjustOverlay.tsx`, horizontal word-snapping, vertical row-snapping, `+ Sentence` / `+ Paragraph` quick-snap, and Supabase outbox sync), composite union cards for overlapping personal + Fellow Scholar highlights (`pairOverlappingAnnotations`), and 1-click academic citation export.
 * **7-Store Authoritative Cloud Sync & Multi-Tier Vercel Edge CDN Offloading**: Bi-directional Supabase outbox reconciliation across shelves, progress, annotations, habits, accolades, fellowships, and unified `profiles.preferences` JSONB (`usePreferencesStore` / `useThemeStore`) with passive `15s` mount/`TOKEN_REFRESHED` auth cooldown and unthrottled focus/reconnect wake-up, paired with `{ count: 'estimated' }` / `{ count: 'planned' }` planner scans, 11-column selective projection, per-key `inFlight` L4 coalescing, aligned `60m` reader text caching, single-transaction IndexedDB cover reuse, `(select auth.uid())` RLS `InitPlan` policies (`47` policies across `14` tables), and Multi-Tier Edge CDN caching (`12h` / `24h` / `7d`) that cuts quote discovery egress by **>99% (`~44 KB/day`)**.
 * **Hardened Authentication, Active Device Sessions & 3-Tier Zero-Retention Erasure (`/account`, `/privacy`)**: Supports Email/Password, Magic Link, and Google OAuth 2.0 PKCE with Cloudflare Turnstile (including `/account` recovery & resend gating) + Honeypot bot protection, fail-closed JWT `amr` password recovery (`auth-recovery.ts`), owner-scoped **Active Device Sessions** inspection & single-device/peer revocation (`public.get_active_sessions()`, `public.revoke_user_session(UUID)`, `verifyActiveSessionValidity`), Connected Accounts linking, dual Reading/Listening streak & annual challenge telemetry (`useHabitsStore`), Dynamic OpenGraph Reading Quote Cards, and a **Two-Step Email-Verified 3-Tier Zero-Retention Data Erasure Protocol** (`public.delete_current_user()` + device storage wipe).
 
@@ -256,7 +256,7 @@ flowchart TD
             StoreTheme[("🎨 useThemeStore\n(day, sepia, obsidian)")]
             StoreAuth[("🔐 useAuthStore\n(session, cloud migration, profile)")]
             StorePref[("⚙️ usePreferencesStore\n(sticky scroll, layout choices, customDefaults)")]
-            StoreAnnot[("🖍️ useAnnotationStore\n(pastel highlights, notes, tags)")]
+            StoreAnnot[("🖍️ useAnnotationStore\n(7-color highlights, notes, boundary updates, tags)")]
             StoreHabits[("🔥 useHabitsStore\n(streak, 5m threshold, dual immersion, cloud)")]
             StoreAccolades[("🎖️ useAccoladesStore\n(accolades, showcase pinning, celebrations, cloud)")]
             StoreFellowship[("🤝 useFellowshipStore\n(reader circles, symposiums, companion progress, cloud)")]
@@ -272,7 +272,7 @@ flowchart TD
             TimerHook["⏱️ useReadingTimer\n(Dual Immersion: 2-min Idle Guard + TTS Audio Bypass)"]
             WorkerHook["⚙️ useGutenbergParserWorker\n(Persistent Worker Chapter AST)"]
             LedgerHook["🔖 useContinueReadingLedger\n(Two-Way Hydration & 0ms Resume)"]
-            AnnotatorEngine["🖍️ reader-annotator.ts & reader-bookmark-geometry.ts\n(Interval Partitioning, Canonical Span Matcher & Row Geometry)"]
+            AnnotatorEngine["🖍️ reader-annotator.ts & reader-bookmark-geometry.ts\n(Interval Partitioning, Span Boundary Snapping & Row Geometry)"]
         end
         
         HookCopyright["⚖️ useBookCopyright\n(Declarative Facade: Rules, Lifespans & Status)"]

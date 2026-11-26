@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Copy, Trash2, Check, X, Feather, Pencil } from 'lucide-react';
+import { MessageSquare, Copy, Trash2, Check, X, Feather, Pencil, Crop } from 'lucide-react';
 import type { HighlightColor, FellowAnnotation } from '@/stores/useAnnotationStore';
 import { isPlaceholderUsername } from '@/stores/useFellowshipStore';
 import type { ReaderTheme } from '@/stores/useReaderStore';
@@ -24,6 +24,7 @@ export interface TextHighlightPopoverProps {
   onSelectColor: (color: HighlightColor) => void;
   onSaveNote?: (note: string) => void;
   onDelete?: () => void;
+  onAdjustSelection?: () => void;
   onCopyQuote?: () => void;
   onClose: () => void;
   theme?: ReaderTheme;
@@ -56,6 +57,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
   onSelectColor,
   onSaveNote,
   onDelete,
+  onAdjustSelection,
   onCopyQuote,
   onClose,
   theme = 'light',
@@ -320,6 +322,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   type="button"
                   data-testid="highlight-copy-btn"
                   aria-label="Copy quote to clipboard"
+                  title="Copy quote to clipboard"
                   onClick={handleCopy}
                   className="p-1 rounded-md text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
                 >
@@ -328,6 +331,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                 <button
                   type="button"
                   aria-label="Close selection menu"
+                  title="Close selection menu"
                   onClick={onClose}
                   className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                 >
@@ -402,6 +406,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                       type="button"
                       data-testid={`highlight-color-${c.id}`}
                       aria-label={`Highlight with ${c.label}`}
+                      title={`Highlight with ${c.label}`}
                       onClick={() => onSelectColor(c.id)}
                       className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none ${c.pillClass} ${
                         isSelected ? c.activeRing : ''
@@ -416,6 +421,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   type="button"
                   data-testid="highlight-add-note-btn"
                   aria-label="Add or edit personal note"
+                  title={existingNote ? 'View or edit personal note' : 'Add personal note'}
                   onClick={() => {
                     if (isNoteExpanded && !existingNote) {
                       setIsNoteExpanded(false);
@@ -437,17 +443,32 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                   type="button"
                   data-testid="highlight-copy-btn"
                   aria-label="Copy quote to clipboard"
+                  title="Copy quote to clipboard"
                   onClick={handleCopy}
                   className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </button>
 
+                {existingAnnotationId && !isFellowOnly && onAdjustSelection && (
+                  <button
+                    type="button"
+                    data-testid="highlight-adjust-selection-btn"
+                    aria-label="Adjust highlight selection boundaries"
+                    title="Adjust selection boundaries"
+                    onClick={onAdjustSelection}
+                    className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                  >
+                    <Crop className="w-4 h-4" />
+                  </button>
+                )}
+
                 {existingAnnotationId && onDelete && (
                   <button
                     type="button"
                     data-testid="highlight-delete-btn"
                     aria-label="Remove highlight"
+                    title="Remove highlight"
                     onClick={onDelete}
                     className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                   >
@@ -458,6 +479,7 @@ export const TextHighlightPopover: React.FC<TextHighlightPopoverProps> = ({
                 <button
                   type="button"
                   aria-label="Close selection menu"
+                  title="Close selection menu"
                   onClick={onClose}
                   className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                 >

@@ -5,6 +5,10 @@ import {
   findBestTextMatch,
   extractRowTextFromElement,
   resolveTextRowSpanInElement,
+  buildSourceToDomOffsetMap,
+  resolveTextOffsetFromClientPoint,
+  stepDomOffsetByRow,
+  measureSelectionEndpointRects,
 } from './reader-bookmark-geometry';
 
 describe('reader-bookmark-geometry', () => {
@@ -215,6 +219,105 @@ describe('reader-bookmark-geometry', () => {
           }) as DOMRect
       );
       expect(measureCharRect(collectContentTextSegments(root), 0)).toBeNull();
+    });
+
+    it('resolves row-snapped DOM client points, steps vertically by row, and aligns source-to-DOM endpoint rects around fellow badges', () => {
+      const root = document.createElement('div');
+      const row1Text = 'Alpha beta gamma ';
+      const row2Text = 'delta epsilon zeta.';
+      const mark = document.createElement('mark');
+      mark.appendChild(document.createTextNode(row1Text));
+      const badge = document.createElement('sup');
+      badge.setAttribute('data-testid', 'fellow-highlight-badge');
+      badge.textContent = '@austen';
+      mark.appendChild(badge);
+      root.appendChild(mark);
+      root.appendChild(document.createTextNode(row2Text));
+
+      const sourceText = `${row1Text}${row2Text}`;
+      const segments = collectContentTextSegments(root);
+      const offsetMap = buildSourceToDomOffsetMap(sourceText, segments);
+      expect(offsetMap.sourceToDom[0]).toBe(0);
+      expect(offsetMap.sourceToDom[sourceText.length - 1]).toBe(sourceText.length - 1);
+
+      const splitIdx = row1Text.length;
+      Range.prototype.getBoundingClientRect = vi.fn(function (this: Range) {
+        const nodeIdx = segments.findIndex((s) => s.node === this.startContainer);
+        const globalOffset = (segments[nodeIdx]?.start ?? 0) + this.startOffset;
+        const isRow2 = globalOffset >= splitIdx;
+        const col = isRow2 ? globalOffset - splitIdx : globalOffset;
+        const left = 20 + col * 10;
+        const top = isRow2 ? 56 : 20;
+        return {
+          top,
+          bottom: top + 20,
+          left,
+          right: left + 9,
+          width: 9,
+          height: 20,
+          x: left,
+          y: top,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+
+      // Dragging vertically onto row 2 around X=85 (inside margin/inter-line space) snaps cleanly to row 2
+      const hitRow2 = resolveTextOffsetFromClientPoint(root, 85, 65);
+      expect(hitRow2).not.toBeNull();
+      expect(hitRow2!).toBeGreaterThanOrEqual(splitIdx);
+
+      // Stepping vertically from row 2 col 0 up to row 1 lands on row 1
+      const steppedUp = stepDomOffsetByRow(root, splitIdx, -1, 24);
+      expect(steppedUp).not.toBeNull();
+      expect(steppedUp!).toBeLessThan(splitIdx);
+
+      // Endpoint rect measurement skips trailing whitespace and excludes @austen badge
+      const startOffset = sourceText.indexOf('beta');
+      const endOffset = sourceText.indexOf('delta') + 'delta'.length;
+      const rects = measureSelectionEndpointRects(root, sourceText, startOffset, endOffset);
+      expect(rects).not.toBeNull();
+      expect(rects!.startRect.top).toBe(20);
+      expect(rects!.endRect.top).toBe(56);
+
+      // Stepping downward from row 1 lands on row 2
+      const steppedDown = stepDomOffsetByRow(root, 6, 1, 24);
+      expect(steppedDown).not.toBeNull();
+      expect(steppedDown!).toBeGreaterThanOrEqual(splitIdx);
+
+      // Whitespace normalization fallback aligns stripped paragraph breaks cleanly
+      const sourceWithGap = 'First para.\n\nSecond para.';
+      const domEl = document.createElement('div');
+      domEl.appendChild(document.createTextNode('First para.Second para.'));
+      const gapMap = buildSourceToDomOffsetMap(sourceWithGap, collectContentTextSegments(domEl));
+      expect(gapMap.sourceToDom[sourceWithGap.indexOf('Second')]).toBe(11);
+      expect(gapMap.domToSource[11]).toBe(sourceWithGap.indexOf('Second'));
+
+      // caretPositionFromPoint fast-path returns directly matched text offset
+      const docWithCaret = document as Document & {
+        caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
+      };
+      const originalCaret = docWithCaret.caretPositionFromPoint;
+      docWithCaret.caretPositionFromPoint = vi.fn(() => ({
+        offsetNode: segments[0].node,
+        offset: 6,
+        getClientRect: () =>
+          ({
+            top: 20,
+            bottom: 40,
+            left: 80,
+            right: 89,
+            width: 9,
+            height: 20,
+            x: 80,
+            y: 20,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      }));
+      try {
+        expect(resolveTextOffsetFromClientPoint(root, 84, 28)).toBe(6);
+      } finally {
+        docWithCaret.caretPositionFromPoint = originalCaret;
+      }
     });
   });
 });

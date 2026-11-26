@@ -548,5 +548,46 @@ describe('TextHighlightPopover', () => {
 
     expect(screen.getByText('Highlighted by @plato in Symposium')).toBeInTheDocument();
   });
+
+  it('shows Adjust selection boundaries button strictly for editable personal highlights and invokes callback', () => {
+    const onAdjustSelection = vi.fn();
+
+    // Hidden on brand-new text selection (no existingAnnotationId)
+    const { rerender } = render(
+      <TextHighlightPopover {...defaultProps} onAdjustSelection={onAdjustSelection} />
+    );
+    expect(screen.queryByTestId('highlight-adjust-selection-btn')).not.toBeInTheDocument();
+
+    // Hidden on fellow-only highlight even when handler is passed
+    rerender(
+      <TextHighlightPopover
+        {...defaultProps}
+        existingAnnotationId="fellow-ann-only"
+        isFellowOnly={true}
+        onAdjustSelection={onAdjustSelection}
+      />
+    );
+    expect(screen.queryByTestId('highlight-adjust-selection-btn')).not.toBeInTheDocument();
+
+    // Visible on personal highlight and fires callback on click
+    rerender(
+      <TextHighlightPopover
+        {...defaultProps}
+        existingAnnotationId="self-ann-2"
+        isFellowOnly={false}
+        onAdjustSelection={onAdjustSelection}
+      />
+    );
+    const adjustBtn = screen.getByTestId('highlight-adjust-selection-btn');
+    expect(adjustBtn).toHaveAttribute('aria-label', 'Adjust highlight selection boundaries');
+    expect(adjustBtn).toHaveAttribute('title', 'Adjust selection boundaries');
+    expect(screen.getByTestId('highlight-color-yellow')).toHaveAttribute('title', 'Highlight with Canary Yellow');
+    expect(screen.getByTestId('highlight-add-note-btn')).toHaveAttribute('title', 'Add personal note');
+    expect(screen.getByTestId('highlight-copy-btn')).toHaveAttribute('title', 'Copy quote to clipboard');
+    expect(screen.getByTestId('highlight-delete-btn')).toHaveAttribute('title', 'Remove highlight');
+    expect(screen.getByLabelText('Close selection menu')).toHaveAttribute('title', 'Close selection menu');
+    fireEvent.click(adjustBtn);
+    expect(onAdjustSelection).toHaveBeenCalledTimes(1);
+  });
 });
 

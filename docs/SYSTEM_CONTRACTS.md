@@ -26,11 +26,11 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `286` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
-- **Annotated Contract Modules**: `85` (**29.7%** coverage; `20` Tier-1 + `22` Tier-2 + `23` Tier-3 + `20` Tier-4 = `85` Protected)
+- **Total Scanned Executable Modules**: `287` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
+- **Annotated Contract Modules**: `85` (**29.6%** coverage; `20` Tier-1 + `22` Tier-2 + `23` Tier-3 + `20` Tier-4 = `85` Protected)
 - **Extracted Module Invariants**: `149`
 - **Symbol-Level Contracts**: `1`
-- **Pending Annotation Queue**: `201` *(auto-ranked below by AST blast radius & external boundary exposure)*
+- **Pending Annotation Queue**: `202` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
@@ -40,7 +40,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 | **React Hooks & Queries** | `36` | `11` | `25` | 30.6% |
 | **Web Workers** | `2` | `2` | `0` | 100.0% |
 | **App Router Pages & Layouts** | `25` | `6` | `19` | 24.0% |
-| **UI & Feature Components** | `117` | `1` | `116` | 0.9% |
+| **UI & Feature Components** | `118` | `1` | `117` | 0.8% |
 | **Config & Type Contracts** | `18` | `1` | `17` | 5.6% |
 | **CLI Pipelines & Governance** | `22` | `14` | `8` | 63.6% |
 
@@ -416,29 +416,29 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/reader-annotator.ts`](../src/lib/reader-annotator.ts) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Canonical text span matching (`findAllCanonicalTextSpans`), dual-band self+fellow overlap interval slicing, and highlight reconciliation utilities.
+- **Intended Scope (`@scope`)**: Canonical text span matching (`findAllCanonicalTextSpans`), dual-band self+fellow overlap interval slicing, word/sentence/paragraph selection boundary helpers, and highlight reconciliation utilities.
 - **Behavioral Invariants (`@invariant`)**:
   - Execute an `O(N)` exact `indexOf` fast path first before falling back to `buildCanonicalIndexMap` (`--` <-> `—`, `_italic_`, whitespace, curly <-> straight quote equivalence) so saved annotations and bookmarks remain resilient across typography updates.
-  - Slice overlapping personal and fellow marginalia into non-overlapping `AnnotationSpan` segments while filtering PII (`isFellowAnnotation`) cleanly.
+  - Slice overlapping personal and fellow marginalia into non-overlapping `AnnotationSpan` segments while filtering PII (`isFellowAnnotation`) cleanly, honoring `priorityAnnotationId` precedence during live crop previews, and keeping adjusted selections word-aligned and clamped cleanly within `[MIN_ADJUSTED_SELECTION_LENGTH, MAX_ADJUSTED_SELECTION_LENGTH]`.
 - **Design Rationale (`@rationale`)**:
-  - Character-index-mapped canonical search prevents annotation orphaning across reflow changes without slowing down common exact-match highlights.
-- **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-060](DECISIONS.md)
-- **AST Blast Radius**: 11 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx), [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), …)
+  - Character-index-mapped canonical search and pure boundary-snapping helpers prevent annotation orphaning across reflow changes and keep interactive highlight resizing deterministic and zero-DOM.
+- **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-060](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 12 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx), [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (27 tests)
+- **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (28 tests)
 
 #### [`src/lib/reader-bookmark-geometry.ts`](../src/lib/reader-bookmark-geometry.ts) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: DOM `Range` row-geometry engine measuring per-line bookmark placement (`extractRowTextFromElement`) and duplicate-line reflow resolution (`resolveTextRowSpanInElement`).
+- **Intended Scope (`@scope`)**: DOM `Range` row-geometry engine measuring per-line bookmark placement (`extractRowTextFromElement`), duplicate-line reflow resolution (`resolveTextRowSpanInElement`), and interactive highlight crop handle hit-testing (`resolveTextOffsetFromClientPoint`, `measureSelectionEndpointRects`).
 - **Behavioral Invariants (`@invariant`)**:
-  - Exclude injected `[data-testid="fellow-highlight-badge"]` DOM superscripts inside `collectContentTextSegments` (`TreeWalker`) so character offsets stay aligned with pure canonical page text.
-  - Binary-search rendered character bounding rectangles (`measureCharRect`) and disambiguate duplicate phrases on the same page by shortest row distance to `fallbackRow` with relative ratio tiebreaking.
+  - Exclude injected `[data-testid="fellow-highlight-badge"]` DOM superscripts inside `collectContentTextSegments` (`TreeWalker`) so character offsets stay aligned with pure canonical page text (`buildSourceToDomOffsetMap`).
+  - Binary-search rendered character bounding rectangles (`measureCharRect`), resolve vertical row-snapped drag points via visual line grouping (`DEFAULT_ROW_Y_TOLERANCE_PX`), and disambiguate duplicate phrases on the same page by shortest row distance to `fallbackRow` with relative ratio tiebreaking.
 - **Design Rationale (`@rationale`)**:
-  - Separating pure DOM `Range` geometry from React components allows reflow-resilient multi-row bookmark snapping to remain fast and deterministically unit-tested.
-- **Governing Decisions (`@adr`)**: [ADR-068](DECISIONS.md)
+  - Separating pure DOM `Range` geometry from React components allows reflow-resilient multi-row bookmark snapping and row-snapping crop handles to remain fast and deterministically unit-tested.
+- **Governing Decisions (`@adr`)**: [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`src/components/reader/ReaderSurface.tsx`](../src/components/reader/ReaderSurface.tsx), [`src/hooks/reader/useReaderExitBookmark.ts`](../src/hooks/reader/useReaderExitBookmark.ts))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/reader-bookmark-geometry.test.ts`](../src/lib/reader-bookmark-geometry.test.ts) (8 tests)
+- **Test Contract**: [`src/lib/reader-bookmark-geometry.test.ts`](../src/lib/reader-bookmark-geometry.test.ts) (9 tests)
 
 #### [`src/lib/reader-cloud-sync.ts`](../src/lib/reader-cloud-sync.ts) *(Tier-2 Protected)*
 
@@ -592,13 +592,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Personal Commonplace highlights/notes, Fellow Marginalia feed, chapter Spoiler Shield state, and queued annotation outbox sync.
 - **Behavioral Invariants (`@invariant`)**:
   - Prune flushed deletion `tombstones` after cloud delete confirmation while advancing `lastAnnotationSyncAt` so stale local tombstones never block restored annotations or resurrect remotely deleted highlights.
-  - Exclude internal `upsertError` retries from marking `dirty*Users` retry loops, enforce `MAX_ANNOTATION_TEXT_LENGTH` / `MAX_ANNOTATION_NOTE_LENGTH` bounds, and coalesce reads via `coalesceInFlightByUser` (`15,000ms` passive cooldowns).
+  - Exclude internal `upsertError` retries from marking `dirty*Users` retry loops, enforce `MAX_ANNOTATION_TEXT_LENGTH` / `MAX_ANNOTATION_NOTE_LENGTH` bounds (plus `MIN_ANNOTATION_TEXT_LENGTH` `>= 2` and no-op parity on `updateAnnotationSelection`), and coalesce reads via `coalesceInFlightByUser` (`15,000ms` passive cooldowns).
 - **Design Rationale (`@rationale`)**:
   - Separating persisted LWW `lastAnnotationSyncAt` anchors from ephemeral passive cooldowns prevents multi-device highlight count divergence without re-fetching unchanged marginalia on drawer switches.
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-055](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 12 runtime, 11 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
+- **AST Blast Radius**: 12 runtime, 12 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.user_annotations` · Storage/Cookies: `bookarium-annotations-storage`
-- **Test Contract**: [`src/stores/useAnnotationStore.test.ts`](../src/stores/useAnnotationStore.test.ts) (38 tests)
+- **Test Contract**: [`src/stores/useAnnotationStore.test.ts`](../src/stores/useAnnotationStore.test.ts) (39 tests)
 
 #### [`src/stores/useAuthStore.ts`](../src/stores/useAuthStore.ts) *(Tier-1 Protected)*
 
@@ -689,7 +689,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, and prevents stale tabs from resurrecting deleted bookmarks.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 28 runtime, 20 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
+- **AST Blast Radius**: 28 runtime, 21 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.reading_progress` · Storage/Cookies: `bookarium-reader-preferences`
 - **Test Contract**: [`src/stores/useReaderStore.test.ts`](../src/stores/useReaderStore.test.ts) (35 tests)
 
@@ -1166,7 +1166,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ---
 
-## 📋 AST-Prioritized Pending Contract Queue (201 Modules)
+## 📋 AST-Prioritized Pending Contract Queue (202 Modules)
 
 Unannotated modules ranked automatically by AST **fan-in blast radius** and **cross-boundary exposure** (`Supabase DB`, `RPC`, `/api/*`, `CustomEvent`/`BroadcastChannel`, `localStorage`/Cookies, `process.env.*`):
 
@@ -1190,12 +1190,12 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
+| `16` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `8` / `0` | Pure / internal |
 | `16` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `6` / `0` | Pure / internal |
 | `15` | [`src/hooks/useBookCopyright.ts`](../src/hooks/useBookCopyright.ts) | React Hooks & Queries | `6` / `0` | Pure / internal |
 | `15` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `3` | Pure / internal |
 | `14` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `7` / `0` | Pure / internal |
 | `14` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
-| `14` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/config/api-endpoints.ts`](../src/config/api-endpoints.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
 | `12` | [`src/components/presentation/Footer.tsx`](../src/components/presentation/Footer.tsx) | UI & Feature Components | `6` / `0` | Pure / internal |
@@ -1225,7 +1225,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `8` | [`src/config/views.config.ts`](../src/config/views.config.ts) | Config & Type Contracts | `3` / `2` | Pure / internal |
 | `8` | [`src/lib/book-tags.ts`](../src/lib/book-tags.ts) | Domain Engines & Adapters | `2` / `0` | Pure / internal |
 
-<details><summary>Standard & Leaf Modules Pending Optional Annotation (151 Modules)</summary>
+<details><summary>Standard & Leaf Modules Pending Optional Annotation (152 Modules)</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
@@ -1365,6 +1365,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/reader/ReaderFloatingToolsPod.tsx`](../src/components/reader/ReaderFloatingToolsPod.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/ReaderFooter.tsx`](../src/components/reader/ReaderFooter.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/ReaderHeader.tsx`](../src/components/reader/ReaderHeader.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/reader/ReaderHighlightAdjustOverlay.tsx`](../src/components/reader/ReaderHighlightAdjustOverlay.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/ReaderLanguageDrawer.tsx`](../src/components/reader/ReaderLanguageDrawer.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/ReaderRowBookmark.tsx`](../src/components/reader/ReaderRowBookmark.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/reader/ReaderSearchDrawer.tsx`](../src/components/reader/ReaderSearchDrawer.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |

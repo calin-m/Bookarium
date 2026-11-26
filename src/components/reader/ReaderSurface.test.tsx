@@ -1320,4 +1320,219 @@ describe('ReaderSurface', () => {
       vi.useRealTimers();
     }
   });
+
+  it('renders live preview and interactive crop handles in adjust mode, supports + Sentence / Cancel / Save, and drags handles cleanly', () => {
+    const initialAnnotation: Annotation = {
+      id: 'ann-resize-1',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'universally acknowledged',
+      color: 'lavender',
+      createdAt: '2026-01-01T10:00:00Z',
+      updatedAt: '2026-01-01T10:00:00Z',
+    };
+    const chapterText =
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune. He waited calmly.';
+    const onCommitAdjustSelection = vi.fn();
+    const onCancelAdjustSelection = vi.fn();
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText={chapterText}
+        chapter={{ ...sampleChapter, content: chapterText }}
+        annotations={[initialAnnotation]}
+        adjustingAnnotation={initialAnnotation}
+        onCommitAdjustSelection={onCommitAdjustSelection}
+        onCancelAdjustSelection={onCancelAdjustSelection}
+      />
+    );
+
+    expect(screen.getByTestId('highlight-adjust-overlay')).toBeInTheDocument();
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    expect(highlightMark).toHaveTextContent('universally acknowledged');
+
+    // Expanding to + Sentence previews immediately in the DOM without committing yet
+    fireEvent.click(screen.getByTestId('adjust-expand-sentence-btn'));
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune.'
+    );
+    expect(onCommitAdjustSelection).not.toHaveBeenCalled();
+
+    // Dragging Start handle onto later word shrinks highlight, then clicking Save commits final selection
+    const endHandle = screen.getByTestId('highlight-adjust-handle-end');
+    fireEvent.keyDown(endHandle, { key: 'ArrowLeft' });
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+      'It is a truth universally acknowledged, that a single man in possession of a good'
+    );
+
+    // Clicking Cancel fires cancel callback and resets live preview back to original annotation text
+    fireEvent.click(screen.getByTestId('adjust-cancel-btn'));
+    expect(onCancelAdjustSelection).toHaveBeenCalledTimes(1);
+    expect(onCommitAdjustSelection).not.toHaveBeenCalled();
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent('universally acknowledged');
+
+    // Expand again and click Save
+    fireEvent.click(screen.getByTestId('adjust-expand-sentence-btn'));
+    fireEvent.click(screen.getByTestId('adjust-save-btn'));
+    expect(onCommitAdjustSelection).toHaveBeenCalledWith(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune.'
+    );
+  });
+
+  it('drags Start and End crop handles across multi-row coordinates, steps rows via keyboard, and snaps + Paragraph', () => {
+    const initialAnnotation: Annotation = {
+      id: 'ann-drag-1',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'universally',
+      color: 'mint',
+      createdAt: '2026-01-01T10:00:00Z',
+      updatedAt: '2026-01-01T10:00:00Z',
+    };
+    const row1 = 'It is a truth universally ';
+    const row2 = 'acknowledged by everyone here.\n\nSecond paragraph begins right here.';
+    const chapterText = `${row1}${row2}`;
+    const originalRectFn = Range.prototype.getBoundingClientRect;
+
+    Range.prototype.getBoundingClientRect = vi.fn(function (this: Range) {
+      const containerText = this.startContainer.textContent || '';
+      const rawIdx = chapterText.indexOf(containerText);
+      const globalOffset = (rawIdx >= 0 ? rawIdx : 0) + this.startOffset;
+      const isRow2 = globalOffset >= row1.length;
+      const col = isRow2 ? globalOffset - row1.length : globalOffset;
+      const left = 20 + col * 8;
+      const top = isRow2 ? 56 : 20;
+      return {
+        top,
+        bottom: top + 20,
+        left,
+        right: left + 7,
+        width: 7,
+        height: 20,
+        x: left,
+        y: top,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+
+    try {
+      const onCommitAdjustSelection = vi.fn();
+      render(
+        <ReaderSurface
+          {...defaultProps}
+          currentPageText={chapterText}
+          chapter={{ ...sampleChapter, content: chapterText }}
+          annotations={[initialAnnotation]}
+          adjustingAnnotation={initialAnnotation}
+          onCommitAdjustSelection={onCommitAdjustSelection}
+          onCancelAdjustSelection={vi.fn()}
+        />
+      );
+
+      // Drag End handle vertically onto row 2 (`acknowledged`) and horizontally to word boundary
+      const endHandle = screen.getByTestId('highlight-adjust-handle-end');
+      const targetCol = row2.indexOf('acknowledged') + 4;
+      fireEvent.pointerDown(endHandle);
+      act(() => {
+        window.dispatchEvent(
+          new MouseEvent('mousemove', { clientX: 20 + targetCol * 8, clientY: 64 })
+        );
+        window.dispatchEvent(new MouseEvent('mouseup'));
+      });
+      expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+        'universally acknowledged'
+      );
+
+      // Drag Start handle backward via touchmove to `truth`
+      const startHandle = screen.getByTestId('highlight-adjust-handle-start');
+      const truthOffset = row1.indexOf('truth');
+      fireEvent.touchStart(startHandle);
+      act(() => {
+        const touchInit = {
+          touches: [{ clientX: 20 + truthOffset * 8, clientY: 28 }],
+        } as unknown as TouchEventInit;
+        window.dispatchEvent(new TouchEvent('touchmove', touchInit));
+        window.dispatchEvent(new TouchEvent('touchend'));
+      });
+      expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+        'truth universally acknowledged'
+      );
+
+      // Keyboard vertical row step on End handle moves between rows cleanly
+      fireEvent.keyDown(endHandle, { key: 'ArrowUp' });
+      expect(screen.getByTestId('user-annotation-highlight').textContent?.length).toBeGreaterThanOrEqual(2);
+
+      // + Paragraph snaps full enclosing paragraph cleanly
+      fireEvent.click(screen.getByTestId('adjust-expand-paragraph-btn'));
+      expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+        'It is a truth universally acknowledged by everyone here.'
+      );
+      fireEvent.click(screen.getByTestId('adjust-save-btn'));
+      expect(onCommitAdjustSelection).toHaveBeenCalledWith(
+        'It is a truth universally acknowledged by everyone here.'
+      );
+    } finally {
+      Range.prototype.getBoundingClientRect = originalRectFn;
+    }
+  });
+
+  it('keeps expanded + Paragraph preview highlighted even when an earlier highlight begins at the paragraph start, and expands across paragraphs on repeat click', () => {
+    const earlierStartAnn: Annotation = {
+      id: 'ann-para-start',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'First phrase',
+      color: 'yellow',
+      createdAt: '2026-01-01T09:00:00Z',
+      updatedAt: '2026-01-01T09:00:00Z',
+    };
+    const editedAnn: Annotation = {
+      id: 'ann-para-later',
+      bookId: 1342,
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'later target',
+      color: 'sky',
+      createdAt: '2026-01-01T10:00:00Z',
+      updatedAt: '2026-01-01T10:00:00Z',
+    };
+    const chapterText =
+      'First phrase leads into a later target inside paragraph one.\n\nSecond paragraph follows here.';
+
+    render(
+      <ReaderSurface
+        {...defaultProps}
+        currentPageText={chapterText}
+        chapter={{ ...sampleChapter, content: chapterText }}
+        annotations={[earlierStartAnn, editedAnn]}
+        adjustingAnnotation={editedAnn}
+        onCommitAdjustSelection={vi.fn()}
+        onCancelAdjustSelection={vi.fn()}
+      />
+    );
+
+    // Clicking + Paragraph spans full paragraph 1 and highlights editedAnn (not swallowed by earlierStartAnn)
+    fireEvent.click(screen.getByTestId('adjust-expand-paragraph-btn'));
+    const marksAfterOne = screen.getAllByTestId('user-annotation-highlight');
+    const activeMarkOne = marksAfterOne.find(
+      (el) => el.getAttribute('data-annotation-id') === editedAnn.id
+    );
+    expect(activeMarkOne).toBeDefined();
+    expect(activeMarkOne).toHaveTextContent(
+      'First phrase leads into a later target inside paragraph one.'
+    );
+
+    // Clicking + Paragraph again appends paragraph 2 seamlessly
+    fireEvent.click(screen.getByTestId('adjust-expand-paragraph-btn'));
+    const activeMarkTwo = screen
+      .getAllByTestId('user-annotation-highlight')
+      .find((el) => el.getAttribute('data-annotation-id') === editedAnn.id);
+    expect(activeMarkTwo).toHaveTextContent(
+      'First phrase leads into a later target inside paragraph one. Second paragraph follows here.'
+    );
+  });
 });
