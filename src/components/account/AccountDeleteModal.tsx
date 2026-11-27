@@ -45,7 +45,7 @@ export const AccountDeleteModal: React.FC<AccountDeleteModalProps> = ({
                 We sent a secure deletion confirmation link to <strong className="text-foreground">{userEmail}</strong>.
               </p>
               <p className="text-[11px] text-muted-foreground font-sans leading-relaxed pt-1">
-                Please open the email on your device and click the link to finalize the permanent deletion of your account, bookshelves, annotations, reading telemetry, accolades, and Reader Circle connections.
+                Please open the email in <strong className="text-foreground">this same browser</strong> and click the link to finalize permanent deletion of your account login, avatar files, bookshelves, favorites, ratings, reading progress &amp; bookmarks, highlights &amp; notes, habits, accolades, public profile, Reader Circle &amp; Symposium links, and offline downloads on this device.
               </p>
             </div>
             <div className="pt-2">
@@ -65,12 +65,15 @@ export const AccountDeleteModal: React.FC<AccountDeleteModalProps> = ({
               <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <p className="font-semibold text-foreground text-sm sm:text-base">
                   Security Verification Required
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                  For your security, deleting your account requires email confirmation. Clicking below will send a one-time verification link to <strong className="text-foreground">{userEmail}</strong>. Your account will <strong className="text-foreground">remain active</strong> until you click the confirmation link in that email.
+                  For your security, deleting your account requires email confirmation. Clicking below will send a one-time verification link to <strong className="text-foreground">{userEmail}</strong>. Open that link in <strong className="text-foreground">this same browser</strong> to continue — your account will <strong className="text-foreground">remain active</strong> until you confirm on the next screen.
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Confirming deletion permanently erases your account credentials, avatar files, synced bookshelves, favorites, ratings, reading progress &amp; bookmarks, highlights &amp; notes, reading habits &amp; streaks, accolades, public profile, Reader Circle &amp; Symposium links, and local offline downloads on this device.
                 </p>
               </div>
             </div>

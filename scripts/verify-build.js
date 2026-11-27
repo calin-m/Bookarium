@@ -1,7 +1,7 @@
 /**
  * @module scripts/verify-build
  * @scope 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
- * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, bidirectional TOC + corpus parity across `docs/ARCHITECTURE.md` and `docs/architecture/*.md`, circular `SECURITY.md` symbol parity, `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+ * @invariant Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, bidirectional TOC + corpus parity across `docs/ARCHITECTURE.md` and `docs/architecture/*.md`, circular `SECURITY.md` symbol parity (`auditSecurityDocumentationParity`), dynamic legal/privacy/deletion disclosure parity (`auditLegalDocumentationParity`), 4-layer Rule 9 deletion/cache/guest-wipe parity (`validateRule9AuthStoreParityAst`), `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
  * @rationale Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
  * @adr ADR-073, ADR-078, ADR-079, ADR-081
  */
@@ -14,6 +14,7 @@ const { execSync, execFileSync, spawn } = require('child_process');
 const {
   collectScriptFiles,
   extractRuntimeSpecConstants,
+  extractServiceWorkerMetadata,
   extractSqlSchemaEntities,
   extractWorkflowSpecCatalog,
   loadArchitectureCorpus,
@@ -915,6 +916,13 @@ function pass075SecurityAndSastAudit() {
         ...validateRule9AuthStoreParityAst(authStoreCode, {
           userScopedTables,
           storeNames: nonExemptStoreNames,
+          requiredDeviceCleanupCalls: [
+            'clearAllOfflineBooks',
+            'clearCachedBookPassages',
+            'clearCachedQuotePool',
+          ],
+          enforceFailClosedDelete: true,
+          requireGuestDeviceWipe: true,
         })
       );
     }
@@ -2443,7 +2451,10 @@ function pass5AdrValidation() {
         }
 
         try {
-          const { auditSecurityDocumentationParity } = require('./lib/sast-validators');
+          const {
+            auditSecurityDocumentationParity,
+            auditLegalDocumentationParity,
+          } = require('./lib/sast-validators');
           const sastExports = Object.keys(require('./lib/sast-validators'));
           const securityPlugin = require('./eslint-rules/bookarium-security');
           const eslintRuleNames = Object.keys((securityPlugin && securityPlugin.rules) || {});
@@ -2464,8 +2475,37 @@ function pass5AdrValidation() {
             syncCatalogText,
           });
           docViolations.push(...secParityIssues);
+
+          const privacyPagePath = path.join(rootDir, 'src', 'app', 'privacy', 'page.tsx');
+          const copyrightPagePath = path.join(rootDir, 'src', 'app', 'copyright', 'page.tsx');
+          const deleteModalPath = path.join(
+            rootDir,
+            'src',
+            'components',
+            'account',
+            'AccountDeleteModal.tsx'
+          );
+          const swMeta = extractServiceWorkerMetadata(rootDir);
+          const legalSpec = extractRuntimeSpecConstants(rootDir);
+          const legalParityIssues = auditLegalDocumentationParity({
+            privacySource: fs.existsSync(privacyPagePath)
+              ? fs.readFileSync(privacyPagePath, 'utf-8')
+              : '',
+            copyrightSource: fs.existsSync(copyrightPagePath)
+              ? fs.readFileSync(copyrightPagePath, 'utf-8')
+              : '',
+            deleteModalSource: fs.existsSync(deleteModalPath)
+              ? fs.readFileSync(deleteModalPath, 'utf-8')
+              : '',
+            swCacheName: swMeta.cacheName,
+            maxCachedCovers: legalSpec.caches.maxCachedCovers,
+            coverCacheTtlDays: legalSpec.caches.coverCacheTtlDays,
+            cdnTextSeconds: legalSpec.routeCache.contentText.sMaxAge,
+            cdnCoverSeconds: legalSpec.routeCache.contentCover.sMaxAge,
+          });
+          docViolations.push(...legalParityIssues);
         } catch (err) {
-          docViolations.push(`Failed circular security documentation parity check: ${err.message}`);
+          docViolations.push(`Failed circular security/legal documentation parity check: ${err.message}`);
         }
       }
 

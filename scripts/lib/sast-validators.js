@@ -6,8 +6,8 @@
  * fixtures inside Vitest without circular execution of the 7-Gateway runner.
  *
  * @module scripts/lib/sast-validators
- * @scope Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
- * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
+ * @scope Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, 4-layer Rule 9 auth-store/guest-wipe parity, circular `SECURITY.md` parity, dynamic legal/privacy/deletion disclosure parity, and live HTTP response validators.
+ * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), `auditLegalDocumentationParity` (`privacy/page.tsx`, `copyright/page.tsx`, and `AccountDeleteModal.tsx` sync/cookie/cache/TTL parity), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` (`deleteAccount()` RPC error capture, non-store cache resets, and device-local `clearGuestDeviceData()`) without executing external shells.
  * @rationale Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
  * @adr ADR-073, ADR-080, ADR-081, ADR-082, ADR-084
  */
@@ -1622,6 +1622,11 @@ function validatePublicDomainFilterAst(useBooksCode) {
 function validateRule9AuthStoreParityAst(authStoreCode, options = {}) {
   const userScopedTables = Array.isArray(options.userScopedTables) ? options.userScopedTables : [];
   const storeNames = Array.isArray(options.storeNames) ? options.storeNames : [];
+  const requiredDeviceCleanupCalls = Array.isArray(options.requiredDeviceCleanupCalls)
+    ? options.requiredDeviceCleanupCalls
+    : [];
+  const enforceFailClosedDelete = Boolean(options.enforceFailClosedDelete);
+  const requireGuestDeviceWipe = Boolean(options.requireGuestDeviceWipe);
   const violations = [];
 
   const { ast, error } = parseSecurityModuleAst(authStoreCode, {
@@ -1638,6 +1643,7 @@ function validateRule9AuthStoreParityAst(authStoreCode, options = {}) {
   const moduleFns = collectModuleFunctionsMap(ast);
   const stringArrayConsts = new Map();
   let deleteAccountFnNode = null;
+  let clearGuestFnNode = null;
 
   visitAstNodes(ast, (node) => {
     if (node.type === 'VariableDeclarator' && node.id && node.id.type === 'Identifier') {
@@ -1651,26 +1657,71 @@ function validateRule9AuthStoreParityAst(authStoreCode, options = {}) {
         if (items.length > 0) stringArrayConsts.set(node.id.name, items);
       }
     }
-    if (
-      (node.type === 'ObjectProperty' || node.type === 'ObjectMethod') &&
-      getAstPropertyName(node.key, Boolean(node.computed)) === 'deleteAccount'
-    ) {
-      if (node.type === 'ObjectMethod') {
-        deleteAccountFnNode = node;
-      } else {
-        const val = unwrapTsExpressions(node.value);
-        if (isAstFunctionNode(val)) deleteAccountFnNode = val;
+    if (node.type === 'ObjectProperty' || node.type === 'ObjectMethod') {
+      const propName = getAstPropertyName(node.key, Boolean(node.computed));
+      if (propName === 'deleteAccount' || propName === 'clearGuestDeviceData') {
+        let resolvedFn = null;
+        if (node.type === 'ObjectMethod') {
+          resolvedFn = node;
+        } else {
+          const val = unwrapTsExpressions(node.value);
+          if (isAstFunctionNode(val)) resolvedFn = val;
+        }
+        if (resolvedFn) {
+          if (propName === 'deleteAccount') deleteAccountFnNode = resolvedFn;
+          else clearGuestFnNode = resolvedFn;
+        }
       }
     }
   });
 
-  // 1. Account deletion DB table parity inside deleteAccount() call graph
+  const isDeleteUserRpcCall = (node) =>
+    Boolean(
+      node &&
+        node.type === 'CallExpression' &&
+        getCallCalleeParts(node).methodName === 'rpc' &&
+        getAstStringLiteralValue(node.arguments && node.arguments[0]) === 'delete_current_user'
+    );
+
+  // 1. Account deletion DB table parity & fail-closed RPC inspection inside deleteAccount() call graph
   const deletedTables = new Set();
+  let hasDeleteUserRpcCall = false;
+  let hasDiscardedDeleteRpcCall = false;
+  let hasInspectedDeleteRpcCall = false;
+  let hasEmptyCatchAroundDeleteRpc = false;
+  const discardedRpcNodes = new Set();
+
   if (deleteAccountFnNode) {
     const deleteReachableFns = collectReachableFunctionNodes([deleteAccountFnNode], moduleFns);
     const loopVarToTables = new Map();
     for (const fnNode of deleteReachableFns) {
       visitAstNodes(fnNode, (node) => {
+        if (node.type === 'TryStatement' && node.handler && node.handler.body) {
+          const handlerStmts = Array.isArray(node.handler.body.body) ? node.handler.body.body : [];
+          if (handlerStmts.length === 0) {
+            let wrapsDeleteRpc = false;
+            visitAstNodes(node.block, (inner) => {
+              if (isDeleteUserRpcCall(inner)) wrapsDeleteRpc = true;
+            });
+            if (wrapsDeleteRpc) hasEmptyCatchAroundDeleteRpc = true;
+          }
+        }
+        if (node.type === 'ExpressionStatement') {
+          let innerExpr = unwrapTsExpressions(node.expression);
+          if (innerExpr && innerExpr.type === 'AwaitExpression') {
+            innerExpr = unwrapTsExpressions(innerExpr.argument);
+          }
+          if (isDeleteUserRpcCall(innerExpr)) {
+            hasDiscardedDeleteRpcCall = true;
+            discardedRpcNodes.add(innerExpr);
+          }
+        }
+        if (isDeleteUserRpcCall(node)) {
+          hasDeleteUserRpcCall = true;
+          if (!discardedRpcNodes.has(node)) {
+            hasInspectedDeleteRpcCall = true;
+          }
+        }
         if (node.type === 'ForOfStatement' && node.left && node.right) {
           const rightUnwrapped = unwrapTsExpressions(node.right);
           const loopItems = [];
@@ -1733,9 +1784,23 @@ function validateRule9AuthStoreParityAst(authStoreCode, options = {}) {
     }
   }
 
-  // 2. Local store teardown parity inside clearLocalUserStores() reachable call graph
+  if (enforceFailClosedDelete) {
+    if (
+      !hasDeleteUserRpcCall ||
+      hasDiscardedDeleteRpcCall ||
+      !hasInspectedDeleteRpcCall ||
+      hasEmptyCatchAroundDeleteRpc
+    ) {
+      violations.push(
+        "Rule 9 Account Deletion Fail-Closed Parity: useAuthStore.deleteAccount() must capture/inspect the response of supabase.rpc('delete_current_user') fail-closed without silent catch blocks (src/stores/useAuthStore.ts)."
+      );
+    }
+  }
+
+  // 2. Local store & device cache teardown parity inside clearLocalUserStores() reachable call graph
   const clearLocalFn = moduleFns.get('clearLocalUserStores');
   const clearedStores = new Set();
+  const calledDeviceHelpers = new Set();
   if (clearLocalFn) {
     const cleanupReachableFns = collectReachableFunctionNodes([clearLocalFn], moduleFns);
     const importedStoresInGraph = new Set();
@@ -1767,9 +1832,12 @@ function validateRule9AuthStoreParityAst(authStoreCode, options = {}) {
           if (match) importedStoresInGraph.add(match[1]);
         }
 
-        // Match `<StoreName>.getState().<resetMethod>()` or `<StoreName>.setState(...)`
+        // Match `<StoreName>.getState().<resetMethod>()`, `<StoreName>.setState(...)`, or direct cleanup calls
         if (node.type === 'CallExpression') {
           const { objectNode, objectName, methodName } = getCallCalleeParts(node);
+          if (methodName) {
+            calledDeviceHelpers.add(methodName);
+          }
           if (
             methodName === 'setState' &&
             objectName &&
@@ -1799,6 +1867,65 @@ function validateRule9AuthStoreParityAst(authStoreCode, options = {}) {
       violations.push(
         `Rule 9 Local Store Teardown Parity: Store "${storeName}" is missing cleanup inside clearLocalUserStores() in src/stores/useAuthStore.ts.`
       );
+    }
+  }
+
+  for (const helperName of requiredDeviceCleanupCalls) {
+    if (!calledDeviceHelpers.has(helperName)) {
+      violations.push(
+        `Rule 9 Device Cache Teardown Parity: Device cleanup helper "${helperName}()" is missing inside clearLocalUserStores() in src/stores/useAuthStore.ts.`
+      );
+    }
+  }
+
+  // 3. Guest device-wipe parity inside clearGuestDeviceData()
+  if (requireGuestDeviceWipe) {
+    if (!clearGuestFnNode) {
+      violations.push(
+        'Rule 9 Guest Erasure Parity: Missing clearGuestDeviceData() action in useAuthStore (src/stores/useAuthStore.ts).'
+      );
+    } else {
+      const guestReachableFns = collectReachableFunctionNodes([clearGuestFnNode], moduleFns);
+      let callsWipeDeviceReset = false;
+      let hasCloudDbCall = false;
+      for (const fnNode of guestReachableFns) {
+        visitAstNodes(fnNode, (node) => {
+          if (node.type === 'CallExpression') {
+            const { methodName } = getCallCalleeParts(node);
+            if (methodName === 'from' || methodName === 'rpc') {
+              hasCloudDbCall = true;
+            }
+            if (methodName === 'resetClientAuthState' || methodName === 'clearLocalUserStores') {
+              for (const rawArg of node.arguments || []) {
+                const objArg = unwrapTsExpressions(rawArg);
+                if (objArg && objArg.type === 'ObjectExpression') {
+                  for (const prop of objArg.properties || []) {
+                    if (
+                      prop.type === 'ObjectProperty' &&
+                      getAstPropertyName(prop.key, Boolean(prop.computed)) === 'wipeDeviceStorage'
+                    ) {
+                      const val = unwrapTsExpressions(prop.value);
+                      if (val && val.type === 'BooleanLiteral' && val.value === true) {
+                        callsWipeDeviceReset = true;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+      if (hasCloudDbCall) {
+        violations.push(
+          'Rule 9 Guest Erasure Parity: clearGuestDeviceData() must remain strictly device-local without calling Supabase .from()/.rpc() (src/stores/useAuthStore.ts).'
+        );
+      }
+      if (!callsWipeDeviceReset) {
+        violations.push(
+          'Rule 9 Guest Erasure Parity: clearGuestDeviceData() must invoke resetClientAuthState/clearLocalUserStores with { wipeDeviceStorage: true } (src/stores/useAuthStore.ts).'
+        );
+      }
     }
   }
 
@@ -1987,6 +2114,135 @@ function auditSecurityDocumentationParity({
   return violations;
 }
 
+/**
+ * Validates dynamic technical/legal parity across `/privacy`, `/copyright`, and `AccountDeleteModal`
+ * against live Service Worker, IndexedDB cache, Edge CDN TTL, cookie, and sync script specs.
+ */
+function auditLegalDocumentationParity({
+  privacySource = '',
+  copyrightSource = '',
+  deleteModalSource = '',
+  swCacheName = '',
+  maxCachedCovers = 0,
+  coverCacheTtlDays = 0,
+  cdnTextSeconds = 0,
+  cdnCoverSeconds = 0,
+  requiredCookies = [
+    'bookarium-geo-country',
+    'bookarium-theme-preference',
+    'bookarium-auth-hint',
+    'bookarium-client-ip-sync',
+    'sb-*-auth-token',
+  ],
+  forbiddenLegacyPatterns = [
+    { label: 'until at least 2026', regex: /until at least 2026/i },
+    { label: 'Standard Ebooks', regex: /Standard Ebooks/i },
+  ],
+} = {}) {
+  const violations = [];
+
+  if (typeof privacySource !== 'string' || privacySource.trim().length === 0) {
+    violations.push('src/app/privacy/page.tsx is missing or empty.');
+  } else {
+    if (swCacheName && !privacySource.includes(swCacheName)) {
+      violations.push(
+        `Privacy documentation drift in src/app/privacy/page.tsx: missing active Service Worker cache name "${swCacheName}".`
+      );
+    }
+    if (maxCachedCovers > 0 && !privacySource.includes(String(maxCachedCovers))) {
+      violations.push(
+        `Privacy documentation drift in src/app/privacy/page.tsx: expected cover_cache bound "${maxCachedCovers}" matching MAX_CACHED_COVERS.`
+      );
+    }
+    if (coverCacheTtlDays > 0 && !privacySource.includes(`${coverCacheTtlDays}-day`)) {
+      violations.push(
+        `Privacy documentation drift in src/app/privacy/page.tsx: expected "${coverCacheTtlDays}-day" cover_cache TTL matching COVER_CACHE_TTL_MS.`
+      );
+    }
+    for (const cookieName of requiredCookies) {
+      if (cookieName && !privacySource.includes(cookieName)) {
+        violations.push(
+          `Privacy documentation drift in src/app/privacy/page.tsx: active cookie "${cookieName}" is undocumented.`
+        );
+      }
+    }
+    for (const requiredToken of [
+      'Vercel Web Analytics',
+      'offline_books',
+      'cover_cache',
+      'Clear All Local Data',
+    ]) {
+      if (!privacySource.includes(requiredToken)) {
+        violations.push(
+          `Privacy documentation drift in src/app/privacy/page.tsx: missing required disclosure "${requiredToken}".`
+        );
+      }
+    }
+  }
+
+  if (typeof copyrightSource !== 'string' || copyrightSource.trim().length === 0) {
+    violations.push('src/app/copyright/page.tsx is missing or empty.');
+  } else {
+    if (cdnTextSeconds > 0 && !copyrightSource.includes(String(cdnTextSeconds))) {
+      violations.push(
+        `Copyright documentation drift in src/app/copyright/page.tsx: missing Edge CDN text TTL "${cdnTextSeconds}".`
+      );
+    }
+    if (cdnCoverSeconds > 0 && !copyrightSource.includes(String(cdnCoverSeconds))) {
+      violations.push(
+        `Copyright documentation drift in src/app/copyright/page.tsx: missing Edge CDN cover TTL "${cdnCoverSeconds}".`
+      );
+    }
+    if (maxCachedCovers > 0 && !copyrightSource.includes(String(maxCachedCovers))) {
+      violations.push(
+        `Copyright documentation drift in src/app/copyright/page.tsx: expected cover_cache bound "${maxCachedCovers}".`
+      );
+    }
+    if (coverCacheTtlDays > 0 && !copyrightSource.includes(`${coverCacheTtlDays}-day`)) {
+      violations.push(
+        `Copyright documentation drift in src/app/copyright/page.tsx: expected "${coverCacheTtlDays}-day" cover_cache TTL.`
+      );
+    }
+    for (const requiredToken of [
+      'offline_books',
+      'cover_cache',
+      'bookarium-geo-country',
+      'rsync.ibiblio.org',
+      'gutenberg.pglaf.org',
+      'Bookarium-Catalog-Sync',
+      'Bookarium-R2-Sync',
+      '/og/books/[file]',
+    ]) {
+      if (!copyrightSource.includes(requiredToken)) {
+        violations.push(
+          `Copyright documentation drift in src/app/copyright/page.tsx: missing required compliance detail "${requiredToken}".`
+        );
+      }
+    }
+    for (const legacy of forbiddenLegacyPatterns) {
+      if (legacy?.regex && legacy.regex.test(copyrightSource)) {
+        violations.push(
+          `Copyright documentation drift in src/app/copyright/page.tsx: found retired/stale claim "${legacy.label}".`
+        );
+      }
+    }
+  }
+
+  if (typeof deleteModalSource !== 'string' || deleteModalSource.trim().length === 0) {
+    violations.push('src/components/account/AccountDeleteModal.tsx is missing or empty.');
+  } else {
+    for (const token of ['same browser', 'offline downloads']) {
+      if (!deleteModalSource.toLowerCase().includes(token.toLowerCase())) {
+        violations.push(
+          `Deletion modal drift in src/components/account/AccountDeleteModal.tsx: missing user safeguard "${token}".`
+        );
+      }
+    }
+  }
+
+  return violations;
+}
+
 module.exports = {
   REQUIRED_SECURITY_HEADERS,
   BANNED_LIFECYCLE_HOOKS,
@@ -2003,4 +2259,5 @@ module.exports = {
   validateRule9AuthStoreParityAst,
   validateLiveHttpSecurityResponse,
   auditSecurityDocumentationParity,
+  auditLegalDocumentationParity,
 };

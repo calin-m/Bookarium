@@ -33,25 +33,34 @@ describe('PrivacyPage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: /Privacy & Data Architecture/i })).toBeInTheDocument();
     expect(screen.getByText(/Transparent Data Architecture/i)).toBeInTheDocument();
-    expect(screen.getByText(/zero tracking, zero marketing networks/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/zero advertising networks, zero cross-site behavioral profiling/i)
+    ).toBeInTheDocument();
     expect(container.innerHTML).not.toContain('border-primary/20');
   });
 
-  it('renders all core GDPR and ePrivacy disclosure sections', () => {
+  it('renders all core GDPR and ePrivacy disclosure sections accurately', () => {
     render(<PrivacyPage />);
 
-    // Section 1: Zero tracking & aggregate telemetry
-    expect(screen.getByText(/1\. Zero Tracking & No Ad Networks/i)).toBeInTheDocument();
+    // Section 1: No Ad Tracking & Privacy-First Telemetry
+    expect(screen.getByText(/1\. No Ad Tracking & Privacy-First Telemetry/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium does not load Google Analytics, Meta Pixels/i)).toBeInTheDocument();
-    expect(screen.getByText(/Privacy-First Aggregate Telemetry:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Privacy-First Aggregate Telemetry/i)).toBeInTheDocument();
+    expect(screen.getByText(/automatically discarded within 24 hours/i)).toBeInTheDocument();
+    expect(screen.getByText(/Edge Infrastructure, Firewall \(WAF\) & Security Logging:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/next\/font\/google/i)).toHaveLength(2);
 
-    // Section 2: Cookie Exemption & Functional Jurisdiction Cookie
+    // Section 2: Cookie Exemption & Accurate First-Party Cookie Inventory
     expect(screen.getByText(/2\. Why There Is No Cookie Consent Banner/i)).toBeInTheDocument();
-    expect(screen.getByText(/Strictly Necessary Authentication Cookies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Strictly Necessary Authentication & Session Cookies:/i)).toBeInTheDocument();
     expect(screen.getByText(/sb-\*-auth-token/i)).toBeInTheDocument();
-    expect(screen.getByText(/Functional Jurisdiction Verification:/i)).toBeInTheDocument();
+    expect(screen.getByText(/bookarium-client-ip-sync/i)).toBeInTheDocument();
+    expect(screen.getByText(/bookarium-auth-hint/i)).toBeInTheDocument();
+    expect(screen.getByText(/Functional Copyright Jurisdiction Verification:/i)).toBeInTheDocument();
     expect(screen.getByText(/bookarium-geo-country/i)).toBeInTheDocument();
-    expect(screen.getByText(/zero marketing or tracking cookies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Max-Age=7 days/i)).toBeInTheDocument();
+    expect(screen.getByText(/bookarium-theme-preference/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zero Advertising or Tracking Cookies:/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Copyright & Public Domain Governance/i })).toHaveAttribute(
       'href',
       ROUTES.COPYRIGHT
@@ -59,8 +68,10 @@ describe('PrivacyPage', () => {
 
     // Section 3: Local-First Storage
     expect(screen.getByText(/3\. Local-First Browser Storage/i)).toBeInTheDocument();
-    expect(screen.getByText(/localStorage:/i)).toBeInTheDocument();
-    expect(screen.getByText(/IndexedDB:/i)).toBeInTheDocument();
+    expect(screen.getByText(/localStorage & sessionStorage:/i)).toBeInTheDocument();
+    expect(screen.getByText(/IndexedDB & Service Worker Cache Storage:/i)).toBeInTheDocument();
+    expect(screen.getByText(/cover_cache/i)).toBeInTheDocument();
+    expect(screen.getByText(/bookarium-app-shell-v7/i)).toBeInTheDocument();
     expect(screen.getByText(/On-Device Web Speech API Narration:/i)).toBeInTheDocument();
     expect(screen.getByText(/window\.speechSynthesis/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium never records reader voice input/i)).toBeInTheDocument();
@@ -68,6 +79,10 @@ describe('PrivacyPage', () => {
     // Section 4: Account Data & Cloud Sync
     expect(screen.getByText(/4\. Cloud Sync & Account Data/i)).toBeInTheDocument();
     expect(screen.getByText(/GDPR Article 6\(1\)\(b\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Google OAuth identity metadata/i)).toBeInTheDocument();
+    expect(screen.getByText(/user_book_curation/i)).toBeInTheDocument();
+    expect(screen.getByText(/user_annotations/i)).toBeInTheDocument();
+    expect(screen.getByText(/symposium_sessions/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Active session metadata maintained natively by Supabase Auth/i)
     ).toBeInTheDocument();
@@ -80,9 +95,12 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/GDPR Articles 15–20/i)).toBeInTheDocument();
     expect(screen.getByText(/Email-Verified 3-Tier Zero-Retention Erasure Protocol/i)).toBeInTheDocument();
     expect(screen.getByText(/1\. Database Purge/i)).toBeInTheDocument();
+    expect(screen.getByText(/mutual Reader Circle & Symposium links without altering fellow scholars/i)).toBeInTheDocument();
     expect(screen.getByText(/2\. Hardware Teardown/i)).toBeInTheDocument();
     expect(screen.getByText(/3\. Zero Soft Deletes/i)).toBeInTheDocument();
     expect(screen.getByText(/Guest Reader Dominion:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Clear Offline Downloads/i)).toBeInTheDocument();
+    expect(screen.getByText(/Clear All Local Data/i)).toBeInTheDocument();
 
     // Section 6: US & Global Privacy Frameworks
     expect(screen.getByText(/6\. United States & Global Privacy Frameworks/i)).toBeInTheDocument();
@@ -92,14 +110,16 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/account registration is strictly limited to individuals aged 13 or older/i)).toBeInTheDocument();
     expect(screen.getByText(/United Kingdom \(UK GDPR\) & International Parity/i)).toBeInTheDocument();
 
-    // Section 7: Infrastructure Partners
+    // Section 7: Infrastructure Partners & Date
     expect(screen.getByText(/7\. Infrastructure Partners/i)).toBeInTheDocument();
     expect(screen.getByText(/Vercel Edge Platform/i)).toBeInTheDocument();
-    expect(screen.getByText(/cookie-less aggregate performance telemetry/i)).toBeInTheDocument();
+    expect(screen.getByText(/24h ephemeral request hashes/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Project Gutenberg/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Cloudflare R2 & Turnstile/i)).toBeInTheDocument();
-    expect(screen.getByText(/privacy-preserving Turnstile auth bot protection/i)).toBeInTheDocument();
+    expect(screen.getByText(/zero advertising or cross-site tracking cookies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Optional Google OAuth & Self-Hosted Typography:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Last Updated: November 2026/i)).toBeInTheDocument();
   });
 
   it('provides working navigation links to catalog and account settings', () => {

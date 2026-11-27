@@ -109,7 +109,7 @@ export const Footer: React.FC = () => {
               100% Legal & Open
             </h4>
             <p className="text-xs text-muted-foreground leading-relaxed font-sans">
-              All books listed in Bookarium are in the public domain worldwide. Zero DRM, no subscriptions, zero user tracking.
+              All books listed in Bookarium are in the public domain worldwide. Zero DRM, no subscriptions, zero ad tracking.
             </p>
             <div className="pt-1 flex flex-col gap-1">
               <Link

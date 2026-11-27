@@ -1,9 +1,9 @@
 /**
  * @module
  * @scope TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`),
- *        featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
+ *        featured passage hydration (`useFeaturedQuotes`), popularity-ranked quote pools (`useQuoteEnrichedBooks`), and quote-pool cache teardown (`clearCachedQuotePool`).
  * @invariant Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, never auto-retry `HTTP 504` / abort timeouts or `400`/`429` rejections, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
- * @invariant Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place; consult `bookarium-extracted-passages-v1` read-only (`>= 3` locally extracted passages) inside `fetchFeaturedQuotesMap` without writing server DB quotes back into `bookarium-extracted-passages-v1`.
+ * @invariant Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place; consult `bookarium-extracted-passages-v1` read-only (`>= 3` locally extracted passages) inside `fetchFeaturedQuotesMap` without writing server DB quotes back into `bookarium-extracted-passages-v1`, and expose `clearCachedQuotePool` for Rule 9 device teardown.
  * @rationale Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans, while read-only passage reuse avoids redundant deep-quote requests without suppressing dynamic text extraction.
  * @adr ADR-004, ADR-036, ADR-043, ADR-080, ADR-086
  */
@@ -478,6 +478,17 @@ export function writeCachedQuoteEnrichedBooks(books: CatalogBook[]): void {
     );
   } catch {
     // Ignore storage quota or private-browsing write errors
+  }
+}
+
+export function clearCachedQuotePool(): void {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.removeItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY);
+  } catch {
+    // Ignore storage errors
   }
 }
 

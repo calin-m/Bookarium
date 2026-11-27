@@ -1,10 +1,10 @@
 /**
  * @module src/lib/redirect-sanitizer
- * @scope Open-redirect validator, canonical auth/share origin resolver, recovery query scrubber, and signed Reading Card share URL builder.
- * @invariant Force relative redirects through `sanitizeRedirectPath` (single leading `/`, rejecting protocol-relative `//` and backslashes `\` / `/\`), and strip `recovery` params after consumption.
+ * @scope Open-redirect validator, canonical auth/share origin resolver, recovery/deletion callback classifiers, recovery query scrubber, and signed Reading Card share URL builder.
+ * @invariant Force relative redirects through `sanitizeRedirectPath` (single leading `/`, rejecting protocol-relative `//` and backslashes `\` / `/\`), detect `recovery` / `confirm-deletion` routes cleanly via `isRecoveryRedirectPath` / `isConfirmDeletionRedirectPath`, and strip `recovery` params after consumption.
  * @invariant Normalize ephemeral Vercel preview hosts (`bookarium-*.vercel.app`) to canonical `SITE_CONFIG.SITE_URL` inside `resolveCanonicalAuthOrigin` / `resolveCanonicalShareOrigin` while preserving `localhost` / `127.0.0.1` for local dev.
  * @rationale Prevents Open Redirect (`CWE-601`) and stops Vercel Deployment Protection URLs from leaking into OAuth confirmation emails or public OpenGraph share links.
- * @adr ADR-022, ADR-035, ADR-080
+ * @adr ADR-022, ADR-035, ADR-072, ADR-080
  */
 
 import { SITE_CONFIG } from '@/config/site-config';
@@ -33,6 +33,19 @@ export function isRecoveryRedirectPath(path: string | null): boolean {
   try {
     const parsed = new URL(safePath, 'https://bookarium.local');
     return parsed.pathname === '/account' && parsed.searchParams.get('recovery') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns true only when a sanitized relative redirect path points to `/auth/confirm-deletion`.
+ */
+export function isConfirmDeletionRedirectPath(path: string | null): boolean {
+  const safePath = sanitizeRedirectPath(path);
+  try {
+    const parsed = new URL(safePath, 'https://bookarium.local');
+    return parsed.pathname === '/auth/confirm-deletion';
   } catch {
     return false;
   }

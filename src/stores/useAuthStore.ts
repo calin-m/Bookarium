@@ -1,7 +1,7 @@
 /**
  * @module src/stores/useAuthStore
- * @scope Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, and 3-layer GDPR account deletion.
- * @invariant Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` must erase all 10 Zustand slices, localStorage keys, cookies, and IndexedDB in lockstep (`Rule 9`).
+ * @scope Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, fail-closed GDPR account deletion, guest device wipe, and 4-layer Rule 9 parity.
+ * @invariant Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` (or guest `clearGuestDeviceData`) must fail closed on non-unavailable server deletion errors (`delete_current_user` / 11-table fallback `{ error }`) and reset auth session/profile state alongside all 8 user/preference Zustand stores (`useJurisdictionStore` preserved), localStorage keys/quote caches, cookies, and IndexedDB in lockstep (`Rule 9`).
  * @invariant Persist `STORAGE_KEYS.PENDING_STORE_CLEANUP` synchronously across teardowns so interrupted reloads finish cleanup in `initializeAuth()` without affecting offline signed-in sessions or guest users.
  * @invariant Verify `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions, and honor optional `minSyncIntervalMs` cooldown in `syncWithCloud` after live `fetchProfile` completion unless `pendingProfileUpdates` or dirty markers exist.
  * @rationale Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
@@ -25,8 +25,26 @@ import {
 } from '@/lib/auth-recovery';
 import type { ActiveUserSession } from '@/lib/session-device-parser';
 
-function isSessionRpcUnavailableError(
-  error: { code?: string; message?: string } | null | undefined
+function extractSupabaseError(
+  result: unknown
+): { code?: string; message?: string } | null {
+  if (!result || typeof result !== 'object' || !('error' in result)) {
+    return null;
+  }
+  const err = (result as { error?: unknown }).error;
+  if (!err || typeof err !== 'object') {
+    return null;
+  }
+  const candidate = err as { code?: unknown; message?: unknown };
+  return {
+    code: typeof candidate.code === 'string' ? candidate.code : undefined,
+    message: typeof candidate.message === 'string' ? candidate.message : undefined,
+  };
+}
+
+function isRpcUnavailableError(
+  error: { code?: string; message?: string } | null | undefined,
+  rpcName: 'get_active_sessions' | 'delete_current_user' = 'get_active_sessions'
 ): boolean {
   if (!error) return false;
   const code = typeof error.code === 'string' ? error.code : '';
@@ -36,7 +54,7 @@ function isSessionRpcUnavailableError(
   const msg = typeof error.message === 'string' ? error.message.toLowerCase() : '';
   return (
     msg.includes('could not find the function') ||
-    (msg.includes('get_active_sessions') &&
+    (msg.includes(rpcName) &&
       (msg.includes('does not exist') || msg.includes('schema cache')))
   );
 }
@@ -346,6 +364,7 @@ export interface AuthState {
   updatePassword: (newPassword: string, currentPassword?: string) => Promise<{ error: AuthError | null }>;
   requestAccountDeletion: () => Promise<{ error: AuthError | null }>;
   deleteAccount: () => Promise<{ error: Error | null }>;
+  clearGuestDeviceData: () => Promise<void>;
 }
 
 const SIGNED_OUT_AUTH_STATE = {
@@ -477,6 +496,14 @@ async function runSingleLocalStoreCleanupPass(wipeDeviceStorage: boolean): Promi
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.removeItem('bookarium_auto_heal_attempted');
         }
+      },
+      async () => {
+        const { clearCachedBookPassages } = await import('@/hooks/useBookPassageShuffle');
+        clearCachedBookPassages();
+      },
+      async () => {
+        const { clearCachedQuotePool } = await import('@/hooks/queries/useBooks');
+        clearCachedQuotePool();
       }
     );
   }
@@ -1183,7 +1210,7 @@ export const useAuthStore = create<AuthState>()(
       const supabase = createClient();
       const { data, error } = await supabase.rpc('get_active_sessions');
       if (error) {
-        if (isSessionRpcUnavailableError(error)) {
+        if (isRpcUnavailableError(error, 'get_active_sessions')) {
           return { sessions: [], error: null, isRpcUnavailable: true };
         }
         return {
@@ -1522,6 +1549,12 @@ export const useAuthStore = create<AuthState>()(
   requestAccountDeletion: async () => {
     const { user } = get();
     if (!user?.email) return { error: { message: 'No active user session found' } as AuthError };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const offlineMsg =
+        'You appear to be offline. Connect to the internet to send an account deletion confirmation email.';
+      set({ error: offlineMsg });
+      return { error: { message: offlineMsg } as AuthError };
+    }
 
     set({ error: null });
     const supabase = createClient();
@@ -1545,36 +1578,80 @@ export const useAuthStore = create<AuthState>()(
   deleteAccount: async () => {
     const { user } = get();
     if (!user) return { error: new Error('No active user session') };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return {
+        error: new Error(
+          'You appear to be offline. Connect to the internet to permanently delete your account.'
+        ),
+      };
+    }
 
     try {
       const supabase = createClient();
-      // 1. Clean up user's relational records across all 11 schema tables
-      await supabase
-        .from('symposium_sessions')
-        .delete()
-        .or(`host_id.eq.${user.id},fellow_id.eq.${user.id}`);
-      await supabase
-        .from('reader_circles')
-        .delete()
-        .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
-      await supabase.from('user_accolades').delete().eq('user_id', user.id);
-      await supabase.from('user_annotations').delete().eq('user_id', user.id);
-      await supabase.from('reading_progress').delete().eq('user_id', user.id);
-      await supabase.from('user_favorites').delete().eq('user_id', user.id);
-      await supabase.from('user_book_curation').delete().eq('user_id', user.id);
-      await supabase.from('user_reading_habits').delete().eq('user_id', user.id);
-      await supabase.from('bookshelf_items').delete().eq('user_id', user.id);
-      await supabase.from('bookshelves').delete().eq('user_id', user.id);
+      let firstTableDeleteError: { code?: string; message?: string } | null = null;
+      const captureTableError = (result: unknown) => {
+        const err = extractSupabaseError(result);
+        if (err && !firstTableDeleteError) {
+          firstTableDeleteError = err;
+        }
+      };
+
+      // 1. Clean up user's relational records across all 11 schema tables (child tables first)
+      captureTableError(
+        await supabase
+          .from('symposium_sessions')
+          .delete()
+          .or(`host_id.eq.${user.id},fellow_id.eq.${user.id}`)
+      );
+      captureTableError(
+        await supabase
+          .from('reader_circles')
+          .delete()
+          .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      );
+      captureTableError(await supabase.from('user_accolades').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('user_annotations').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('reading_progress').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('user_favorites').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('user_book_curation').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('user_reading_habits').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('bookshelf_items').delete().eq('user_id', user.id));
+      captureTableError(await supabase.from('bookshelves').delete().eq('user_id', user.id));
       // 2. Clean up profile
-      await supabase.from('profiles').delete().eq('id', user.id);
-      // 3. Attempt RPC user account deletion if configured on database
+      captureTableError(await supabase.from('profiles').delete().eq('id', user.id));
+
+      // 3. Execute atomic RPC user account deletion and fail closed on server errors
+      let rpcError: { code?: string; message?: string } | null = null;
       try {
-        await supabase.rpc('delete_current_user');
-      } catch {
-        // Non-blocking fallback if RPC is not provisioned
+        const rpcResult = await supabase.rpc('delete_current_user');
+        rpcError = extractSupabaseError(rpcResult);
+      } catch (rpcException: unknown) {
+        const message =
+          rpcException instanceof Error ? rpcException.message : String(rpcException);
+        return { error: new Error(message || 'Account deletion failed. Please try again.') };
       }
-      // 4. Terminate all auth sessions globally and clear all local persisted user stores
-      await supabase.auth.signOut({ scope: 'global' });
+
+      if (rpcError) {
+        if (!isRpcUnavailableError(rpcError, 'delete_current_user')) {
+          return {
+            error: new Error(rpcError.message || 'Account deletion failed. Please try again.'),
+          };
+        }
+        if (firstTableDeleteError !== null) {
+          const tableErr: { code?: string; message?: string } = firstTableDeleteError;
+          return {
+            error: new Error(tableErr.message || 'Account deletion failed. Please try again.'),
+          };
+        }
+      }
+
+      // 4. Best-effort global session revocation (delete_current_user() already cascades auth.users),
+      // then wipe all local persisted user stores, IndexedDB books/covers, and browser caches
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch {
+        // Non-blocking if auth.users cascade already invalidated the JWT on GoTrue
+      }
       await resetClientAuthState(set, {
         userId: user.id,
         wipeDeviceStorage: true,
@@ -1583,6 +1660,13 @@ export const useAuthStore = create<AuthState>()(
     } catch (err: unknown) {
       return { error: err instanceof Error ? err : new Error(String(err)) };
     }
+  },
+
+  clearGuestDeviceData: async () => {
+    await resetClientAuthState(set, {
+      userId: null,
+      wipeDeviceStorage: true,
+    });
   },
 }),
     {

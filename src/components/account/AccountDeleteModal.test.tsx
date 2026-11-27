@@ -22,6 +22,7 @@ describe('AccountDeleteModal', () => {
 
     expect(screen.getByText('Request Account Deletion')).toBeInTheDocument();
     expect(screen.getByText('Security Verification Required')).toBeInTheDocument();
+    expect(screen.getByText(/Confirming deletion permanently erases your account credentials/i)).toBeInTheDocument();
 
     const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
     fireEvent.click(cancelBtn);
@@ -46,7 +47,8 @@ describe('AccountDeleteModal', () => {
 
     expect(screen.getByText('Verification Link Sent')).toBeInTheDocument();
     expect(screen.getByText(/We sent a secure deletion confirmation link to/i)).toBeInTheDocument();
-    expect(screen.getByText(/accolades, and Reader Circle connections/i)).toBeInTheDocument();
+    expect(screen.getByText(/this same browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/offline downloads on this device/i)).toBeInTheDocument();
   });
 });
 

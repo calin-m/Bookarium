@@ -96,20 +96,20 @@ export default function CopyrightPage() {
               <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-1.5">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span className="text-xs font-mono font-bold text-foreground">United States (Pre-1930 / 95 Years)</span>
+                  <span className="text-xs font-mono font-bold text-foreground">United States &amp; Territories (Pre-1930 / 95 Years)</span>
                 </div>
                 <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                  Project Gutenberg operates under United States copyright law. Pre-1978 published works enter the US public domain 95 years after original publication. All titles published before January 1, 1930 are in the US public domain.
+                  Project Gutenberg operates under United States copyright law, shared across US territories (<code className="font-mono">PR, VI, GU, AS, MP</code>). Pre-1978 published works enter the US public domain 95 years after original publication; titles published before January 1, 1930 are in the US public domain.
                 </p>
               </div>
 
               <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-1.5">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span className="text-xs font-mono font-bold text-foreground">European Union &amp; UK (Life + 70)</span>
+                  <span className="text-xs font-mono font-bold text-foreground">European Union, UK &amp; International Default (Life + 70)</span>
                 </div>
                 <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                  Directive 2006/116/EC (and UK/Canada/Australia statutes) establishes copyright for the author&apos;s lifetime plus 70 calendar years, expiring on January 1 following the 70th anniversary of the author&apos;s death.
+                  Directive 2006/116/EC (and UK, Canada, Australia, New Zealand, Japan, Brazil, and other mapped laws) enforces author&apos;s life plus 70 calendar years, expiring January 1 after the 70th death anniversary. Bookarium also applies <code className="font-mono">Life + 70</code> conservatively across all other unmapped international jurisdictions.
                 </p>
               </div>
 
@@ -119,17 +119,17 @@ export default function CopyrightPage() {
                   <span className="text-xs font-mono font-bold text-foreground">Extended Life: Colombia &amp; Spain (Life + 80)</span>
                 </div>
                 <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                  Colombia and Spain (for authors deceased prior to December 7, 1987) enforce an 80-year post-mortem protection term. Bookarium respects these extended terms for visitors from these jurisdictions.
+                  Colombia enforces an 80-year post-mortem term (and Spain enforces 80 years for authors deceased prior to December 7, 1987). Bookarium conservatively evaluates visitors from Colombia and Spain under <code className="font-mono">Life + 80</code>.
                 </p>
               </div>
 
               <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span className="text-xs font-mono font-bold text-foreground">Extended Life: Mexico (Life + 100)</span>
+                  <span className="text-xs font-mono font-bold text-foreground">Extended Life: Mexico &amp; C&ocirc;te d&apos;Ivoire (Life + 100)</span>
                 </div>
                 <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                  Mexico enforces the world&apos;s longest general copyright duration of 100 years post-mortem. Works by authors deceased after 1925 remain protected in Mexico until at least 2026.
+                  Mexico and C&ocirc;te d&apos;Ivoire enforce a 100-year post-mortem copyright duration. Protected works remain withheld in these jurisdictions until January 1 following the 100th anniversary of the contributor&apos;s death.
                 </p>
               </div>
             </div>
@@ -139,7 +139,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Joint Authorship (Berne Convention Art. 7bis):</strong> For collaborative works created by two or more authors, the copyright term is calculated exclusively from the death of the <em>last surviving author</em>.
               </p>
               <p>
-                <strong className="text-foreground font-medium">Translations &amp; Derivative Works (Berne Convention Art. 2(3)):</strong> Translations receive independent copyright protection. An ancient classic (e.g. Homer, Dante, or Sun Tzu) is in the worldwide public domain, but a modern translation remains restricted until 70 years after the translator&apos;s death. Bookarium parses translator metadata to prevent premature streaming of copyrighted translations.
+                <strong className="text-foreground font-medium">Translations &amp; Derivative Works (Berne Convention Art. 2(3)):</strong> Translations receive independent copyright protection. An ancient classic (e.g. Homer, Dante, or Sun Tzu) is in the worldwide public domain, while a modern translation remains restricted until 70, 80, or 100 years depending on your jurisdiction after the translator&apos;s death. Bookarium parses translator metadata to prevent premature streaming of copyrighted translations.
               </p>
             </div>
           </section>
@@ -195,13 +195,13 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Decoupled Architecture:</strong> All user catalog browsing, keyword searches, and subject facets are served via our dedicated Supabase PostgreSQL catalog and regional Edge cache, completely shielding external origin servers from discovery traffic.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Official Bulk Data Feeds &amp; Targeted Mirroring:</strong> Scheduled background catalog indexes synchronize exclusively via Gutenberg&apos;s official mirror feeds (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code> and <code className="font-mono text-primary font-semibold">rdf-files.tar.bz2</code>) and targeted <code className="font-mono">rsync</code> (<code className="font-mono">aleph.gutenberg.org</code>), reading <code className="font-mono">&lt;dcterms:rights&gt;</code> notices to flag and suppress copyrighted donations globally.
+                <strong className="text-foreground font-medium">Official Bulk Data Feeds &amp; Background Sync:</strong> Scheduled background catalog and archive sync pipelines operate strictly outside visitor traffic using Project Gutenberg&apos;s official mirror feeds (<code className="font-mono text-primary font-semibold">pg_catalog.csv.gz</code> and <code className="font-mono text-primary font-semibold">rdf-files.tar.bz2</code>), multi-host <code className="font-mono">rsync</code> (<code className="font-mono">aleph.gutenberg.org</code> &harr; <code className="font-mono">rsync.ibiblio.org</code>), and polite fallback HTTP mirrors (<code className="font-mono">gutenberg.pglaf.org</code>, <code className="font-mono">aleph.gutenberg.org</code>, <code className="font-mono">gutenberg.readingroo.ms</code> at <code className="font-mono">8s&ndash;16s</code> pacing), reading <code className="font-mono">&lt;dcterms:rights&gt;</code> notices to flag and suppress copyrighted donations globally.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Self-Hosted Edge Caching &amp; Offline Storage:</strong> Self-hosted Cloudflare R2 plain-text and cover assets are cached at the Vercel Edge CDN (<code className="font-mono">s-maxage=86400</code>–<code className="font-mono">2592000</code>) and locally in browser IndexedDB for offline reading. Offline saves are strictly human-initiated per volume.
+                <strong className="text-foreground font-medium">Self-Hosted Edge Caching &amp; Browser IndexedDB:</strong> Self-hosted Cloudflare R2 assets are cached at the Vercel Edge CDN (<code className="font-mono">s-maxage=86400</code> for 24h plain texts and OpenGraph cards; <code className="font-mono">s-maxage=2592000</code> for 30d covers). Full-text offline volume downloads (<code className="font-mono">offline_books</code>) in browser IndexedDB are strictly human-initiated per book, while browsed cover thumbnails (<code className="font-mono">cover_cache</code>, bounded to 300 covers / 30-day LRU) and static App Shell resources cache automatically for instant responsiveness.
               </li>
               <li>
-                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> Background ingestion and feed synchronization requests transmit identifying headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>).
+                <strong className="text-foreground font-medium">Transparent User-Agent:</strong> Background ingestion and feed synchronization requests transmit identifying, email-free headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>, alongside <code className="font-mono">Bookarium-Catalog-Sync/1.0</code> and <code className="font-mono">Bookarium-R2-Sync/1.0</code>).
               </li>
               <li>
                 <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially for readers with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with or endorsed by the Project Gutenberg Literary Archive Foundation (PGLAF).
@@ -223,12 +223,19 @@ export default function CopyrightPage() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans pt-1">
-              When an entry carries an active copyright notice in Project Gutenberg metadata (blocked globally, including in the United States) or when a title cleared in the US remains protected in your country (such as an author deceased within local <code className="font-mono">Life+70</code>, <code className="font-mono">Life+80</code>, or <code className="font-mono">Life+100</code> terms), Bookarium halts streaming and card/text delivery and returns standard{' '}
+              When an entry carries an active copyright notice in Project Gutenberg metadata (blocked globally, including in the United States) or when a title cleared in the US remains protected in your country (such as an author or translator deceased within local <code className="font-mono">Life+70</code>, <code className="font-mono">Life+80</code>, or <code className="font-mono">Life+100</code> terms), Bookarium halts plain-text streaming (<code className="font-mono">/api/books/content</code>) and dynamic OpenGraph book cards (<code className="font-mono">/api/books/content?type=card</code> and <code className="font-mono">/og/books/[file]</code>) and returns standard{' '}
               <code className="font-mono text-primary font-semibold">HTTP 451: Unavailable For Legal Reasons</code>.
             </p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-xs font-sans text-muted-foreground space-y-2">
               <p>
-                <strong className="text-foreground font-medium">Privacy-First Functional Verification:</strong> Edge routers inspect non-identifying country headers (<code className="font-mono">CF-IPCountry</code> / <code className="font-mono">x-vercel-ip-country</code>) to set the functional cookie <code className="font-mono text-primary font-semibold">bookarium-geo-country</code>. Jurisdiction verification itself never logs, tracks, or stores your IP address, precise location, or reading habits.
+                <strong className="text-foreground font-medium">Privacy-First Functional Verification:</strong> Edge routers inspect platform country headers (<code className="font-mono">CF-IPCountry</code> / <code className="font-mono">x-vercel-ip-country</code>) to set the functional cookie <code className="font-mono text-primary font-semibold">bookarium-geo-country</code> (<code className="font-mono">Max-Age=7 days</code>). Jurisdiction evaluation writes zero IP addresses into cookies or user libraries, collecting zero personal reading profiles; transient Edge WAF and rate-limiter IP security logging is detailed in our{' '}
+                <Link
+                  href={ROUTES.PRIVACY}
+                  className="font-medium text-foreground underline-offset-4 hover:underline hover:text-primary transition-colors"
+                >
+                  Privacy Architecture
+                </Link>
+                .
               </p>
               <p>
                 <strong className="text-foreground font-medium">Fail-Closed Longevity Heuristic:</strong> If author or translator death dates cannot be verified with mathematical certainty from authoritative national libraries, Bookarium conservatively withholds modern titles in Life+70/80/100 jurisdictions to guarantee zero infringement.
@@ -329,23 +336,17 @@ export default function CopyrightPage() {
                 <p className="text-xs font-mono text-muted-foreground">Upstream Archives &amp; Digital Commons</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Project Gutenberg</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
-                  The original digital library founded by Michael S. Hart in 1971, curating over 70,000 public domain ebooks.
+                  The original digital library founded by Michael S. Hart in 1971, curating over 78,000 public domain ebooks.
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Wikidata (CC0 1.0)</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
                   Wikimedia&apos;s public-domain SPARQL knowledge graph linking Gutenberg eBook IDs (P2034) across multilingual editions.
-                </p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
-                <span className="text-xs font-mono font-bold text-foreground block">Standard Ebooks</span>
-                <p className="text-[11px] text-muted-foreground font-sans">
-                  Volunteer-driven project producing beautifully formatted, modern digital editions of public domain masterworks.
                 </p>
               </div>
             </div>
@@ -359,7 +360,7 @@ export default function CopyrightPage() {
             <span>{SITE_CONFIG.NAME} • 100% CC0 &amp; Public Domain Governance</span>
           </div>
           <p className="text-[11px] text-muted-foreground/80">
-            Last Updated: October 2026 • Verified Public Domain Preservation
+            Last Updated: November 2026 • Verified Public Domain Preservation
           </p>
         </div>
       </main>

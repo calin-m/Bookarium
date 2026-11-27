@@ -593,6 +593,13 @@ jobs:
         sastValidators.validateRule9AuthStoreParityAst(authStoreCode, {
           userScopedTables,
           storeNames,
+          requiredDeviceCleanupCalls: [
+            'clearAllOfflineBooks',
+            'clearCachedBookPassages',
+            'clearCachedQuotePool',
+          ],
+          enforceFailClosedDelete: true,
+          requireGuestDeviceWipe: true,
         })
       ).toEqual([]);
 
@@ -607,10 +614,17 @@ jobs:
         }
         export const useAuthStore = () => ({
           clearLocalUserStores,
+          clearGuestDeviceData: async () => {
+            await supabase.from('profiles').delete();
+            await clearLocalUserStores({ wipeDeviceStorage: false });
+          },
           deleteAccount: async () => {
             for (const tbl of ['profiles']) {
               await supabase.from(tbl).delete();
             }
+            try {
+              await supabase.rpc('delete_current_user');
+            } catch {}
           },
         });
       `;
@@ -619,6 +633,9 @@ jobs:
         {
           userScopedTables: ['profiles', 'user_accolades'],
           storeNames: ['useReaderStore', 'useBookshelfStore'],
+          requiredDeviceCleanupCalls: ['clearAllOfflineBooks', 'clearCachedQuotePool'],
+          enforceFailClosedDelete: true,
+          requireGuestDeviceWipe: true,
         }
       );
       expect(
@@ -630,6 +647,21 @@ jobs:
         rule9Violations.some(
           (v) => v.includes('Store "useBookshelfStore"') && v.includes('clearLocalUserStores()')
         )
+      ).toBe(true);
+      expect(
+        rule9Violations.some((v) => v.includes('Account Deletion Fail-Closed Parity'))
+      ).toBe(true);
+      expect(
+        rule9Violations.some((v) => v.includes('clearAllOfflineBooks()') && v.includes('clearLocalUserStores()'))
+      ).toBe(true);
+      expect(
+        rule9Violations.some((v) => v.includes('clearCachedQuotePool()'))
+      ).toBe(true);
+      expect(
+        rule9Violations.some((v) => v.includes('strictly device-local'))
+      ).toBe(true);
+      expect(
+        rule9Violations.some((v) => v.includes('wipeDeviceStorage: true'))
       ).toBe(true);
       expect(rule9Violations.some((v) => v.includes('public.profiles'))).toBe(false);
       expect(rule9Violations.some((v) => v.includes('useReaderStore'))).toBe(false);
@@ -835,6 +867,61 @@ jobs:
         expectedDbTableCount: 0,
       });
       expect(strippedMarkers.some((v) => v.includes('<!-- BEGIN:security-architecture -->'))).toBe(true);
+    });
+  });
+
+  describe('auditLegalDocumentationParity', () => {
+    it('passes against live privacy/page.tsx, copyright/page.tsx, and AccountDeleteModal.tsx specs', () => {
+      const privacySource = fs.readFileSync(
+        path.join(ROOT_DIR, 'src/app/privacy/page.tsx'),
+        'utf-8'
+      );
+      const copyrightSource = fs.readFileSync(
+        path.join(ROOT_DIR, 'src/app/copyright/page.tsx'),
+        'utf-8'
+      );
+      const deleteModalSource = fs.readFileSync(
+        path.join(ROOT_DIR, 'src/components/account/AccountDeleteModal.tsx'),
+        'utf-8'
+      );
+      const astParser = require('./ast-parser.js');
+      const swMeta = astParser.extractServiceWorkerMetadata(ROOT_DIR);
+      const runtimeSpec = astParser.extractRuntimeSpecConstants(ROOT_DIR);
+
+      expect(
+        sastValidators.auditLegalDocumentationParity({
+          privacySource,
+          copyrightSource,
+          deleteModalSource,
+          swCacheName: swMeta.cacheName,
+          maxCachedCovers: runtimeSpec.caches.maxCachedCovers,
+          coverCacheTtlDays: runtimeSpec.caches.coverCacheTtlDays,
+          cdnTextSeconds: runtimeSpec.routeCache.contentText.sMaxAge,
+          cdnCoverSeconds: runtimeSpec.routeCache.contentCover.sMaxAge,
+        })
+      ).toEqual([]);
+    });
+
+    it('detects SW/cache/cookie/CDN TTL drift, stale claims, and missing AccountDeleteModal warnings', () => {
+      const violations: string[] = sastValidators.auditLegalDocumentationParity({
+        privacySource: 'Vercel Web Analytics cover_cache 300 30-day Clear All Local Data',
+        copyrightSource: 'Works remain protected until at least 2026. Standard Ebooks cover_cache',
+        deleteModalSource: 'We sent a confirmation link.',
+        swCacheName: 'bookarium-app-shell-v99',
+        maxCachedCovers: 300,
+        coverCacheTtlDays: 30,
+        cdnTextSeconds: 86400,
+        cdnCoverSeconds: 2592000,
+      });
+
+      expect(violations.some((v) => v.includes('bookarium-app-shell-v99'))).toBe(true);
+      expect(violations.some((v) => v.includes('bookarium-geo-country'))).toBe(true);
+      expect(violations.some((v) => v.includes('86400'))).toBe(true);
+      expect(violations.some((v) => v.includes('2592000'))).toBe(true);
+      expect(violations.some((v) => v.includes('until at least 2026'))).toBe(true);
+      expect(violations.some((v) => v.includes('Standard Ebooks'))).toBe(true);
+      expect(violations.some((v) => v.includes('same browser'))).toBe(true);
+      expect(violations.some((v) => v.includes('offline downloads'))).toBe(true);
     });
   });
 });

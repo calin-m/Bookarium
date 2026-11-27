@@ -45,6 +45,7 @@ describe('AccountPage', () => {
       listActiveSessions: vi.fn().mockResolvedValue({ sessions: [], error: null }),
       revokeSession: vi.fn().mockResolvedValue({ error: null }),
       signOutOtherDevices: vi.fn().mockResolvedValue({ error: null }),
+      clearGuestDeviceData: vi.fn().mockResolvedValue(undefined),
     });
     useFellowshipStore.setState({ fetchFellowshipData: vi.fn().mockResolvedValue(undefined) });
   });
@@ -1368,6 +1369,48 @@ describe('AccountPage', () => {
       expect(mockPush).toHaveBeenCalledWith(ROUTES.VIEW('favorites'));
 
       swipeSpy.mockRestore();
+    });
+
+    it('renders Clear All Local Data controls for online and offline guests and invokes clearGuestDeviceData on confirm', async () => {
+      const clearGuestMock = vi.fn().mockResolvedValue(undefined);
+      useAuthStore.setState({
+        user: null,
+        profile: null,
+        isLoading: false,
+        clearGuestDeviceData: clearGuestMock,
+      });
+
+      const { rerender } = render(<AccountPage />);
+      expect(screen.getByTestId('guest-local-data-card')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('guest-clear-local-data-btn'));
+      expect(screen.getByTestId('guest-clear-local-data-modal')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('cancel-guest-clear-local-data-btn'));
+      await waitFor(() => {
+        expect(screen.queryByTestId('guest-clear-local-data-modal')).not.toBeInTheDocument();
+      });
+      expect(clearGuestMock).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('guest-clear-local-data-btn'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('confirm-guest-clear-local-data-btn'));
+        await Promise.resolve();
+      });
+
+      expect(clearGuestMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('guest-local-data-cleared-notice')).toHaveTextContent(
+        /All local guest data, offline books, and device caches on this browser have been erased/i
+      );
+
+      // Signed-in users must not render the guest local data wipe card
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'austen@bookarium.test' } as any,
+        profile: { id: 'u1', display_name: 'Jane Austen' } as any,
+        isLoading: false,
+      });
+      rerender(<AccountPage />);
+      expect(screen.queryByTestId('guest-local-data-card')).not.toBeInTheDocument();
     });
   });
 });

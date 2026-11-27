@@ -103,6 +103,12 @@ export function Providers({
         'This password reset link must be opened in the same browser where you requested it. Please request a new reset link on this device.'
       );
       params.delete('auth_notice');
+    } else if (authNotice === 'deletion_cross_device') {
+      openAuthModal('sign_in');
+      setError(
+        'This account deletion link must be opened in the same browser where you requested it. Please sign in on this browser and submit a new deletion request from Account Security.'
+      );
+      params.delete('auth_notice');
     } else if (authError === 'verification_failed') {
       openAuthModal('sign_in');
       setError(

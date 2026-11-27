@@ -55,14 +55,19 @@ describe('CopyrightPage', () => {
     render(<CopyrightPage />);
 
     expect(screen.getByText(/2\. Multi-Jurisdiction Copyright Matrix/i)).toBeInTheDocument();
-    expect(screen.getByText(/United States \(Pre-1930 \/ 95 Years\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/European Union & UK \(Life \+ 70\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/United States & Territories \(Pre-1930 \/ 95 Years\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/European Union, UK & International Default \(Life \+ 70\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/all other unmapped international jurisdictions/i)).toBeInTheDocument();
     expect(screen.getByText(/Extended Life: Colombia & Spain \(Life \+ 80\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Extended Life: Mexico \(Life \+ 100\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/conservatively evaluates visitors from Colombia and Spain/i)).toBeInTheDocument();
+    expect(screen.getByText(/Extended Life: Mexico & Côte d'Ivoire \(Life \+ 100\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/100th anniversary of the contributor's death/i)).toBeInTheDocument();
+    expect(screen.queryByText(/until at least 2026/i)).not.toBeInTheDocument();
 
     // Joint authorship and translations
     expect(screen.getByText(/Joint Authorship \(Berne Convention Art\. 7bis\):/i)).toBeInTheDocument();
     expect(screen.getByText(/Translations & Derivative Works \(Berne Convention Art\. 2\(3\)\):/i)).toBeInTheDocument();
+    expect(screen.getByText(/70, 80, or 100 years depending on your jurisdiction/i)).toBeInTheDocument();
   });
 
   it('renders Section 3: Project Gutenberg Compliance and policy links', () => {
@@ -78,12 +83,19 @@ describe('CopyrightPage', () => {
 
     expect(screen.getByText(/Zero Live Visitor Traffic to Project Gutenberg:/i)).toBeInTheDocument();
     expect(screen.getByText(/Decoupled Architecture:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Self-Hosted Edge Caching & Offline Storage:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Self-Hosted Edge Caching & Browser IndexedDB:/i)).toBeInTheDocument();
     expect(screen.getByText(/2592000/)).toBeInTheDocument();
-    expect(screen.getByText(/Official Bulk Data Feeds & Targeted Mirroring:/i)).toBeInTheDocument();
+    expect(screen.getByText(/cover_cache/i)).toBeInTheDocument();
+    expect(screen.getByText(/300 covers \/ 30-day LRU/i)).toBeInTheDocument();
+    expect(screen.getByText(/offline_books/i)).toBeInTheDocument();
+    expect(screen.getByText(/Official Bulk Data Feeds & Background Sync:/i)).toBeInTheDocument();
     expect(screen.getByText(/pg_catalog\.csv\.gz/i)).toBeInTheDocument();
     expect(screen.getByText(/rdf-files\.tar\.bz2/i)).toBeInTheDocument();
+    expect(screen.getByText(/rsync\.ibiblio\.org/i)).toBeInTheDocument();
+    expect(screen.getByText(/gutenberg\.pglaf\.org/i)).toBeInTheDocument();
     expect(screen.getByText(/<dcterms:rights>/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bookarium-Catalog-Sync\/1\.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bookarium-R2-Sync\/1\.0/i)).toBeInTheDocument();
   });
 
   it('displays the email-free PUBLIC_USER_AGENT dynamically derived from SITE_CONFIG without stale legacy strings', async () => {
@@ -102,11 +114,17 @@ describe('CopyrightPage', () => {
 
     expect(screen.getByText(/4\. HTTP 451: Unavailable For Legal Reasons/i)).toBeInTheDocument();
     expect(screen.getByText(/blocked globally, including in the United States/i)).toBeInTheDocument();
+    expect(screen.getByText(/\/og\/books\/\[file\]/i)).toBeInTheDocument();
     expect(screen.getByText(/Privacy-First Functional Verification:/i)).toBeInTheDocument();
     expect(screen.getByText(/bookarium-geo-country/i)).toBeInTheDocument();
+    expect(screen.getByText(/Max-Age=7 days/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Jurisdiction verification itself never logs, tracks, or stores your IP address/i)
+      screen.getByText(/writes zero IP addresses into cookies or user libraries/i)
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Privacy Architecture/i })).toHaveAttribute(
+      'href',
+      ROUTES.PRIVACY
+    );
     expect(screen.getByText(/Fail-Closed Longevity Heuristic:/i)).toBeInTheDocument();
   });
 
@@ -159,9 +177,11 @@ describe('CopyrightPage', () => {
 
     expect(screen.getByText(/6\. Open Cultural Preservation Partners/i)).toBeInTheDocument();
     expect(screen.queryByText(/Gutendex/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Standard Ebooks/i)).not.toBeInTheDocument();
     expect(screen.getByText('Project Gutenberg')).toBeInTheDocument();
+    expect(screen.getByText(/over 78,000 public domain ebooks/i)).toBeInTheDocument();
     expect(screen.getByText('Wikidata (CC0 1.0)')).toBeInTheDocument();
-    expect(screen.getByText('Standard Ebooks')).toBeInTheDocument();
+    expect(screen.getByText(/Last Updated: November 2026/i)).toBeInTheDocument();
     expect(screen.getByTestId('mock-footer')).toBeInTheDocument();
   });
 

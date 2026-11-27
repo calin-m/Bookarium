@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 27 Nov 2026 15:01:39 GMT  
+**Last Generated**: Fri, 27 Nov 2026 17:39:35 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2853 passed  
+**Total Verified Tests**: 2864 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2853 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2864 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.4%** (17835/18311) — *Target: $\ge$ 95%*
-- **Statements**: **96.02%** (19184/19978) — *Target: $\ge$ 95%*
-- **Functions**: **94.94%** (3722/3920) — *Target: $\ge$ 92%*
-- **Branches**: **88.35%** (17778/20121) — *Target: $\ge$ 85%*
+- **Lines**: **97.38%** (17893/18373) — *Target: $\ge$ 95%*
+- **Statements**: **96.01%** (19242/20041) — *Target: $\ge$ 95%*
+- **Functions**: **94.96%** (3734/3932) — *Target: $\ge$ 92%*
+- **Branches**: **88.34%** (17827/20179) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2853 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2864 Tests)
 
-### 🚀 App Routes & Pages (34 Suites · 288 Tests)
+### 🚀 App Routes & Pages (34 Suites · 291 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -46,7 +46,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/account/page.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/app/account/page.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `renders guest prompt when unauthenticated and handles scroll to top via AccountBottomDock`
 - ✔ `renders Scholar Profile by default with serene identity ribbon, streak badge jump, and un-tabbed Habits & Accolades`
@@ -75,6 +75,7 @@
 - ✔ `strips spoofed or unverified ?recovery=true from URL and keeps Current Password required`
 - ✔ `suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])`
 - ✔ `handles generic collection view swipe navigation fallback from Account view`
+- ✔ `renders Clear All Local Data controls for online and offline guests and invokes clearGuestDeviceData on confirm`
 
 </details>
 
@@ -190,7 +191,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/app/auth/callback/route.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `exchanges PKCE code for session and redirects to sanitized next path on localhost`
 - ✔ `normalizes Vercel preview deployment origins to the canonical production domain`
@@ -202,6 +203,7 @@
 - ✔ `redirects to /?auth_error=verification_failed when exchangeCodeForSession fails with a generic error`
 - ✔ `redirects to /?auth_error=oauth_failed when OAuth callback contains access_denied without OTP parameters`
 - ✔ `redirects cross-device PKCE password recovery failures to /?auth_notice=recovery_cross_device`
+- ✔ `redirects cross-device PKCE account deletion failures to /?auth_notice=deletion_cross_device`
 - ✔ `preserves ?recovery=true only for verified recovery OTP or recovery PKCE exchanges and strips it otherwise`
 - ✔ `forwards sanitized User-Agent and stamps bookarium-client-ip-sync on non-recovery exchanges only`
 
@@ -392,7 +394,7 @@
 <summary><b><code>src/app/privacy/page.test.tsx</code></b> (5 tests)</summary>
 
 - ✔ `renders page header and architectural manifesto with solid border-border`
-- ✔ `renders all core GDPR and ePrivacy disclosure sections`
+- ✔ `renders all core GDPR and ePrivacy disclosure sections accurately`
 - ✔ `provides working navigation links to catalog and account settings`
 - ✔ `handles Navbar view change callback by navigating via router`
 - ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
@@ -400,7 +402,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (12 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (13 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud only after auth initialization finishes (!isLoading)`
@@ -408,6 +410,7 @@
 - ✔ `should trigger syncAllStoresWithCloud on document visibilitychange when user is logged in and cooldown passed`
 - ✔ `opens AuthModal with confirmation statusMessage when ?auth_notice=email_verified is present on mount`
 - ✔ `opens AuthModal in forgot_password view when ?auth_notice=recovery_cross_device is present on mount`
+- ✔ `opens AuthModal with deletion guidance when ?auth_notice=deletion_cross_device is present on mount`
 - ✔ `opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount`
 - ✔ `opens AuthModal with OAuth failure notice when ?auth_error=oauth_failed is present on mount`
 - ✔ `provides initialIsAuthenticated through useAuthHint context`
@@ -1819,7 +1822,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 245 Tests)
+### ⚡ Zustand State Stores (10 Suites · 250 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1884,7 +1887,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (52 tests)</summary>
+<summary><b><code>src/stores/useAuthStore.test.ts</code></b> (57 tests)</summary>
 
 - ✔ `manages modal open, close, view, and statusMessage state transitions`
 - ✔ `handles signInWithPassword success and error states`
@@ -1912,6 +1915,11 @@
 - ✔ `marks recovery consumed on updatePassword and clears consumed marker after resetPasswordForEmail`
 - ✔ `handles requestAccountDeletion success and failure with PKCE callback redirect`
 - ✔ `handles deleteAccount success, 11-table database purge, IndexedDB offline purge, and local state reset`
+- ✔ `deleteAccount fails closed and preserves local state when delete_current_user RPC returns a server error`
+- ✔ `deleteAccount fails closed when RPC is unavailable (PGRST202) and a table delete fallback fails`
+- ✔ `deleteAccount finishes local teardown cleanly even if global signOut rejects after RPC cascade`
+- ✔ `requestAccountDeletion and deleteAccount fail cleanly when offline`
+- ✔ `clearGuestDeviceData wipes local stores, IndexedDB books, and quote caches without Supabase calls`
 - ✔ `rejects empty or whitespace-only username`
 - ✔ `rejects username shorter than 3 characters`
 - ✔ `rejects username longer than 30 characters`
@@ -2126,7 +2134,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (61 Suites · 765 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 768 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2771,7 +2779,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/lib/redirect-sanitizer.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `returns default root slash for null, undefined, or empty path`
 - ✔ `allows safe absolute paths starting with a single slash`
@@ -2786,6 +2794,7 @@
 - ✔ `builds a valid book share URL and falls back to root on invalid book IDs`
 - ✔ `identifies /account paths containing recovery=true while rejecting non-account or external paths`
 - ✔ `strips recovery query param while preserving remaining query parameters and hash fragments`
+- ✔ `identifies /auth/confirm-deletion while rejecting unrelated or external paths`
 
 </details>
 
@@ -3120,7 +3129,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>scripts/lib/sast-validators.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `passes the repository next.config.ts without header or CSP violations`
 - ✔ `flags SAMEORIGIN clickjacking regression, ungated unsafe-eval, missing object-src, missing (!isDev) HSTS guard, and syntax errors`
@@ -3138,6 +3147,8 @@
 - ✔ `passes valid production headers, 400 SSRF rejections, and origin-locked redirects while rejecting regressions`
 - ✔ `passes when SECURITY.md compiled markers cover all live ESLint rules, SAST exports, DB table count, and feed integrity tokens`
 - ✔ `flags missing markers, newly added undocumented ESLint rules or SAST exports, table-count drift, and missing feed integrity tokens`
+- ✔ `passes against live privacy/page.tsx, copyright/page.tsx, and AccountDeleteModal.tsx specs`
+- ✔ `detects SW/cache/cookie/CDN TTL drift, stale claims, and missing AccountDeleteModal warnings`
 
 </details>
 

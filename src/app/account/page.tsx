@@ -9,6 +9,8 @@ import {
   Sliders,
   ShieldCheck,
   WifiOff,
+  Trash2,
+  CheckCircle2,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -24,6 +26,7 @@ import { useScrollDirection } from '@/hooks/useScrollDirection';
 import { Navbar } from '@/components/presentation/Navbar';
 import { Footer } from '@/components/presentation/Footer';
 import { Button } from '@/components/ui/Button';
+import { ConfirmActionModal } from '@/components/ui/ConfirmActionModal';
 import { EditorialUnderlineTabs } from '@/components/ui/EditorialUnderlineTabs';
 import { AccountIdentityCard } from '@/components/account/AccountIdentityCard';
 import { AccountHabitsCard } from '@/components/account/AccountHabitsCard';
@@ -111,6 +114,7 @@ function AccountDashboardContent() {
     signOutOtherDevices,
     listActiveSessions,
     revokeSession,
+    clearGuestDeviceData,
     openAuthModal,
     resendVerificationEmail,
     linkOAuthIdentity,
@@ -131,6 +135,7 @@ function AccountDashboardContent() {
       signOutOtherDevices: s.signOutOtherDevices,
       listActiveSessions: s.listActiveSessions,
       revokeSession: s.revokeSession,
+      clearGuestDeviceData: s.clearGuestDeviceData,
       openAuthModal: s.openAuthModal,
       resendVerificationEmail: s.resendVerificationEmail,
       linkOAuthIdentity: s.linkOAuthIdentity,
@@ -379,6 +384,9 @@ function AccountDashboardContent() {
 
   const [activeTab, setActiveTab] = useState<AccountTabId>(validTab);
   const [guestOfflineTab, setGuestOfflineTab] = useState<'preferences' | 'habits'>('preferences');
+  const [isGuestClearModalOpen, setIsGuestClearModalOpen] = useState(false);
+  const [isClearingGuestData, setIsClearingGuestData] = useState(false);
+  const [guestDataClearedNotice, setGuestDataClearedNotice] = useState(false);
   const [accoladeCategory, setAccoladeCategory] = useState<AccoladeCategory>('all');
   const [isAccoladeFilterOpen, setIsAccoladeFilterOpen] = useState(false);
   const [prevTabParam, setPrevTabParam] = useState<string | null>(tabParam);
@@ -754,6 +762,79 @@ function AccountDashboardContent() {
                 </Link>
               </div>
             </div>
+
+            <div
+              data-testid="guest-local-data-card"
+              className="max-w-xl mx-auto bg-card border border-border rounded-3xl p-6 sm:p-8 space-y-4 shadow-xs"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-serif font-bold text-foreground">
+                    Local Device Data &amp; Privacy
+                  </h3>
+                  <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+                    Guest bookshelves, favorites, bookmarks, notes, habits, accolades, offline books, and reading settings are stored strictly in this browser.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-testid="guest-clear-local-data-btn"
+                  disabled={isClearingGuestData}
+                  onClick={() => {
+                    setGuestDataClearedNotice(false);
+                    setIsGuestClearModalOpen(true);
+                  }}
+                  className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 font-mono text-xs uppercase gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear All Local Data</span>
+                </Button>
+              </div>
+              {guestDataClearedNotice && (
+                <p
+                  data-testid="guest-local-data-cleared-notice"
+                  role="status"
+                  className="text-xs font-mono text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 pt-1 border-t border-border"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    All local guest data, offline books, and device caches on this browser have been erased.
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <ConfirmActionModal
+              isOpen={isGuestClearModalOpen}
+              onClose={() => {
+                if (!isClearingGuestData) {
+                  setIsGuestClearModalOpen(false);
+                }
+              }}
+              onConfirm={() => {
+                if (isClearingGuestData) return;
+                setIsClearingGuestData(true);
+                void clearGuestDeviceData()
+                  .then(() => {
+                    setGuestDataClearedNotice(true);
+                  })
+                  .finally(() => {
+                    setIsClearingGuestData(false);
+                    setIsGuestClearModalOpen(false);
+                  });
+              }}
+              title="Clear All Local Data"
+              heading="Erase all local guest data on this device?"
+              description="This permanently clears your local bookshelves, favorites, reading progress, bookmarks, highlights, notes, habits, accolades, downloaded offline books & covers, cached quote pools, and reading preferences on this browser."
+              confirmLabel={isClearingGuestData ? 'Clearing...' : 'Erase Local Data'}
+              icon={<Trash2 className="w-5 h-5" />}
+              modalTestId="guest-clear-local-data-modal"
+              dialogTestId="guest-clear-local-data-dialog"
+              cancelTestId="cancel-guest-clear-local-data-btn"
+              confirmTestId="confirm-guest-clear-local-data-btn"
+            />
           </div>
         )}
 

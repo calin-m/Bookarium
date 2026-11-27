@@ -13,6 +13,7 @@ import {
   useQuoteEnrichedBooks,
   readCachedQuoteEnrichedBooks,
   writeCachedQuoteEnrichedBooks,
+  clearCachedQuotePool,
   QUOTE_ENRICHED_BOOKS_CACHE_KEY,
   QUOTE_POOL_SETTLE_TIMEOUT_MS,
   CatalogRequestError,
@@ -958,7 +959,8 @@ describe('useQuoteEnrichedBooks isPoolSettled hydration signal', () => {
     );
     const filteredCached = readCachedQuoteEnrichedBooks(10);
     expect(filteredCached?.books.map((b) => b.id)).toEqual([1342]);
-    window.localStorage.removeItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY);
+    clearCachedQuotePool();
+    expect(window.localStorage.getItem(QUOTE_ENRICHED_BOOKS_CACHE_KEY)).toBeNull();
   });
 
   it('excludes copyright === true entries from fetchQuoteEnrichedBooks and fetchFeaturedQuotesMap', async () => {

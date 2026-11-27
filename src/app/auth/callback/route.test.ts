@@ -181,6 +181,24 @@ describe('GET /auth/callback', () => {
     );
   });
 
+  it('redirects cross-device PKCE account deletion failures to /?auth_notice=deletion_cross_device', async () => {
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      error: {
+        name: 'AuthPKCECodeVerifierMissingError',
+        message: 'PKCE code verifier not found in storage.',
+      },
+    });
+
+    const request = new Request(
+      'https://bookarium.vercel.app/auth/callback?code=delete-code&next=%2Fauth%2Fconfirm-deletion'
+    );
+    const response = await GET(request);
+
+    expect(response.headers.get('location')).toBe(
+      'https://bookarium.vercel.app/?auth_notice=deletion_cross_device'
+    );
+  });
+
   it('preserves ?recovery=true only for verified recovery OTP or recovery PKCE exchanges and strips it otherwise', async () => {
     // 1. Valid recovery OTP keeps ?recovery=true
     mockVerifyOtp.mockResolvedValueOnce({ error: null });

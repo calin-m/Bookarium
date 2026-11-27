@@ -9,6 +9,31 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.89',
+    date: '2026-11-27',
+    title: 'Anti-Drift Legal Governance, Hardened Rule 9 AST Parity & Dynamic Pass 5 Verification',
+    sections: {
+      Added: [
+        '**4-Layer Anti-Drift Governance, Hardened Rule 9 AST Parity & Dynamic `Pass 5` Legal Verification (`AGENTS.md`, `.agents/AGENTS.md`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`, `src/app/copyright/page.tsx`)**: Added a Legal, Privacy & Erasure Disclosure Parity row to Rule 1 and expanded Rule 9 to 4 layers across `AGENTS.md` and `.agents/AGENTS.md`; upgraded `validateRule9AuthStoreParityAst` (`Pass 0.75` Pillar 6) to verify fail-closed `delete_current_user()` response inspection, device cache cleanups (`clearAllOfflineBooks`, `clearCachedBookPassages`, `clearCachedQuotePool`), and device-local guest `clearGuestDeviceData()` delegation; exported `auditLegalDocumentationParity` in `Pass 5` enforcing live `public/sw.js` `CACHE_NAME`, `MAX_CACHED_COVERS`, `COVER_CACHE_TTL_MS` (correcting `/copyright` `cover_cache` TTL from `14-day` to `30-day`), CDN `s-maxage` values, cookies, sync script identifiers, `AccountDeleteModal` warnings, and retirement of legacy stale claims (`ADR-044`, `ADR-072`, `ADR-073`).',
+      ],
+      Changed: [
+        '**Contract JSDoc & Generator Matrix Parity Sync (`src/stores/useAuthStore.ts`, `src/lib/redirect-sanitizer.ts`, `src/hooks/queries/useBooks.ts`, `scripts/generate-architecture-matrix.js`, `scripts/generate-quality-report.js`)**: Aligned protected `@scope`/`@invariant`/`@adr` contracts across `useAuthStore.ts` (4-layer Rule 9 parity across `8` user/preference Zustand stores), `redirect-sanitizer.ts` (`isConfirmDeletionRedirectPath`), and `useBooks.ts` (`clearCachedQuotePool`), and updated the Client Storage Matrix header, `hookRoles.useBooks`, and Pass 5 report summary (`ADR-072`, `ADR-073`).',
+      ],
+    },
+  },
+  {
+    version: '2.9.88',
+    date: '2026-11-27',
+    title: 'Privacy & Data Architecture Alignment, Complete Cookie Inventory & Edge Telemetry Clarity',
+    sections: {
+      Changed: [
+        '**Accurate `/privacy` Disclosure, Exact Cookie TTLs, Full Sync Inventory & Footer Consistency (`src/app/privacy/page.tsx`, `src/components/presentation/Footer.tsx`, `docs/DECISIONS.md`, `scripts/generate-architecture-matrix.js`)**: Realigned `/privacy` across all sections to disclose cookie-free Vercel Web Analytics & Speed Insights (`24h` ephemeral IP/UA hashes), GDPR Art. 6(1)(f) Vercel WAF/firewall IP protection & country header resolution, self-hosted `next/font/google` typography, optional Google OAuth, all first-party exempt cookies (`bookarium-geo-country` corrected to `7 days`, `bookarium-theme-preference`, `bookarium-auth-hint`, `bookarium-client-ip-sync`, and `sb-*-auth-token*`), automatic `300`-cover IndexedDB `cover_cache` + Service Worker storage, all 11 synced PostgreSQL user data categories (including ratings, annotations, habits, accolades, public profiles, and circles/symposiums), conditional `LEGAL_CONTACT_FORM` GDPR inquiry link, `November 2026` revision date, and `"zero ad tracking"` footer copy (`ADR-015`, `ADR-044`).',
+        '**Fail-Closed Account Deletion, Cross-Device PKCE Deletion Notice & Guest `/account` Local Wipe (`src/stores/useAuthStore.ts`, `src/app/auth/callback/route.ts`, `src/lib/redirect-sanitizer.ts`, `src/app/providers.tsx`, `src/hooks/queries/useBooks.ts`, `src/components/account/AccountDeleteModal.tsx`, `src/app/account/page.tsx`, `src/app/privacy/page.tsx`)**: Hardened `deleteAccount()` and `requestAccountDeletion()` to inspect `{ error }` responses from `delete_current_user()` and all 11 fallback table deletes fail-closed, guard offline requests, wrap post-cascade global `signOut` best-effort, and also purge `bookarium-extracted-passages-v1` + `bookarium-quote-enriched-books-v1` (`clearCachedQuotePool`); routed cross-device PKCE deletion links via `isConfirmDeletionRedirectPath` to `/?auth_notice=deletion_cross_device`; added one-click `Clear All Local Data` (`clearGuestDeviceData`) on `/account` for online/offline guests; and itemized erased data categories across `AccountDeleteModal` and `/privacy` Section 5 (`ADR-044`, `ADR-072`).',
+        '**Technical & Legal `/copyright` Parity Alignment (`src/app/copyright/page.tsx`, `src/app/copyright/page.test.tsx`, `docs/DECISIONS.md`, `scripts/generate-architecture-matrix.js`)**: Realigned `/copyright` across Sections 2–6 to include US territories (`PR, VI, GU, AS, MP`) and Côte d\'Ivoire (`CI`), replace hardcoded `2026` wording with the sliding `Life+100` anniversary formula, note conservative `Life+70` fallback, `ES` `Life+80`, and regional `70/80/100`-year translator terms, document multi-host `rsync` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org`), official HTTP mirrors, and CLI agents (`Bookarium-Catalog-Sync/1.0`, `Bookarium-R2-Sync/1.0`, `PUBLIC_USER_AGENT`), distinguish human-initiated `offline_books` downloads from automatic `300`-cover `cover_cache` & Service Worker storage (`86400s`/`2592000s` CDN TTLs), cover `/og/books/[file]` `HTTP 451` gating, clarify `bookarium-geo-country` (`Max-Age=7 days`) + `/privacy` Edge WAF logging, remove the unintegrated `Standard Ebooks` card (`78,000+` ebooks, Project Gutenberg & Wikidata), and update to `November 2026` (`ADR-044`).',
+      ],
+    },
+  },
+  {
     version: '2.9.87',
     date: '2026-11-27',
     title: 'Phase-1 Technical SEO Engine, Clean Crawler Asset Gateways & 5,000-Book Dynamic Sitemap',

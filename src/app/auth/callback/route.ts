@@ -2,7 +2,7 @@
  * @module
  * @scope OAuth PKCE code exchange and email OTP verification callback route (`GET /auth/callback`).
  * @invariant Validate origins via `resolveCanonicalAuthOrigin`, constrain `?next=` targets via `sanitizeRedirectPath`, strip recovery query routes on non-recovery flows (`stripRecoveryFromRedirectPath`), and allowlist strictly known `VALID_OTP_TYPES`.
- * @invariant Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies with `sameSite: 'lax'` and `secure: isHttpsRequest(request)` on successful authentication.
+ * @invariant Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device`, `?auth_notice=deletion_cross_device`, or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies with `sameSite: 'lax'` and `secure: isHttpsRequest(request)` on successful authentication.
  * @rationale Prevents open redirects, accidental recovery-mode entry via normal logins, and confusing error screens when users confirm signup links on a secondary mobile mail client.
  * @adr ADR-005, ADR-022, ADR-034, ADR-072, ADR-080
  */
@@ -16,6 +16,7 @@ import {
   sanitizeRedirectPath,
   resolveCanonicalAuthOrigin,
   isRecoveryRedirectPath,
+  isConfirmDeletionRedirectPath,
   stripRecoveryFromRedirectPath,
 } from '@/lib/redirect-sanitizer';
 
@@ -144,15 +145,18 @@ export async function GET(request: Request) {
       return response;
     }
 
-    // When a user signs up on one device/browser and clicks the confirmation email on another
-    // (e.g. mobile mail app), Supabase's /auth/v1/verify endpoint has ALREADY confirmed the
-    // user's email in PostgreSQL before redirecting with ?code=...
-    // Guide them to sign in on this device with a positive confirmation notice, or direct
-    // cross-device password reset links to request a fresh link on the current device.
+    // When a user initiates verification, password reset, or account deletion on one browser
+    // and clicks the link on another, Supabase's PKCE exchange rejects the missing verifier.
+    // Route reset and deletion links back with browser-match notices; confirm regular email signups.
     if (isCrossDevicePkceVerifierError(error)) {
       if (isRecoveryRedirectPath(next)) {
         return NextResponse.redirect(
           new URL('/?auth_notice=recovery_cross_device', targetOrigin)
+        );
+      }
+      if (isConfirmDeletionRedirectPath(next)) {
+        return NextResponse.redirect(
+          new URL('/?auth_notice=deletion_cross_device', targetOrigin)
         );
       }
       return NextResponse.redirect(

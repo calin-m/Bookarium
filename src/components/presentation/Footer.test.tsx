@@ -37,6 +37,10 @@ describe('Footer component', () => {
     expect(githubLinks.length).toBeGreaterThanOrEqual(1);
     expect(githubLinks[0]).toHaveAttribute('href', 'https://github.com/calin-m/Bookarium');
 
+    expect(
+      screen.getByText(/Zero DRM, no subscriptions, zero ad tracking\./i)
+    ).toBeInTheDocument();
+
     const privacyLink = screen.getByRole('link', { name: /Privacy & Data Architecture/i });
     expect(privacyLink).toHaveAttribute('href', '/privacy');
     expect(privacyLink).toHaveClass('py-1');

@@ -150,6 +150,23 @@ describe('Providers component', () => {
     expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
   });
 
+  it('opens AuthModal with deletion guidance when ?auth_notice=deletion_cross_device is present on mount', () => {
+    window.location.search = '?auth_notice=deletion_cross_device';
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    const authState = useAuthStore.getState();
+    expect(authState.isAuthModalOpen).toBe(true);
+    expect(authState.authModalView).toBe('sign_in');
+    expect(authState.error).toContain('account deletion link must be opened in the same browser');
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/');
+  });
+
   it('opens AuthModal with expired link error when ?auth_error=verification_failed is present on mount', () => {
     window.location.search = '?auth_error=verification_failed';
     const replaceStateSpy = vi.spyOn(window.history, 'replaceState');

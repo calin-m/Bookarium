@@ -940,6 +940,129 @@ describe('useAuthStore', () => {
     expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(true);
     expect(clearOfflineSpy).toHaveBeenCalled();
     expect(sessionStorage.getItem('bookarium_auto_heal_attempted')).toBeNull();
+    expect(localStorage.getItem('bookarium-extracted-passages-v1')).toBeNull();
+    expect(localStorage.getItem('bookarium-quote-enriched-books-v1')).toBeNull();
+  });
+
+  it('deleteAccount fails closed and preserves local state when delete_current_user RPC returns a server error', async () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Reader' } as any,
+    });
+
+    mockFrom.mockImplementation(() => ({
+      delete: vi.fn().mockReturnValue({
+        or: vi.fn().mockResolvedValue({ error: null }),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    }));
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { code: '42501', message: 'delete_current_user permission failure' },
+    });
+
+    const result = await useAuthStore.getState().deleteAccount();
+    expect(result.error?.message).toBe('delete_current_user permission failure');
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().user?.id).toBe('u1');
+  });
+
+  it('deleteAccount fails closed when RPC is unavailable (PGRST202) and a table delete fallback fails', async () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Reader' } as any,
+    });
+
+    mockFrom.mockImplementation((table: string) => ({
+      delete: vi.fn().mockReturnValue({
+        or: vi.fn().mockResolvedValue({ error: null }),
+        eq: vi.fn().mockResolvedValue({
+          error:
+            table === 'user_annotations'
+              ? { code: '42501', message: 'RLS delete denied on user_annotations' }
+              : null,
+        }),
+      }),
+    }));
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST202', message: 'Could not find the function public.delete_current_user' },
+    });
+
+    const result = await useAuthStore.getState().deleteAccount();
+    expect(result.error?.message).toBe('RLS delete denied on user_annotations');
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().user?.id).toBe('u1');
+  });
+
+  it('deleteAccount finishes local teardown cleanly even if global signOut rejects after RPC cascade', async () => {
+    useAuthStore.setState({
+      user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      profile: { id: 'u1', display_name: 'Reader' } as any,
+    });
+    localStorage.setItem('bookarium-extracted-passages-v1', JSON.stringify({ '1342': { updatedAt: 1, quotes: [] } }));
+    localStorage.setItem('bookarium-quote-enriched-books-v1', JSON.stringify({ updatedAt: 1, books: [] }));
+
+    mockFrom.mockImplementation(() => ({
+      delete: vi.fn().mockReturnValue({
+        or: vi.fn().mockResolvedValue({ error: null }),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    }));
+    mockRpc.mockResolvedValue({ data: null, error: null });
+    mockSignOut.mockRejectedValueOnce(new Error('User from sub claim in JWT does not exist'));
+
+    const result = await useAuthStore.getState().deleteAccount();
+    expect(result.error).toBeNull();
+    expect(useAuthStore.getState().user).toBeNull();
+    expect(localStorage.getItem('bookarium-extracted-passages-v1')).toBeNull();
+    expect(localStorage.getItem('bookarium-quote-enriched-books-v1')).toBeNull();
+  });
+
+  it('requestAccountDeletion and deleteAccount fail cleanly when offline', async () => {
+    const originalOnLine = navigator.onLine;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+    try {
+      useAuthStore.setState({
+        user: { id: 'u1', email: 'reader@bookarium.test' } as any,
+      });
+
+      const reqResult = await useAuthStore.getState().requestAccountDeletion();
+      expect(reqResult.error?.message).toMatch(/offline/i);
+      expect(mockSignInWithOtp).not.toHaveBeenCalled();
+
+      const delResult = await useAuthStore.getState().deleteAccount();
+      expect(delResult.error?.message).toMatch(/offline/i);
+      expect(mockRpc).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+    }
+  });
+
+  it('clearGuestDeviceData wipes local stores, IndexedDB books, and quote caches without Supabase calls', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const { useThemeStore } = await import('@/stores/useThemeStore');
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { useReaderStore } = await import('@/stores/useReaderStore');
+    const clearOfflineSpy = vi.spyOn(offlineStorage, 'clearAllOfflineBooks').mockResolvedValue(undefined);
+    localStorage.setItem('bookarium-extracted-passages-v1', JSON.stringify({ '1342': { updatedAt: 1, quotes: [] } }));
+    localStorage.setItem('bookarium-quote-enriched-books-v1', JSON.stringify({ updatedAt: 1, books: [] }));
+    useThemeStore.setState({ theme: 'dark' });
+    usePreferencesStore.setState({ stickyScrollEnabled: false, speechRate: 1.5 });
+    useReaderStore.setState({ fontSize: 24, brightness: 75 });
+    useAuthStore.setState({ user: null, profile: null });
+
+    await useAuthStore.getState().clearGuestDeviceData();
+
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(clearOfflineSpy).toHaveBeenCalled();
+    expect(useThemeStore.getState().theme).toBe('light');
+    expect(usePreferencesStore.getState().stickyScrollEnabled).toBe(true);
+    expect(useReaderStore.getState().fontSize).toBe(18);
+    expect(localStorage.getItem('bookarium-extracted-passages-v1')).toBeNull();
+    expect(localStorage.getItem('bookarium-quote-enriched-books-v1')).toBeNull();
   });
 
   describe('validateUsername', () => {

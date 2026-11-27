@@ -467,16 +467,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/redirect-sanitizer.ts`](../src/lib/redirect-sanitizer.ts) *(Tier-2 Protected)*
 
-- **Intended Scope (`@scope`)**: Open-redirect validator, canonical auth/share origin resolver, recovery query scrubber, and signed Reading Card share URL builder.
+- **Intended Scope (`@scope`)**: Open-redirect validator, canonical auth/share origin resolver, recovery/deletion callback classifiers, recovery query scrubber, and signed Reading Card share URL builder.
 - **Behavioral Invariants (`@invariant`)**:
-  - Force relative redirects through `sanitizeRedirectPath` (single leading `/`, rejecting protocol-relative `//` and backslashes `\` / `/\`), and strip `recovery` params after consumption.
+  - Force relative redirects through `sanitizeRedirectPath` (single leading `/`, rejecting protocol-relative `//` and backslashes `\` / `/\`), detect `recovery` / `confirm-deletion` routes cleanly via `isRecoveryRedirectPath` / `isConfirmDeletionRedirectPath`, and strip `recovery` params after consumption.
   - Normalize ephemeral Vercel preview hosts (`bookarium-*.vercel.app`) to canonical `SITE_CONFIG.SITE_URL` inside `resolveCanonicalAuthOrigin` / `resolveCanonicalShareOrigin` while preserving `localhost` / `127.0.0.1` for local dev.
 - **Design Rationale (`@rationale`)**:
   - Prevents Open Redirect (`CWE-601`) and stops Vercel Deployment Protection URLs from leaking into OAuth confirmation emails or public OpenGraph share links.
-- **Governing Decisions (`@adr`)**: [ADR-022](DECISIONS.md), [ADR-035](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-022](DECISIONS.md), [ADR-035](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/auth/callback/route.ts`](../src/app/auth/callback/route.ts), [`src/components/profile/ProfileShareModal.tsx`](../src/components/profile/ProfileShareModal.tsx), [`src/components/reader/ReaderShareModal.tsx`](../src/components/reader/ReaderShareModal.tsx), [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/redirect-sanitizer.test.ts`](../src/lib/redirect-sanitizer.test.ts) (13 tests)
+- **Test Contract**: [`src/lib/redirect-sanitizer.test.ts`](../src/lib/redirect-sanitizer.test.ts) (14 tests)
 
 #### [`src/lib/safe-storage.ts`](../src/lib/safe-storage.ts) *(Tier-3 Protected)*
 
@@ -626,9 +626,9 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/stores/useAuthStore.ts`](../src/stores/useAuthStore.ts) *(Tier-1 Protected)*
 
-- **Intended Scope (`@scope`)**: Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, and 3-layer GDPR account deletion.
+- **Intended Scope (`@scope`)**: Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, fail-closed GDPR account deletion, guest device wipe, and 4-layer Rule 9 parity.
 - **Behavioral Invariants (`@invariant`)**:
-  - Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` must erase all 10 Zustand slices, localStorage keys, cookies, and IndexedDB in lockstep (`Rule 9`).
+  - Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` (or guest `clearGuestDeviceData`) must fail closed on non-unavailable server deletion errors (`delete_current_user` / 11-table fallback `{ error }`) and reset auth session/profile state alongside all 8 user/preference Zustand stores (`useJurisdictionStore` preserved), localStorage keys/quote caches, cookies, and IndexedDB in lockstep (`Rule 9`).
   - Persist `STORAGE_KEYS.PENDING_STORE_CLEANUP` synchronously across teardowns so interrupted reloads finish cleanup in `initializeAuth()` without affecting offline signed-in sessions or guest users.
   - Verify `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions, and honor optional `minSyncIntervalMs` cooldown in `syncWithCloud` after live `fetchProfile` completion unless `pendingProfileUpdates` or dirty markers exist.
 - **Design Rationale (`@rationale`)**:
@@ -636,7 +636,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 22 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.reader_circles`, `public.reading_progress`, `public.symposium_sessions`, `public.user_accolades`, `public.user_annotations`, `public.user_book_curation`, `public.user_favorites`, `public.user_reading_habits` · RPCs: `public.delete_current_user()`, `public.get_active_sessions()`, `public.revoke_user_session()` · API Calls: `/auth/callback` · Signals: emits `CustomEvent:bookarium:auth-token-refreshed` · Storage/Cookies: `bookarium-auth-hint`, `bookarium-auth-profile`, `bookarium-client-ip-sync`, `bookarium-pending-store-cleanup`, `bookarium_auto_heal_attempted` · Env Vars: `NODE_ENV`
-- **Test Contract**: [`src/stores/useAuthStore.test.ts`](../src/stores/useAuthStore.test.ts) (52 tests)
+- **Test Contract**: [`src/stores/useAuthStore.test.ts`](../src/stores/useAuthStore.test.ts) (57 tests)
 
 #### [`src/stores/useBookshelfStore.ts`](../src/stores/useBookshelfStore.ts) *(Tier-2 Protected)*
 
@@ -761,14 +761,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`), featured passage hydration (`useFeaturedQuotes`), and popularity-ranked quote pools (`useQuoteEnrichedBooks`).
+- **Intended Scope (`@scope`)**: TanStack React Query hooks and fetchers for `/api/books` catalog search (`useBooks`), featured passage hydration (`useFeaturedQuotes`), popularity-ranked quote pools (`useQuoteEnrichedBooks`), and quote-pool cache teardown (`clearCachedQuotePool`).
 - **Behavioral Invariants (`@invariant`)**:
   - Force `copyright=false` on every outbound `/api/books` request, bound requests with a `15s` `AbortController`, never auto-retry `HTTP 504` / abort timeouts or `400`/`429` rejections, and re-filter returned books through `isBookPublicDomainInJurisdiction` unless `includeRestrictedMetadata` is requested.
-  - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place; consult `bookarium-extracted-passages-v1` read-only (`>= 3` locally extracted passages) inside `fetchFeaturedQuotesMap` without writing server DB quotes back into `bookarium-extracted-passages-v1`.
+  - Guard `useQuoteEnrichedBooks` with `bookarium-quote-enriched-books-v1` `localStorage` caching and `QUOTE_POOL_SETTLE_TIMEOUT_MS` (`1500ms`) so UI quote consumers wait cleanly until `isPoolSettled` without swapping database text over fallback text in place; consult `bookarium-extracted-passages-v1` read-only (`>= 3` locally extracted passages) inside `fetchFeaturedQuotesMap` without writing server DB quotes back into `bookarium-extracted-passages-v1`, and expose `clearCachedQuotePool` for Rule 9 device teardown.
 - **Design Rationale (`@rationale`)**:
   - Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans, while read-only passage reuse avoids redundant deep-quote requests without suppressing dynamic text extraction.
 - **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), …)
+- **AST Blast Radius**: 11 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
 - **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (25 tests)
 
@@ -820,7 +820,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Avoiding unnecessary full-text fetches on quote-enriched Hero and Catalog volumes honors zero-pull homepage protection while preserving instant passage shuffling everywhere.
 - **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 3 runtime, 0 type-only ([`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts))
+- **AST Blast Radius**: 4 runtime, 0 type-only ([`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), [`src/hooks/queries/useBooks.ts`](../src/hooks/queries/useBooks.ts), [`src/stores/useAuthStore.ts`](../src/stores/useAuthStore.ts))
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-extracted-passages-v1`
 - **Test Contract**: [`src/hooks/useBookPassageShuffle.test.ts`](../src/hooks/useBookPassageShuffle.test.ts) (6 tests)
 
@@ -910,13 +910,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: OAuth PKCE code exchange and email OTP verification callback route (`GET /auth/callback`).
 - **Behavioral Invariants (`@invariant`)**:
   - Validate origins via `resolveCanonicalAuthOrigin`, constrain `?next=` targets via `sanitizeRedirectPath`, strip recovery query routes on non-recovery flows (`stripRecoveryFromRedirectPath`), and allowlist strictly known `VALID_OTP_TYPES`.
-  - Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device` or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies with `sameSite: 'lax'` and `secure: isHttpsRequest(request)` on successful authentication.
+  - Map cross-device PKCE verifier failures cleanly to `?auth_notice=recovery_cross_device`, `?auth_notice=deletion_cross_device`, or `?auth_notice=email_verified`, and stamp `AUTH_HINT` + conditional `CLIENT_IP_SYNC` cookies with `sameSite: 'lax'` and `secure: isHttpsRequest(request)` on successful authentication.
 - **Design Rationale (`@rationale`)**:
   - Prevents open redirects, accidental recovery-mode entry via normal logins, and confusing error screens when users confirm signup links on a secondary mobile mail client.
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-034](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`, `bookarium-client-ip-sync`
-- **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (12 tests)
+- **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (13 tests)
 
 #### [`src/app/covers/[file]/route.ts`](../src/app/covers/[file]/route.ts) *(Tier-3 Protected)*
 
@@ -964,7 +964,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx))
 - **Cross-Boundary Coupling**: Signals: listens `CustomEvent:bookarium:auth-token-refreshed`
-- **Test Contract**: [`src/app/providers.test.tsx`](../src/app/providers.test.tsx) (12 tests)
+- **Test Contract**: [`src/app/providers.test.tsx`](../src/app/providers.test.tsx) (13 tests)
 
 #### [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts) *(Tier-3 Protected)*
 
@@ -1031,7 +1031,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-022](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (16 tests)
+- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (18 tests)
 
 
 ### Layer: CLI Pipelines & Governance (14 Contracted)
@@ -1126,15 +1126,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`scripts/lib/sast-validators.js`](../scripts/lib/sast-validators.js) *(Tier-4 Protected)*
 
-- **Intended Scope (`@scope`)**: Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, Rule 9 auth-store parity, circular `SECURITY.md` parity, and live HTTP response validators.
+- **Intended Scope (`@scope`)**: Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, 4-layer Rule 9 auth-store/guest-wipe parity, circular `SECURITY.md` parity, dynamic legal/privacy/deletion disclosure parity, and live HTTP response validators.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` without executing external shells.
+  - Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), `auditLegalDocumentationParity` (`privacy/page.tsx`, `copyright/page.tsx`, and `AccountDeleteModal.tsx` sync/cookie/cache/TTL parity), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` (`deleteAccount()` RPC error capture, non-store cache resets, and device-local `clearGuestDeviceData()`) without executing external shells.
 - **Design Rationale (`@rationale`)**:
   - Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
 - **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-081](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`scripts/generate-architecture-matrix.js`](../scripts/generate-architecture-matrix.js), [`scripts/verify-build.js`](../scripts/verify-build.js))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (16 tests)
+- **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (18 tests)
 
 #### [`scripts/purge-vercel-cache.js`](../scripts/purge-vercel-cache.js) *(Tier-4 Protected)*
 
@@ -1204,7 +1204,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: 7-Gateway Closed-Loop Quality Engine orchestrating secret/boundary scans (`Pass 0.5`), 7-Pillar SAST & offline license SCA (`Pass 0.75`), TypeScript (`Pass 1`), MSW API/query tests (`Pass 2`), V8 coverage thresholds (`Pass 3`), DAG-ordered living docs sync (`Pass 4`), bidirectional ADR/schema/graph/contract/colocation parity (`Pass 5`), ESLint/Knip (`Pass 6`), and Next.js production build + loopback HTTP probes (`Pass 7`).
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, bidirectional TOC + corpus parity across `docs/ARCHITECTURE.md` and `docs/architecture/*.md`, circular `SECURITY.md` symbol parity, `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
+  - Enforce zero live secrets, zero `ast-parse-error` bypasses, `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`) `@scope`/`@invariant` contracts, strict bidirectional heading/count parity on `docs/SYSTEM_CONTRACTS.md`, bidirectional TOC + corpus parity across `docs/ARCHITECTURE.md` and `docs/architecture/*.md`, circular `SECURITY.md` symbol parity (`auditSecurityDocumentationParity`), dynamic legal/privacy/deletion disclosure parity (`auditLegalDocumentationParity`), 4-layer Rule 9 deletion/cache/guest-wipe parity (`validateRule9AuthStoreParityAst`), `README.md` Diagram 1 + `jurisdictionBaselines` + SQL index parity, relative Markdown link validity, dynamic `scripts/` co-location outside `STANDALONE_RUNNER_SCRIPTS`, and zero-drift workflow/threshold/1:1 test co-location compliance across `--security-only`, `--fast`, and `--pass6-verified` execution modes.
 - **Design Rationale (`@rationale`)**:
   - Providing a single fail-closed CLI orchestrator shared by pre-commit hooks, local verification, and GitHub Actions CI eliminates blind spots between static security rules, database schemas, build outputs, and living documentation.
 - **Governing Decisions (`@adr`)**: [ADR-073](DECISIONS.md), [ADR-078](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
@@ -1237,12 +1237,12 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
 | `18` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | API Calls: `/api/books/content` |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
+| `16` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `16` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `8` / `0` | Pure / internal |
 | `16` | [`src/lib/reading-analytics.ts`](../src/lib/reading-analytics.ts) | Domain Engines & Adapters | `6` / `0` | Pure / internal |
 | `15` | [`src/hooks/useBookCopyright.ts`](../src/hooks/useBookCopyright.ts) | React Hooks & Queries | `6` / `0` | Pure / internal |
 | `15` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `3` | Pure / internal |
-| `14` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `7` / `0` | Pure / internal |
 | `14` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/config/api-endpoints.ts`](../src/config/api-endpoints.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |

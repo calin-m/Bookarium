@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sanitizeRedirectPath,
   isRecoveryRedirectPath,
+  isConfirmDeletionRedirectPath,
   stripRecoveryFromRedirectPath,
   resolveCanonicalAuthOrigin,
   buildAuthRedirectUrl,
@@ -169,6 +170,16 @@ describe('isRecoveryRedirectPath and stripRecoveryFromRedirectPath', () => {
       '/account?tab=security#password'
     );
     expect(stripRecoveryFromRedirectPath('//evil.com?recovery=true')).toBe('/');
+  });
+});
+
+describe('isConfirmDeletionRedirectPath', () => {
+  it('identifies /auth/confirm-deletion while rejecting unrelated or external paths', () => {
+    expect(isConfirmDeletionRedirectPath('/auth/confirm-deletion')).toBe(true);
+    expect(isConfirmDeletionRedirectPath('/auth/confirm-deletion?step=1')).toBe(true);
+    expect(isConfirmDeletionRedirectPath('/account?tab=security')).toBe(false);
+    expect(isConfirmDeletionRedirectPath('//evil.com/auth/confirm-deletion')).toBe(false);
+    expect(isConfirmDeletionRedirectPath(null)).toBe(false);
   });
 });
 
