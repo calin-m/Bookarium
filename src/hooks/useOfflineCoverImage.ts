@@ -1,15 +1,14 @@
 /**
  * @module src/hooks/useOfflineCoverImage
  * @scope Local-first book cover image resolution (`coverObjectUrlCache` -> IndexedDB `offline_books`/`cover_cache` -> same-origin `/api/books/content?type=cover`) and background cache warming.
- * @invariant Resolve synchronous `getMemoryCachedCoverUrl` hits first, inspect IndexedDB (`getOfflineBookCover`) before releasing online requests, and rewrite all Project Gutenberg / mirror cover URLs (`GUTENBERG_COVER_HOSTS`) strictly to same-origin `/api/books/content?id=<bookId>&type=cover` without client-side mirror hotlinking or cascading host fallbacks.
+ * @invariant Resolve synchronous `getMemoryCachedCoverUrl` hits first, inspect IndexedDB (`getOfflineBookCover`) before releasing online requests, and delegate cover URL resolution to `resolveBookCoverUrl` so both Project Gutenberg / mirror URLs (`GUTENBERG_COVER_HOSTS`) and empty/`null` inputs (`bookId > 0`) map strictly to same-origin `/api/books/content?id=<bookId>&type=cover` without client-side mirror hotlinking.
  * @invariant Trigger `warmCoverCache` on successful online `handleImageLoad` (`!blob:`), transition directly to `imageError: true` on cover load failure so cards render their dark typographic fallback cover, and revoke only `isOwned` fallback `blob:` URLs via `URL.revokeObjectURL` on unmount while leaving shared pooled `getOrCreateMemoryCoverUrl` URLs intact.
- * @rationale Routing all online cover reads through the same-origin R2-backed endpoint eliminates external Gutenberg `<img>` hotlinking, tightens CSP `img-src` to `'self' data: blob:`, and makes missing R2 covers visibly fall back to typographic card artwork.
- * @adr ADR-070, ADR-080, ADR-082
+ * @rationale Routing all online cover reads through the same-origin R2-backed endpoint eliminates external Gutenberg `<img>` hotlinking, fixes empty `cover_url: null` synced `BookmarkCard` gaps, tightens CSP `img-src` to `'self' data: blob:`, and makes missing R2 covers visibly fall back to typographic card artwork.
+ * @adr ADR-070, ADR-080, ADR-082, ADR-087
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { API_ENDPOINTS } from '@/config/api-endpoints';
-import { GUTENBERG_COVER_HOSTS } from '@/lib/adapters/book.adapter';
+import { resolveBookCoverUrl } from '@/lib/utils';
 import {
   getOfflineBookCover,
   getMemoryCachedCoverUrl,
@@ -17,35 +16,7 @@ import {
   warmCoverCache,
 } from '@/lib/offline-storage';
 
-/**
- * Resolves a cover URL cleanly without external Project Gutenberg hotlinking:
- * Gutenberg/mirror URLs map directly to same-origin `/api/books/content?id=<bookId>&type=cover`
- * backed strictly by Cloudflare R2, while explicit `blob:`, `data:`, and non-Gutenberg paths
- * are preserved as-is.
- */
-export function resolveBookCoverUrl(bookId: number, primaryUrl?: string | null): string | null {
-  const trimmed = (primaryUrl || '').trim();
-  if (!trimmed) return null;
-
-  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
-    return trimmed;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const isHttp = parsed.protocol === 'https:' || parsed.protocol === 'http:';
-    if (isHttp && GUTENBERG_COVER_HOSTS.has(parsed.hostname.toLowerCase())) {
-      if (!Number.isInteger(bookId) || bookId <= 0) {
-        return null;
-      }
-      return `${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${Math.trunc(bookId)}&type=cover`;
-    }
-  } catch {
-    // Relative paths preserve direct same-origin loading
-  }
-
-  return trimmed;
-}
+export { resolveBookCoverUrl };
 
 export interface OfflineCoverImageState {
   imageError: boolean;

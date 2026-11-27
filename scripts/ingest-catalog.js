@@ -7,7 +7,7 @@
  * @invariant Retire legacy `--pages=N` Gutendex pagination and `--with-content` Project Gutenberg HTTP text scraping safely while emitting idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` seed scripts without requiring network credentials for `--dry-run`.
  * @invariant Construct dynamic User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`, and keep pure `generateContentUpdateSql` formatter side-effect free.
  * @rationale Gives local developers and fresh Supabase installs clean curated catalog metadata SQL seeds aligned with `public.books` lifespan bounds while keeping online text storage strictly on Cloudflare R2 (`npm run r2:sync`).
- * @adr ADR-038, ADR-080, ADR-084
+ * @adr ADR-038, ADR-080, ADR-084, ADR-087
  *
  * Usage:
  *   node scripts/ingest-catalog.js --dry-run              # Generate supabase/seed_books.sql
@@ -253,18 +253,6 @@ const CURATED_CLASSICS = [
   },
 ];
 
-// Helper: build standard Gutenberg formats map
-function buildStandardFormats(bookId) {
-  return {
-    'text/html': `https://www.gutenberg.org/ebooks/${bookId}.html.images`,
-    'application/epub+zip': `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
-    'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${bookId}.kf8.images`,
-    'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${bookId}.txt.utf-8`,
-    'image/jpeg': `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
-    'application/rdf+xml': `https://www.gutenberg.org/ebooks/${bookId}.rdf`,
-  };
-}
-
 // Helper: compute lifespan bounds from authors and translators
 function computeLifespanBounds(authors = [], translators = []) {
   const people = [...authors, ...translators];
@@ -306,21 +294,12 @@ function computeLifespanBounds(authors = [], translators = []) {
   return { maxDeath, minBirth };
 }
 
-// Plain-text HTTP mirror scraping was retired in favor of private Cloudflare R2 storage (`npm run r2:sync`).
-// Helper to build safe jsonb_build_object expressions for formats
-function formatFormatsJson(formats) {
-  const entries = Object.entries(formats);
-  if (entries.length === 0) return "'{}'::jsonb";
-  const pairs = entries.map(([k, v]) => `      '${k}', '${v}'`).join(',\n');
-  return `jsonb_build_object(\n${pairs}\n    )`;
-}
-
 // Generate SQL statement for books
 function generateSql(books) {
   const hasAnyContent = books.some((b) => Boolean(b.content));
   const columns = [
     '  id, title, authors, translators, subjects, bookshelves, languages,',
-    '  copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year',
+    '  copyright, media_type, download_count, max_author_death_year, min_author_birth_year',
   ];
   if (hasAnyContent) {
     columns[1] += ', content';
@@ -342,12 +321,10 @@ function generateSql(books) {
   ];
 
   const values = books.map((b) => {
-    const formats = b.formats || buildStandardFormats(b.id);
     const escapedTitle = b.title.replace(/'/g, "''");
     const authorsJson = JSON.stringify(b.authors || []).replace(/'/g, "''");
     const translatorsJson = JSON.stringify(b.translators || []).replace(/'/g, "''");
-    const formatsSql = formatFormatsJson(formats);
-    
+
     // Format text[] literals
     const subjectsArray = `ARRAY[${(b.subjects || []).map((s) => `'${s.replace(/'/g, "''")}'`).join(', ')}]::text[]`;
     const bookshelvesArray = `ARRAY[${(b.bookshelves || []).map((s) => `'${s.replace(/'/g, "''")}'`).join(', ')}]::text[]`;
@@ -371,7 +348,6 @@ function generateSql(books) {
     ${languagesArray},
     ${Boolean(b.copyright)},
     '${b.media_type || 'Text'}',
-    ${formatsSql},
     ${b.download_count || 0},
     ${maxDeath},
     ${minBirth}${contentField}
@@ -388,7 +364,6 @@ function generateSql(books) {
   lines.push('  languages = EXCLUDED.languages,');
   lines.push('  copyright = EXCLUDED.copyright,');
   lines.push('  media_type = EXCLUDED.media_type,');
-  lines.push('  formats = EXCLUDED.formats,');
   lines.push('  download_count = EXCLUDED.download_count,');
   lines.push('  max_author_death_year = EXCLUDED.max_author_death_year,');
   lines.push('  min_author_birth_year = EXCLUDED.min_author_birth_year,');
@@ -438,10 +413,7 @@ async function main() {
   }
 
   console.log(`📦 Preparing ${CURATED_CLASSICS.length} curated masterworks...`);
-  const books = CURATED_CLASSICS.map((b) => ({
-    ...b,
-    formats: buildStandardFormats(b.id),
-  }));
+  const books = CURATED_CLASSICS.map((b) => ({ ...b }));
 
   console.log(`✔ Successfully compiled metadata for ${books.length} volumes.`);
 
@@ -475,7 +447,6 @@ module.exports = {
   resolveRepositoryOrSiteUrl,
   resolveIngestUserAgent,
   CURATED_CLASSICS,
-  buildStandardFormats,
   computeLifespanBounds,
   generateSql,
   generateContentUpdateSql,

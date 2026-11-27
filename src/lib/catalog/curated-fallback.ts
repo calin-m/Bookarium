@@ -3,15 +3,11 @@ import type { CatalogBook } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS, type FeaturedHeroBook } from '@/config/featured-books';
 import { featuredHeroToCatalogBook } from '@/lib/book-metadata';
 import { getJurisdictionRule, isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
+import { buildR2BookFormats } from '@/lib/utils';
 
 function toCuratedCatalogBook(hero: FeaturedHeroBook, index: number): CatalogBook {
   const baseBook = featuredHeroToCatalogBook(hero, {
-    formats: {
-      'text/plain; charset=utf-8': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}.txt`,
-      'text/html': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}-images.html`,
-      'application/epub+zip': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}.epub`,
-      'image/jpeg': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}.cover.medium.jpg`,
-    },
+    formats: buildR2BookFormats(hero.id),
     downloadCount: Math.max(1, FEATURED_HERO_BOOKS.length - index),
   });
 

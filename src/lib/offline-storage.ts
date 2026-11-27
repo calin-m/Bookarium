@@ -15,6 +15,7 @@ import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
+import { buildR2BookFormats, buildR2CoverUrl } from '@/lib/utils';
 
 const DB_NAME = 'BookariumOfflineDB';
 const DB_VERSION = 2;
@@ -806,7 +807,8 @@ export async function getAllOfflineBookMetas(): Promise<CatalogBook[]> {
       }
     }
 
-    let coverUrl = `https://www.gutenberg.org/cache/epub/${rec.bookId}/pg${rec.bookId}.cover.medium.jpg`;
+    const r2Formats = buildR2BookFormats(rec.bookId);
+    let coverUrl = buildR2CoverUrl(rec.bookId) || '';
     if (rec.coverBlob && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
       const cached = coverObjectUrlCache.get(rec.bookId);
       if (cached && cached.size === rec.coverBlob.size) {
@@ -837,8 +839,8 @@ export async function getAllOfflineBookMetas(): Promise<CatalogBook[]> {
       copyright: false,
       media_type: 'Text',
       formats: {
-        'image/jpeg': coverUrl,
-        'application/epub+zip': `https://www.gutenberg.org/ebooks/${rec.bookId}.epub3.images`,
+        ...r2Formats,
+        ...(coverUrl ? { 'image/jpeg': coverUrl } : {}),
       },
       download_count: 0,
     });

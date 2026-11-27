@@ -690,7 +690,6 @@ CREATE TABLE IF NOT EXISTS public.books (
   languages TEXT[] NOT NULL DEFAULT '{en}'::text[],
   copyright BOOLEAN NOT NULL DEFAULT false,
   media_type TEXT NOT NULL DEFAULT 'Text',
-  formats JSONB NOT NULL DEFAULT '{}'::jsonb,
   download_count INTEGER NOT NULL DEFAULT 0,
   -- Joint-authorship invariant (Berne Convention Art. 7bis): NULL if any contributor has unlisted dates
   max_author_death_year INTEGER,
@@ -1417,5 +1416,43 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.revoke_user_session(UUID) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.revoke_user_session(UUID) FROM anon;
 GRANT EXECUTE ON FUNCTION public.revoke_user_session(UUID) TO authenticated;
+
+-- Idempotent Public Books Formats Retirement & Legacy User Cover Cleanup (ADR-087):
+-- Run in production strictly AFTER deploying code that omits formats from CATALOG_METADATA_COLUMNS & ingestion.
+ALTER TABLE public.books DROP COLUMN IF EXISTS formats;
+
+DO $$
+BEGIN
+  UPDATE public.user_favorites
+  SET cover_url = NULL
+  WHERE cover_url IS NOT NULL
+    AND (
+      cover_url ~* '^https?://(?:(?:www|aleph)\.)?gutenberg\.org/'
+      OR cover_url ~* '^https?://gutenberg\.(?:pglaf\.org|readingroo\.ms)/'
+      OR cover_url LIKE '/api/books/content%'
+      OR cover_url ~* '^(?:blob|data):'
+    );
+
+  UPDATE public.bookshelf_items
+  SET cover_url = NULL
+  WHERE cover_url IS NOT NULL
+    AND (
+      cover_url ~* '^https?://(?:(?:www|aleph)\.)?gutenberg\.org/'
+      OR cover_url ~* '^https?://gutenberg\.(?:pglaf\.org|readingroo\.ms)/'
+      OR cover_url LIKE '/api/books/content%'
+      OR cover_url ~* '^(?:blob|data):'
+    );
+
+  UPDATE public.reading_progress
+  SET cover_url = NULL
+  WHERE cover_url IS NOT NULL
+    AND (
+      cover_url ~* '^https?://(?:(?:www|aleph)\.)?gutenberg\.org/'
+      OR cover_url ~* '^https?://gutenberg\.(?:pglaf\.org|readingroo\.ms)/'
+      OR cover_url LIKE '/api/books/content%'
+      OR cover_url ~* '^(?:blob|data):'
+    );
+END $$;
+
 
 

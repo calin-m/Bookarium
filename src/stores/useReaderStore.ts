@@ -1,11 +1,11 @@
 /**
  * @module src/stores/useReaderStore
  * @scope Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
- * @invariant Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses.
+ * @invariant Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
  * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`).
  * @invariant Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
- * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, and prevents stale tabs from resurrecting deleted bookmarks.
- * @adr ADR-003, ADR-014, ADR-068, ADR-080
+ * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
+ * @adr ADR-003, ADR-014, ADR-068, ADR-080, ADR-087
  */
 
 import { create } from 'zustand';
@@ -23,7 +23,11 @@ import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import { formatAuthorWithLifespan, normalizeCloudCoverUrl } from '@/lib/adapters/book.adapter';
+import {
+  formatAuthorWithLifespan,
+  normalizeCloudCoverUrl,
+} from '@/lib/adapters/book.adapter';
+import { resolveBookCoverUrl } from '@/lib/utils';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 import {
   type ReaderTheme,
@@ -360,17 +364,20 @@ export const useReaderStore = create<ReaderState>()(
             .map((a) => formatAuthorWithLifespan(a))
             .filter((name) => Boolean(name && name !== 'Anonymous'));
           const bookWithCover = currentBook as { formats?: Record<string, string>; coverUrl?: string | null };
-          const coverUrl =
-            bookWithCover.formats?.['image/jpeg'] ||
-            bookWithCover.coverUrl ||
-            null;
+          const resolvedBookCover = resolveBookCoverUrl(
+            bookId,
+            bookWithCover.formats?.['image/jpeg'] || bookWithCover.coverUrl || null
+          );
 
           const posAuthorsMissingOrPlaceholder =
             !position.bookAuthors ||
             position.bookAuthors.length === 0 ||
             position.bookAuthors.every(isPlaceholderAuthor);
           const resolvedAuthors = authors.length > 0 ? authors : existingPos?.bookAuthors || [];
-          const resolvedCoverUrl = position.coverUrl ?? coverUrl ?? existingPos?.coverUrl ?? null;
+          const resolvedCoverUrl = resolveBookCoverUrl(
+            bookId,
+            position.coverUrl ?? resolvedBookCover ?? existingPos?.coverUrl ?? null
+          );
 
           if (!position.bookTitle) {
             enrichedPosition = {
@@ -392,7 +399,10 @@ export const useReaderStore = create<ReaderState>()(
             enrichedPosition = {
               ...position,
               bookAuthors: authors,
-              coverUrl: position.coverUrl ?? coverUrl,
+              coverUrl: resolveBookCoverUrl(
+                bookId,
+                position.coverUrl ?? resolvedBookCover
+              ),
             };
           }
         } else if (!position.bookTitle && existingPos?.bookTitle) {
@@ -400,7 +410,10 @@ export const useReaderStore = create<ReaderState>()(
             ...position,
             bookTitle: existingPos.bookTitle,
             bookAuthors: existingPos.bookAuthors ?? position.bookAuthors,
-            coverUrl: existingPos.coverUrl ?? position.coverUrl,
+            coverUrl: resolveBookCoverUrl(
+              bookId,
+              existingPos.coverUrl ?? position.coverUrl
+            ),
           };
         }
 
@@ -494,13 +507,18 @@ export const useReaderStore = create<ReaderState>()(
             !pos.bookAuthors.every(isPlaceholderAuthor);
           const freshHasAuthenticAuthors = freshAuthors.length > 0;
           const needsAuthorEnrichment = !posHasAuthenticAuthors && freshHasAuthenticAuthors;
-          const freshCover = fresh.formats?.['image/jpeg'] || null;
+          const freshCover = resolveBookCoverUrl(
+            fresh.id,
+            pos.coverUrl || fresh.formats?.['image/jpeg'] || null
+          );
+          const needsCoverUpdate =
+            Boolean(freshCover) && freshCover !== (pos.coverUrl ?? null);
 
           if (
             (!pos.bookTitle && fresh.title) ||
             (!posHasLifespans && freshHasLifespans) ||
             needsAuthorEnrichment ||
-            (!pos.coverUrl && freshCover)
+            needsCoverUpdate
           ) {
             hasChanges = true;
             enrichedBookIds.push(fresh.id);
@@ -508,7 +526,7 @@ export const useReaderStore = create<ReaderState>()(
               ...pos,
               bookTitle: pos.bookTitle || fresh.title,
               bookAuthors: freshHasLifespans || needsAuthorEnrichment ? freshAuthors : pos.bookAuthors,
-              coverUrl: pos.coverUrl || freshCover,
+              coverUrl: freshCover,
             };
           }
         }
@@ -1004,6 +1022,25 @@ export const useReaderStore = create<ReaderState>()(
     {
       name: STORAGE_KEYS.READER_SETTINGS,
       storage: createJSONStorage(() => safeLocalStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state || !state.readingPositions) return;
+        let changed = false;
+        const nextPositions: Record<number, BookReadingPosition> = { ...state.readingPositions };
+        for (const [idStr, pos] of Object.entries(state.readingPositions)) {
+          const numericId = Number(idStr);
+          if (!pos || !Number.isInteger(numericId) || numericId <= 0 || !pos.coverUrl) {
+            continue;
+          }
+          const normalized = resolveBookCoverUrl(numericId, pos.coverUrl);
+          if (normalized && normalized !== pos.coverUrl) {
+            nextPositions[numericId] = { ...pos, coverUrl: normalized };
+            changed = true;
+          }
+        }
+        if (changed) {
+          state.readingPositions = nextPositions;
+        }
+      },
     }
   )
 );

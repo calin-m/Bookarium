@@ -429,7 +429,7 @@ describe('src/lib/book-metadata', () => {
         { name: 'Jane Austen', birth_year: 1775, death_year: 1817 },
       ]);
       expect(defaultBook.subjects).toEqual(['Domestic Fiction']);
-      expect(defaultBook.formats['image/jpeg']).toContain('pg1342.cover.medium.jpg');
+      expect(defaultBook.formats['image/jpeg']).toBe('/api/books/content?id=1342&type=cover');
       expect(defaultBook.download_count).toBe(0);
 
       const fallbackBook = featuredHeroToCatalogBook(

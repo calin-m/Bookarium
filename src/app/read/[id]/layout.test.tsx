@@ -222,11 +222,6 @@ describe('BookReaderLayout and generateMetadata', () => {
       languages: ['en'],
       copyright: false,
       media_type: 'Text',
-      formats: {
-        'image/jpeg': 'https://example.com/2600.jpg',
-        'application/epub+zip': 'https://www.gutenberg.org/ebooks/2600.epub3.images',
-        'text/plain; charset=utf-8': 'https://www.gutenberg.org/files/2600/2600-0.txt',
-      },
       download_count: 5000,
     };
 
@@ -284,7 +279,6 @@ describe('BookReaderLayout and generateMetadata', () => {
       deathDate: '1939',
     });
     expect(parsed.encoding).toEqual([
-      { '@type': 'MediaObject', encodingFormat: 'application/epub+zip' },
       { '@type': 'MediaObject', encodingFormat: 'text/plain' },
     ]);
     expect(parsed.genre).toEqual(

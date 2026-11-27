@@ -1286,7 +1286,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       name: 'vitest.config.mts',
       file: 'vitest.config.mts',
       layer: 'Vitest Runner & Tiered V8 Coverage Engine (95/95/92/85)',
-      role: 'Vite-native test runner configuration (`jsdom`, `maxWorkers: 4`, `@` path alias) enforcing the hard tiered V8 coverage floor (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`) while excluding non-executable type contracts and barrels.',
+      role: 'Vite-native test runner configuration (`jsdom`, environment-aware `maxWorkers: 4` in CI / `<= 8` locally, `@` path alias) enforcing the hard tiered V8 coverage floor (`lines: 95%`, `statements: 95%`, `functions: 92%`, `branches: 85%`) while excluding non-executable type contracts and barrels.',
     },
   ];
 

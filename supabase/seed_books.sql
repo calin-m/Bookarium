@@ -1,12 +1,15 @@
 --
 -- Bookarium — Idempotent Gutenberg Book Catalog Seed
--- Generated: 2026-09-11T12:46:39.460Z
+-- Generated: 2026-11-27T10:08:59.394Z
 -- Total Volumes: 10
 --
 
+-- Ensure content column exists on public.books
+ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;
+
 INSERT INTO public.books (
   id, title, authors, translators, subjects, bookshelves, languages,
-  copyright, media_type, formats, download_count, max_author_death_year, min_author_birth_year
+  copyright, media_type, download_count, max_author_death_year, min_author_birth_year
 ) VALUES
   -- Volume #1342: Pride and Prejudice
   (
@@ -19,14 +22,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/1342.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/1342.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/1342.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/1342.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/1342.rdf'
-    ),
     55420,
     1817,
     1775
@@ -43,14 +38,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/84.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/84.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/84.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/84.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/84.rdf'
-    ),
     85210,
     1851,
     1797
@@ -67,14 +54,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/2701.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/2701.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/2701.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/2701.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/2701/pg2701.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/2701.rdf'
-    ),
     42150,
     1891,
     1819
@@ -91,14 +70,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/64317.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/64317.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/64317.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/64317.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/64317/pg64317.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/64317.rdf'
-    ),
     41200,
     1940,
     1896
@@ -115,14 +86,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/11.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/11.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/11.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/11.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/11/pg11.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/11.rdf'
-    ),
     31200,
     1898,
     1832
@@ -139,14 +102,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/1661.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/1661.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/1661.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/1661.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/1661/pg1661.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/1661.rdf'
-    ),
     36400,
     1930,
     1859
@@ -163,14 +118,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/345.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/345.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/345.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/345.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/345/pg345.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/345.rdf'
-    ),
     29800,
     1912,
     1847
@@ -187,14 +134,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/2600.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/2600.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/2600.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/2600.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/2600/pg2600.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/2600.rdf'
-    ),
     22400,
     1939,
     1828
@@ -211,14 +150,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/2554.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/2554.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/2554.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/2554.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/2554/pg2554.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/2554.rdf'
-    ),
     26500,
     1946,
     1821
@@ -235,14 +166,6 @@ INSERT INTO public.books (
     ARRAY['en']::text[],
     false,
     'Text',
-    jsonb_build_object(
-      'text/html', 'https://www.gutenberg.org/ebooks/98.html.images',
-      'application/epub+zip', 'https://www.gutenberg.org/ebooks/98.epub3.images',
-      'application/x-mobipocket-ebook', 'https://www.gutenberg.org/ebooks/98.kf8.images',
-      'text/plain; charset=utf-8', 'https://www.gutenberg.org/ebooks/98.txt.utf-8',
-      'image/jpeg', 'https://www.gutenberg.org/cache/epub/98/pg98.cover.medium.jpg',
-      'application/rdf+xml', 'https://www.gutenberg.org/ebooks/98.rdf'
-    ),
     21900,
     1870,
     1812
@@ -256,7 +179,6 @@ ON CONFLICT (id) DO UPDATE SET
   languages = EXCLUDED.languages,
   copyright = EXCLUDED.copyright,
   media_type = EXCLUDED.media_type,
-  formats = EXCLUDED.formats,
   download_count = EXCLUDED.download_count,
   max_author_death_year = EXCLUDED.max_author_death_year,
   min_author_birth_year = EXCLUDED.min_author_birth_year,

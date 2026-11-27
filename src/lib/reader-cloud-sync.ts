@@ -10,6 +10,7 @@
 import type { CatalogBook, Book, Author } from '@/types/book.types';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { hasAuthorLifespans } from '@/lib/book-metadata';
+import { resolveBookCoverUrl } from '@/lib/utils';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';
@@ -95,7 +96,10 @@ export function decodeRemoteReadingPosition(
     bookAuthors:
       (shouldKeepLocalAuthors ? localPos?.bookAuthors : remoteAuthors) ||
       localPos?.bookAuthors,
-    coverUrl: (row.cover_url as string | null) || localPos?.coverUrl,
+    coverUrl: resolveBookCoverUrl(
+      Number(row.book_id),
+      (row.cover_url as string | null) || localPos?.coverUrl
+    ),
   };
   const progress = Math.min(
     Math.max(Math.round(Number(row.progress_percent)), 0),

@@ -272,6 +272,93 @@ describe('GlobalTitleTooltip', () => {
     const url = copyBookLinkToClipboard(2701);
     expect(url).toMatch(/\/read\/2701$/);
   });
+
+  it('tracks mousemove, switches targets cleanly, clears on empty titles or scroll/mousedown, and ignores hover:none devices', () => {
+    const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+      matches: query === '(hover: none)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { rerender } = render(
+      <div>
+        <GlobalTitleTooltip delayMs={100} />
+        <button data-testid="btn-a" title="First Action" />
+        <button data-testid="btn-b" title="Second Action" />
+        <button data-testid="btn-empty" title="   " />
+        <div data-testid="outside">Outside area</div>
+      </div>
+    );
+
+    const btnA = screen.getByTestId('btn-a');
+    const btnB = screen.getByTestId('btn-b');
+    const btnEmpty = screen.getByTestId('btn-empty');
+    const outside = screen.getByTestId('outside');
+
+    // Touch-primary devices ((hover: none)) do not spawn hover tooltip
+    fireEvent.mouseOver(btnA, { clientX: 50, clientY: 50 });
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(screen.queryByTestId('global-cursor-tooltip')).not.toBeInTheDocument();
+
+    // Restore hover-capable pointer without clearing window.matchMedia return structure
+    matchMediaSpy.mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    rerender(
+      <div>
+        <GlobalTitleTooltip delayMs={100} />
+        <button data-testid="btn-a" title="First Action" />
+        <button data-testid="btn-b" title="Second Action" />
+        <button data-testid="btn-empty" title="   " />
+        <div data-testid="outside">Outside area</div>
+      </div>
+    );
+
+    // Hover btnA -> mouseMove updates pointer -> switch directly to btnB restores btnA's title
+    fireEvent.mouseOver(btnA, { clientX: 80, clientY: 90 });
+    fireEvent.mouseMove(btnA, { clientX: 95, clientY: 105 });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+    expect(screen.getByTestId('global-cursor-tooltip')).toHaveTextContent('First Action');
+
+    fireEvent.mouseOver(btnB, { clientX: 120, clientY: 130 });
+    expect(btnA.getAttribute('title')).toBe('First Action');
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+    expect(screen.getByTestId('global-cursor-tooltip')).toHaveTextContent('Second Action');
+
+    // Mousedown outside dismisses tooltip
+    fireEvent.mouseDown(outside);
+    expect(screen.queryByTestId('global-cursor-tooltip')).not.toBeInTheDocument();
+
+    // Empty title clears tooltip, and window scroll dismisses active tooltip
+    fireEvent.mouseOver(btnA, { clientX: 80, clientY: 90 });
+    act(() => {
+      vi.advanceTimersByTime(120);
+    });
+    expect(screen.getByTestId('global-cursor-tooltip')).toBeInTheDocument();
+    fireEvent(window, new Event('scroll'));
+    expect(screen.queryByTestId('global-cursor-tooltip')).not.toBeInTheDocument();
+
+    fireEvent.mouseOver(btnEmpty, { clientX: 60, clientY: 60 });
+    expect(screen.queryByTestId('global-cursor-tooltip')).not.toBeInTheDocument();
+  });
 });
 
 

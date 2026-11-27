@@ -15,7 +15,6 @@ const {
   GUTENBERG_CSV_FEED_MIRRORS,
   parseContributors,
   computeLifespanBounds,
-  buildStandardFormats,
   normalizeCsvRow,
   resolveFeedMirrors,
   isHtmlContentType,
@@ -248,16 +247,6 @@ describe('sync-gutenberg-catalog parser', () => {
     });
   });
 
-  describe('buildStandardFormats', () => {
-    it('constructs deterministic Gutenberg mirror endpoints for book id', () => {
-      const formats = buildStandardFormats(1342);
-      expect(formats['text/plain; charset=utf-8']).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
-      expect(formats['application/epub+zip']).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
-      expect(formats['image/jpeg']).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
-      expect(formats['text/html']).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
-    });
-  });
-
   describe('normalizeCsvRow', () => {
     it('returns null for malformed or non-text rows', () => {
       expect(normalizeCsvRow([])).toBeNull();
@@ -265,7 +254,7 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(normalizeCsvRow(['100', 'Sound', '2020-01-01', 'Audiobook'])).toBeNull();
     });
 
-    it('normalizes valid Gutenberg CSV row into complete Book schema object', () => {
+    it('normalizes valid Gutenberg CSV row into complete Book schema object without formats', () => {
       const row = [
         '1342',
         'Text',
@@ -296,7 +285,7 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(book.media_type).toBe('Text');
       expect(book.max_author_death_year).toBe(1817);
       expect(book.min_author_birth_year).toBe(1775);
-      expect(book.formats['text/plain; charset=utf-8']).toBeDefined();
+      expect(book).not.toHaveProperty('formats');
     });
 
     it('normalizes multi-line and whitespace title strings cleanly', () => {
@@ -376,7 +365,6 @@ describe('sync-gutenberg-catalog parser', () => {
       languages: ['en'],
       copyright: false,
       media_type: 'Text',
-      formats: buildStandardFormats(1342),
       max_author_death_year: 1817,
       min_author_birth_year: 1775,
     };
@@ -444,16 +432,19 @@ describe('sync-gutenberg-catalog parser', () => {
       ).toBe(true);
     });
 
-    it('deduplicates duplicate book IDs within a batch and filters out unchanged rows while preserving quotes isolation', async () => {
+    it('deduplicates duplicate book IDs within a batch and filters out unchanged rows while stripping quotes and retired formats', async () => {
       const duplicateBatch = [
         { ...baseBook, id: 1342, title: 'Old Duplicate Row' },
-        { ...baseBook, id: 1342, title: 'Pride and Prejudice' }, // Unchanged vs DB
+        { ...baseBook, id: 1342, title: 'Pride and Prejudice', formats: { 'text/plain': 'https://stale.example/1342.txt' } }, // Unchanged vs DB
         { ...baseBook, id: 84, title: 'Frankenstein; Or, The Modern Prometheus (Revised)' }, // Changed title vs DB
         { ...baseBook, id: 78001, title: 'Brand New Release' }, // New book not in DB
       ];
 
-      expect(deduplicateBatchById(duplicateBatch)).toHaveLength(3);
+      const deduped = deduplicateBatchById(duplicateBatch);
+      expect(deduped).toHaveLength(3);
+      expect(deduped.find((b: { id: number }) => b.id === 1342)).not.toHaveProperty('formats');
       expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('quotes');
+      expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('formats');
       expect(CATALOG_DIFF_SELECT_COLUMNS).toContain('download_count');
 
       const inMock = vi.fn().mockResolvedValue({

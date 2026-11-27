@@ -89,7 +89,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-022](DECISIONS.md), [ADR-037](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/app/api/books/route.test.ts`](../src/app/api/books/route.test.ts) (9 tests)
+- **Test Contract**: [`src/app/api/books/route.test.ts`](../src/app/api/books/route.test.ts) (10 tests)
 
 #### [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts) *(Tier-3 Protected)*
 
@@ -223,14 +223,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/catalog/supabase-provider.ts`](../src/lib/catalog/supabase-provider.ts) *(Tier-1 Protected)*
 
-- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
+- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 10-column metadata projection, deterministic R2 format synthesis, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
 - **Behavioral Invariants (`@invariant`)**:
   - Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
-  - Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
+  - Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, short-circuit unsupported `?mime_type=` requests (`isSupportedR2MimeTypeFilter`) before touching PostgreSQL, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
   - Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
 - **Design Rationale (`@rationale`)**:
-  - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; skipping redundant count/retry scans on `57014` timeouts prevents compounding 8s `statement_timeout` failures, while cross-country `jurisdictionRule` normalization, translation LRU caching, and in-flight coalescing cut warm serverless read egress cleanly.
-- **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
+  - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; omitting the retired `formats` JSONB column from `CATALOG_METADATA_COLUMNS` and short-circuiting unsupported MIME filters before DB queries prevents backfill amplification and cuts Supabase catalog egress cleanly.
+- **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
 - **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (41 tests)
@@ -310,7 +310,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-074](DECISIONS.md)
 - **AST Blast Radius**: 6 runtime, 0 type-only ([`src/components/presentation/HeroFeaturedBook2DCard.tsx`](../src/components/presentation/HeroFeaturedBook2DCard.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx), [`src/components/presentation/OpenBookLeftPageSpread.tsx`](../src/components/presentation/OpenBookLeftPageSpread.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/gutenberg/passages.test.ts`](../src/lib/gutenberg/passages.test.ts) (12 tests)
+- **Test Contract**: [`src/lib/gutenberg/passages.test.ts`](../src/lib/gutenberg/passages.test.ts) (13 tests)
 
 #### [`src/lib/gutenberg/reflow.ts`](../src/lib/gutenberg/reflow.ts) *(Tier-4 Protected)*
 
@@ -349,7 +349,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 0 type-only ([`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx), [`src/hooks/queries/useBookContent.ts`](../src/hooks/queries/useBookContent.ts), [`src/hooks/useCollectionAutoHeal.ts`](../src/hooks/useCollectionAutoHeal.ts), [`src/hooks/useOfflineBooks.ts`](../src/hooks/useOfflineBooks.ts), …)
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `BookariumOfflineDB`
-- **Test Contract**: [`src/lib/offline-storage.test.ts`](../src/lib/offline-storage.test.ts) (21 tests)
+- **Test Contract**: [`src/lib/offline-storage.test.ts`](../src/lib/offline-storage.test.ts) (22 tests)
 
 #### [`src/lib/password.ts`](../src/lib/password.ts) *(Tier-3 Protected)*
 
@@ -399,7 +399,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-082](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
 - **Cross-Boundary Coupling**: Env Vars: `R2_ACCESS_KEY_ID`, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_SECRET_ACCESS_KEY`
-- **Test Contract**: [`src/lib/r2-client.test.ts`](../src/lib/r2-client.test.ts) (5 tests)
+- **Test Contract**: [`src/lib/r2-client.test.ts`](../src/lib/r2-client.test.ts) (6 tests)
 
 #### [`src/lib/rate-limiter.ts`](../src/lib/rate-limiter.ts) *(Tier-2 Protected)*
 
@@ -425,7 +425,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-060](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: 12 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx), [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (28 tests)
+- **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (29 tests)
 
 #### [`src/lib/reader-bookmark-geometry.ts`](../src/lib/reader-bookmark-geometry.ts) *(Tier-4 Protected)*
 
@@ -618,14 +618,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Personal library state (saved volumes, queue, favorites, custom named shelves, ratings, statuses), tombstone tracking, and offline outbox orchestration.
 - **Behavioral Invariants (`@invariant`)**:
-  - Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks` and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
+  - Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`) while scrubbing them to `null` in `cloudBookshelfItems` (`normalizeCloudCoverUrl`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
   - Route all Supabase persistence through `bookshelf-cloud-sync.ts` outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
 - **Design Rationale (`@rationale`)**:
-  - Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, and outbox + tombstone separation keeps offline edits deterministic across multi-device syncs.
-- **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and non-blocking cover normalization heals pre-R2 persisted snapshots.
+- **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 26 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.user_book_curation`, `public.user_favorites` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `bookarium-bookshelf-storage`
-- **Test Contract**: [`src/stores/useBookshelfStore.test.ts`](../src/stores/useBookshelfStore.test.ts) (50 tests)
+- **Test Contract**: [`src/stores/useBookshelfStore.test.ts`](../src/stores/useBookshelfStore.test.ts) (51 tests)
 
 #### [`src/stores/useFellowshipStore.ts`](../src/stores/useFellowshipStore.ts) *(Tier-2 Protected)*
 
@@ -683,15 +683,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
 - **Behavioral Invariants (`@invariant`)**:
-  - Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses.
+  - Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
   - Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`).
   - Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
 - **Design Rationale (`@rationale`)**:
-  - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, and prevents stale tabs from resurrecting deleted bookmarks.
-- **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
+- **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 28 runtime, 21 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.reading_progress` · Storage/Cookies: `bookarium-reader-preferences`
-- **Test Contract**: [`src/stores/useReaderStore.test.ts`](../src/stores/useReaderStore.test.ts) (35 tests)
+- **Test Contract**: [`src/stores/useReaderStore.test.ts`](../src/stores/useReaderStore.test.ts) (36 tests)
 
 #### [`src/stores/useThemeStore.ts`](../src/stores/useThemeStore.ts) *(Tier-2 Protected)*
 
@@ -842,13 +842,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Local-first book cover image resolution (`coverObjectUrlCache` -> IndexedDB `offline_books`/`cover_cache` -> same-origin `/api/books/content?type=cover`) and background cache warming.
 - **Behavioral Invariants (`@invariant`)**:
-  - Resolve synchronous `getMemoryCachedCoverUrl` hits first, inspect IndexedDB (`getOfflineBookCover`) before releasing online requests, and rewrite all Project Gutenberg / mirror cover URLs (`GUTENBERG_COVER_HOSTS`) strictly to same-origin `/api/books/content?id=<bookId>&type=cover` without client-side mirror hotlinking or cascading host fallbacks.
+  - Resolve synchronous `getMemoryCachedCoverUrl` hits first, inspect IndexedDB (`getOfflineBookCover`) before releasing online requests, and delegate cover URL resolution to `resolveBookCoverUrl` so both Project Gutenberg / mirror URLs (`GUTENBERG_COVER_HOSTS`) and empty/`null` inputs (`bookId > 0`) map strictly to same-origin `/api/books/content?id=<bookId>&type=cover` without client-side mirror hotlinking.
   - Trigger `warmCoverCache` on successful online `handleImageLoad` (`!blob:`), transition directly to `imageError: true` on cover load failure so cards render their dark typographic fallback cover, and revoke only `isOwned` fallback `blob:` URLs via `URL.revokeObjectURL` on unmount while leaving shared pooled `getOrCreateMemoryCoverUrl` URLs intact.
 - **Design Rationale (`@rationale`)**:
-  - Routing all online cover reads through the same-origin R2-backed endpoint eliminates external Gutenberg `<img>` hotlinking, tightens CSP `img-src` to `'self' data: blob:`, and makes missing R2 covers visibly fall back to typographic card artwork.
-- **Governing Decisions (`@adr`)**: [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
+  - Routing all online cover reads through the same-origin R2-backed endpoint eliminates external Gutenberg `<img>` hotlinking, fixes empty `cover_url: null` synced `BookmarkCard` gaps, tightens CSP `img-src` to `'self' data: blob:`, and makes missing R2 covers visibly fall back to typographic card artwork.
+- **Governing Decisions (`@adr`)**: [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`src/components/presentation/BookCard.tsx`](../src/components/presentation/BookCard.tsx), [`src/components/presentation/BookmarkCard.tsx`](../src/components/presentation/BookmarkCard.tsx))
-- **Cross-Boundary Coupling**: API Calls: `/api/books/content`
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/hooks/useOfflineCoverImage.test.ts`](../src/hooks/useOfflineCoverImage.test.ts) (6 tests)
 
 
@@ -925,7 +925,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Anchor `serverMetadataCache` and `confirmedNotFoundIds` on `globalThis` capped at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
 - **Design Rationale (`@rationale`)**:
   - Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded across warm SSR module reloads.
-- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-086](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-086](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
 - **Test Contract**: [`src/app/read/[id]/reader-layout-utils.test.ts`](../src/app/read/[id]/reader-layout-utils.test.ts) (16 tests)
@@ -1021,10 +1021,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
   - Construct dynamic User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`, and keep pure `generateContentUpdateSql` formatter side-effect free.
 - **Design Rationale (`@rationale`)**:
   - Gives local developers and fresh Supabase installs clean curated catalog metadata SQL seeds aligned with `public.books` lifespan bounds while keeping online text storage strictly on Cloudflare R2 (`npm run r2:sync`).
-- **Governing Decisions (`@adr`)**: [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-038](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`
-- **Test Contract**: [`scripts/ingest-catalog.test.ts`](../scripts/ingest-catalog.test.ts) (10 tests)
+- **Test Contract**: [`scripts/ingest-catalog.test.ts`](../scripts/ingest-catalog.test.ts) (9 tests)
 
 #### [`scripts/ingest-translations.js`](../scripts/ingest-translations.js) *(Tier-4 Protected)*
 
@@ -1131,14 +1131,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
 - **Behavioral Invariants (`@invariant`)**:
   - Prioritize PGLAF/Aleph feed mirrors exclusively (never `www.gutenberg.org`, pinned or ordered via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), preserve cached and live DB `copyright` flags when RDF feeds are unavailable (including under `--update-existing`), and defer unverified brand-new books during unexpected RDF outages (`reconcileBatchWithoutRdfRights`).
-  - Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
+  - Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts, and stripping deprecated `formats` fields before `.upsert()`) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
   - Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE`, `MAX_WITHDRAWN_PRUNE_PER_RUN`, and `PROTECTED_HERO_BOOK_IDS`.
 - **Design Rationale (`@rationale`)**:
-  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
-- **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-085](DECISIONS.md)
+  - Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, eliminates retired template `formats` writes from PostgREST upserts and cache snapshots, and avoids exhausting Supabase read egress during partial upstream outages.
+- **Governing Decisions (`@adr`)**: [ADR-040](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-085](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` · Helpers: `scripts/lib/cli-progress.js`
-- **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (42 tests)
+- **Test Contract**: [`scripts/sync-gutenberg-catalog.test.ts`](../scripts/sync-gutenberg-catalog.test.ts) (41 tests)
 
 #### [`scripts/sync-r2-assets.js`](../scripts/sync-r2-assets.js) *(Tier-1 Protected)*
 
@@ -1176,7 +1176,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | :---: | :--- | :--- | :---: | :--- |
 | `98` | [`src/config/site-config.ts`](../src/config/site-config.ts) | Config & Type Contracts | `37` / `0` | Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_LEGAL_CONTACT_FORM`, `NEXT_PUBLIC_SITE_URL` |
 | `92` | [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx) | UI & Feature Components | `46` / `0` | Pure / internal |
-| `68` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `32` / `0` | Pure / internal |
+| `92` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `42` / `0` | API Calls: `/api/books/content` |
 | `64` | [`src/config/routes.ts`](../src/config/routes.ts) | Config & Type Contracts | `32` / `0` | Pure / internal |
 | `44` | [`src/types/book.types.ts`](../src/types/book.types.ts) | Config & Type Contracts | `0` / `44` | Pure / internal |
 | `37` | [`src/hooks/useHasMounted.ts`](../src/hooks/useHasMounted.ts) | React Hooks & Queries | `17` / `0` | Pure / internal |
@@ -1186,8 +1186,8 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `30` | [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) | UI & Feature Components | `11` / `0` | Signals: emits `CustomEvent:bookarium:book-link-copied`; listens `CustomEvent:bookarium:book-link-copied` |
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
 | `22` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `22` | Pure / internal |
-| `20` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `6` / `0` | API Calls: `/api/books/content` |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
+| `18` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | API Calls: `/api/books/content` |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `16` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `8` / `0` | Pure / internal |

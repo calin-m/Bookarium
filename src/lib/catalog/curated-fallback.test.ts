@@ -21,9 +21,9 @@ describe('searchCuratedCatalogFallback', () => {
 
     const first = page1.results[0];
     expect(first.copyright).toBe(false);
-    expect(first.formats['text/plain; charset=utf-8']).toMatch(/^https:\/\/www\.gutenberg\.org\/cache\/epub\//);
-    expect(first.formats['application/epub+zip']).toMatch(/\.epub$/);
-    expect(first.formats['image/jpeg']).toMatch(/cover\.medium\.jpg$/);
+    expect(first.formats['text/plain; charset=utf-8']).toBe(`/api/books/content?id=${first.id}`);
+    expect(first.formats['application/epub+zip']).toBeUndefined();
+    expect(first.formats['image/jpeg']).toBe(`/api/books/content?id=${first.id}&type=cover`);
     expect(Array.isArray(first.quotes)).toBe(true);
     expect(first.quotes?.length).toBeGreaterThan(0);
 

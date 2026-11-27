@@ -160,4 +160,62 @@ describe('r2-client', () => {
     expect(await fetchR2BookText(1342)).toEqual({ status: 'error' });
     expect(await fetchR2BookText(1342)).toEqual({ status: 'error' });
   });
+
+  it('guards pre-aborted signals, empty or oversized streams, and null-body arrayBuffer fallbacks', async () => {
+    stubValidR2Env();
+    const abortedController = new AbortController();
+    abortedController.abort();
+    expect(await fetchR2CoverBytes(1342, abortedController.signal)).toEqual({ status: 'error' });
+
+    const oversizedChunk = new Uint8Array(MAX_R2_COVER_BYTES + 16);
+    const oversizedStream = new ReadableStream<Uint8Array>({
+      start(ctrl) {
+        ctrl.enqueue(oversizedChunk);
+        ctrl.close();
+      },
+    });
+    const emptyStream = new ReadableStream<Uint8Array>({
+      start(ctrl) {
+        ctrl.close();
+      },
+    });
+
+    vi.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(oversizedStream, { status: 200 }))
+      .mockResolvedValueOnce(new Response(emptyStream, { status: 200 }))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: null,
+        headers: new Headers({ 'Content-Type': 'image/jpeg' }),
+        arrayBuffer: async () => new Uint8Array([0xff, 0xd8, 0xff, 0xe0]).buffer,
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: null,
+        headers: new Headers({ 'Content-Type': 'image/jpeg' }),
+        arrayBuffer: async () => new ArrayBuffer(0),
+      } as unknown as Response);
+
+    expect(await fetchR2CoverBytes(1342)).toEqual({ status: 'error' });
+    expect(await fetchR2CoverBytes(1342)).toEqual({ status: 'error' });
+    const bufOk = await fetchR2CoverBytes(1342);
+    expect(bufOk.status).toBe('ok');
+    expect(await fetchR2CoverBytes(1342)).toEqual({ status: 'error' });
+
+    // Covers RFC3986 special-character signing, invalid text bookId, and HTML-sniffed image payload guard
+    const config = getR2Config(validEnv)!;
+    const specialSigned = signR2GetRequest(config, "books/a!(test)'*.txt.gz", new Date('2026-11-18T00:00:00.000Z'));
+    expect(specialSigned.url).toContain('%21%28test%29%27%2A.txt.gz');
+    expect(await fetchR2BookText(0)).toEqual({ status: 'error' });
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response('<!DOCTYPE html><html>challenge</html>', {
+        status: 200,
+        headers: { 'Content-Type': 'image/jpeg' },
+      })
+    );
+    expect(await fetchR2CoverBytes(1342)).toEqual({ status: 'error' });
+  });
 });

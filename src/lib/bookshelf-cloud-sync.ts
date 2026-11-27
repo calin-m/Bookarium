@@ -20,7 +20,12 @@ import {
   verifyActiveCloudSession,
 } from '@/stores/useAuthStore';
 import type { Bookshelf, BookshelfItem, Database } from '@/types/database.types';
-import { toCatalogBookFromCloudRow, toCloudBookInsert } from '@/lib/adapters/book.adapter';
+import {
+  toCatalogBookFromCloudRow,
+  toCloudBookInsert,
+  normalizeCloudCoverUrl,
+} from '@/lib/adapters/book.adapter';
+import { buildR2CoverUrl, resolveBookCoverUrl } from '@/lib/utils';
 
 export type OutboxActionInput =
   | {
@@ -223,6 +228,18 @@ export function mergeCloudBookWithLocal(
       cloudBook.languages?.some((l) => l !== 'en')
     );
 
+  const cloudCover = cloudBook.formats?.['image/jpeg'];
+  const localCover = localBook.formats?.['image/jpeg'];
+  const defaultR2Cover = buildR2CoverUrl(cloudBook.id);
+  const hasExplicitCustomCloudCover = Boolean(
+    cloudCover &&
+      cloudCover !== defaultR2Cover &&
+      normalizeCloudCoverUrl(cloudCover) !== null
+  );
+  const resolvedCover = hasExplicitCustomCloudCover
+    ? cloudCover
+    : resolveBookCoverUrl(cloudBook.id, localCover || cloudCover);
+
   return {
     ...localBook,
     ...cloudBook,
@@ -245,9 +262,7 @@ export function mergeCloudBookWithLocal(
     formats: {
       ...cloudBook.formats,
       ...localBook.formats,
-      ...(cloudBook.formats?.['image/jpeg']
-        ? { 'image/jpeg': cloudBook.formats['image/jpeg'] }
-        : {}),
+      ...(resolvedCover ? { 'image/jpeg': resolvedCover } : {}),
     },
     download_count:
       typeof localBook.download_count === 'number' &&

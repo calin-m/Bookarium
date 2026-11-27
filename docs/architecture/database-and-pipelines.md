@@ -1,8 +1,8 @@
 # Background Data Pipelines, Database RLS & Query-to-Index Contracts — Bookarium
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
-> **Last Synchronized**: `2026-11-26`  
-> **Topology Health**: `263` Modules Analyzed • `1115` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Last Synchronized**: `2026-11-27`  
+> **Topology Health**: `263` Modules Analyzed • `1124` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -174,8 +174,8 @@ Programmatically extracted from `CREATE [UNIQUE] INDEX IF NOT EXISTS` statements
 
 | Artifact File | Classification | File Size | Architectural Responsibility |
 | :--- | :--- | :--- | :--- |
-| [`supabase/schema.sql`](../../supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `61.1 KB` | Single source of truth defining all 14 database tables, 47 granular RLS policies (with `(select auth.uid())` `InitPlan` scalar subquery wrapping and single-permissive-policy-per-action consolidation), 10 stored functions/triggers (11 row triggers), 17 payload ceiling CHECK constraints, and 20 explicit search/uniqueness indexes. |
-| [`supabase/seed_books.sql`](../../supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `11.2 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
+| [`supabase/schema.sql`](../../supabase/schema.sql) | Canonical Idempotent DDL & RLS Schema | `62.3 KB` | Single source of truth defining all 14 database tables, 47 granular RLS policies (with `(select auth.uid())` `InitPlan` scalar subquery wrapping and single-permissive-policy-per-action consolidation), 10 stored functions/triggers (11 row triggers), 17 payload ceiling CHECK constraints, and 20 explicit search/uniqueness indexes. |
+| [`supabase/seed_books.sql`](../../supabase/seed_books.sql) | Curated Public Domain Catalog Seed | `6.2 KB` | Idempotent starter SQL seed (`ON CONFLICT (id) DO UPDATE`) provisioning curated Project Gutenberg masterworks for zero-network local development. |
 | [`supabase/seed_translations.sql`](../../supabase/seed_translations.sql) | Relational FRBR Translations Seed | `12.1 KB` | Idempotent SQL seed (`ON CONFLICT (work_id, book_id) DO UPDATE`) linking multilingual Project Gutenberg editions into canonical literary works. |
 | [`scripts/data/wikidata-translations-cache.json`](../../scripts/data/wikidata-translations-cache.json) | Offline Wikidata Authority Snapshot | `2.0 KB` | Verified CC0 Wikidata SPARQL authority cache (`P2034` Gutenberg IDs + `P407` language tags) enabling deterministic offline translation clustering when Wikidata is unreachable. |
 

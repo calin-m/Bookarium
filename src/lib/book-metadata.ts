@@ -10,7 +10,7 @@
 
 import type { CatalogBook, CatalogResponse, Book, Author } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
-import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
+import { buildR2CoverUrl, formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 
 export interface ResolvedBookIdentity {
@@ -163,9 +163,9 @@ export function featuredHeroToCatalogBook(
     languages: ['en'],
     copyright: false,
     media_type: 'Text',
-    formats: options?.formats ?? {
-      'image/jpeg': `https://www.gutenberg.org/cache/epub/${hero.id}/pg${hero.id}.cover.medium.jpg`,
-    },
+    formats:
+      options?.formats ??
+      (buildR2CoverUrl(hero.id) ? { 'image/jpeg': buildR2CoverUrl(hero.id)! } : {}),
     download_count: options?.downloadCount ?? 0,
   };
 }

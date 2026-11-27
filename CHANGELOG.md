@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.86] - 2026-11-27
+### *Unified Same-Origin R2 Cover Routing, Pre-Query MIME Filter Guard & public.books.formats Retirement*
+
+### Changed
+- **Unified R2 Cover & Format Derivation (`src/lib/utils.ts`, `src/hooks/useOfflineCoverImage.ts`, `src/lib/adapters/book.adapter.ts`, `src/app/read/[id]/layout.tsx`, `src/app/read/[id]/reader-layout-utils.ts`, `src/lib/book-metadata.ts`, `src/lib/catalog/curated-fallback.ts`, `src/lib/offline-storage.ts`, `src/hooks/reader/`, `src/lib/bookshelf-cloud-sync.ts`, `src/lib/reader-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `src/stores/useReaderStore.ts`, `docs/DECISIONS.md`)**: Extended `resolveBookCoverUrl()` (`utils.ts`) so empty, `null`, Gutenberg, and mirror cover inputs all map deterministically to `/api/books/content?id=<bookId>&type=cover` for `bookId > 0` (fixing post-`ADR-087` `cover_url: null` renders in `BookmarkCard`), exported `buildR2CoverUrl`, `buildR2TextUrl`, `buildR2BookFormats`, `sanitizeCatalogBookCover`, and `allowInternalContentPath`, removed all redundant runtime Project Gutenberg format/cover builders, healed legacy local Gutenberg cover snapshots across `onRehydrateStorage` and `enrichSavedBooks()`/`enrichReadingPositions()`, and kept `DownloadDrawer` `"Coming Soon"` UI slots unchanged (`ADR-082`, `ADR-087`).
+- **`public.books.formats` Retirement & Pre-Query R2 MIME Short-Circuit (`supabase/schema.sql`, `src/types/database.types.ts`, `supabase/seed_books.sql`, `src/lib/catalog/supabase-provider.ts`, `scripts/sync-gutenberg-catalog.js`, `scripts/ingest-catalog.js`, `scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`)**: Retired the redundant `public.books.formats` column (`11 -> 10` columns in `CATALOG_METADATA_COLUMNS`, with idempotent `DROP COLUMN IF EXISTS formats` and legacy Gutenberg `cover_url = NULL` cleanup across user tables), stripped deprecated `buildStandardFormats`/`formatFormatsJson` ingestion code, derived uniform R2 formats in JavaScript via `buildR2BookFormats()`, and added `isSupportedR2MimeTypeFilter()` pre-query short-circuiting so unsupported `?mime_type=` requests return empty before querying Supabase (`ADR-080`, `ADR-087`).
+- **Environment-Aware Vitest Concurrency & 96.0% Statement Coverage Hardening (`vitest.config.mts`, `src/lib/reader-annotator.test.ts`, `src/lib/reader-bookmark-geometry.test.ts`, `src/lib/offline-storage.test.ts`, `src/lib/scroll-utils.test.ts`, `src/lib/r2-client.test.ts`, `src/lib/gutenberg/passages.test.ts`, `src/components/ui/CursorTooltip.test.tsx`, `src/components/presentation/DownloadDrawer.test.tsx`, `src/components/presentation/CollectionSortDropdown.test.tsx`, `src/app/read/[id]/reader-layout-utils.test.ts`, `src/app/api/books/route.test.ts`)**: Replaced fixed `maxWorkers: 4` with `process.env.CI ? 4 : Math.min(8, Math.max(1, os.availableParallelism()))` so GitHub Actions stays bounded at 4 workers while local runs utilize up to 8 workers, and expanded authentic behavioral test coverage across 11 suites (`2,830` total tests), raising V8 coverage to `97.4%` lines, `96.0%` statements, `95.01%` functions, and `88.32%` branches (`ADR-080`, `ADR-087`).
+
+
 ## [2.9.85] - 2026-11-26
 ### *Interactive Crop-Handle Highlight Selection Adjustment (+ Word/Row Snap & + Sentence/+ Paragraph)*
 
@@ -1725,5 +1734,5 @@ The following key architectural decisions are recorded in [`docs/DECISIONS.md`](
 - **ADR-084: Strict Self-Hosted Cloudflare R2 Runtime Delivery, Zero-PG Runtime Policy, Mirror-Only Weekly Feeds & End-User vs. Developer Credential Boundary**
 - **ADR-085: Fault-Tolerant Data Pipeline Orchestration, Resumable R2 Checkpointing, Fail-Closed Copyright Guards & Content CDN Cache Tagging**
 - **ADR-086: Non-Breaking 5-Layer Caching Optimization, Jurisdictional Query Normalization, In-Flight Request Coalescing & Passive Auth Sync Deduplication**
-- **ADR-087: PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning & Redundant Cloud Cover Normalization**
+- **ADR-087: PostgreSQL Storage Quotas, NOT VALID Payload Ceilings, Duplicate Index Pruning, `public.books.formats` Retirement & Unified R2 Cover Normalization**
 - **ADR-088: Canonical `CatalogBook` & `CatalogResponse` Type System Rename (Completing `ADR-080`)**

@@ -52,13 +52,13 @@ describe('lib/utils', () => {
       expect(extractBookFormats({})).toEqual({});
     });
 
-    it('should generate canonical Project Gutenberg fallback URLs when bookId is provided', () => {
+    it('should generate canonical R2 fallback URLs when bookId is provided', () => {
       const extracted = extractBookFormats({}, 1342);
-      expect(extracted.epub).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
-      expect(extracted.html).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
-      expect(extracted.txt).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
-      expect(extracted.mobi).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
-      expect(extracted.coverImage).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
+      expect(extracted.epub).toBeUndefined();
+      expect(extracted.html).toBeUndefined();
+      expect(extracted.txt).toBe('/api/books/content?id=1342');
+      expect(extracted.mobi).toBeUndefined();
+      expect(extracted.coverImage).toBe('/api/books/content?id=1342&type=cover');
     });
 
     it('should reject unsafe or non-HTTPS format URLs and fall back cleanly when bookId is provided', () => {
@@ -85,10 +85,10 @@ describe('lib/utils', () => {
         },
         1342
       );
-      expect(withFallback.epub).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
-      expect(withFallback.html).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
-      expect(withFallback.txt).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
-      expect(withFallback.mobi).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
+      expect(withFallback.epub).toBeUndefined();
+      expect(withFallback.html).toBeUndefined();
+      expect(withFallback.txt).toBe('/api/books/content?id=1342');
+      expect(withFallback.mobi).toBeUndefined();
       expect(withFallback.coverImage).toBe('blob:https://bookarium.app/offline-cover-1342');
     });
   });
@@ -113,6 +113,18 @@ describe('lib/utils', () => {
       expect(sanitizeBookFormatUrl(offlineBlob)).toBeUndefined();
       expect(sanitizeBookFormatUrl(offlineBlob, { allowBlob: false })).toBeUndefined();
       expect(sanitizeBookFormatUrl(offlineBlob, { allowBlob: true })).toBe(offlineBlob);
+    });
+
+    it('should permit same-origin /api/books/content paths only when allowInternalContentPath is explicitly enabled', () => {
+      expect(sanitizeBookFormatUrl('/api/books/content?id=1342')).toBeUndefined();
+      expect(sanitizeBookFormatUrl('/api/books/content?id=1342', { allowInternalContentPath: true })).toBe(
+        '/api/books/content?id=1342'
+      );
+      expect(
+        sanitizeBookFormatUrl('/api/books/content?id=1342&type=cover', { allowInternalContentPath: true })
+      ).toBe('/api/books/content?id=1342&type=cover');
+      expect(sanitizeBookFormatUrl('//evil.example/api/books/content?id=1342', { allowInternalContentPath: true })).toBeUndefined();
+      expect(sanitizeBookFormatUrl('/api/other?id=1342', { allowInternalContentPath: true })).toBeUndefined();
     });
   });
 

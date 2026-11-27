@@ -1,10 +1,10 @@
 /**
  * @module src/stores/useBookshelfStore
  * @scope Personal library state (saved volumes, queue, favorites, custom named shelves, ratings, statuses), tombstone tracking, and offline outbox orchestration.
- * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks` and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
+ * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`) while scrubbing them to `null` in `cloudBookshelfItems` (`normalizeCloudCoverUrl`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
  * @invariant Route all Supabase persistence through `bookshelf-cloud-sync.ts` outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
- * @rationale Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, and outbox + tombstone separation keeps offline edits deterministic across multi-device syncs.
- * @adr ADR-003, ADR-069, ADR-071, ADR-080
+ * @rationale Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and non-blocking cover normalization heals pre-R2 persisted snapshots.
+ * @adr ADR-003, ADR-069, ADR-071, ADR-080, ADR-087
  */
 
 import { create } from 'zustand';
@@ -17,7 +17,11 @@ import { STORAGE_KEYS } from '@/config/site-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { useAuthStore } from './useAuthStore';
 import { useReaderStore } from './useReaderStore';
-import { toCloudBookInsert } from '@/lib/adapters/book.adapter';
+import {
+  toCloudBookInsert,
+  normalizeCloudCoverUrl,
+  sanitizeCatalogBookCover,
+} from '@/lib/adapters/book.adapter';
 import { removeOfflineBook } from '@/lib/offline-storage';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
 
@@ -184,12 +188,13 @@ export const useBookshelfStore = create<BookshelfState>()(
           }
         }
 
+        const sanitizedBook = sanitizeCatalogBookCover(book);
         const remainsOnAnotherShelf = nextItems.some((i) => i.book_id === book.id);
         const nextSaved = exists
           ? remainsOnAnotherShelf
             ? savedBooks
             : savedBooks.filter((b) => b.id !== book.id)
-          : [book, ...savedBooks];
+          : [sanitizedBook, ...savedBooks];
 
         const nextDeleted = { ...deletedBookIds };
         if (exists && !remainsOnAnotherShelf) {
@@ -334,42 +339,60 @@ export const useBookshelfStore = create<BookshelfState>()(
         }
 
         const enrichBookItem = (item: CatalogBook, markChanged: () => void): CatalogBook => {
+          const sanitizedExisting = sanitizeCatalogBookCover(item);
+          const hasNormalizedCover = sanitizedExisting !== item;
           const fresh = freshMap.get(item.id);
-          if (!fresh) return item;
+          if (!fresh) {
+            if (hasNormalizedCover) {
+              markChanged();
+              return sanitizedExisting;
+            }
+            return item;
+          }
 
+          const sanitizedFresh = sanitizeCatalogBookCover(fresh);
           const itemHasLifespans = Boolean(item.authors?.some((a) => a.birth_year != null || a.death_year != null));
-          const freshHasLifespans = Boolean(fresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
+          const freshHasLifespans = Boolean(sanitizedFresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
           const itemHasAuthors = Boolean(item.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name)));
-          const freshHasAuthors = Boolean(fresh.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name)));
+          const freshHasAuthors = Boolean(sanitizedFresh.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name)));
           const hasNewLifespans = freshHasLifespans && !itemHasLifespans;
           const hasNewAuthors = !itemHasAuthors && freshHasAuthors;
-          const hasNewFormats = Boolean(fresh.formats) && Object.keys(fresh.formats).some((key) => !item.formats?.[key]);
+          const hasNewFormats =
+            Boolean(sanitizedFresh.formats) &&
+            Object.keys(sanitizedFresh.formats).some((key) => !sanitizedExisting.formats?.[key]);
           const hasNewTranslators = Boolean(
-            fresh.translators &&
-              fresh.translators.length > 0 &&
+            sanitizedFresh.translators &&
+              sanitizedFresh.translators.length > 0 &&
               (!item.translators || item.translators.length === 0)
           );
           const hasNewSubjects =
             (!item.subjects || item.subjects.length === 0) &&
-            Boolean(fresh.subjects && fresh.subjects.length > 0);
+            Boolean(sanitizedFresh.subjects && sanitizedFresh.subjects.length > 0);
 
-          if (hasNewLifespans || hasNewAuthors || hasNewFormats || hasNewTranslators || hasNewSubjects) {
+          if (
+            hasNormalizedCover ||
+            hasNewLifespans ||
+            hasNewAuthors ||
+            hasNewFormats ||
+            hasNewTranslators ||
+            hasNewSubjects
+          ) {
             markChanged();
             return {
-              ...item,
-              authors: (hasNewLifespans || hasNewAuthors) && fresh.authors ? fresh.authors : item.authors,
-              translators: hasNewTranslators && fresh.translators ? fresh.translators : item.translators,
-              subjects: hasNewSubjects && fresh.subjects ? fresh.subjects : item.subjects,
+              ...sanitizedExisting,
+              authors: (hasNewLifespans || hasNewAuthors) && sanitizedFresh.authors ? sanitizedFresh.authors : sanitizedExisting.authors,
+              translators: hasNewTranslators && sanitizedFresh.translators ? sanitizedFresh.translators : sanitizedExisting.translators,
+              subjects: hasNewSubjects && sanitizedFresh.subjects ? sanitizedFresh.subjects : sanitizedExisting.subjects,
               bookshelves:
-                (!item.bookshelves || item.bookshelves.length === 0) && fresh.bookshelves
-                  ? fresh.bookshelves
-                  : item.bookshelves,
+                (!sanitizedExisting.bookshelves || sanitizedExisting.bookshelves.length === 0) && sanitizedFresh.bookshelves
+                  ? sanitizedFresh.bookshelves
+                  : sanitizedExisting.bookshelves,
               languages:
-                (!item.languages || item.languages.length === 0) && fresh.languages
-                  ? fresh.languages
-                  : item.languages,
-              download_count: item.download_count || fresh.download_count || 0,
-              formats: { ...item.formats, ...fresh.formats },
+                (!sanitizedExisting.languages || sanitizedExisting.languages.length === 0) && sanitizedFresh.languages
+                  ? sanitizedFresh.languages
+                  : sanitizedExisting.languages,
+              download_count: sanitizedExisting.download_count || sanitizedFresh.download_count || 0,
+              formats: { ...sanitizedExisting.formats, ...sanitizedFresh.formats },
             };
           }
           return item;
@@ -396,14 +419,13 @@ export const useBookshelfStore = create<BookshelfState>()(
           })
         );
 
-        if (!hasSavedChanges && !hasRecentChanges && !hasFavoriteChanges) return;
-
         const changedCloudItems: BookshelfItem[] = [];
         const nextItems = cloudBookshelfItems.map((item) => {
           const fresh = freshMap.get(item.book_id);
           if (!fresh) return item;
-          const payload = toCloudBookInsert(fresh, item.user_id, item.bookshelf_id);
-          const nextCoverUrl = payload.cover_url || item.cover_url;
+          const sanitizedFresh = sanitizeCatalogBookCover(fresh);
+          const payload = toCloudBookInsert(sanitizedFresh, item.user_id, item.bookshelf_id);
+          const nextCoverUrl = payload.cover_url ?? normalizeCloudCoverUrl(item.cover_url);
           const authorsChanged = JSON.stringify(item.book_authors) !== JSON.stringify(payload.book_authors);
           const coverChanged = item.cover_url !== nextCoverUrl;
           if (!authorsChanged && !coverChanged) {
@@ -417,6 +439,10 @@ export const useBookshelfStore = create<BookshelfState>()(
           changedCloudItems.push(updatedItem);
           return updatedItem;
         });
+
+        if (!hasSavedChanges && !hasRecentChanges && !hasFavoriteChanges && changedCloudItems.length === 0) {
+          return;
+        }
 
         set({
           ...(hasSavedChanges ? { savedBooks: nextSaved } : {}),
@@ -449,7 +475,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       addToQueue: (book) => {
         const { readingQueue } = get();
         if (!readingQueue.some((b) => b.id === book.id)) {
-          set({ readingQueue: [...readingQueue, book] });
+          set({ readingQueue: [...readingQueue, sanitizeCatalogBookCover(book)] });
         }
       },
 
@@ -467,6 +493,7 @@ export const useBookshelfStore = create<BookshelfState>()(
         const isNumeric = typeof bookOrId === 'number';
         const id = isNumeric ? bookOrId : bookOrId.id;
         const exists = favoriteBookIds.includes(id) || favoriteBooks.some((b) => b.id === id);
+        const sanitizedFavorite = !isNumeric ? sanitizeCatalogBookCover(bookOrId) : null;
 
         const nextDeletedFavorites = { ...deletedFavoriteBookIds };
         if (exists) {
@@ -478,7 +505,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           });
         } else {
           delete nextDeletedFavorites[id];
-          const nextFavoriteBooks = isNumeric ? favoriteBooks : [bookOrId, ...favoriteBooks];
+          const nextFavoriteBooks = sanitizedFavorite ? [sanitizedFavorite, ...favoriteBooks] : favoriteBooks;
           set({
             favoriteBookIds: [...favoriteBookIds, id],
             favoriteBooks: nextFavoriteBooks,
@@ -497,9 +524,8 @@ export const useBookshelfStore = create<BookshelfState>()(
                 .eq('user_id', currentUserId)
                 .eq('book_id', id);
               if (error) throw error;
-            } else if (!isNumeric) {
-              const book = bookOrId as CatalogBook;
-              const payload = toCloudBookInsert(book, currentUserId);
+            } else if (sanitizedFavorite) {
+              const payload = toCloudBookInsert(sanitizedFavorite, currentUserId);
               const { error } = await supabase.from('user_favorites').upsert(payload);
               if (error) throw error;
             }
@@ -510,11 +536,10 @@ export const useBookshelfStore = create<BookshelfState>()(
                 type: 'DELETE_FAVORITE',
                 payload: { user_id: currentUserId, book_id: id },
               });
-            } else if (!isNumeric) {
-              const book = bookOrId as CatalogBook;
+            } else if (sanitizedFavorite) {
               get().queueOutboxAction({
                 type: 'UPSERT_FAVORITE',
-                payload: toCloudBookInsert(book, currentUserId),
+                payload: toCloudBookInsert(sanitizedFavorite, currentUserId),
               });
             }
           }
@@ -533,28 +558,34 @@ export const useBookshelfStore = create<BookshelfState>()(
 
         for (const fresh of books) {
           if (!favoriteBookIds.includes(fresh.id)) continue;
-          const existing = existingMap.get(fresh.id);
+          const sanitizedFresh = sanitizeCatalogBookCover(fresh);
+          const existing = existingMap.get(sanitizedFresh.id);
           if (!existing) {
-            nextFavorites.push(fresh);
+            nextFavorites.push(sanitizedFresh);
             hasChanges = true;
           } else {
+            const sanitizedExisting = sanitizeCatalogBookCover(existing);
+            const coverNormalized = sanitizedExisting !== existing;
             const existingHasDates = Boolean(
-              existing.authors?.some((a) => a.birth_year != null || a.death_year != null)
+              sanitizedExisting.authors?.some((a) => a.birth_year != null || a.death_year != null)
             );
             const freshHasDates = Boolean(
-              fresh.authors?.some((a) => a.birth_year != null || a.death_year != null)
+              sanitizedFresh.authors?.some((a) => a.birth_year != null || a.death_year != null)
             );
-            if (freshHasDates && !existingHasDates) {
-              const idx = nextFavorites.findIndex((b) => b.id === fresh.id);
+            if ((freshHasDates && !existingHasDates) || coverNormalized) {
+              const idx = nextFavorites.findIndex((b) => b.id === sanitizedFresh.id);
               if (idx !== -1) {
                 nextFavorites[idx] = {
-                  ...existing,
-                  authors: fresh.authors,
+                  ...sanitizedExisting,
+                  authors:
+                    freshHasDates && !existingHasDates
+                      ? sanitizedFresh.authors
+                      : sanitizedExisting.authors,
                   translators:
-                    fresh.translators && fresh.translators.length > 0
-                      ? fresh.translators
-                      : existing.translators,
-                  formats: { ...existing.formats, ...fresh.formats },
+                    sanitizedFresh.translators && sanitizedFresh.translators.length > 0
+                      ? sanitizedFresh.translators
+                      : sanitizedExisting.translators,
+                  formats: { ...sanitizedExisting.formats, ...sanitizedFresh.formats },
                 };
                 hasChanges = true;
               }
@@ -577,8 +608,9 @@ export const useBookshelfStore = create<BookshelfState>()(
 
       addRecentBook: (book) => {
         const { recentBooks } = get();
-        const filtered = recentBooks.filter((b) => b.id !== book.id);
-        set({ recentBooks: [book, ...filtered].slice(0, 20) });
+        const sanitizedBook = sanitizeCatalogBookCover(book);
+        const filtered = recentBooks.filter((b) => b.id !== sanitizedBook.id);
+        set({ recentBooks: [sanitizedBook, ...filtered].slice(0, 20) });
       },
 
       clearBookshelf: () => {
@@ -780,6 +812,39 @@ export const useBookshelfStore = create<BookshelfState>()(
     {
       name: STORAGE_KEYS.BOOKSHELF,
       storage: createJSONStorage(() => safeLocalStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const sanitizePool = (list: CatalogBook[] | undefined) => {
+          if (!Array.isArray(list) || list.length === 0) return { next: list, changed: false };
+          let changed = false;
+          const next = list.map((b) => {
+            const clean = sanitizeCatalogBookCover(b);
+            if (clean !== b) changed = true;
+            return clean;
+          });
+          return { next: changed ? next : list, changed };
+        };
+        const savedRes = sanitizePool(state.savedBooks);
+        const favRes = sanitizePool(state.favoriteBooks);
+        const recentRes = sanitizePool(state.recentBooks);
+        const queueRes = sanitizePool(state.readingQueue);
+        let cloudChanged = false;
+        const nextCloud = Array.isArray(state.cloudBookshelfItems)
+          ? state.cloudBookshelfItems.map((item) => {
+              const cleanCover = normalizeCloudCoverUrl(item.cover_url);
+              if (cleanCover !== item.cover_url) {
+                cloudChanged = true;
+                return { ...item, cover_url: cleanCover };
+              }
+              return item;
+            })
+          : state.cloudBookshelfItems;
+        if (savedRes.changed && savedRes.next) state.savedBooks = savedRes.next;
+        if (favRes.changed && favRes.next) state.favoriteBooks = favRes.next;
+        if (recentRes.changed && recentRes.next) state.recentBooks = recentRes.next;
+        if (queueRes.changed && queueRes.next) state.readingQueue = queueRes.next;
+        if (cloudChanged && nextCloud) state.cloudBookshelfItems = nextCloud;
+      },
     }
   )
 );

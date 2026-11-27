@@ -777,6 +777,53 @@ describe('filterAndPairAnnotationsBySource', () => {
     expect(withPriority[0].annotation.id).toBe('expanded-self');
     expect(withPriority[0].end).toBe(paraWithTwo.length);
   });
+
+  it('handles separator-heavy boundary snapping, clamping bounds, sentence chaining, and CRLF paragraphs', () => {
+    // 1. snapOffsetToWordBoundary on punctuation/whitespace (forward scan + backward fallback)
+    expect(snapOffsetToWordBoundary('hello   world', 5, 'start')).toBe(8);
+    expect(snapOffsetToWordBoundary('hello   ', 5, 'start')).toBe(0);
+    expect(snapOffsetToWordBoundary('alpha  beta', 6, 'end')).toBe(5);
+    expect(snapOffsetToWordBoundary('   ', 1, 'end')).toBe(3);
+
+    // 2. stepSelectionBoundaryByWord edge clamping and maxLength enforcement
+    const sample = 'One two three four';
+    expect(stepSelectionBoundaryByWord('', 0, 0, 'start', 1)).toEqual({ start: 0, end: 0 });
+    expect(stepSelectionBoundaryByWord(sample, 0, 3, 'start', -1)).toEqual({ start: 0, end: 3 });
+    expect(stepSelectionBoundaryByWord(sample, 4, 13, 'start', -1, 10)).toEqual({ start: 4, end: 13 });
+    expect(stepSelectionBoundaryByWord(sample, 4, 7, 'start', 1)).toEqual({ start: 4, end: 7 });
+    expect(stepSelectionBoundaryByWord(sample, 14, 18, 'end', 1)).toEqual({ start: 14, end: 18 });
+    expect(stepSelectionBoundaryByWord(sample, 4, 13, 'end', 1, 12)).toEqual({ start: 4, end: 13 });
+
+    // 3. Sentence chaining when selection already aligns with a complete sentence + closing quotes
+    const chained = 'First "quoted sentence.”  Second sentence closes!\r\n\r\nThird paragraph.';
+    const first = resolveInitialSelectionOffsets(chained, 'First "quoted sentence.”');
+    expect(first).not.toBeNull();
+    const expandedChain = expandSpanToSentenceBounds(chained, first!.start, first!.end);
+    expect(chained.slice(expandedChain.start, expandedChain.end)).toBe(
+      'First "quoted sentence.”  Second sentence closes!'
+    );
+
+    // 4. Empty text guard + CRLF paragraph breaks + maxLength trimming returning base on tiny clamp
+    expect(expandSpanToSentenceBounds('', 0, 1)).toEqual({ start: 0, end: 1 });
+    const third = resolveInitialSelectionOffsets(chained, 'Third');
+    const crlfPara = expandSpanToParagraphBounds(chained, third!.start, third!.end);
+    expect(chained.slice(crlfPara.start, crlfPara.end)).toBe('Third paragraph.');
+
+    // 5. Trailing unpunctuated sentence trim + long sentence clamping across sentence/word boundaries
+    const trailingNoPeriod = 'Hello brave world   ';
+    const noPeriodExp = expandSpanToSentenceBounds(trailingNoPeriod, 0, 5);
+    expect(trailingNoPeriod.slice(noPeriodExp.start, noPeriodExp.end)).toBe('Hello brave world');
+
+    const longSentence = `${'leadword '.repeat(10)}Target core phrase here. ${'tailword '.repeat(25)}`;
+    const core = resolveInitialSelectionOffsets(longSentence, 'Target core phrase here.');
+    const clampedLongSent = expandSpanToSentenceBounds(longSentence, core!.start, core!.end, 85);
+    expect(clampedLongSent.end - clampedLongSent.start).toBeLessThanOrEqual(85);
+    expect(longSentence.slice(clampedLongSent.start, clampedLongSent.end)).toContain('Target core phrase');
+
+    // Tiny maxLength forcing fallback back to base span when trimmed target exceeds budget cleanly
+    const shrunkBudget = expandSpanToParagraphBounds(trailingNoPeriod, 6, 11, 2);
+    expect(shrunkBudget).toEqual({ start: 6, end: 11 });
+  });
 });
 
 

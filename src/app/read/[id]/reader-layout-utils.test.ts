@@ -355,6 +355,14 @@ describe('reader-layout-utils', () => {
     expect(g.__bookariumServerMetadataCache?.size).toBe(0);
     clearConfirmedNotFoundCache();
     expect(g.__bookariumConfirmedNotFoundIds?.size).toBe(0);
+
+    // Covers application/x-mobipocket-ebook extraction and confirmedNotFoundIds cleanup
+    const customMeta = resolveBookMetadata({ id: 77 });
+    const customSeo = buildReaderSeoMetadataPayload(customMeta, 77, {
+      'application/x-mobipocket-ebook': 'https://example.com/book.mobi',
+      'text/plain; charset=utf-8': 'https://example.com/book.txt',
+    });
+    expect(customSeo.availableFormats).toEqual(['application/x-mobipocket-ebook', 'text/plain']);
   });
 });
 

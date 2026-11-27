@@ -186,6 +186,12 @@ describe('CollectionSortDropdown', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByTestId('compact-sort-popover')).not.toBeInTheDocument();
 
+    // Reopen and test outside pointerdown dismissal
+    fireEvent.click(trigger);
+    expect(screen.getByTestId('compact-sort-popover')).toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId('compact-sort-popover')).not.toBeInTheDocument();
+
     // Rerender with custom sort to check active highlight styling
     rerender(
       <CollectionSortDropdown

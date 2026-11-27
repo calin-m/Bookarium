@@ -16,9 +16,12 @@ vi.mock('@/lib/offline-storage', () => ({
 }));
 
 describe('resolveBookCoverUrl', () => {
-  it('routes Gutenberg and mirror cover URLs through same-origin /api/books/content without external hotlinking', () => {
-    expect(resolveBookCoverUrl(1342, '')).toBeNull();
-    expect(resolveBookCoverUrl(1342, null)).toBeNull();
+  it('routes empty, null, Gutenberg, and mirror cover URLs through same-origin /api/books/content without external hotlinking', () => {
+    expect(resolveBookCoverUrl(1342, '')).toBe('/api/books/content?id=1342&type=cover');
+    expect(resolveBookCoverUrl(1342, null)).toBe('/api/books/content?id=1342&type=cover');
+    expect(resolveBookCoverUrl(1342, undefined)).toBe('/api/books/content?id=1342&type=cover');
+    expect(resolveBookCoverUrl(0, null)).toBeNull();
+    expect(resolveBookCoverUrl(-5, '')).toBeNull();
     expect(resolveBookCoverUrl(1342, 'blob:local-cover')).toBe('blob:local-cover');
     expect(resolveBookCoverUrl(1342, '/local/cover.jpg')).toBe('/local/cover.jpg');
     expect(resolveBookCoverUrl(1342, 'https://example.com/custom-cover.jpg')).toBe(
@@ -60,12 +63,15 @@ describe('useOfflineCoverImage', () => {
     }
   });
 
-  it('sets imageError when not offline or when no cached cover blob exists', async () => {
+  it('resolves default R2 cover URL for omitted coverUrl and sets imageError on load error', async () => {
+    const { result: invalidResult } = renderHook(() => useOfflineCoverImage(0, false));
+    expect(invalidResult.current.activeCoverUrl).toBeNull();
+
     const { result } = renderHook(() => useOfflineCoverImage(1342, false));
 
     expect(result.current.imageError).toBe(false);
     expect(result.current.offlineCoverUrl).toBeNull();
-    expect(result.current.activeCoverUrl).toBeNull();
+    expect(result.current.activeCoverUrl).toBe('/api/books/content?id=1342&type=cover');
 
     await act(async () => {
       await result.current.handleImageError();

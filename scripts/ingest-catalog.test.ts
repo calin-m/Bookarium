@@ -6,7 +6,6 @@ const {
   resolveRepositoryOrSiteUrl,
   resolveIngestUserAgent,
   CURATED_CLASSICS,
-  buildStandardFormats,
   computeLifespanBounds,
   generateSql,
   generateContentUpdateSql,
@@ -59,7 +58,7 @@ describe('scripts/ingest-catalog CLI helpers & invariants', () => {
     });
   });
 
-  describe('CURATED_CLASSICS & buildStandardFormats', () => {
+  describe('CURATED_CLASSICS', () => {
     it('enforces public-domain copyright=false and contributor records across all curated titles', () => {
       expect(CURATED_CLASSICS.length).toBeGreaterThan(0);
       for (const book of CURATED_CLASSICS as CuratedClassicEntry[]) {
@@ -67,13 +66,6 @@ describe('scripts/ingest-catalog CLI helpers & invariants', () => {
         expect(book.copyright).toBe(false);
         expect(book.authors.length).toBeGreaterThan(0);
       }
-    });
-
-    it('constructs standard HTTPS Project Gutenberg format URLs', () => {
-      const formats = buildStandardFormats(1342);
-      expect(formats['text/html']).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
-      expect(formats['application/epub+zip']).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
-      expect(formats['image/jpeg']).toBe('https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg');
     });
   });
 
@@ -130,6 +122,7 @@ describe('scripts/ingest-catalog CLI helpers & invariants', () => {
       expect(sql).toContain("'Frankenstein''s Monster'");
       expect(sql).toContain("'Gothic ''Horror'''");
       expect(sql).toContain('ON CONFLICT (id) DO UPDATE SET');
+      expect(sql).not.toContain('formats');
     });
 
     it('emits dollar-quoted idempotent content UPDATE statements only for books with content', () => {

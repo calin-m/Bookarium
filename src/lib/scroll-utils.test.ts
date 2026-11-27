@@ -1051,4 +1051,105 @@ describe('runPreservingScrollPosition', () => {
   });
 });
 
+describe('getAccordionTabLabelClass & getAccordionTabFlexClass responsive tiers', () => {
+  it('computes distance-graded label visibility and mask classes across breakpoints', () => {
+    expect(getAccordionTabLabelClass(0, 2)).toBe('inline');
+    expect(getAccordionTabLabelClass(1, 4, 'inline')).toBe('inline');
+
+    expect(getAccordionTabLabelClass(0, 4, 'lg:inline')).toContain('lg:inline');
+    expect(getAccordionTabLabelClass(1, 4, 'lg:inline')).toContain('opacity-85');
+    expect(getAccordionTabLabelClass(2, 4, 'lg:inline')).toContain('opacity-65');
+    expect(getAccordionTabLabelClass(3, 5, 'lg:inline')).toContain('sm:max-w-[40px]');
+
+    expect(getAccordionTabLabelClass(0, 4, 'xl:inline')).toContain('xl:inline');
+    expect(getAccordionTabLabelClass(1, 5)).toContain('md:inline');
+    expect(getAccordionTabLabelClass(2, 4, 'sm:inline')).toContain('sm:inline');
+    expect(getAccordionTabLabelClass(3, 4, 'sm:inline')).toContain('opacity-0');
+  });
+
+  it('computes distance-graded flex growth weights across <=2, lg:inline, md:inline, xl:inline, and sm tiers', () => {
+    expect(getAccordionTabFlexClass(0, 2)).toBe('flex-1 justify-center shrink-0');
+
+    expect(getAccordionTabFlexClass(0, 4, 'lg:inline')).toContain('sm:flex-[1.4]');
+    expect(getAccordionTabFlexClass(1, 4, 'lg:inline')).toContain('sm:flex-[1.1]');
+    expect(getAccordionTabFlexClass(2, 4, 'lg:inline')).toContain('flex-1 sm:flex-1');
+    expect(getAccordionTabFlexClass(3, 5, 'lg:inline')).toContain('shrink-0 sm:flex-1');
+
+    expect(getAccordionTabFlexClass(0, 5, 'md:inline')).toContain('md:flex-1');
+    expect(getAccordionTabFlexClass(1, 5, 'md:inline')).toContain('flex-[1.15] md:flex-1');
+    expect(getAccordionTabFlexClass(2, 5, 'md:inline')).toContain('flex-1 md:flex-1');
+    expect(getAccordionTabFlexClass(3, 5, 'md:inline')).toContain('shrink-0 md:flex-1');
+
+    expect(getAccordionTabFlexClass(0, 4, 'xl:inline')).toContain('xl:flex-1');
+    expect(getAccordionTabFlexClass(1, 4, 'xl:inline')).toContain('flex-[1.15] xl:flex-1');
+    expect(getAccordionTabFlexClass(2, 4, 'xl:inline')).toContain('flex-1 xl:flex-1');
+    expect(getAccordionTabFlexClass(3, 4, 'xl:inline')).toContain('shrink-0 xl:flex-1');
+
+    expect(getAccordionTabFlexClass(0, 4)).toContain('flex-[1.8] sm:flex-1');
+    expect(getAccordionTabFlexClass(1, 4)).toContain('flex-[1.15] sm:flex-1');
+    expect(getAccordionTabFlexClass(2, 4)).toContain('flex-1 sm:flex-1');
+  });
+
+  it('handles released mouse buttons, non-primary clicks, and window pointercancel cleanup in createTabScrubberHandlers', () => {
+    const container = document.createElement('div');
+    const tabA = document.createElement('button');
+    tabA.setAttribute('data-tab-id', 'a');
+    tabA.setAttribute('aria-selected', 'true');
+    tabA.getBoundingClientRect = () =>
+      ({ left: 0, right: 60, top: 0, bottom: 30, width: 60, height: 30, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    const tabB = document.createElement('button');
+    tabB.setAttribute('data-tab-id', 'b');
+    tabB.getBoundingClientRect = () =>
+      ({ left: 60, right: 120, top: 0, bottom: 30, width: 60, height: 30, x: 60, y: 0, toJSON: () => ({}) }) as DOMRect;
+    container.getBoundingClientRect = () =>
+      ({ left: 0, right: 120, top: 0, bottom: 30, width: 120, height: 30, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    container.appendChild(tabA);
+    container.appendChild(tabB);
+
+    const onSelect = vi.fn();
+    const handlers = createTabScrubberHandlers(onSelect, { holdDelayMs: 0 });
+
+    // Right click (button: 2) does not initiate scrubbing
+    handlers.onPointerDown({ button: 2, pointerType: 'mouse', clientX: 20, currentTarget: container });
+    expect(container.getAttribute('data-scrubbing')).toBeNull();
+
+    // Start mouse scrub and drag onto tabB to activate scrubbing indicator, then simulate buttons === 0 release
+    handlers.onPointerDown({ button: 0, pointerType: 'mouse', clientX: 20, currentTarget: container });
+    handlers.onPointerMove({ buttons: 1, pointerType: 'mouse', clientX: 85, clientY: 15, currentTarget: container });
+    expect(container.getAttribute('data-scrubbing')).toBe('true');
+    expect(onSelect).toHaveBeenCalledWith('b');
+
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 90, buttons: 0 }));
+    expect(container.getAttribute('data-scrubbing')).toBeNull();
+
+    // Mouse pointercancel terminates scrub cleanly
+    handlers.onPointerDown({ button: 0, pointerType: 'mouse', clientX: 20, currentTarget: container });
+    handlers.onPointerMove({ buttons: 1, pointerType: 'mouse', clientX: 85, clientY: 15, currentTarget: container });
+    expect(container.getAttribute('data-scrubbing')).toBe('true');
+
+    // Window pointermove & mousemove updates scrub position cleanly while active
+    const ptrMoveEv = new Event('pointermove');
+    Object.assign(ptrMoveEv, { pointerType: 'mouse', buttons: 1, clientX: 92, clientY: 15 });
+    window.dispatchEvent(ptrMoveEv);
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 94, clientY: 15, buttons: 1 }));
+    window.dispatchEvent(new Event('pointercancel'));
+    expect(container.getAttribute('data-scrubbing')).toBeNull();
+
+    // Window mousemove release (buttons === 0) after window activation + touchmove window listener
+    handlers.onPointerDown({ button: 0, pointerType: 'touch', clientX: 20, currentTarget: container });
+    const touchMoveEv = new Event('touchmove');
+    Object.assign(touchMoveEv, { touches: [{ clientX: 85, clientY: 15 }] });
+    window.dispatchEvent(touchMoveEv);
+    expect(onSelect).toHaveBeenCalled();
+
+    // pointercancel on touch keeps session open; touchend finishes it cleanly
+    const touchCancel = new Event('pointercancel');
+    Object.assign(touchCancel, { pointerType: 'touch' });
+    window.dispatchEvent(touchCancel);
+    expect(container.getAttribute('data-scrubbing')).toBe('true');
+    window.dispatchEvent(new Event('touchend'));
+    expect(container.getAttribute('data-scrubbing')).toBeNull();
+  });
+});
+
 

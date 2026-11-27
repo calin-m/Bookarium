@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Thu, 26 Nov 2026 11:39:32 GMT  
+**Last Generated**: Fri, 27 Nov 2026 11:45:06 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 271 passed  
-**Total Verified Tests**: 2818 passed  
+**Total Verified Tests**: 2830 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **271/271 test suites passed** (2818 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **271/271 test suites passed** (2830 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **96.83%** (17453/18023) — *Target: $\ge$ 95%*
-- **Statements**: **95.38%** (18764/19672) — *Target: $\ge$ 95%*
-- **Functions**: **94.81%** (3676/3877) — *Target: $\ge$ 92%*
-- **Branches**: **87.76%** (17374/19795) — *Target: $\ge$ 85%*
+- **Lines**: **97.39%** (17635/18106) — *Target: $\ge$ 95%*
+- **Statements**: **96%** (18974/19764) — *Target: $\ge$ 95%*
+- **Functions**: **94.98%** (3694/3889) — *Target: $\ge$ 92%*
+- **Branches**: **88.31%** (17588/19915) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (271 Suites / 2818 Tests)
+## 🧪 Comprehensive Test Suite Catalog (271 Suites / 2830 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 322 Tests)
+### 🚀 App Routes & Pages (31 Suites · 323 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -146,7 +146,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/api/books/route.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>src/app/api/books/route.test.ts</code></b> (10 tests)</summary>
 
 - ✔ `should reject unsupported query params and production ?country= overrides with 400 no-store and same-origin CORP`
 - ✔ `should return 429 when client exceeds max request rate limit`
@@ -157,6 +157,7 @@
 - ✔ `should return 503 with no-store when pool=quotes and Supabase is unavailable`
 - ✔ `should apply 12h global Edge cache for pool=quotes and 7d global Edge cache for jurisdiction-independent quote/ID lookups`
 - ✔ `gracefully handles supabaseCatalogProvider.isHealthy() rejections for both curated fallback and pool=quotes`
+- ✔ `returns 503 with no-store when searchBooks rejects with an unexpected non-CatalogProviderError`
 
 </details>
 
@@ -545,7 +546,7 @@
 
 </details>
 
-### 🎨 Catalog & Presentation (40 Suites · 586 Tests)
+### 🎨 Catalog & Presentation (40 Suites · 588 Tests)
 
 <details>
 <summary><b><code>src/components/presentation/AdvancedFilterDrawer.test.tsx</code></b> (23 tests)</summary>
@@ -634,7 +635,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (27 tests)</summary>
+<summary><b><code>src/components/presentation/BookmarkCard.test.tsx</code></b> (28 tests)</summary>
 
 - ✔ `renders book metadata, formatted author names, unified copy tooltip, progress bar, and reading coordinates`
 - ✔ `triggers onResume callback and warms reader store when Resume button is clicked`
@@ -663,6 +664,7 @@
 - ✔ `applies status-tinted border and focus ring to the status selector while keeping neutral text and 1080p compact footer sizing`
 - ✔ `renders the compact text-only status pill without icons or truncation popovers`
 - ✔ `routes Gutenberg coverUrl through same-origin /api/books/content and falls back cleanly on image error`
+- ✔ `resolves same-origin R2 cover route when persisted bookmark coverUrl is null`
 
 </details>
 
@@ -1002,7 +1004,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (11 tests)</summary>
+<summary><b><code>src/components/presentation/DownloadDrawer.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `should render active plain-text export and disabled Coming Soon formats with zero external Gutenberg hotlinks`
 - ✔ `should return null when book is null`
@@ -1015,6 +1017,7 @@
 - ✔ `displays Offline Mode Notice Banner, disables external format links and Save Offline when offline and book is not cached`
 - ✔ `keeps Remove and cached Plain Text export active when offline and book is already downloaded`
 - ✔ `copies book share link when clicking unified Title + Author block in DownloadDrawer`
+- ✔ `serves cached plain text from QueryClient and surfaces HTTP 404/empty/unsupported export errors`
 
 </details>
 
@@ -1774,7 +1777,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 243 Tests)
+### ⚡ Zustand State Stores (10 Suites · 245 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1897,7 +1900,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (50 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (51 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1949,6 +1952,7 @@
 - ✔ `returns original query if query has no order function`
 - ✔ `enriches savedBooks and favoriteBooks with authentic authors when incoming fresh books have authentic authors without lifespans`
 - ✔ `covers enrichSavedBooks with recentBooks, cloudBookshelfItems, authenticated userId, and clearCustomShelfBooks cloud delete`
+- ✔ `heals legacy Gutenberg cover URLs in enrichSavedBooks and onRehydrateStorage while preserving custom URLs`
 
 </details>
 
@@ -2025,7 +2029,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (35 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (36 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -2062,6 +2066,7 @@
 - ✔ `handles upsert/fallback failure booleans, retains unsynced items on failed healedInCloud upload, and aborts on SELECT error`
 - ✔ `guards against cross-device clock skew, handles enrichReadingPositions batch dirty recovery, and resets session watermark on resetReaderSession`
 - ✔ `scrubs 0% Page-1 ghost positions from dirtyPositionBookIds across save, restart debounce, and early syncWithCloud while protecting concurrent real edits`
+- ✔ `sanitizes legacy Gutenberg cover URLs in readingPositions on rehydration while preserving custom URLs`
 
 </details>
 
@@ -2079,7 +2084,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (60 Suites · 755 Tests)
+### 📚 Gutenberg Parsers & Metadata (60 Suites · 761 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2116,8 +2121,8 @@
 - ✔ `is idempotent when given an already-canonical Book`
 - ✔ `handles missing or empty fields safely with reasonable fallbacks`
 - ✔ `cleans Gutenberg title preambles and normalizes author names with dates`
-- ✔ `reconstructs CatalogBook with Gutenberg format URLs and normalized author objects`
-- ✔ `handles null cover_url and empty authors gracefully`
+- ✔ `reconstructs CatalogBook with R2 format URLs and normalized author objects`
+- ✔ `routes legacy Gutenberg cover_url and null cover_url through same-origin R2 endpoints`
 - ✔ `formats a CatalogBook into a standardized Supabase insert payload`
 - ✔ `preserves birth and death years in author strings when present`
 - ✔ `omits bookshelf_id when not provided`
@@ -2127,7 +2132,7 @@
 - ✔ `covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books`
 - ✔ `returns an existing CatalogBook unchanged`
 - ✔ `converts a canonical Book with authorDetails, translators, and explicit URLs to a CatalogBook`
-- ✔ `falls back to parsing author string lifespans and standard Gutenberg format URLs when authorDetails or URLs are absent`
+- ✔ `falls back to parsing author string lifespans and R2 format URLs when authorDetails or URLs are absent`
 - ✔ `handles empty authors array gracefully`
 
 </details>
@@ -2292,7 +2297,7 @@
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_ANON_KEY contains placeholder`
 - ✔ `returns false when credentials are missing or empty`
 - ✔ `correctly maps all fields and defaults nullish values`
-- ✔ `handles non-array or nullish authors, formats, and download count`
+- ✔ `handles non-array or nullish authors and download count while deriving uniform R2 formats`
 - ✔ `returns false when Supabase is not configured and no client was injected`
 - ✔ `returns true when client returns count > 0 without error and passes estimated head count with abortSignal`
 - ✔ `returns false when table has count === 0 (unseeded)`
@@ -2304,8 +2309,8 @@
 - ✔ `filters out authors protected under Life + 70 when client is in GB and applies SQL B-Tree cutoff`
 - ✔ `applies SQL B-Tree cutoff bounds for Life + 80 (CO) and Life + 100 (MX) jurisdictions`
 - ✔ `uses limit + 1 probing for exact next/previous pagination links without phantom empty pages`
-- ✔ `filters results by mimeType if specified`
-- ✔ `filters results by multiple mimeTypes if specified`
+- ✔ `filters results when supported R2 mimeType filters are specified`
+- ✔ `short-circuits unsupported mimeType filters before querying Supabase to avoid query amplification`
 - ✔ `matches plain text formats across charset variations (e.g. text/plain; charset=us-ascii vs utf-8)`
 - ✔ `filters by comma-delimited book IDs`
 - ✔ `applies ascending and descending sort directions`
@@ -2434,7 +2439,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (12 tests)</summary>
+<summary><b><code>src/lib/gutenberg/passages.test.ts</code></b> (13 tests)</summary>
 
 - ✔ `returns empty array on empty or invalid text`
 - ✔ `extracts opening lines and authentic quote passages from full book text`
@@ -2448,6 +2453,7 @@
 - ✔ `extracts up to maxPassages (10–16) spreads when maxPassages > 5 across multi-chapter and compact books`
 - ✔ `truncates long passages cleanly at sentence boundaries or whole-word boundaries without splitting words in half`
 - ✔ `dynamically packs left, right, and cover quotes within line budgets, promotes shorter tertiary candidates, and deduplicates across pages`
+- ✔ `filters Distributed Proofreading colophons, ASCII dividers, copyright blocks, footnotes, and low-letter noise`
 
 </details>
 
@@ -2520,7 +2526,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/offline-storage.test.ts</code></b> (21 tests)</summary>
+<summary><b><code>src/lib/offline-storage.test.ts</code></b> (22 tests)</summary>
 
 - ✔ `saves book text to offline storage`
 - ✔ `retrieves offline book text correctly`
@@ -2543,6 +2549,7 @@
 - ✔ `persists and retrieves coverBlobs with patch and self-healing support`
 - ✔ `persists mirror-agnostic cover_cache LRU entries, expires stale TTL entries, warms cleanly with 429 cooldown, and clears on wipe`
 - ✔ `reads offline_books and cover_cache in one transaction inside getOfflineBookCover and handles legacy schemas`
+- ✔ `evicts oldest cover_cache entries beyond MAX_CACHED_COVERS, refreshes changed coverBlob URLs, and skips offline warm queue`
 
 </details>
 
@@ -2588,13 +2595,14 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/r2-client.test.ts</code></b> (5 tests)</summary>
+<summary><b><code>src/lib/r2-client.test.ts</code></b> (6 tests)</summary>
 
 - ✔ `validates R2 env configuration and rejects malformed account IDs or bucket names`
 - ✔ `generates deterministic AWS Signature V4 GET request headers for private R2 paths`
 - ✔ `detects HTML error interstitials by content-type or leading markup snippet`
 - ✔ `fetches cover bytes cleanly from R2 and fails closed on 404, redirects, HTML, and oversize`
 - ✔ `fetches and decompresses .txt.gz book payloads while guarding invalid or corrupt bodies`
+- ✔ `guards pre-aborted signals, empty or oversized streams, and null-body arrayBuffer fallbacks`
 
 </details>
 
@@ -2614,7 +2622,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (28 tests)</summary>
+<summary><b><code>src/lib/reader-annotator.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `returns empty array when text or annotations are empty`
 - ✔ `returns empty array when no annotations match the text`
@@ -2644,6 +2652,7 @@
 - ✔ `matches boundary-straddling highlights split across virtual page breaks`
 - ✔ `normalizes curly single quotes, padded needles, empty text guards, and symmetric quote overlap containment`
 - ✔ `resolves initial offsets, snaps word boundaries, and expands abbreviation-safe sentence and paragraph spans`
+- ✔ `handles separator-heavy boundary snapping, clamping bounds, sentence chaining, and CRLF paragraphs`
 
 </details>
 
@@ -2750,7 +2759,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (24 tests)</summary>
+<summary><b><code>src/lib/scroll-utils.test.ts</code></b> (27 tests)</summary>
 
 - ✔ `returns false when element does not exist in DOM`
 - ✔ `does not scroll when element top is already comfortably in view`
@@ -2776,6 +2785,9 @@
 - ✔ `restores scroll position on requestAnimationFrame if a shift occurs in the next tick`
 - ✔ `does not invoke window.scrollTo if scroll position remains completely stable`
 - ✔ `safely runs action without error when window is undefined (SSR)`
+- ✔ `computes distance-graded label visibility and mask classes across breakpoints`
+- ✔ `computes distance-graded flex growth weights across <=2, lg:inline, md:inline, xl:inline, and sm tiers`
+- ✔ `handles released mouse buttons, non-primary clicks, and window pointercancel cleanup in createTabScrubberHandlers`
 
 </details>
 
@@ -2893,16 +2905,17 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/utils.test.ts</code></b> (28 tests)</summary>
+<summary><b><code>src/lib/utils.test.ts</code></b> (29 tests)</summary>
 
 - ✔ `should merge class names correctly`
 - ✔ `resolves Tailwind v4 shadow-xs/2xs and custom design-token shadows without duplicate shadow classes`
 - ✔ `should extract standard Gutenberg format keys`
 - ✔ `should handle empty or undefined formats gracefully`
-- ✔ `should generate canonical Project Gutenberg fallback URLs when bookId is provided`
+- ✔ `should generate canonical R2 fallback URLs when bookId is provided`
 - ✔ `should reject unsafe or non-HTTPS format URLs and fall back cleanly when bookId is provided`
 - ✔ `should allow valid https URLs and reject dangerous or plain http schemes`
 - ✔ `should permit blob URLs only when allowBlob is explicitly enabled`
+- ✔ `should permit same-origin /api/books/content paths only when allowInternalContentPath is explicitly enabled`
 - ✔ `should format numbers with k and M suffix`
 - ✔ `should estimate reading time based on word counts`
 - ✔ `should truncate strings with ellipsis`
@@ -2963,12 +2976,11 @@
 </details>
 
 <details>
-<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (10 tests)</summary>
+<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (9 tests)</summary>
 
 - ✔ `prioritizes explicit NEXT_PUBLIC_GITHUB_REPO and optional contact email`
 - ✔ `falls back through GITHUB_REPOSITORY and VERCEL_GIT_REPO_* cleanly`
 - ✔ `enforces public-domain copyright=false and contributor records across all curated titles`
-- ✔ `constructs standard HTTPS Project Gutenberg format URLs`
 - ✔ `returns null bounds when contributor lists are empty`
 - ✔ `computes max death across authors and translators under Berne Art. 7bis/Art. 2(3)`
 - ✔ `uses birth + 100 heuristic when death_year is missing, and fails closed if any contributor lacks both years`
@@ -3129,7 +3141,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (42 tests)</summary>
+<summary><b><code>scripts/sync-gutenberg-catalog.test.ts</code></b> (41 tests)</summary>
 
 - ✔ `parses empty or missing strings safely`
 - ✔ `parses single author with standard birth and death years`
@@ -3145,15 +3157,14 @@
 - ✔ `calculates min birth and max death spanning authors and translators`
 - ✔ `sets maxDeath to null when any author or translator has completely unlisted dates under Berne Art. 7bis joint authorship`
 - ✔ `uses 100-year longevity heuristic when birth year is known but death year is null`
-- ✔ `constructs deterministic Gutenberg mirror endpoints for book id`
 - ✔ `returns null for malformed or non-text rows`
-- ✔ `normalizes valid Gutenberg CSV row into complete Book schema object`
+- ✔ `normalizes valid Gutenberg CSV row into complete Book schema object without formats`
 - ✔ `normalizes multi-line and whitespace title strings cleanly`
 - ✔ `successfully upserts a batch when Supabase returns no error`
 - ✔ `adaptively splits the batch in half when encountering statement timeout`
 - ✔ `ignores JSONB key-order differences when all catalog fields match byte-for-byte`
 - ✔ `detects even a single-character, single-space, or lifespan year change across any catalog field`
-- ✔ `deduplicates duplicate book IDs within a batch and filters out unchanged rows while preserving quotes isolation`
+- ✔ `deduplicates duplicate book IDs within a batch and filters out unchanged rows while stripping quotes and retired formats`
 - ✔ `retries in place and adaptively splits .in(id, batchIds) when encountering connection pool timeouts`
 - ✔ `re-checks database state before retrying a timed-out upsertBatch so already-updated books are not re-sent`
 - ✔ `skips pruning if activeCatalogIds is below the safety floor`
@@ -3684,8 +3695,8 @@
 <details>
 <summary><b><code>src/hooks/useOfflineCoverImage.test.ts</code></b> (6 tests)</summary>
 
-- ✔ `routes Gutenberg and mirror cover URLs through same-origin /api/books/content without external hotlinking`
-- ✔ `sets imageError when not offline or when no cached cover blob exists`
+- ✔ `routes empty, null, Gutenberg, and mirror cover URLs through same-origin /api/books/content without external hotlinking`
+- ✔ `resolves default R2 cover URL for omitted coverUrl and sets imageError on load error`
 - ✔ `resolves same-origin R2 cover route, transitions cleanly to imageError on failure, and resets on prop change`
 - ✔ `loads a blob URL from IndexedDB when offline cover blob is available and revokes it on unmount`
 - ✔ `serves in-memory cached blob URL synchronously and avoids remote warming on blob URLs`
@@ -3766,7 +3777,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (68 Suites · 319 Tests)
+### 🧩 UI Primitives & Motion (68 Suites · 320 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -4173,7 +4184,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (8 tests)</summary>
+<summary><b><code>src/components/ui/CursorTooltip.test.tsx</code></b> (9 tests)</summary>
 
 - ✔ `renders null when not visible`
 - ✔ `renders null when mousePos is null`
@@ -4183,6 +4194,7 @@
 - ✔ `ignores elements inside data-cursor-tooltip-zone="true" and dismisses on scroll or keydown`
 - ✔ `copies book link on clicking a data-copy-book-id block, morphs tooltip in-place to "Copied link to book!", and reverts after 1800ms`
 - ✔ `supports keyboard Enter/Space activation on handleCopyBookLinkClick and direct document click fallback`
+- ✔ `tracks mousemove, switches targets cleanly, clears on empty titles or scroll/mousedown, and ignores hover:none devices`
 
 </details>
 

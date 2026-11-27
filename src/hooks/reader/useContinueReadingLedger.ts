@@ -15,6 +15,7 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { toCanonicalBook, normalizeAuthorName } from '@/lib/adapters/book.adapter';
+import { buildR2TextUrl, resolveBookCoverUrl } from '@/lib/utils';
 import {
   resolveBookMetadata,
   cleanBookTitle,
@@ -366,12 +367,10 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
           ...(resolved.translators.length > 0 ? { translators: resolved.translators } : {}),
           subjects: resolved.primarySubject ? [resolved.primarySubject] : [],
           languages: resolved.languages,
-          coverUrl:
-            position?.coverUrl ||
-            `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
-          epubUrl: `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
+          coverUrl: resolveBookCoverUrl(bookId, position?.coverUrl),
+          epubUrl: null,
           htmlUrl: null,
-          txtUrl: null,
+          txtUrl: buildR2TextUrl(bookId),
           downloadCount: 0,
         };
       } else {
@@ -389,6 +388,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
         book = {
           ...book,
           title: cleanBookTitle(book.title),
+          coverUrl: resolveBookCoverUrl(bookId, book.coverUrl || position?.coverUrl),
           ...(enrichedDetails ? { authorDetails: enrichedDetails } : {}),
         };
       }

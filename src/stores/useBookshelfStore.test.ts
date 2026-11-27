@@ -2050,6 +2050,166 @@ describe('useBookshelfStore', () => {
         useAuthStore.setState({ user: null });
       });
     });
+
+    it('heals legacy Gutenberg cover URLs in enrichSavedBooks and onRehydrateStorage while preserving custom URLs', async () => {
+      const { useAuthStore } = await import('./useAuthStore');
+      const updateEq2 = vi.fn().mockResolvedValue({ error: null });
+      const updateEq1 = vi.fn().mockReturnValue({ eq: updateEq2 });
+      const updateSpy = vi.fn().mockReturnValue({ eq: updateEq1 });
+      mockFrom.mockReturnValue({ update: updateSpy });
+
+      useAuthStore.setState({
+        user: { id: 'user-cover-heal', email: 'cover@bookarium.org' } as never,
+      });
+
+      const legacyPgCover = 'https://www.gutenberg.org/cache/epub/700/pg700.cover.medium.jpg';
+      const customCover = 'https://cdn.example.com/custom-701.jpg';
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 700,
+            title: 'Book 700',
+            authors: [{ name: 'Homer', birth_year: -800, death_year: -701 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: { 'image/jpeg': legacyPgCover },
+            download_count: 100,
+          },
+          {
+            id: 701,
+            title: 'Book 701',
+            authors: [{ name: 'Virgil', birth_year: -70, death_year: -19 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: { 'image/jpeg': customCover },
+            download_count: 100,
+          },
+        ],
+        cloudBookshelfItems: [
+          {
+            id: 'item-pg-700',
+            bookshelf_id: 'shelf-def',
+            user_id: 'user-cover-heal',
+            book_id: 700,
+            book_title: 'Book 700',
+            book_authors: ['Homer'],
+            cover_url: legacyPgCover,
+            created_at: '',
+          },
+          {
+            id: 'item-custom-701',
+            bookshelf_id: 'shelf-def',
+            user_id: 'user-cover-heal',
+            book_id: 701,
+            book_title: 'Book 701',
+            book_authors: ['Virgil'],
+            cover_url: customCover,
+            created_at: '',
+          },
+        ],
+      });
+
+      await useBookshelfStore.getState().enrichSavedBooks([
+        {
+          id: 700,
+          title: 'Book 700',
+          authors: [{ name: 'Homer', birth_year: -800, death_year: -701 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: { 'image/jpeg': '/api/books/content?id=700&type=cover' },
+          download_count: 100,
+        },
+        {
+          id: 701,
+          title: 'Book 701',
+          authors: [{ name: 'Virgil', birth_year: -70, death_year: -19 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: { 'image/jpeg': customCover },
+          download_count: 100,
+        },
+      ]);
+
+      expect(useBookshelfStore.getState().savedBooks[0].formats['image/jpeg']).toBe(
+        '/api/books/content?id=700&type=cover'
+      );
+      expect(useBookshelfStore.getState().savedBooks[1].formats['image/jpeg']).toBe(customCover);
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0].cover_url).toBeNull();
+      expect(useBookshelfStore.getState().cloudBookshelfItems[1].cover_url).toBe(customCover);
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cover_url: null,
+        })
+      );
+
+      // Rehydration from persisted localStorage rewrites legacy PG URLs to R2 locally and null in cloud items
+      const persistName = useBookshelfStore.persist.getOptions().name || 'bookarium-bookshelf';
+      localStorage.setItem(
+        persistName,
+        JSON.stringify({
+          state: {
+            savedBooks: [
+              {
+                id: 1342,
+                title: 'Pride and Prejudice',
+                authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+                translators: [],
+                subjects: [],
+                bookshelves: [],
+                languages: ['en'],
+                copyright: false,
+                media_type: 'Text',
+                formats: {
+                  'image/jpeg': 'https://aleph.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+                },
+                download_count: 500,
+              },
+            ],
+            favoriteBooks: [],
+            recentBooks: [],
+            readingQueue: [],
+            cloudBookshelfItems: [
+              {
+                id: 'item-rehydrate-1342',
+                bookshelf_id: 'shelf-def',
+                user_id: 'user-cover-heal',
+                book_id: 1342,
+                book_title: 'Pride and Prejudice',
+                book_authors: ['Austen, Jane'],
+                cover_url: 'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg',
+                created_at: '',
+              },
+            ],
+          },
+          version: 0,
+        })
+      );
+      await useBookshelfStore.persist.rehydrate();
+      expect(useBookshelfStore.getState().savedBooks[0].formats['image/jpeg']).toBe(
+        '/api/books/content?id=1342&type=cover'
+      );
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0].cover_url).toBeNull();
+
+      act(() => {
+        useAuthStore.setState({ user: null });
+      });
+    });
   });
 });
 

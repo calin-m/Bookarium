@@ -452,5 +452,38 @@ A sixth narrative paragraph concludes the opening chapter with reflections upon 
     expect(duplicateSpread.rightQuotes).toEqual(['Identical passage across both pages.']);
     expect(duplicateSpread.leftLineClampClass).toBe('line-clamp-8 sm:line-clamp-9');
   });
+
+  it('filters Distributed Proofreading colophons, ASCII dividers, copyright blocks, footnotes, and low-letter noise', () => {
+    const noisyText = `
+Table of Contents: Chapter I through Chapter X across the edited archive edition.
+
+Distributed Proofreading Team at pgdp.net prepared this digital text carefully for archival preservation.
+
+[Illustration: Portrait of the author sitting beside the tall mahogany bookshelf in winter.]
+
+This eBook was produced by volunteers from scanned nineteenth-century library pages.
+
+---------------------------------------- ----------------------------------------
+
+1234567890 !@#$%^&*() 1234567890 !@#$%^&*() 1234567890 !@#$%^&*() 999999999999
+
+Copyright 1927 by New Century Publishing House, all rights reserved throughout all territories.
+
+[1] Footnote explaining an archaic spelling variation in the second edition printing.
+
+“Genuine literary wisdom shines clearest when false editorial noise has been stripped away.” The scholar smiled across the quiet library table.
+`;
+
+    const passages = extractDynamicBookPassages(noisyText, { id: 901, title: 'Clean Volume' });
+    expect(passages.length).toBeGreaterThanOrEqual(1);
+    for (const passage of passages) {
+      expect(passage.quoteExcerpt).toContain('Genuine literary wisdom');
+      expect(passage.openingLine).not.toContain('pgdp.net');
+      expect(passage.openingLine).not.toContain('Copyright 1927');
+      expect(passage.openingLine).not.toContain('Table of Contents');
+      expect(passage.openingLine).not.toContain('Illustration');
+      expect(passage.openingLine).not.toContain('Footnote');
+    }
+  });
 });
 

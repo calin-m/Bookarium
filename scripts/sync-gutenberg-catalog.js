@@ -9,10 +9,10 @@
  * @module scripts/sync-gutenberg-catalog
  * @scope Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
  * @invariant Prioritize PGLAF/Aleph feed mirrors exclusively (never `www.gutenberg.org`, pinned or ordered via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), preserve cached and live DB `copyright` flags when RDF feeds are unavailable (including under `--update-existing`), and defer unverified brand-new books during unexpected RDF outages (`reconcileBatchWithoutRdfRights`).
- * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
+ * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts, and stripping deprecated `formats` fields before `.upsert()`) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
  * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE`, `MAX_WITHDRAWN_PRUNE_PER_RUN`, and `PROTECTED_HERO_BOOK_IDS`.
- * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, and avoids exhausting Supabase read egress during partial upstream outages.
- * @adr ADR-040, ADR-073, ADR-080, ADR-084, ADR-085
+ * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, eliminates retired template `formats` writes from PostgREST upserts and cache snapshots, and avoids exhausting Supabase read egress during partial upstream outages.
+ * @adr ADR-040, ADR-073, ADR-080, ADR-084, ADR-085, ADR-087
  *
  * Usage:
  *   node scripts/sync-gutenberg-catalog.js --dry-run
@@ -233,19 +233,7 @@ function computeLifespanBounds(authors = [], translators = []) {
   return { maxDeath, minBirth };
 }
 
-// 4. Standard Format Mapping for Gutenberg IDs
-function buildStandardFormats(bookId) {
-  return {
-    'text/html': `https://www.gutenberg.org/ebooks/${bookId}.html.images`,
-    'application/epub+zip': `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`,
-    'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${bookId}.kf8.images`,
-    'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${bookId}.txt.utf-8`,
-    'image/jpeg': `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`,
-    'application/rdf+xml': `https://www.gutenberg.org/ebooks/${bookId}.rdf`,
-  };
-}
-
-// 5. Parse Raw CSV Row into Normalized Book Record
+// 4. Parse Raw CSV Row into Normalized Book Record (formats derived deterministically via R2)
 function normalizeCsvRow(row, rdfSignalsOrCountsMap = null, cachedBook = null) {
   if (!row || row.length < 5) return null;
 
@@ -302,7 +290,6 @@ function normalizeCsvRow(row, rdfSignalsOrCountsMap = null, cachedBook = null) {
     languages,
     copyright: isCopyrighted,
     media_type: 'Text',
-    formats: buildStandardFormats(id),
     max_author_death_year: maxDeath,
     min_author_birth_year: minBirth,
   };
@@ -1009,7 +996,13 @@ function deduplicateBatchById(batch) {
   const byId = new Map();
   for (const item of batch) {
     if (item && Number.isInteger(item.id) && item.id > 0) {
-      byId.set(item.id, item);
+      if ('formats' in item) {
+        const cleanItem = { ...item };
+        delete cleanItem.formats;
+        byId.set(item.id, cleanItem);
+      } else {
+        byId.set(item.id, item);
+      }
     }
   }
   return Array.from(byId.values());
@@ -2162,7 +2155,6 @@ module.exports = {
   parseYear,
   parseContributors,
   computeLifespanBounds,
-  buildStandardFormats,
   normalizeCsvRow,
   resolveFeedMirrors,
   isHtmlContentType,

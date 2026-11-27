@@ -939,6 +939,148 @@ describe('offline-storage (IndexedDB engine)', () => {
       expect(await getOfflineBookCover(602)).toBe(legacyBlob);
       (globalThis as { indexedDB?: unknown }).indexedDB = origIndexedDb;
     });
+
+    it('evicts oldest cover_cache entries beyond MAX_CACHED_COVERS, refreshes changed coverBlob URLs, and skips offline warm queue', async () => {
+      let urlCounter = 0;
+      const createUrlSpy = vi
+        .spyOn(URL, 'createObjectURL')
+        .mockImplementation(() => `blob:test-lru-${++urlCounter}`);
+      const revokeUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      try {
+        // Pre-populate MAX_CACHED_COVERS + 1 stale entries so saving one more triggers bounded LRU eviction
+        const baseNow = Date.now() - 10_000;
+        for (let i = 1; i <= MAX_CACHED_COVERS + 1; i++) {
+          coverCacheStore.set(10_000 + i, {
+            bookId: 10_000 + i,
+            blob: new Blob([`c-${i}`], { type: 'image/jpeg' }),
+            cachedAt: baseNow + i,
+            byteSize: 4,
+          });
+        }
+
+        // Invalid inputs return early without touching IndexedDB
+        await saveCachedCoverBlob(0, new Blob(['x']));
+        await saveCachedCoverBlob(999, new Blob([]));
+
+        // Saving a valid cover triggers FIFO/LRU eviction down to MAX_CACHED_COVERS
+        await saveCachedCoverBlob(99_999, new Blob(['latest-cover-payload'], { type: 'image/jpeg' }));
+        expect(coverCacheStore.has(10_001)).toBe(false);
+        expect(coverCacheStore.has(10_002)).toBe(false);
+        expect(coverCacheStore.has(99_999)).toBe(true);
+
+        // Changing coverBlob byte size on an offline book revokes old memory blob URL cleanly in getAllOfflineBookMetas
+        await saveOfflineBook(
+          88_888,
+          'Changed Cover Volume',
+          'Chapter I text body.',
+          [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          new Blob(['small'], { type: 'image/jpeg' })
+        );
+        const firstMetas = await getAllOfflineBookMetas();
+        const firstUrl = firstMetas.find((b) => b.id === 88_888)?.formats['image/jpeg'];
+        expect(firstUrl).toMatch(/^blob:test-lru-/);
+
+        // Calling again with identical blob size reuses cached object URL without re-creating
+        const sameMetas = await getAllOfflineBookMetas();
+        expect(sameMetas.find((b) => b.id === 88_888)?.formats['image/jpeg']).toBe(firstUrl);
+
+        // Mutating stored coverBlob size forces revoke + recreate
+        const rec = store.get(88_888)!;
+        store.set(88_888, { ...rec, coverBlob: new Blob(['much-larger-cover-blob'], { type: 'image/jpeg' }) });
+        const updatedMetas = await getAllOfflineBookMetas();
+        expect(revokeUrlSpy).toHaveBeenCalledWith(firstUrl);
+        expect(updatedMetas.find((b) => b.id === 88_888)?.formats['image/jpeg']).not.toBe(firstUrl);
+
+        // drainCoverWarmQueue hits existing cached entry cleanly without fetch, and clears queue when offline
+        const fetchSpy = vi.spyOn(globalThis, 'fetch');
+        resetCoverWarmState();
+        coverCacheStore.set(77_777, {
+          bookId: 77_777,
+          blob: new Blob(['prewarmed'], { type: 'image/jpeg' }),
+          cachedAt: Date.now(),
+          byteSize: 9,
+        });
+        warmCoverCache(77_777);
+        await vi.waitFor(() => {
+          expect(getMemoryCachedCoverUrl(77_777)).not.toBeNull();
+        });
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+        warmCoverCache(77_778);
+        expect(fetchSpy).not.toHaveBeenCalled();
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+        fetchSpy.mockRestore();
+
+        // getOfflineBookCover handles missing stores and transaction errors cleanly
+        const origIndexedDb = (globalThis as { indexedDB?: unknown }).indexedDB;
+        (globalThis as { indexedDB?: unknown }).indexedDB = {
+          open: vi.fn(() => {
+            const openReq: any = { onsuccess: null, onerror: null, result: null };
+            setTimeout(() => {
+              openReq.result = {
+                objectStoreNames: { contains: vi.fn(() => false) },
+                transaction: vi.fn(),
+              };
+              openReq.onsuccess?.();
+            }, 0);
+            return openReq;
+          }),
+        };
+        expect(await getOfflineBookCover(77_777)).toBeNull();
+
+        // Exercise onversionchange closing and request/transaction error branches in getOfflineBookCover
+        let capturedDb: {
+          close?: () => void;
+          onversionchange?: () => void;
+          objectStoreNames: { contains: () => boolean };
+          transaction: () => unknown;
+        } | null = null;
+        (globalThis as { indexedDB?: unknown }).indexedDB = {
+          open: vi.fn(() => {
+            const openReq: any = { onsuccess: null, onerror: null, onblocked: null, result: null };
+            setTimeout(() => {
+              const dbObj: NonNullable<typeof capturedDb> = {
+                close: vi.fn(() => {
+                  throw new Error('close err');
+                }),
+                objectStoreNames: { contains: vi.fn(() => true) },
+                transaction: vi.fn(() => {
+                  const tx: any = {
+                    onerror: null,
+                    objectStore: vi.fn(() => ({
+                      get: vi.fn(() => {
+                        const req: any = { onsuccess: null, onerror: null };
+                        setTimeout(() => {
+                          req.onerror?.();
+                          tx.onerror?.();
+                        }, 0);
+                        return req;
+                      }),
+                    })),
+                  };
+                  return tx;
+                }),
+              };
+              capturedDb = dbObj;
+              openReq.result = dbObj;
+              openReq.onsuccess?.();
+              dbObj.onversionchange?.();
+            }, 0);
+            return openReq;
+          }),
+        };
+        expect(await getOfflineBookCover(77_779)).toBeNull();
+        expect(capturedDb).not.toBeNull();
+
+        (globalThis as { indexedDB?: unknown }).indexedDB = origIndexedDb;
+      } finally {
+        createUrlSpy.mockRestore();
+        revokeUrlSpy.mockRestore();
+        resetCoverWarmState();
+      }
+    });
   });
 });
 

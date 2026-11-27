@@ -12,6 +12,7 @@ import { useReaderStore } from '@/stores/useReaderStore';
 import type { SymposiumSessionRow } from '@/types/database.types';
 import { useReadingTimer } from '@/hooks/useReadingTimer';
 import { SITE_CONFIG } from '@/config/site-config';
+import { buildR2BookFormats } from '@/lib/utils';
 
 export interface UseReaderHabitTelemetryParams {
   numericId: number;
@@ -131,10 +132,7 @@ export function useReaderHabitTelemetry({
         languages: resolvedIdentity.languages || ['en'],
         copyright: false,
         media_type: 'Text',
-        formats: {
-          'image/jpeg': `https://www.gutenberg.org/cache/epub/${numericId}/pg${numericId}.cover.medium.jpg`,
-          'application/epub+zip': `https://www.gutenberg.org/ebooks/${numericId}.epub3.images`,
-        },
+        formats: buildR2BookFormats(numericId),
         download_count: 0,
       };
       useBookshelfStore.getState().addRecentBook(bookObj);

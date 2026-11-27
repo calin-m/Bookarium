@@ -3,7 +3,7 @@
  * @scope Server-side Reader volume metadata resolver, bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
  * @invariant Anchor `serverMetadataCache` and `confirmedNotFoundIds` on `globalThis` capped at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
  * @rationale Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded across warm SSR module reloads.
- * @adr ADR-036, ADR-070, ADR-086
+ * @adr ADR-036, ADR-070, ADR-086, ADR-087
  */
 
 import { cache } from 'react';
@@ -22,7 +22,7 @@ import {
   type ResolvedBookIdentity,
 } from '@/lib/book-metadata';
 import { resolveBookTags } from '@/lib/book-tags';
-import { formatAuthorName } from '@/lib/utils';
+import { buildR2BookFormats, formatAuthorName } from '@/lib/utils';
 import { isClientSideNavigation } from '@/lib/server-rsc-nav';
 import type { DatabaseBook } from '@/types/database.types';
 
@@ -123,12 +123,7 @@ export const fetchBookData = cache(async (bookId: number): Promise<CatalogBook |
   // Tier 3: Bundled curated classics fallback (zero external HTTP requests)
   if (featured) {
     const fallbackBook = featuredHeroToCatalogBook(featured, {
-      formats: {
-        'text/plain; charset=utf-8': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.txt`,
-        'text/html': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}-images.html`,
-        'application/epub+zip': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.epub`,
-        'image/jpeg': `https://www.gutenberg.org/cache/epub/${featured.id}/pg${featured.id}.cover.medium.jpg`,
-      },
+      formats: buildR2BookFormats(featured.id),
     });
     if (featured.translators) {
       fallbackBook.translators = [...featured.translators];

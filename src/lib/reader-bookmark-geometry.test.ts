@@ -318,6 +318,68 @@ describe('reader-bookmark-geometry', () => {
       } finally {
         docWithCaret.caretPositionFromPoint = originalCaret;
       }
+
+      // Clamping on top row (-1) and bottom row (+1), null container guards, and empty/whitespace endpoints
+      expect(stepDomOffsetByRow(null, 0, 1)).toBeNull();
+      expect(stepDomOffsetByRow(root, 2, -1)).toBe(2);
+      expect(stepDomOffsetByRow(root, splitIdx + 2, 1)).toBe(splitIdx + 2);
+
+      const paddedEndpoint = measureSelectionEndpointRects(
+        root,
+        `  ${sourceText}  `,
+        0,
+        sourceText.length + 4
+      );
+      expect(paddedEndpoint).not.toBeNull();
+      expect(paddedEndpoint!.startRect.top).toBe(20);
+      expect(paddedEndpoint!.endRect.top).toBe(56);
+      expect(measureSelectionEndpointRects(null, sourceText, 0, 4)).toBeNull();
+
+      // When only character 0 is non-zero (partial rect availability), fallback hits nearest measurable char
+      Range.prototype.getBoundingClientRect = vi.fn(function (this: Range) {
+        const nodeIdx = segments.findIndex((s) => s.node === this.startContainer);
+        const globalOffset = (segments[nodeIdx]?.start ?? 0) + this.startOffset;
+        if (globalOffset === 0 || globalOffset === 2) {
+          return {
+            top: 30,
+            bottom: 50,
+            left: 20 + globalOffset * 10,
+            right: 29 + globalOffset * 10,
+            width: 9,
+            height: 20,
+            x: 20 + globalOffset * 10,
+            y: 30,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+        return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+      });
+      expect(resolveTextOffsetFromClientPoint(root, 500, 900)).toBe(0);
+      const sparseRects = measureSelectionEndpointRects(root, sourceText, 1, 3);
+      expect(sparseRects).not.toBeNull();
+      expect(sparseRects!.startRect.left).toBe(40);
+
+      // Empty container guards and falling through out-of-bounds caretPositionFromPoint results
+      const emptyEl = document.createElement('div');
+      expect(resolveTextOffsetFromClientPoint(null, 10, 10)).toBeNull();
+      expect(resolveTextOffsetFromClientPoint(emptyEl, 10, 10)).toBeNull();
+      expect(stepDomOffsetByRow(emptyEl, 0, 1)).toBeNull();
+      expect(measureSelectionEndpointRects(emptyEl, 'abc', 0, 2)).toBeNull();
+
+      const docWithMismatchCaret = document as Document & {
+        caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
+      };
+      const origCaret = docWithMismatchCaret.caretPositionFromPoint;
+      docWithMismatchCaret.caretPositionFromPoint = vi.fn(() => ({
+        offsetNode: document.createTextNode('unrelated node'),
+        offset: 0,
+        getClientRect: () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect,
+      }));
+      try {
+        expect(resolveTextOffsetFromClientPoint(root, 24, 40)).toBe(0);
+      } finally {
+        docWithMismatchCaret.caretPositionFromPoint = origCaret;
+      }
     });
   });
 });

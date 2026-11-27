@@ -682,5 +682,28 @@ describe('BookmarkCard', () => {
     const cover = screen.getByTestId('bookmark-card-cover');
     expect(within(cover).getByText('Pride and Prejudice')).toBeInTheDocument();
   });
+
+  it('resolves same-origin R2 cover route when persisted bookmark coverUrl is null', async () => {
+    render(
+      <BookmarkCard
+        volume={{
+          ...mockVolume,
+          book: {
+            ...mockVolume.book,
+            coverUrl: null,
+          },
+        }}
+      />
+    );
+
+    const img = screen.getByAltText('Cover of Pride and Prejudice');
+    expect(img).toHaveAttribute('src', '/api/books/content?id=1342&type=cover');
+
+    await act(async () => {
+      fireEvent.error(img);
+    });
+    const cover = screen.getByTestId('bookmark-card-cover');
+    expect(within(cover).getByText('Pride and Prejudice')).toBeInTheDocument();
+  });
 });
 

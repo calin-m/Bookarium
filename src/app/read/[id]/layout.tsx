@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { SITE_CONFIG } from '@/config/site-config';
 import { resolveBookMetadata } from '@/lib/book-metadata';
 import { decodeReadingCardShareToken } from '@/lib/reading-card-export';
+import { resolveBookCoverUrl } from '@/lib/utils';
 import {
   serverMetadataCache,
   isClientSideNavigation,
@@ -17,28 +18,11 @@ interface ReaderLayoutProps {
   params: Promise<{ id: string }>;
 }
 
-const GUTENBERG_COVER_HOSTS = new Set([
-  'www.gutenberg.org',
-  'gutenberg.org',
-  'aleph.gutenberg.org',
-  'gutenberg.pglaf.org',
-  'gutenberg.readingroo.ms',
-]);
-
 function resolveSeoCoverUrl(bookId: number, rawCoverUrl?: string): string {
-  const defaultR2Cover = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=cover`;
-  const trimmed = (rawCoverUrl || '').trim();
-  if (!trimmed) return defaultR2Cover;
-
-  try {
-    const parsed = new URL(trimmed);
-    if (GUTENBERG_COVER_HOSTS.has(parsed.hostname.toLowerCase())) {
-      return defaultR2Cover;
-    }
-    return trimmed;
-  } catch {
-    return defaultR2Cover;
-  }
+  const fallback = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=cover`;
+  const resolved = resolveBookCoverUrl(bookId, rawCoverUrl);
+  if (!resolved) return fallback;
+  return resolved.startsWith('/') ? `${SITE_CONFIG.SITE_URL}${resolved}` : resolved;
 }
 
 function toSchemaPerson(person: ReaderSeoPerson) {

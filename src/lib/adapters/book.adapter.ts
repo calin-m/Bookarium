@@ -1,20 +1,16 @@
 import type { CatalogBook, Author, Book } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
-import { formatAuthorName } from '@/lib/utils';
+import {
+  formatAuthorName,
+  GUTENBERG_COVER_HOSTS,
+  buildR2BookFormats,
+  buildR2CoverUrl,
+  resolveBookCoverUrl,
+} from '@/lib/utils';
 import { cleanBookTitle } from '@/lib/book-metadata';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 
-/**
- * Known Project Gutenberg & official mirror hostnames whose cover image URLs can always be
- * deterministically derived from `book_id` via `extractBookFormats()` -> `/api/books/content?type=cover`.
- */
-export const GUTENBERG_COVER_HOSTS: ReadonlySet<string> = new Set([
-  'www.gutenberg.org',
-  'gutenberg.org',
-  'aleph.gutenberg.org',
-  'gutenberg.pglaf.org',
-  'gutenberg.readingroo.ms',
-]);
+export { GUTENBERG_COVER_HOSTS };
 
 /**
  * Strips derivable Project Gutenberg cover URLs, same-origin R2 cover proxy paths, and transient
@@ -292,6 +288,7 @@ export function toCatalogBook(input: Book | CatalogBook): CatalogBook {
   }
 
   const id = input.id;
+  const resolvedCover = resolveBookCoverUrl(id, input.coverUrl);
   return {
     id,
     title: input.title,
@@ -303,11 +300,11 @@ export function toCatalogBook(input: Book | CatalogBook): CatalogBook {
     copyright: input.copyright ?? false,
     media_type: 'Text',
     formats: {
-      ...(input.coverUrl ? { 'image/jpeg': input.coverUrl } : {}),
-      'application/epub+zip': input.epubUrl || `https://www.gutenberg.org/ebooks/${id}.epub3.images`,
-      'text/html': input.htmlUrl || `https://www.gutenberg.org/ebooks/${id}.html.images`,
-      'text/plain; charset=utf-8': input.txtUrl || `https://www.gutenberg.org/ebooks/${id}.txt.utf-8`,
-      'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${id}.kindle.images`,
+      ...buildR2BookFormats(id),
+      ...(resolvedCover ? { 'image/jpeg': resolvedCover } : {}),
+      ...(input.epubUrl ? { 'application/epub+zip': input.epubUrl } : {}),
+      ...(input.htmlUrl ? { 'text/html': input.htmlUrl } : {}),
+      ...(input.txtUrl ? { 'text/plain; charset=utf-8': input.txtUrl } : {}),
     },
     download_count: Number.isFinite(input.downloadCount) ? input.downloadCount : 0,
   };
@@ -377,6 +374,10 @@ export function toCatalogBookFromCloudRow(item: CloudBookRow): CatalogBook {
     }
   }
 
+  const r2CoverUrl = buildR2CoverUrl(item.book_id);
+  const resolvedCover = resolveBookCoverUrl(item.book_id, item.cover_url);
+  const r2Formats = buildR2BookFormats(item.book_id);
+
   return {
     id: item.book_id,
     title: item.book_title,
@@ -388,13 +389,35 @@ export function toCatalogBookFromCloudRow(item: CloudBookRow): CatalogBook {
     copyright: false,
     media_type: 'Text',
     formats: {
-      ...(item.cover_url ? { 'image/jpeg': item.cover_url } : {}),
-      'application/epub+zip': `https://www.gutenberg.org/ebooks/${item.book_id}.epub3.images`,
-      'text/html': `https://www.gutenberg.org/ebooks/${item.book_id}.html.images`,
-      'text/plain; charset=utf-8': `https://www.gutenberg.org/ebooks/${item.book_id}.txt.utf-8`,
-      'application/x-mobipocket-ebook': `https://www.gutenberg.org/ebooks/${item.book_id}.kindle.images`,
+      ...r2Formats,
+      ...(resolvedCover ? { 'image/jpeg': resolvedCover } : r2CoverUrl ? { 'image/jpeg': r2CoverUrl } : {}),
     },
     download_count: 1000,
+  };
+}
+
+/**
+ * Normalizes a persisted `CatalogBook` cover format (`formats['image/jpeg']`) from Project Gutenberg
+ * mirror hosts to same-origin R2 (`/api/books/content?id=<id>&type=cover`), returning the same
+ * object reference when no rewrite is needed.
+ */
+export function sanitizeCatalogBookCover(book: CatalogBook): CatalogBook {
+  if (!book || typeof book.id !== 'number') return book;
+  const existingFormats = book.formats && typeof book.formats === 'object' ? book.formats : undefined;
+  const rawCover = existingFormats?.['image/jpeg'];
+  if (!rawCover) {
+    return book;
+  }
+  const normalizedCover = resolveBookCoverUrl(book.id, rawCover);
+  if (!normalizedCover || normalizedCover === rawCover) {
+    return book;
+  }
+  return {
+    ...book,
+    formats: {
+      ...existingFormats,
+      'image/jpeg': normalizedCover,
+    },
   };
 }
 

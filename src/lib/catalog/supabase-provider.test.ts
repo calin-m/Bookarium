@@ -66,7 +66,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: ['en'],
         copyright: false,
         media_type: 'Text',
-        formats: { 'text/html': 'https://gutenberg.org/1342.html' },
         download_count: 54321,
         max_author_death_year: 1817,
         min_author_birth_year: 1775,
@@ -87,7 +86,10 @@ describe('SupabaseCatalogProvider', () => {
       expect(mapped.languages).toEqual(['en']);
       expect(mapped.copyright).toBe(false);
       expect(mapped.media_type).toBe('Text');
-      expect(mapped.formats).toEqual({ 'text/html': 'https://gutenberg.org/1342.html' });
+      expect(mapped.formats).toEqual({
+        'text/plain; charset=utf-8': '/api/books/content?id=1342',
+        'image/jpeg': '/api/books/content?id=1342&type=cover',
+      });
       expect(mapped.download_count).toBe(54321);
 
       // Strips 1-item bibliographic sentinel spreads while preserving genuine quote spreads
@@ -105,7 +107,7 @@ describe('SupabaseCatalogProvider', () => {
       expect(mapDatabaseBookToCatalogBook(sentinelOnlyRow).quotes).toBeUndefined();
     });
 
-    it('handles non-array or nullish authors, formats, and download count', () => {
+    it('handles non-array or nullish authors and download count while deriving uniform R2 formats', () => {
       const dbRow = {
         id: 9999,
         title: 'Unknown Fragment',
@@ -116,7 +118,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: null,
         copyright: false,
         media_type: null,
-        formats: null,
         download_count: null,
         max_author_death_year: null,
         min_author_birth_year: null,
@@ -132,7 +133,10 @@ describe('SupabaseCatalogProvider', () => {
       expect(mapped.bookshelves).toEqual([]);
       expect(mapped.languages).toEqual([]);
       expect(mapped.media_type).toBe('Text');
-      expect(mapped.formats).toEqual({});
+      expect(mapped.formats).toEqual({
+        'text/plain; charset=utf-8': '/api/books/content?id=9999',
+        'image/jpeg': '/api/books/content?id=9999&type=cover',
+      });
       expect(mapped.download_count).toBe(0);
     });
   });
@@ -240,7 +244,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: ['en'],
         copyright: false,
         media_type: 'Text',
-        formats: { 'text/html': 'https://gutenberg.org/1342.html', 'application/epub+zip': 'https://gutenberg.org/1342.epub' },
         download_count: 50000,
         max_author_death_year: 1817,
         min_author_birth_year: 1775,
@@ -259,7 +262,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: ['en'],
         copyright: false,
         media_type: 'Text',
-        formats: { 'text/html': 'https://gutenberg.org/863.html' },
         download_count: 30000,
         max_author_death_year: 1976,
         min_author_birth_year: 1890,
@@ -469,49 +471,55 @@ describe('SupabaseCatalogProvider', () => {
       expect(clientHighOffset.from).not.toHaveBeenCalled();
     });
 
-    it('filters results by mimeType if specified', async () => {
+    it('filters results when supported R2 mimeType filters are specified', async () => {
       const { client } = createMockQueryBuilder(sampleDbRows, 2);
       const provider = new SupabaseCatalogProvider(client as any);
 
-      const options: CatalogQueryOptions = {
+      const imageResult = await provider.searchBooks({
+        page: 1,
+        limit: 32,
+        mimeType: 'image/jpeg',
+        country: 'US',
+      });
+      expect(client.from).toHaveBeenCalledTimes(1);
+      expect(imageResult.results).toHaveLength(2);
+
+      const mixedResult = await provider.searchBooks({
+        page: 1,
+        limit: 32,
+        mimeType: 'application/epub+zip,text/plain',
+        country: 'US',
+      });
+      expect(mixedResult.results).toHaveLength(2);
+    });
+
+    it('short-circuits unsupported mimeType filters before querying Supabase to avoid query amplification', async () => {
+      const { client } = createMockQueryBuilder(sampleDbRows, 2);
+      const provider = new SupabaseCatalogProvider(client as any);
+
+      const singleUnsupported = await provider.searchBooks({
         page: 1,
         limit: 32,
         mimeType: 'application/epub+zip',
         country: 'US',
-      };
+      });
+      expect(singleUnsupported.results).toEqual([]);
+      expect(singleUnsupported.count).toBe(0);
+      expect(singleUnsupported.next).toBeNull();
+      expect(singleUnsupported.previous).toBeNull();
 
-      const result = await provider.searchBooks(options);
-
-      // Only Pride and Prejudice has application/epub+zip
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0].id).toBe(1342);
-    });
-
-    it('filters results by multiple mimeTypes if specified', async () => {
-      const { client } = createMockQueryBuilder(sampleDbRows, 2);
-      const provider = new SupabaseCatalogProvider(client as any);
-
-      const options: CatalogQueryOptions = {
+      const multiUnsupported = await provider.searchBooks({
         page: 1,
         limit: 32,
         mimeType: 'application/epub+zip,text/html',
         country: 'US',
-      };
-
-      const result = await provider.searchBooks(options);
-
-      // Both Pride and Prejudice and Christie have text/html or epub
-      expect(result.results).toHaveLength(2);
+      });
+      expect(multiUnsupported.results).toEqual([]);
+      expect(client.from).not.toHaveBeenCalled();
     });
 
     it('matches plain text formats across charset variations (e.g. text/plain; charset=us-ascii vs utf-8)', async () => {
-      const rowsWithUtf8Plain: DatabaseBook[] = [
-        {
-          ...sampleDbRows[0],
-          formats: { 'text/plain; charset=utf-8': 'https://gutenberg.org/1342.txt' },
-        },
-      ];
-      const { client } = createMockQueryBuilder(rowsWithUtf8Plain, 1);
+      const { client } = createMockQueryBuilder([sampleDbRows[0]], 1);
       const provider = new SupabaseCatalogProvider(client as any);
 
       const result = await provider.searchBooks({
@@ -1151,7 +1159,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: ['en'],
         copyright: false,
         media_type: 'Text',
-        formats: {},
         download_count: 1000,
         max_author_death_year: 1817,
         min_author_birth_year: 1775,
@@ -1335,7 +1342,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: ['en'],
         copyright: valid ? false : true,
         media_type: 'Text',
-        formats: { 'text/plain; charset=utf-8': `https://gutenberg.org/${id}.txt` },
         download_count: 1000 - id,
         max_author_death_year: valid ? 1817 : 2005,
         min_author_birth_year: valid ? 1775 : 1940,
@@ -1557,7 +1563,6 @@ describe('SupabaseCatalogProvider', () => {
         languages: ['en'],
         copyright: false,
         media_type: 'Text',
-        formats: {},
         download_count: 50000,
         max_author_death_year: 1817,
         min_author_birth_year: 1775,

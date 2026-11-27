@@ -326,4 +326,24 @@ describe('GET /api/books route handler', () => {
 
     isHealthySpy.mockRestore();
   });
+
+  it('returns 503 with no-store when searchBooks rejects with an unexpected non-CatalogProviderError', async () => {
+    const { supabaseCatalogProvider } = await import('@/lib/catalog/supabase-provider');
+    const isHealthySpy = vi.spyOn(supabaseCatalogProvider, 'isHealthy').mockResolvedValue(true);
+    const searchBooksSpy = vi
+      .spyOn(supabaseCatalogProvider, 'searchBooks')
+      .mockRejectedValueOnce(new Error('Unexpected database socket reset'));
+
+    const req = new NextRequest('http://localhost:3000/api/books?page=1&search=frankenstein');
+    const res = await GET(req);
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Cache-Control')).toBe('no-store, max-age=0');
+    const json = await res.json();
+    expect(json.error).toBe('Catalog database temporarily unavailable. Please try again.');
+    expect(json.results).toEqual([]);
+
+    isHealthySpy.mockRestore();
+    searchBooksSpy.mockRestore();
+  });
 });

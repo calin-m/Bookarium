@@ -436,5 +436,89 @@ describe('DownloadDrawer component', () => {
     expect(screen.getByTestId(`copy-book-link-indicator-${mockBooks[0].id}`)).toHaveTextContent(
       'Copied!'
     );
+
+    // Keyboard activation on copy metadata triggers copy flow (onKeyDown)
+    writeTextMock.mockClear();
+    fireEvent.keyDown(copyBlock, { key: 'Enter' });
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringMatching(/\/read\/1342$/));
+  });
+
+  it('serves cached plain text from QueryClient and surfaces HTTP 404/empty/unsupported export errors', async () => {
+    const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query');
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(['book-content', undefined, mockBooks[0].id], 'Cached query prose.');
+
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalAnchorClick = HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = vi.fn(() => 'blob:cached-txt');
+    URL.revokeObjectURL = vi.fn();
+    HTMLAnchorElement.prototype.click = vi.fn();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    try {
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <DownloadDrawer book={mockBooks[0]} isOpen={true} onClose={() => {}} />
+        </QueryClientProvider>
+      );
+
+      const txtBtn = await screen.findByRole('button', {
+        name: `Download ${mockBooks[0].title} as plain text (.txt)`,
+      });
+      await act(async () => {
+        fireEvent.click(txtBtn);
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      // Clear QueryClient cache and exercise HTTP 404 and empty response error feedback
+      queryClient.clear();
+      fetchSpy
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({}), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
+        .mockResolvedValueOnce(new Response('   ', { status: 200 }));
+
+      await act(async () => {
+        fireEvent.click(txtBtn);
+      });
+      expect(
+        await screen.findByText('Plain text for this title is currently unavailable in archive storage.')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(txtBtn);
+      });
+      expect(
+        await screen.findByText('Received empty text from archive storage.')
+      ).toBeInTheDocument();
+
+      // Unsupported export environment when createObjectURL is absent
+      queryClient.setQueryData(['book-content', undefined, mockBooks[0].id], 'Valid export text');
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: undefined });
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <DownloadDrawer book={mockBooks[0]} isOpen={true} onClose={() => {}} />
+        </QueryClientProvider>
+      );
+      await act(async () => {
+        fireEvent.click(txtBtn);
+      });
+      expect(
+        await screen.findByText('File export is not supported in this browser environment.')
+      ).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        writable: true,
+        value: originalCreateObjectURL,
+      });
+      HTMLAnchorElement.prototype.click = originalAnchorClick;
+      fetchSpy.mockRestore();
+    }
   });
 });

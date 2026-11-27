@@ -359,7 +359,6 @@ export interface Database {
           languages: string[];
           copyright: boolean;
           media_type: string;
-          formats: Json;
           download_count: number;
           max_author_death_year: number | null;
           min_author_birth_year: number | null;
@@ -379,7 +378,6 @@ export interface Database {
           languages?: string[];
           copyright?: boolean;
           media_type?: string;
-          formats?: Json;
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
@@ -399,7 +397,6 @@ export interface Database {
           languages?: string[];
           copyright?: boolean;
           media_type?: string;
-          formats?: Json;
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;

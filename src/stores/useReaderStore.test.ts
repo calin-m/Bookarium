@@ -310,9 +310,7 @@ describe('useReaderStore', () => {
 
       const enriched = useReaderStore.getState().getReadingPosition(1342);
       expect(enriched?.bookAuthors).toEqual(['Austen, Jane, 1775-1817']);
-      expect(enriched?.coverUrl).toBe(
-        'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg'
-      );
+      expect(enriched?.coverUrl).toBe('/api/books/content?id=1342&type=cover');
     });
 
     it('bulk synchronizes all user reading progress via syncWithCloud', async () => {
@@ -1955,6 +1953,47 @@ describe('useReaderStore', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('sanitizes legacy Gutenberg cover URLs in readingPositions on rehydration while preserving custom URLs', async () => {
+      const persistName = useReaderStore.persist.getOptions().name || 'bookarium-reader';
+      localStorage.setItem(
+        persistName,
+        JSON.stringify({
+          state: {
+            readingPositions: {
+              1342: {
+                chapterIndex: 3,
+                chapterPage: 4,
+                globalPage: 18,
+                lastReadAt: '2026-11-27T09:00:00.000Z',
+                bookTitle: 'Pride and Prejudice',
+                bookAuthors: ['Austen, Jane, 1775-1817'],
+                coverUrl: 'https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg',
+              },
+              84: {
+                chapterIndex: 1,
+                chapterPage: 2,
+                globalPage: 5,
+                lastReadAt: '2026-11-27T09:05:00.000Z',
+                bookTitle: 'Frankenstein',
+                bookAuthors: ['Shelley, Mary Wollstonecraft, 1797-1851'],
+                coverUrl: 'https://cdn.example.com/custom-frankenstein.jpg',
+              },
+            },
+          },
+          version: 0,
+        })
+      );
+
+      await useReaderStore.persist.rehydrate();
+
+      expect(useReaderStore.getState().readingPositions[1342]?.coverUrl).toBe(
+        '/api/books/content?id=1342&type=cover'
+      );
+      expect(useReaderStore.getState().readingPositions[84]?.coverUrl).toBe(
+        'https://cdn.example.com/custom-frankenstein.jpg'
+      );
     });
   });
 });

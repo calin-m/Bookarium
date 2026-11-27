@@ -1,5 +1,80 @@
 import { type ClassValue, clsx } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
+import { API_ENDPOINTS } from '@/config/api-endpoints';
+
+/**
+ * Known Project Gutenberg & official mirror hostnames whose cover artwork is always served
+ * deterministically from private Cloudflare R2 via `/api/books/content?id=<bookId>&type=cover`.
+ */
+export const GUTENBERG_COVER_HOSTS: ReadonlySet<string> = new Set([
+  'www.gutenberg.org',
+  'gutenberg.org',
+  'aleph.gutenberg.org',
+  'gutenberg.pglaf.org',
+  'gutenberg.readingroo.ms',
+]);
+
+/**
+ * Builds the canonical same-origin R2 cover proxy URL for a positive integer volume ID.
+ */
+export function buildR2CoverUrl(bookId?: number | null): string | null {
+  if (typeof bookId !== 'number' || !Number.isInteger(bookId) || bookId <= 0) {
+    return null;
+  }
+  return `${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${Math.trunc(bookId)}&type=cover`;
+}
+
+/**
+ * Builds the canonical same-origin R2 plain-text proxy URL for a positive integer volume ID.
+ */
+export function buildR2TextUrl(bookId?: number | null): string | null {
+  if (typeof bookId !== 'number' || !Number.isInteger(bookId) || bookId <= 0) {
+    return null;
+  }
+  return `${API_ENDPOINTS.INTERNAL_API_CONTENT}?id=${Math.trunc(bookId)}`;
+}
+
+/**
+ * Synthesizes uniform R2-backed format URLs (`text/plain; charset=utf-8` & `image/jpeg`)
+ * deterministically from `bookId` without storing duplicate format maps in PostgreSQL.
+ */
+export function buildR2BookFormats(bookId?: number | null): Record<string, string> {
+  const textUrl = buildR2TextUrl(bookId);
+  const coverUrl = buildR2CoverUrl(bookId);
+  return {
+    ...(textUrl ? { 'text/plain; charset=utf-8': textUrl } : {}),
+    ...(coverUrl ? { 'image/jpeg': coverUrl } : {}),
+  };
+}
+
+/**
+ * Canonical client/server cover URL resolver eliminating Project Gutenberg hotlinking:
+ * rewrites empty values and Gutenberg/mirror hostnames cleanly to same-origin R2
+ * `/api/books/content?id=<bookId>&type=cover` while preserving `blob:`, `data:`,
+ * custom relative paths, and custom third-party URLs.
+ */
+export function resolveBookCoverUrl(bookId: number, primaryUrl?: string | null): string | null {
+  const trimmed = (primaryUrl || '').trim();
+  if (!trimmed) {
+    return buildR2CoverUrl(bookId);
+  }
+
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const isHttp = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    if (isHttp && GUTENBERG_COVER_HOSTS.has(parsed.hostname.toLowerCase())) {
+      return buildR2CoverUrl(bookId);
+    }
+  } catch {
+    // Relative paths preserve direct same-origin loading
+  }
+
+  return trimmed;
+}
 
 const customTwMerge = extendTailwindMerge({
   extend: {
@@ -40,12 +115,14 @@ export interface BookFormatInfo {
 
 export interface SanitizeBookFormatUrlOptions {
   allowBlob?: boolean;
+  allowInternalContentPath?: boolean;
 }
 
 /**
  * Validates external book format URLs against a strict protocol allowlist (`https:`,
- * plus local `blob:` only when explicitly enabled for offline cover previews),
- * rejecting dangerous pseudo-protocols (`javascript:`, `data:`, `vbscript:`) and plain `http:`.
+ * local `blob:` only when explicitly enabled, and same-origin `/api/books/content` proxy
+ * routes when `allowInternalContentPath` is enabled), rejecting dangerous pseudo-protocols
+ * (`javascript:`, `data:`, `vbscript:`), protocol-relative `//` URLs, and plain `http:`.
  */
 export function sanitizeBookFormatUrl(
   rawUrl?: string | null,
@@ -54,6 +131,24 @@ export function sanitizeBookFormatUrl(
   if (typeof rawUrl !== 'string') return undefined;
   const trimmed = rawUrl.trim();
   if (!trimmed) return undefined;
+  if (
+    options.allowInternalContentPath &&
+    trimmed.startsWith('/') &&
+    !trimmed.startsWith('//')
+  ) {
+    try {
+      const parsedInternal = new URL(trimmed, 'https://bookarium.local');
+      if (
+        parsedInternal.origin === 'https://bookarium.local' &&
+        parsedInternal.pathname === API_ENDPOINTS.INTERNAL_API_CONTENT
+      ) {
+        return trimmed;
+      }
+    } catch {
+      return undefined;
+    }
+    return undefined;
+  }
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol === 'https:') {
@@ -69,7 +164,7 @@ export function sanitizeBookFormatUrl(
 }
 
 /**
- * Normalizes catalog format dictionaries to canonical HTTPS format URLs.
+ * Normalizes catalog format dictionaries to canonical R2/HTTPS format URLs.
  */
 export function extractBookFormats(
   formats: Record<string, string> = {},
@@ -79,40 +174,40 @@ export function extractBookFormats(
 
   for (const [key, rawUrl] of Object.entries(formats || {})) {
     const isCoverKey = key.includes('image/jpeg') || key.includes('image/png');
-    const url = sanitizeBookFormatUrl(rawUrl, isCoverKey ? { allowBlob: true } : undefined);
+    const isTextKey = key.includes('text/plain');
+    const url = sanitizeBookFormatUrl(
+      rawUrl,
+      isCoverKey
+        ? { allowBlob: true, allowInternalContentPath: true }
+        : isTextKey
+          ? { allowInternalContentPath: true }
+          : undefined
+    );
     if (!url) continue;
 
     if (key.includes('epub')) {
       result.epub = url;
     } else if (key.includes('text/html')) {
       result.html = url;
-    } else if (key.includes('text/plain')) {
+    } else if (isTextKey) {
       result.txt = url;
     } else if (key.includes('x-mobipocket-ebook') || key.includes('mobi')) {
       result.mobi = url;
     } else if (isCoverKey) {
-      result.coverImage = url;
+      result.coverImage =
+        bookId && bookId > 0 ? resolveBookCoverUrl(bookId, url) ?? url : url;
     } else if (key.includes('pdf')) {
       result.pdf = url;
     }
   }
 
-  // Canonical Project Gutenberg fallback URLs for standard public domain books
+  // Deterministic same-origin R2 defaults for active public domain assets
   if (bookId && bookId > 0) {
-    if (!result.epub) {
-      result.epub = `https://www.gutenberg.org/ebooks/${bookId}.epub3.images`;
-    }
-    if (!result.html) {
-      result.html = `https://www.gutenberg.org/ebooks/${bookId}.html.images`;
-    }
     if (!result.txt) {
-      result.txt = `https://www.gutenberg.org/ebooks/${bookId}.txt.utf-8`;
-    }
-    if (!result.mobi) {
-      result.mobi = `https://www.gutenberg.org/ebooks/${bookId}.kindle.images`;
+      result.txt = buildR2TextUrl(bookId) ?? undefined;
     }
     if (!result.coverImage) {
-      result.coverImage = `https://www.gutenberg.org/cache/epub/${bookId}/pg${bookId}.cover.medium.jpg`;
+      result.coverImage = buildR2CoverUrl(bookId) ?? undefined;
     }
   }
 

@@ -189,7 +189,7 @@ describe('book.adapter', () => {
   });
 
   describe('toCatalogBookFromCloudRow', () => {
-    it('reconstructs CatalogBook with Gutenberg format URLs and normalized author objects', () => {
+    it('reconstructs CatalogBook with R2 format URLs and normalized author objects', () => {
       const row = {
         book_id: 1342,
         book_title: 'Pride and Prejudice',
@@ -205,13 +205,21 @@ describe('book.adapter', () => {
       expect(result.media_type).toBe('Text');
       expect(result.download_count).toBe(1000);
       expect(result.formats['image/jpeg']).toBe('https://example.com/cover.jpg');
-      expect(result.formats['application/epub+zip']).toBe('https://www.gutenberg.org/ebooks/1342.epub3.images');
-      expect(result.formats['text/html']).toBe('https://www.gutenberg.org/ebooks/1342.html.images');
-      expect(result.formats['text/plain; charset=utf-8']).toBe('https://www.gutenberg.org/ebooks/1342.txt.utf-8');
-      expect(result.formats['application/x-mobipocket-ebook']).toBe('https://www.gutenberg.org/ebooks/1342.kindle.images');
+      expect(result.formats['text/plain; charset=utf-8']).toBe('/api/books/content?id=1342');
+      expect(result.formats['application/epub+zip']).toBeUndefined();
+      expect(result.formats['text/html']).toBeUndefined();
+      expect(result.formats['application/x-mobipocket-ebook']).toBeUndefined();
     });
 
-    it('handles null cover_url and empty authors gracefully', () => {
+    it('routes legacy Gutenberg cover_url and null cover_url through same-origin R2 endpoints', () => {
+      const legacyRow = {
+        book_id: 84,
+        book_title: 'Frankenstein',
+        book_authors: ['Mary Shelley'],
+        cover_url: 'https://www.gutenberg.org/cache/epub/84/pg84.cover.medium.jpg',
+      };
+      expect(toCatalogBookFromCloudRow(legacyRow).formats['image/jpeg']).toBe('/api/books/content?id=84&type=cover');
+
       const row = {
         book_id: 99,
         book_title: 'A Tale of Two Cities',
@@ -222,7 +230,8 @@ describe('book.adapter', () => {
       const result = toCatalogBookFromCloudRow(row);
       expect(result.id).toBe(99);
       expect(result.authors).toEqual([]);
-      expect(result.formats['image/jpeg']).toBeUndefined();
+      expect(result.formats['image/jpeg']).toBe('/api/books/content?id=99&type=cover');
+      expect(result.formats['text/plain; charset=utf-8']).toBe('/api/books/content?id=99');
     });
   });
 
@@ -506,7 +515,7 @@ describe('book.adapter', () => {
       expect(result.download_count).toBe(42000);
     });
 
-    it('falls back to parsing author string lifespans and standard Gutenberg format URLs when authorDetails or URLs are absent', () => {
+    it('falls back to parsing author string lifespans and R2 format URLs when authorDetails or URLs are absent', () => {
       const canonicalWithoutDetails: Book = {
         id: 84,
         title: 'Frankenstein',
@@ -525,10 +534,10 @@ describe('book.adapter', () => {
         { name: 'Mary Shelley (1797-1851)', birth_year: 1797, death_year: 1851 },
       ]);
       expect(result.languages).toEqual(['en']);
-      expect(result.formats['image/jpeg']).toBeUndefined();
-      expect(result.formats['application/epub+zip']).toBe('https://www.gutenberg.org/ebooks/84.epub3.images');
-      expect(result.formats['text/html']).toBe('https://www.gutenberg.org/ebooks/84.html.images');
-      expect(result.formats['text/plain; charset=utf-8']).toBe('https://www.gutenberg.org/ebooks/84.txt.utf-8');
+      expect(result.formats['image/jpeg']).toBe('/api/books/content?id=84&type=cover');
+      expect(result.formats['application/epub+zip']).toBeUndefined();
+      expect(result.formats['text/html']).toBeUndefined();
+      expect(result.formats['text/plain; charset=utf-8']).toBe('/api/books/content?id=84');
     });
 
     it('handles empty authors array gracefully', () => {
