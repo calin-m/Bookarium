@@ -2,22 +2,31 @@
  * @module
  * @scope Background metadata recovery hook (`useCollectionAutoHeal`) healing missing author lifespans
  *        and titles across Bookshelf, Favorites, Reading Positions, Annotations, and IndexedDB offline books.
- * @invariant Synchronously enrich matching `FEATURED_HERO_BOOKS` first and batch remaining incomplete IDs into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
+ * @invariant Synchronously enrich matching `FEATURED_HERO_BOOKS` and sparse `readingPositions` from local collections (`savedBooks`, `favoriteBooks`, `recentBooks`) first, then batch remaining incomplete IDs (`!hasAuthenticPositionTitle(pos?.bookTitle) || !hasAuthorLifespans(pos?.bookAuthors)`) into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
  * @invariant Record queried book IDs inside `sessionStorage` (`bookarium_auto_heal_attempted`) and guard store/offline patching behind `patchOfflineBookAuthors` so un-annotated works never trigger infinite refetch loops or metadata regressions.
- * @rationale Older localStorage snapshots or sparse mobile sync records may omit author lifespan bounds needed for non-US copyright evaluation; session-bounded batch healing repairs them silently without UI blocking.
+ * @rationale Older localStorage snapshots or sparse mobile sync records may omit author lifespan bounds needed for non-US copyright evaluation or lose titles/authors on direct client navigation; session-bounded batch healing repairs them silently without UI blocking or redundant DB reads.
  * @adr ADR-070, ADR-071
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
-import { useReaderStore } from '@/stores/useReaderStore';
+import { useReaderStore, type BookReadingPosition } from '@/stores/useReaderStore';
 import { useAnnotationStore } from '@/stores/useAnnotationStore';
 import { useFellowshipStore } from '@/stores/useFellowshipStore';
 import { useBooks } from '@/hooks/queries/useBooks';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
-import { hasAuthorLifespans, featuredHeroToCatalogBook } from '@/lib/book-metadata';
+import {
+  hasAuthorLifespans,
+  hasAuthenticAuthors,
+  featuredHeroToCatalogBook,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
+import {
+  hasAuthenticPositionTitle,
+  hasAuthenticPositionAuthors,
+} from '@/lib/reader-cloud-sync';
 import { patchOfflineBookAuthors } from '@/lib/offline-storage';
 import { formatAuthorNames } from '@/lib/utils';
 import type { CatalogBook } from '@/types/book.types';
@@ -35,6 +44,13 @@ function isBookIncomplete(b: CatalogBook): boolean {
 
 function isPositionIncomplete(bookAuthors?: string[]): boolean {
   return !hasAuthorLifespans(bookAuthors);
+}
+
+function isReadingPositionIncomplete(pos?: BookReadingPosition | null): boolean {
+  return (
+    !hasAuthenticPositionTitle(pos?.bookTitle) ||
+    !hasAuthorLifespans(pos?.bookAuthors)
+  );
 }
 
 function findFeaturedHero(bookId: number) {
@@ -81,14 +97,19 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
   });
   const [prevResults, setPrevResults] = useState<unknown>(null);
 
-  // Fast-path synchronous healing for featured hero books from static fixtures
+  // Fast-path synchronous healing for featured hero books and sparse reading positions from local stores
   useEffect(() => {
     if (!hasMounted) return;
     const candidateIds = new Set<number>();
     const existingFormats = new Map<number, Record<string, string>>();
     const existingDownloads = new Map<number, number>();
+    const localShelfById = new Map<number, CatalogBook>();
 
+    for (const b of recentBooks) {
+      if (b?.id) localShelfById.set(b.id, b);
+    }
     for (const b of savedBooks) {
+      if (b?.id) localShelfById.set(b.id, b);
       if (isBookIncomplete(b)) {
         candidateIds.add(b.id);
         existingFormats.set(b.id, b.formats || {});
@@ -96,16 +117,33 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       }
     }
     for (const b of favoriteBooks) {
+      if (b?.id) localShelfById.set(b.id, b);
       if (isBookIncomplete(b)) {
         candidateIds.add(b.id);
         if (!existingFormats.has(b.id)) existingFormats.set(b.id, b.formats || {});
         if (!existingDownloads.has(b.id)) existingDownloads.set(b.id, b.download_count || 0);
       }
     }
+    const positionsToEnrichFromLocal: CatalogBook[] = [];
     for (const [idStr, pos] of Object.entries(readingPositions)) {
       const id = Number(idStr);
-      if (!Number.isNaN(id) && pos && isPositionIncomplete(pos.bookAuthors)) {
+      if (!Number.isNaN(id) && pos && isReadingPositionIncomplete(pos)) {
         candidateIds.add(id);
+        const localBook = localShelfById.get(id);
+        if (localBook) {
+          const canHealTitle =
+            !hasAuthenticPositionTitle(pos.bookTitle) &&
+            !isPlaceholderTitle(localBook.title);
+          const canHealAuthors =
+            !hasAuthenticPositionAuthors(pos.bookAuthors) &&
+            hasAuthenticAuthors(localBook.authors);
+          const canHealLifespans =
+            !hasAuthorLifespans(pos.bookAuthors) &&
+            hasAuthorLifespans(localBook.authors);
+          if (canHealTitle || canHealAuthors || canHealLifespans) {
+            positionsToEnrichFromLocal.push(localBook);
+          }
+        }
       }
     }
     for (const ann of [...annotations, ...fellowAnnotations]) {
@@ -119,6 +157,10 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
       if (id && id > 0) {
         candidateIds.add(id);
       }
+    }
+
+    if (positionsToEnrichFromLocal.length > 0) {
+      useReaderStore.getState().enrichReadingPositions(positionsToEnrichFromLocal);
     }
 
     if (candidateIds.size === 0) return;
@@ -146,7 +188,7 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
         }
       }
     }
-  }, [hasMounted, savedBooks, favoriteBooks, readingPositions, annotations, fellowAnnotations, symposiums]);
+  }, [hasMounted, savedBooks, favoriteBooks, recentBooks, readingPositions, annotations, fellowAnnotations, symposiums]);
 
   // 1. Detect favorite IDs in localStorage/cloud that lack full book metadata or author lifespans
   const missingFavoriteIds = useMemo(() => {
@@ -170,25 +212,26 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     const completeBookIds = new Set<number>();
 
     for (const b of savedBooks) {
-      if (!isBookIncomplete(b)) {
+      if (!isBookIncomplete(b) && !isPlaceholderTitle(b.title)) {
         completeBookIds.add(b.id);
         continue;
       }
+      if (!isBookIncomplete(b)) continue;
       if (attemptedHealIds.has(b.id) || findFeaturedHero(b.id)) continue;
       ids.add(b.id);
     }
 
     for (const b of favoriteBooks) {
-      if (!isBookIncomplete(b)) completeBookIds.add(b.id);
+      if (!isBookIncomplete(b) && !isPlaceholderTitle(b.title)) completeBookIds.add(b.id);
     }
     for (const b of recentBooks) {
-      if (!isBookIncomplete(b)) completeBookIds.add(b.id);
+      if (!isBookIncomplete(b) && !isPlaceholderTitle(b.title)) completeBookIds.add(b.id);
     }
 
     for (const [idStr, pos] of Object.entries(readingPositions)) {
       const id = Number(idStr);
       if (Number.isNaN(id) || !pos || attemptedHealIds.has(id) || completeBookIds.has(id)) continue;
-      if (isPositionIncomplete(pos.bookAuthors)) {
+      if (isReadingPositionIncomplete(pos)) {
         if (findFeaturedHero(id)) continue;
         ids.add(id);
       } else {

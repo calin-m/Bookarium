@@ -22,6 +22,7 @@ import {
   isPlaceholderAuthor,
   hasAuthenticAuthors,
 } from '@/lib/book-metadata';
+import { hasAuthenticPositionTitle } from '@/lib/reader-cloud-sync';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import { useOfflineBooks } from '@/hooks/useOfflineBooks';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
@@ -145,7 +146,11 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
 
     Object.entries(readingPositions).forEach(([idStr, pos]) => {
       const id = parseInt(idStr, 10);
-      if (!Number.isNaN(id) && pos?.bookTitle && hasAuthenticAuthors(pos?.bookAuthors)) {
+      if (
+        !Number.isNaN(id) &&
+        hasAuthenticPositionTitle(pos?.bookTitle) &&
+        hasAuthenticAuthors(pos?.bookAuthors)
+      ) {
         known.add(id);
       }
     });

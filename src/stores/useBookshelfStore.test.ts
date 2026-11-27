@@ -1286,6 +1286,55 @@ describe('useBookshelfStore', () => {
       expect(useReaderStore.getState().readingProgress[1342]).toBe(100);
     });
 
+    it('enriches sparse readingPositions from local shelf collections when marked finished', async () => {
+      const { useReaderStore } = await import('./useReaderStore');
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 7742,
+            title: 'Barchester Towers',
+            authors: [{ name: 'Trollope, Anthony', birth_year: 1815, death_year: 1882 }],
+            translators: [],
+            subjects: ['Satire'],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: { 'image/jpeg': '/api/books/content?id=7742&type=cover' },
+            download_count: 100,
+          },
+        ],
+        favoriteBooks: [],
+        recentBooks: [],
+      });
+      useReaderStore.setState({
+        currentBook: null,
+        readingPositions: {
+          7742: {
+            chapterIndex: 4,
+            chapterPage: 2,
+            globalPage: 19,
+            bookmarkRow: 5,
+            bookmarkText: 'Memorable opening passage',
+            lastReadAt: '2026-11-27T10:00:00.000Z',
+          },
+        },
+        readingProgress: { 7742: 60 },
+      });
+
+      await useBookshelfStore.getState().setReadingStatus(7742, 'finished');
+
+      expect(useReaderStore.getState().readingProgress[7742]).toBe(100);
+      expect(useReaderStore.getState().readingPositions[7742]).toMatchObject({
+        chapterIndex: 4,
+        chapterPage: 2,
+        bookTitle: 'Barchester Towers',
+        bookAuthors: ['Trollope, Anthony, 1815-1882'],
+        coverUrl: '/api/books/content?id=7742&type=cover',
+      });
+      expect(useReaderStore.getState().readingPositions[7742]?.bookmarkRow).toBeUndefined();
+    });
+
     it('tracks mutation timestamps in curationHistory', async () => {
       await useBookshelfStore.getState().setBookRating(1342, 5);
       const timestamp1 = useBookshelfStore.getState().curationHistory[1342];

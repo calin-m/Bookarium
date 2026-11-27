@@ -24,6 +24,11 @@ import {
 } from '@/lib/adapters/book.adapter';
 import { removeOfflineBook } from '@/lib/offline-storage';
 import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import {
+  extractBookPositionMetadata,
+  hasAuthenticPositionAuthors,
+  hasAuthenticPositionTitle,
+} from '@/lib/reader-cloud-sync';
 
 function notifyOfflineUpdated(): void {
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
@@ -717,6 +722,20 @@ export const useBookshelfStore = create<BookshelfState>()(
             currentPos &&
             (currentPos.bookmarkRow !== undefined || Boolean(currentPos.bookmarkText))
           ) {
+            const localFallbackBook =
+              get().savedBooks.find((b) => b.id === bookId) ||
+              get().favoriteBooks.find((b) => b.id === bookId) ||
+              get().recentBooks.find((b) => b.id === bookId);
+            const fallbackMeta = localFallbackBook
+              ? extractBookPositionMetadata(bookId, localFallbackBook)
+              : {};
+            const resolvedTitle = hasAuthenticPositionTitle(currentPos.bookTitle)
+              ? currentPos.bookTitle
+              : fallbackMeta.bookTitle || currentPos.bookTitle;
+            const resolvedAuthors = hasAuthenticPositionAuthors(currentPos.bookAuthors)
+              ? currentPos.bookAuthors
+              : fallbackMeta.bookAuthors || currentPos.bookAuthors;
+            const resolvedCoverUrl = currentPos.coverUrl || fallbackMeta.coverUrl;
             readerState.saveReadingPosition(
               bookId,
               {
@@ -724,9 +743,9 @@ export const useBookshelfStore = create<BookshelfState>()(
                 chapterPage: currentPos.chapterPage,
                 globalPage: currentPos.globalPage,
                 lastReadAt: now,
-                bookTitle: currentPos.bookTitle,
-                bookAuthors: currentPos.bookAuthors,
-                coverUrl: currentPos.coverUrl,
+                bookTitle: resolvedTitle,
+                bookAuthors: resolvedAuthors,
+                coverUrl: resolvedCoverUrl,
               },
               currentUserId
             );

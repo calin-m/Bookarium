@@ -17,9 +17,9 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-276%20Suites%20%7C%202864%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-276%20Suites%20%7C%202874%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![MSW](https://img.shields.io/badge/MSW-3.0.7-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)
-[![Code Coverage](https://img.shields.io/badge/Coverage-97.38%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
+[![Code Coverage](https://img.shields.io/badge/Coverage-97.36%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
@@ -73,7 +73,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2864 tests across 276 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2874 tests across 276 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–16`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -116,10 +116,9 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.89)
+## 🛠️ Latest Improvements (v2.9.90)
 
-- **4-Layer Anti-Drift Governance, Hardened Rule 9 AST Parity & Dynamic `Pass 5` Legal Verification (`AGENTS.md`, `.agents/AGENTS.md`, `scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `scripts/verify-build.js`, `src/app/copyright/page.tsx`)**: Added a Legal, Privacy & Erasure Disclosure Parity row to Rule 1 and expanded Rule 9 to 4 layers across `AGENTS.md` and `.agents/AGENTS.md`; upgraded `validateRule9AuthStoreParityAst` (`Pass 0.75` Pillar 6) to verify fail-closed `delete_current_user()` response inspection, device cache cleanups (`clearAllOfflineBooks`, `clearCachedBookPassages`, `clearCachedQuotePool`), and device-local guest `clearGuestDeviceData()` delegation; exported `auditLegalDocumentationParity` in `Pass 5` enforcing live `public/sw.js` `CACHE_NAME`, `MAX_CACHED_COVERS`, `COVER_CACHE_TTL_MS` (correcting `/copyright` `cover_cache` TTL from `14-day` to `30-day`), CDN `s-maxage` values, cookies, sync script identifiers, `AccountDeleteModal` warnings, and retirement of legacy stale claims (`ADR-044`, `ADR-072`, `ADR-073`).
-- **Contract JSDoc & Generator Matrix Parity Sync (`src/stores/useAuthStore.ts`, `src/lib/redirect-sanitizer.ts`, `src/hooks/queries/useBooks.ts`, `scripts/generate-architecture-matrix.js`, `scripts/generate-quality-report.js`)**: Aligned protected `@scope`/`@invariant`/`@adr` contracts across `useAuthStore.ts` (4-layer Rule 9 parity across `8` user/preference Zustand stores), `redirect-sanitizer.ts` (`isConfirmDeletionRedirectPath`), and `useBooks.ts` (`clearCachedQuotePool`), and updated the Client Storage Matrix header, `hookRoles.useBooks`, and Pass 5 report summary (`ADR-072`, `ADR-073`).
+- **Reading Progress Title & Author Preservation and Zero-Waste Healing (`src/lib/reader-cloud-sync.ts`, `src/lib/book-metadata.ts`, `src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`, `src/components/reader/BookReaderClient.tsx`, `src/hooks/reader/useReaderSession.ts`, `src/hooks/reader/useReaderExitBookmark.ts`, `src/hooks/reader/useReaderHabitTelemetry.ts`, `src/hooks/useCollectionAutoHeal.ts`, `src/hooks/reader/useContinueReadingLedger.ts`)**: Eliminated empty/placeholder `book_title` and `book_authors` writes in `public.reading_progress` via cycle-safe shared metadata helpers (`extractBookPositionMetadata`, `hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), placeholder-title replacement in `saveReadingPosition`/`enrichReadingPositions`, `shouldHealRemoteMetadata` backfill in `syncWithCloud`, local shelf + conditional IndexedDB `getOfflineBookRecord` resolution forwarded from `BookReaderClient` into session/exit hooks, un-gated telemetry enrichment, and zero-network local auto-heal fast-path (`ADR-070`, `ADR-080`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->

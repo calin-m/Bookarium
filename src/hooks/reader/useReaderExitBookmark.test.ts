@@ -565,5 +565,45 @@ describe('useReaderExitBookmark', () => {
         saveSpy.mockRestore();
       }
     });
+
+    it('persists caller-supplied bookMetadata when confirming exit bookmark without hydrated currentBook', () => {
+      useReaderStore.setState({ currentBook: null, readingPositions: {}, readingProgress: {} });
+      const saveSpy = vi.spyOn(useReaderStore.getState(), 'saveReadingPosition');
+
+      try {
+        const { result } = renderHook(() =>
+          useReaderExitBookmark({
+            ...defaultOptions,
+            numericId: 915,
+            activeChapterIndex: 1,
+            currentChapterPage: 2,
+            currentGlobalPage: 4,
+            currentPageText: 'Exit line opening.',
+            bookMetadata: {
+              bookTitle: 'Persisted Exit Volume',
+              bookAuthors: ['Shelley, Mary (1797-1851)'],
+              coverUrl: '/api/books/content?id=915&type=cover',
+            },
+          })
+        );
+
+        act(() => {
+          result.current.handleConfirmBookmarkAndExit();
+        });
+
+        expect(saveSpy).toHaveBeenCalledWith(
+          915,
+          expect.objectContaining({
+            bookTitle: 'Persisted Exit Volume',
+            bookAuthors: ['Shelley, Mary (1797-1851)'],
+            coverUrl: '/api/books/content?id=915&type=cover',
+          }),
+          'user-123',
+          { immediateCloudSync: true }
+        );
+      } finally {
+        saveSpy.mockRestore();
+      }
+    });
   });
 });

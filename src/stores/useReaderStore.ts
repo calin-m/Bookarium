@@ -2,7 +2,7 @@
  * @module src/stores/useReaderStore
  * @scope Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
  * @invariant Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
- * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`).
+ * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`), never replace authentic titles with placeholder titles, and push locally recovered missing `book_title`/`book_authors` back to `reading_progress` during `syncWithCloud` (`shouldHealRemoteMetadata`).
  * @invariant Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
  * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
  * @adr ADR-003, ADR-014, ADR-068, ADR-080, ADR-087
@@ -10,7 +10,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { CatalogBook, Book, Author } from '@/types/book.types';
+import type { CatalogBook, Book } from '@/types/book.types';
 import { useThemeStore, applyThemeToDocument } from './useThemeStore';
 import {
   useAuthStore,
@@ -23,17 +23,17 @@ import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import {
-  formatAuthorWithLifespan,
-  normalizeCloudCoverUrl,
-} from '@/lib/adapters/book.adapter';
+import { normalizeCloudCoverUrl } from '@/lib/adapters/book.adapter';
 import { resolveBookCoverUrl } from '@/lib/utils';
-import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import { isPlaceholderAuthor, isPlaceholderTitle } from '@/lib/book-metadata';
 import {
   type ReaderTheme,
   type ReaderFontFamily,
   type BookReadingPosition,
   hasEmbeddedLifespans,
+  hasAuthenticPositionTitle,
+  hasAuthenticPositionAuthors,
+  extractBookPositionMetadata,
   isGhostReadingPosition,
   isGhostCloudRow,
   decodeRemoteReadingPosition,
@@ -353,66 +353,80 @@ export const useReaderStore = create<ReaderState>()(
       saveReadingPosition: (bookId, position, userId, options) => {
         const currentBook = get().currentBook;
         const existingPos = get().readingPositions[bookId];
+        const posHasAuthenticTitle = hasAuthenticPositionTitle(position.bookTitle);
+        const existingHasAuthenticTitle = hasAuthenticPositionTitle(existingPos?.bookTitle);
+        const posHasAuthenticAuthors = hasAuthenticPositionAuthors(position.bookAuthors);
+        const existingHasAuthenticAuthors = hasAuthenticPositionAuthors(existingPos?.bookAuthors);
+
         let enrichedPosition: BookReadingPosition = position;
 
         if (currentBook && currentBook.id === bookId) {
-          const rawAuthorSources: (string | Author)[] =
-            (currentBook as Book).authorDetails && (currentBook as Book).authorDetails!.length > 0
-              ? (currentBook as Book).authorDetails!
-              : (currentBook.authors || []);
-          const authors = rawAuthorSources
-            .map((a) => formatAuthorWithLifespan(a))
-            .filter((name) => Boolean(name && name !== 'Anonymous'));
-          const bookWithCover = currentBook as { formats?: Record<string, string>; coverUrl?: string | null };
-          const resolvedBookCover = resolveBookCoverUrl(
-            bookId,
-            bookWithCover.formats?.['image/jpeg'] || bookWithCover.coverUrl || null
-          );
-
-          const posAuthorsMissingOrPlaceholder =
-            !position.bookAuthors ||
-            position.bookAuthors.length === 0 ||
-            position.bookAuthors.every(isPlaceholderAuthor);
-          const resolvedAuthors = authors.length > 0 ? authors : existingPos?.bookAuthors || [];
+          const currentMeta = extractBookPositionMetadata(bookId, currentBook);
+          const resolvedAuthors =
+            currentMeta.bookAuthors && currentMeta.bookAuthors.length > 0
+              ? currentMeta.bookAuthors
+              : existingHasAuthenticAuthors
+              ? existingPos!.bookAuthors!
+              : [];
           const resolvedCoverUrl = resolveBookCoverUrl(
             bookId,
-            position.coverUrl ?? resolvedBookCover ?? existingPos?.coverUrl ?? null
+            position.coverUrl ?? currentMeta.coverUrl ?? existingPos?.coverUrl ?? null
           );
+          const resolvedTitle = posHasAuthenticTitle
+            ? position.bookTitle
+            : currentMeta.bookTitle ||
+              (existingHasAuthenticTitle ? existingPos!.bookTitle : undefined) ||
+              (!isPlaceholderTitle(currentBook.title) ? currentBook.title : undefined) ||
+              position.bookTitle ||
+              currentBook.title ||
+              existingPos?.bookTitle;
 
-          if (!position.bookTitle) {
+          if (!posHasAuthenticTitle && resolvedTitle) {
             enrichedPosition = {
               ...position,
-              bookTitle: currentBook.title || existingPos?.bookTitle,
+              bookTitle: resolvedTitle,
               bookAuthors: resolvedAuthors,
               coverUrl: resolvedCoverUrl,
             };
-          } else if (posAuthorsMissingOrPlaceholder && resolvedAuthors.length > 0) {
+          } else if (!posHasAuthenticAuthors && resolvedAuthors.length > 0) {
             enrichedPosition = {
               ...position,
+              ...(posHasAuthenticTitle || !resolvedTitle ? {} : { bookTitle: resolvedTitle }),
               bookAuthors: resolvedAuthors,
               coverUrl: resolvedCoverUrl,
             };
           } else if (
             !hasEmbeddedLifespans(position.bookAuthors) &&
-            hasEmbeddedLifespans(authors)
+            hasEmbeddedLifespans(resolvedAuthors)
           ) {
             enrichedPosition = {
               ...position,
-              bookAuthors: authors,
+              bookAuthors: resolvedAuthors,
               coverUrl: resolveBookCoverUrl(
                 bookId,
-                position.coverUrl ?? resolvedBookCover
+                position.coverUrl ?? currentMeta.coverUrl ?? existingPos?.coverUrl
               ),
             };
           }
-        } else if (!position.bookTitle && existingPos?.bookTitle) {
+        } else if (
+          (!posHasAuthenticTitle && existingPos?.bookTitle) ||
+          (!posHasAuthenticAuthors && existingHasAuthenticAuthors)
+        ) {
           enrichedPosition = {
             ...position,
-            bookTitle: existingPos.bookTitle,
-            bookAuthors: existingPos.bookAuthors ?? position.bookAuthors,
+            ...(posHasAuthenticTitle
+              ? {}
+              : existingHasAuthenticTitle || !position.bookTitle
+              ? { bookTitle: existingPos?.bookTitle ?? position.bookTitle }
+              : {}),
+            ...(posHasAuthenticAuthors
+              ? {}
+              : existingHasAuthenticAuthors
+              ? { bookAuthors: existingPos?.bookAuthors }
+              : {}),
             coverUrl: resolveBookCoverUrl(
               bookId,
-              existingPos.coverUrl ?? position.coverUrl
+              position.coverUrl ?? existingPos?.coverUrl
             ),
           };
         }
@@ -496,26 +510,25 @@ export const useReaderStore = create<ReaderState>()(
           const pos = nextPositions[fresh.id];
           if (!pos) continue;
 
-          const freshAuthors = (fresh.authors || [])
-            .map((a) => formatAuthorWithLifespan(a))
-            .filter((name) => Boolean(name && !isPlaceholderAuthor(name)));
+          const freshMeta = extractBookPositionMetadata(fresh.id, fresh);
+          const freshAuthors = freshMeta.bookAuthors || [];
           const posHasLifespans = hasEmbeddedLifespans(pos.bookAuthors);
           const freshHasLifespans = hasEmbeddedLifespans(freshAuthors);
-          const posHasAuthenticAuthors =
-            Array.isArray(pos.bookAuthors) &&
-            pos.bookAuthors.length > 0 &&
-            !pos.bookAuthors.every(isPlaceholderAuthor);
+          const posHasAuthenticTitle = hasAuthenticPositionTitle(pos.bookTitle);
+          const freshHasAuthenticTitle = Boolean(freshMeta.bookTitle);
+          const needsTitleEnrichment = !posHasAuthenticTitle && freshHasAuthenticTitle;
+          const posHasAuthenticAuthors = hasAuthenticPositionAuthors(pos.bookAuthors);
           const freshHasAuthenticAuthors = freshAuthors.length > 0;
           const needsAuthorEnrichment = !posHasAuthenticAuthors && freshHasAuthenticAuthors;
           const freshCover = resolveBookCoverUrl(
             fresh.id,
-            pos.coverUrl || fresh.formats?.['image/jpeg'] || null
+            pos.coverUrl || freshMeta.coverUrl || fresh.formats?.['image/jpeg'] || null
           );
           const needsCoverUpdate =
             Boolean(freshCover) && freshCover !== (pos.coverUrl ?? null);
 
           if (
-            (!pos.bookTitle && fresh.title) ||
+            needsTitleEnrichment ||
             (!posHasLifespans && freshHasLifespans) ||
             needsAuthorEnrichment ||
             needsCoverUpdate
@@ -524,7 +537,9 @@ export const useReaderStore = create<ReaderState>()(
             enrichedBookIds.push(fresh.id);
             nextPositions[fresh.id] = {
               ...pos,
-              bookTitle: pos.bookTitle || fresh.title,
+              bookTitle: needsTitleEnrichment
+                ? freshMeta.bookTitle
+                : pos.bookTitle || fresh.title,
               bookAuthors: freshHasLifespans || needsAuthorEnrichment ? freshAuthors : pos.bookAuthors,
               coverUrl: freshCover,
             };
@@ -831,12 +846,12 @@ export const useReaderStore = create<ReaderState>()(
                       clearTimeout(pendingTimer);
                       progressDebounceTimers.delete(bookId);
                     }
-                    const { position: mergedPosition, progress, shouldKeepLocalAuthors } =
+                    const { position: mergedPosition, progress, shouldHealRemoteMetadata } =
                       decodeRemoteReadingPosition(row, localPos);
                     nextPositions[bookId] = mergedPosition;
                     nextProgress[bookId] = progress;
                     syncedRemoteSnapshots.push({ bookId, lastReadAt: localPos?.lastReadAt });
-                    if (shouldKeepLocalAuthors) {
+                    if (shouldHealRemoteMetadata) {
                       healedInCloud.push({ bookId, position: mergedPosition });
                     }
                   } else {

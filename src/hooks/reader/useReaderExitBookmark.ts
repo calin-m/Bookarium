@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useReaderStore, type BookReadingPosition } from '@/stores/useReaderStore';
+import type { BookPositionMetadata } from '@/lib/reader-cloud-sync';
 import type { ReadingStatus } from '@/types/book.types';
 import {
   stripDuplicateLeadingChapterHeading,
@@ -115,6 +116,7 @@ export interface UseReaderExitBookmarkOptions {
   onExit?: () => void;
   setReadingStatus: (bookId: number, status: ReadingStatus, userId?: string) => void;
   setBookmarkRow: (row: number, bookmarkText?: string) => void;
+  bookMetadata?: BookPositionMetadata;
 }
 
 export interface UseReaderExitBookmarkReturn {
@@ -146,6 +148,7 @@ export function useReaderExitBookmark({
   onExit,
   setReadingStatus,
   setBookmarkRow,
+  bookMetadata,
 }: UseReaderExitBookmarkOptions): UseReaderExitBookmarkReturn {
   const router = useRouter();
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
@@ -305,6 +308,11 @@ export function useReaderExitBookmark({
           globalPage: currentGlobalPage,
           bookmarkRow: targetBookmarkRow,
           ...(targetBookmarkText ? { bookmarkText: targetBookmarkText } : {}),
+          ...(bookMetadata?.bookTitle ? { bookTitle: bookMetadata.bookTitle } : {}),
+          ...(bookMetadata?.bookAuthors?.length
+            ? { bookAuthors: bookMetadata.bookAuthors }
+            : {}),
+          ...(bookMetadata?.coverUrl ? { coverUrl: bookMetadata.coverUrl } : {}),
           lastReadAt: new Date().toISOString(),
         },
         userId,
@@ -317,6 +325,7 @@ export function useReaderExitBookmark({
     userId,
     setReadingStatus,
     setBookmarkRow,
+    bookMetadata,
     activeChapterIndex,
     currentChapterPage,
     currentGlobalPage,

@@ -1,15 +1,21 @@
 /**
  * @module src/lib/reader-cloud-sync
- * @scope Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, and lifespan-preserving author extraction for `public.reading_progress`.
+ * @scope Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, position metadata extraction, and lifespan-preserving reconciliation for `public.reading_progress`.
  * @invariant Encode row bookmark offsets fractionally on `scroll_offset` (`page + row / 1000`) alongside reflow-anchored `bookmark_text`, and identify empty Page-1 rows cleanly via `isGhostReadingPosition` / `isGhostCloudRow`.
- * @invariant Preserve embedded contributor lifespans (`hasEmbeddedLifespans`) when merging remote rows so missing remote death years never strip local public domain dates (`extractVerifiedAuthors`).
- * @rationale Shared row encoding and ghost classification let `useReaderStore` batch/prune cloud progress identically across mobile and desktop clients without `HTTP 451` lifespan regressions.
+ * @invariant Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), preserve local titles/authors when remote `public.reading_progress` rows lack them (`shouldHealRemoteMetadata`), and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
+ * @rationale Shared row encoding, zero-cycle metadata extraction, and ghost classification keep `public.reading_progress` titles/authors intact across direct navigation, offline reads, and multi-device syncs without `HTTP 451` lifespan regressions.
  * @adr ADR-014, ADR-068, ADR-070, ADR-080
  */
 
 import type { CatalogBook, Book, Author } from '@/types/book.types';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
-import { hasAuthorLifespans } from '@/lib/book-metadata';
+import {
+  cleanBookTitle,
+  hasAuthorLifespans,
+  isPlaceholderAuthor,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
+import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
 import { resolveBookCoverUrl } from '@/lib/utils';
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
@@ -27,8 +33,59 @@ export interface BookReadingPosition {
   coverUrl?: string | null;
 }
 
+export interface BookPositionMetadata {
+  bookTitle?: string;
+  bookAuthors?: string[];
+  coverUrl?: string | null;
+}
+
 export function hasEmbeddedLifespans(authors?: string[]): boolean {
   return hasAuthorLifespans(authors);
+}
+
+export function hasAuthenticPositionTitle(title?: string | null): boolean {
+  return Boolean(title && !isPlaceholderTitle(cleanBookTitle(title)));
+}
+
+export function hasAuthenticPositionAuthors(authors?: string[] | null): boolean {
+  return Boolean(
+    Array.isArray(authors) && authors.length > 0 && !authors.every(isPlaceholderAuthor)
+  );
+}
+
+export function extractBookPositionMetadata(
+  bookId: number,
+  book:
+    | (Pick<CatalogBook | Book, 'id' | 'title' | 'authors'> & {
+        authorDetails?: Author[];
+        formats?: Record<string, string>;
+        coverUrl?: string | null;
+      })
+    | null
+    | undefined
+): BookPositionMetadata {
+  if (!book || bookId <= 0) return {};
+
+  const cleanedTitle = cleanBookTitle(book.title);
+  const resolvedTitle = hasAuthenticPositionTitle(cleanedTitle) ? cleanedTitle : undefined;
+  const rawAuthorSources: (string | Author)[] =
+    'authorDetails' in book && Array.isArray(book.authorDetails) && book.authorDetails.length > 0
+      ? book.authorDetails
+      : book.authors || [];
+  const resolvedAuthors = rawAuthorSources
+    .map((author) => formatAuthorWithLifespan(author))
+    .filter((name) => Boolean(name && !isPlaceholderAuthor(name)));
+  const rawCover =
+    ('formats' in book && book.formats?.['image/jpeg']) ||
+    ('coverUrl' in book ? book.coverUrl : null) ||
+    null;
+  const resolvedCover = resolveBookCoverUrl(bookId, rawCover);
+
+  return {
+    ...(resolvedTitle ? { bookTitle: resolvedTitle } : {}),
+    ...(resolvedAuthors.length > 0 ? { bookAuthors: resolvedAuthors } : {}),
+    ...(resolvedCover ? { coverUrl: resolvedCover } : {}),
+  };
 }
 
 export function isGhostReadingPosition(
@@ -61,11 +118,26 @@ export function decodeRemoteReadingPosition(
   position: BookReadingPosition;
   progress: number;
   shouldKeepLocalAuthors: boolean;
+  shouldHealRemoteMetadata: boolean;
 } {
-  const remoteAuthors = row.book_authors as string[] | null | undefined;
+  const remoteTitle = typeof row.book_title === 'string' ? row.book_title : null;
+  const hasExplicitRemoteAuthorArray = Array.isArray(row.book_authors);
+  const remoteAuthors = hasExplicitRemoteAuthorArray
+    ? (row.book_authors as string[])
+    : null;
+  const hasRemoteTitle = hasAuthenticPositionTitle(remoteTitle);
+  const hasLocalTitle = hasAuthenticPositionTitle(localPos?.bookTitle);
+  const hasRemoteAuthors = hasAuthenticPositionAuthors(remoteAuthors);
+  const hasLocalAuthors = hasAuthenticPositionAuthors(localPos?.bookAuthors);
   const shouldKeepLocalAuthors =
     !hasEmbeddedLifespans(remoteAuthors ?? undefined) &&
     hasEmbeddedLifespans(localPos?.bookAuthors);
+  const shouldHealMissingAuthors = !hasRemoteAuthors && hasLocalAuthors;
+  const shouldHealRemoteMetadata = Boolean(
+    shouldKeepLocalAuthors ||
+      ((row.book_title == null || !hasRemoteTitle) && hasLocalTitle) ||
+      (hasExplicitRemoteAuthorArray && shouldHealMissingAuthors)
+  );
   const rawOffset = Math.max(1, Number(row.scroll_offset));
   const decodedPage = Math.max(1, Math.floor(rawOffset));
   const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
@@ -92,10 +164,15 @@ export function decodeRemoteReadingPosition(
     ...(decodedRow > 0 ? { bookmarkRow: decodedRow } : {}),
     ...(resolvedBookmarkText ? { bookmarkText: resolvedBookmarkText } : {}),
     lastReadAt: String(row.last_read_at),
-    bookTitle: (row.book_title as string | null) || localPos?.bookTitle,
+    bookTitle:
+      (hasRemoteTitle ? remoteTitle! : undefined) ||
+      localPos?.bookTitle ||
+      remoteTitle ||
+      undefined,
     bookAuthors:
-      (shouldKeepLocalAuthors ? localPos?.bookAuthors : remoteAuthors) ||
-      localPos?.bookAuthors,
+      (shouldKeepLocalAuthors || shouldHealMissingAuthors
+        ? localPos?.bookAuthors
+        : remoteAuthors) || localPos?.bookAuthors,
     coverUrl: resolveBookCoverUrl(
       Number(row.book_id),
       (row.cover_url as string | null) || localPos?.coverUrl
@@ -105,7 +182,12 @@ export function decodeRemoteReadingPosition(
     Math.max(Math.round(Number(row.progress_percent)), 0),
     100
   );
-  return { position, progress, shouldKeepLocalAuthors };
+  return {
+    position,
+    progress,
+    shouldKeepLocalAuthors,
+    shouldHealRemoteMetadata,
+  };
 }
 
 export function extractVerifiedAuthors(

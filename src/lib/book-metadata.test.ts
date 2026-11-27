@@ -480,6 +480,59 @@ describe('src/lib/book-metadata', () => {
       ).toBe('In the beginning was the archive.');
       expect(resolveBookOpeningSnippet(1342, null)).toContain('truth universally acknowledged');
     });
+
+    it('falls back to localBook collection or offline metadata ahead of extracted headers while preserving lifespans', () => {
+      const localRecord: CatalogBook = {
+        id: 77702,
+        title: 'The Project Gutenberg eBook of Walden',
+        authors: [{ name: 'Thoreau, Henry David', birth_year: 1817, death_year: 1862 }],
+        translators: [{ name: 'Translator Example', birth_year: 1850, death_year: 1920 }],
+        subjects: ['Solitude', 'Natural history'],
+        bookshelves: ['Philosophy'],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 150,
+      };
+
+      const resolvedFromLocal = resolveBookMetadata({
+        id: 77702,
+        localBook: localRecord,
+        extractedMeta: { title: 'Header Title', author: 'Header Author', language: 'fr' },
+      });
+
+      expect(resolvedFromLocal.title).toBe('Walden');
+      expect(resolvedFromLocal.author).toBe('Henry David Thoreau');
+      expect(resolvedFromLocal.authors[0]).toEqual({
+        name: 'Thoreau, Henry David',
+        birth_year: 1817,
+        death_year: 1862,
+      });
+      expect(resolvedFromLocal.translators).toHaveLength(1);
+      expect(resolvedFromLocal.subjects).toEqual(['Solitude', 'Natural history']);
+      expect(resolvedFromLocal.bookshelves).toEqual(['Philosophy']);
+      expect(resolvedFromLocal.languages).toEqual(['en']);
+
+      // Preserves localBook lifespans if apiBook omits birth/death years
+      const resolvedMerged = resolveBookMetadata({
+        id: 77702,
+        localBook: localRecord,
+        booksData: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              ...localRecord,
+              authors: [{ name: 'Thoreau, Henry David', birth_year: null, death_year: null }],
+              translators: [],
+            },
+          ],
+        },
+      });
+      expect(resolvedMerged.authors[0].death_year).toBe(1862);
+    });
   });
 });
 

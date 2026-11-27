@@ -4,13 +4,14 @@
  * @module
  * @scope Headless Reader session controller managing chapter pagination state, `bookmarkText`-first reflow-resilient auto-resume, bidirectional page navigation, active `pinnedBookmark` inspection, and coordinate persistence.
  * @invariant Restore saved positions via `findCanonicalTextSpan` when `bookmarkText` shifts pages across font/viewport reflows, expose immutable `pinnedBookmark` coordinates (`PinnedBookmarkCoordinate`) while preserving them across passive page turns, clamp out-of-bounds chapter/page indices safely, and separate layout adjustments (`isLayoutSync`) from user bookmark mutations (`hasUserModifiedSessionRef`).
- * @invariant Flush position and percentage progress updates (`saveReadingPosition`, `setProgress`) synchronously on chapter/page navigation and unmount cleanup without dropping `bookmarkRow` or `bookmarkText`.
+ * @invariant Flush position and percentage progress updates (`saveReadingPosition`, `setProgress`) synchronously on chapter/page navigation and unmount cleanup without dropping `bookmarkRow`, `bookmarkText`, or caller-supplied `bookMetadata` (`BookPositionMetadata`) when `currentBook` has not yet hydrated.
  * @rationale Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence, while exposing `pinnedBookmark` lets drawers display and jump back to the active silk bookmark across chapters.
- * @adr ADR-003, ADR-014, ADR-068
+ * @adr ADR-003, ADR-014, ADR-068, ADR-070
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useReaderStore, type BookReadingPosition } from '@/stores/useReaderStore';
+import { type BookPositionMetadata } from '@/lib/reader-cloud-sync';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import type { ReadingStatus } from '@/types/book.types';
@@ -46,6 +47,7 @@ export interface UseReaderSessionOptions {
   readingMode: 'paginated' | 'scroll';
   readingStatus?: ReadingStatus | null;
   initialPosition?: { chapterIndex: number; chapterPage: number } | null;
+  bookMetadata?: BookPositionMetadata;
 }
 
 export interface UseReaderSessionReturn {
@@ -90,6 +92,7 @@ export function useReaderSession({
   readingMode,
   readingStatus,
   initialPosition,
+  bookMetadata,
 }: UseReaderSessionOptions): UseReaderSessionReturn {
   const setProgress = useReaderStore((s) => s.setProgress);
   const saveReadingPosition = useReaderStore((s) => s.saveReadingPosition);
@@ -115,6 +118,10 @@ export function useReaderSession({
     bookmarkText?: string;
     lastReadAt?: string;
   } | null>(null);
+  const bookMetadataRef = useRef<BookPositionMetadata | undefined>(bookMetadata);
+  useEffect(() => {
+    bookMetadataRef.current = bookMetadata;
+  }, [bookMetadata]);
 
   const activeChapter = chaptersWithPagination[activeChapterIndex] || chaptersWithPagination[0];
   const activeChapterPageCount = activeChapter?.pageCount || 1;
@@ -646,6 +653,7 @@ export function useReaderSession({
               return;
             }
 
+            const resolvedMeta = bookMetadataRef.current;
             saveReadingPosition(
               numericId,
               {
@@ -656,6 +664,11 @@ export function useReaderSession({
                 ...(pinnedBookmark.bookmarkText
                   ? { bookmarkText: pinnedBookmark.bookmarkText }
                   : {}),
+                ...(resolvedMeta?.bookTitle ? { bookTitle: resolvedMeta.bookTitle } : {}),
+                ...(resolvedMeta?.bookAuthors?.length
+                  ? { bookAuthors: resolvedMeta.bookAuthors }
+                  : {}),
+                ...(resolvedMeta?.coverUrl ? { coverUrl: resolvedMeta.coverUrl } : {}),
                 lastReadAt:
                   isSameAsRestored && restored?.lastReadAt
                     ? restored.lastReadAt
@@ -687,12 +700,18 @@ export function useReaderSession({
             restoredPositionRef.current = null;
           }
 
+          const resolvedMeta = bookMetadataRef.current;
           saveReadingPosition(
             numericId,
             {
               chapterIndex: activeChapterIndex,
               chapterPage: currentChapterPage,
               globalPage: currentGlobalPage,
+              ...(resolvedMeta?.bookTitle ? { bookTitle: resolvedMeta.bookTitle } : {}),
+              ...(resolvedMeta?.bookAuthors?.length
+                ? { bookAuthors: resolvedMeta.bookAuthors }
+                : {}),
+              ...(resolvedMeta?.coverUrl ? { coverUrl: resolvedMeta.coverUrl } : {}),
               lastReadAt:
                 isSamePageAsRestored && restored?.lastReadAt
                   ? restored.lastReadAt
@@ -757,12 +776,18 @@ export function useReaderSession({
       useBookshelfStore
         .getState()
         .setReadingStatus(numericId, 'currently_reading', currentUserId);
+      const resolvedMeta = bookMetadataRef.current;
       saveReadingPosition(
         numericId,
         {
           chapterIndex: 0,
           chapterPage: 1,
           globalPage: 1,
+          ...(resolvedMeta?.bookTitle ? { bookTitle: resolvedMeta.bookTitle } : {}),
+          ...(resolvedMeta?.bookAuthors?.length
+            ? { bookAuthors: resolvedMeta.bookAuthors }
+            : {}),
+          ...(resolvedMeta?.coverUrl ? { coverUrl: resolvedMeta.coverUrl } : {}),
           lastReadAt: new Date().toISOString(),
         },
         currentUserId

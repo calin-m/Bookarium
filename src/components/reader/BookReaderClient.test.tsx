@@ -1811,6 +1811,114 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.'
     );
   });
+
+  it('resolves metadata from local shelf collections and IndexedDB offline records during direct client navigation', async () => {
+    const offlineStorage = await import('@/lib/offline-storage');
+    const getOfflineSpy = vi.spyOn(offlineStorage, 'getOfflineBookRecord');
+
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 2 },
+    });
+
+    const multiPageNonHeaderText = `CHAPTER I\n\n${'Opening narrative line without a Project Gutenberg header. '.repeat(120)}`;
+    vi.mocked(useBookContent).mockReturnValue({
+      data: multiPageNonHeaderText,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useBookContent>);
+
+    mockUseBooks.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as unknown as ReturnType<typeof mockUseBooks>);
+
+    try {
+      const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+      usePreferencesStore.getState().resetAllPreferencesStore();
+
+      // 1. Saved bookshelf fallback when currentBook, initialBook, API, and text headers are empty
+      mockParams = { id: '77654' };
+      useReaderStore.setState({ currentBook: null, readingPositions: {}, readingProgress: {} });
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            id: 77654,
+            title: 'Cranford',
+            authors: [{ name: 'Gaskell, Elizabeth', birth_year: 1810, death_year: 1865 }],
+            translators: [],
+            subjects: ['Fiction'],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: { 'image/jpeg': '/api/books/content?id=77654&type=cover' },
+            download_count: 100,
+          },
+        ],
+      });
+
+      const firstRender = render(<BookReaderPage />);
+      expect(screen.getAllByText(/Cranford/i).length).toBeGreaterThanOrEqual(1);
+
+      fireEvent.click(screen.getByLabelText('Back to Catalog'));
+      fireEvent.click(screen.getByTestId('confirm-bookmark-and-exit-btn'));
+
+      expect(useReaderStore.getState().readingPositions[77654]).toMatchObject({
+        bookTitle: 'Cranford',
+        bookAuthors: ['Gaskell, Elizabeth, 1810-1865'],
+        coverUrl: '/api/books/content?id=77654&type=cover',
+      });
+      firstRender.unmount();
+
+      // 2. IndexedDB getOfflineBookRecord async fallback when shelf collections are empty
+      mockParams = { id: '77655' };
+      useReaderStore.setState({ currentBook: null, readingPositions: {}, readingProgress: {} });
+      useBookshelfStore.getState().clearBookshelf();
+      getOfflineSpy.mockResolvedValue({
+        bookId: 77655,
+        title: 'The Tenant of Wildfell Hall',
+        authors: [{ name: 'Bronte, Anne', birth_year: 1820, death_year: 1849 }],
+        downloadedAt: '2026-11-27T10:00:00.000Z',
+        byteSize: 2048,
+        text: multiPageNonHeaderText,
+      });
+
+      render(<BookReaderPage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/The Tenant of Wildfell Hall/i).length).toBeGreaterThanOrEqual(1);
+      });
+
+      fireEvent.click(screen.getByLabelText('Back to Catalog'));
+      fireEvent.click(screen.getByTestId('confirm-bookmark-and-exit-btn'));
+
+      expect(useReaderStore.getState().readingPositions[77655]).toMatchObject({
+        bookTitle: 'The Tenant of Wildfell Hall',
+        bookAuthors: ['Bronte, Anne, 1820-1849'],
+        coverUrl: '/api/books/content?id=77655&type=cover',
+      });
+    } finally {
+      getOfflineSpy.mockRestore();
+      vi.mocked(useBookContent).mockReturnValue({
+        data: chapterSampleText,
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useBookContent>);
+      mockUseBooks.mockReturnValue({
+        data: {
+          count: 1,
+          results: [mockBooks[0]],
+          source: 'supabase',
+        },
+        isLoading: false,
+      });
+    }
+  });
 });
 
 

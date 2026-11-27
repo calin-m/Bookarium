@@ -8,6 +8,10 @@ import {
   hasAuthorLifespans,
   formatReaderDocumentTitle,
 } from '@/lib/book-metadata';
+import {
+  hasAuthenticPositionTitle,
+  hasAuthenticPositionAuthors,
+} from '@/lib/reader-cloud-sync';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import type { SymposiumSessionRow } from '@/types/database.types';
@@ -90,6 +94,12 @@ export function useReaderHabitTelemetry({
 
     const existingRecent = useBookshelfStore.getState().recentBooks.find((b) => b.id === numericId);
     const existingRecentHasLifespans = hasAuthorLifespans(existingRecent?.authors);
+    const existingPosition = useReaderStore.getState().getReadingPosition(numericId);
+    const existingPosNeedsMetadata = Boolean(
+      existingPosition &&
+        (!hasAuthenticPositionTitle(existingPosition.bookTitle) ||
+          !hasAuthenticPositionAuthors(existingPosition.bookAuthors))
+    );
     const resolvedHasLifespans = hasAuthorLifespans(resolvedIdentity.authors);
 
     if (booksData?.results?.[0]) {
@@ -97,7 +107,8 @@ export function useReaderHabitTelemetry({
       const apiBookHasLifespans = hasAuthorLifespans(apiBook.authors);
       const needsEnrichment =
         initializedBookIdRef.current !== numericId ||
-        (!existingRecentHasLifespans && apiBookHasLifespans);
+        (!existingRecentHasLifespans && apiBookHasLifespans) ||
+        existingPosNeedsMetadata;
 
       if (needsEnrichment) {
         initializedBookIdRef.current = numericId;
@@ -113,9 +124,12 @@ export function useReaderHabitTelemetry({
     } else if (
       resolvedIdentity.title &&
       !isPlaceholderTitle(resolvedIdentity.title) &&
-      (!existingRecent || isPlaceholderTitle(existingRecent.title)) &&
+      (!existingRecent ||
+        isPlaceholderTitle(existingRecent.title) ||
+        existingPosNeedsMetadata) &&
       (initializedBookIdRef.current !== numericId ||
-        (resolvedHasLifespans && !existingRecentHasLifespans))
+        (resolvedHasLifespans && !existingRecentHasLifespans) ||
+        existingPosNeedsMetadata)
     ) {
       initializedBookIdRef.current = numericId;
       const bookObj: CatalogBook = {
@@ -135,11 +149,17 @@ export function useReaderHabitTelemetry({
         formats: buildR2BookFormats(numericId),
         download_count: 0,
       };
-      useBookshelfStore.getState().addRecentBook(bookObj);
+      if (
+        !existingRecent ||
+        isPlaceholderTitle(existingRecent.title) ||
+        (!existingRecentHasLifespans && resolvedHasLifespans)
+      ) {
+        useBookshelfStore.getState().addRecentBook(bookObj);
+      }
       useReaderStore.getState().openReader(bookObj);
+      useReaderStore.getState().enrichReadingPositions([bookObj]);
       if (resolvedHasLifespans) {
         useBookshelfStore.getState().enrichSavedBooks([bookObj]);
-        useReaderStore.getState().enrichReadingPositions([bookObj]);
       }
     }
   }, [numericId, booksData, resolvedIdentity, isContentError, refetch]);

@@ -1995,6 +1995,145 @@ describe('useReaderStore', () => {
         'https://cdn.example.com/custom-frankenstein.jpg'
       );
     });
+
+    it('protects authentic titles from placeholder overwrites, replaces placeholders when currentBook loads, and heals missing cloud metadata on sync', async () => {
+      // 1. Placeholder position.bookTitle never overwrites an existing authentic title when currentBook is absent
+      useReaderStore.setState({
+        currentBook: null,
+        readingPositions: {
+          84: {
+            chapterIndex: 0,
+            chapterPage: 2,
+            globalPage: 2,
+            lastReadAt: '2026-11-27T08:00:00.000Z',
+            bookTitle: 'Frankenstein',
+            bookAuthors: ['Shelley, Mary Wollstonecraft (1797-1851)'],
+          },
+        },
+      });
+      useReaderStore.getState().saveReadingPosition(84, {
+        chapterIndex: 1,
+        chapterPage: 3,
+        globalPage: 5,
+        lastReadAt: '2026-11-27T08:05:00.000Z',
+        bookTitle: 'Gutenberg Volume #84',
+      });
+      expect(useReaderStore.getState().readingPositions[84]?.bookTitle).toBe('Frankenstein');
+      expect(useReaderStore.getState().readingPositions[84]?.bookAuthors).toEqual([
+        'Shelley, Mary Wollstonecraft (1797-1851)',
+      ]);
+
+      // 2. Placeholder position title is upgraded when currentBook holds authentic metadata
+      useReaderStore.setState({
+        currentBook: {
+          ...mockBooks[1],
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+        },
+        readingPositions: {},
+      });
+      useReaderStore.getState().saveReadingPosition(84, {
+        chapterIndex: 0,
+        chapterPage: 4,
+        globalPage: 4,
+        lastReadAt: '2026-11-27T08:10:00.000Z',
+        bookTitle: 'Gutenberg Volume #84',
+      });
+      expect(useReaderStore.getState().readingPositions[84]?.bookTitle).toBe('Frankenstein');
+      expect(useReaderStore.getState().readingPositions[84]?.bookAuthors).toEqual([
+        'Shelley, Mary, 1797-1851',
+      ]);
+
+      // 3. enrichReadingPositions upgrades placeholder titles alongside missing authors and triggers cloud upsert
+      const upsertSpy = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ upsert: upsertSpy });
+      useReaderStore.setState({
+        readingPositions: {
+          4002: {
+            chapterIndex: 0,
+            chapterPage: 2,
+            globalPage: 2,
+            lastReadAt: '2026-11-27T08:15:00.000Z',
+            bookTitle: 'Gutenberg Volume #4002',
+            bookAuthors: [],
+          },
+        },
+      });
+      useReaderStore.getState().enrichReadingPositions([
+        {
+          ...mockBooks[0],
+          id: 4002,
+          title: 'The Project Gutenberg eBook of The Hound of the Baskervilles',
+          authors: [{ name: 'Doyle, Arthur Conan', birth_year: 1859, death_year: 1930 }],
+        },
+      ]);
+      expect(useReaderStore.getState().readingPositions[4002]?.bookTitle).toBe(
+        'The Hound of the Baskervilles'
+      );
+      expect(useReaderStore.getState().readingPositions[4002]?.bookAuthors).toEqual([
+        'Doyle, Arthur Conan, 1859-1930',
+      ]);
+
+      // 4. syncWithCloud preserves local non-lifespan metadata when newer cloud row has null title/empty authors and backfills cloud
+      useReaderStore.setState({
+        dirtyPositionBookIds: [],
+        deletedPositionBookIds: [],
+        lastReaderSyncAt: null,
+        readingPositions: {
+          900: {
+            chapterIndex: 1,
+            chapterPage: 1,
+            globalPage: 2,
+            lastReadAt: '2026-11-27T09:00:00.000Z',
+            bookTitle: 'Emma',
+            bookAuthors: ['Jane Austen'],
+          },
+        },
+        readingProgress: { 900: 15 },
+      });
+
+      const orderMock = vi.fn().mockResolvedValue({
+        data: [
+          {
+            book_id: 900,
+            book_title: null,
+            book_authors: [],
+            cover_url: null,
+            current_chapter_index: 2,
+            scroll_offset: 5,
+            progress_percent: 40,
+            bookmark_text: null,
+            last_read_at: '2026-11-27T11:00:00.000Z',
+          },
+        ],
+        error: null,
+      });
+      const cloudUpsert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({ order: orderMock }),
+        }),
+        upsert: cloudUpsert,
+      });
+
+      await useReaderStore.getState().syncWithCloud('user-meta-heal');
+
+      expect(useReaderStore.getState().readingPositions[900]).toMatchObject({
+        chapterIndex: 2,
+        chapterPage: 5,
+        bookTitle: 'Emma',
+        bookAuthors: ['Jane Austen'],
+      });
+      expect(cloudUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          book_id: 900,
+          book_title: 'Emma',
+          book_authors: ['Jane Austen'],
+        }),
+        { onConflict: 'user_id,book_id' }
+      );
+    });
   });
 });
 

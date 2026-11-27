@@ -4,7 +4,7 @@
  *        `isPlaceholderTitle`), canonical SERP title/excerpt formatters (`formatReaderDocumentTitle`,
  *        `truncateTextAtWordBoundary`, `resolveBookOpeningSnippet`), and multi-source book metadata resolution utilities.
  * @invariant Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata with placeholders.
- * @invariant Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
+ * @invariant Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `localBook` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
  * @rationale Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
  * @adr ADR-016, ADR-070, ADR-074
  */
@@ -33,6 +33,7 @@ export interface ResolveBookMetadataParams {
   id: number;
   currentBook?: CatalogBook | Book | null;
   booksData?: CatalogResponse | null;
+  localBook?: CatalogBook | Book | null;
   extractedMeta?: { title?: string; author?: string; language?: string } | null;
 }
 
@@ -180,6 +181,7 @@ export function resolveBookMetadata({
   id,
   currentBook,
   booksData,
+  localBook,
   extractedMeta,
 }: ResolveBookMetadataParams): ResolvedBookIdentity {
   const numericId = typeof id === 'number' ? id : parseInt(String(id), 10) || 0;
@@ -195,10 +197,14 @@ export function resolveBookMetadata({
   // Tier 3: REST API Query Results
   const apiBook = booksData?.results?.find((b: CatalogBook) => b.id === numericId);
 
-  // Author Resolution Priority: Store -> Fixture -> API -> Raw Text Header
+  // Tier 4: Local Collection / Offline Record Fallback (matched ID)
+  const matchedLocalBook = localBook?.id === numericId ? localBook : undefined;
+
+  // Author Resolution Priority: Store -> Fixture -> API -> Local Collection -> Raw Text Header
   const rawStoreAuthor = storeBook?.authors ? formatAuthorNames(storeBook.authors) : '';
   const rawFixtureAuthor = featuredFixture ? formatAuthorNames(featuredFixture.author) : '';
   const rawApiAuthor = apiBook?.authors ? formatAuthorNames(apiBook.authors) : '';
+  const rawLocalAuthor = matchedLocalBook?.authors ? formatAuthorNames(matchedLocalBook.authors) : '';
   let rawExtractedAuthor = extractedMeta?.author ? formatAuthorNames(extractedMeta.author) : '';
   if (rawExtractedAuthor) {
     rawExtractedAuthor = rawExtractedAuthor.replace(/^by\s+/i, '').trim();
@@ -208,67 +214,81 @@ export function resolveBookMetadata({
     (!isPlaceholderAuthor(rawStoreAuthor) ? rawStoreAuthor : '') ||
     (!isPlaceholderAuthor(rawFixtureAuthor) ? rawFixtureAuthor : '') ||
     (!isPlaceholderAuthor(rawApiAuthor) ? rawApiAuthor : '') ||
+    (!isPlaceholderAuthor(rawLocalAuthor) ? rawLocalAuthor : '') ||
     (!isPlaceholderAuthor(rawExtractedAuthor) ? rawExtractedAuthor : '') ||
     rawFixtureAuthor ||
     '';
 
-  // Title Resolution Priority: Store -> Fixture -> API -> Raw Text Header -> Fallback
+  // Title Resolution Priority: Store -> Fixture -> API -> Local Collection -> Raw Text Header -> Fallback
   const rawStoreTitle = cleanBookTitle(storeBook?.title);
   const rawFixtureTitle = cleanBookTitle(featuredFixture?.title);
   const rawApiTitle = cleanBookTitle(apiBook?.title);
+  const rawLocalTitle = cleanBookTitle(matchedLocalBook?.title);
   const rawExtractedTitle = cleanBookTitle(extractedMeta?.title);
 
   const candidateTitle =
     (!isPlaceholderTitle(rawStoreTitle) ? rawStoreTitle : '') ||
     (!isPlaceholderTitle(rawFixtureTitle) ? rawFixtureTitle : '') ||
     (!isPlaceholderTitle(rawApiTitle) ? rawApiTitle : '') ||
+    (!isPlaceholderTitle(rawLocalTitle) ? rawLocalTitle : '') ||
     (!isPlaceholderTitle(rawExtractedTitle) ? rawExtractedTitle : '') ||
     rawFixtureTitle ||
     rawStoreTitle ||
     rawApiTitle ||
+    rawLocalTitle ||
     rawExtractedTitle ||
     (numericId > 0 ? `Gutenberg Volume #${numericId}` : 'Public Domain Classic');
 
   const resolvedTitle = cleanBookTitle(candidateTitle);
 
+  const filterNonEmptyStrings = (values?: unknown): string[] =>
+    Array.isArray(values)
+      ? values.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      : [];
+
   // Primary Subject, Subjects & Curated Bookshelves
-  const storeSubjects = Array.isArray(storeBook?.subjects)
-    ? storeBook.subjects.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
-    : [];
-  const apiSubjects = Array.isArray(apiBook?.subjects)
-    ? apiBook.subjects.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
-    : [];
+  const storeSubjects = filterNonEmptyStrings(storeBook?.subjects);
+  const apiSubjects = filterNonEmptyStrings(apiBook?.subjects);
+  const localSubjects = filterNonEmptyStrings(matchedLocalBook?.subjects);
   const resolvedSubjects =
     storeSubjects.length > 0
       ? storeSubjects
       : apiSubjects.length > 0
       ? apiSubjects
+      : localSubjects.length > 0
+      ? localSubjects
       : featuredFixture?.primarySubject
       ? [featuredFixture.primarySubject]
       : [];
 
-  const rawStoreBookshelves =
-    storeBook && 'bookshelves' in storeBook && Array.isArray(storeBook.bookshelves)
-      ? storeBook.bookshelves
+  const storeBookshelves =
+    storeBook && 'bookshelves' in storeBook ? filterNonEmptyStrings(storeBook.bookshelves) : [];
+  const apiBookshelves = filterNonEmptyStrings(apiBook?.bookshelves);
+  const localBookshelves =
+    matchedLocalBook && 'bookshelves' in matchedLocalBook
+      ? filterNonEmptyStrings(matchedLocalBook.bookshelves)
       : [];
-  const storeBookshelves = rawStoreBookshelves.filter(
-    (b): b is string => typeof b === 'string' && b.trim().length > 0
-  );
-  const apiBookshelves = Array.isArray(apiBook?.bookshelves)
-    ? apiBook.bookshelves.filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
-    : [];
-  const resolvedBookshelves = storeBookshelves.length > 0 ? storeBookshelves : apiBookshelves;
+  const resolvedBookshelves =
+    storeBookshelves.length > 0
+      ? storeBookshelves
+      : apiBookshelves.length > 0
+      ? apiBookshelves
+      : localBookshelves;
 
   const primarySubject =
     (storeSubjects.length > 0 && formatPrimarySubject(storeSubjects)) ||
     featuredFixture?.primarySubject ||
     (apiSubjects.length > 0 && formatPrimarySubject(apiSubjects)) ||
+    (localSubjects.length > 0 && formatPrimarySubject(localSubjects)) ||
     'Classic Literature';
 
-  // Languages Resolution Priority: Store (matching ID) -> API Result -> Raw Header Extraction -> Fallback ['en']
+  // Languages Resolution Priority: Store (matching ID) -> API Result -> Local Collection -> Raw Header Extraction -> Fallback ['en']
   const resolvedLanguages =
     (storeBook?.languages && storeBook.languages.length > 0 ? storeBook.languages : undefined) ||
     (apiBook?.languages && apiBook.languages.length > 0 ? apiBook.languages : undefined) ||
+    (matchedLocalBook?.languages && matchedLocalBook.languages.length > 0
+      ? matchedLocalBook.languages
+      : undefined) ||
     (extractedMeta?.language ? [extractedMeta.language] : undefined) ||
     ['en'];
 
@@ -296,23 +316,28 @@ export function resolveBookMetadata({
     return a;
   };
 
-  const storeAuthorDetails =
-    storeBook && 'authorDetails' in storeBook && Array.isArray(storeBook.authorDetails) && storeBook.authorDetails.length > 0
-      ? storeBook.authorDetails.map(toAuthorWithParsedLifespans)
-      : undefined;
+  const extractNormalizedBookAuthors = (book?: CatalogBook | Book | null): Author[] | undefined => {
+    if (!book) return undefined;
+    if ('authorDetails' in book && Array.isArray(book.authorDetails) && book.authorDetails.length > 0) {
+      return book.authorDetails.map(toAuthorWithParsedLifespans);
+    }
+    if (book.authors && book.authors.length > 0) {
+      return book.authors.map(toAuthorWithParsedLifespans);
+    }
+    return undefined;
+  };
 
-  const storeNormalizedAuthors =
-    storeAuthorDetails ||
-    (storeBook?.authors && storeBook.authors.length > 0
-      ? storeBook.authors.map(toAuthorWithParsedLifespans)
-      : undefined);
+  const storeNormalizedAuthors = extractNormalizedBookAuthors(storeBook);
+  const localNormalizedAuthors = extractNormalizedBookAuthors(matchedLocalBook);
 
-  // Tier A: If apiBook has authors with lifespans (or no fixture/store has lifespans)
+  // Tier A: If apiBook has authors with lifespans (or no fixture/store/local has lifespans)
   if (
     apiBook?.authors &&
     apiBook.authors.length > 0 &&
     (apiBook.authors.some((a) => a.birth_year != null || a.death_year != null) ||
-      (!storeNormalizedAuthors?.some((a) => a.birth_year != null || a.death_year != null) && !featuredFixture))
+      (!storeNormalizedAuthors?.some((a) => a.birth_year != null || a.death_year != null) &&
+        !localNormalizedAuthors?.some((a) => a.birth_year != null || a.death_year != null) &&
+        !featuredFixture))
   ) {
     resolvedAuthors = apiBook.authors.map(toAuthorWithParsedLifespans);
     resolvedTranslators = apiBook.translators || [];
@@ -337,12 +362,24 @@ export function resolveBookMetadata({
     ];
     resolvedTranslators = [];
   }
-  // Tier D: Fallback to storeBook if present
+  // Tier D: Local shelf / offline book with contributor lifespans
+  else if (
+    localNormalizedAuthors &&
+    localNormalizedAuthors.length > 0 &&
+    localNormalizedAuthors.some((a) => a.birth_year != null || a.death_year != null)
+  ) {
+    resolvedAuthors = localNormalizedAuthors;
+    resolvedTranslators = (matchedLocalBook as CatalogBook)?.translators || [];
+  }
+  // Tier E: Fallback to storeBook or localBook if present
   else if (storeNormalizedAuthors && storeNormalizedAuthors.length > 0) {
     resolvedAuthors = storeNormalizedAuthors;
     resolvedTranslators = (storeBook as CatalogBook)?.translators || [];
+  } else if (localNormalizedAuthors && localNormalizedAuthors.length > 0) {
+    resolvedAuthors = localNormalizedAuthors;
+    resolvedTranslators = (matchedLocalBook as CatalogBook)?.translators || [];
   }
-  // Tier E: Plain resolvedAuthor string
+  // Tier F: Plain resolvedAuthor string
   else if (resolvedAuthor) {
     resolvedAuthors = [toAuthorWithParsedLifespans(resolvedAuthor)];
     resolvedTranslators = [];

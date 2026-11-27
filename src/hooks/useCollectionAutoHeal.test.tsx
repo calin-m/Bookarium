@@ -526,5 +526,71 @@ describe('useCollectionAutoHeal', () => {
     expect(result.current.missingFavoriteIds).toEqual([]);
     expect(result.current.incompleteSavedIds).toEqual([]);
   });
+
+  it('heals sparse readingPositions from local collections without network requests and flags placeholder titles', () => {
+    useBookshelfStore.setState({
+      favoriteBookIds: [],
+      favoriteBooks: [],
+      savedBooks: [
+        {
+          ...mockCompleteBook,
+          id: 9201,
+          title: 'Local Shelf Monograph',
+          authors: [{ name: 'Edgeworth, Maria', birth_year: 1768, death_year: 1849 }],
+        },
+      ],
+      recentBooks: [],
+    });
+
+    useReaderStore.setState({
+      readingPositions: {
+        9201: {
+          chapterIndex: 1,
+          chapterPage: 4,
+          globalPage: 9,
+          lastReadAt: '2026-11-27T09:00:00Z',
+          bookAuthors: [],
+        },
+        9202: {
+          chapterIndex: 0,
+          chapterPage: 3,
+          globalPage: 3,
+          lastReadAt: '2026-11-27T09:05:00Z',
+          bookTitle: 'Gutenberg Volume #9202',
+          bookAuthors: ['Austen, Jane (1775-1817)'],
+        },
+      },
+    });
+
+    const { result, rerender } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    // 9201 healed synchronously from local savedBooks with zero API lookup; 9202 queued for placeholder title healing
+    expect(useReaderStore.getState().readingPositions[9201]?.bookTitle).toBe(
+      'Local Shelf Monograph'
+    );
+    expect(useReaderStore.getState().readingPositions[9201]?.bookAuthors).toEqual([
+      'Edgeworth, Maria, 1768-1849',
+    ]);
+    expect(result.current.incompleteSavedIds).toEqual([9202]);
+
+    mockUseBooks.mockReturnValue({
+      data: {
+        results: [
+          {
+            ...mockCompleteBook,
+            id: 9202,
+            title: 'Northanger Abbey',
+            authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    rerender();
+
+    expect(useReaderStore.getState().readingPositions[9202]?.bookTitle).toBe('Northanger Abbey');
+  });
 });
 

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useReaderHabitTelemetry } from './useReaderHabitTelemetry';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
+import type { CatalogResponse } from '@/types/book.types';
 
 describe('useReaderHabitTelemetry', () => {
   beforeEach(() => {
@@ -271,5 +272,132 @@ describe('useReaderHabitTelemetry', () => {
       })
     );
     expect(setReadingStatus).toHaveBeenCalledWith(1342, 'currently_reading', 'user-1');
+  });
+
+  it('heals sparse readingPositions from header fallback without lifespans and from late-arriving API books', () => {
+    // 1. Offline / header-only metadata lacking numeric lifespans still heals sparse readingPositions
+    useBookshelfStore.setState({ recentBooks: [], savedBooks: [], favoriteBooks: [] });
+    useReaderStore.setState({
+      readingPositions: {
+        9901: {
+          chapterIndex: 0,
+          chapterPage: 3,
+          globalPage: 3,
+          lastReadAt: '2026-11-27T10:00:00.000Z',
+        },
+      },
+    });
+
+    const baseProps = {
+      userId: 'user-heal-1',
+      isContentLoading: false,
+      isContentError: false,
+      contentText: 'Sample opening chapter text',
+      isPlayingTTS: false,
+      isAtEnd: false,
+      readingStatus: null,
+      setReadingStatus: vi.fn(),
+      symposiums: [],
+      activeChapterIndex: 0,
+      currentChapterPage: 1,
+      currentGlobalPage: 1,
+      bookmarkRow: 0,
+      volumeProgress: 0,
+      syncSymposiumProgress: vi.fn(),
+      refetch: vi.fn(),
+      updateBookMetadata: vi.fn(),
+    };
+
+    renderHook(() =>
+      useReaderHabitTelemetry({
+        ...baseProps,
+        numericId: 9901,
+        booksData: undefined,
+        resolvedIdentity: {
+          id: 9901,
+          title: 'Letters from the Frontier',
+          author: 'Clara Vance',
+          displayAuthor: 'Clara Vance',
+          authors: [{ name: 'Clara Vance', birth_year: null, death_year: null }],
+          translators: [],
+          primarySubject: 'History',
+          subjects: ['History'],
+          bookshelves: [],
+          languages: ['en'],
+          isPublicDomain: true,
+        },
+      })
+    );
+
+    expect(useReaderStore.getState().readingPositions[9901]).toMatchObject({
+      bookTitle: 'Letters from the Frontier',
+      bookAuthors: ['Clara Vance'],
+    });
+
+    // 2. Late-arriving booksData without lifespans heals sparse readingPositions after header initialization
+    useReaderStore.setState({ readingPositions: {} });
+    const { rerender } = renderHook(
+      (props: { booksData?: CatalogResponse }) =>
+        useReaderHabitTelemetry({
+          ...baseProps,
+          numericId: 9902,
+          booksData: props.booksData,
+          resolvedIdentity: {
+            id: 9902,
+            title: 'Late Monograph',
+            author: '',
+            displayAuthor: 'Public Domain Classic',
+            authors: [],
+            translators: [],
+            primarySubject: 'Classic Literature',
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            isPublicDomain: true,
+          },
+        }),
+      { initialProps: { booksData: undefined as CatalogResponse | undefined } }
+    );
+
+    act(() => {
+      useReaderStore.setState({
+        readingPositions: {
+          9902: {
+            chapterIndex: 0,
+            chapterPage: 3,
+            globalPage: 3,
+            lastReadAt: '2026-11-27T10:05:00.000Z',
+          },
+        },
+      });
+    });
+
+    rerender({
+      booksData: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 9902,
+            title: 'Late Monograph',
+            authors: [{ name: 'Archival Essayist', birth_year: null, death_year: null }],
+            translators: [],
+            subjects: ['Essays'],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 10,
+          },
+        ],
+      },
+    });
+
+    expect(useReaderStore.getState().readingPositions[9902]).toMatchObject({
+      bookTitle: 'Late Monograph',
+      bookAuthors: ['Archival Essayist'],
+    });
   });
 });

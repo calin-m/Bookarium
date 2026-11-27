@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.90] - 2026-11-27
+### *Reading Progress Title & Author Preservation, Offline Metadata Fallback & Zero-Extra-Query Cloud Backfill*
+
+### Fixed
+- **Reading Progress Title & Author Preservation and Zero-Waste Healing (`src/lib/reader-cloud-sync.ts`, `src/lib/book-metadata.ts`, `src/stores/useReaderStore.ts`, `src/stores/useBookshelfStore.ts`, `src/components/reader/BookReaderClient.tsx`, `src/hooks/reader/useReaderSession.ts`, `src/hooks/reader/useReaderExitBookmark.ts`, `src/hooks/reader/useReaderHabitTelemetry.ts`, `src/hooks/useCollectionAutoHeal.ts`, `src/hooks/reader/useContinueReadingLedger.ts`)**: Eliminated empty/placeholder `book_title` and `book_authors` writes in `public.reading_progress` via cycle-safe shared metadata helpers (`extractBookPositionMetadata`, `hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), placeholder-title replacement in `saveReadingPosition`/`enrichReadingPositions`, `shouldHealRemoteMetadata` backfill in `syncWithCloud`, local shelf + conditional IndexedDB `getOfflineBookRecord` resolution forwarded from `BookReaderClient` into session/exit hooks, un-gated telemetry enrichment, and zero-network local auto-heal fast-path (`ADR-070`, `ADR-080`).
+
+
 ## [2.9.89] - 2026-11-27
 ### *Anti-Drift Legal Governance, Hardened Rule 9 AST Parity & Dynamic Pass 5 Verification*
 

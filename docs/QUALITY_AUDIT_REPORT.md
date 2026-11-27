@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 27 Nov 2026 17:39:35 GMT  
+**Last Generated**: Fri, 27 Nov 2026 19:41:05 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2864 passed  
+**Total Verified Tests**: 2874 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2864 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2874 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.38%** (17893/18373) — *Target: $\ge$ 95%*
-- **Statements**: **96.01%** (19242/20041) — *Target: $\ge$ 95%*
-- **Functions**: **94.96%** (3734/3932) — *Target: $\ge$ 92%*
-- **Branches**: **88.34%** (17827/20179) — *Target: $\ge$ 85%*
+- **Lines**: **97.36%** (17992/18478) — *Target: $\ge$ 95%*
+- **Statements**: **95.99%** (19349/20156) — *Target: $\ge$ 95%*
+- **Functions**: **94.91%** (3753/3954) — *Target: $\ge$ 92%*
+- **Branches**: **88.27%** (18016/20409) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2864 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2874 Tests)
 
 ### 🚀 App Routes & Pages (34 Suites · 291 Tests)
 
@@ -1362,10 +1362,10 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (24 Suites · 261 Tests)
+### 📖 In-Browser Focus Reader (24 Suites · 262 Tests)
 
 <details>
-<summary><b><code>src/components/reader/BookReaderClient.test.tsx</code></b> (52 tests)</summary>
+<summary><b><code>src/components/reader/BookReaderClient.test.tsx</code></b> (53 tests)</summary>
 
 - ✔ `renders SSR initialBook heading and opening excerpt inside loading state before text stream finishes`
 - ✔ `renders header, reading surface, and sticky footer with metadata`
@@ -1419,6 +1419,7 @@
 - ✔ `syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences`
 - ✔ `surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows`
 - ✔ `allows adjusting an existing personal highlight selection via Crop button, previews without saving on Cancel, and persists resized text on Save`
+- ✔ `resolves metadata from local shelf collections and IndexedDB offline records during direct client navigation`
 
 </details>
 
@@ -1822,7 +1823,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 250 Tests)
+### ⚡ Zustand State Stores (10 Suites · 252 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1950,7 +1951,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (51 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (52 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -1990,6 +1991,7 @@
 - ✔ `syncs curation from cloud and merges with local guest ratings`
 - ✔ `resets curation upon clearBookshelf`
 - ✔ `synchronizes reading progress to 100% in reader store when marked finished`
+- ✔ `enriches sparse readingPositions from local shelf collections when marked finished`
 - ✔ `tracks mutation timestamps in curationHistory`
 - ✔ `preserves newer local offline curation over older cloud records via LWW`
 - ✔ `manages deletedBookIds tombstones and suppresses ghost resurrection during syncWithCloud`
@@ -2079,7 +2081,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (36 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (37 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -2117,6 +2119,7 @@
 - ✔ `guards against cross-device clock skew, handles enrichReadingPositions batch dirty recovery, and resets session watermark on resetReaderSession`
 - ✔ `scrubs 0% Page-1 ghost positions from dirtyPositionBookIds across save, restart debounce, and early syncWithCloud while protecting concurrent real edits`
 - ✔ `sanitizes legacy Gutenberg cover URLs in readingPositions on rehydration while preserving custom URLs`
+- ✔ `protects authentic titles from placeholder overwrites, replaces placeholders when currentBook loads, and heals missing cloud metadata on sync`
 
 </details>
 
@@ -2134,7 +2137,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (61 Suites · 768 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 770 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2236,7 +2239,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
@@ -2256,6 +2259,7 @@
 - ✔ `evaluates hasAuthorLifespans for both numeric fields and embedded name lifespans`
 - ✔ `converts a FeaturedHeroBook into a canonical CatalogBook with default and custom overrides`
 - ✔ `formats keyword-first SEO reader titles, truncates cleanly at word boundaries, and resolves opening snippets`
+- ✔ `falls back to localBook collection or offline metadata ahead of extracted headers while preserving lifespans`
 
 </details>
 
@@ -2724,10 +2728,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-cloud-sync.test.ts</code></b> (2 tests)</summary>
+<summary><b><code>src/lib/reader-cloud-sync.test.ts</code></b> (3 tests)</summary>
 
 - ✔ `identifies ghost reading positions and ghost cloud rows`
 - ✔ `decodes remote reading positions and preserves local lifespans when remote lacks them`
+- ✔ `extracts position metadata cleanly and flags shouldHealRemoteMetadata when cloud lacks title or authors`
 
 </details>
 
@@ -3270,7 +3275,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 352 Tests)
+### 🔄 Hooks & React Query (36 Suites · 357 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (19 tests)</summary>
@@ -3354,7 +3359,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (31 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (32 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -3387,6 +3392,7 @@
 - ✔ `heals authorDetails from readingPositions with embedded lifespans when book has empty authors`
 - ✔ `preserves existing authors and translators when candidate from offline has anonymous author and empty translators`
 - ✔ `covers bookmarkRow inclusion at 0% progress, position authorDetails healing on anonymous book, and Public Domain Author fallbacks`
+- ✔ `queues positions with placeholder bookTitle into missingIds so authentic titles hydrate`
 
 </details>
 
@@ -3424,7 +3430,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderExitBookmark.test.ts</code></b> (20 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderExitBookmark.test.ts</code></b> (21 tests)</summary>
 
 - ✔ `returns false when existingPos is null, undefined, or lacks a placed bookmark`
 - ✔ `returns true when a placed bookmark exists in a later chapter`
@@ -3446,6 +3452,7 @@
 - ✔ `falls back to router.push("/") when window.history.length <= 1`
 - ✔ `prioritizes closing open drawers on handleHeaderBack and Escape key before opening the exit modal`
 - ✔ `strips duplicate Page 1 chapter headings and resolves scrolled viewport row with immediateCloudSync on confirm`
+- ✔ `persists caller-supplied bookMetadata when confirming exit bookmark without hydrated currentBook`
 
 </details>
 
@@ -3467,16 +3474,17 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderHabitTelemetry.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `transitions reading status to currently_reading on start and finished at end, and derives symposium companion milestones`
 - ✔ `enriches stores from booksData, auto-retries refetch once on content error when lifespans arrive, updates document.title, and derives fellow-side symposium progress`
 - ✔ `gates currently_reading auto-transition to active engagement (page >= 3, chapter > 0, bookmark placed)`
+- ✔ `heals sparse readingPositions from header fallback without lifespans and from late-arriving API books`
 
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (18 tests)</summary>
+<summary><b><code>src/hooks/reader/useReaderSession.test.ts</code></b> (19 tests)</summary>
 
 - ✔ `initializes on chapter 0 and page 1`
 - ✔ `handles next and previous page transitions across chapters`
@@ -3496,6 +3504,7 @@
 - ✔ `supports initialPosition override, scroll mode content, dynamic pagination fallback, within-chapter prevPage, and dismissResumeNotice`
 - ✔ `preserves localPos.lastReadAt on passive restore and adopts a newer cloud bookmark from another device`
 - ✔ `exposes decoupled pinnedBookmark coordinates across page turns, clear, and restart`
+- ✔ `persists caller-supplied bookMetadata during Page 3+ saves and restart when currentBook is unset`
 
 </details>
 
@@ -3625,7 +3634,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -3640,6 +3649,7 @@
 - ✔ `detects and heals incomplete fellowAnnotations and active symposiums lacking author lifespans`
 - ✔ `disables upstream network query when device is offline`
 - ✔ `recognizes embedded lifespans in book.authors, recentBooks, and readingPositions and skips hero books in favoriteBooks`
+- ✔ `heals sparse readingPositions from local collections without network requests and flags placeholder titles`
 
 </details>
 

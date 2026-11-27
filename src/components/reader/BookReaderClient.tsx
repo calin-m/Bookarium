@@ -19,7 +19,13 @@ import {
   truncateTextAtWordBoundary,
   hasAuthorLifespans,
   isPlaceholderTitle,
+  isPlaceholderAuthor,
 } from '@/lib/book-metadata';
+import {
+  extractBookPositionMetadata,
+  hasAuthenticPositionTitle,
+} from '@/lib/reader-cloud-sync';
+import { getOfflineBookRecord, type OfflineBookRecord } from '@/lib/offline-storage';
 import { resolveBookTags } from '@/lib/book-tags';
 import {
   findCanonicalTextSpan,
@@ -63,7 +69,7 @@ import { useHydratedFellowship } from '@/stores/useFellowshipStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore, useBookRating, useReadingStatus } from '@/stores/useBookshelfStore';
 import { ROUTES } from '@/config/routes';
-import type { CatalogBook } from '@/types/book.types';
+import type { Book, CatalogBook } from '@/types/book.types';
 
 export interface BookReaderClientProps {
   initialBook?: CatalogBook | null;
@@ -275,7 +281,24 @@ function BookReaderContent({ initialBook = null }: BookReaderClientProps) {
 
   // Queries
   const { data: contentText, isLoading: isContentLoading, isError: isContentError, error: contentError, refetch } = useBookContent(undefined, numericId);
+  const { savedBooks, favoriteBooks, recentBooks } = useBookshelfStore(
+    useShallow((s) => ({
+      savedBooks: s.savedBooks,
+      favoriteBooks: s.favoriteBooks,
+      recentBooks: s.recentBooks,
+    }))
+  );
   const matchingInitialBook = initialBook && initialBook.id === numericId ? initialBook : null;
+  const localShelfBook = useMemo(() => {
+    if (numericId <= 0) return null;
+    return (
+      favoriteBooks.find((b) => b.id === numericId) ??
+      savedBooks.find((b) => b.id === numericId) ??
+      recentBooks.find((b) => b.id === numericId) ??
+      null
+    );
+  }, [numericId, favoriteBooks, savedBooks, recentBooks]);
+  const [offlineRecord, setOfflineRecord] = useState<OfflineBookRecord | null>(null);
   const hasCompleteCurrentBook = Boolean(
     currentBook &&
       currentBook.id === numericId &&
@@ -312,19 +335,113 @@ function BookReaderContent({ initialBook = null }: BookReaderClientProps) {
     return fetchedBooksData;
   }, [fetchedBooksData, matchingInitialBook, numericId]);
 
-  // Multi-tier metadata resolution: Client Store -> Fixture -> SSR/API Result -> Raw Gutenberg Header Extraction
+  // Multi-tier metadata resolution: Client Store -> Fixture -> SSR/API Result -> Local Collection/Offline Record -> Raw Gutenberg Header Extraction
   const extractedMeta = useMemo(() => {
     return extractGutenbergHeaderMetadata(contentText);
   }, [contentText]);
+
+  const hasSynchronousIdentity = useMemo(() => {
+    const syncIdentity = resolveBookMetadata({
+      id: numericId,
+      currentBook,
+      booksData,
+      localBook: localShelfBook,
+      extractedMeta,
+    });
+    return (
+      !isPlaceholderTitle(syncIdentity.title) &&
+      !isPlaceholderAuthor(syncIdentity.author)
+    );
+  }, [numericId, currentBook, booksData, localShelfBook, extractedMeta]);
+
+  useEffect(() => {
+    if (
+      numericId <= 0 ||
+      hasSynchronousIdentity ||
+      typeof getOfflineBookRecord !== 'function'
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    void Promise.resolve(getOfflineBookRecord(numericId))
+      .then((record) => {
+        if (!cancelled && record && record.bookId === numericId) {
+          setOfflineRecord(record);
+        }
+      })
+      .catch(() => {
+        // IndexedDB may be unavailable in restricted environments
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [numericId, hasSynchronousIdentity]);
+
+  const offlineLocalBook = useMemo<Book | null>(() => {
+    if (!offlineRecord || offlineRecord.bookId !== numericId) return null;
+    const normalizedAuthors = (offlineRecord.authors || [])
+      .map((a) => (typeof a === 'string' ? a : a?.name))
+      .filter((name): name is string => Boolean(name));
+    return {
+      id: offlineRecord.bookId,
+      title: offlineRecord.title,
+      authors: normalizedAuthors,
+      authorDetails: offlineRecord.authors || [],
+      subjects: [],
+      languages: ['en'],
+      coverUrl: null,
+      epubUrl: null,
+      htmlUrl: null,
+      txtUrl: null,
+      downloadCount: 0,
+    };
+  }, [offlineRecord, numericId]);
+
+  const resolvedLocalBook = localShelfBook ?? offlineLocalBook;
 
   const resolvedIdentity = useMemo(() => {
     return resolveBookMetadata({
       id: numericId,
       currentBook,
       booksData,
+      localBook: resolvedLocalBook,
       extractedMeta,
     });
-  }, [numericId, currentBook, booksData, extractedMeta]);
+  }, [numericId, currentBook, booksData, resolvedLocalBook, extractedMeta]);
+
+  const positionBookMetadata = useMemo(() => {
+    const currentBookCover =
+      currentBook?.id === numericId
+        ? ('formats' in currentBook ? currentBook.formats?.['image/jpeg'] : undefined) ??
+          ('coverUrl' in currentBook ? currentBook.coverUrl : undefined) ??
+          null
+        : null;
+    const apiCover =
+      booksData?.results?.find((b) => b.id === numericId)?.formats?.['image/jpeg'] ??
+      localShelfBook?.formats?.['image/jpeg'] ??
+      matchingInitialBook?.formats?.['image/jpeg'] ??
+      null;
+    const primaryMeta = extractBookPositionMetadata(numericId, {
+      id: numericId,
+      title: resolvedIdentity.title,
+      authors: resolvedIdentity.authors,
+      coverUrl: apiCover ?? currentBookCover,
+    });
+    return hasAuthenticPositionTitle(primaryMeta.bookTitle) ||
+      (primaryMeta.bookAuthors && primaryMeta.bookAuthors.length > 0)
+      ? primaryMeta
+      : undefined;
+  }, [
+    numericId,
+    resolvedIdentity.title,
+    resolvedIdentity.authors,
+    booksData,
+    localShelfBook,
+    currentBook,
+    matchingInitialBook,
+  ]);
 
   const bookTitle = resolvedIdentity.title;
   const bookAuthor = resolvedIdentity.author;
@@ -436,6 +553,7 @@ function BookReaderContent({ initialBook = null }: BookReaderClientProps) {
     readingMode,
     readingStatus,
     initialPosition,
+    bookMetadata: positionBookMetadata,
   });
 
   // Handle URL annotation navigation once chapters are populated
@@ -738,6 +856,7 @@ function BookReaderContent({ initialBook = null }: BookReaderClientProps) {
     closeAllDrawers: handleCloseAllDrawers,
     setReadingStatus,
     setBookmarkRow,
+    bookMetadata: positionBookMetadata,
   });
 
   // Reset any residual outer window scroll when entering the full-viewport reader

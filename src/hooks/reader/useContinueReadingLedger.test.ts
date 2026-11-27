@@ -1077,5 +1077,30 @@ describe('useContinueReadingLedger', () => {
     mockOfflineBooks = [];
     mockOfflineBookIds = [];
   });
+
+  it('queues positions with placeholder bookTitle into missingIds so authentic titles hydrate', async () => {
+    act(() => {
+      useBookshelfStore.setState({ savedBooks: [], favoriteBooks: [], recentBooks: [] });
+      useReaderStore.setState({
+        readingProgress: { 55179: 35 },
+        readingPositions: {
+          55179: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 4,
+            lastReadAt: '2026-11-27T10:00:00Z',
+            bookTitle: 'Gutenberg Volume #55179',
+            bookAuthors: ['Chambers, Robert W.'],
+          },
+        },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+
+    await waitFor(() => {
+      expect(result.current.volumes[0]?.book.title).toBe('The King in Yellow');
+    });
+  });
 });
 

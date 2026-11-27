@@ -187,13 +187,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Canonical bibliographic identity normalization, placeholder guard predicates (`isPlaceholderAuthor`, `isPlaceholderTitle`), canonical SERP title/excerpt formatters (`formatReaderDocumentTitle`, `truncateTextAtWordBoundary`, `resolveBookOpeningSnippet`), and multi-source book metadata resolution utilities.
 - **Behavioral Invariants (`@invariant`)**:
   - Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata with placeholders.
-  - Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
+  - Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `localBook` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
 - **Design Rationale (`@rationale`)**:
   - Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-074](DECISIONS.md)
 - **AST Blast Radius**: 21 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/book-metadata.test.ts`](../src/lib/book-metadata.test.ts) (18 tests)
+- **Test Contract**: [`src/lib/book-metadata.test.ts`](../src/lib/book-metadata.test.ts) (19 tests)
 
 #### [`src/lib/book-sorting.ts`](../src/lib/book-sorting.ts) *(Tier-1 Protected)*
 
@@ -359,7 +359,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Cross-origin Service Worker image caching triggers CSP `connect-src`/CORS failures, whereas a bounded canonical `bookId`-keyed IndexedDB cover cache using single-transaction reads and browser HTTP cache reuse prevents repeat downloads across refreshes behind `/api/books/content?type=cover` (Cloudflare R2) while reverting offline authors to `"Anonymous"` would cause false `HTTP 451` copyright blocks outside US jurisdictions.
 - **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 7 runtime, 0 type-only ([`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx), [`src/hooks/queries/useBookContent.ts`](../src/hooks/queries/useBookContent.ts), [`src/hooks/useCollectionAutoHeal.ts`](../src/hooks/useCollectionAutoHeal.ts), [`src/hooks/useOfflineBooks.ts`](../src/hooks/useOfflineBooks.ts), …)
+- **AST Blast Radius**: 8 runtime, 0 type-only ([`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx), [`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/hooks/queries/useBookContent.ts`](../src/hooks/queries/useBookContent.ts), [`src/hooks/useCollectionAutoHeal.ts`](../src/hooks/useCollectionAutoHeal.ts), …)
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `BookariumOfflineDB`
 - **Test Contract**: [`src/lib/offline-storage.test.ts`](../src/lib/offline-storage.test.ts) (22 tests)
 
@@ -454,16 +454,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/reader-cloud-sync.ts`](../src/lib/reader-cloud-sync.ts) *(Tier-2 Protected)*
 
-- **Intended Scope (`@scope`)**: Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, and lifespan-preserving author extraction for `public.reading_progress`.
+- **Intended Scope (`@scope`)**: Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, position metadata extraction, and lifespan-preserving reconciliation for `public.reading_progress`.
 - **Behavioral Invariants (`@invariant`)**:
   - Encode row bookmark offsets fractionally on `scroll_offset` (`page + row / 1000`) alongside reflow-anchored `bookmark_text`, and identify empty Page-1 rows cleanly via `isGhostReadingPosition` / `isGhostCloudRow`.
-  - Preserve embedded contributor lifespans (`hasEmbeddedLifespans`) when merging remote rows so missing remote death years never strip local public domain dates (`extractVerifiedAuthors`).
+  - Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), preserve local titles/authors when remote `public.reading_progress` rows lack them (`shouldHealRemoteMetadata`), and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
 - **Design Rationale (`@rationale`)**:
-  - Shared row encoding and ghost classification let `useReaderStore` batch/prune cloud progress identically across mobile and desktop clients without `HTTP 451` lifespan regressions.
+  - Shared row encoding, zero-cycle metadata extraction, and ghost classification keep `public.reading_progress` titles/authors intact across direct navigation, offline reads, and multi-device syncs without `HTTP 451` lifespan regressions.
 - **Governing Decisions (`@adr`)**: [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/stores/useReaderStore.ts`](../src/stores/useReaderStore.ts))
+- **AST Blast Radius**: 6 runtime, 2 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/hooks/reader/useContinueReadingLedger.ts`](../src/hooks/reader/useContinueReadingLedger.ts), [`src/hooks/reader/useReaderHabitTelemetry.ts`](../src/hooks/reader/useReaderHabitTelemetry.ts), [`src/hooks/useCollectionAutoHeal.ts`](../src/hooks/useCollectionAutoHeal.ts), [`src/hooks/reader/useReaderExitBookmark.ts`](../src/hooks/reader/useReaderExitBookmark.ts) *(type)*, [`src/hooks/reader/useReaderSession.ts`](../src/hooks/reader/useReaderSession.ts) *(type)*, …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/reader-cloud-sync.test.ts`](../src/lib/reader-cloud-sync.test.ts) (2 tests)
+- **Test Contract**: [`src/lib/reader-cloud-sync.test.ts`](../src/lib/reader-cloud-sync.test.ts) (3 tests)
 
 #### [`src/lib/redirect-sanitizer.ts`](../src/lib/redirect-sanitizer.ts) *(Tier-2 Protected)*
 
@@ -649,7 +649,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 26 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.user_book_curation`, `public.user_favorites` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `bookarium-bookshelf-storage`
-- **Test Contract**: [`src/stores/useBookshelfStore.test.ts`](../src/stores/useBookshelfStore.test.ts) (51 tests)
+- **Test Contract**: [`src/stores/useBookshelfStore.test.ts`](../src/stores/useBookshelfStore.test.ts) (52 tests)
 
 #### [`src/stores/useFellowshipStore.ts`](../src/stores/useFellowshipStore.ts) *(Tier-2 Protected)*
 
@@ -708,14 +708,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
 - **Behavioral Invariants (`@invariant`)**:
   - Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
-  - Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`).
+  - Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`), never replace authentic titles with placeholder titles, and push locally recovered missing `book_title`/`book_authors` back to `reading_progress` during `syncWithCloud` (`shouldHealRemoteMetadata`).
   - Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
 - **Design Rationale (`@rationale`)**:
   - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 28 runtime, 21 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.reading_progress` · Storage/Cookies: `bookarium-reader-preferences`
-- **Test Contract**: [`src/stores/useReaderStore.test.ts`](../src/stores/useReaderStore.test.ts) (36 tests)
+- **Test Contract**: [`src/stores/useReaderStore.test.ts`](../src/stores/useReaderStore.test.ts) (37 tests)
 
 #### [`src/stores/useThemeStore.ts`](../src/stores/useThemeStore.ts) *(Tier-2 Protected)*
 
@@ -783,20 +783,20 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-013](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-071](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/components/presentation/BookmarksView.tsx`](../src/components/presentation/BookmarksView.tsx))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/hooks/reader/useContinueReadingLedger.test.ts`](../src/hooks/reader/useContinueReadingLedger.test.ts) (31 tests)
+- **Test Contract**: [`src/hooks/reader/useContinueReadingLedger.test.ts`](../src/hooks/reader/useContinueReadingLedger.test.ts) (32 tests)
 
 #### [`src/hooks/reader/useReaderSession.ts`](../src/hooks/reader/useReaderSession.ts) *(Tier-4 Protected)*
 
 - **Intended Scope (`@scope`)**: Headless Reader session controller managing chapter pagination state, `bookmarkText`-first reflow-resilient auto-resume, bidirectional page navigation, active `pinnedBookmark` inspection, and coordinate persistence.
 - **Behavioral Invariants (`@invariant`)**:
   - Restore saved positions via `findCanonicalTextSpan` when `bookmarkText` shifts pages across font/viewport reflows, expose immutable `pinnedBookmark` coordinates (`PinnedBookmarkCoordinate`) while preserving them across passive page turns, clamp out-of-bounds chapter/page indices safely, and separate layout adjustments (`isLayoutSync`) from user bookmark mutations (`hasUserModifiedSessionRef`).
-  - Flush position and percentage progress updates (`saveReadingPosition`, `setProgress`) synchronously on chapter/page navigation and unmount cleanup without dropping `bookmarkRow` or `bookmarkText`.
+  - Flush position and percentage progress updates (`saveReadingPosition`, `setProgress`) synchronously on chapter/page navigation and unmount cleanup without dropping `bookmarkRow`, `bookmarkText`, or caller-supplied `bookMetadata` (`BookPositionMetadata`) when `currentBook` has not yet hydrated.
 - **Design Rationale (`@rationale`)**:
   - Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence, while exposing `pinnedBookmark` lets drawers display and jump back to the active silk bookmark across chapters.
-- **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md)
+- **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-070](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/hooks/reader/useReaderSession.test.ts`](../src/hooks/reader/useReaderSession.test.ts) (18 tests)
+- **Test Contract**: [`src/hooks/reader/useReaderSession.test.ts`](../src/hooks/reader/useReaderSession.test.ts) (19 tests)
 
 #### [`src/hooks/useAccountSecurityActions.ts`](../src/hooks/useAccountSecurityActions.ts) *(Tier-3 Protected)*
 
@@ -828,14 +828,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Background metadata recovery hook (`useCollectionAutoHeal`) healing missing author lifespans and titles across Bookshelf, Favorites, Reading Positions, Annotations, and IndexedDB offline books.
 - **Behavioral Invariants (`@invariant`)**:
-  - Synchronously enrich matching `FEATURED_HERO_BOOKS` first and batch remaining incomplete IDs into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
+  - Synchronously enrich matching `FEATURED_HERO_BOOKS` and sparse `readingPositions` from local collections (`savedBooks`, `favoriteBooks`, `recentBooks`) first, then batch remaining incomplete IDs (`!hasAuthenticPositionTitle(pos?.bookTitle) || !hasAuthorLifespans(pos?.bookAuthors)`) into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
   - Record queried book IDs inside `sessionStorage` (`bookarium_auto_heal_attempted`) and guard store/offline patching behind `patchOfflineBookAuthors` so un-annotated works never trigger infinite refetch loops or metadata regressions.
 - **Design Rationale (`@rationale`)**:
-  - Older localStorage snapshots or sparse mobile sync records may omit author lifespan bounds needed for non-US copyright evaluation; session-bounded batch healing repairs them silently without UI blocking.
+  - Older localStorage snapshots or sparse mobile sync records may omit author lifespan bounds needed for non-US copyright evaluation or lose titles/authors on direct client navigation; session-bounded batch healing repairs them silently without UI blocking or redundant DB reads.
 - **Governing Decisions (`@adr`)**: [ADR-070](DECISIONS.md), [ADR-071](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx))
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium_auto_heal_attempted`
-- **Test Contract**: [`src/hooks/useCollectionAutoHeal.test.tsx`](../src/hooks/useCollectionAutoHeal.test.tsx) (13 tests)
+- **Test Contract**: [`src/hooks/useCollectionAutoHeal.test.tsx`](../src/hooks/useCollectionAutoHeal.test.tsx) (14 tests)
 
 #### [`src/hooks/useNetworkStatus.ts`](../src/hooks/useNetworkStatus.ts) *(Tier-3 Protected)*
 
@@ -1234,8 +1234,8 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `30` | [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) | UI & Feature Components | `11` / `0` | Signals: emits `CustomEvent:bookarium:book-link-copied`; listens `CustomEvent:bookarium:book-link-copied` |
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
 | `22` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `22` | Pure / internal |
+| `20` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `6` / `0` | API Calls: `/api/books/content` |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
-| `18` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | API Calls: `/api/books/content` |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |

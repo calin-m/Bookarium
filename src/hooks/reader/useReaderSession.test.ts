@@ -840,4 +840,49 @@ describe('useReaderSession', () => {
     });
     expect(result.current.pinnedBookmark).toBeNull();
   });
+
+  it('persists caller-supplied bookMetadata during Page 3+ saves and restart when currentBook is unset', () => {
+    useReaderStore.setState({ currentBook: null, readingPositions: {}, readingProgress: {} });
+
+    const { result } = renderHook(() =>
+      useReaderSession({
+        numericId: 912,
+        hasMounted: true,
+        chaptersWithPagination: mockChapters,
+        totalVolumePages: 3,
+        fontSize: 18,
+        readingMode: 'paginated',
+        bookMetadata: {
+          bookTitle: 'Direct Client Navigation Volume',
+          bookAuthors: ['Austen, Jane (1775-1817)'],
+          coverUrl: '/api/books/content?id=912&type=cover',
+        },
+      })
+    );
+
+    act(() => {
+      result.current.jumpTo(1, 1);
+    });
+
+    expect(useReaderStore.getState().readingPositions[912]).toMatchObject({
+      chapterIndex: 1,
+      chapterPage: 1,
+      bookTitle: 'Direct Client Navigation Volume',
+      bookAuthors: ['Austen, Jane (1775-1817)'],
+      coverUrl: '/api/books/content?id=912&type=cover',
+    });
+
+    act(() => {
+      result.current.handleRestart();
+    });
+
+    expect(useReaderStore.getState().readingPositions[912]).toMatchObject({
+      chapterIndex: 0,
+      chapterPage: 1,
+      globalPage: 1,
+      bookTitle: 'Direct Client Navigation Volume',
+      bookAuthors: ['Austen, Jane (1775-1817)'],
+      coverUrl: '/api/books/content?id=912&type=cover',
+    });
+  });
 });
