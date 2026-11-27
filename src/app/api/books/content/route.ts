@@ -8,10 +8,7 @@
  * @adr ADR-016, ADR-022, ADR-039, ADR-080, ADR-082, ADR-084
  */
 
-import React from 'react';
 import { NextRequest, NextResponse } from 'next/server';
-import { ImageResponse } from 'next/og';
-import { SITE_CONFIG } from '@/config/site-config';
 import {
   bookContentRateLimiter,
   bookCardRateLimiter,
@@ -25,25 +22,20 @@ import {
   createNoStoreErrorResponse,
   guardContentAssetRequest,
 } from '@/lib/api-utils';
-import { isBookPublicDomainInJurisdiction } from '@/lib/copyright-engine';
-import { resolveClientCountry } from '@/lib/country-resolver';
-import { formatAuthorName } from '@/lib/utils';
 import {
-  CARD_DIMENSIONS,
-  CARD_PALETTES,
-  decodeReadingCardShareToken,
-} from '@/lib/reading-card-export';
-import {
-  fetchR2CoverBytes,
   fetchR2BookText,
   type R2BookTextFetchResult,
 } from '@/lib/r2-client';
 
 import {
-  resolveBookMetadata,
   getCachedBookContent,
   setCachedBookContent,
 } from './metadata-cache';
+import {
+  enforceBookAssetJurisdictionGate,
+  renderBookCardAssetResponse,
+  fetchR2CoverAssetResponse,
+} from './asset-renders';
 import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
 import { createClient } from '@/lib/supabase/client';
 
@@ -107,307 +99,25 @@ export async function GET(request: NextRequest) {
   }
 
   // Extract user jurisdiction through deterministic priority cascade
-  const country = resolveClientCountry(request, searchParams);
-
   // Jurisdictional Copyright Gatekeeper:
   // Verify public domain status across US (`copyright === true` -> 451) and international jurisdictions (`503` fail-closed when metadata unavailable), while bypassing metadata lookups on `type=cover`.
-  const resolvedMetadata = typeParam !== 'cover' ? await resolveBookMetadata(bookId) : null;
-
-  if (country !== 'US' && typeParam !== 'cover' && !resolvedMetadata) {
-    // Fail-closed: Cannot stream unverified titles to non-US users
-    return createNoStoreErrorResponse(
-      'Unable to verify copyright clearance for your jurisdiction at this time.',
-      503,
-      {
-        country,
-        reason:
-          'Upstream metadata verification is unavailable. Streaming withheld under international fail-closed protocol.',
-      }
-    );
-  }
-
-  if (typeParam !== 'cover' && resolvedMetadata) {
-    const evaluation = isBookPublicDomainInJurisdiction(resolvedMetadata, country);
-    if (!evaluation.isAllowed) {
-      // Return HTTP 451 (Unavailable For Legal Reasons)
-      return NextResponse.json(
-        {
-          error: 'This work is protected by copyright in your jurisdiction and cannot be streamed.',
-          country: evaluation.country,
-          rule: evaluation.rule,
-          restrictingAuthor: evaluation.restrictingAuthor,
-          restrictingDeathYear: evaluation.restrictingDeathYear,
-          publicDomainYear: evaluation.publicDomainYear,
-          reason: evaluation.reason,
-        },
-        {
-          status: 451,
-          headers: {
-            'Content-Type': 'application/json',
-            'Vary': 'x-vercel-ip-country, Accept-Encoding',
-            'Cache-Control': 'public, s-maxage=86400',
-            ...buildApiSecurityHeaders('same-origin'),
-          },
-        }
-      );
+  let resolvedMetadata = null;
+  if (typeParam !== 'cover') {
+    const gate = await enforceBookAssetJurisdictionGate(bookId, request, searchParams);
+    if (!gate.allowed) {
+      return gate.response;
     }
+    resolvedMetadata = gate.metadata;
   }
 
   // ==========================================================================
   // Stateless On-the-Fly OpenGraph Social Reading Card (1200x630 PNG)
   // ==========================================================================
   if (typeParam === 'card') {
-    const metadata = resolvedMetadata;
-    const rawTitle = metadata?.title || `Project Gutenberg Volume #${bookId}`;
-    const firstAuthor = metadata?.authors?.[0];
-    const rawAuthor = firstAuthor
-      ? typeof firstAuthor === 'string'
-        ? firstAuthor
-        : firstAuthor.name
-      : 'Classic Literature';
-    const displayAuthor = formatAuthorName(rawAuthor) || 'Classic Literature';
-
-    const sParam = searchParams.get('s');
-    const decoded = decodeReadingCardShareToken(bookId, sParam) ?? {
-      theme: 'light' as const,
-      includeProgress: false,
-      progress: 0,
-      currentSection: 1,
-      totalSections: 1,
-    };
-    const palette = CARD_PALETTES[decoded.theme];
-
-    const cardElement = React.createElement(
-      'div',
-      {
-        style: {
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          backgroundColor: palette.cardSurface,
-          padding: '48px 56px',
-          border: `4px solid ${palette.outerBorder}`,
-          boxSizing: 'border-box',
-          fontFamily: 'Georgia, serif',
-        },
-      },
-      React.createElement(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-          },
-        },
-        React.createElement(
-          'div',
-          {
-            style: {
-              display: 'flex',
-              padding: '8px 20px',
-              borderRadius: '999px',
-              backgroundColor: palette.accentSoft,
-              border: `1.5px solid ${palette.innerBorder}`,
-              color: palette.accent,
-              fontSize: '18px',
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              fontFamily: 'sans-serif',
-            },
-          },
-          decoded.includeProgress ? 'CURRENTLY READING' : 'FEATURED CLASSIC'
-        ),
-        React.createElement(
-          'div',
-          {
-            style: {
-              display: 'flex',
-              color: palette.mutedInk,
-              fontSize: '20px',
-              fontWeight: 600,
-              fontFamily: 'sans-serif',
-            },
-          },
-          `GUTENBERG #${bookId}`
-        )
-      ),
-      React.createElement(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            flexDirection: 'column',
-            marginTop: '16px',
-            marginBottom: '16px',
-          },
-        },
-        React.createElement(
-          'div',
-          {
-            style: {
-              display: 'flex',
-              color: palette.primaryInk,
-              fontSize: '54px',
-              fontWeight: 700,
-              lineHeight: 1.18,
-              marginBottom: '16px',
-            },
-          },
-          rawTitle.length > 90 ? `${rawTitle.slice(0, 87)}...` : rawTitle
-        ),
-        React.createElement(
-          'div',
-          {
-            style: {
-              display: 'flex',
-              color: palette.secondaryInk,
-              fontSize: '30px',
-              fontStyle: 'italic',
-            },
-          },
-          `by ${displayAuthor}`
-        )
-      ),
-      React.createElement(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            flexDirection: 'column',
-            width: '100%',
-          },
-        },
-        decoded.includeProgress
-          ? React.createElement(
-              'div',
-              {
-                style: {
-                  display: 'flex',
-                  flexDirection: 'column',
-                  width: '100%',
-                  marginBottom: '22px',
-                },
-              },
-              React.createElement(
-                'div',
-                {
-                  style: {
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    marginBottom: '10px',
-                    fontFamily: 'sans-serif',
-                    fontSize: '20px',
-                    fontWeight: 600,
-                    color: palette.mutedInk,
-                  },
-                },
-                React.createElement(
-                  'span',
-                  null,
-                  `Section ${decoded.currentSection} of ${decoded.totalSections}`
-                ),
-                React.createElement(
-                  'span',
-                  { style: { color: palette.accent, fontWeight: 700 } },
-                  `${decoded.progress}% Completed`
-                )
-              ),
-              React.createElement(
-                'div',
-                {
-                  style: {
-                    display: 'flex',
-                    width: '100%',
-                    height: '14px',
-                    borderRadius: '999px',
-                    backgroundColor: palette.trackBg,
-                    overflow: 'hidden',
-                  },
-                },
-                React.createElement('div', {
-                  style: {
-                    display: 'flex',
-                    width: `${Math.max(2, decoded.progress)}%`,
-                    height: '100%',
-                    borderRadius: '999px',
-                    backgroundColor: palette.accent,
-                  },
-                })
-              )
-            )
-          : null,
-        React.createElement(
-          'div',
-          {
-            style: {
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              width: '100%',
-              paddingTop: '18px',
-              borderTop: `1.5px solid ${palette.innerBorder}`,
-              fontFamily: 'sans-serif',
-            },
-          },
-          React.createElement(
-            'div',
-            {
-              style: {
-                display: 'flex',
-                flexDirection: 'column',
-              },
-            },
-            React.createElement(
-              'span',
-              {
-                style: {
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: palette.primaryInk,
-                  letterSpacing: '0.08em',
-                },
-              },
-              'BOOKARIUM'
-            ),
-            React.createElement(
-              'span',
-              {
-                style: {
-                  fontSize: '16px',
-                  color: palette.mutedInk,
-                },
-              },
-              'Unabridged Public Domain Literature — Free & Legal Forever'
-            )
-          ),
-          React.createElement(
-            'span',
-            {
-              style: {
-                fontSize: '18px',
-                fontWeight: 600,
-                color: palette.accent,
-              },
-            },
-            `${SITE_CONFIG.SITE_HOST}/read/${bookId}`
-          )
-        )
-      )
-    );
-
-    return new ImageResponse(cardElement, {
-      width: CARD_DIMENSIONS.width,
-      height: CARD_DIMENSIONS.height,
-      headers: {
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
-        Vary: 'x-vercel-ip-country, Accept-Encoding',
-        ...buildApiSecurityHeaders('cross-origin'),
-      },
+    return renderBookCardAssetResponse({
+      bookId,
+      metadata: resolvedMetadata,
+      shareToken: searchParams.get('s'),
     });
   }
 
@@ -415,44 +125,14 @@ export async function GET(request: NextRequest) {
   // Binary Cover Image Streaming (Strict Private Cloudflare R2 Storage)
   // ==========================================================================
   if (typeParam === 'cover') {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    try {
-      const coverResult = await fetchR2CoverBytes(bookId, controller.signal);
-      clearTimeout(timeoutId);
-
-      if (coverResult.status === 'ok') {
-        return new NextResponse(coverResult.bytes, {
-          status: 200,
-          headers: {
-            'Content-Type': 'image/jpeg',
-            'Cache-Control': 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000',
-            Vary: 'Accept-Encoding',
-            'Vercel-Cache-Tag': 'covers',
-            'X-Bookarium-Source': 'r2',
-            ...buildApiSecurityHeaders('same-origin'),
-          },
-        });
-      }
-
-      if (coverResult.status === 'not_found' || coverResult.status === 'unconfigured') {
-        return createNoStoreErrorResponse(
-          'Cover artwork is not available in R2 asset storage.',
-          404
-        );
-      }
-
-      return createNoStoreErrorResponse(
-        'Failed to fetch cover image from R2 asset storage.',
-        502
-      );
-    } catch {
-      clearTimeout(timeoutId);
-      return createNoStoreErrorResponse(
-        'Failed to fetch cover image from R2 asset storage.',
-        502
-      );
-    }
+    return fetchR2CoverAssetResponse(bookId, () => ({
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=2592000',
+      Vary: 'Accept-Encoding',
+      'Vercel-Cache-Tag': 'covers',
+      'X-Bookarium-Source': 'r2',
+      ...buildApiSecurityHeaders('same-origin'),
+    }));
   }
 
   // ==========================================================================

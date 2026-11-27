@@ -2,16 +2,16 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.86-teal?style=flat-square)](CHANGELOG.md)
-[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-89%25-brightgreen?style=flat-square)](ROADMAP.md)
-[![Total Features](https://img.shields.io/badge/Features-42_of_47-blue?style=flat-square)](ROADMAP.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.87-teal?style=flat-square)](CHANGELOG.md)
+[![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
+[![Total Features](https://img.shields.io/badge/Features-43_of_49-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
 
 ---
 
 ## 📊 Overall Roadmap Completion
 
-`[██████████████████░░]` **42/47 (89%)**
+`[██████████████████░░]` **43/49 (88%)**
 
 ---
 
@@ -121,7 +121,7 @@
 - [x] **Opt-In Public Scholar Profiles (`/u/[username]`)** `✅ VERIFIED`
   Dedicated public profile page showcasing reader biography, public bookshelves, reading challenge progress, and pinned accolade badges with strict privacy toggles (Public vs Private).
 - [x] **Dynamic Book OpenGraph, Schema.org JSON-LD & 9-Surface Share Link Copy (`src/app/read/[id]/reader-layout-utils.ts` & `src/lib/redirect-sanitizer.ts`)** `✅ VERIFIED`
-  Server-side `/read/[id]/layout.tsx` metadata generation with 24h ISR caching (`reader-layout-utils.ts`), `schema.org/Book` & `WebApplication` JSON-LD structured data, crawler rate-shielding (`robots.ts`, `sitemap.ts`), and unified 1-click Title/Author share link copying (`buildBookShareUrl` with `300ms` tooltip & `Copied!` pill) across all 9 book surfaces.
+  Server-rendered `/read/[id]` entry (`page.tsx` `notFound()` guard + `BookReaderClient`) paired with 24h cached metadata & R2 cover `HEAD` verification (`reader-layout-utils.ts`, `server-data-cache.ts`), clean crawler-allowed `/covers/[file]` & `/og/books/[file]` asset gateways, enriched `schema.org/Book` (`ReadAction`, `ImageObject`) JSON-LD, top `5,000`-book ISR XML `sitemap.ts` + `robots.ts` rate-shielding, and unified 1-click Title/Author share link copying (`buildBookShareUrl`) across all 9 book surfaces.
 
 ---
 
@@ -177,10 +177,10 @@
 
 ---
 
-### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards (`v2.9.x (Active: v2.9.86)`)
-`[██████████░░░░░░░░░░]` **2/4 (50%)**
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader, Shareable Milestone Cards & Scalable SEO (`v2.9.x (Active: v2.9.87)`)
+`[██████████░░░░░░░░░░]` **3/6 (50%)**
 
-> Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.
+> Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), client-side shareable reading cards, and phased technical SEO scaling (Phase 1 Top-`5,000` SSR/image routes followed by GSC-validated `78,000+` keyset sitemap sharding).
 
 - [x] **[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `40 + 10` Ingestion, Out-of-Window Auto-Pruning & Instant Preview Integration** `✅ VERIFIED`
   Extend `public.books` (`supabase/schema.sql` & `src/types/database.types.ts`) with an idempotent `quotes JSONB NOT NULL DEFAULT '[]'::jsonb` column and single-column `idx_books_download_count` popularity index; build `scripts/sync-featured-quotes.js`, unified Sunday `.github/workflows/catalog-sync.yml` (`--diff-file=quote-diff.json`), and manual `.github/workflows/quotes-sync.yml` (`workflow_dispatch` with `--source=auto|r2|mirrors`) to maintain a bounded Two-Tier Quote Pool (`Top 500 Popular` by single-column `download_count DESC` + `Rolling 64 Most Recent` by `id DESC`), blending `40 Popular + 10 Recent` unpopulated English volumes per batch with automatic cross-tier backfill (`blendTwoTierCandidates`), Priority Hero Book ID pinning, partial-index quote discovery (`idx_books_with_quotes_popular` / `books_pkey`), and burst-safe post-batch `1-for-1` sliding window auto-pruning (`pruneOutOfWindowBookQuotes`), reading `public.books.content` and private R2 `books/<id>.txt.gz` before 3-mirror failover (`8.0s–16.0s` float delays) and writing a 1-item sentinel guard on 0-quote volumes; strip duplicate hardcoded multi-spread blocks from `featured-books.ts`; and wire `HeroSearch`, `HeroFeaturedBook3D`, `BookPreviewModal`, `EditorialQuoteSection`, and `LiteraryQuotes` via `useFeaturedQuotes`, `useQuoteEnrichedBooks`, and `useBookPassageShuffle` to dynamically serve and shuffle `10–16` quotes directly from `public.books.quotes` in `0ms` while retaining lean 1-spread static fallbacks for zero-config and offline operation.
@@ -190,6 +190,10 @@
   Responsive side-by-side two-page open-book spread layout for horizontal viewports (landscape tablets, laptops, and desktop monitors >= 1024px) in `ReaderSurface.tsx` with dynamic gutter center-crease shading, simultaneous dual-page pagination indexing (pages 2N / 2N+1), independent column text-flow, and seamless 1-page/2-page toggle options in `ReaderControls.tsx`.
 - [x] **[v2.9.6] Shareable Reading Cards, Signed Share Tokens & Stateless OpenGraph Card Unfurling** `✅ VERIFIED`
   Client-side HTML5 2D `<canvas>` reading card generator (`src/lib/reading-card-export.ts`) and zero-scroll multi-resolution Social Share Modal (`src/components/reader/ReaderShareModal.tsx`) exporting `1200×630` bookplate cards across `Light`, `Sepia`, and `Dark` palettes (auto-synced to the active reader theme on open) with `Copy Card Image` (`ClipboardItem` `image/png`), `Download PNG`, `Device Share`, 8 social Web Intent links, tamper-proof FNV-1a signed `?s=<token>` share URLs, and stateless on-the-fly OpenGraph card unfurling (`GET /api/books/content?id=<id>&type=card&s=<token>` via `next/og` `ImageResponse`).
+- [x] **[v2.9.87] Phase-1 Technical SEO Engine, Clean Crawler Asset Gateways & Top-`5,000` Dynamic Sitemap** `✅ VERIFIED`
+  Async Server Component `/read/[id]/page.tsx` with true HTTP `404` `notFound()` gating and `<BookReaderClient />` SSR metadata/excerpt handoff (`ReaderLoadingView.tsx` `<h2>`), `unstable_cache` 24h Data Cache (`server-data-cache.ts`) over metadata and R2 `HEAD` cover probes (`headR2CoverExists`), crawler-allowed `/covers/[file]` (`30d` Fetch-Metadata-guarded JPEG proxy) and `/og/books/[file]` (`24h` `next/og` card fallback via `asset-renders.ts`), enriched `Schema.org Book` (`ReadAction`, `ImageObject`) + US copyright `noindex`, and `24h` ISR top-`5,000` `sitemap.ts` paired with `/covers/` & `/og/books/` `robots.ts` allowlisting and `sw.js` exclusion.
+- [ ] **[Target: v2.9.x] Phase-2 Keyset-Sharded `78,000+`-Catalog Sitemaps & Cohort SEO Scaling (Post-GSC Validation)** `⏳ PLANNED`
+  Progressive expansion beyond the top `5,000` volumes (`5k -> 15k -> 30k -> 78k`) using Next.js `generateSitemaps()` sitemap index sharding and `books_pkey` keyset cursor pagination (avoiding deep `8s` `statement_timeout` scans across tied `download_count = 0` rows and cold-tail quota spikes on Vercel Hobby/R2/Supabase Free), gated on 4–8 weeks of Google Search Console indexing ratio, crawl stats, and origin-transfer headroom.
 
 ---
 

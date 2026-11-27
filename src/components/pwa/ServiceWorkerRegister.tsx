@@ -55,7 +55,7 @@ export function ServiceWorkerRegister() {
 
           // Warm dynamic chunks so Reader, Account, and Modals are available offline
           void Promise.allSettled([
-            import('@/app/read/[id]/page'),
+            import('@/components/reader/BookReaderClient'),
             import('@/app/account/page'),
             import('@/components/presentation/BookPreviewModal'),
             import('@/components/presentation/DownloadDrawer'),

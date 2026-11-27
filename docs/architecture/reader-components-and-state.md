@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
 > **Last Synchronized**: `2026-11-27`  
-> **Topology Health**: `263` Modules Analyzed • `1124` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `268` Modules Analyzed • `1147` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -41,7 +41,7 @@ flowchart LR
         Segmentation --> VirtualPages
     end
 
-    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx • useReaderHabitTelemetry)"]
+    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx -> BookReaderClient.tsx • useReaderHabitTelemetry)"]
         Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Share Action + Desktop lg: Tools • Tactile Slide)"]
         SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
         ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • ReaderHighlightAdjustOverlay • reader-bookmark-geometry.ts)"]
@@ -156,7 +156,7 @@ flowchart TD
 
 ## 🧩 Component Catalog & Props Interface Matrix
 
-Auto-extracted dynamically from **118 Production UI Components** using Babel AST:
+Auto-extracted dynamically from **119 Production UI Components** using Babel AST:
 
 | Component | Category | Exported Props Interface | Primary Props & Signals | Module Link |
 | :--- | :--- | :--- | :--- | :--- |
@@ -230,6 +230,7 @@ Auto-extracted dynamically from **118 Production UI Components** using Babel AST
 | **`ProfileShareModal`** | Profile | `ProfileShareModalProps` | `isOpen`, `onClose`, `username`, `displayName`, `initials`, `memberSince`, `bio`, `bioBookTitle`, `bioBookAuthor`, `statsPills` | [`src/components/profile/ProfileShareModal.tsx`](../../src/components/profile/ProfileShareModal.tsx) |
 | **`PublicProfileView`** | Profile | `PublicProfileViewProps` | `profile`, `pinnedAccolades`, `habits`, `bookshelves` | [`src/components/profile/PublicProfileView.tsx`](../../src/components/profile/PublicProfileView.tsx) |
 | **`ServiceWorkerRegister`** | Pwa | _Autonomous_ | None (Self-Contained) | [`src/components/pwa/ServiceWorkerRegister.tsx`](../../src/components/pwa/ServiceWorkerRegister.tsx) |
+| **`BookReaderClient`** | Reader | `BookReaderClientProps` | `initialBook` | [`src/components/reader/BookReaderClient.tsx`](../../src/components/reader/BookReaderClient.tsx) |
 | **`DeleteAnnotationModal`** | Reader | `DeleteAnnotationModalProps` | `isOpen`, `onClose`, `onConfirm`, `annotation`, `title`, `headline`, `description`, `confirmLabel`, `confirmTestId` | [`src/components/reader/DeleteAnnotationModal.tsx`](../../src/components/reader/DeleteAnnotationModal.tsx) |
 | **`GutenbergInfoModal`** | Reader | `GutenbergInfoModalProps` | `isOpen`, `onClose`, `bookId`, `title`, `author`, `theme`, `subjects`, `bookshelves` | [`src/components/reader/GutenbergInfoModal.tsx`](../../src/components/reader/GutenbergInfoModal.tsx) |
 | **`QuoteDeletePreview`** | Reader | `QuoteDeletePreviewProps` | `selectedText`, `note` | [`src/components/reader/QuoteDeletePreview.tsx`](../../src/components/reader/QuoteDeletePreview.tsx) |
@@ -243,13 +244,13 @@ Auto-extracted dynamically from **118 Production UI Components** using Babel AST
 | **`ReaderHeader`** | Reader | `ReaderHeaderProps` | `title`, `author`, `bookId`, `progress`, `onBack`, `isTocOpen`, `onToggleToc`, `isSearchOpen`, `onToggleSearch`, `isControlsOpen`, `onToggleControls`, `isTranslationsOpen`, `onToggleTranslations`, `isSpeechOpen`, `onToggleSpeech`, `isAnnotationsOpen`, `onToggleAnnotations`, `annotationsCount`, `hasPinnedBookmark`, `theme`, `totalChapters`, `currentChapterIndex`, `onThemeChange`, `resumeNotice`, `onRestart`, `onDismissResume`, `translations`, `isTranslationsLoading`, `onSelectTranslation`, `symposiumCompanion`, `symposiumMilestoneNotice`, `onDismissSymposiumMilestone`, `isHidden` | [`src/components/reader/ReaderHeader.tsx`](../../src/components/reader/ReaderHeader.tsx) |
 | **`ReaderHighlightAdjustOverlay`** | Reader | `ReaderHighlightAdjustOverlayProps` | `annotation`, `draftStart`, `draftEnd`, `totalTextLength`, `draftText`, `occurrenceCount`, `hasChanged`, `canExpandSentence`, `canExpandParagraph`, `isMaxLengthReached`, `startBox`, `endBox`, `containerSize`, `draggingEdge`, `theme`, `onStartDrag`, `onStepWord`, `onStepRow`, `onExpandSentence`, `onExpandParagraph`, `onSave`, `onCancel` | [`src/components/reader/ReaderHighlightAdjustOverlay.tsx`](../../src/components/reader/ReaderHighlightAdjustOverlay.tsx) |
 | **`ReaderLanguageDrawer`** | Reader | `ReaderLanguageDrawerProps` | `isOpen`, `onClose`, `translations`, `onSelectTranslation`, `theme` | [`src/components/reader/ReaderLanguageDrawer.tsx`](../../src/components/reader/ReaderLanguageDrawer.tsx) |
-| **`ReaderLoadingView`** | Reader | `ReaderLoadingViewProps` | `activeTheme` | [`src/components/reader/ReaderLoadingView.tsx`](../../src/components/reader/ReaderLoadingView.tsx) |
+| **`ReaderLoadingView`** | Reader | `ReaderLoadingViewProps` | `activeTheme`, `bookTitle`, `bookAuthor`, `subjects`, `openingHook` | [`src/components/reader/ReaderLoadingView.tsx`](../../src/components/reader/ReaderLoadingView.tsx) |
 | **`ReaderRowBookmark`** | Reader | `ReaderRowBookmarkProps` | `bookmarkElRef`, `effectiveStartRow`, `effectiveEndRow`, `bookmarkSpanRows`, `estimatedMaxBookmarkRows`, `lineStepPx`, `isBookmarkActive`, `isDraggingBookmark`, `getMaxBookmarkRows`, `computeRowFromClientY`, `onStartDrag`, `onEmitRowChange` | [`src/components/reader/ReaderRowBookmark.tsx`](../../src/components/reader/ReaderRowBookmark.tsx) |
 | **`ReaderSearchDrawer`** | Reader | `ReaderSearchDrawerProps` | `isOpen`, `onClose`, `chapters`, `fontSize`, `onSelectMatch`, `bookTitle`, `theme` | [`src/components/reader/ReaderSearchDrawer.tsx`](../../src/components/reader/ReaderSearchDrawer.tsx) |
 | **`ReaderShareModal`** | Reader | `ReaderShareModalProps` | `isOpen`, `onClose`, `bookId`, `title`, `author`, `theme`, `progress`, `currentChapterIndex`, `totalChapters` | [`src/components/reader/ReaderShareModal.tsx`](../../src/components/reader/ReaderShareModal.tsx) |
 | **`ReaderSpeechBar`** | Reader | `ReaderSpeechBarProps` | `speech`, `isOpen`, `onClose`, `isDrawerOpen`, `isPlaying`, `isPaused`, `currentSentenceIndex`, `totalSentences`, `rate`, `availableVoices`, `naturalVoices`, `standardVoices`, `selectedVoice`, `onPlay`, `onPause`, `onResume`, `onSkipNext`, `onSkipPrev`, `onRateChange`, `onVoiceChange`, `theme`, `bookTitle`, `currentPage`, `totalPages`, `isPrevDisabled`, `isNextDisabled` | [`src/components/reader/ReaderSpeechBar.tsx`](../../src/components/reader/ReaderSpeechBar.tsx) |
 | **`ReaderSubHeaderRibbon`** | Reader | `ReaderSubHeaderRibbonProps` | `bookId`, `progress`, `totalChapters`, `currentChapterIndex`, `theme`, `resumeNotice`, `onRestart`, `onDismissResume`, `onOpenInfoModal`, `symposiumCompanion`, `symposiumMilestoneNotice`, `onDismissSymposiumMilestone` | [`src/components/reader/ReaderSubHeaderRibbon.tsx`](../../src/components/reader/ReaderSubHeaderRibbon.tsx) |
-| **`ReaderSurface`** | Reader | `ReaderSurfaceProps` | `theme`, `brightness`, `fontFamily`, `fontSize`, `lineHeight`, `columnWidth`, `readingMode`, `chapter`, `currentPageText`, `chapterPage`, `bookmarkRow`, `bookmarkText`, `onBookmarkRowChange`, `activeChapterIndex`, `totalChapters`, `isLoading`, `isError`, `error`, `onRetry`, `bookTitle`, `bookAuthor`, `onPreviousPage`, `onNextPage`, `onFontSizeChange`, `onTapSurface`, `isSpeechOpen`, `highlightedSentence`, `annotations`, `targetAnnotationId`, `bookmarkJumpNonce`, `onSelectAnnotation`, `onTextSelected`, `adjustingAnnotation`, `onCommitAdjustSelection`, `onCancelAdjustSelection` | [`src/components/reader/ReaderSurface.tsx`](../../src/components/reader/ReaderSurface.tsx) |
+| **`ReaderSurface`** | Reader | `ReaderSurfaceProps` | `theme`, `brightness`, `fontFamily`, `fontSize`, `lineHeight`, `columnWidth`, `readingMode`, `chapter`, `currentPageText`, `chapterPage`, `bookmarkRow`, `bookmarkText`, `onBookmarkRowChange`, `activeChapterIndex`, `totalChapters`, `isLoading`, `isError`, `error`, `onRetry`, `bookTitle`, `bookAuthor`, `bookSubjects`, `openingHook`, `onPreviousPage`, `onNextPage`, `onFontSizeChange`, `onTapSurface`, `isSpeechOpen`, `highlightedSentence`, `annotations`, `targetAnnotationId`, `bookmarkJumpNonce`, `onSelectAnnotation`, `onTextSelected`, `adjustingAnnotation`, `onCommitAdjustSelection`, `onCancelAdjustSelection` | [`src/components/reader/ReaderSurface.tsx`](../../src/components/reader/ReaderSurface.tsx) |
 | **`ReaderTocDrawer`** | Reader | `ReaderTocDrawerProps` | `isOpen`, `onClose`, `chapters`, `activeChapterIndex`, `onSelectChapter`, `bookTitle`, `theme` | [`src/components/reader/ReaderTocDrawer.tsx`](../../src/components/reader/ReaderTocDrawer.tsx) |
 | **`TextHighlightPopover`** | Reader | `TextHighlightPopoverProps` | `isOpen`, `selectedText`, `position`, `activeColor`, `existingNote`, `existingAnnotationId`, `fellowAnnotation`, `isFellowOnly`, `isSpeechOpen`, `onSelectColor`, `onSaveNote`, `onDelete`, `onAdjustSelection`, `onCopyQuote`, `onClose`, `theme` | [`src/components/reader/TextHighlightPopover.tsx`](../../src/components/reader/TextHighlightPopover.tsx) |
 | **`VolumeCompletionModal`** | Reader | `VolumeCompletionModalProps` | `isOpen`, `onClose`, `bookTitle`, `bookRating`, `onRateChange`, `onOpenBookshelf` | [`src/components/reader/VolumeCompletionModal.tsx`](../../src/components/reader/VolumeCompletionModal.tsx) |

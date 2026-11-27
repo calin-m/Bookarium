@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-11-27`  
-> **Topology Health**: `263` Modules Analyzed • `1124` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `268` Modules Analyzed • `1147` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -108,13 +108,13 @@ flowchart TD
         RootProxy["Next.js 16 Root Proxy (src/proxy.ts)\n(Edge Geo-IP: x-vercel-ip-country, Dev ?country=XX, Fetch Metadata Guard & Public RSC Bypass)"]
         ProxyBooks["GET /api/books\n(Edge CDN: 12h Quote Pool • 24h Catalog • 7d Quote/Meta IDs • Vercel-Cache-Tag, Rate Limit, Seam Controller)"]
         CatalogSeam["Catalog Seam & Bundled Fallback (src/lib/catalog/)\n(supabase-provider.ts • curated-fallback.ts)"]
-        ProxyContent["GET /api/books/content\n(24h Text [book-content] & OG Card • 7d R2 Cover Proxy [covers] • Strict R2 + Optional DB Content)"]
+        ProxyContent["GET /api/books/content, /covers/[file], /og/books/[file]\n(24h Text [book-content] & OG Card • 30d R2 Cover Proxy [covers] • Strict R2 + Optional DB Content)"]
         ProxyBookTranslations["GET /api/books/translations\n(7d Edge SWR Cache • s-maxage=604800 • Vary: x-vercel-ip-country • Vercel-Cache-Tag: translations • FRBR Work Mapping)"]
         AuthCallback["GET /auth/callback\n(PKCE & Token-Hash OTP, Strip Recovery, Sanitized UA Forwarding & IP Sync Cookie)"]
-        LayoutServer["Server Layout (/read/[id])\n(reader-layout-utils.ts • server-rsc-nav.ts • React.cache • ISR 24h • OpenGraph & JSON-LD)"]
+        LayoutServer["Server Layout & Page (/read/[id])\n(reader-layout-utils.ts • BookReaderClient • React.cache • 24h unstable_cache + HEAD Probe • OpenGraph & JSON-LD)"]
         ProfileLayoutServer["Server Layout (/u/[username])\n(profile-layout-utils.ts • server-rsc-nav.ts • 500-Entry 5m LRU • Zero-PII & Anti-Enumeration)"]
         ProxyProfileCard["GET /api/profiles/card\n(Stateless 1200x630 Scholar OG PNG • Visual ?s= Token • ADR-033 Neutral Fallback)"]
-        StaticSeoRoutes["SSR Metadata & Crawler Gateways\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • sitemap.ts)"]
+        StaticSeoRoutes["SSR Metadata & Crawler Gateways\n(/privacy & /copyright Layouts • /auth/confirm-deletion noindex • robots.ts • 5,000-Book Dynamic sitemap.ts)"]
     end
 
     subgraph LegalLayer ["Jurisdictional Copyright & Content Safety Engine"]
@@ -325,7 +325,7 @@ Every subsystem matrix, temporal sequence flow, security boundary, and AST depen
 | :--- | :--- | :--- |
 | [**Focus Reader, Components, Zustand State & Domain Contracts**](architecture/reader-components-and-state.md) | Diagrams 2–3 | Focus Reader state & typography (`Diagram 2`), Bookmarks & Continue Reading ledger (`Diagram 3`), Babel-extracted Component Props Matrix, 10 Zustand stores, config tokens, and TypeScript models. |
 | [**Event Bus, Reactive Signals & Runtime Execution Workflows**](architecture/event-bus-and-runtime-flows.md) | Diagrams 4–7 | Cross-store/Worker/DOM Event Bus (`Diagram 4`), reactive signals & account erasure matrices, and temporal `sequenceDiagram` flows for Cold Launch, Focus Reader/R2 Stream, and Offline Replay (`Diagrams 5–7`). |
-| [**API Routes, App Router, Hooks, Domain Engines, Workers & Edge Proxy**](architecture/routes-hooks-and-engines.md) | — | Edge & Serverless API route handlers, App Router entrypoints, TanStack Query & Reader hooks, pure domain engines, Web Worker + PWA Service Worker runtime, and `src/proxy.ts`. |
+| [**API Routes, App Router, Hooks, Domain Engines, SEO & Edge Proxy**](architecture/routes-hooks-and-engines.md) | Diagram 16 | Edge & Serverless API route handlers, App Router entrypoints, TanStack Query & Reader hooks, pure domain engines, Technical SEO & Structured Metadata routing (`Diagram 16`), Web Worker + PWA Service Worker runtime, and `src/proxy.ts`. |
 | [**Background Data Pipelines, Database RLS & Query-to-Index Contracts**](architecture/database-and-pipelines.md) | Diagram 8 | GitHub Actions & Database Ingestion Topology (`Diagram 8`), CLI & workflow inventory, PostgreSQL RLS policies/functions/indexes, seed artifacts, and 78k-row anti-timeout query contracts. |
 | [**Caching Strategy, External Integrations, Failure Modes & Edge Ops**](architecture/integrations-failure-and-ops.md) | Diagrams 10–13 | Multi-tier data pulling & caching strategy, External Integration Boundaries (`Diagram 10`), Failure Modes & Self-Healing (`Diagram 11`), Edge Routing & Weekly Cron (`Diagram 12`), 5-Layer CDN/R2 Caching (`Diagram 13`), and Performance Budgets. |
 | [**Environment Bindings, Security Trust Zones & Fellowship Topology**](architecture/security-and-fellowship.md) | Diagrams 14–15 | AST-verified `.env.example` bindings, Trust-Zone request-taint topology, Auth/Recovery & Session Revocation (`Diagram 14`), and Reader Circles, Symposium & Trigger Guards (`Diagram 15`). |
@@ -345,7 +345,7 @@ Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/
 | **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |
 | **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |
 | **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md` hub, `7` `docs/architecture/*.md` subsystem specs, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |
-| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 19 mandatory governance docs, bidirectional `docs/ARCHITECTURE.md`<->`docs/architecture/*.md` TOC & corpus parity, circular `SECURITY.md` symbol/table/feed parity (`auditSecurityDocumentationParity`), 0 broken Mermaid diagrams (`validateMermaidDiagramsInMarkdown`), `@scope`/`@invariant`/`@adr` behavioral contracts across 85 Tier-1..Tier-4 protected modules + bidirectional `docs/SYSTEM_CONTRACTS.md` heading/count parity, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |
+| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 19 mandatory governance docs, bidirectional `docs/ARCHITECTURE.md`<->`docs/architecture/*.md` TOC & corpus parity, circular `SECURITY.md` symbol/table/feed parity (`auditSecurityDocumentationParity`), 0 broken Mermaid diagrams (`validateMermaidDiagramsInMarkdown`), `@scope`/`@invariant`/`@adr` behavioral contracts across 89 Tier-1..Tier-4 protected modules + bidirectional `docs/SYSTEM_CONTRACTS.md` heading/count parity, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |
 | **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | `eslint . --max-warnings 0` (`bookarium-security`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and 9 custom AST/taint security rules (`src/`, `scripts/`, `public/sw.js`, `next.config.ts` audited via Pass 0.75); zero dead files/exports |
 | **Pass 7** | Production Application Build & Live HTTP Smoke Probe | `next build` + `.next/routes-manifest.json` + loopback `next start` probe | Optimized production Next.js bundle compilation within byte budget, compiled security header parity (`X-Frame-Options: DENY`, `object-src 'none'`, `frame-ancestors 'none'`), and live runtime HTTP verification of headers, `400` SSRF/param blocking, and origin-locked `/auth/callback` redirects |
 

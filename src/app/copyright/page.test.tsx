@@ -79,6 +79,7 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/Zero Live Visitor Traffic to Project Gutenberg:/i)).toBeInTheDocument();
     expect(screen.getByText(/Decoupled Architecture:/i)).toBeInTheDocument();
     expect(screen.getByText(/Self-Hosted Edge Caching & Offline Storage:/i)).toBeInTheDocument();
+    expect(screen.getByText(/2592000/)).toBeInTheDocument();
     expect(screen.getByText(/Official Bulk Data Feeds & Targeted Mirroring:/i)).toBeInTheDocument();
     expect(screen.getByText(/pg_catalog\.csv\.gz/i)).toBeInTheDocument();
     expect(screen.getByText(/rdf-files\.tar\.bz2/i)).toBeInTheDocument();

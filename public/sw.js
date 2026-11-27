@@ -5,9 +5,9 @@
  *
  * @module public/sw
  * @scope Offline App Shell Service Worker managing `CACHE_NAME` precaching, bounded `CACHE_URLS` warmups, and network/cache routing strategies.
- * @invariant Enforce strict same-origin (`url.origin === self.location.origin`) and non-`/auth/` non-`/api/` path sanitization (`sanitizePrecacheUrl`, bounded by `MAX_MESSAGE_PRECACHE_URLS`), never intercept cross-origin or `/auth/*` requests, never return HTML documents for `_rsc`/`RSC: 1` requests, and return `503` JSON for offline `/api/*` fetches.
- * @rationale Bounding message-driven precaching and bypassing `/auth/*`, `/api/*`, and cross-origin origins prevents CSWSH/cache poisoning and stale OAuth loops while keeping saved IndexedDB reader routes functional offline.
- * @adr ADR-020, ADR-073, ADR-080
+ * @invariant Enforce strict same-origin (`url.origin === self.location.origin`) and non-`/auth/` non-`/api/` path sanitization (`sanitizePrecacheUrl`, bounded by `MAX_MESSAGE_PRECACHE_URLS`), never intercept cross-origin or `/auth/*` requests, bypass App Shell caching for `/covers/` and `/og/` crawler image routes alongside `/api/`, never return HTML documents for `_rsc`/`RSC: 1` requests, and return `503` JSON for offline `/api/*` fetches.
+ * @rationale Bounding message-driven precaching and bypassing `/auth/*`, `/api/*`, `/covers/*`, `/og/*`, and cross-origin origins prevents CSWSH/cache poisoning, stale OAuth loops, and image-cache bloat while keeping saved IndexedDB reader routes functional offline.
+ * @adr ADR-016, ADR-020, ADR-073, ADR-080
  */
 
 const CACHE_NAME = 'bookarium-app-shell-v7';
@@ -230,6 +230,12 @@ self.addEventListener('fetch', (event) => {
         )
       )
     );
+    return;
+  }
+
+  // 1b. Crawler/shared image routes: Bypass App Shell cache (covers cache cleanly in IndexedDB)
+  if (url.pathname.startsWith('/covers/') || url.pathname.startsWith('/og/')) {
+    event.respondWith(fetch(request).catch(() => Response.error()));
     return;
   }
 

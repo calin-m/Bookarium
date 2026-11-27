@@ -67,6 +67,8 @@ export interface ReaderSurfaceProps {
   onRetry?: () => void;
   bookTitle?: string;
   bookAuthor?: string;
+  bookSubjects?: string[];
+  openingHook?: string;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
   onFontSizeChange?: (size: number) => void;
@@ -109,6 +111,8 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
   onRetry,
   bookTitle,
   bookAuthor,
+  bookSubjects,
+  openingHook,
   onPreviousPage,
   onNextPage,
   onFontSizeChange,
@@ -972,7 +976,15 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       : 'max-w-3xl';
 
   if (isLoading) {
-    return <ReaderLoadingView activeTheme={activeTheme} />;
+    return (
+      <ReaderLoadingView
+        activeTheme={activeTheme}
+        bookTitle={bookTitle}
+        bookAuthor={bookAuthor}
+        subjects={bookSubjects}
+        openingHook={openingHook}
+      />
+    );
   }
 
   if (isError) {

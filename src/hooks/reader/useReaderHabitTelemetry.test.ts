@@ -181,7 +181,7 @@ describe('useReaderHabitTelemetry', () => {
       })
     );
 
-    expect(document.title).toBe('Bookarium | Reader | Frankenstein — Mary Shelley');
+    expect(document.title).toBe('Frankenstein by Mary Shelley — Read Free | Bookarium');
     expect(addRecentSpy).toHaveBeenCalledWith(apiBook);
     expect(openReaderSpy).toHaveBeenCalledWith(apiBook);
     expect(enrichSavedSpy).toHaveBeenCalledWith([apiBook]);

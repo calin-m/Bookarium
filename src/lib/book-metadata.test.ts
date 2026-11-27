@@ -7,6 +7,9 @@ import {
   hasAuthenticAuthors,
   hasAuthorLifespans,
   featuredHeroToCatalogBook,
+  formatReaderDocumentTitle,
+  truncateTextAtWordBoundary,
+  resolveBookOpeningSnippet,
 } from './book-metadata';
 import type { CatalogBook, CatalogResponse } from '@/mocks/handlers';
 
@@ -440,6 +443,42 @@ describe('src/lib/book-metadata', () => {
       expect(fallbackBook.subjects).toEqual(['Classic Literature']);
       expect(fallbackBook.formats).toEqual({});
       expect(fallbackBook.download_count).toBe(50000);
+    });
+
+    it('formats keyword-first SEO reader titles, truncates cleanly at word boundaries, and resolves opening snippets', () => {
+      expect(formatReaderDocumentTitle('Pride and Prejudice', 'Jane Austen')).toBe(
+        'Pride and Prejudice by Jane Austen — Read Free | Bookarium'
+      );
+      expect(formatReaderDocumentTitle('Gutenberg Volume #77777', 'Public Domain Classic')).toBe(
+        'Gutenberg Volume #77777 — Read Free | Bookarium'
+      );
+
+      expect(truncateTextAtWordBoundary('It is a truth universally acknowledged,', 27)).toBe(
+        'It is a truth universally…'
+      );
+      expect(
+        resolveBookOpeningSnippet(9001, {
+          id: 9001,
+          title: 'Custom Monograph',
+          authors: [],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 10,
+          quotes: [
+            {
+              chapterLabel: 'Chapter I',
+              openingLine: 'In the beginning was the archive.',
+              quoteExcerpt: 'A quiet room full of books.',
+            },
+          ],
+        })
+      ).toBe('In the beginning was the archive.');
+      expect(resolveBookOpeningSnippet(1342, null)).toContain('truth universally acknowledged');
     });
   });
 });

@@ -885,9 +885,9 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(catalog.validationIssues).toEqual([]);
     expect(astParser.TIER_1_CONTRACTED_MODULES.length).toBe(20);
     expect(astParser.TIER_2_CONTRACTED_MODULES.length).toBe(22);
-    expect(astParser.TIER_3_CONTRACTED_MODULES.length).toBe(23);
+    expect(astParser.TIER_3_CONTRACTED_MODULES.length).toBe(27);
     expect(astParser.TIER_4_CONTRACTED_MODULES.length).toBe(20);
-    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(85);
+    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(89);
 
     const byFile = new Map(catalog.modules.map((m) => [m.file, m]));
     expect(byFile.get('next.config.ts')?.isTier1Protected).toBe(true);
@@ -1537,7 +1537,7 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(liveSpec.hooks.tooltipDelayMs).toBe(300);
     expect(liveSpec.hooks.passiveSyncCooldownMs).toBe(15000);
     expect(liveSpec.routeCache.booksQuotePool.sMaxAge).toBe(43200);
-    expect(liveSpec.routeCache.contentCover.sMaxAge).toBe(604800);
+    expect(liveSpec.routeCache.contentCover.sMaxAge).toBe(2592000);
     expect(liveSpec.cli.r2MinActiveForPrune).toBe(50000);
     expect(liveSpec.cli.wikidataSparqlTimeoutMs).toBe(45000);
     expect(liveSpec.jurisdictionBaselines).toEqual({

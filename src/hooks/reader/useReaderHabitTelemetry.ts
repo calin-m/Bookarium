@@ -6,12 +6,12 @@ import {
   type ResolvedBookIdentity,
   isPlaceholderTitle,
   hasAuthorLifespans,
+  formatReaderDocumentTitle,
 } from '@/lib/book-metadata';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import type { SymposiumSessionRow } from '@/types/database.types';
 import { useReadingTimer } from '@/hooks/useReadingTimer';
-import { SITE_CONFIG } from '@/config/site-config';
 import { buildR2BookFormats } from '@/lib/utils';
 
 export interface UseReaderHabitTelemetryParams {
@@ -75,10 +75,10 @@ export function useReaderHabitTelemetry({
   // Synchronize document.title with authentic resolved book identity for client transitions
   useEffect(() => {
     if (resolvedIdentity.title && !isPlaceholderTitle(resolvedIdentity.title)) {
-      const authorSuffix = resolvedIdentity.displayAuthor
-        ? ` — ${resolvedIdentity.displayAuthor}`
-        : '';
-      document.title = `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME} | ${resolvedIdentity.title}${authorSuffix}`;
+      document.title = formatReaderDocumentTitle(
+        resolvedIdentity.title,
+        resolvedIdentity.displayAuthor
+      );
     }
   }, [resolvedIdentity.title, resolvedIdentity.displayAuthor]);
 

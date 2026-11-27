@@ -1,0 +1,1817 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import React from 'react';
+import { BookReaderClient as BookReaderPage } from './BookReaderClient';
+import { useBookshelfStore } from '@/stores/useBookshelfStore';
+import { useReaderStore } from '@/stores/useReaderStore';
+import { useAnnotationStore } from '@/stores/useAnnotationStore';
+import { useFellowshipStore } from '@/stores/useFellowshipStore';
+import { useBookContent } from '@/hooks/queries/useBookContent';
+import { mockBooks } from '@/mocks/handlers';
+
+const mockPush = vi.fn();
+const mockReplace = vi.fn();
+const mockBack = vi.fn();
+
+let mockSearchParams = new URLSearchParams();
+let mockParams: Record<string, string> = { id: '1342' };
+
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  useParams: () => mockParams,
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    back: mockBack,
+  }),
+  useSearchParams: () => mockSearchParams,
+}));
+
+// Mock useBooks and useBookContent
+const mockUseBooks = vi.fn((..._args: unknown[]) => ({
+  data: {
+    count: 1,
+    results: [mockBooks[0]],
+    source: 'supabase',
+  },
+  isLoading: false,
+}));
+
+vi.mock('@/hooks/queries/useBooks', () => ({
+  useBooks: (...args: unknown[]) => mockUseBooks(...args),
+}));
+
+const chapterSampleText = `*** START OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***
+
+Title: Pride and Prejudice
+Author: Jane Austen
+
+CHAPTER 1
+
+It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful property of some one or other of their daughters.
+
+CHAPTER 2
+
+Mr. Bennet was among the earliest of those who waited on Mr. Darcy. He had always intended to visit him, though to the last always assuring his wife that he should not go; and till the evening after the visit was paid she had no knowledge of it.
+
+*** END OF THE PROJECT GUTENBERG EBOOK PRIDE AND PREJUDICE ***`;
+
+vi.mock('@/hooks/queries/useBookContent', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/queries/useBookContent')>();
+  return {
+    ...actual,
+    useBookContent: vi.fn(() => ({
+      data: chapterSampleText,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    })),
+  };
+});
+
+vi.mock('@/hooks/queries/useBookTranslations', () => ({
+  useBookTranslations: () => ({
+    translations: [
+      {
+        bookId: 1342,
+        title: 'Pride and Prejudice',
+        languageCode: 'en',
+        languageLabel: 'English',
+        isCurrent: true,
+      },
+      {
+        bookId: 67890,
+        title: 'Orgueil et Préjugés',
+        languageCode: 'fr',
+        languageLabel: 'French (Français)',
+        isCurrent: false,
+      },
+    ],
+    currentLanguage: 'English',
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
+
+describe('Dedicated Reader Page (/read/[id])', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockParams = { id: '1342' };
+    mockSearchParams = new URLSearchParams();
+    useBookshelfStore.getState().clearBookshelf();
+    useAnnotationStore.getState().clearAllAnnotations();
+    useFellowshipStore.getState().clearFellowshipState();
+    useReaderStore.getState().setFontSize(18);
+    useReaderStore.getState().setTheme('light');
+    useReaderStore.setState({
+      readingProgress: {},
+      readingPositions: {},
+    });
+  });
+
+  it('renders SSR initialBook heading and opening excerpt inside loading state before text stream finishes', () => {
+    const defaultImpl = vi.mocked(useBookContent).getMockImplementation();
+    vi.mocked(useBookContent).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useBookContent>);
+
+    mockUseBooks.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as unknown as ReturnType<typeof mockUseBooks>);
+
+    mockParams = { id: '99100' };
+    try {
+      render(
+        <BookReaderPage
+          initialBook={{
+            id: 99100,
+            title: 'The SSR Illuminated Essay',
+            authors: [{ name: 'Essayist, Classic', birth_year: 1790, death_year: 1850 }],
+            translators: [],
+            subjects: ['Philosophy', 'Essays'],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 500,
+            quotes: [
+              {
+                chapterLabel: 'Essay I',
+                openingLine: 'Thought precedes every enduring library.',
+                quoteExcerpt: 'A quiet room holds centuries.',
+              },
+            ],
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('reader-loading-metadata')).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'The SSR Illuminated Essay' })
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Thought precedes every enduring library/i)).toBeInTheDocument();
+    } finally {
+      if (defaultImpl) {
+        vi.mocked(useBookContent).mockImplementation(defaultImpl);
+      } else {
+        vi.mocked(useBookContent).mockReturnValue({
+          data: chapterSampleText,
+          isLoading: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        } as unknown as ReturnType<typeof useBookContent>);
+      }
+      mockUseBooks.mockReturnValue({
+        data: {
+          count: 1,
+          results: [mockBooks[0]],
+          source: 'supabase',
+        },
+        isLoading: false,
+      });
+    }
+  });
+
+  it('renders header, reading surface, and sticky footer with metadata', () => {
+    render(<BookReaderPage />);
+
+    expect(screen.getAllByText(/Pride and Prejudice/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Austen/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByLabelText('Back to Catalog')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Table of Contents')[0]).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Typography & Theme Controls')[0]).toBeInTheDocument();
+  });
+
+  it('navigates back to origin page when back button is clicked and exit modal is confirmed', () => {
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 3 },
+    });
+
+    render(<BookReaderPage />);
+
+    fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('exit-without-bookmarking-btn'));
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('falls back to router.push("/") when history length is <= 1 and exit modal is confirmed', () => {
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 1 },
+    });
+
+    render(<BookReaderPage />);
+
+    fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('exit-without-bookmarking-btn'));
+    expect(mockPush).toHaveBeenCalledWith('/');
+  });
+
+  it('saves bookmark and sets currently_reading when user chooses Bookmark & Leave in exit modal', async () => {
+    Object.defineProperty(window, 'history', {
+      writable: true,
+      value: { length: 2 },
+    });
+
+    render(<BookReaderPage />);
+
+    fireEvent.click(screen.getByLabelText('Back to Catalog'));
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('confirm-bookmark-and-exit-btn'));
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
+    expect(useReaderStore.getState().getReadingPosition(1342)).not.toBeNull();
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('opens and closes Table of Contents drawer', () => {
+    render(<BookReaderPage />);
+
+    const contentsBtn = screen.getAllByLabelText('Table of Contents')[0];
+    fireEvent.click(contentsBtn);
+
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    const closeBtn = screen.getByLabelText('Close Table of Contents');
+    fireEvent.click(closeBtn);
+
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+  });
+
+  it('opens and closes appearance controls popover', () => {
+    render(<BookReaderPage />);
+
+    const appearanceBtn = screen.getAllByLabelText('Typography & Theme Controls')[0];
+    fireEvent.click(appearanceBtn);
+
+    expect(screen.getByRole('region', { name: /Reading Controls/i })).toBeInTheDocument();
+
+    const closeBtn = screen.getByLabelText('Close Appearance Controls');
+    fireEvent.click(closeBtn);
+
+    expect(screen.queryByRole('region', { name: /Reading Controls/i })).not.toBeInTheDocument();
+  });
+
+  it('navigates between chapters using footer Next/Prev buttons', () => {
+    render(<BookReaderPage />);
+
+    // Initially in Preamble (Section 1)
+    expect(screen.getAllByText(/Title & Preamble/i).length).toBeGreaterThanOrEqual(1);
+
+    const nextBtn = screen.getByLabelText('Next Page');
+    fireEvent.click(nextBtn);
+
+    // Moves to Chapter 1
+    expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+
+    // Moves to Chapter 2
+    fireEvent.click(nextBtn);
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+
+    const prevBtn = screen.getByLabelText('Previous Page');
+    fireEvent.click(prevBtn);
+
+    expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('supports keyboard navigation via ArrowLeft and ArrowRight', () => {
+    render(<BookReaderPage />);
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('handles quick theme cycling from the header', () => {
+    render(<BookReaderPage />);
+
+    // Starts at light theme (set in beforeEach)
+    const themeBtn = screen.getAllByLabelText(/Current theme: light/i)[0];
+    fireEvent.click(themeBtn);
+    expect(useReaderStore.getState().theme).toBe('sepia');
+
+    // Sepia -> Dark
+    const sepiaThemeBtn = screen.getAllByLabelText(/Current theme: sepia/i)[0];
+    fireEvent.click(sepiaThemeBtn);
+    expect(useReaderStore.getState().theme).toBe('dark');
+
+    // Dark -> Light
+    const darkThemeBtn = screen.getAllByLabelText(/Current theme: dark/i)[0];
+    fireEvent.click(darkThemeBtn);
+    expect(useReaderStore.getState().theme).toBe('light');
+  });
+
+  it('handles quick font size adjustments', () => {
+    render(<BookReaderPage />);
+
+    const appearanceBtn = screen.getAllByLabelText('Typography & Theme Controls')[0];
+    fireEvent.click(appearanceBtn);
+
+    const fontSlider = screen.getByLabelText('Font size in pixels');
+    fireEvent.change(fontSlider, { target: { value: '22' } });
+    expect(useReaderStore.getState().fontSize).toBe(22);
+  });
+
+  it('handles page jump input directly from footer', () => {
+    render(<BookReaderPage />);
+
+    const pageInput = screen.getByLabelText('Current Page Number');
+    fireEvent.change(pageInput, { target: { value: '3' } });
+
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('sets reading progress to 0% on page 1 and updates progress as reader advances', () => {
+    render(<BookReaderPage />);
+
+    // On initial page (page 1)
+    expect(useReaderStore.getState().getProgress(1342)).toBe(0);
+
+    // Advance to next page
+    const nextBtn = screen.getByLabelText('Next Page');
+    fireEvent.click(nextBtn);
+    expect(useReaderStore.getState().getProgress(1342)).toBeGreaterThan(0);
+  });
+
+  it('automatically resumes at saved chapter and page, renders resume toast, and handles restart', async () => {
+    // Pre-populate saved position at Chapter 2 (index 2), page 1
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 2,
+      chapterPage: 1,
+      globalPage: 3,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    render(<BookReaderPage />);
+
+    // Should show resume notice
+    const resumeNotice = await screen.findByTestId('resume-notice');
+    expect(resumeNotice).toBeInTheDocument();
+    expect(screen.getByText(/Resumed at/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+
+    // Click Restart button -> opens confirmation modal and confirms
+    const restartBtn = screen.getByRole('button', { name: /^Restart$/i });
+    fireEvent.click(restartBtn);
+    expect(screen.getByTestId('restart-volume-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-restart-volume-btn'));
+
+    // Resets to beginning
+    expect(screen.getAllByText(/Title & Preamble/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByTestId('resume-notice')).not.toBeInTheDocument();
+  });
+
+  it('renders language and translation dropdown in reader and navigates on translation selection', () => {
+    render(<BookReaderPage />);
+
+    const langBtn = screen.getAllByLabelText('Language Editions & Translations')[0];
+    expect(langBtn).toBeInTheDocument();
+    fireEvent.click(langBtn);
+
+    expect(screen.getAllByText('French (Français)')[0]).toBeInTheDocument();
+    const frenchBtn = screen.getAllByRole('button', { name: /French \(Français\)/i })[0];
+    fireEvent.click(frenchBtn);
+
+    expect(mockReplace).toHaveBeenCalledWith('/read/67890');
+  });
+
+  it('opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection', () => {
+    render(<BookReaderPage />);
+
+    const searchBtn = screen.getAllByLabelText('Search in Book')[0];
+    fireEvent.click(searchBtn);
+
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+
+    const input = screen.getByRole('textbox', { name: /search book text/i });
+    fireEvent.change(input, { target: { value: 'Darcy' } });
+
+    expect(screen.getByText(/1 match across 1 chapter/i)).toBeInTheDocument();
+    const matchCard = screen.getByText('Darcy').closest('button');
+    expect(matchCard).not.toBeNull();
+    fireEvent.click(matchCard!);
+
+    // Should navigate to Chapter 2 and close search drawer
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/CHAPTER 2/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('toggles In-Book Search Drawer using Ctrl+F keyboard shortcut', () => {
+    render(<BookReaderPage />);
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+  });
+
+  it('enforces mutual exclusivity between all 5 reader drawers (TOC, Search, Controls, Language, Annotations)', () => {
+    render(<BookReaderPage />);
+
+    // 1. Open TOC
+    const tocBtn = screen.getAllByLabelText('Table of Contents')[0];
+    fireEvent.click(tocBtn);
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    // 2. Open Search -> closes TOC
+    const searchBtn = screen.getAllByLabelText('Search in Book')[0];
+    fireEvent.click(searchBtn);
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+
+    // 3. Open Controls -> closes Search
+    const controlsBtn = screen.getAllByLabelText('Typography & Theme Controls')[0];
+    fireEvent.click(controlsBtn);
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /Reading Controls/i })).toBeInTheDocument();
+
+    // 4. Open Language Drawer -> closes Controls
+    const langBtn = screen.getAllByLabelText('Language Editions & Translations')[0];
+    fireEvent.click(langBtn);
+    expect(screen.queryByRole('region', { name: /Reading Controls/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /Language Editions & Translations/i })).toBeInTheDocument();
+
+    // 5. Open Annotations & Notes Drawer -> closes Language Drawer
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+    expect(screen.queryByRole('dialog', { name: /Language Editions & Translations/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId('annotations-drawer-panel')).toBeInTheDocument();
+
+    // 6. Switch back to TOC -> closes Annotations Drawer
+    fireEvent.click(tocBtn);
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    // 7. Close TOC via re-click
+    fireEvent.click(tocBtn);
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+  });
+
+  it('automatically dismisses text selection popover when any reader drawer is opened', () => {
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Pride and Prejudice',
+      getRangeAt: () => ({
+        getBoundingClientRect: () => ({ top: 200, left: 300, width: 150, height: 24 }),
+      }),
+    });
+
+    try {
+      render(<BookReaderPage />);
+
+      const article = screen.getByRole('article');
+      fireEvent.mouseUp(article);
+      expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+      // Open Table of Contents drawer
+      const tocBtns = screen.getAllByLabelText('Table of Contents');
+      fireEvent.click(tocBtns[0]);
+
+      // Popover automatically dismisses
+      expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+    } finally {
+      window.getSelection = originalGetSelection;
+    }
+  });
+
+  it('toggles Read Aloud audio bar and triggers speech controls', () => {
+    render(<BookReaderPage />);
+
+    // Initially closed
+    expect(screen.queryByTestId('reader-speech-bar')).not.toBeInTheDocument();
+
+    // Click Read Aloud button
+    const speechBtn = screen.getAllByLabelText('Read Aloud Narration')[0];
+    fireEvent.click(speechBtn);
+
+    // Speech bar appears
+    expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close Read Aloud' })).toBeInTheDocument();
+
+    // Close speech bar
+    fireEvent.click(screen.getByRole('button', { name: 'Close Read Aloud' }));
+    expect(screen.queryByTestId('reader-speech-bar')).not.toBeInTheDocument();
+  });
+
+  it('automatically closes any open side drawer when Read Aloud narration is opened from the header', () => {
+    render(<BookReaderPage />);
+
+    // Open Annotations drawer first
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+    expect(screen.getByTestId('annotations-drawer-panel')).toBeInTheDocument();
+
+    // Click Read Aloud button in header
+    const speechBtn = screen.getAllByLabelText('Read Aloud Narration')[0];
+    fireEvent.click(speechBtn);
+
+    // Annotations drawer should close and Speech Bar should open
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+  });
+
+  it('automatically minimizes Read Aloud into mini-pill and docks at top when a reader drawer is opened', () => {
+    render(<BookReaderPage />);
+
+    // Open speech bar from header button
+    const speechBtn = screen.getAllByLabelText('Read Aloud Narration')[0];
+    fireEvent.click(speechBtn);
+
+    // Speech bar appears in expanded mode at bottom
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar').className).toContain('bottom-');
+
+    // Open Table of Contents drawer
+    const tocBtn = screen.getAllByLabelText('Table of Contents')[0];
+    fireEvent.click(tocBtn);
+    expect(screen.getByRole('dialog', { name: /Table of Contents/i })).toBeInTheDocument();
+
+    // Speech bar automatically collapses into mini-pill and docks at top
+    expect(screen.getByTestId('speech-bar-minimized')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar').className).toContain('top-');
+
+    // Close TOC drawer
+    const closeBtn = screen.getByLabelText('Close Table of Contents');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole('dialog', { name: /Table of Contents/i })).not.toBeInTheDocument();
+
+    // Speech bar restores to expanded mode at bottom
+    expect(screen.getByTestId('speech-bar-expanded')).toBeInTheDocument();
+    expect(screen.getByTestId('reader-speech-bar').className).toContain('bottom-');
+  });
+
+  it('toggles Annotations & Notes drawer from reader header', () => {
+    render(<BookReaderPage />);
+
+    // Initially closed
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+
+    // Click notes button
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+
+    // Notes drawer appears
+    expect(screen.getByTestId('annotations-drawer-panel')).toBeInTheDocument();
+
+    // Close notes drawer
+    const closeBtn = screen.getByRole('button', { name: /Close Notes & Highlights/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+  });
+
+  it('renders selection popover on mouseUp and applies chosen highlight color', async () => {
+    const originalGetSelection = window.getSelection;
+    window.getSelection = vi.fn().mockReturnValue({
+      isCollapsed: false,
+      toString: () => 'Pride and Prejudice',
+      getRangeAt: () => ({
+        getBoundingClientRect: () => ({ top: 200, left: 300, width: 150, height: 24 }),
+      }),
+    });
+
+    render(<BookReaderPage />);
+
+    // Trigger text selection via mouseUp on article
+    const article = screen.getByRole('article');
+    fireEvent.mouseUp(article);
+
+    // Popover appears
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+    // Click 'mint' color
+    const mintBtn = screen.getByTestId('highlight-color-mint');
+    await act(async () => {
+      fireEvent.click(mintBtn);
+    });
+
+    // Popover closes, highlight is rendered on the page!
+    await waitFor(() => {
+      expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+    });
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    expect(highlightMark).toHaveTextContent('Pride and Prejudice');
+    expect(highlightMark).toHaveAttribute('data-annotation-color', 'mint');
+
+    window.getSelection = originalGetSelection;
+  });
+
+  it('elevates tactile TextHighlightPopover above Read Aloud bar with zIndex 10002 when speech is open', () => {
+    const originalMatchMedia = window.matchMedia;
+    const originalGetSelection = window.getSelection;
+
+    try {
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      window.getSelection = vi.fn().mockReturnValue({
+        isCollapsed: false,
+        toString: () => 'Pride and Prejudice',
+        getRangeAt: () => ({
+          getBoundingClientRect: () => ({ top: 200, bottom: 224, left: 300, width: 150, height: 24 }),
+        }),
+      });
+
+      render(<BookReaderPage />);
+
+      fireEvent.click(screen.getAllByLabelText('Read Aloud Narration')[0]);
+      expect(screen.getByTestId('reader-speech-bar')).toBeInTheDocument();
+
+      fireEvent.mouseUp(screen.getByRole('article'));
+      const popover = screen.getByTestId('text-highlight-popover');
+      expect(popover.style.zIndex).toBe('10002');
+      expect(popover.style.bottom).toBe('9.75rem');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      window.getSelection = originalGetSelection;
+    }
+  });
+
+  it('attaches and saves a personal reflection note to an existing highlight', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+    });
+
+    render(<BookReaderPage />);
+
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    expect(highlightMark).toBeInTheDocument();
+
+    // Click highlight to open popover and add a note
+    await act(async () => {
+      fireEvent.click(highlightMark);
+    });
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+    // Expand note input and save note
+    const addNoteBtn = screen.getByTestId('highlight-add-note-btn');
+    fireEvent.click(addNoteBtn);
+    const textarea = screen.getByTestId('highlight-note-textarea');
+    fireEvent.change(textarea, { target: { value: 'Famous opening quote' } });
+    const saveNoteBtn = screen.getByTestId('highlight-save-note-btn');
+    await act(async () => {
+      fireEvent.click(saveNoteBtn);
+    });
+
+    // Verify in store
+    const stored = useAnnotationStore.getState().annotations;
+    expect(stored).toHaveLength(1);
+    expect(stored[0].note).toBe('Famous opening quote');
+  });
+
+  it('displays saved note in notes drawer and closes drawer upon jumping to passage', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+      note: 'Famous opening quote',
+    });
+
+    render(<BookReaderPage />);
+
+    // Open Notes drawer and verify it appears with note
+    const notesBtn = screen.getByTestId('reader-annotations-toggle-btn');
+    fireEvent.click(notesBtn);
+    expect(screen.getByText('Famous opening quote')).toBeInTheDocument();
+
+    // Jump to passage from drawer
+    const jumpBtn = screen.getByRole('button', { name: /Jump to passage/i });
+    fireEvent.click(jumpBtn);
+
+    // Drawer closes after jump
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+  });
+
+  it('updates highlight color in-place without duplicating annotations in store', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+    });
+
+    render(<BookReaderPage />);
+
+    const existingMark = screen.getByTestId('user-annotation-highlight');
+    await act(async () => {
+      fireEvent.click(existingMark);
+    });
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+
+    const roseBtn = screen.getByTestId('highlight-color-rose');
+    await act(async () => {
+      fireEvent.click(roseBtn);
+    });
+
+    // Annotations count remains 1 (never duplicate or stacked)
+    expect(useAnnotationStore.getState().annotations).toHaveLength(1);
+    expect(useAnnotationStore.getState().annotations[0].color).toBe('rose');
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveAttribute('data-annotation-color', 'rose');
+  });
+
+  it('removes highlight and note upon confirmation in delete modal', async () => {
+    useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+      note: 'Note to be deleted',
+    });
+
+    render(<BookReaderPage />);
+
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    await act(async () => {
+      fireEvent.click(highlightMark);
+    });
+
+    const deleteBtn = screen.getByTestId('highlight-delete-btn');
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
+
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    const confirmBtn = screen.getByRole('button', { name: /Delete Note/i });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    expect(useAnnotationStore.getState().annotations).toHaveLength(0);
+    expect(screen.queryByTestId('user-annotation-highlight')).not.toBeInTheDocument();
+  });
+
+  it('keeps reading status undefined on Page 1 & 2 and transitions to currently_reading upon active engagement', async () => {
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBeUndefined();
+
+    render(<BookReaderPage />);
+
+    // Initially on Chapter 0, Page 1: status remains undefined
+    expect(useBookshelfStore.getState().bookStatuses[1342]).toBeUndefined();
+
+    // Advance to next chapter / page 3: triggers currently_reading
+    const nextBtn = screen.getByLabelText('Next Page');
+    fireEvent.click(nextBtn);
+
+    await waitFor(() => {
+      expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('currently_reading');
+    });
+  });
+
+  it('renders volume completion modal with star rating and sets status to finished on the final page', async () => {
+    // Pre-populate at last chapter (index 3), page 1
+    useReaderStore.getState().saveReadingPosition(1342, {
+      chapterIndex: 3,
+      chapterPage: 1,
+      globalPage: 4,
+      lastReadAt: new Date().toISOString(),
+    });
+
+    render(<BookReaderPage />);
+
+    // On last chapter and last page, completion modal appears and status transitions to finished
+    await waitFor(() => {
+      expect(screen.getByTestId('volume-completion-modal')).toBeInTheDocument();
+      expect(useBookshelfStore.getState().bookStatuses[1342]).toBe('finished');
+    });
+
+    // Rate 5 stars via completion modal
+    const star5 = screen.getByRole('radio', { name: 'Rate 5 of 5 stars' });
+    fireEvent.click(star5);
+
+    expect(useBookshelfStore.getState().bookRatings[1342]).toBe(5);
+
+    // Close completion modal
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
+    fireEvent.click(closeBtn);
+
+    expect(screen.queryByTestId('volume-completion-modal')).not.toBeInTheDocument();
+  });
+
+  it('persists authentic resolved book metadata to recentBooks and warms reader store on load', async () => {
+    expect(useBookshelfStore.getState().recentBooks).toEqual([]);
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      const recent = useBookshelfStore.getState().recentBooks;
+      expect(recent.length).toBeGreaterThanOrEqual(1);
+      expect(recent[0].id).toBe(1342);
+      expect(recent[0].title).toBe('Pride and Prejudice');
+    });
+
+    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+  });
+
+  it('synchronizes document.title with the authentic resolved book title and author', async () => {
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(document.title).toContain('Pride and Prejudice');
+      expect(document.title).toContain('Jane Austen');
+      expect(document.title).toContain('Bookarium');
+    });
+  });
+
+  it('renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction and triggers one-shot auto-retry when verified lifespans resolve', async () => {
+    const refetchSpy = vi.fn();
+    vi.mocked(useBookContent).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: {
+        isLegalRestriction: true,
+        details: {
+          country: 'UK',
+          rule: 'LIFE_70',
+          reason: 'This title is protected under UK copyright law.',
+        },
+      } as any,
+      refetch: refetchSpy,
+    } as any);
+
+    render(<BookReaderPage />);
+
+    expect(screen.getByTestId('reader-legal-restriction-view')).toBeInTheDocument();
+    expect(screen.getByText(/Protected by Copyright in Your Jurisdiction/i)).toBeInTheDocument();
+    expect(screen.getByText(/This title is protected under UK copyright law\./i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Return to Library/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(refetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    vi.mocked(useBookContent).mockImplementation(() => ({
+      data: chapterSampleText,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    }) as any);
+  });
+
+  it('navigates directly to chapter and page specified in URL search params', async () => {
+    mockSearchParams = new URLSearchParams('chapter=1&page=1');
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('navigates to targeted annotation and scrolls it into view when annotationId is provided in URL', async () => {
+    const scrollIntoViewMock = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const ann = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      bookAuthor: 'Jane Austen',
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'It is a truth universally acknowledged',
+      color: 'yellow',
+      note: 'Darcy note',
+    });
+
+    mockSearchParams = new URLSearchParams(`chapter=1&page=1&annotationId=${ann.id}`);
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/CHAPTER 1/i).length).toBeGreaterThanOrEqual(1);
+      const highlight = document.querySelector(`[data-annotation-id="${ann.id}"]`);
+      expect(highlight).toBeInTheDocument();
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
+  });
+
+  it('displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed', () => {
+    useFellowshipStore.setState({
+      symposiums: [
+        {
+          id: 'symp-1342',
+          book_id: 1342,
+          book_title: 'Pride and Prejudice',
+          host_id: 'me',
+          host_username: 'me_scholar',
+          host_display_name: 'Me Scholar',
+          fellow_id: 'fellow-1',
+          fellow_username: 'clara_v',
+          fellow_display_name: 'Clara Vance',
+          status: 'active',
+          host_progress: 10,
+          host_chapter: 0,
+          fellow_progress: 50,
+          fellow_chapter: 1,
+          created_at: '2026-10-15T10:00:00Z',
+          updated_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+    });
+
+    render(<BookReaderPage />);
+
+    const banner = screen.getByTestId('symposium-milestone-banner');
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent('Clara Vance reached Section 2 (50%) in this Symposium');
+
+    fireEvent.click(screen.getByTestId('dismiss-symposium-milestone-btn'));
+    expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent('Clara Vance: Sec. 2 (50%)');
+
+    act(() => {
+      useFellowshipStore.getState().clearFellowshipState();
+    });
+  });
+
+  it('allows user to save own highlight and note on passage previously annotated by a fellow scholar', async () => {
+    useAnnotationStore.setState({
+      fellowAnnotations: [
+        {
+          id: 'fellow-ann-symp-1',
+          bookId: 1342,
+          chapterIndex: 0,
+          chapterPage: 1,
+          selectedText: 'Pride and Prejudice',
+          color: 'amber',
+          note: 'Fellow reflection on classic work',
+          createdAt: '2026-10-15T10:00:00Z',
+          updatedAt: '2026-10-15T10:00:00Z',
+          isFellow: true,
+          fellowUsername: 'hypatia',
+          fellowDisplayName: 'Hypatia of Alexandria',
+        },
+      ],
+      annotations: [],
+    });
+
+    render(<BookReaderPage />);
+
+    const fellowMark = screen.getByTestId('fellow-annotation-highlight');
+    expect(fellowMark).toBeInTheDocument();
+    expect(screen.getByTestId('fellow-highlight-badge')).toHaveTextContent('Hypatia of Alexandria');
+
+    // Click fellow mark to view fellow annotation
+    await act(async () => {
+      fireEvent.click(fellowMark);
+    });
+
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+    const fellowPopover = screen.getByTestId('popover-fellow-attribution');
+    expect(fellowPopover).toBeInTheDocument();
+    expect(within(fellowPopover).getByText('Hypatia of Alexandria')).toBeInTheDocument();
+    expect(within(fellowPopover).getByText('@hypatia')).toBeInTheDocument();
+
+    // Click "Add My Note & Highlight" in popover
+    const addOwnBtn = screen.getByTestId('fellow-popover-add-own-note-btn');
+    expect(addOwnBtn).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(addOwnBtn);
+    });
+
+    // Color options and note textarea are now visible to the user
+    const colorBtn = screen.getByTestId('highlight-color-mint');
+    expect(colorBtn).toBeInTheDocument();
+    const textarea = screen.getByTestId('highlight-note-textarea');
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'My perspective alongside Hypatia' } });
+    });
+
+    // Save note
+    const saveBtn = screen.getByTestId('highlight-save-note-btn');
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    // Popover remains open in Read Mode displaying the saved note
+    await waitFor(() => {
+      expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+      expect(screen.getByTestId('highlight-note-display')).toHaveTextContent('“My perspective alongside Hypatia”');
+      expect(screen.getByTestId('highlight-edit-note-btn')).toHaveTextContent('Edit');
+    });
+
+    // Close popover via explicit close button
+    const closeBtn = screen.getByRole('button', { name: 'Close selection menu' });
+    await act(async () => {
+      fireEvent.click(closeBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+    });
+
+    // Verify own annotation was saved in store
+    const stored = useAnnotationStore.getState().annotations;
+    expect(stored).toHaveLength(1);
+    expect(stored[0].note).toBe('My perspective alongside Hypatia');
+    expect(stored[0].selectedText).toBe('Pride and Prejudice');
+
+    act(() => {
+      useAnnotationStore.setState({ fellowAnnotations: [], annotations: [] });
+    });
+  });
+
+  it('handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const syncSpy = vi.spyOn(useAnnotationStore.getState(), 'syncWithCloud').mockResolvedValue(undefined);
+    const fetchFellowshipSpy = vi.spyOn(useFellowshipStore.getState(), 'fetchFellowshipData').mockResolvedValue(undefined);
+    const fetchFellowAnnSpy = vi.spyOn(useAnnotationStore.getState(), 'fetchFellowAnnotationsForBook').mockResolvedValue([]);
+
+    act(() => {
+      useAuthStore.setState({
+        user: { id: 'scholar-1', email: 'scholar@bookarium.test' } as unknown as ReturnType<typeof useAuthStore.getState>['user'],
+      });
+    });
+
+    await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      bookTitle: 'Pride and Prejudice',
+      chapterIndex: 0,
+      chapterPage: 1,
+      selectedText: 'Pride and Prejudice',
+      color: 'mint',
+      note: 'Initial note',
+    });
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      expect(syncSpy).toHaveBeenCalledWith('scholar-1', { minSyncIntervalMs: 15_000 });
+      expect(fetchFellowshipSpy).toHaveBeenCalledWith('scholar-1', { minSyncIntervalMs: 15_000 });
+      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'scholar-1', undefined, { minSyncIntervalMs: 15_000 });
+    });
+
+    // Press '/' to open search drawer, then press '/' again to close
+    fireEvent.keyDown(window, { key: '/' });
+    expect(screen.getByRole('dialog', { name: /Search in Volume/i })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: '/' });
+    expect(screen.queryByRole('dialog', { name: /Search in Volume/i })).not.toBeInTheDocument();
+
+    // Open DeleteAnnotationModal and cancel it
+    const highlightMark = screen.getByTestId('user-annotation-highlight');
+    await act(async () => {
+      fireEvent.click(highlightMark);
+    });
+    const deleteBtn = screen.getByTestId('highlight-delete-btn');
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
+    expect(screen.getByTestId('delete-single-note-dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(screen.queryByTestId('delete-single-note-dialog')).not.toBeInTheDocument();
+
+    // Navigate to last page and click "My Bookshelf" in Volume Completion Modal
+    act(() => {
+      useReaderStore.getState().saveReadingPosition(1342, {
+        chapterIndex: 3,
+        chapterPage: 1,
+        globalPage: 4,
+        lastReadAt: new Date().toISOString(),
+      });
+    });
+    // Advance using PageDown key to reach end
+    fireEvent.keyDown(window, { key: 'PageDown' });
+    fireEvent.keyDown(window, { key: 'PageDown' });
+    fireEvent.keyDown(window, { key: 'PageDown' });
+
+    const completionModal = await screen.findByTestId('volume-completion-modal');
+    expect(completionModal).toBeInTheDocument();
+    fireEvent.click(within(completionModal).getByRole('button', { name: /My Bookshelf/i }));
+    expect(mockPush).toHaveBeenCalledWith('/bookshelf');
+
+    syncSpy.mockRestore();
+    fetchFellowshipSpy.mockRestore();
+    fetchFellowAnnSpy.mockRestore();
+    act(() => {
+      useAuthStore.setState({ user: null });
+    });
+  });
+
+  it('resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)', () => {
+    mockParams = {};
+    const originalPathname = window.location.pathname;
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: '/read/1342',
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<BookReaderPage />);
+    expect(screen.getAllByText('Pride and Prejudice').length).toBeGreaterThan(0);
+
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...window.location,
+        pathname: originalPathname,
+      },
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  it('hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)', async () => {
+    mockUseBooks.mockReturnValueOnce({
+      data: { count: 0, results: [], source: 'local' },
+      isLoading: false,
+    });
+    useReaderStore.setState({ currentBook: null });
+    useBookshelfStore.getState().clearBookshelf();
+
+    render(<BookReaderPage />);
+
+    await waitFor(() => {
+      const recent = useBookshelfStore.getState().recentBooks;
+      expect(recent.length).toBeGreaterThanOrEqual(1);
+      expect(recent[0].id).toBe(1342);
+      expect(recent[0].title).toBe('Pride and Prejudice');
+    });
+    expect(useReaderStore.getState().currentBook?.id).toBe(1342);
+  });
+
+  it('handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { useThemeStore } = await import('@/stores/useThemeStore');
+    const fetchFellowAnnSpy = vi
+      .spyOn(useAnnotationStore.getState(), 'fetchFellowAnnotationsForBook')
+      .mockResolvedValue([]);
+    const enrichFellowSpy = vi.spyOn(useAnnotationStore.getState(), 'enrichFellowAnnotations');
+
+    act(() => {
+      useThemeStore.setState({ theme: 'sepia' });
+      useReaderStore.setState({ theme: 'light' });
+      useAuthStore.setState({
+        user: { id: 'fellow-user', email: 'fellow@bookarium.test' } as unknown as ReturnType<
+          typeof useAuthStore.getState
+        >['user'],
+      });
+      useFellowshipStore.setState({
+        symposiums: [
+          {
+            id: 'symp-fellow-1342',
+            book_id: 1342,
+            book_title: 'Pride and Prejudice',
+            host_id: 'host-user',
+            host_username: 'host_scholar',
+            host_display_name: 'Host Scholar',
+            fellow_id: 'fellow-user',
+            fellow_username: 'fellow_scholar',
+            fellow_display_name: 'Fellow Scholar',
+            status: 'active',
+            host_progress: 15,
+            host_chapter: 1,
+            fellow_progress: 10,
+            fellow_chapter: 0,
+            created_at: '2026-10-15T10:00:00Z',
+            updated_at: '2026-10-15T10:00:00Z',
+          },
+        ],
+      });
+      useAnnotationStore.setState({
+        fellowAnnotations: [
+          {
+            id: 'f-ann-1',
+            bookId: 1342,
+            chapterIndex: 0,
+            chapterPage: 1,
+            selectedText: 'Pride and Prejudice',
+            color: 'amber',
+            note: 'Host insight',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+            isFellow: true,
+            fellowUsername: 'host_scholar',
+            fellowDisplayName: 'Host Scholar',
+          },
+        ],
+      });
+    });
+
+    render(<BookReaderPage />);
+
+    // Theme synchronizes from global theme ('sepia')
+    await waitFor(() => {
+      expect(useReaderStore.getState().theme).toBe('sepia');
+      expect(enrichFellowSpy).toHaveBeenCalled();
+    });
+
+    // Since host_progress is 15 (< 25), milestone banner is not shown, companion pill is visible immediately
+    expect(screen.queryByTestId('symposium-milestone-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('symposium-companion-pill')).toHaveTextContent(
+      'Host Scholar: Sec. 2 (15%)'
+    );
+
+    // Open annotations drawer -> triggers re-fetch of fellow annotations
+    fetchFellowAnnSpy.mockClear();
+    fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+    await waitFor(() => {
+      expect(fetchFellowAnnSpy).toHaveBeenCalledWith(1342, 'fellow-user', undefined, { minSyncIntervalMs: 15_000 });
+    });
+
+    fetchFellowAnnSpy.mockRestore();
+    enrichFellowSpy.mockRestore();
+    act(() => {
+      useAuthStore.setState({ user: null });
+      useThemeStore.setState({ theme: 'light' });
+      useFellowshipStore.getState().clearFellowshipState();
+      useAnnotationStore.setState({ fellowAnnotations: [], annotations: [] });
+    });
+  });
+
+  it('resets residual outer window scrollY to 0 on mount and anchors the viewport container', () => {
+    const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 84 });
+
+    const { container } = render(<BookReaderPage />);
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    expect(container.firstElementChild).toHaveClass('fixed', 'inset-0', 'h-[100dvh]', 'overscroll-none');
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 0 });
+    scrollToSpy.mockRestore();
+  });
+
+  it('persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls', async () => {
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { saveCurrentAsCustomDefaults } = await import('@/lib/preferences-sync');
+
+    useReaderStore.setState({
+      fontSize: 22,
+      fontFamily: 'mono',
+      readingMode: 'scroll',
+      columnWidth: 'narrow',
+      theme: 'sepia',
+      brightness: 80,
+    });
+    saveCurrentAsCustomDefaults({ syncCloud: false });
+
+    render(<BookReaderPage />);
+
+    // Open Typography & Theme Controls drawer
+    fireEvent.click(screen.getAllByLabelText('Typography & Theme Controls')[0]);
+    const controlsDrawer = screen.getByRole('region', { name: 'Reading Controls' });
+
+    // Tweak font size to 15px in-book
+    fireEvent.click(within(controlsDrawer).getByRole('button', { name: '15px' }));
+    expect(useReaderStore.getState().fontSize).toBe(15);
+
+    // Click "My Default" button inside ReaderControls -> snaps back to 22px mono scroll
+    fireEvent.click(within(controlsDrawer).getByTestId('reader-revert-custom-defaults-btn'));
+    expect(useReaderStore.getState().fontSize).toBe(22);
+    expect(useReaderStore.getState().fontFamily).toBe('mono');
+    expect(useReaderStore.getState().readingMode).toBe('scroll');
+
+    // Click "Factory Reset" button inside ReaderControls -> resets to 18px serif paginated wide light
+    fireEvent.click(within(controlsDrawer).getByTestId('reader-reset-factory-defaults-btn'));
+    expect(useReaderStore.getState().fontSize).toBe(18);
+    expect(useReaderStore.getState().fontFamily).toBe('serif');
+    expect(useReaderStore.getState().readingMode).toBe('paginated');
+    expect(useReaderStore.getState().columnWidth).toBe('wide');
+    expect(useReaderStore.getState().theme).toBe('light');
+
+    act(() => {
+      usePreferencesStore.getState().resetAllPreferencesStore();
+    });
+  });
+
+  it('disables redundant /api/books?ids=<id> query when currentBook in useReaderStore already has complete metadata and verified author lifespans', () => {
+    useReaderStore.setState({
+      currentBook: mockBooks[0],
+    });
+    mockUseBooks.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+    } as unknown as ReturnType<typeof mockUseBooks>);
+
+    const { unmount } = render(<BookReaderPage />);
+
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      expect.objectContaining({ ids: '1342' }),
+      expect.objectContaining({ enabled: false })
+    );
+    expect(screen.getAllByText(/Pride and Prejudice/i).length).toBeGreaterThanOrEqual(1);
+    unmount();
+
+    mockUseBooks.mockClear();
+    useReaderStore.setState({ currentBook: null });
+    render(<BookReaderPage />);
+    expect(mockUseBooks).toHaveBeenCalledWith(
+      expect.objectContaining({ ids: '1342' }),
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  it('intercepts exit with ReaderExitBookmarkModal when back is clicked without a line bookmark', async () => {
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+    });
+
+    render(<BookReaderPage />);
+
+    // Click back to catalog
+    const backBtn = screen.getByRole('button', { name: 'Back to Catalog' });
+    fireEvent.click(backBtn);
+
+    // Modal appears
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('exit-without-bookmarking-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('confirm-bookmark-and-exit-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('keep-reading-btn')).toBeInTheDocument();
+
+    // Click "Keep Reading" dismisses modal without navigating
+    fireEvent.click(screen.getByTestId('keep-reading-btn'));
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+
+    // Click back again, then click "Leave"
+    fireEvent.click(backBtn);
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('exit-without-bookmarking-btn'));
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it('saves reading position with bookmarkRow: 1 and sets status currently_reading when Bookmark is clicked in exit modal', async () => {
+    useReaderStore.setState({
+      readingPositions: {},
+      readingProgress: {},
+    });
+
+    render(<BookReaderPage />);
+
+    const backBtn = screen.getByRole('button', { name: 'Back to Catalog' });
+    fireEvent.click(backBtn);
+
+    expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-bookmark-and-exit-btn'));
+
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    const pos = useReaderStore.getState().getReadingPosition(1342);
+    expect(pos?.bookmarkRow).toBe(1);
+    expect(useBookshelfStore.getState().getReadingStatus(1342)).toBe('currently_reading');
+  });
+
+  it('bypasses exit modal when a bookmark exists further ahead or when reminder is disabled', async () => {
+    // 1. Saved bookmark is further ahead (Chapter 0, Page 5) while user is on Page 1
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 0,
+          chapterPage: 5,
+          globalPage: 5,
+          bookmarkRow: 3,
+          bookmarkText: 'Further passage',
+          lastReadAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    const { unmount } = render(<BookReaderPage />);
+    const backBtn = screen.getByRole('button', { name: 'Back to Catalog' });
+    mockBack.mockClear();
+
+    await act(async () => {
+      fireEvent.click(backBtn);
+    });
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    expect(mockBack).toHaveBeenCalled();
+    unmount();
+
+    // 2. User has disabled exit bookmark reminder in preferences
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    usePreferencesStore.setState({ exitBookmarkReminderEnabled: false });
+    useReaderStore.setState({ readingPositions: {} });
+
+    const { unmount: unmount2 } = render(<BookReaderPage />);
+    const backBtn2 = screen.getByRole('button', { name: 'Back to Catalog' });
+    mockBack.mockClear();
+
+    await act(async () => {
+      fireEvent.click(backBtn2);
+    });
+    expect(screen.queryByTestId('reader-exit-bookmark-modal')).not.toBeInTheDocument();
+    expect(mockBack).toHaveBeenCalled();
+    unmount2();
+
+    // Restore preference
+    usePreferencesStore.setState({ exitBookmarkReminderEnabled: true });
+  });
+
+  it('syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { cancelPendingPreferencesCloudSync } = await import('@/lib/preferences-sync');
+
+    const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
+    const originalUpdateProfile = useAuthStore.getState().updateProfile;
+    const originalSpeechSynthesis = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    const originalUtterance = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'SpeechSynthesisUtterance'
+    );
+
+    const mockVoices = [
+      {
+        voiceURI: 'voice-default-en',
+        name: 'Default English',
+        lang: 'en-US',
+        default: true,
+        localService: true,
+      },
+      {
+        voiceURI: 'voice-neural-uk',
+        name: 'British Scholar',
+        lang: 'en-GB',
+        default: false,
+        localService: true,
+      },
+    ] as unknown as SpeechSynthesisVoice[];
+
+    class MockSpeechSynthesisUtterance {
+      text: string;
+      rate = 1;
+      pitch = 1;
+      lang = '';
+      voice: SpeechSynthesisVoice | null = null;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+
+    Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: MockSpeechSynthesisUtterance,
+    });
+
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speaking: false,
+        paused: false,
+        pending: false,
+        getVoices: () => mockVoices,
+        speak: vi.fn(),
+        cancel: vi.fn(),
+        pause: vi.fn(),
+        resume: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        onvoiceschanged: null,
+      } as unknown as SpeechSynthesis,
+    });
+
+    vi.useFakeTimers();
+
+    try {
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'reader-sync-u1', email: 'reader@bookarium.test' } as unknown as ReturnType<
+            typeof useAuthStore.getState
+          >['user'],
+          updateProfile: mockUpdateProfile,
+        });
+        usePreferencesStore.getState().resetAllPreferencesStore();
+      });
+
+      render(<BookReaderPage />);
+
+      // 1. Pinch-to-zoom font scaling on ReaderSurface
+      const surface = screen.getByRole('main');
+      fireEvent.touchStart(surface, {
+        touches: [
+          { clientX: 100, clientY: 200 },
+          { clientX: 200, clientY: 200 },
+        ],
+      });
+      fireEvent.touchMove(surface, {
+        touches: [
+          { clientX: 50, clientY: 200 },
+          { clientX: 290, clientY: 200 },
+        ],
+      });
+      fireEvent.touchEnd(surface, { touches: [] });
+
+      const pinchedFontSize = useReaderStore.getState().fontSize;
+      expect(pinchedFontSize).toBeGreaterThan(18);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          font_size: pinchedFontSize,
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ fontSize: pinchedFontSize }),
+          }),
+        })
+      );
+
+      // 2. Read-Aloud speed & narrator voice inside ReaderSpeechBar
+      mockUpdateProfile.mockClear();
+      fireEvent.click(screen.getAllByLabelText('Read Aloud Narration')[0]);
+      fireEvent.change(screen.getByLabelText('Narrator voice'), {
+        target: { value: 'voice-neural-uk' },
+      });
+      expect(usePreferencesStore.getState().speechVoiceURI).toBe('voice-neural-uk');
+
+      fireEvent.click(screen.getByRole('button', { name: /Speech rate:/i }));
+      fireEvent.click(screen.getByRole('button', { name: '1.5x' }));
+      expect(usePreferencesStore.getState().speechRate).toBe(1.5);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({
+              speechRate: 1.5,
+              speechVoiceURI: 'voice-neural-uk',
+            }),
+          }),
+        })
+      );
+
+      // 3. Exit Bookmark Prompt toggle inside ReaderControls
+      mockUpdateProfile.mockClear();
+      fireEvent.click(screen.getAllByLabelText('Typography & Theme Controls')[0]);
+      fireEvent.click(screen.getByTestId('reader-toggle-exit-bookmark-prompt'));
+      expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({
+              exitBookmarkReminderEnabled: false,
+            }),
+          }),
+        })
+      );
+    } finally {
+      cancelPendingPreferencesCloudSync();
+      vi.useRealTimers();
+      if (originalSpeechSynthesis) {
+        Object.defineProperty(window, 'speechSynthesis', originalSpeechSynthesis);
+      } else {
+        delete (window as unknown as Record<string, unknown>).speechSynthesis;
+      }
+      if (originalUtterance) {
+        Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', originalUtterance);
+      } else {
+        delete (globalThis as unknown as Record<string, unknown>).SpeechSynthesisUtterance;
+      }
+      act(() => {
+        usePreferencesStore.getState().resetAllPreferencesStore();
+        useAuthStore.setState({ user: null, updateProfile: originalUpdateProfile });
+      });
+    }
+  });
+
+  it('syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences', async () => {
+    const { useAuthStore } = await import('@/stores/useAuthStore');
+    const { usePreferencesStore } = await import('@/stores/usePreferencesStore');
+    const { cancelPendingPreferencesCloudSync } = await import('@/lib/preferences-sync');
+
+    const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
+    const originalUpdateProfile = useAuthStore.getState().updateProfile;
+    vi.useFakeTimers();
+
+    try {
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'reader-sync-u2', email: 'reader2@bookarium.test' } as unknown as ReturnType<
+            typeof useAuthStore.getState
+          >['user'],
+          updateProfile: mockUpdateProfile,
+        });
+        usePreferencesStore.getState().resetAllPreferencesStore();
+        useFellowshipStore.setState({
+          symposiums: [
+            {
+              id: 'symp-sync-1342',
+              book_id: 1342,
+              book_title: 'Pride and Prejudice',
+              host_id: 'reader-sync-u2',
+              host_username: 'host_scholar',
+              host_display_name: 'Host Scholar',
+              fellow_id: 'fellow-2',
+              fellow_username: 'fellow_2',
+              fellow_display_name: 'Fellow Two',
+              status: 'active',
+              host_progress: 10,
+              host_chapter: 0,
+              fellow_progress: 25,
+              fellow_chapter: 1,
+              created_at: '2026-10-15T10:00:00Z',
+              updated_at: '2026-10-15T10:00:00Z',
+            },
+          ],
+        });
+      });
+
+      render(<BookReaderPage />);
+
+      // 1. Spoiler Shield toggle inside ReaderAnnotationsDrawer
+      fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+      fireEvent.click(screen.getByTestId('drawer-spoiler-shield-btn'));
+      expect(useAnnotationStore.getState().spoilerShieldEnabled).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ spoilerShieldEnabled: false }),
+          }),
+        })
+      );
+
+      // 2. Close drawer and test Exit Bookmark Modal "Don't ask me again when closing" checkbox
+      mockUpdateProfile.mockClear();
+      fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Catalog' }));
+      expect(screen.getByTestId('reader-exit-bookmark-modal')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('dont-remind-again-checkbox'));
+      expect(usePreferencesStore.getState().exitBookmarkReminderEnabled).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(550);
+      });
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ exitBookmarkReminderEnabled: false }),
+          }),
+        })
+      );
+    } finally {
+      cancelPendingPreferencesCloudSync();
+      vi.useRealTimers();
+      act(() => {
+        useAnnotationStore.getState().setSpoilerShieldEnabled(true);
+        useFellowshipStore.getState().clearFellowshipState();
+        usePreferencesStore.getState().resetAllPreferencesStore();
+        useAuthStore.setState({ user: null, updateProfile: originalUpdateProfile });
+      });
+    }
+  });
+
+  it('surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows', async () => {
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 2,
+          chapterPage: 1,
+          globalPage: 3,
+          bookmarkRow: 2,
+          bookmarkText: 'Mr. Bennet was among the earliest of those who waited on Mr. Darcy.',
+          lastReadAt: '2026-10-30T10:00:00Z',
+        },
+      },
+    });
+
+    render(<BookReaderPage />);
+
+    // Auto-resumed to CHAPTER 2 (index 2) with indigo bookmark indicator dot in Header
+    expect(await screen.findByText(/Mr\. Bennet was among the earliest/)).toBeInTheDocument();
+    expect(screen.getByTestId('reader-annotations-bookmark-dot')).toBeInTheDocument();
+
+    // Navigate back to CHAPTER 1 (index 1) while keeping pinnedBookmark intact
+    fireEvent.click(screen.getByLabelText('Previous Page'));
+    expect(screen.getByText(/It is a truth universally acknowledged/)).toBeInTheDocument();
+
+    // Open Notes & Highlights drawer -> pinned Bookmark card appears without "On this page" badge
+    fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+    expect(screen.getByTestId('filter-color-bookmark')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    expect(screen.getByText(/Sec 3 · Page 1 · Line 3/)).toBeInTheDocument();
+    expect(screen.queryByTestId('drawer-bookmark-active-badge')).toBeNull();
+
+    // Click Jump to bookmark -> drawer closes and jumps straight back to CHAPTER 2
+    fireEvent.click(screen.getByTestId('drawer-bookmark-jump-btn'));
+    expect(screen.queryByTestId('annotations-drawer-panel')).not.toBeInTheDocument();
+    expect(screen.getByText(/Mr\. Bennet was among the earliest/)).toBeInTheDocument();
+
+    // Reopen drawer on the bookmarked page -> shows "On this page" badge, then Clear bookmark opens confirmation modal and removes it everywhere on confirm
+    fireEvent.click(screen.getByTestId('reader-annotations-toggle-btn'));
+    expect(screen.getByTestId('drawer-bookmark-active-badge')).toHaveTextContent('On this page');
+
+    fireEvent.click(screen.getByTestId('drawer-bookmark-clear-btn'));
+    expect(screen.getByText('Remove Silk Bookmark?')).toBeInTheDocument();
+    expect(screen.getByTestId('drawer-bookmark-item')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('confirm-clear-bookmark-btn'));
+    expect(screen.queryByTestId('drawer-bookmark-item')).toBeNull();
+    expect(screen.queryByTestId('filter-color-bookmark')).toBeNull();
+    expect(screen.queryByTestId('reader-annotations-bookmark-dot')).toBeNull();
+    expect(useReaderStore.getState().getReadingPosition(1342)?.bookmarkRow).toBeUndefined();
+  });
+
+  it('allows adjusting an existing personal highlight selection via Crop button, previews without saving on Cancel, and persists resized text on Save', async () => {
+    useReaderStore.setState({
+      readingPositions: {
+        1342: {
+          chapterIndex: 1,
+          chapterPage: 1,
+          globalPage: 2,
+          lastReadAt: '2026-11-26T10:00:00Z',
+        },
+      },
+    });
+    const seeded = await useAnnotationStore.getState().addAnnotation({
+      bookId: 1342,
+      chapterIndex: 1,
+      chapterPage: 1,
+      selectedText: 'universally acknowledged',
+      color: 'sky',
+    });
+
+    render(<BookReaderPage />);
+
+    const highlightMark = await screen.findByTestId('user-annotation-highlight');
+    expect(highlightMark).toHaveTextContent('universally acknowledged');
+
+    // Open highlight popover and enter interactive Adjust Selection Mode
+    fireEvent.click(highlightMark);
+    expect(screen.getByTestId('text-highlight-popover')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('highlight-adjust-selection-btn'));
+
+    expect(screen.queryByTestId('text-highlight-popover')).not.toBeInTheDocument();
+    expect(screen.getByTestId('highlight-adjust-overlay')).toBeInTheDocument();
+
+    // Expanding to + Sentence previews live in ReaderSurface while leaving store untouched until Save
+    fireEvent.click(screen.getByTestId('adjust-expand-sentence-btn'));
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.'
+    );
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === seeded.id)?.selectedText).toBe(
+      'universally acknowledged'
+    );
+
+    // Cancelling exits adjust mode and restores original highlight cleanly
+    fireEvent.click(screen.getByTestId('adjust-cancel-btn'));
+    expect(screen.queryByTestId('highlight-adjust-overlay')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-annotation-highlight')).toHaveTextContent('universally acknowledged');
+
+    // Re-enter adjust mode, expand to + Sentence, and Save -> updates store cleanly
+    fireEvent.click(screen.getByTestId('user-annotation-highlight'));
+    fireEvent.click(screen.getByTestId('highlight-adjust-selection-btn'));
+    fireEvent.click(screen.getByTestId('adjust-expand-sentence-btn'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('adjust-save-btn'));
+    });
+
+    expect(screen.queryByTestId('highlight-adjust-overlay')).not.toBeInTheDocument();
+    expect(useAnnotationStore.getState().annotations.find((a) => a.id === seeded.id)?.selectedText).toBe(
+      'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.'
+    );
+  });
+});
+
+
+

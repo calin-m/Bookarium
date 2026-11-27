@@ -26,21 +26,21 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
-- **Total Scanned Executable Modules**: `287` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
-- **Annotated Contract Modules**: `85` (**29.6%** coverage; `20` Tier-1 + `22` Tier-2 + `23` Tier-3 + `20` Tier-4 = `85` Protected)
-- **Extracted Module Invariants**: `149`
+- **Total Scanned Executable Modules**: `292` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
+- **Annotated Contract Modules**: `89` (**30.5%** coverage; `20` Tier-1 + `22` Tier-2 + `27` Tier-3 + `20` Tier-4 = `89` Protected)
+- **Extracted Module Invariants**: `153`
 - **Symbol-Level Contracts**: `1`
-- **Pending Annotation Queue**: `202` *(auto-ranked below by AST blast radius & external boundary exposure)*
+- **Pending Annotation Queue**: `203` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
-| **Edge Proxy & API Routes** | `6` | `6` | `0` | 100.0% |
-| **Domain Engines & Adapters** | `50` | `34` | `16` | 68.0% |
+| **Edge Proxy & API Routes** | `7` | `7` | `0` | 100.0% |
+| **Domain Engines & Adapters** | `51` | `35` | `16` | 68.6% |
 | **State Stores (Zustand)** | `10` | `10` | `0` | 100.0% |
 | **React Hooks & Queries** | `36` | `11` | `25` | 30.6% |
 | **Web Workers** | `2` | `2` | `0` | 100.0% |
-| **App Router Pages & Layouts** | `25` | `6` | `19` | 24.0% |
-| **UI & Feature Components** | `118` | `1` | `117` | 0.8% |
+| **App Router Pages & Layouts** | `27` | `8` | `19` | 29.6% |
+| **UI & Feature Components** | `119` | `1` | `118` | 0.8% |
 | **Config & Type Contracts** | `18` | `1` | `17` | 5.6% |
 | **CLI Pipelines & Governance** | `22` | `14` | `8` | 63.6% |
 
@@ -48,7 +48,19 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ## 🛡️ Active Behavioral Contracts & Invariants
 
-### Layer: Edge Proxy & API Routes (6 Contracted)
+### Layer: Edge Proxy & API Routes (7 Contracted)
+
+#### [`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Shared server-side R2 cover response helper, stateless `1200x630` OpenGraph reading card renderer (`next/og`), and `HTTP 451` card jurisdiction gate shared across `/api/books/content`, `/covers/[file]`, and `/og/books/[file]`.
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce unified `HTTP 451` US + international copyright blocking (`503` fail-closed for non-US metadata outages) ahead of OpenGraph card rendering (`enforceBookAssetJurisdictionGate`), serve binary covers strictly from private Cloudflare R2 (`404 no-store` on miss/unconfigured, `502 no-store` on R2 error), and avoid caching errors via Edge CDN tags.
+- **Design Rationale (`@rationale`)**:
+  - Centralizing cover streaming and reading card rendering avoids duplicating `ImageResponse` layout JSX and R2 error-handling logic across internal API and crawler-accessible clean image routes.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
+- **AST Blast Radius**: 3 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/covers/[file]/route.ts`](../src/app/covers/[file]/route.ts), [`src/app/og/books/[file]/route.ts`](../src/app/og/books/[file]/route.ts))
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/app/api/books/content/asset-renders.test.ts`](../src/app/api/books/content/asset-renders.test.ts) (3 tests)
 
 #### [`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts) *(Tier-3 Protected)*
 
@@ -59,7 +71,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Separating bounded server caches from the route handler keeps Vercel serverless cold/warm invocations predictable without risking OOM memory spikes on massive omnibus volumes.
 - **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-039](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
 - **Test Contract**: [`src/app/api/books/content/metadata-cache.test.ts`](../src/app/api/books/content/metadata-cache.test.ts) (10 tests)
 
@@ -130,7 +142,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/proxy.test.ts`](../src/proxy.test.ts) (13 tests)
 
 
-### Layer: Domain Engines & Adapters (34 Contracted)
+### Layer: Domain Engines & Adapters (35 Contracted)
 
 #### [`src/lib/annotation-cloud-sync.ts`](../src/lib/annotation-cloud-sync.ts) *(Tier-2 Protected)*
 
@@ -153,7 +165,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Centralizing Fetch Metadata, proxy header precedence (`x-vercel-forwarded-for`, rightmost `x-forwarded-for`), and `no-store` error headers prevents security-header drift or cache poisoning across API route handlers.
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
-- **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/app/api/profiles/card/route.ts`](../src/app/api/profiles/card/route.ts), …)
+- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
 - **Cross-Boundary Coupling**: Env Vars: `NODE_ENV`
 - **Test Contract**: [`src/lib/api-utils.test.ts`](../src/lib/api-utils.test.ts) (15 tests)
 
@@ -172,16 +184,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/book-metadata.ts`](../src/lib/book-metadata.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: Canonical bibliographic identity normalization, placeholder guard predicates (`isPlaceholderAuthor`, `isPlaceholderTitle`), and multi-source book metadata resolution utilities.
+- **Intended Scope (`@scope`)**: Canonical bibliographic identity normalization, placeholder guard predicates (`isPlaceholderAuthor`, `isPlaceholderTitle`), canonical SERP title/excerpt formatters (`formatReaderDocumentTitle`, `truncateTextAtWordBoundary`, `resolveBookOpeningSnippet`), and multi-source book metadata resolution utilities.
 - **Behavioral Invariants (`@invariant`)**:
   - Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata with placeholders.
   - Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
 - **Design Rationale (`@rationale`)**:
   - Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
-- **Governing Decisions (`@adr`)**: [ADR-070](DECISIONS.md), [ADR-074](DECISIONS.md)
-- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), …)
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-074](DECISIONS.md)
+- **AST Blast Radius**: 21 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
-- **Test Contract**: [`src/lib/book-metadata.test.ts`](../src/lib/book-metadata.test.ts) (17 tests)
+- **Test Contract**: [`src/lib/book-metadata.test.ts`](../src/lib/book-metadata.test.ts) (18 tests)
 
 #### [`src/lib/book-sorting.ts`](../src/lib/book-sorting.ts) *(Tier-1 Protected)*
 
@@ -231,7 +243,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; omitting the retired `formats` JSONB column from `CATALOG_METADATA_COLUMNS` and short-circuiting unsupported MIME filters before DB queries prevents backfill amplification and cuts Supabase catalog egress cleanly.
 - **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md), [ADR-087](DECISIONS.md)
-- **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
+- **AST Blast Radius**: 8 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
 - **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (41 tests)
 
@@ -244,7 +256,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Centralizing legal rules in a pure zero-network module guarantees SSR, Edge routes, catalog queries, and Reader `HTTP 451` checks produce identical deterministic decisions.
 - **Governing Decisions (`@adr`)**: [ADR-002](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-044](DECISIONS.md), [ADR-070](DECISIONS.md)
-- **AST Blast Radius**: 22 runtime, 2 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx) *(type)*, [`src/types/catalog.types.ts`](../src/types/catalog.types.ts) *(type)*, …)
+- **AST Blast Radius**: 23 runtime, 2 type-only ([`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts), [`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/NotablePassagesSpread.tsx`](../src/components/presentation/NotablePassagesSpread.tsx) *(type)*, [`src/types/catalog.types.ts`](../src/types/catalog.types.ts) *(type)*, …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/copyright-engine.test.ts`](../src/lib/copyright-engine.test.ts) (34 tests)
 
@@ -257,7 +269,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Isolating dev overrides behind `NODE_ENV === 'development'` prevents HTTP 451 copyright circumvention in production while allowing zero-network local jurisdiction testing.
 - **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-042](DECISIONS.md)
-- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts), [`src/proxy.ts`](../src/proxy.ts), …)
+- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts), [`src/proxy.ts`](../src/proxy.ts), …)
 - **Cross-Boundary Coupling**: Env Vars: `DEV_COUNTRY`, `NODE_ENV`
 - **Test Contract**: [`src/lib/country-resolver.test.ts`](../src/lib/country-resolver.test.ts) (16 tests)
 
@@ -282,7 +294,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Allows incremental internal decomposition of `src/lib/gutenberg/*` without churning consumer imports across reader pages, workers, or test suites.
 - **Governing Decisions (`@adr`)**: [ADR-017](DECISIONS.md)
-- **AST Blast Radius**: 8 runtime, 1 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderSurface.tsx`](../src/components/reader/ReaderSurface.tsx), [`src/components/reader/ReaderTocDrawer.tsx`](../src/components/reader/ReaderTocDrawer.tsx), [`src/hooks/reader/useGutenbergParserWorker.ts`](../src/hooks/reader/useGutenbergParserWorker.ts), [`src/components/reader/ReaderSearchDrawer.tsx`](../src/components/reader/ReaderSearchDrawer.tsx) *(type)*, …)
+- **AST Blast Radius**: 8 runtime, 1 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/components/reader/ReaderSurface.tsx`](../src/components/reader/ReaderSurface.tsx), [`src/components/reader/ReaderTocDrawer.tsx`](../src/components/reader/ReaderTocDrawer.tsx), [`src/hooks/reader/useGutenbergParserWorker.ts`](../src/hooks/reader/useGutenbergParserWorker.ts), [`src/components/reader/ReaderSearchDrawer.tsx`](../src/components/reader/ReaderSearchDrawer.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/gutenberg-parser.test.ts`](../src/lib/gutenberg-parser.test.ts) (2 tests)
 
@@ -372,7 +384,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Centralizing cross-store capture/application breaks circular dependencies between `useThemeStore`, `useReaderStore`, `usePreferencesStore`, and `useAnnotationStore`.
 - **Governing Decisions (`@adr`)**: [ADR-071](DECISIONS.md), [ADR-079](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 4 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/stores/useAuthStore.ts`](../src/stores/useAuthStore.ts))
+- **AST Blast Radius**: 4 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/stores/useAuthStore.ts`](../src/stores/useAuthStore.ts))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/preferences-sync.test.ts`](../src/lib/preferences-sync.test.ts) (9 tests)
 
@@ -390,16 +402,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/r2-client.ts`](../src/lib/r2-client.ts) *(Tier-1 Protected)*
 
-- **Intended Scope (`@scope`)**: Server-only Cloudflare R2 S3-compatible AWS SigV4 fetch and gzip decompression client for private book texts (`books/<id>.txt.gz`) and cover artwork (`covers/<id>.jpg`).
+- **Intended Scope (`@scope`)**: Server-only Cloudflare R2 S3-compatible AWS SigV4 fetch, HEAD existence check, and gzip decompression client for private book texts (`books/<id>.txt.gz`) and cover artwork (`covers/<id>.jpg`).
 - **Behavioral Invariants (`@invariant`)**:
   - Never expose `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, or `R2_SECRET_ACCESS_KEY` to client bundles, validate `accountId` and `bucket` identifiers before URL construction, enforce `redirect: 'manual'` on all outbound R2 requests, and bound streamed cover payloads (`MAX_R2_COVER_BYTES`) and gzip decompression output (`MAX_R2_BOOK_BYTES`).
   - Return explicit `'unconfigured'` status when `R2_*` credentials are absent so local unconfigured environments fail closed predictably (`404`/`503`) without unhandled configuration errors or Project Gutenberg fallbacks.
 - **Design Rationale (`@rationale`)**:
   - Using built-in `node:crypto` AWS Signature V4 signing and bounded `node:zlib` `gunzip` keeps R2 reads completely dependency-free, fast on serverless Node runtimes, and resilient against decompression bombs or open redirects.
-- **Governing Decisions (`@adr`)**: [ADR-082](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts))
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-082](DECISIONS.md)
+- **AST Blast Radius**: 3 runtime, 0 type-only ([`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts))
 - **Cross-Boundary Coupling**: Env Vars: `R2_ACCESS_KEY_ID`, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_SECRET_ACCESS_KEY`
-- **Test Contract**: [`src/lib/r2-client.test.ts`](../src/lib/r2-client.test.ts) (6 tests)
+- **Test Contract**: [`src/lib/r2-client.test.ts`](../src/lib/r2-client.test.ts) (7 tests)
 
 #### [`src/lib/rate-limiter.ts`](../src/lib/rate-limiter.ts) *(Tier-2 Protected)*
 
@@ -410,7 +422,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Zero-dependency `globalThis` persistence preserves quota tracking across hot reloads and warm serverless invocations without requiring external Redis infrastructure.
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-022](DECISIONS.md), [ADR-033](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 4 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/app/api/profiles/card/route.ts`](../src/app/api/profiles/card/route.ts))
+- **AST Blast Radius**: 6 runtime, 0 type-only ([`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/app/api/profiles/card/route.ts`](../src/app/api/profiles/card/route.ts), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/rate-limiter.test.ts`](../src/lib/rate-limiter.test.ts) (9 tests)
 
@@ -423,7 +435,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Character-index-mapped canonical search and pure boundary-snapping helpers prevent annotation orphaning across reflow changes and keep interactive highlight resizing deterministic and zero-DOM.
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-060](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 12 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx), [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), …)
+- **AST Blast Radius**: 12 runtime, 0 type-only ([`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx), [`src/components/presentation/NotebookView.tsx`](../src/components/presentation/NotebookView.tsx), [`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/reader-annotator.test.ts`](../src/lib/reader-annotator.test.ts) (29 tests)
 
@@ -478,6 +490,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/safe-storage.test.ts`](../src/lib/safe-storage.test.ts) (7 tests)
 
+#### [`src/lib/server-data-cache.ts`](../src/lib/server-data-cache.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Reusable Next.js App Router `unstable_cache` helper providing cross-isolate server Data Caching with safe fallback when executing outside Next.js request/cache runtimes.
+- **Behavioral Invariants (`@invariant`)**:
+  - Never catch or suppress upstream data/network errors thrown inside the cached callback so transient DB or R2 outages are never cached cleanly across revalidation windows; only fall back to direct execution when Next.js `incrementalCache` runtime store is absent.
+- **Design Rationale (`@rationale`)**:
+  - Centralizing `unstable_cache` fallback handling prevents stale outage caching and avoids duplicating runtime guards across `/read/[id]` metadata lookups and dynamic `sitemap.xml` queries.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-086](DECISIONS.md)
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/app/sitemap.ts`](../src/app/sitemap.ts))
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/lib/server-data-cache.test.ts`](../src/lib/server-data-cache.test.ts) (2 tests)
+
 #### [`src/lib/server-rsc-nav.ts`](../src/lib/server-rsc-nav.ts) *(Tier-3 Protected)*
 
 - **Intended Scope (`@scope`)**: Server-only App Router navigation header inspector isolating `next/headers` checks from client component bundles.
@@ -510,7 +534,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Centralizing palette definitions, word wrapping, archival border ornaments, Web Intent URL formatting, and Base64URL codecs prevents UI or cryptographic drift between book Reading Cards and Scholar Sanctuary Profile Cards.
 - **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 6 runtime, 0 type-only ([`src/app/api/profiles/card/route.ts`](../src/app/api/profiles/card/route.ts), [`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx), [`src/components/profile/ProfileShareModal.tsx`](../src/components/profile/ProfileShareModal.tsx), [`src/components/share/SocialSharePanel.tsx`](../src/components/share/SocialSharePanel.tsx), …)
+- **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/profiles/card/route.ts`](../src/app/api/profiles/card/route.ts), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx), [`src/components/profile/ProfileShareModal.tsx`](../src/components/profile/ProfileShareModal.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/share-card-primitives.test.ts`](../src/lib/share-card-primitives.test.ts) (5 tests)
 
@@ -523,7 +547,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Header injection sanitization prevents malformed Auth session telemetry, while keyless placeholders maintain strict local offline parity without mandatory `.env` setup.
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md)
-- **AST Blast Radius**: 19 runtime, 1 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/lib/fellowship-cloud-sync.ts`](../src/lib/fellowship-cloud-sync.ts) *(type)*, …)
+- **AST Blast Radius**: 20 runtime, 1 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/app/sitemap.ts`](../src/app/sitemap.ts), [`src/lib/fellowship-cloud-sync.ts`](../src/lib/fellowship-cloud-sync.ts) *(type)*, …)
 - **Cross-Boundary Coupling**: Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
 - **Test Contract**: [`src/lib/supabase/client.test.ts`](../src/lib/supabase/client.test.ts) (4 tests)
 
@@ -596,7 +620,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Separating persisted LWW `lastAnnotationSyncAt` anchors from ephemeral passive cooldowns prevents multi-device highlight count divergence without re-fetching unchanged marginalia on drawer switches.
 - **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-055](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 12 runtime, 12 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
+- **AST Blast Radius**: 12 runtime, 12 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/components/presentation/NotebookQuoteCard.tsx`](../src/components/presentation/NotebookQuoteCard.tsx) *(type)*, [`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.user_annotations` · Storage/Cookies: `bookarium-annotations-storage`
 - **Test Contract**: [`src/stores/useAnnotationStore.test.ts`](../src/stores/useAnnotationStore.test.ts) (39 tests)
 
@@ -610,7 +634,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 22 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), …)
+- **AST Blast Radius**: 22 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.reader_circles`, `public.reading_progress`, `public.symposium_sessions`, `public.user_accolades`, `public.user_annotations`, `public.user_book_curation`, `public.user_favorites`, `public.user_reading_habits` · RPCs: `public.delete_current_user()`, `public.get_active_sessions()`, `public.revoke_user_session()` · API Calls: `/auth/callback` · Signals: emits `CustomEvent:bookarium:auth-token-refreshed` · Storage/Cookies: `bookarium-auth-hint`, `bookarium-auth-profile`, `bookarium-client-ip-sync`, `bookarium-pending-store-cleanup`, `bookarium_auto_heal_attempted` · Env Vars: `NODE_ENV`
 - **Test Contract**: [`src/stores/useAuthStore.test.ts`](../src/stores/useAuthStore.test.ts) (52 tests)
 
@@ -623,7 +647,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and non-blocking cover normalization heals pre-R2 persisted snapshots.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
-- **AST Blast Radius**: 26 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), …)
+- **AST Blast Radius**: 26 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.user_book_curation`, `public.user_favorites` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `bookarium-bookshelf-storage`
 - **Test Contract**: [`src/stores/useBookshelfStore.test.ts`](../src/stores/useBookshelfStore.test.ts) (51 tests)
 
@@ -636,7 +660,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Pre-sync session validation and per-user promise coalescing stop participant RLS errors after cookie expiry while keeping companion progress synchronized offline-first.
 - **Governing Decisions (`@adr`)**: [ADR-055](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountSymposiumSection.tsx`](../src/components/account/AccountSymposiumSection.tsx), …)
+- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountSymposiumSection.tsx`](../src/components/account/AccountSymposiumSection.tsx), [`src/components/account/symposium/FellowshipInvitationsSubTab.tsx`](../src/components/account/symposium/FellowshipInvitationsSubTab.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.profiles`, `public.reader_circles`, `public.symposium_sessions` · RPCs: `public.lookup_scholar_by_username()` · Storage/Cookies: `bookarium-fellowship-storage`
 - **Test Contract**: [`src/stores/useFellowshipStore.test.ts`](../src/stores/useFellowshipStore.test.ts) (15 tests)
 
@@ -675,7 +699,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Separating durable user presets and audio settings from volatile reader positions ensures full 10-store local erasure parity (`clearLocalUserStores({ wipeDeviceStorage: true })`) without cross-store cycles.
 - **Governing Decisions (`@adr`)**: [ADR-009](DECISIONS.md), [ADR-018](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
-- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/lib/preferences-sync.ts`](../src/lib/preferences-sync.ts), …)
+- **AST Blast Radius**: 5 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/lib/preferences-sync.ts`](../src/lib/preferences-sync.ts), …)
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-navigation-preferences`
 - **Test Contract**: [`src/stores/usePreferencesStore.test.ts`](../src/stores/usePreferencesStore.test.ts) (7 tests)
 
@@ -689,7 +713,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
-- **AST Blast Radius**: 28 runtime, 21 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
+- **AST Blast Radius**: 28 runtime, 21 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.reading_progress` · Storage/Cookies: `bookarium-reader-preferences`
 - **Test Contract**: [`src/stores/useReaderStore.test.ts`](../src/stores/useReaderStore.test.ts) (36 tests)
 
@@ -702,7 +726,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Synchronizing the theme cookie lets `src/app/layout.tsx` server-render the exact theme class on initial HTML response, guaranteeing 0.00 CLS and zero white-flash on dark/sepia loads.
 - **Governing Decisions (`@adr`)**: [ADR-001](DECISIONS.md), [ADR-042](DECISIONS.md), [ADR-079](DECISIONS.md)
-- **AST Blast Radius**: 8 runtime, 7 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/app/layout.tsx`](../src/app/layout.tsx) *(type)*, [`src/components/account/AccountBottomDock.tsx`](../src/components/account/AccountBottomDock.tsx) *(type)*, …)
+- **AST Blast Radius**: 8 runtime, 7 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/providers.tsx`](../src/app/providers.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx), [`src/components/profile/ProfileShareModal.tsx`](../src/components/profile/ProfileShareModal.tsx), [`src/app/layout.tsx`](../src/app/layout.tsx) *(type)*, [`src/components/account/AccountBottomDock.tsx`](../src/components/account/AccountBottomDock.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-theme-preference`
 - **Test Contract**: [`src/stores/useThemeStore.test.ts`](../src/stores/useThemeStore.test.ts) (8 tests)
 
@@ -718,7 +742,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Default React Query `online` mode pauses queries when the browser reports offline, breaking IndexedDB offline reading; `networkMode: 'always'` preserves local-first reading while enforcing territorial clearance and zero Project Gutenberg fallback.
 - **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-082](DECISIONS.md), [ADR-084](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 3 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderErrorView.tsx`](../src/components/reader/ReaderErrorView.tsx), [`src/hooks/useBookPassageShuffle.ts`](../src/hooks/useBookPassageShuffle.ts))
+- **AST Blast Radius**: 3 runtime, 0 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/components/reader/ReaderErrorView.tsx`](../src/components/reader/ReaderErrorView.tsx), [`src/hooks/useBookPassageShuffle.ts`](../src/hooks/useBookPassageShuffle.ts))
 - **Cross-Boundary Coupling**: API Calls: `/api/books/content`
 - **Test Contract**: [`src/hooks/queries/useBookContent.test.ts`](../src/hooks/queries/useBookContent.test.ts) (19 tests)
 
@@ -731,7 +755,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Combines exact Wikidata FRBR links from Supabase with deterministic catalog search fallback so unseeded or locally tested books still surface sibling translations reliably.
 - **Governing Decisions (`@adr`)**: [ADR-010](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 2 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/reader/ReaderHeader.tsx`](../src/components/reader/ReaderHeader.tsx) *(type)*, [`src/components/reader/ReaderLanguageDrawer.tsx`](../src/components/reader/ReaderLanguageDrawer.tsx) *(type)*)
+- **AST Blast Radius**: 1 runtime, 2 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/components/reader/ReaderHeader.tsx`](../src/components/reader/ReaderHeader.tsx) *(type)*, [`src/components/reader/ReaderLanguageDrawer.tsx`](../src/components/reader/ReaderLanguageDrawer.tsx) *(type)*)
 - **Cross-Boundary Coupling**: API Calls: `/api/books`, `/api/books/translations`
 - **Test Contract**: [`src/hooks/queries/useBookTranslations.test.ts`](../src/hooks/queries/useBookTranslations.test.ts) (19 tests)
 
@@ -744,7 +768,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Client-side copyright filtering, deterministic quote sorting, and non-retrying timeout errors prevent regional/visual flash regressions and retry storms against timed-out catalog scans, while read-only passage reuse avoids redundant deep-quote requests without suppressing dynamic text extraction.
 - **Governing Decisions (`@adr`)**: [ADR-004](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
-- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), …)
+- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx), [`src/components/presentation/EditorialQuoteSection.tsx`](../src/components/presentation/EditorialQuoteSection.tsx), [`src/components/presentation/HeroFeaturedBook3D.tsx`](../src/components/presentation/HeroFeaturedBook3D.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.books` · API Calls: `/api/books` · Storage/Cookies: `bookarium-quote-enriched-books-v1`
 - **Test Contract**: [`src/hooks/queries/useBooks.test.ts`](../src/hooks/queries/useBooks.test.ts) (25 tests)
 
@@ -770,7 +794,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Font size changes and desktop-to-mobile transitions alter virtual page numbers; phrase-anchored coordinate resolution keeps readers anchored to their exact sentence, while exposing `pinnedBookmark` lets drawers display and jump back to the active silk bookmark across chapters.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx))
+- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx))
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/hooks/reader/useReaderSession.test.ts`](../src/hooks/reader/useReaderSession.test.ts) (18 tests)
 
@@ -821,7 +845,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Prevents React hydration mismatch warnings while keeping navbar indicators, catalog fallbacks, and offline guards reactive to browser connectivity changes.
 - **Governing Decisions (`@adr`)**: [ADR-069](DECISIONS.md)
-- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx), [`src/components/account/AccountPublicProfileSection.tsx`](../src/components/account/AccountPublicProfileSection.tsx), …)
+- **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/components/account/AccountPublicProfileSection.tsx`](../src/components/account/AccountPublicProfileSection.tsx), [`src/components/account/AccountSecuritySection.tsx`](../src/components/account/AccountSecuritySection.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/hooks/useNetworkStatus.test.ts`](../src/hooks/useNetworkStatus.test.ts) (4 tests)
 
@@ -858,10 +882,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Offline App Shell Service Worker managing `CACHE_NAME` precaching, bounded `CACHE_URLS` warmups, and network/cache routing strategies.
 - **Behavioral Invariants (`@invariant`)**:
-  - Enforce strict same-origin (`url.origin === self.location.origin`) and non-`/auth/` non-`/api/` path sanitization (`sanitizePrecacheUrl`, bounded by `MAX_MESSAGE_PRECACHE_URLS`), never intercept cross-origin or `/auth/*` requests, never return HTML documents for `_rsc`/`RSC: 1` requests, and return `503` JSON for offline `/api/*` fetches.
+  - Enforce strict same-origin (`url.origin === self.location.origin`) and non-`/auth/` non-`/api/` path sanitization (`sanitizePrecacheUrl`, bounded by `MAX_MESSAGE_PRECACHE_URLS`), never intercept cross-origin or `/auth/*` requests, bypass App Shell caching for `/covers/` and `/og/` crawler image routes alongside `/api/`, never return HTML documents for `_rsc`/`RSC: 1` requests, and return `503` JSON for offline `/api/*` fetches.
 - **Design Rationale (`@rationale`)**:
-  - Bounding message-driven precaching and bypassing `/auth/*`, `/api/*`, and cross-origin origins prevents CSWSH/cache poisoning and stale OAuth loops while keeping saved IndexedDB reader routes functional offline.
-- **Governing Decisions (`@adr`)**: [ADR-020](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Bounding message-driven precaching and bypassing `/auth/*`, `/api/*`, `/covers/*`, `/og/*`, and cross-origin origins prevents CSWSH/cache poisoning, stale OAuth loops, and image-cache bloat while keeping saved IndexedDB reader routes functional offline.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-020](DECISIONS.md), [ADR-073](DECISIONS.md), [ADR-080](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/components/pwa/ServiceWorkerRegister.test.tsx`](../src/components/pwa/ServiceWorkerRegister.test.tsx) (8 tests)
@@ -879,7 +903,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/workers/gutenberg.worker.test.ts`](../src/workers/gutenberg.worker.test.ts) (3 tests)
 
 
-### Layer: App Router Pages & Layouts (6 Contracted)
+### Layer: App Router Pages & Layouts (8 Contracted)
 
 #### [`src/app/auth/callback/route.ts`](../src/app/auth/callback/route.ts) *(Tier-3 Protected)*
 
@@ -894,6 +918,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`, `bookarium-client-ip-sync`
 - **Test Contract**: [`src/app/auth/callback/route.test.ts`](../src/app/auth/callback/route.test.ts) (12 tests)
 
+#### [`src/app/covers/[file]/route.ts`](../src/app/covers/[file]/route.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Crawler-accessible, same-origin JPEG cover route (`/covers/<id>.jpg`) streaming R2 artwork outside `/api/*` while enforcing browser anti-deeplink & hotlink Fetch Metadata isolation.
+- **Behavioral Invariants (`@invariant`)**:
+  - Enforce `guardContentAssetRequest(request)` (`403 no-store` on browser tab `navigate`/`document` deeplinks and `cross-site` subresource hotlinks while permitting headerless SEO crawlers and same-origin `<img>` requests), validate strict `<id>.jpg` digits, enforce `bookCoverRateLimiter`, reject unexpected query params, and serve `30d` CDN-cached JPEGs strictly from private R2 (`404 no-store` on miss/unconfigured).
+- **Design Rationale (`@rationale`)**:
+  - Separating clean `.jpg` URLs from `/api/*` enables Googlebot-Image & social crawlers to fetch verified book covers under `robots.ts` while keeping raw plain-text books and third-party browser hotlinking blocked.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-082](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/app/covers/[file]/route.test.ts`](../src/app/covers/[file]/route.test.ts) (3 tests)
+
 #### [`src/app/layout.tsx`](../src/app/layout.tsx) *(Tier-2 Protected)*
 
 - **Intended Scope (`@scope`)**: Next.js App Router root HTML layout hydrating SSR jurisdiction, theme class (`light`/`dark`/`sepia`), auth hint state, and JSON-LD structured metadata without client flash.
@@ -905,6 +941,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`, `bookarium-theme-preference` · Env Vars: `NEXT_PUBLIC_SUPABASE_URL`
 - **Test Contract**: [`src/app/layout.test.tsx`](../src/app/layout.test.tsx) (6 tests)
+
+#### [`src/app/og/books/[file]/route.ts`](../src/app/og/books/[file]/route.ts) *(Tier-3 Protected)*
+
+- **Intended Scope (`@scope`)**: Crawler-accessible stateless `1200x630` OpenGraph reading card endpoint (`/og/books/<id>.png`) operating outside `/api/*` for social unfurlers and fallback `Book.image` structured data.
+- **Behavioral Invariants (`@invariant`)**:
+  - Validate `<id>.png` pattern strictly, allow exclusively signed share tokens (`?s=`), enforce `bookCardRateLimiter`, apply unified US + non-US `HTTP 451` / `503` jurisdiction gatekeeping (`enforceBookAssetJurisdictionGate`), and emit `Cross-Origin-Resource-Policy: cross-origin` with `24h` CDN caching.
+- **Design Rationale (`@rationale`)**:
+  - Exposing clean `.png` OpenGraph card URLs outside `/api/*` satisfies `robots.txt` while guaranteeing zero `404` schema/social images even for volumes without R2 cover art.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: Entrypoint / zero static importers
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/app/og/books/[file]/route.test.ts`](../src/app/og/books/[file]/route.test.ts) (2 tests)
 
 #### [`src/app/providers.tsx`](../src/app/providers.tsx) *(Tier-2 Protected)*
 
@@ -920,15 +968,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts) *(Tier-3 Protected)*
 
-- **Intended Scope (`@scope`)**: Server-side Reader volume metadata resolver, bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
+- **Intended Scope (`@scope`)**: Server-side Reader volume metadata resolver with 24h cross-isolate Next.js Data Cache (`createOptionalDataCache`), `quote0` excerpt projection, cached R2 cover `HEAD` verification (`checkBookCoverAvailable`), bounded negative-lookup LRU (`confirmedNotFoundIds`), and structured SEO schema builder for `/read/[id]`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Anchor `serverMetadataCache` and `confirmedNotFoundIds` on `globalThis` capped at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
+  - Anchor `serverMetadataCache` and `confirmedNotFoundIds` on `globalThis` capped at `MAX_SERVER_METADATA_CACHE_ENTRIES` FIFO-LRU entries, back cold Supabase and R2 `HEAD` lookups cleanly via 24h `unstable_cache` without caching transient errors, only mark IDs confirmed missing when Supabase is configured and responded cleanly (`!supabaseUnavailable`), and preserve curated fallback lifespans before emitting `noindex` or metadata.
 - **Design Rationale (`@rationale`)**:
-  - Distinguishing transient Supabase outages from confirmed missing volume IDs prevents search-engine deindexing during upstream hiccups while keeping server memory bounded across warm SSR module reloads.
-- **Governing Decisions (`@adr`)**: [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-086](DECISIONS.md), [ADR-087](DECISIONS.md)
-- **AST Blast Radius**: 1 runtime, 0 type-only ([`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx))
+  - Cross-isolate Data Caching prevents Supabase egress exhaustion during bot crawls, `HEAD` verification stops `Book.image` from emitting `404` cover URLs, and distinguishing upstream outages from confirmed missing IDs protects search rankings.
+- **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-036](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-086](DECISIONS.md), [ADR-087](DECISIONS.md)
+- **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx))
 - **Cross-Boundary Coupling**: DB Tables: `public.books`
-- **Test Contract**: [`src/app/read/[id]/reader-layout-utils.test.ts`](../src/app/read/[id]/reader-layout-utils.test.ts) (16 tests)
+- **Test Contract**: [`src/app/read/[id]/reader-layout-utils.test.ts`](../src/app/read/[id]/reader-layout-utils.test.ts) (18 tests)
 
 #### [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx) *(Tier-2 Protected)*
 
@@ -1166,7 +1214,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ---
 
-## 📋 AST-Prioritized Pending Contract Queue (202 Modules)
+## 📋 AST-Prioritized Pending Contract Queue (203 Modules)
 
 Unannotated modules ranked automatically by AST **fan-in blast radius** and **cross-boundary exposure** (`Supabase DB`, `RPC`, `/api/*`, `CustomEvent`/`BroadcastChannel`, `localStorage`/Cookies, `process.env.*`):
 
@@ -1176,9 +1224,9 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | :---: | :--- | :--- | :---: | :--- |
 | `98` | [`src/config/site-config.ts`](../src/config/site-config.ts) | Config & Type Contracts | `37` / `0` | Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_LEGAL_CONTACT_FORM`, `NEXT_PUBLIC_SITE_URL` |
 | `92` | [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx) | UI & Feature Components | `46` / `0` | Pure / internal |
-| `92` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `42` / `0` | API Calls: `/api/books/content` |
-| `64` | [`src/config/routes.ts`](../src/config/routes.ts) | Config & Type Contracts | `32` / `0` | Pure / internal |
-| `44` | [`src/types/book.types.ts`](../src/types/book.types.ts) | Config & Type Contracts | `0` / `44` | Pure / internal |
+| `90` | [`src/lib/utils.ts`](../src/lib/utils.ts) | Domain Engines & Adapters | `41` / `0` | API Calls: `/api/books/content` |
+| `68` | [`src/config/routes.ts`](../src/config/routes.ts) | Config & Type Contracts | `34` / `0` | Pure / internal |
+| `45` | [`src/types/book.types.ts`](../src/types/book.types.ts) | Config & Type Contracts | `0` / `45` | Pure / internal |
 | `37` | [`src/hooks/useHasMounted.ts`](../src/hooks/useHasMounted.ts) | React Hooks & Queries | `17` / `0` | Pure / internal |
 | `36` | [`src/config/featured-books.ts`](../src/config/featured-books.ts) | Config & Type Contracts | `17` / `2` | Pure / internal |
 | `32` | [`src/components/ui/Modal.tsx`](../src/components/ui/Modal.tsx) | UI & Feature Components | `16` / `0` | Pure / internal |
@@ -1210,6 +1258,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `10` | [`src/components/ui/RemoveOfflineBookModal.tsx`](../src/components/ui/RemoveOfflineBookModal.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/ui/StarRating.tsx`](../src/components/ui/StarRating.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/lib/accolades-engine.ts`](../src/lib/accolades-engine.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
+| `10` | [`src/lib/book-tags.ts`](../src/lib/book-tags.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/content-advisory.ts`](../src/lib/content-advisory.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/reading-card-export.ts`](../src/lib/reading-card-export.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `10` | [`src/lib/speech-utils.ts`](../src/lib/speech-utils.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
@@ -1217,15 +1266,14 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `9` | [`src/hooks/useCursorTooltip.ts`](../src/hooks/useCursorTooltip.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/usePerformanceTier.ts`](../src/hooks/usePerformanceTier.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useTouchDevice.ts`](../src/hooks/useTouchDevice.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
-| `8` | [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx) | App Router Pages & Layouts | `3` / `0` | Pure / internal |
 | `8` | [`src/components/presentation/CollectionEmptyState.tsx`](../src/components/presentation/CollectionEmptyState.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
+| `8` | [`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/Alert.tsx`](../src/components/ui/Alert.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/RemoveCollectionBookModal.tsx`](../src/components/ui/RemoveCollectionBookModal.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/ui/Textarea.tsx`](../src/components/ui/Textarea.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/config/views.config.ts`](../src/config/views.config.ts) | Config & Type Contracts | `3` / `2` | Pure / internal |
-| `8` | [`src/lib/book-tags.ts`](../src/lib/book-tags.ts) | Domain Engines & Adapters | `2` / `0` | Pure / internal |
 
-<details><summary>Standard & Leaf Modules Pending Optional Annotation (152 Modules)</summary>
+<details><summary>Standard & Leaf Modules Pending Optional Annotation (153 Modules)</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
@@ -1235,7 +1283,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `7` | [`src/hooks/useMobileViewportCardFocus.ts`](../src/hooks/useMobileViewportCardFocus.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useScrollDirection.ts`](../src/hooks/useScrollDirection.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
 | `7` | [`src/hooks/useVisualViewportKeyboard.ts`](../src/hooks/useVisualViewportKeyboard.ts) | React Hooks & Queries | `2` / `0` | Leaf / pure |
-| `6` | [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | API Calls: `/api/books/content` |
+| `6` | [`src/app/sitemap.ts`](../src/app/sitemap.ts) | App Router Pages & Layouts | `0` / `0` | DB Tables: `public.books` |
 | `6` | [`src/components/presentation/BookPreviewModal.tsx`](../src/components/presentation/BookPreviewModal.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/presentation/BookshelfRack.tsx`](../src/components/presentation/BookshelfRack.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
 | `6` | [`src/components/presentation/CollectionBottomDock.tsx`](../src/components/presentation/CollectionBottomDock.tsx) | UI & Feature Components | `3` / `0` | Leaf / pure |
@@ -1309,8 +1357,9 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/app/page.tsx`](../src/app/page.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/app/privacy/layout.tsx`](../src/app/privacy/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/app/privacy/page.tsx`](../src/app/privacy/page.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
+| `2` | [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
+| `2` | [`src/app/read/[id]/page.tsx`](../src/app/read/[id]/page.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/app/robots.ts`](../src/app/robots.ts) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
-| `2` | [`src/app/sitemap.ts`](../src/app/sitemap.ts) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/app/u/[username]/layout.tsx`](../src/app/u/[username]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | Leaf / pure |
 | `2` | [`src/components/accolades/AccoladeCelebrationModal.tsx`](../src/components/accolades/AccoladeCelebrationModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |

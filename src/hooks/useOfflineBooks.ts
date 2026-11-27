@@ -375,7 +375,7 @@ export function useOfflineBooks() {
 
         // Pre-warm lazy-loaded Reader & Modal JS bundles so offline opening never hits ChunkLoadError
         if (typeof window !== 'undefined') {
-          void import('@/app/read/[id]/page').catch(() => {});
+          void import('@/components/reader/BookReaderClient').catch(() => {});
           void import('@/components/presentation/BookPreviewModal').catch(() => {});
           void import('@/components/presentation/DownloadDrawer').catch(() => {});
         }

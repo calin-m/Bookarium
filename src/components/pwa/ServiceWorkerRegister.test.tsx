@@ -6,7 +6,7 @@ import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ServiceWorkerRegister } from './ServiceWorkerRegister';
 
-vi.mock('@/app/read/[id]/page', () => ({ default: () => null }));
+vi.mock('@/components/reader/BookReaderClient', () => ({ BookReaderClient: () => null }));
 vi.mock('@/app/account/page', () => ({ default: () => null }));
 vi.mock('@/components/presentation/BookPreviewModal', () => ({ BookPreviewModal: () => null }));
 vi.mock('@/components/presentation/DownloadDrawer', () => ({ DownloadDrawer: () => null }));
@@ -443,6 +443,14 @@ describe('ServiceWorkerRegister', () => {
       expect(apiRes.response?.status).toBe(503);
       const apiJson = await apiRes.response?.json();
       expect(apiJson.offline).toBe(true);
+
+      // /covers/* and /og/* bypass bookarium-app-shell-v7 caching
+      const coverBypass = await harness.dispatchFetch({ url: 'https://bookarium.example/covers/1342.jpg' });
+      expect(coverBypass.intercepted).toBe(true);
+      expect(coverBypass.response?.status).toBe(500);
+      const ogBypass = await harness.dispatchFetch({ url: 'https://bookarium.example/og/books/1342.png' });
+      expect(ogBypass.intercepted).toBe(true);
+      expect(ogBypass.response?.status).toBe(500);
 
       // /read/999 navigation falls back to cached /read/1342 reader shell HTML
       const readerNav = await harness.dispatchFetch({

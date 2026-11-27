@@ -23,7 +23,10 @@ const BookPreviewModal = dynamic(
   () => import('@/components/presentation/BookPreviewModal').then((mod) => mod.BookPreviewModal),
   { ssr: false }
 );
-const loadBookReaderPage = () => import('@/app/read/[id]/page');
+const loadBookReaderPage = () =>
+  import('@/components/reader/BookReaderClient').then((mod) => ({
+    default: mod.BookReaderClient,
+  }));
 const BookReaderPage = React.lazy(loadBookReaderPage);
 import { NotebookView } from '@/components/presentation/NotebookView';
 import { BookmarksView } from '@/components/presentation/BookmarksView';

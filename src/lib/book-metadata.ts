@@ -1,15 +1,17 @@
 /**
  * @module
  * @scope Canonical bibliographic identity normalization, placeholder guard predicates (`isPlaceholderAuthor`,
- *        `isPlaceholderTitle`), and multi-source book metadata resolution utilities.
+ *        `isPlaceholderTitle`), canonical SERP title/excerpt formatters (`formatReaderDocumentTitle`,
+ *        `truncateTextAtWordBoundary`, `resolveBookOpeningSnippet`), and multi-source book metadata resolution utilities.
  * @invariant Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata with placeholders.
  * @invariant Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
  * @rationale Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
- * @adr ADR-070, ADR-074
+ * @adr ADR-016, ADR-070, ADR-074
  */
 
 import type { CatalogBook, CatalogResponse, Book, Author } from '@/types/book.types';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
+import { SITE_CONFIG } from '@/config/site-config';
 import { buildR2CoverUrl, formatAuthorNames, formatPrimarySubject } from '@/lib/utils';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 
@@ -359,4 +361,43 @@ export function resolveBookMetadata({
     authors: resolvedAuthors,
     translators: resolvedTranslators,
   };
+}
+
+/**
+ * Formats keyword-first SEO document titles consistently across SSR metadata and client navigation.
+ */
+export function formatReaderDocumentTitle(
+  title: string,
+  displayAuthor?: string | null,
+  siteName: string = SITE_CONFIG.NAME
+): string {
+  const cleanTitle = (title || '').trim() || 'Public Domain Classic';
+  const cleanAuthor =
+    displayAuthor && !isPlaceholderAuthor(displayAuthor) ? displayAuthor.trim() : '';
+  return cleanAuthor
+    ? `${cleanTitle} by ${cleanAuthor} — Read Free | ${siteName}`
+    : `${cleanTitle} — Read Free | ${siteName}`;
+}
+
+/**
+ * Truncates prose cleanly at word boundaries without leaving trailing punctuation before ellipsis.
+ */
+export function truncateTextAtWordBoundary(rawText: string, maxLength: number): string {
+  const collapsed = rawText.replace(/\s+/g, ' ').trim();
+  if (!collapsed || collapsed.length <= maxLength) return collapsed;
+  const sliced = collapsed.slice(0, Math.max(1, maxLength - 1));
+  const lastSpace = sliced.lastIndexOf(' ');
+  const cutoff = lastSpace > Math.floor(maxLength * 0.45) ? sliced.slice(0, lastSpace) : sliced;
+  return `${cutoff.replace(/[,;:\s]+$/, '')}…`;
+}
+
+/**
+ * Resolves the highest-priority literary hook across Supabase quote records and curated hero fixtures.
+ */
+export function resolveBookOpeningSnippet(bookId: number, bookData?: CatalogBook | null): string {
+  const firstDbQuote = bookData?.quotes?.[0];
+  const dbSnippet = firstDbQuote?.openingLine?.trim() || firstDbQuote?.quoteExcerpt?.trim();
+  if (dbSnippet) return dbSnippet;
+  const featuredFixture = FEATURED_HERO_BOOKS.find((b) => b.id === bookId);
+  return featuredFixture?.openingLine || featuredFixture?.quoteExcerpt || '';
 }

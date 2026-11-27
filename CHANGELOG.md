@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.87] - 2026-11-27
+### *Phase-1 Technical SEO Engine, Clean Crawler Asset Gateways & 5,000-Book Dynamic Sitemap*
+
+### Added
+- **Crawler-Accessible `/covers/[file]` & `/og/books/[file]` Image Routes + Shared R2 Asset Module (`src/app/covers/[file]/route.ts`, `src/app/og/books/[file]/route.ts`, `src/app/api/books/content/asset-renders.ts`, `src/lib/r2-client.ts`, `src/config/routes.ts`, `public/sw.js`)**: Extracted R2 JPEG cover streaming and stateless `1200×630` `next/og` book card rendering into `asset-renders.ts` with `30d` CDN cover caching (`CONTENT_COVER_CACHE_CONTROL`, `Vercel-Cache-Tag: covers`), exported SigV4 `signR2HeadRequest` / `headR2CoverExists` probes, exposed `/covers/<id>.jpg` (`guardContentAssetRequest` hotlink isolation + `bookCoverRateLimiter`) and `/og/books/<id>.png` (`enforceBookAssetJurisdictionGate` + `bookCardRateLimiter`) outside `/api/*` for crawler indexing, excluded `/covers/` and `/og/` from `public/sw.js`, and added both prefixes to `src/app/robots.ts` (`ADR-016`, `ADR-082`).
+- **Cross-Isolate `unstable_cache` Metadata/Sitemap Layer, 5,000-Book Dynamic Sitemap & Milestone 10 SEO Tracking (`src/lib/server-data-cache.ts`, `src/app/sitemap.ts`, `scripts/generate-roadmap.js`, `ROADMAP.md`)**: Added `createOptionalDataCache` (`unstable_cache` with fail-open Vitest/missing-`incrementalCache` fallback that never caches upstream errors), upgraded `src/app/sitemap.ts` (`revalidate = 86400`, `SITEMAP_TOP_BOOKS_LIMIT = 5000`) to paginate the top `5,000` `copyright = false` volumes (`download_count DESC`) behind a 24h Data Cache with deduplicated `priority: 0.9` featured classics and zero-DB fallback behavior, and tracked shipped Phase-1 (`v2.9.87`) alongside post-GSC Phase-2 `78k+` sharded sitemap scaling under active Milestone 10 (`v2.9.x`) (`ADR-016`, `ADR-080`).
+
+### Changed
+- **SSR `/read/[id]` Book Entry, True HTTP 404/Noindex Gating, Enriched Schema.org JSON-LD & SEO Diagram 16 (`src/app/read/[id]/page.tsx`, `src/components/reader/BookReaderClient.tsx`, `src/app/read/[id]/layout.tsx`, `src/app/read/[id]/reader-layout-utils.ts`, `src/app/layout.tsx`, `src/app/copyright/page.tsx`, `src/lib/book-metadata.ts`, `src/components/reader/ReaderLoadingView.tsx`, `src/components/reader/ReaderSurface.tsx`, `src/hooks/reader/useReaderHabitTelemetry.ts`, `scripts/generate-architecture-matrix.js`)**: Split `/read/[id]/page.tsx` into an `async` Server Component calling `notFound()` on invalid/missing IDs and hydrating `<BookReaderClient />`, rendered SSR excerpts in `ReaderLoadingView` (`<h2>`), standardized tab titles via `formatReaderDocumentTitle`, added `158`-char SERP descriptions, US `noindex`, R2 `HEAD` cover gating, and `Schema.org Book` (`ReadAction`, `ImageObject`), removed dead `www.gutenberg.org` preconnect hints from `src/app/layout.tsx`, updated `copyright/page.tsx` `s-maxage=2592000` copy, and added SEO Diagram 16 + policy matrix (`ADR-016`, `ADR-080`, `ADR-082`).
+
+
 ## [2.9.86] - 2026-11-27
 ### *Unified Same-Origin R2 Cover Routing, Pre-Query MIME Filter Guard & public.books.formats Retirement*
 

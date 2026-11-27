@@ -9,7 +9,9 @@ import {
   clearConfirmedNotFoundCache,
   isClientSideNavigation,
   fetchBookData,
+  checkBookCoverAvailable,
   buildReaderSeoMetadataPayload,
+  MAX_SERP_DESCRIPTION_LENGTH,
 } from './reader-layout-utils';
 import { resolveBookMetadata } from '@/lib/book-metadata';
 import type { CatalogBook } from '@/types/book.types';
@@ -317,14 +319,51 @@ describe('reader-layout-utils', () => {
       expect(seo.genres).toContain('War Stories');
       expect(seo.genres).toContain('Historical');
       expect(seo.genres).not.toContain('Best Books Ever Listings');
-      expect(seo.description).toContain('Genoa and Lucca');
+      expect(seo.description.length).toBeLessThanOrEqual(MAX_SERP_DESCRIPTION_LENGTH);
       expect(seo.description).toContain('War and Peace');
-      expect(seo.description).toContain('translated by Louise Maude, Aylmer Maude');
-      expect(seo.description).toContain('Historical Fiction');
+      expect(seo.ogDescription).toContain('Genoa and Lucca');
+      expect(seo.ogDescription).toContain('War and Peace');
+      expect(seo.ogDescription).toContain('translated by Louise Maude, Aylmer Maude');
+      expect(seo.ogDescription).toContain('Historical Fiction');
+      expect(seo.openingHook).toContain('Genoa and Lucca');
+      expect(seo.isUsRestricted).toBe(false);
       expect(seo.keywords).toContain('War and Peace');
       expect(seo.keywords).toContain('Historical Fiction');
       expect(seo.keywords).toContain('Public Domain Books');
       expect(seo.gutenbergUrl).toBe('https://www.gutenberg.org/ebooks/2600');
+    });
+
+    it('extracts DB quote0 opening excerpts, handles non-English languages, and flags US copyright restriction', () => {
+      const restrictedFrenchBook: CatalogBook = {
+        id: 88801,
+        title: 'Les Misérables',
+        authors: [{ name: 'Hugo, Victor', birth_year: 1802, death_year: 1885 }],
+        translators: [],
+        subjects: ['Historical fiction'],
+        bookshelves: [],
+        languages: ['fr'],
+        copyright: true,
+        media_type: 'Text',
+        formats: {},
+        download_count: 1500,
+        quotes: [
+          {
+            chapterLabel: 'Livre I',
+            openingLine: 'En 1815, M. Charles-François-Bienvenu Myriel était évêque de Digne.',
+            quoteExcerpt: 'Aimer ou avoir aimé, cela suffit.',
+          },
+        ],
+      };
+      const meta = resolveBookMetadata({
+        id: 88801,
+        booksData: { count: 1, next: null, previous: null, results: [restrictedFrenchBook] },
+      });
+      const seo = buildReaderSeoMetadataPayload(meta, 88801, undefined, restrictedFrenchBook);
+
+      expect(seo.openingHook).toContain('1815');
+      expect(seo.description.length).toBeLessThanOrEqual(MAX_SERP_DESCRIPTION_LENGTH);
+      expect(seo.ogDescription).toContain('(French)');
+      expect(seo.isUsRestricted).toBe(true);
     });
 
     it('falls back safely when subjects, bookshelves, formats, and authentic authors are absent', () => {
@@ -363,6 +402,31 @@ describe('reader-layout-utils', () => {
       'text/plain; charset=utf-8': 'https://example.com/book.txt',
     });
     expect(customSeo.availableFormats).toEqual(['application/x-mobipocket-ebook', 'text/plain']);
+  });
+
+  describe('checkBookCoverAvailable', () => {
+    it('returns false when R2 is unconfigured and maps HEAD probe statuses safely', async () => {
+      vi.unstubAllEnvs();
+      expect(await checkBookCoverAvailable(1342)).toBe(false);
+      expect(await checkBookCoverAvailable(0)).toBe(false);
+
+      vi.stubEnv('R2_ACCOUNT_ID', '0123456789abcdef0123456789abcdef');
+      vi.stubEnv('R2_BUCKET_NAME', 'bookarium-assets');
+      vi.stubEnv('R2_ACCESS_KEY_ID', 'test-key');
+      vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test-secret');
+
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'Content-Type': 'image/jpeg' } }))
+        .mockResolvedValueOnce(new Response(null, { status: 404 }))
+        .mockRejectedValueOnce(new Error('R2 timeout'));
+
+      expect(await checkBookCoverAvailable(1342)).toBe(true);
+      expect(await checkBookCoverAvailable(99999)).toBe(false);
+      expect(await checkBookCoverAvailable(1234)).toBe(false);
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      vi.unstubAllEnvs();
+    });
   });
 });
 

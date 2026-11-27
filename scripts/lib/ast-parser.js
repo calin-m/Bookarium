@@ -2216,7 +2216,10 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
       },
     });
 
-    const isRouteHandlerFile = rel.startsWith('src/app/api/') || rel === 'src/app/auth/callback/route.ts';
+    const isRouteHandlerFile =
+      (rel.startsWith('src/app/') && rel.endsWith('/route.ts')) ||
+      rel.startsWith('src/app/api/') ||
+      rel === 'src/app/auth/callback/route.ts';
     const isExcludedApiCallerFile = isRouteHandlerFile || apiSelfAndPaginationExclusions.has(rel);
 
     const fileBroadcastOps = { channels: new Set(), hasPostMessage: false, hasMessageListener: false };
@@ -2548,6 +2551,9 @@ const TIER_3_CONTRACTED_MODULES = [
   'src/lib/password.ts',
   'src/lib/session-device-parser.ts',
   'src/app/auth/callback/route.ts',
+  'src/app/covers/[file]/route.ts',
+  'src/app/og/books/[file]/route.ts',
+  'src/app/api/books/content/asset-renders.ts',
   'src/app/api/books/translations/route.ts',
   'src/app/api/books/content/metadata-cache.ts',
   'src/app/read/[id]/reader-layout-utils.ts',
@@ -2555,6 +2561,7 @@ const TIER_3_CONTRACTED_MODULES = [
   'src/lib/country-resolver.ts',
   'src/lib/safe-storage.ts',
   'src/lib/book-metadata.ts',
+  'src/lib/server-data-cache.ts',
 ];
 
 const TIER_4_CONTRACTED_MODULES = [
@@ -4401,7 +4408,7 @@ function extractRouteCacheDirectives(rootDirPath) {
     'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800';
   const contentCoverCC =
     contentHeadersByMode.cover?.['Cache-Control'] ||
-    'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000';
+    'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=2592000';
   const translationsCC =
     translationsHeaders?.['Cache-Control'] ||
     'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000';

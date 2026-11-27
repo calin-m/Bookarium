@@ -622,7 +622,7 @@ describe('GET /api/books/content', () => {
       vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test-r2-secret-key');
     }
 
-    it('streams cover image strictly from private R2 with Content-Type: image/jpeg and 7d cache headers', async () => {
+    it('streams cover image strictly from private R2 with Content-Type: image/jpeg and 30d cache headers', async () => {
       stubR2Env();
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response(fakeJpegBytes, {
@@ -636,7 +636,7 @@ describe('GET /api/books/content', () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('image/jpeg');
-      expect(res.headers.get('Cache-Control')).toContain('s-maxage=604800');
+      expect(res.headers.get('Cache-Control')).toContain('s-maxage=2592000');
       expect(res.headers.get('Vercel-Cache-Tag')).toBe('covers');
       expect(res.headers.get('Vary')).toBe('Accept-Encoding');
       expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
@@ -720,7 +720,7 @@ describe('GET /api/books/content', () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get('Cache-Control')).toBe(
-        'public, max-age=604800, s-maxage=604800, stale-while-revalidate=2592000'
+        'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=2592000'
       );
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(String(fetchSpy.mock.calls[0][0])).toContain('/covers/863.jpg');

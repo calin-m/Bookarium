@@ -5,7 +5,9 @@ import {
   isR2Configured,
   isHtmlPayload,
   signR2GetRequest,
+  signR2HeadRequest,
   fetchR2CoverBytes,
+  headR2CoverExists,
   fetchR2BookText,
   MAX_R2_COVER_BYTES,
 } from './r2-client';
@@ -217,5 +219,39 @@ describe('r2-client', () => {
       })
     );
     expect(await fetchR2CoverBytes(1342)).toEqual({ status: 'error' });
+  });
+
+  it('signs HEAD requests cleanly and probes cover existence via headR2CoverExists without downloading JPEG bytes', async () => {
+    expect(await headR2CoverExists(1342)).toBe('unconfigured');
+
+    stubValidR2Env();
+    const config = getR2Config(validEnv)!;
+    const headSigned = signR2HeadRequest(config, 'covers/1342.jpg', new Date('2026-11-27T00:00:00.000Z'));
+    expect(headSigned.url).toBe(
+      'https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/bookarium-assets/covers/1342.jpg'
+    );
+    expect(headSigned.headers.Authorization).toContain('AWS4-HMAC-SHA256');
+
+    const aborted = new AbortController();
+    aborted.abort();
+    expect(await headR2CoverExists(1342, aborted.signal)).toBe('error');
+    expect(await headR2CoverExists(0)).toBe('error');
+
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'Content-Type': 'image/jpeg' } }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 302 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200, headers: { 'Content-Type': 'text/html' } }))
+      .mockRejectedValueOnce(new Error('Network down'));
+
+    expect(await headR2CoverExists(1342)).toBe('ok');
+    expect(fetchSpy.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ method: 'HEAD', redirect: 'manual' })
+    );
+    expect(await headR2CoverExists(99999)).toBe('not_found');
+    expect(await headR2CoverExists(1342)).toBe('error');
+    expect(await headR2CoverExists(1342)).toBe('error');
+    expect(await headR2CoverExists(1342)).toBe('error');
   });
 });

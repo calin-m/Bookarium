@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 27 Nov 2026 11:45:06 GMT  
+**Last Generated**: Fri, 27 Nov 2026 15:01:39 GMT  
 **Overall Status**: 🟢 PASSED  
-**Total Test Suites**: 271 passed  
-**Total Verified Tests**: 2830 passed  
+**Total Test Suites**: 276 passed  
+**Total Verified Tests**: 2853 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **271/271 test suites passed** (2830 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2853 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 85 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` parity, 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.39%** (17635/18106) — *Target: $\ge$ 95%*
-- **Statements**: **96%** (18974/19764) — *Target: $\ge$ 95%*
-- **Functions**: **94.98%** (3694/3889) — *Target: $\ge$ 92%*
-- **Branches**: **88.31%** (17588/19915) — *Target: $\ge$ 85%*
+- **Lines**: **97.4%** (17835/18311) — *Target: $\ge$ 95%*
+- **Statements**: **96.02%** (19184/19978) — *Target: $\ge$ 95%*
+- **Functions**: **94.94%** (3722/3920) — *Target: $\ge$ 92%*
+- **Branches**: **88.35%** (17778/20121) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (271 Suites / 2830 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2853 Tests)
 
-### 🚀 App Routes & Pages (31 Suites · 323 Tests)
+### 🚀 App Routes & Pages (34 Suites · 288 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -75,6 +75,15 @@
 - ✔ `strips spoofed or unverified ?recovery=true from URL and keeps Current Password required`
 - ✔ `suppresses history.replaceState when tab scrubbing is active in DOM ([data-scrubbing="true"])`
 - ✔ `handles generic collection view swipe navigation fallback from Account view`
+
+</details>
+
+<details>
+<summary><b><code>src/app/api/books/content/asset-renders.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `exports 30d cover and 24h card CDN cache directives`
+- ✔ `enforces HTTP 451 and non-US 503 fail-closed jurisdiction gates cleanly`
+- ✔ `renders 1200x630 PNG cards with CORP cross-origin and maps R2 cover states accurately`
 
 </details>
 
@@ -131,7 +140,7 @@
 - ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
 - ✔ `degrades cleanly from Tier 1 Supabase abortSignal timeout to Tier 1.5 Cloudflare R2 without contacting Gutenberg`
 - ✔ `rejects R2 HTML outage pages and oversized gzip payloads fail-closed with 502`
-- ✔ `streams cover image strictly from private R2 with Content-Type: image/jpeg and 7d cache headers`
+- ✔ `streams cover image strictly from private R2 with Content-Type: image/jpeg and 30d cache headers`
 - ✔ `returns 404 without falling back to Project Gutenberg when cover is missing in R2 or R2 is unconfigured`
 - ✔ `returns 502 without Gutenberg fallback when R2 storage errors, redirects, exceeds 2MB, or serves HTML`
 - ✔ `skips copyright metadata lookup for type=cover in non-US jurisdictions and streams R2 cover with browser caching`
@@ -242,6 +251,15 @@
 </details>
 
 <details>
+<summary><b><code>src/app/covers/[file]/route.test.ts</code></b> (3 tests)</summary>
+
+- ✔ `rejects browser document navigations and cross-site subresource hotlinks with 403 no-store while allowing headerless crawlers`
+- ✔ `enforces valid .jpg numeric pattern, disallowed query params, and rate limiting`
+- ✔ `returns 404 no-store when R2 is unconfigured or cover object is absent`
+
+</details>
+
+<details>
 <summary><b><code>src/app/error.test.tsx</code></b> (3 tests)</summary>
 
 - ✔ `renders heading, description, and action buttons`
@@ -289,6 +307,14 @@
 <summary><b><code>src/app/not-found.test.tsx</code></b> (1 tests)</summary>
 
 - ✔ `renders heading, literary quote, and navigation links`
+
+</details>
+
+<details>
+<summary><b><code>src/app/og/books/[file]/route.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `renders 1200x630 PNG social card cleanly for valid .png IDs and verified ?s= share tokens`
+- ✔ `rejects invalid extensions, disallowed query parameters, restricted works (451), and rate-limit excess`
 
 </details>
 
@@ -392,7 +418,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/app/read/[id]/layout.test.tsx</code></b> (12 tests)</summary>
 
 - ✔ `generates rich metadata for a curated hero classic (Frankenstein #84)`
 - ✔ `attaches verified ?s= share token to OpenGraph and Twitter card image URLs when x-bookarium-share-token is valid`
@@ -400,72 +426,28 @@
 - ✔ `bypasses outbound network calls on client-side router navigation (rsc: 1 fast-path)`
 - ✔ `detects client-side navigation correctly from various Next.js headers`
 - ✔ `serves repeated requests from in-memory server cache without repeated database queries`
-- ✔ `renders children, Schema.org Book JSON-LD, and BreadcrumbList script`
+- ✔ `renders children, upgraded Schema.org Book JSON-LD (ReadAction & fallback image), and BreadcrumbList script`
+- ✔ `includes /covers/<id>.jpg in OpenGraph and JSON-LD Book.image when R2 verifies cover existence`
 - ✔ `enriches OpenGraph tags, meta keywords, translators, lifespan dates, formats, and JSON-LD genre array from catalog metadata`
 - ✔ `marks explicitly confirmed-missing numeric book IDs as noindex while preserving fallback UI`
+- ✔ `emits robots noindex for US copyright-restricted works`
 - ✔ `falls back gracefully without noindex when catalog query times out or fails`
 
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (51 tests)</summary>
+<summary><b><code>src/app/read/[id]/page.test.tsx</code></b> (5 tests)</summary>
 
-- ✔ `renders header, reading surface, and sticky footer with metadata`
-- ✔ `navigates back to origin page when back button is clicked and exit modal is confirmed`
-- ✔ `falls back to router.push("/") when history length is <= 1 and exit modal is confirmed`
-- ✔ `saves bookmark and sets currently_reading when user chooses Bookmark & Leave in exit modal`
-- ✔ `opens and closes Table of Contents drawer`
-- ✔ `opens and closes appearance controls popover`
-- ✔ `navigates between chapters using footer Next/Prev buttons`
-- ✔ `supports keyboard navigation via ArrowLeft and ArrowRight`
-- ✔ `handles quick theme cycling from the header`
-- ✔ `handles quick font size adjustments`
-- ✔ `handles page jump input directly from footer`
-- ✔ `sets reading progress to 0% on page 1 and updates progress as reader advances`
-- ✔ `automatically resumes at saved chapter and page, renders resume toast, and handles restart`
-- ✔ `renders language and translation dropdown in reader and navigates on translation selection`
-- ✔ `opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection`
-- ✔ `toggles In-Book Search Drawer using Ctrl+F keyboard shortcut`
-- ✔ `enforces mutual exclusivity between all 5 reader drawers (TOC, Search, Controls, Language, Annotations)`
-- ✔ `automatically dismisses text selection popover when any reader drawer is opened`
-- ✔ `toggles Read Aloud audio bar and triggers speech controls`
-- ✔ `automatically closes any open side drawer when Read Aloud narration is opened from the header`
-- ✔ `automatically minimizes Read Aloud into mini-pill and docks at top when a reader drawer is opened`
-- ✔ `toggles Annotations & Notes drawer from reader header`
-- ✔ `renders selection popover on mouseUp and applies chosen highlight color`
-- ✔ `elevates tactile TextHighlightPopover above Read Aloud bar with zIndex 10002 when speech is open`
-- ✔ `attaches and saves a personal reflection note to an existing highlight`
-- ✔ `displays saved note in notes drawer and closes drawer upon jumping to passage`
-- ✔ `updates highlight color in-place without duplicating annotations in store`
-- ✔ `removes highlight and note upon confirmation in delete modal`
-- ✔ `keeps reading status undefined on Page 1 & 2 and transitions to currently_reading upon active engagement`
-- ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
-- ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
-- ✔ `synchronizes document.title with the authentic resolved book title and author`
-- ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction and triggers one-shot auto-retry when verified lifespans resolve`
-- ✔ `navigates directly to chapter and page specified in URL search params`
-- ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
-- ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
-- ✔ `allows user to save own highlight and note on passage previously annotated by a fellow scholar`
-- ✔ `handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation`
-- ✔ `resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)`
-- ✔ `hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)`
-- ✔ `handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer`
-- ✔ `resets residual outer window scrollY to 0 on mount and anchors the viewport container`
-- ✔ `persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls`
-- ✔ `disables redundant /api/books?ids=<id> query when currentBook in useReaderStore already has complete metadata and verified author lifespans`
-- ✔ `intercepts exit with ReaderExitBookmarkModal when back is clicked without a line bookmark`
-- ✔ `saves reading position with bookmarkRow: 1 and sets status currently_reading when Bookmark is clicked in exit modal`
-- ✔ `bypasses exit modal when a bookmark exists further ahead or when reminder is disabled`
-- ✔ `syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences`
-- ✔ `syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences`
-- ✔ `surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows`
-- ✔ `allows adjusting an existing personal highlight selection via Crop button, previews without saving on Cancel, and persists resized text on Save`
+- ✔ `calls notFound() immediately for invalid or non-positive book IDs`
+- ✔ `resolves curated book metadata on SSR and passes initialBook to BookReaderClient`
+- ✔ `bypasses DB fetch on rsc: 1 client transitions unless book is already cached`
+- ✔ `calls notFound() only when configured Supabase cleanly confirms book ID does not exist`
+- ✔ `degrades gracefully without notFound() when Supabase lookup fails or is unconfigured`
 
 </details>
 
 <details>
-<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (16 tests)</summary>
+<summary><b><code>src/app/read/[id]/reader-layout-utils.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `clears all cached items from serverMetadataCache and enforces LRU eviction at MAX_SERVER_METADATA_CACHE_ENTRIES`
 - ✔ `returns true when rsc header is 1`
@@ -481,8 +463,10 @@
 - ✔ `degrades gracefully to bundled FEATURED_HERO_BOOKS when Supabase query times out or fails`
 - ✔ `records confirmed missing IDs only when configured Supabase cleanly returns not-found (not on timeouts or unconfigured env)`
 - ✔ `normalizes tags, lifespan contributors, formats, featured opening hooks, and Gutenberg URL without duplicates`
+- ✔ `extracts DB quote0 opening excerpts, handles non-English languages, and flags US copyright restriction`
 - ✔ `falls back safely when subjects, bookshelves, formats, and authentic authors are absent`
 - ✔ `anchors serverMetadataCache and confirmedNotFoundIds on globalThis`
+- ✔ `returns false when R2 is unconfigured and maps HEAD probe statuses safely`
 
 </details>
 
@@ -495,11 +479,10 @@
 </details>
 
 <details>
-<summary><b><code>src/app/sitemap.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/app/sitemap.test.ts</code></b> (2 tests)</summary>
 
-- ✔ `generates canonical sitemap entries for root, privacy, and copyright routes`
-- ✔ `indexes all curated classics and featured hero books synchronously without duplicates`
-- ✔ `provides valid timestamps across all entries`
+- ✔ `configures 24h ISR revalidation and exposes synchronous curated classics when Supabase is unconfigured`
+- ✔ `paginates up to Top 5,000 public-domain Supabase books without duplicates and falls back safely on errors`
 
 </details>
 
@@ -1376,7 +1359,65 @@
 
 </details>
 
-### 📖 In-Browser Focus Reader (23 Suites · 208 Tests)
+### 📖 In-Browser Focus Reader (24 Suites · 261 Tests)
+
+<details>
+<summary><b><code>src/components/reader/BookReaderClient.test.tsx</code></b> (52 tests)</summary>
+
+- ✔ `renders SSR initialBook heading and opening excerpt inside loading state before text stream finishes`
+- ✔ `renders header, reading surface, and sticky footer with metadata`
+- ✔ `navigates back to origin page when back button is clicked and exit modal is confirmed`
+- ✔ `falls back to router.push("/") when history length is <= 1 and exit modal is confirmed`
+- ✔ `saves bookmark and sets currently_reading when user chooses Bookmark & Leave in exit modal`
+- ✔ `opens and closes Table of Contents drawer`
+- ✔ `opens and closes appearance controls popover`
+- ✔ `navigates between chapters using footer Next/Prev buttons`
+- ✔ `supports keyboard navigation via ArrowLeft and ArrowRight`
+- ✔ `handles quick theme cycling from the header`
+- ✔ `handles quick font size adjustments`
+- ✔ `handles page jump input directly from footer`
+- ✔ `sets reading progress to 0% on page 1 and updates progress as reader advances`
+- ✔ `automatically resumes at saved chapter and page, renders resume toast, and handles restart`
+- ✔ `renders language and translation dropdown in reader and navigates on translation selection`
+- ✔ `opens In-Book Search Drawer, finds matching phrase, and jumps to chapter on selection`
+- ✔ `toggles In-Book Search Drawer using Ctrl+F keyboard shortcut`
+- ✔ `enforces mutual exclusivity between all 5 reader drawers (TOC, Search, Controls, Language, Annotations)`
+- ✔ `automatically dismisses text selection popover when any reader drawer is opened`
+- ✔ `toggles Read Aloud audio bar and triggers speech controls`
+- ✔ `automatically closes any open side drawer when Read Aloud narration is opened from the header`
+- ✔ `automatically minimizes Read Aloud into mini-pill and docks at top when a reader drawer is opened`
+- ✔ `toggles Annotations & Notes drawer from reader header`
+- ✔ `renders selection popover on mouseUp and applies chosen highlight color`
+- ✔ `elevates tactile TextHighlightPopover above Read Aloud bar with zIndex 10002 when speech is open`
+- ✔ `attaches and saves a personal reflection note to an existing highlight`
+- ✔ `displays saved note in notes drawer and closes drawer upon jumping to passage`
+- ✔ `updates highlight color in-place without duplicating annotations in store`
+- ✔ `removes highlight and note upon confirmation in delete modal`
+- ✔ `keeps reading status undefined on Page 1 & 2 and transitions to currently_reading upon active engagement`
+- ✔ `renders volume completion modal with star rating and sets status to finished on the final page`
+- ✔ `persists authentic resolved book metadata to recentBooks and warms reader store on load`
+- ✔ `synchronizes document.title with the authentic resolved book title and author`
+- ✔ `renders HTTP 451 legal restriction screen when useBookContent encounters copyright restriction and triggers one-shot auto-retry when verified lifespans resolve`
+- ✔ `navigates directly to chapter and page specified in URL search params`
+- ✔ `navigates to targeted annotation and scrolls it into view when annotationId is provided in URL`
+- ✔ `displays Literary Symposium milestone dispatch banner and reveals companion progress micro-pill when dismissed`
+- ✔ `allows user to save own highlight and note on passage previously annotated by a fellow scholar`
+- ✔ `handles authenticated cloud sync, slash keyboard search, delete cancel, and completion modal Bookshelf navigation`
+- ✔ `resolves bookId from window.location.pathname when useParams() is empty (App Shell fallback)`
+- ✔ `hydrates recentBooks and reader store from extracted Gutenberg header metadata when upstream booksData is unavailable (offline fallback)`
+- ✔ `handles symposium companion derivation as non-host fellow, syncs theme from global store, and re-fetches fellow annotations when opening drawer`
+- ✔ `resets residual outer window scrollY to 0 on mount and anchors the viewport container`
+- ✔ `persists readingMode and columnWidth in useReaderStore and supports My Default & Factory Reset in ReaderControls`
+- ✔ `disables redundant /api/books?ids=<id> query when currentBook in useReaderStore already has complete metadata and verified author lifespans`
+- ✔ `intercepts exit with ReaderExitBookmarkModal when back is clicked without a line bookmark`
+- ✔ `saves reading position with bookmarkRow: 1 and sets status currently_reading when Bookmark is clicked in exit modal`
+- ✔ `bypasses exit modal when a bookmark exists further ahead or when reminder is disabled`
+- ✔ `syncs pinch font size, Read-Aloud rate/voice, and controls exit-reminder toggles to Supabase profiles.preferences`
+- ✔ `syncs Spoiler Shield drawer toggle and Exit Bookmark Modal reminder checkbox to Supabase profiles.preferences`
+- ✔ `surfaces active silk bookmark inside Notes & Highlights drawer with header dot indicator, cross-chapter jump, and clear flows`
+- ✔ `allows adjusting an existing personal highlight selection via Crop button, previews without saving on Cancel, and persists resized text on Save`
+
+</details>
 
 <details>
 <summary><b><code>src/components/reader/DeleteAnnotationModal.test.tsx</code></b> (4 tests)</summary>
@@ -1560,9 +1601,10 @@
 </details>
 
 <details>
-<summary><b><code>src/components/reader/ReaderLoadingView.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/reader/ReaderLoadingView.test.tsx</code></b> (2 tests)</summary>
 
-- ✔ `renders loading indicators and typography text`
+- ✔ `renders loading indicators and typography text cleanly when metadata is absent`
+- ✔ `renders SSR semantic heading, author, genres, and opening literary hook when authentic metadata is provided`
 
 </details>
 
@@ -2084,7 +2126,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (60 Suites · 761 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 765 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2186,7 +2228,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/book-metadata.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/lib/book-metadata.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `strips Gutenberg preamble prefixes cleanly`
 - ✔ `identifies placeholder and empty authors correctly`
@@ -2205,6 +2247,7 @@
 - ✔ `evaluates hasAuthenticAuthors across strings, Author objects, and placeholders`
 - ✔ `evaluates hasAuthorLifespans for both numeric fields and embedded name lifespans`
 - ✔ `converts a FeaturedHeroBook into a canonical CatalogBook with default and custom overrides`
+- ✔ `formats keyword-first SEO reader titles, truncates cleanly at word boundaries, and resolves opening snippets`
 
 </details>
 
@@ -2595,7 +2638,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/r2-client.test.ts</code></b> (6 tests)</summary>
+<summary><b><code>src/lib/r2-client.test.ts</code></b> (7 tests)</summary>
 
 - ✔ `validates R2 env configuration and rejects malformed account IDs or bucket names`
 - ✔ `generates deterministic AWS Signature V4 GET request headers for private R2 paths`
@@ -2603,6 +2646,7 @@
 - ✔ `fetches cover bytes cleanly from R2 and fails closed on 404, redirects, HTML, and oversize`
 - ✔ `fetches and decompresses .txt.gz book payloads while guarding invalid or corrupt bodies`
 - ✔ `guards pre-aborted signals, empty or oversized streams, and null-body arrayBuffer fallbacks`
+- ✔ `signs HEAD requests cleanly and probes cover existence via headR2CoverExists without downloading JPEG bytes`
 
 </details>
 
@@ -2788,6 +2832,14 @@
 - ✔ `computes distance-graded label visibility and mask classes across breakpoints`
 - ✔ `computes distance-graded flex growth weights across <=2, lg:inline, md:inline, xl:inline, and sm tiers`
 - ✔ `handles released mouse buttons, non-primary clicks, and window pointercancel cleanup in createTabScrubberHandlers`
+
+</details>
+
+<details>
+<summary><b><code>src/lib/server-data-cache.test.ts</code></b> (2 tests)</summary>
+
+- ✔ `invokes underlying callback cleanly under VITEST without requiring incrementalCache store`
+- ✔ `uses unstable_cache invoker outside VITEST and falls back cleanly only when incrementalCache is missing`
 
 </details>
 
@@ -3777,7 +3829,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (68 Suites · 320 Tests)
+### 🧩 UI Primitives & Motion (68 Suites · 321 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -4426,11 +4478,12 @@
 </details>
 
 <details>
-<summary><b><code>src/config/routes.test.ts</code></b> (4 tests)</summary>
+<summary><b><code>src/config/routes.test.ts</code></b> (5 tests)</summary>
 
 - ✔ `provides static canonical routes`
 - ✔ `builds dynamic reader route with id`
 - ✔ `builds dynamic public profile route with sanitized username`
+- ✔ `builds clean crawler cover and OpenGraph reading card asset routes`
 - ✔ `builds clean view path route correctly`
 
 </details>

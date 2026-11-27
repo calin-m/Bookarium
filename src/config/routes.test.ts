@@ -29,6 +29,12 @@ describe('ROUTES Configuration', () => {
     expect(ROUTES.PUBLIC_PROFILE('  BookWorm99  ')).toBe('/u/bookworm99');
   });
 
+  it('builds clean crawler cover and OpenGraph reading card asset routes', () => {
+    expect(ROUTES.COVER_ASSET(1342)).toBe('/covers/1342.jpg');
+    expect(ROUTES.OG_BOOK_CARD(1342)).toBe('/og/books/1342.png');
+    expect(ROUTES.OG_BOOK_CARD(84, 'signedToken_1')).toBe('/og/books/84.png?s=signedToken_1');
+  });
+
   it('builds clean view path route correctly', () => {
     expect(ROUTES.VIEW('catalog')).toBe('/');
     expect(ROUTES.VIEW('bookshelf')).toBe('/bookshelf');

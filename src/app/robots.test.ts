@@ -25,6 +25,8 @@ describe('robots() route handler', () => {
     expect(allowed).toContain('/copyright');
     expect(allowed).toContain('/read/');
     expect(allowed).toContain('/u/');
+    expect(allowed).toContain('/covers/');
+    expect(allowed).toContain('/og/books/');
 
     expect(disallowed).toContain('/*?*search=*');
     expect(disallowed).toContain('/*?*topic=*');

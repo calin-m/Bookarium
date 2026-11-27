@@ -1,10 +1,10 @@
 /**
  * @module src/lib/r2-client
- * @scope Server-only Cloudflare R2 S3-compatible AWS SigV4 fetch and gzip decompression client for private book texts (`books/<id>.txt.gz`) and cover artwork (`covers/<id>.jpg`).
+ * @scope Server-only Cloudflare R2 S3-compatible AWS SigV4 fetch, HEAD existence check, and gzip decompression client for private book texts (`books/<id>.txt.gz`) and cover artwork (`covers/<id>.jpg`).
  * @invariant Never expose `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, or `R2_SECRET_ACCESS_KEY` to client bundles, validate `accountId` and `bucket` identifiers before URL construction, enforce `redirect: 'manual'` on all outbound R2 requests, and bound streamed cover payloads (`MAX_R2_COVER_BYTES`) and gzip decompression output (`MAX_R2_BOOK_BYTES`).
  * @invariant Return explicit `'unconfigured'` status when `R2_*` credentials are absent so local unconfigured environments fail closed predictably (`404`/`503`) without unhandled configuration errors or Project Gutenberg fallbacks.
  * @rationale Using built-in `node:crypto` AWS Signature V4 signing and bounded `node:zlib` `gunzip` keeps R2 reads completely dependency-free, fast on serverless Node runtimes, and resilient against decompression bombs or open redirects.
- * @adr ADR-082
+ * @adr ADR-016, ADR-082
  */
 
 import crypto from 'node:crypto';
@@ -97,7 +97,8 @@ function hmacSha256(key: string | Buffer, data: string): Buffer {
   return crypto.createHmac('sha256', key).update(data, 'utf8').digest();
 }
 
-export function signR2GetRequest(
+function signR2MethodRequest(
+  method: 'GET' | 'HEAD',
   config: R2ClientConfig,
   objectKey: string,
   now: Date = new Date()
@@ -118,7 +119,7 @@ export function signR2GetRequest(
   const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
 
   const canonicalRequest = [
-    'GET',
+    method,
     canonicalUri,
     '',
     canonicalHeaders,
@@ -151,6 +152,22 @@ export function signR2GetRequest(
       Authorization: authorization,
     },
   };
+}
+
+export function signR2GetRequest(
+  config: R2ClientConfig,
+  objectKey: string,
+  now: Date = new Date()
+): { url: string; headers: Record<string, string> } {
+  return signR2MethodRequest('GET', config, objectKey, now);
+}
+
+export function signR2HeadRequest(
+  config: R2ClientConfig,
+  objectKey: string,
+  now: Date = new Date()
+): { url: string; headers: Record<string, string> } {
+  return signR2MethodRequest('HEAD', config, objectKey, now);
 }
 
 async function readBoundedArrayBuffer(
@@ -275,6 +292,67 @@ async function fetchSignedR2Object(
     return { status: 'ok', bytes, contentType };
   } catch {
     return { status: 'error' };
+  } finally {
+    clearTimeout(timeoutId);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
+  }
+}
+
+/**
+ * Checks via signed AWS SigV4 `HEAD` request whether a volume's JPEG cover exists in R2.
+ */
+export async function headR2CoverExists(
+  bookId: number,
+  externalSignal?: AbortSignal
+): Promise<'ok' | 'not_found' | 'unconfigured' | 'error'> {
+  if (!Number.isInteger(bookId) || bookId <= 0 || bookId > 10_000_000) {
+    return 'error';
+  }
+
+  const config = getR2Config();
+  if (!config) {
+    return 'unconfigured';
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), Math.min(R2_DEFAULT_TIMEOUT_MS, 4000));
+  const onExternalAbort = () => controller.abort();
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      clearTimeout(timeoutId);
+      return 'error';
+    }
+    externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+
+  try {
+    const { url, headers } = signR2HeadRequest(config, `covers/${Math.trunc(bookId)}.jpg`);
+    const response = await fetch(url, {
+      method: 'HEAD',
+      headers,
+      redirect: 'manual',
+      signal: controller.signal,
+    });
+
+    if (response.status === 404) {
+      return 'not_found';
+    }
+
+    if ((response.status >= 300 && response.status < 400) || !response.ok) {
+      return 'error';
+    }
+
+    const contentType = (response.headers?.get('content-type') || '').trim();
+    if (isHtmlPayload(contentType)) {
+      return 'error';
+    }
+
+    return 'ok';
+  } catch {
+    return 'error';
   } finally {
     clearTimeout(timeoutId);
     if (externalSignal) {

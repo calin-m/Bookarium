@@ -82,6 +82,7 @@ describe('RootLayout', () => {
     expect(screen.getByTestId('layout-children')).toBeInTheDocument();
     expect(screen.getByTestId('vercel-analytics')).toBeInTheDocument();
     expect(screen.getByTestId('vercel-speed-insights')).toBeInTheDocument();
+    expect(document.querySelector('link[href*="gutenberg.org"]')).toBeNull();
   });
 
   it('should render Schema.org @graph JSON-LD script declaring WebSite and universal WebApplication entities', async () => {

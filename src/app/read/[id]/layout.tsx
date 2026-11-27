@@ -1,14 +1,16 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { SITE_CONFIG } from '@/config/site-config';
-import { resolveBookMetadata } from '@/lib/book-metadata';
+import { ROUTES } from '@/config/routes';
+import { formatReaderDocumentTitle, resolveBookMetadata } from '@/lib/book-metadata';
+import { CARD_DIMENSIONS } from '@/lib/share-card-primitives';
 import { decodeReadingCardShareToken } from '@/lib/reading-card-export';
-import { resolveBookCoverUrl } from '@/lib/utils';
 import {
   serverMetadataCache,
   isClientSideNavigation,
   isConfirmedMissingBook,
   fetchBookData,
+  checkBookCoverAvailable,
   buildReaderSeoMetadataPayload,
   type ReaderSeoPerson,
 } from './reader-layout-utils';
@@ -16,13 +18,6 @@ import {
 interface ReaderLayoutProps {
   children: React.ReactNode;
   params: Promise<{ id: string }>;
-}
-
-function resolveSeoCoverUrl(bookId: number, rawCoverUrl?: string): string {
-  const fallback = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=cover`;
-  const resolved = resolveBookCoverUrl(bookId, rawCoverUrl);
-  if (!resolved) return fallback;
-  return resolved.startsWith('/') ? `${SITE_CONFIG.SITE_URL}${resolved}` : resolved;
 }
 
 function toSchemaPerson(person: ReaderSeoPerson) {
@@ -66,10 +61,9 @@ export async function generateMetadata({
     booksData: bookData ? { count: 1, next: null, previous: null, results: [bookData] } : null,
   });
 
-  const authorSuffix = meta.displayAuthor ? ` — ${meta.displayAuthor}` : '';
-  const readerTitle = `${SITE_CONFIG.NAME} | ${SITE_CONFIG.READER_NAME} | ${meta.title}${authorSuffix}`;
-  const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats);
-  const coverUrl = resolveSeoCoverUrl(bookId, bookData?.formats?.['image/jpeg']);
+  const readerTitle = formatReaderDocumentTitle(meta.title, meta.displayAuthor);
+  const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats, bookData);
+  const hasVerifiedCover = !isClientTransition ? await checkBookCoverAvailable(bookId) : false;
 
   let validShareToken: string | null = null;
   try {
@@ -82,10 +76,33 @@ export async function generateMetadata({
     // Non-blocking fallback outside request context
   }
 
-  const cardImageUrl = `${SITE_CONFIG.SITE_URL}/api/books/content?id=${bookId}&type=card${
-    validShareToken ? `&s=${validShareToken}` : ''
-  }`;
-  const shouldNoIndex = !isClientTransition && !bookData && isConfirmedMissingBook(bookId);
+  const cardImageUrl = `${SITE_CONFIG.SITE_URL}${ROUTES.OG_BOOK_CARD(bookId, validShareToken)}`;
+  const coverImageUrl = hasVerifiedCover
+    ? `${SITE_CONFIG.SITE_URL}${ROUTES.COVER_ASSET(bookId)}`
+    : null;
+
+  const shouldNoIndex =
+    !isClientTransition &&
+    ((bookData && seo.isUsRestricted) || (!bookData && isConfirmedMissingBook(bookId)));
+
+  const ogImages = [
+    {
+      url: cardImageUrl,
+      width: CARD_DIMENSIONS.width,
+      height: CARD_DIMENSIONS.height,
+      alt: `${meta.title} — Bookarium Reading Card`,
+    },
+    ...(coverImageUrl
+      ? [
+          {
+            url: coverImageUrl,
+            width: 800,
+            height: 1200,
+            alt: `${meta.title} cover`,
+          },
+        ]
+      : []),
+  ];
 
   return {
     title: {
@@ -97,7 +114,7 @@ export async function generateMetadata({
       ? { authors: seo.authorNames.map((name) => ({ name })) }
       : {}),
     alternates: {
-      canonical: `/read/${bookId}`,
+      canonical: ROUTES.READ(bookId),
     },
     ...(shouldNoIndex
       ? {
@@ -110,31 +127,18 @@ export async function generateMetadata({
     openGraph: {
       type: 'book',
       locale: 'en_US',
-      url: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
+      url: `${SITE_CONFIG.SITE_URL}${ROUTES.READ(bookId)}`,
       siteName: SITE_CONFIG.NAME,
       title: readerTitle,
-      description: seo.description,
+      description: seo.ogDescription,
       ...(seo.authorNames.length > 0 ? { authors: seo.authorNames } : {}),
       tags: seo.genres,
-      images: [
-        {
-          url: cardImageUrl,
-          width: 1200,
-          height: 630,
-          alt: `${meta.title} — Bookarium Reading Card`,
-        },
-        {
-          url: coverUrl,
-          width: 800,
-          height: 1200,
-          alt: `${meta.title} cover`,
-        },
-      ],
+      images: ogImages,
     },
     twitter: {
       card: 'summary_large_image',
       title: readerTitle,
-      description: seo.description,
+      description: seo.ogDescription,
       images: [cardImageUrl],
     },
   };
@@ -158,17 +162,46 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
       booksData: bookData ? { count: 1, next: null, previous: null, results: [bookData] } : null,
     });
 
-    const coverUrl = resolveSeoCoverUrl(bookId, bookData?.formats?.['image/jpeg']);
-    const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats);
+    const seo = buildReaderSeoMetadataPayload(meta, bookId, bookData?.formats, bookData);
+    const hasVerifiedCover = !isClientTransition ? await checkBookCoverAvailable(bookId) : false;
+    const verifiedCoverUrl = hasVerifiedCover
+      ? `${SITE_CONFIG.SITE_URL}${ROUTES.COVER_ASSET(bookId)}`
+      : null;
+    const fallbackCardUrl = `${SITE_CONFIG.SITE_URL}${ROUTES.OG_BOOK_CARD(bookId)}`;
+    const primarySchemaImage = verifiedCoverUrl
+      ? {
+          '@type': 'ImageObject',
+          url: verifiedCoverUrl,
+          width: 800,
+          height: 1200,
+        }
+      : {
+          '@type': 'ImageObject',
+          url: fallbackCardUrl,
+          width: CARD_DIMENSIONS.width,
+          height: CARD_DIMENSIONS.height,
+        };
+    const canonicalReaderUrl = `${SITE_CONFIG.SITE_URL}${ROUTES.READ(bookId)}`;
+
     const authorSchema =
       seo.authorsMeta.length > 1
         ? seo.authorsMeta.map(toSchemaPerson)
         : toSchemaPerson(seo.authorsMeta[0] || { name: meta.displayAuthor });
 
+    const encodingSchemas =
+      seo.availableFormats.length > 0
+        ? seo.availableFormats.map((encodingFormat) => ({
+            '@type': 'MediaObject',
+            encodingFormat,
+          }))
+        : undefined;
+
     bookJsonLd = {
       '@context': 'https://schema.org',
       '@type': 'Book',
       name: meta.title,
+      description: seo.description,
+      abstract: seo.ogDescription,
       identifier: `gutenberg:${bookId}`,
       bookFormat: 'https://schema.org/EBook',
       author: authorSchema,
@@ -180,24 +213,49 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
                 : toSchemaPerson(seo.translatorsMeta[0]),
           }
         : {}),
-      ...(seo.availableFormats.length > 0
-        ? {
-            encoding: seo.availableFormats.map((encodingFormat) => ({
-              '@type': 'MediaObject',
-              encodingFormat,
-            })),
-          }
-        : {}),
+      ...(encodingSchemas ? { encoding: encodingSchemas } : {}),
       inLanguage: meta.languages || ['en'],
       isAccessibleForFree: true,
       license: 'https://creativecommons.org/publicdomain/mark/1.0/',
-      url: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
+      url: canonicalReaderUrl,
       sameAs: seo.gutenbergUrl,
-      image: coverUrl,
+      image: primarySchemaImage,
+      thumbnailUrl: verifiedCoverUrl || fallbackCardUrl,
       publisher: {
         '@type': 'Organization',
+        name: SITE_CONFIG.NAME,
+        url: SITE_CONFIG.SITE_URL,
+      },
+      isBasedOn: {
+        '@type': 'CreativeWork',
         name: 'Project Gutenberg',
-        url: 'https://www.gutenberg.org',
+        url: seo.gutenbergUrl,
+      },
+      workExample: {
+        '@type': 'Book',
+        name: meta.title,
+        bookFormat: 'https://schema.org/EBook',
+        inLanguage: meta.languages || ['en'],
+        isAccessibleForFree: true,
+        url: canonicalReaderUrl,
+        ...(encodingSchemas ? { encoding: encodingSchemas } : {}),
+        potentialAction: {
+          '@type': 'ReadAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: canonicalReaderUrl,
+            actionPlatform: [
+              'https://schema.org/DesktopWebPlatform',
+              'https://schema.org/MobileWebPlatform',
+            ],
+          },
+          expectsAcceptanceOf: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD',
+            availability: 'https://schema.org/InStock',
+          },
+        },
       },
       genre: seo.genres,
       keywords: seo.genres.join(', '),
@@ -217,7 +275,7 @@ export default async function BookReaderLayout({ children, params }: ReaderLayou
           '@type': 'ListItem',
           position: 2,
           name: meta.title,
-          item: `${SITE_CONFIG.SITE_URL}/read/${bookId}`,
+          item: canonicalReaderUrl,
         },
       ],
     };

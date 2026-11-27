@@ -1980,6 +1980,7 @@ function pass5AdrValidation() {
       '## 🌍 External Integration & Boundary Contracts Map',
       '## 🛡️ Failure Modes, Circuit Breakers & Retry Topology',
       '## 🚀 Deployment, Edge Caching & Operational Topology',
+      '## 🔍 Technical SEO, Crawler Discovery & Structured Metadata Architecture',
       '## 🔐 Environment Variable, Config & Security Trust-Zone Dependency Map',
       '### 3. Authentication, Password Recovery, Session Revocation & Origin Security Flow',
       '## 🤝 Literary Fellowship, Symposium Pacts & Marginalia Guard Topology',
@@ -2136,9 +2137,9 @@ function pass5AdrValidation() {
     if (fs.existsSync(readmeFilePath)) {
       const readmeText = fs.readFileSync(readmeFilePath, 'utf-8');
       const archMermaidCount = (archContent.match(/```mermaid/g) || []).length;
-      if (archMermaidCount < 15) {
+      if (archMermaidCount < 16) {
         docViolations.push(
-          `Architecture corpus (docs/ARCHITECTURE.md + docs/architecture/*.md) is missing expected 360-degree diagrams (found ${archMermaidCount}, expected at least 15; run "npm run docs:sync").`
+          `Architecture corpus (docs/ARCHITECTURE.md + docs/architecture/*.md) is missing expected 360-degree diagrams (found ${archMermaidCount}, expected at least 16; run "npm run docs:sync").`
         );
       }
       if (!readmeText.includes('End-to-End System Context & Data Flow') || !readmeText.includes('<!-- BEGIN:architecture-diagrams -->')) {
@@ -2886,6 +2887,44 @@ async function probeCompiledNextServer(rootDirPath) {
           port,
           '/auth/callback?next=https%3A%2F%2Fevil.example%2Fphish'
         ),
+      },
+      {
+        spec: {
+          path: '/covers/1342.jpg (Sec-Fetch-Dest: document)',
+          expectedStatus: 403,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(port, '/covers/1342.jpg', 5000, {
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+        }),
+      },
+      {
+        spec: {
+          path: '/covers/1342.jpg (Sec-Fetch-Site: cross-site)',
+          expectedStatus: 403,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(port, '/covers/1342.jpg', 5000, {
+          'Sec-Fetch-Dest': 'image',
+          'Sec-Fetch-Mode': 'no-cors',
+          'Sec-Fetch-Site': 'cross-site',
+        }),
+      },
+      {
+        spec: {
+          path: '/og/books/not-a-book.png',
+          expectedStatus: 400,
+          expectNoStoreCache: true,
+          expectCrossOriginResourcePolicy: 'same-origin',
+          forbidStackTraces: true,
+        },
+        response: await sendLoopbackHttpProbe(port, '/og/books/not-a-book.png'),
       },
     ];
 

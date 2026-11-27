@@ -31,6 +31,10 @@ vi.mock('@/lib/offline-storage', () => ({
   }),
 }));
 
+vi.mock('@/components/reader/BookReaderClient', () => ({ BookReaderClient: () => null }));
+vi.mock('@/components/presentation/BookPreviewModal', () => ({ BookPreviewModal: () => null }));
+vi.mock('@/components/presentation/DownloadDrawer', () => ({ DownloadDrawer: () => null }));
+
 describe('useOfflineBooks hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();

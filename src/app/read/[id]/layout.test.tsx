@@ -33,7 +33,7 @@ describe('BookReaderLayout and generateMetadata', () => {
 
     const titleObj = meta.title as { absolute: string };
     expect(titleObj.absolute).toBe(
-      'Bookarium | Reader | Frankenstein — Mary Wollstonecraft Shelley'
+      'Frankenstein by Mary Wollstonecraft Shelley — Read Free | Bookarium'
     );
     expect(meta.description).toContain('Frankenstein');
     const og = meta.openGraph as Record<string, unknown> | undefined;
@@ -44,7 +44,7 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(tw?.title).toBe(titleObj.absolute);
     expect(meta.alternates?.canonical).toBe('/read/84');
     const ogImages = og?.images as Array<{ url: string }> | undefined;
-    expect(ogImages?.[0]?.url).toContain('/api/books/content?id=84&type=card');
+    expect(ogImages?.[0]?.url).toContain('/og/books/84.png');
   });
 
   it('attaches verified ?s= share token to OpenGraph and Twitter card image URLs when x-bookarium-share-token is valid', async () => {
@@ -72,8 +72,8 @@ describe('BookReaderLayout and generateMetadata', () => {
     const ogImages = og?.images as Array<{ url: string }> | undefined;
     const twImages = tw?.images as string[] | undefined;
 
-    expect(ogImages?.[0]?.url).toContain(`/api/books/content?id=84&type=card&s=${signedToken}`);
-    expect(twImages?.[0]).toContain(`/api/books/content?id=84&type=card&s=${signedToken}`);
+    expect(ogImages?.[0]?.url).toContain(`/og/books/84.png?s=${signedToken}`);
+    expect(twImages?.[0]).toContain(`/og/books/84.png?s=${signedToken}`);
   });
 
   it('provides safe noindex fallback metadata for invalid book ID', async () => {
@@ -96,7 +96,7 @@ describe('BookReaderLayout and generateMetadata', () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect((meta.title as { absolute: string }).absolute).toContain(
-      'Bookarium | Reader | Gutenberg Volume #77777'
+      'Gutenberg Volume #77777 — Read Free | Bookarium'
     );
     expect(meta.alternates?.canonical).toBe('/read/77777');
 
@@ -158,7 +158,7 @@ describe('BookReaderLayout and generateMetadata', () => {
     });
     expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
     expect((meta1.title as { absolute: string }).absolute).toBe(
-      'Bookarium | Reader | Cached Wonder — Cache Master'
+      'Cached Wonder by Cache Master — Read Free | Bookarium'
     );
 
     // Subsequent navigation uses server memory cache even if client navigation flag is absent
@@ -167,11 +167,11 @@ describe('BookReaderLayout and generateMetadata', () => {
     });
     expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
     expect((meta2.title as { absolute: string }).absolute).toBe(
-      'Bookarium | Reader | Cached Wonder — Cache Master'
+      'Cached Wonder by Cache Master — Read Free | Bookarium'
     );
   });
 
-  it('renders children, Schema.org Book JSON-LD, and BreadcrumbList script', async () => {
+  it('renders children, upgraded Schema.org Book JSON-LD (ReadAction & fallback image), and BreadcrumbList script', async () => {
     const layoutJsx = await BookReaderLayout({
       params: Promise.resolve({ id: '84' }),
       children: <div data-testid="reader-child">Reader Content</div>,
@@ -188,7 +188,17 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(parsed.bookFormat).toBe('https://schema.org/EBook');
     expect(parsed.identifier).toBe('gutenberg:84');
     expect(parsed.sameAs).toBe('https://www.gutenberg.org/ebooks/84');
-    expect(parsed.image).toMatch(/\/api\/books\/content\?id=84&type=cover$/);
+    expect(parsed.image).toEqual({
+      '@type': 'ImageObject',
+      url: expect.stringMatching(/\/og\/books\/84\.png$/),
+      width: 1200,
+      height: 630,
+    });
+    expect(parsed.thumbnailUrl).toMatch(/\/og\/books\/84\.png$/);
+    expect(parsed.publisher?.name).toBe('Bookarium');
+    expect(parsed.isBasedOn?.name).toBe('Project Gutenberg');
+    expect(parsed.workExample?.['@type']).toBe('Book');
+    expect(parsed.workExample?.potentialAction?.['@type']).toBe('ReadAction');
     expect(parsed.name).toContain('Frankenstein');
     expect(parsed.author?.name).toContain('Shelley');
     expect(parsed.author?.birthDate).toBe('1797');
@@ -203,6 +213,41 @@ describe('BookReaderLayout and generateMetadata', () => {
     expect(breadcrumb['@type']).toBe('BreadcrumbList');
     expect(breadcrumb.itemListElement).toHaveLength(2);
     expect(breadcrumb.itemListElement[1].item).toContain('/read/84');
+  });
+
+  it('includes /covers/<id>.jpg in OpenGraph and JSON-LD Book.image when R2 verifies cover existence', async () => {
+    vi.stubEnv('R2_ACCOUNT_ID', '0123456789abcdef0123456789abcdef');
+    vi.stubEnv('R2_BUCKET_NAME', 'bookarium-assets');
+    vi.stubEnv('R2_ACCESS_KEY_ID', 'test-key');
+    vi.stubEnv('R2_SECRET_ACCESS_KEY', 'test-secret');
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 200, headers: { 'Content-Type': 'image/jpeg' } })
+    );
+
+    const meta = await generateMetadata({ params: Promise.resolve({ id: '84' }) });
+    const og = meta.openGraph as { images?: Array<{ url: string }> } | undefined;
+    expect(og?.images?.map((i) => i.url)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/\/og\/books\/84\.png$/),
+        expect.stringMatching(/\/covers\/84\.jpg$/),
+      ])
+    );
+
+    const layoutJsx = await BookReaderLayout({
+      params: Promise.resolve({ id: '84' }),
+      children: <div data-testid="cover-verified-child">Content</div>,
+    });
+    render(layoutJsx);
+    const script = document.querySelector('script[type="application/ld+json"]');
+    const parsed = JSON.parse(script!.textContent || '{}');
+    expect(parsed.image).toEqual({
+      '@type': 'ImageObject',
+      url: expect.stringMatching(/\/covers\/84\.jpg$/),
+      width: 800,
+      height: 1200,
+    });
+    expect(parsed.thumbnailUrl).toMatch(/\/covers\/84\.jpg$/);
   });
 
   it('enriches OpenGraph tags, meta keywords, translators, lifespan dates, formats, and JSON-LD genre array from catalog metadata', async () => {
@@ -241,14 +286,15 @@ describe('BookReaderLayout and generateMetadata', () => {
 
     expect(mockMaybeSingle).toHaveBeenCalledTimes(1);
     expect(meta.description).toContain('Genoa and Lucca');
-    expect(meta.description).toContain('translated by Louise Maude');
-    expect(meta.description).toContain('Historical');
+    const og = meta.openGraph as { type?: string; authors?: string[]; tags?: string[]; description?: string } | undefined;
+    expect(og?.description).toContain('Genoa and Lucca');
+    expect(og?.description).toContain('translated by Louise Maude');
+    expect(og?.description).toContain('Historical');
     expect(meta.keywords).toEqual(
       expect.arrayContaining(['War and Peace', 'Leo Tolstoy', 'Louise Maude', 'Historical', 'War Stories'])
     );
     expect(meta.authors).toEqual([{ name: 'Leo Tolstoy' }, { name: 'Companion Editor' }]);
 
-    const og = meta.openGraph as { type?: string; authors?: string[]; tags?: string[] } | undefined;
     expect(og?.type).toBe('book');
     expect(og?.authors).toEqual(['Leo Tolstoy', 'Companion Editor']);
     expect(og?.tags).toEqual(
@@ -305,6 +351,43 @@ describe('BookReaderLayout and generateMetadata', () => {
       params: Promise.resolve({ id: '999998' }),
     });
 
+    expect(meta.robots).toEqual({ index: false, follow: true });
+  });
+
+  it('emits robots noindex for US copyright-restricted works', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
+
+    const supabaseClientModule = await import('@/lib/supabase/client');
+    vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            abortSignal: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  id: 77771,
+                  title: 'Modern Protected Anthology',
+                  authors: [{ name: 'Modern Author', birth_year: 1945, death_year: 2018 }],
+                  translators: [],
+                  subjects: ['Essays'],
+                  bookshelves: [],
+                  languages: ['en'],
+                  copyright: true,
+                  media_type: 'Text',
+                  download_count: 10,
+                },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabaseClientModule.createClient>);
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ id: '77771' }),
+    });
     expect(meta.robots).toEqual({ index: false, follow: true });
   });
 

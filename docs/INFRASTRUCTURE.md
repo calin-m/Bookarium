@@ -21,7 +21,7 @@ Canonical reference for **deployment environments**, **free vs. paid provider ti
 | :--- | :--- | :--- | :--- | :--- |
 | **Mode 0 — Local Keyless Dev & Test Runner** | Contributors, UI reviewers, CI verification | **None** | **`$0`** | Runs `npm run dev` / `npm run dev:open`, bundled curated classics ([`src/lib/catalog/curated-fallback.ts`](../src/lib/catalog/curated-fallback.ts)), IndexedDB offline books ([`src/lib/offline-storage.ts`](../src/lib/offline-storage.ts)), all MSW v3 Vitest suites, and `npm run verify`. Uncached online `/api/books/content` text/cover calls fail closed cleanly (`503` / `404`). |
 | **Mode 1 — Partial / Starter Self-Hosting** | Personal forks, staging demos, curated libraries | Vercel Hobby + Supabase Free + Cloudflare R2 Free + Public GitHub Repo *(Turnstile optional)* | **`$0`** *(strictly personal / non-commercial)* | Hosts the **complete `78,000+` metadata catalog** in Supabase PostgreSQL (`< 500 MB`, because full book texts live outside PostgreSQL) **plus** a curated or top-popular subset of `covers/<id>.jpg` & `books/<id>.txt.gz` seeded into R2 via `npm run r2:sync -- --limit=...` or `--ids=...` within R2's **`10 GB-month`** free storage cap. Subject to Supabase Free's **7-day inactivity pause**. |
-| **Mode 2 — Full `78,000+` Corpus Production** | Full self-hosted public library | Vercel Hobby/Pro + Supabase Free/Pro + Cloudflare R2 Paid Standard + Public GitHub Repo *(Turnstile optional)* | **`~$0.25–$0.50/mo`** (R2 storage only on low-traffic personal hosts) up to **`~$45+/mo`** with Vercel Pro + Supabase Pro | Pre-seeding all **`78,000+`** gzipped texts and covers (`~25+ GB` estimated total) crosses R2's **`10 GB`** free storage quota (`~$0.015/GB-month` overage with **`$0` egress fees**). Upgrade to **Vercel Pro** for commercial/team hosting or higher transfer/compute budgets, and **Supabase Pro** for zero-pause SLA, automatic backups, `> 500 MB` DB, or `> 5 GB` DB egress. |
+| **Mode 2 — Full `78,000+` Corpus Production** | Full self-hosted public library | Vercel Hobby/Pro + Supabase Free/Pro + Cloudflare R2 Paid Standard + Public GitHub Repo *(Turnstile optional)* | **`~$0.25–$0.50/mo`** (R2 storage only on low-traffic personal hosts) up to **`~$45+/mo`** with Vercel Pro + Supabase Pro | Pre-seeding all **`78,000+`** gzipped texts and covers (`~12–25+ GB` total depending on JPEG cover footprint) crosses R2's **`10 GB`** free storage quota (`~$0.015/GB-month` overage with **`$0` egress fees**). Upgrade to **Vercel Pro** for commercial/team hosting or higher transfer/compute budgets, and **Supabase Pro** for zero-pause SLA, automatic backups, `> 500 MB` DB, or `> 5 GB` DB egress. |
 
 ---
 
@@ -48,7 +48,7 @@ flowchart TD
     end
 
     subgraph VercelPlane ["4. Application Delivery & Compute (Vercel Platform)"]
-        EdgeCDN["⚡ Vercel Global Edge CDN PoPs\ns-maxage: 12h quotes / 24h catalog & text / 7d covers & translations\nsrc/proxy.ts skips cookies on /api/books* & public assets"]
+        EdgeCDN["⚡ Vercel Global Edge CDN PoPs\ns-maxage: 12h quotes / 24h catalog, text & OG / 7d translations / 30d covers\nsrc/proxy.ts skips cookies on /api/books* & public assets"]
         VercelOrigin["⚙️ Vercel Serverless Runtime (Pinned iad1 • maxDuration: 30s)\n/api/books/** & /auth/callback • Curated Fallback when DB Unset\n(Tokens: R2 Read-Only + Public Supabase Anon Key)"]
         VercelObs["📊 Vercel Web Analytics & Speed Insights\n(Cookie-Less Aggregate RUM Telemetry)"]
     end
@@ -80,7 +80,7 @@ flowchart TD
 > **Key Isolation Boundaries Shown Above**:
 > - **Zero Runtime Project Gutenberg Traffic**: `VercelOrigin` and `BrowserPWA` **never** contact `PGMirrors` or `www.gutenberg.org` — only `GHActions` / local maintainer CLI runs read external mirrors.
 > - **Dual-Token Least Privilege**: `VercelOrigin` holds a **Read-Only** Cloudflare R2 token and never holds `SUPABASE_SERVICE_ROLE_KEY`; only `GHActions` holds Read/Write R2 and `service_role` admin credentials.
-> - **Direct vs. Edge-Proxied Browser Flows**: Anonymous catalog browsing, covers, plain-text streams, and FRBR translations flow through `EdgeCDN` (`12h`–`7d` `s-maxage`), whereas optional user sign-in and 7-store cloud synchronization connect directly from `BrowserPWA` to `SupaCloud` under strict Row Level Security (`(select auth.uid())`).
+> - **Direct vs. Edge-Proxied Browser Flows**: Anonymous catalog browsing, covers, plain-text streams, and FRBR translations flow through `EdgeCDN` (`12h`–`30d` `s-maxage`), whereas optional user sign-in and 7-store cloud synchronization connect directly from `BrowserPWA` to `SupaCloud` under strict Row Level Security (`(select auth.uid())`).
 
 ---
 
@@ -88,14 +88,14 @@ flowchart TD
 
 ### 3.1 Cloudflare R2 Object Storage (Primary Paid Threshold for Full Corpus)
 
-Bookarium stores gzipped public-domain book texts (`books/<id>.txt.gz`), cover artwork (`covers/<id>.jpg`), and delta sync cooldown state (`_meta/r2-sync-state.json.gz`) in a **private Cloudflare R2 bucket** proxied exclusively through [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts) and [`src/lib/r2-client.ts`](../src/lib/r2-client.ts) (`r2.dev` public URLs disabled, zero runtime Project Gutenberg fallback).
+Bookarium stores gzipped public-domain book texts (`books/<id>.txt.gz`), cover artwork (`covers/<id>.jpg`), and delta sync cooldown state (`_meta/r2-sync-state.json.gz`) in a **private Cloudflare R2 bucket** proxied exclusively through [`src/app/api/books/content/route.ts`](../src/app/api/books/content/route.ts), [`src/app/covers/[file]/route.ts`](../src/app/covers/[file]/route.ts), and [`src/lib/r2-client.ts`](../src/lib/r2-client.ts) (`r2.dev` public URLs disabled, zero runtime Project Gutenberg fallback).
 
 | Metric | R2 Free Tier (Standard Storage) | R2 Paid Standard Overages *(Approx.)* | Primary Bookarium Cost Driver & Mitigation |
 | :--- | :--- | :--- | :--- |
-| **Storage Capacity** | **`10 GB-month` / month** | `~$0.015 / GB-month` | **#1 Paid Threshold**: Full `78,000+` corpus (`~25+ GB` combined) exceeds `10 GB`; partial `--limit` seeding fits Free Tier. |
+| **Storage Capacity** | **`10 GB-month` / month** | `~$0.015 / GB-month` | **#1 Paid Threshold**: Full `78,000+` corpus (`~12–25+ GB` combined) exceeds `10 GB`; partial `--limit` seeding fits Free Tier. |
 | **Internet Egress Bandwidth** | **`$0` (Unlimited)** | **`$0` (Unlimited)** | Serving texts and covers from R2 to Vercel serverless routes or browsers incurs **zero egress fees**. |
 | **Class A Operations** *(Writes, Lists, `PutObject`, `ListObjectsV2`)* | **`1,000,000` / month** | `~$4.50 / million` | Full bucket scan via `ListObjectsV2` (`scripts/sync-r2-assets.js`) consumes `~157` calls across `~78,000` keys; missing-asset cooldown (`90 days`) prevents weekly repeat probes. |
-| **Class B Operations** *(Reads, `GetObject`)* | **`10,000,000` / month** | `~$0.36 / million` | Shielded upstream by Vercel Edge CDN (`s-maxage=604800` for covers, `s-maxage=86400` for plain text) + server 20-book LRU + client IndexedDB cache; manual `npm run r2:scan` content audits read `1` op per stored text (`< 0.8%` across 78k books; `0` under `--dry-run`). |
+| **Class B Operations** *(Reads, `GetObject`)* | **`10,000,000` / month** | `~$0.36 / million` | Shielded upstream by Vercel Edge CDN (`s-maxage=2592000` `30d` for covers, `s-maxage=86400` for plain text) + 24h `unstable_cache` R2 `HEAD` probes + server 20-book LRU + client IndexedDB cache; manual `npm run r2:scan` content audits read `1` op per stored text (`< 0.8%` across 78k books; `0` under `--dry-run`). |
 | **Deletes** | **Free** | **Free** | Pruning withdrawn/copyrighted objects via `DeleteObject` adds zero operation charges. |
 
 > [!NOTE]
@@ -177,14 +177,16 @@ Every rule below maps directly to real platform ceilings. Violating these constr
   - `GET /api/books` (jurisdiction-independent ID+quote lookup): `s-maxage=604800` (`7d`), `Vary: Accept-Encoding`.
   - `GET /api/books` (standard jurisdiction-filtered catalog): `s-maxage=86400` (`24h`), `Vary: x-vercel-ip-country, cf-ipcountry, x-bookarium-country, Accept-Encoding`, `Vercel-Cache-Tag: catalog` (`catalog,quotes` when `hasQuotes`).
   - `GET /api/books/content` plain text & `type=card`: `s-maxage=86400` (`24h`), `Vary: x-vercel-ip-country, Accept-Encoding`, `Vercel-Cache-Tag: book-content` on plain text (`type=card` and `no-store` errors untagged).
-  - `GET /api/books/content?type=cover`: `s-maxage=604800` (`7d`), `Vary: Accept-Encoding`, `Vercel-Cache-Tag: covers`.
+  - `GET /api/books/content?type=cover` & `GET /covers/[file]`: `s-maxage=2592000` (`30d`), `Vary: Accept-Encoding`, `Vercel-Cache-Tag: covers` (crawler-allowed `/covers/<id>.jpg` preserves `guardContentAssetRequest` Fetch Metadata hotlink isolation).
+  - `GET /og/books/[file]`: `s-maxage=86400` (`24h`), `CORP: cross-origin`, `Vary: x-vercel-ip-country, Accept-Encoding` (crawler-allowed stateless `1200×630` fallback OpenGraph image).
+  - `GET /sitemap.xml` & `GET /read/[id]`: `24h` ISR / `createOptionalDataCache` (`unstable_cache` across `fetchBookData`, `headR2CoverExists` R2 cover probe, and top `5,000` sitemap IDs without caching transient errors).
   - `GET /api/books/translations`: `s-maxage=604800` (`7d`), `Vary: x-vercel-ip-country`, `Vercel-Cache-Tag: translations`, `maxDuration = 15`.
   - Error responses (`400`, `404`, `451`, `500`, `502`, `503`) and local `source: 'cache'` fallback responses MUST emit `Cache-Control: no-store, max-age=0` (`createNoStoreErrorResponse`) so Edge PoPs never cache outage payloads.
 - **Keep post-sync tag invalidation intact**: Run `scripts/purge-vercel-cache.js` cleanly (`exit 0` skip when `VERCEL_*` secrets are absent) whenever live Supabase catalog/quote/translation writes finish or `r2-sync.yml`/`catalog-sync.yml` emits conditional `covers`/`book-content` purge tags (on deletions or `--force` overwrites).
 
 ### Guardrail 3 — Serverless Memory Caps, Ephemeral Isolates & Image Bypass
 - **Treat serverless RAM state as per-isolate protection, not global shared storage**: `bookContentLruCache` (`MAX_CACHED_BOOKS = 20`, `MAX_CACHEABLE_BOOK_CHARS = 1_800_000`, `24h` TTL in `src/app/api/books/content/metadata-cache.ts`) and `InMemoryRateLimiter` (`maxKeys = 10_000` anchored on `globalThis` in `src/lib/rate-limiter.ts`) prevent isolate OOMs and single-instance floods, while CDN caching shields origin across isolates.
-- **Keep covers off Vercel Image Optimization (`/_next/image`)**: Preserve `images: { remotePatterns: [] }` in `next.config.ts` and serve bounded JPEGs (`MAX_R2_COVER_BYTES = 2 MB`, `MAX_R2_BOOK_BYTES = 15 MB`) via `/api/books/content?type=cover`.
+- **Keep covers off Vercel Image Optimization (`/_next/image`)**: Preserve `images: { remotePatterns: [] }` in `next.config.ts` and serve bounded JPEGs (`MAX_R2_COVER_BYTES = 2 MB`, `MAX_R2_BOOK_BYTES = 15 MB`) via `/api/books/content?type=cover` and `/covers/[file]` (`30d` CDN cache).
 
 ### Guardrail 4 — R2 Class A/B Budgets, GitHub Runner Ceilings & Custom WAF Warnings
 - **Preserve `_meta/r2-sync-state.json.gz` `90-day` missing-asset cooldown & checkpoint safety**: `scripts/sync-r2-assets.js` uses ~157 `ListObjectsV2` calls to audit the entire bucket in seconds, caches confirmed-missing covers/texts (`DEFAULT_MISSING_RECHECK_DAYS = 90`) using race-safe remote union merges + `try ... finally` state flushes and bounded parallel R2 `PutObject` workers (`DEFAULT_R2_PUT_CONCURRENCY = 8`, keeping `rsync` single-stream per PG etiquette), and refuses to overwrite `_meta/r2-sync-state.json.gz` if the initial read fails or transport errors abort a batch. Never bypass this cooldown by default or re-probe all missing IDs on weekly cron runs.

@@ -230,7 +230,7 @@ const ROADMAP_MILESTONES = [
       },
       {
         title: 'Dynamic Book OpenGraph, Schema.org JSON-LD & 9-Surface Share Link Copy (`src/app/read/[id]/reader-layout-utils.ts` & `src/lib/redirect-sanitizer.ts`)',
-        description: 'Server-side `/read/[id]/layout.tsx` metadata generation with 24h ISR caching (`reader-layout-utils.ts`), `schema.org/Book` & `WebApplication` JSON-LD structured data, crawler rate-shielding (`robots.ts`, `sitemap.ts`), and unified 1-click Title/Author share link copying (`buildBookShareUrl` with `300ms` tooltip & `Copied!` pill) across all 9 book surfaces.',
+        description: 'Server-rendered `/read/[id]` entry (`page.tsx` `notFound()` guard + `BookReaderClient`) paired with 24h cached metadata & R2 cover `HEAD` verification (`reader-layout-utils.ts`, `server-data-cache.ts`), clean crawler-allowed `/covers/[file]` & `/og/books/[file]` asset gateways, enriched `schema.org/Book` (`ReadAction`, `ImageObject`) JSON-LD, top `5,000`-book ISR XML `sitemap.ts` + `robots.ts` rate-shielding, and unified 1-click Title/Author share link copying (`buildBookShareUrl`) across all 9 book surfaces.',
         check: () =>
           fileExists('src/app/read/[id]/reader-layout-utils.ts') &&
           fileContains('src/lib/redirect-sanitizer.ts', 'buildBookShareUrl'),
@@ -372,11 +372,11 @@ const ROADMAP_MILESTONES = [
   },
   {
     id: 'm10',
-    title: 'Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader & Shareable Milestone Cards',
+    title: 'Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader, Shareable Milestone Cards & Scalable SEO',
     versionSeries: 'v2.9.x',
     version: 'v2.9.x',
     badge: 'https://img.shields.io/badge/Milestone-v2.9.x-violet?style=flat-square',
-    description: 'Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), and client-side shareable reading cards.',
+    description: 'Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), client-side shareable reading cards, and phased technical SEO scaling (Phase 1 Top-`5,000` SSR/image routes followed by GSC-validated `78,000+` keyset sitemap sharding).',
     features: [
       {
         title: '[v2.9.0] Supabase `public.books.quotes` Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`), Blended `40 + 10` Ingestion, Out-of-Window Auto-Pruning & Instant Preview Integration',
@@ -412,6 +412,25 @@ const ROADMAP_MILESTONES = [
         check: () =>
           fileExists('src/components/reader/ReaderShareModal.tsx') &&
           fileExists('src/lib/reading-card-export.ts'),
+      },
+      {
+        title: '[v2.9.87] Phase-1 Technical SEO Engine, Clean Crawler Asset Gateways & Top-`5,000` Dynamic Sitemap',
+        targetMinVersion: '2.9.87',
+        description: 'Async Server Component `/read/[id]/page.tsx` with true HTTP `404` `notFound()` gating and `<BookReaderClient />` SSR metadata/excerpt handoff (`ReaderLoadingView.tsx` `<h2>`), `unstable_cache` 24h Data Cache (`server-data-cache.ts`) over metadata and R2 `HEAD` cover probes (`headR2CoverExists`), crawler-allowed `/covers/[file]` (`30d` Fetch-Metadata-guarded JPEG proxy) and `/og/books/[file]` (`24h` `next/og` card fallback via `asset-renders.ts`), enriched `Schema.org Book` (`ReadAction`, `ImageObject`) + US copyright `noindex`, and `24h` ISR top-`5,000` `sitemap.ts` paired with `/covers/` & `/og/books/` `robots.ts` allowlisting and `sw.js` exclusion.',
+        check: () =>
+          fileExists('src/app/covers/[file]/route.ts') &&
+          fileExists('src/app/og/books/[file]/route.ts') &&
+          fileExists('src/lib/server-data-cache.ts') &&
+          fileExists('src/components/reader/BookReaderClient.tsx') &&
+          fileContains('src/app/sitemap.ts', 'SITEMAP_TOP_BOOKS_LIMIT'),
+      },
+      {
+        title: '[Target: v2.9.x] Phase-2 Keyset-Sharded `78,000+`-Catalog Sitemaps & Cohort SEO Scaling (Post-GSC Validation)',
+        targetMinVersion: '2.9.x',
+        description: 'Progressive expansion beyond the top `5,000` volumes (`5k -> 15k -> 30k -> 78k`) using Next.js `generateSitemaps()` sitemap index sharding and `books_pkey` keyset cursor pagination (avoiding deep `8s` `statement_timeout` scans across tied `download_count = 0` rows and cold-tail quota spikes on Vercel Hobby/R2/Supabase Free), gated on 4–8 weeks of Google Search Console indexing ratio, crawl stats, and origin-transfer headroom.',
+        check: () =>
+          fileContains('src/app/sitemap.ts', 'generateSitemaps') &&
+          fileContains('src/app/sitemap.ts', 'SITEMAP_CURSOR_SHARDS'),
       },
     ],
   },

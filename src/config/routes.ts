@@ -22,6 +22,9 @@ export const ROUTES = {
   // Dynamic Route Builders
   READ: (id: number | string) => `/read/${id}` as const,
   PUBLIC_PROFILE: (username: string) => `/u/${encodeURIComponent(username.toLowerCase().trim())}` as const,
+  COVER_ASSET: (id: number | string) => `/covers/${id}.jpg` as const,
+  OG_BOOK_CARD: (id: number | string, shareToken?: string | null) =>
+    `/og/books/${id}.png${shareToken ? `?s=${encodeURIComponent(shareToken)}` : ''}`,
   VIEW: (view: 'catalog' | 'bookshelf' | 'favorites' | 'notebook' | 'bookmarks') =>
     (view === 'catalog' ? '/' : (`/${view}` as const)),
 
