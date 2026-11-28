@@ -364,7 +364,7 @@ export default function PrivacyPage() {
             </div>
           </section>
 
-          {/* 7. Infrastructure Partners */}
+          {/* 7. Infrastructure Providers & Open Archives */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-zinc-500/10 border border-border text-zinc-600 dark:text-zinc-400 flex items-center justify-center shrink-0">
@@ -372,9 +372,9 @@ export default function PrivacyPage() {
               </div>
               <div>
                 <h2 className="text-lg font-serif font-semibold text-foreground">
-                  7. Infrastructure Partners
+                  7. Infrastructure Providers &amp; Open Archives
                 </h2>
-                <p className="text-xs font-mono text-muted-foreground">Data Processors &amp; Content Delivery</p>
+                <p className="text-xs font-mono text-muted-foreground">Data Processors, Content Delivery &amp; Upstream Archives</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">

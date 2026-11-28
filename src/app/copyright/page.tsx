@@ -204,7 +204,7 @@ export default function CopyrightPage() {
                 <strong className="text-foreground font-medium">Transparent User-Agent:</strong> Background ingestion and feed synchronization requests transmit identifying, email-free headers (<code className="font-mono text-primary font-semibold">{SITE_CONFIG.PUBLIC_USER_AGENT}</code>, alongside <code className="font-mono">Bookarium-Catalog-Sync/1.0</code> and <code className="font-mono">Bookarium-R2-Sync/1.0</code>).
               </li>
               <li>
-                <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially for readers with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with or endorsed by the Project Gutenberg Literary Archive Foundation (PGLAF).
+                <strong className="text-foreground font-medium">Trademark &amp; Non-Commercialization:</strong> Bookarium operates non-commercially for readers with zero advertisements or subscription fees. Bookarium is an independent open-source reader and is not officially affiliated with, sponsored by, or endorsed by Project Gutenberg or the Project Gutenberg Literary Archive Foundation (PGLAF).
               </li>
             </ul>
           </section>
@@ -323,7 +323,7 @@ export default function CopyrightPage() {
             </div>
           </section>
 
-          {/* 6. Open Cultural Preservation Partners */}
+          {/* 6. Upstream Open Cultural Archives */}
           <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 flex items-center justify-center shrink-0">
@@ -331,7 +331,7 @@ export default function CopyrightPage() {
               </div>
               <div>
                 <h2 className="text-lg font-serif font-semibold text-foreground">
-                  6. Open Cultural Preservation Partners
+                  6. Upstream Open Cultural Archives
                 </h2>
                 <p className="text-xs font-mono text-muted-foreground">Upstream Archives &amp; Digital Commons</p>
               </div>
@@ -340,7 +340,7 @@ export default function CopyrightPage() {
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
                 <span className="text-xs font-mono font-bold text-foreground block">Project Gutenberg</span>
                 <p className="text-[11px] text-muted-foreground font-sans">
-                  The original digital library founded by Michael S. Hart in 1971, curating over 78,000 public domain ebooks.
+                  The original digital library founded by Michael S. Hart in 1971, curating over 78,000 public domain ebooks. Independent upstream archive with no official affiliation or endorsement.
                 </p>
               </div>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">

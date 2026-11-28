@@ -133,8 +133,9 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/account registration is strictly limited to individuals aged 13 or older/i)).toBeInTheDocument();
     expect(screen.getByText(/United Kingdom \(UK GDPR\) & International Parity/i)).toBeInTheDocument();
 
-    // Section 7: Infrastructure Partners & Date
-    expect(screen.getByText(/7\. Infrastructure Partners/i)).toBeInTheDocument();
+    // Section 7: Infrastructure Providers & Open Archives & Date
+    expect(screen.getByText(/7\. Infrastructure Providers & Open Archives/i)).toBeInTheDocument();
+    expect(screen.queryByText(/7\. Infrastructure Partners/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Vercel Edge Platform/i)).toBeInTheDocument();
     expect(screen.getByText(/24h ephemeral request hashes/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThanOrEqual(1);

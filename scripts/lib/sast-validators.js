@@ -7,7 +7,7 @@
  *
  * @module scripts/lib/sast-validators
  * @scope Stateless Babel AST header, compiled Next routes manifest, npm lockfile/lifecycle/license SCA, GitHub Actions YAML security, Service Worker, env/privilege boundary, API route, redirect, public-domain filter, 4-layer Rule 9 auth-store/guest-wipe parity, circular `SECURITY.md` parity, dynamic legal/privacy/deletion disclosure parity, and live HTTP response validators.
- * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), `auditLegalDocumentationParity` (`privacy/page.tsx`, `copyright/page.tsx`, and `AccountDeleteModal.tsx` sync/cookie/cache/TTL parity), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` (`deleteAccount()` RPC error capture, non-store cache resets, and device-local `clearGuestDeviceData()`) without executing external shells.
+ * @invariant Enforce `REQUIRED_SECURITY_HEADERS` (`X-Frame-Options: DENY`, `nosniff`, `same-origin` COOP, conditional `!isDev` HSTS, CSP directives without ungated `unsafe-eval`), immutable 40-char commit-SHA `uses:` pinning and zero-checkout `gh` `--repo`/`GH_REPO` scoping (`validateGitHubWorkflowSecurity`), banned `BANNED_LIFECYCLE_HOOKS` & `BANNED_PACKAGE_LICENSES` (`GPL`/`AGPL`), `validateLiveHttpSecurityResponse` runtime response contracts, `auditSecurityDocumentationParity` (`SECURITY.md` marker/ESLint-rule/SAST-export/RLS-count/feed-integrity checks), `auditLegalDocumentationParity` (`privacy/page.tsx`, `copyright/page.tsx`, and `AccountDeleteModal.tsx` sync/cookie/cache/TTL and PGLAF non-affiliation parity), and fail-closed Babel AST validation across `validateServiceWorkerSecurity`, `validateEnvAndPrivilegeBoundariesAst`, `validateApiRoutesSecurityAst`, `validateRedirectRoutesAst`, `validatePublicDomainFilterAst`, and `validateRule9AuthStoreParityAst` (`deleteAccount()` RPC error capture, non-store cache resets, and device-local `clearGuestDeviceData()`) without executing external shells.
  * @rationale Isolating pure validators away from top-level CLI runners allows direct unit testing against intentionally vulnerable fixtures while keeping `Pass 0.75` and `Pass 7` fast and deterministic.
  * @adr ADR-073, ADR-080, ADR-081, ADR-082, ADR-084
  */
@@ -2137,6 +2137,7 @@ function auditLegalDocumentationParity({
   forbiddenLegacyPatterns = [
     { label: 'until at least 2026', regex: /until at least 2026/i },
     { label: 'Standard Ebooks', regex: /Standard Ebooks/i },
+    { label: 'Open Cultural Preservation Partners', regex: /Open Cultural Preservation Partners/i },
   ],
 } = {}) {
   const violations = [];
@@ -2178,6 +2179,11 @@ function auditLegalDocumentationParity({
         );
       }
     }
+    if (/Infrastructure Partners/i.test(privacySource)) {
+      violations.push(
+        'Privacy documentation drift in src/app/privacy/page.tsx: found retired/implied endorsement claim "Infrastructure Partners".'
+      );
+    }
   }
 
   if (typeof copyrightSource !== 'string' || copyrightSource.trim().length === 0) {
@@ -2212,6 +2218,8 @@ function auditLegalDocumentationParity({
       'Bookarium-Catalog-Sync',
       'Bookarium-R2-Sync',
       '/og/books/[file]',
+      'Project Gutenberg Literary Archive Foundation',
+      'not officially affiliated',
     ]) {
       if (!copyrightSource.includes(requiredToken)) {
         violations.push(

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.97] - 2026-11-28
+### *Project Gutenberg Non-Affiliation Disclosure, PGLAF Anti-Endorsement Framing & SAST Parity*
+
+### Changed
+- **Explicit Project Gutenberg (PGLAF) Non-Affiliation Disclosure & Neutral Archive Framing (`src/app/copyright/page.tsx`, `src/app/privacy/page.tsx`, `src/components/presentation/Footer.tsx`)**: Clarified in Section 3 of `/copyright` and Col 4 of the site-wide `Footer` that Bookarium is an independent open-source reader not officially affiliated with, sponsored by, or endorsed by Project Gutenberg or the Project Gutenberg Literary Archive Foundation (PGLAF), and renamed Section 6 (`/copyright`) to **Upstream Open Cultural Archives** and Section 7 (`/privacy`) to **Infrastructure Providers & Open Archives** (`ADR-044`).
+- **Pass 5 Anti-Endorsement Legal Parity Enforcement & Co-Located Tests (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `src/app/copyright/page.test.tsx`, `src/app/privacy/page.test.tsx`, `src/components/presentation/Footer.test.tsx`, `docs/DECISIONS.md`)**: Extended `auditLegalDocumentationParity` to fail closed if `/copyright` drops explicit PGLAF non-affiliation tokens (`Project Gutenberg Literary Archive Foundation`, `not officially affiliated`) or if `/copyright` or `/privacy` reintroduce implied-partnership headings (`Open Cultural Preservation Partners`, `Infrastructure Partners`), with matching UI and adversarial SAST tests (`ADR-073`).
+
+
 ## [2.9.96] - 2026-11-28
 ### *Global Reduced-Motion Enforcement, Exit-Safe Modal Springs & Tier-Gated Choreography*
 

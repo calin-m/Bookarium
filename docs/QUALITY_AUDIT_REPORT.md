@@ -1,6 +1,6 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 28 Nov 2026 15:04:39 GMT  
+**Last Generated**: Sat, 28 Nov 2026 15:58:55 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
 **Total Verified Tests**: 2891 passed  
@@ -27,9 +27,9 @@
 ## 📊 Code Coverage Metrics
 
 - **Lines**: **97.34%** (18174/18669) — *Target: $\ge$ 95%*
-- **Statements**: **95.96%** (19532/20353) — *Target: $\ge$ 95%*
+- **Statements**: **95.96%** (19531/20353) — *Target: $\ge$ 95%*
 - **Functions**: **94.87%** (3773/3977) — *Target: $\ge$ 92%*
-- **Branches**: **88.2%** (18286/20731) — *Target: $\ge$ 85%*
+- **Branches**: **88.2%** (18285/20731) — *Target: $\ge$ 85%*
 
 ---
 
@@ -246,7 +246,7 @@
 - ✔ `renders Section 4: HTTP 451, geolocation, and fail-closed heuristics`
 - ✔ `renders Section 5: Notice & Takedown Protocol with GitHub tracker fallback when form is unconfigured`
 - ✔ `renders Section 5: Notice & Takedown Protocol with confidential intake portal when configured`
-- ✔ `renders Section 6: Open Cultural Preservation Partners and footer`
+- ✔ `renders Section 6: Upstream Open Cultural Archives and footer`
 - ✔ `handles navigation actions from Navbar`
 - ✔ `renders BackToTop button upon scrolling past threshold and triggers smooth scroll to top`
 
@@ -3164,7 +3164,7 @@
 - ✔ `passes when SECURITY.md compiled markers cover all live ESLint rules, SAST exports, DB table count, and feed integrity tokens`
 - ✔ `flags missing markers, newly added undocumented ESLint rules or SAST exports, table-count drift, and missing feed integrity tokens`
 - ✔ `passes against live privacy/page.tsx, copyright/page.tsx, and AccountDeleteModal.tsx specs`
-- ✔ `detects SW/cache/cookie/CDN TTL drift, stale claims, and missing AccountDeleteModal warnings`
+- ✔ `detects SW/cache/cookie/CDN TTL drift, stale claims, implied PG partnership phrasing, and missing AccountDeleteModal warnings`
 
 </details>
 

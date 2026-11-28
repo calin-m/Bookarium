@@ -96,6 +96,11 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/<dcterms:rights>/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium-Catalog-Sync\/1\.0/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium-R2-Sync\/1\.0/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /not officially affiliated with, sponsored by, or endorsed by Project Gutenberg or the Project Gutenberg Literary Archive Foundation \(PGLAF\)/i
+      )
+    ).toBeInTheDocument();
   });
 
   it('displays the email-free PUBLIC_USER_AGENT dynamically derived from SITE_CONFIG without stale legacy strings', async () => {
@@ -172,14 +177,16 @@ describe('CopyrightPage', () => {
     (SITE_CONFIG as any).LEGAL_CONTACT_FORM = originalForm;
   });
 
-  it('renders Section 6: Open Cultural Preservation Partners and footer', () => {
+  it('renders Section 6: Upstream Open Cultural Archives and footer', () => {
     render(<CopyrightPage />);
 
-    expect(screen.getByText(/6\. Open Cultural Preservation Partners/i)).toBeInTheDocument();
+    expect(screen.getByText(/6\. Upstream Open Cultural Archives/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Open Cultural Preservation Partners/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Gutendex/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Standard Ebooks/i)).not.toBeInTheDocument();
     expect(screen.getByText('Project Gutenberg')).toBeInTheDocument();
     expect(screen.getByText(/over 78,000 public domain ebooks/i)).toBeInTheDocument();
+    expect(screen.getByText(/Independent upstream archive with no official affiliation or endorsement/i)).toBeInTheDocument();
     expect(screen.getByText('Wikidata (CC0 1.0)')).toBeInTheDocument();
     expect(screen.getByText(/Last Updated: November 2026/i)).toBeInTheDocument();
     expect(screen.getByTestId('mock-footer')).toBeInTheDocument();

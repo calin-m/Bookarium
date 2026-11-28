@@ -125,10 +125,13 @@ export const Footer: React.FC = () => {
                 Copyright & Licensing →
               </Link>
             </div>
-            <div className="pt-1">
+            <div className="pt-1 space-y-1.5">
               <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
                 Zero API Keys Required • Public Domain Preservation
               </span>
+              <p className="text-[11px] font-sans text-muted-foreground leading-snug">
+                Independent open-source reader • Not affiliated with or endorsed by Project Gutenberg (PGLAF).
+              </p>
             </div>
           </div>
 

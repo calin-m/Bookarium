@@ -15,6 +15,9 @@ describe('Footer component', () => {
     expect(screen.getByText(/Google Antigravity \(AI Co-Engineer\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Zero API Keys Required/i)).toBeInTheDocument();
     expect(
+      screen.getByText(/Not affiliated with or endorsed by Project Gutenberg \(PGLAF\)/i)
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/streaming 70,000\+ public domain volumes from Project Gutenberg/i)
     ).toBeInTheDocument();
 

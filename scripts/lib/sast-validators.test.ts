@@ -902,10 +902,12 @@ jobs:
       ).toEqual([]);
     });
 
-    it('detects SW/cache/cookie/CDN TTL drift, stale claims, and missing AccountDeleteModal warnings', () => {
+    it('detects SW/cache/cookie/CDN TTL drift, stale claims, implied PG partnership phrasing, and missing AccountDeleteModal warnings', () => {
       const violations: string[] = sastValidators.auditLegalDocumentationParity({
-        privacySource: 'Vercel Web Analytics cover_cache 300 30-day Clear All Local Data',
-        copyrightSource: 'Works remain protected until at least 2026. Standard Ebooks cover_cache',
+        privacySource:
+          '7. Infrastructure Partners Vercel Web Analytics cover_cache 300 30-day Clear All Local Data',
+        copyrightSource:
+          'Works remain protected until at least 2026. Standard Ebooks 6. Open Cultural Preservation Partners cover_cache',
         deleteModalSource: 'We sent a confirmation link.',
         swCacheName: 'bookarium-app-shell-v99',
         maxCachedCovers: 300,
@@ -920,6 +922,12 @@ jobs:
       expect(violations.some((v) => v.includes('2592000'))).toBe(true);
       expect(violations.some((v) => v.includes('until at least 2026'))).toBe(true);
       expect(violations.some((v) => v.includes('Standard Ebooks'))).toBe(true);
+      expect(violations.some((v) => v.includes('Open Cultural Preservation Partners'))).toBe(true);
+      expect(violations.some((v) => v.includes('Infrastructure Partners'))).toBe(true);
+      expect(
+        violations.some((v) => v.includes('Project Gutenberg Literary Archive Foundation'))
+      ).toBe(true);
+      expect(violations.some((v) => v.includes('not officially affiliated'))).toBe(true);
       expect(violations.some((v) => v.includes('same browser'))).toBe(true);
       expect(violations.some((v) => v.includes('offline downloads'))).toBe(true);
     });
