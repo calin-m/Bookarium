@@ -16,13 +16,12 @@ on:
         type: string
         default: ''
       source:
-        description: 'Transfer engine (auto = rsync if installed else PGLAF HTTPS)'
+        description: 'Transfer engine (rsync / auto -> native or WSL rsync only)'
         required: false
         type: choice
         default: 'rsync'
         options:
           - rsync
-          - https
           - auto
       rsync_host:
         description: 'Primary rsync host order (auto/aleph = aleph.gutenberg.org -> rsync.ibiblio.org; ibiblio = rsync.ibiblio.org -> aleph.gutenberg.org)'
@@ -156,11 +155,11 @@ jobs:
               ;;
           esac
           case "${INPUT_SOURCE:-rsync}" in
-            auto|rsync|https)
+            auto|rsync|wsl-rsync)
               R2_ARGS="$R2_ARGS --source=${INPUT_SOURCE:-rsync}"
               ;;
             *)
-              echo "Error: Unsupported source '${INPUT_SOURCE}'." >&2
+              echo "Error: Unsupported source '${INPUT_SOURCE}'. Expected rsync, wsl-rsync, or auto." >&2
               exit 1
               ;;
           esac

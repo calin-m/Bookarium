@@ -187,7 +187,6 @@ interface RuntimeSpecConstants {
     quotePopularPoolSize: number;
     quoteRecentPoolSize: number;
     quoteMaxPrunePerRun: number;
-    quoteMirrorKeys: string[];
     r2MissingRecheckDays: number;
     r2MinActiveForPrune: number;
     r2MaxPrunePerRun: number;

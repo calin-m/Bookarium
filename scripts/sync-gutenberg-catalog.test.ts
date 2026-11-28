@@ -835,6 +835,9 @@ describe('sync-gutenberg-catalog parser', () => {
       expect(isAllowedRdfFeedUrl('https://aleph.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
         true
       );
+      expect(
+        isAllowedRdfFeedUrl('https://gutenberg.readingroo.ms/cache/epub/feeds/rdf-files.tar.bz2')
+      ).toBe(false);
       expect(isAllowedRdfFeedUrl('http://gutenberg.pglaf.org/cache/epub/feeds/rdf-files.tar.bz2')).toBe(
         false
       );

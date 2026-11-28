@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.98] - 2026-11-28
+### *Zero-HTTPS Project Gutenberg Compliance Hardening, Strict rsync & R2-Only Quotes, and Complete Volume License Colophon Parity*
+
+### Changed
+- **Zero Bulk PG HTTP Scraping Across `r2:sync`, `quotes:sync`, Workflows & AST Security Rules (`scripts/sync-r2-assets.js`, `scripts/sync-featured-quotes.js`, `scripts/sync-gutenberg-catalog.js`, `.github/workflows/r2-sync.yml`, `.github/workflows/catalog-sync.yml`, `.github/workflows/quotes-sync.yml`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/sast-validators.js`, `src/config/api-endpoints.ts`)**: Retired all bulk HTTPS mirror fallback modes (`--source=https`, `--source=mirrors`, `--mirror=`, `--delay-range=`, `gutenberg.readingroo.ms` feed/asset scraping, and unused `GUTENBERG_*_BASE_URL` constants); enforced native/WSL `rsync` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org`) for R2 asset syncs, Cloudflare R2-only reads (`books/<id>.txt.gz`) for quote extraction, strict `gutenberg.pglaf.org` / `aleph.gutenberg.org` weekly CSV/RDF feeds, AST bans on PG/mirror `fetch()` across both `src/` and `scripts/`, and SAST `/copyright` disclosure parity checks (`ADR-083`, `ADR-084`, `ADR-073`).
+- **Complete Volume Header License Colophon Preservation & Copyright Manifest Alignment (`src/lib/gutenberg/segmentation.ts`, `src/app/copyright/page.tsx`, `src/lib/gutenberg/segmentation.test.ts`, `src/app/copyright/page.test.tsx`)**: Preserved Gutenberg header license/trademark notices (`preBody` including Section `1.E.1`) inside `sections[1]` (`Colophon & License`) whenever `Complete Volume` fallback segmentation activates without shifting `sections[0]` offsets for existing bookmarks or highlights, and updated `/copyright` Section 3 to reflect strict `rsync` bulk asset transfers, weekly `pglaf`/`aleph` catalog feeds, and private R2-only quote extraction (`ADR-084`, `ADR-073`).
+
+
 ## [2.9.97] - 2026-11-28
 ### *Project Gutenberg Non-Affiliation Disclosure, PGLAF Anti-Endorsement Framing & SAST Parity*
 

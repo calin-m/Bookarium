@@ -92,7 +92,7 @@ Consolidates all scheduled database synchronization into a single deterministic 
   4. When `dry_run != 'true'`, `limit == ''`, `catalog_sync.outcome == 'success'`, and `gutenberg-catalog-cache.json.gz` exists: upload updated snapshot and `gutenberg-catalog-cache.json.gz.sha256` sidecar to `catalog-cache` release (`--clobber`, creating the release if absent) and advance `refs/tags/catalog-cache` in place. Executing this step *immediately after* `catalog_sync` ensures transient R2 failures never leave the release snapshot stale after Supabase upserts.
   5. **Run Cloudflare R2 Delta Asset Sync** (unless `skip_r2=true` or all 4 `R2_*` secrets are unset; `continue-on-error: true`): runs `node scripts/sync-r2-assets.js --source=rsync --rsync-host=auto --max-minutes=25 --purge-tags-file=r2-purge-tags.txt` (`aleph.gutenberg.org` primary $\rightarrow$ automatic retry failover to `rsync.ibiblio.org`, + `--cache-file=gutenberg-catalog-cache.json.gz`, `--dry-run`, `--limit=N`), uploading missing public-domain `.txt.gz`/`.jpg` files via bounded retries & parallel `PutObject` workers, safeguarding `_meta/r2-sync-state.json.gz` via read-fail preservation + remote union merge + `try ... finally` checkpoints, and writing conditional `covers`/`book-content` purge tags on deletes/`--force` overwrites.
   6. Run `node scripts/ingest-translations.js` (`continue-on-error: true`, + `--dry-run`, `--update-existing`, and `--limit=N` or `--all` when `limit` is blank) with `45,000ms` Wikidata socket timeout, strict FK pre-checks, and bisected batch upsert retries.
-  7. Run `node scripts/sync-featured-quotes.js --source=auto --mirrors=pglaf,aleph,readingroo` (`continue-on-error: true`) with optional `R2_*` credentials (`books/<id>.txt.gz` read first at 0s mirror delay ahead of 3-mirror failover; + `--diff-file=quote-diff.json` if emitted, `--dry-run`, `--limit=N`).
+  7. If all 4 `R2_*` secrets exist, run `node scripts/sync-featured-quotes.js --source=r2 --diff-file=quote-diff.json` (`continue-on-error: true`) reading `books/<id>.txt.gz` strictly from private Cloudflare R2 at `0s` external mirror delay (+ `--dry-run`, `--limit=N`); when all 4 `R2_*` secrets are unset, skip gracefully (`exit 0`).
   8. When `dry_run != 'true'` and `catalog_sync` / `trans_sync` / `quotes_sync` succeeded (`if: always()`): append any non-empty `r2-purge-tags.txt` tags to `catalog,quotes,translations` and run `node scripts/purge-vercel-cache.js --tags="$PURGE_TAGS"`.
   9. Run `Verify Downstream Step Outcomes` to exit `1` if `r2_sync`, `trans_sync`, or `quotes_sync` failed after retries so transient faults never pass silently even after Edge cache purging completes.
 - **Local CLI Equivalents**:
@@ -105,7 +105,7 @@ Consolidates all scheduled database synchronization into a single deterministic 
   npm run catalog:sync -- --cache-file=gutenberg-catalog-cache.json.gz --diff-output=quote-diff.json
   npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=auto --max-minutes=25 --purge-tags-file=r2-purge-tags.txt
   npm run translations:sync -- --all
-  npm run quotes:sync -- --source=auto --mirrors=pglaf,aleph,readingroo --diff-file=quote-diff.json
+  npm run quotes:sync -- --source=r2 --diff-file=quote-diff.json
   node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations
   ```
 
@@ -113,7 +113,7 @@ Consolidates all scheduled database synchronization into a single deterministic 
 
 ### 3.2 `Featured Quotes Sync` ([`.github/workflows/quotes-sync.yml`](../.github/workflows/quotes-sync.yml))
 
-On-demand multi-mirror + R2-first quote extractor maintaining Bookarium's **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` with Option-A `1-for-1` out-of-window surplus pruning (`<= 2,000` per run). Exposes a selectable `text_source` (`auto` | `r2` | `mirrors`) input and prints active `Text Source` telemetry in the pre-batch startup banner and `$GITHUB_STEP_SUMMARY`.
+On-demand Cloudflare R2-only quote extractor maintaining Bookarium's **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)** in `public.books.quotes` with Option-A `1-for-1` out-of-window surplus pruning (`<= 2,000` per run). Reads unabridged `.txt.gz` volumes strictly from private Cloudflare R2 (`--source=r2` at `0s` external mirror delay, recording uncached items as non-sentinel `r2-miss` skips and failing fast if `R2_*` secrets are missing) and prints active `Text Source` telemetry in the pre-batch startup banner and `$GITHUB_STEP_SUMMARY`.
 
 - **Triggers**: `workflow_dispatch` only *(automated Sunday runs are chained in `.github/workflows/catalog-sync.yml`)*
 - **Concurrency & Permissions**: `concurrency: featured-quotes-sync` (`cancel-in-progress: false`), `permissions: contents: read`, `timeout-minutes: 30`
@@ -121,20 +121,15 @@ On-demand multi-mirror + R2-first quote extractor maintaining Bookarium's **Two-
 
 | Input | Type | Required | Default | Description & Validation Rules |
 | :--- | :--- | :--- | :--- | :--- |
-| `text_source` | `choice` | **Yes** | `'auto'` | Retrieval engine: `'auto'` (`R2` first at 0s delay $\to$ checked fallback mirrors), `'r2'` (Cloudflare R2 only over AWS SigV4 HTTPS; fails fast if `R2_*` unset and records uncached items as non-sentinel `r2-miss` skips), or `'mirrors'` (bypass R2 and fetch from checked HTTPS mirrors only). |
 | `limit` | `string` | No | `'50'` | Max volumes to quote in this batch (`40 Popular + 10 Recent` slot split). |
-| `delay_range` | `string` | No | `'8-16'` | Randomized decimal delay range in seconds between Gutenberg mirror fallback requests *(Cloudflare R2 reads execute with `0s` delay)*. |
 | `target_count` | `string` | No | `'14'` | Desired quotes extracted per volume (`10–16` bounded). |
 | `ids` | `string` | No | `''` | Comma-separated Gutenberg IDs for targeted backfill (blank uses automatic priority pool scanning). |
-| `mirror_pglaf` | `boolean` | No | `true` | Enable `gutenberg.pglaf.org` mirror (used in `auto` / `mirrors`). |
-| `mirror_aleph` | `boolean` | No | `false` | Enable `aleph.gutenberg.org` mirror (used in `auto` / `mirrors`). |
-| `mirror_readingroo` | `boolean` | No | `false` | Enable `gutenberg.readingroo.ms` mirror (used in `auto` / `mirrors`). *(At least 1 mirror must be checked when `text_source` is `'mirrors'`; `'r2'` passes `--mirrors=none`, and `'auto'` skips mirror fallback cleanly if all checkboxes are left unchecked.)* |
 | `force_refresh` | `boolean` | No | `false` | Re-extract and overwrite quotes even for already-populated IDs (`--force`). |
 | `dry_run` | `boolean` | No | `false` | Simulate extraction and generate SQL preview without writing Supabase or purging Vercel Edge cache. |
 
 - **CI Execution Sequence**:
   1. Checkout repo, setup Node `22` with npm cache, `npm ci`.
-  2. Validate `text_source` (`auto` / `r2` / `mirrors`), resolve checked mirrors (`--mirrors=...` or `--mirrors=none` when `text_source` is `'r2'` / `auto` with no mirrors checked, failing fast only when `'mirrors'` leaves zero mirrors enabled), and run `node scripts/sync-featured-quotes.js` with `--source`, `limit`, `delay_range`, `target_count`, optional `--ids=...`, `--force`, and `--dry-run`.
+  2. Run `node scripts/sync-featured-quotes.js --source=r2` with `limit`, `target_count`, optional `--ids=...`, `--force`, and `--dry-run`.
   3. When `dry_run != 'true'`: run `node scripts/purge-vercel-cache.js --tags=quotes`.
 - **Local CLI Equivalents**:
   ```bash
@@ -142,12 +137,12 @@ On-demand multi-mirror + R2-first quote extractor maintaining Bookarium's **Two-
   npm run quotes:sync -- --dry-run
   node scripts/sync-featured-quotes.js --help
 
-  # Strict R2-only backfill (0s delay, no sentinel written on R2 misses)
+  # Strict R2-only backfill (0s delay, non-sentinel skip on R2 misses)
   npm run quotes:sync -- --source=r2 --limit=50
 
-  # Sync specific classics or custom mirror/prune settings
-  npm run quotes:sync -- --source=mirrors --mirrors=pglaf,aleph --ids=1342,84,2701 --force
-  npm run quotes:sync -- --source=auto --limit=50 --delay-range=8-16 --mirrors=pglaf --max-prune=2000
+  # Sync specific classics or custom prune window
+  npm run quotes:sync -- --source=r2 --ids=1342,84,2701 --force
+  npm run quotes:sync -- --source=r2 --limit=50 --max-prune=2000
   node scripts/purge-vercel-cache.js --tags=quotes
   ```
 
@@ -245,7 +240,7 @@ Automated semantic release pipeline that re-verifies the entire repository, extr
 
 - **Triggers**:
   - `push` matching `tags: ['v*']`
-  - `workflow_dispatch` with required `tag` string (default `'v2.9.97'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
+  - `workflow_dispatch` with required `tag` string (default `'v2.9.98'`, automatically synchronized to `RELEASES[0].version` in [`.github/workflows/release.yml`](../.github/workflows/release.yml) by `scripts/generate-changelog.js` via `npm run docs:sync`)
 - **Permissions & Timeout**: Top-level `contents: read`; job-level `contents: write`, `timeout-minutes: 25`
 - **Required Secrets**: Built-in `GITHUB_TOKEN` (automatic)
 - **CI Execution Sequence**:
@@ -306,7 +301,7 @@ Lightweight zero-checkout automation keeping the `catalog-cache` Release's auto-
 
 ### 3.10 `R2 Asset Delta & Backfill Sync` ([`.github/workflows/r2-sync.yml`](../.github/workflows/r2-sync.yml))
 
-On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping private Cloudflare R2 storage (`books/<id>.txt.gz`, `covers/<id>.jpg`, `_meta/r2-sync-state.json.gz`) synchronized with active public-domain catalog books via fast targeted Ubuntu `rsync --files-from` (`aleph.gutenberg.org` $\leftrightarrow$ `rsync.ibiblio.org` multi-host failover with selectable primary host) or PGLAF HTTPS fallback without re-downloading `rdf-files.tar.bz2`, updating Supabase catalog tables, or re-running quotes/translations.
+On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping private Cloudflare R2 storage (`books/<id>.txt.gz`, `covers/<id>.jpg`, `_meta/r2-sync-state.json.gz`) synchronized with active public-domain catalog books strictly via fast targeted `rsync` / `wsl-rsync` `--files-from` (`aleph.gutenberg.org` $\leftrightarrow$ `rsync.ibiblio.org` multi-host failover with selectable primary host) without re-downloading `rdf-files.tar.bz2`, updating Supabase catalog tables, or re-running quotes/translations.
 
 - **Triggers**: `workflow_dispatch` only *(weekly automated delta runs execute as Step 2 inside `.github/workflows/catalog-sync.yml`)*
 - **Concurrency & Permissions**: `concurrency: r2-asset-sync` (`cancel-in-progress: false`), `permissions: contents: read`, `timeout-minutes: 90`
@@ -317,7 +312,7 @@ On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping pri
 | `limit` | `string` | No | `''` *(blank)* | Max queued volumes to process (leave blank to run up to `max_minutes`, prioritizing 27 hero classics then `download_count DESC`). |
 | `ids` | `string` | No | `''` | Comma-separated Gutenberg IDs for targeted repairs (blank scans active catalog vs live R2 inventory). |
 | `catalog_source` | `choice` | No | `'auto'` | Catalog input source (`auto` snapshot-first with Supabase fallback, `snapshot` release asset only, or `supabase` live `public.books` PK scan). |
-| `source` | `choice` | No | `'rsync'` | Transfer engine: `'rsync'` (`aleph.gutenberg.org` / `rsync.ibiblio.org` `::gutenberg-epub` / `::gutenberg`), `'https'` (PGLAF fallback), or `'auto'`. |
+| `source` | `choice` | No | `'rsync'` | Transfer engine: `'rsync'` (`aleph.gutenberg.org` / `rsync.ibiblio.org` `::gutenberg-epub` / `::gutenberg`), `'wsl-rsync'`, or `'auto'`. |
 | `rsync_host` | `choice` | No | `'auto'` | Primary `rsync` host order: `'auto'` / `'aleph'` (`aleph.gutenberg.org` $\rightarrow$ `rsync.ibiblio.org` failover) or `'ibiblio'` (`rsync.ibiblio.org` $\rightarrow$ `aleph.gutenberg.org` failover for large backfills). |
 | `sync_books` | `boolean` | No | `true` | Sync missing/targeted book plain texts as gzipped `.txt.gz` objects. |
 | `sync_covers` | `boolean` | No | `true` | Sync missing/targeted JPEG cover artwork (`pg<id>.cover.medium.jpg` $\to$ `covers/<id>.jpg`). *(At least one of `sync_books` or `sync_covers` must be `true`.)* |
@@ -337,8 +332,8 @@ On-demand (`workflow_dispatch`) bulk backfill and ID repair workflow keeping pri
   # Dry-run R2 coverage audit
   npm run r2:sync -- --dry-run --limit=100
 
-  # Repair specific classics from live Supabase or run local Windows HTTPS / WSL rsync sync (or ibiblio primary backfill)
-  npm run r2:sync -- --catalog-source=supabase --ids=1342,84 --force --source=https
+  # Repair specific classics from live Supabase or run local Windows WSL rsync sync (or ibiblio primary backfill)
+  npm run r2:sync -- --catalog-source=supabase --ids=1342,84 --force --source=rsync
   npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=wsl-rsync --rsync-host=ibiblio --max-minutes=25
   ```
 
@@ -405,7 +400,7 @@ Manual-only (`workflow_dispatch`), zero-`npm ci` read-only audit scanning stored
 | `cache-purge.yml` fails immediately with *"At least one cache tag checkbox (`purge_catalog`, `purge_quotes`, `purge_translations`, `purge_covers`, or `purge_book_content`) must be checked."* | All 5 tag checkboxes left unchecked (`false`). | Re-run **Manual Cache Purge** with one or more of `purge_catalog`, `purge_quotes`, `purge_translations`, `purge_covers`, or `purge_book_content` checked. |
 | `sync-r2-assets.js` fails with *"Partial Cloudflare R2 configuration detected"* or *"Invalid R2_ACCOUNT_ID / R2_BUCKET_NAME"* | Only some of the 4 `R2_*` secrets were configured, or `R2_BUCKET_NAME` contains uppercase characters. | Either provide all 4 valid `R2_*` secrets (with lowercase S3-compatible bucket naming) or leave all 4 unset to allow fork-safe `exit 0` skipping. |
 | `r2_sync` / `quotes_sync` logs `::warning::` and fails via `Verify Downstream Step Outcomes` | An infrastructure outage caused zero successes (`updated === 0` / `succeeded === 0`) or `>= 50%` transfer failure ratio across `>= 5` attempts (`shouldFailR2SyncRun` / `shouldFailFeaturedQuotesRun`). | Upstream catalog snapshot and unaffected sibling steps still ran and purged Edge cache cleanly; inspect Step Summary logs and re-run `r2-sync.yml` or `quotes-sync.yml` individually once the upstream mirror/service recovers. |
-| `quotes-sync.yml` fails before running script | `text_source` was set to `'mirrors'` with none of `mirror_pglaf`, `mirror_aleph`, or `mirror_readingroo` checked, or `'r2'` was chosen without `R2_*` secrets configured. | Enable at least one mirror checkbox for `'mirrors'` mode, add `R2_*` GitHub Secrets for `'r2'` mode, or use `'auto'` (default: `mirror_pglaf: true`). |
+| `quotes-sync.yml` fails before running script | One or more `R2_*` GitHub Secrets (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) or Supabase credentials are missing/incomplete, or an unsupported legacy flag (`--source=mirrors`, `--mirrors=`) was passed. | Configure all 4 `R2_*` and Supabase GitHub Secrets under Repository Settings $\to$ Actions, ensure `r2-sync.yml` has seeded target `.txt.gz` volumes, and run `--source=r2`. |
 | Purge step exits `0` with skip notice in logs | `VERCEL_API_TOKEN` or `VERCEL_PROJECT_ID` is unset in GitHub Secrets. | Expected safe default for forks; add both secrets under Repository Settings $\to$ Actions to enable live CDN purges. |
 | Vercel purge returns `401` / `403` | Token expired or team scope mismatched. | Regenerate `VERCEL_API_TOKEN`, verify `VERCEL_PROJECT_ID` (`prj_...`), and set `VERCEL_TEAM_ID` (`team_...`) if the project belongs to a Vercel Team / personal team. |
 | `gh release download catalog-cache` prints not-found warning | First-ever cold sync before `catalog-cache` release exists. | Safe to ignore on first full live run (`limit` blank, `dry_run: false`): the `Publish Updated Catalog Snapshot Cache` step creates the `catalog-cache` release automatically once active books exceed `50,000`. |

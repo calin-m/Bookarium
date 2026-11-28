@@ -2138,6 +2138,8 @@ function auditLegalDocumentationParity({
     { label: 'until at least 2026', regex: /until at least 2026/i },
     { label: 'Standard Ebooks', regex: /Standard Ebooks/i },
     { label: 'Open Cultural Preservation Partners', regex: /Open Cultural Preservation Partners/i },
+    { label: 'gutenberg.readingroo.ms', regex: /gutenberg\.readingroo\.ms/i },
+    { label: 'fallback HTTP mirrors', regex: /fallback HTTP mirrors/i },
   ],
 } = {}) {
   const violations = [];
@@ -2216,7 +2218,6 @@ function auditLegalDocumentationParity({
       'rsync.ibiblio.org',
       'gutenberg.pglaf.org',
       'Bookarium-Catalog-Sync',
-      'Bookarium-R2-Sync',
       '/og/books/[file]',
       'Project Gutenberg Literary Archive Foundation',
       'not officially affiliated',

@@ -219,7 +219,11 @@ jobs:
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_LIMIT: ${{ github.event.inputs.limit }}
         run: |
-          QUOTE_ARGS="--source=auto --mirrors=pglaf,aleph,readingroo"
+          if [ -z "$R2_ACCOUNT_ID" ] && [ -z "$R2_BUCKET_NAME" ] && [ -z "$R2_ACCESS_KEY_ID" ] && [ -z "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "R2_* GitHub Secrets are not configured; skipping Featured Quotes Sync cleanly (R2-only)."
+            exit 0
+          fi
+          QUOTE_ARGS="--source=r2"
           if [ -f "quote-diff.json" ]; then
             QUOTE_ARGS="$QUOTE_ARGS --diff-file=quote-diff.json"
           fi

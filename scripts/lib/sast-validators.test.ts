@@ -907,7 +907,7 @@ jobs:
         privacySource:
           '7. Infrastructure Partners Vercel Web Analytics cover_cache 300 30-day Clear All Local Data',
         copyrightSource:
-          'Works remain protected until at least 2026. Standard Ebooks 6. Open Cultural Preservation Partners cover_cache',
+          'Works remain protected until at least 2026. Standard Ebooks 6. Open Cultural Preservation Partners cover_cache gutenberg.readingroo.ms fallback HTTP mirrors',
         deleteModalSource: 'We sent a confirmation link.',
         swCacheName: 'bookarium-app-shell-v99',
         maxCachedCovers: 300,
@@ -924,6 +924,8 @@ jobs:
       expect(violations.some((v) => v.includes('Standard Ebooks'))).toBe(true);
       expect(violations.some((v) => v.includes('Open Cultural Preservation Partners'))).toBe(true);
       expect(violations.some((v) => v.includes('Infrastructure Partners'))).toBe(true);
+      expect(violations.some((v) => /gutenberg\.readingroo\.ms/.test(v))).toBe(true);
+      expect(violations.some((v) => v.includes('fallback HTTP mirrors'))).toBe(true);
       expect(
         violations.some((v) => v.includes('Project Gutenberg Literary Archive Foundation'))
       ).toBe(true);

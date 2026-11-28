@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-11-28T15:58:55.440Z",
+  "timestamp": "2026-11-28T17:07:43.989Z",
   "status": "PASSED",
   "testSummary": {
     "totalSuites": 276,
-    "totalTests": 2891
+    "totalTests": 2890
   },
   "gateways": {
     "pass05_secrets": {
@@ -25,7 +25,7 @@
     "pass3_coverage": {
       "status": "PASSED",
       "totalSuites": 276,
-      "totalTests": 2891,
+      "totalTests": 2890,
       "metrics": {
         "lines": 97.34,
         "statements": 95.96,

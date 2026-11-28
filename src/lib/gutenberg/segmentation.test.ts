@@ -20,8 +20,10 @@ describe('segmentation subsystem', () => {
     expect(chapters[0].content).toBe(unformatted);
   });
 
-  it('appends Colophon & License at index 1 on single-section books with an explicit Gutenberg end marker', () => {
-    const singleSectionWithLicense = `
+  it('appends Colophon & License at index 1 on single-section books preserving both opening 1.E.1 preamble and closing license without shifting Complete Volume offsets', () => {
+    const singleSectionWithLicense = `The Project Gutenberg eBook of Short Treatise
+This eBook is for the use of anyone anywhere in the United States and most other parts of the world at no cost.
+
 *** START OF THE PROJECT GUTENBERG EBOOK SHORT TREATISE ***
 
 Short standalone treatise with no chapter markers.
@@ -33,9 +35,10 @@ Full Project Gutenberg License terms and trademark notice.
     const chapters = parseGutenbergChapters(singleSectionWithLicense);
     expect(chapters.length).toBe(2);
     expect(chapters[0].title).toBe('Complete Volume');
-    expect(chapters[0].content).toContain('Short standalone treatise');
+    expect(chapters[0].content).toBe('Short standalone treatise with no chapter markers.');
     expect(chapters[1].displayTitle).toBe('Colophon & License');
     expect(chapters[1].content).toContain('Full Project Gutenberg License terms');
+    expect(chapters[1].content).toContain('This eBook is for the use of anyone anywhere');
   });
 
   it('parses structured Project Gutenberg eBook into preamble, chapters, and license colophon', () => {

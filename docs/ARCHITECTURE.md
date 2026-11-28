@@ -130,7 +130,7 @@ flowchart TD
     subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
         CuratedArchive["📚 Bundled Curated Archive\n(featured-books.ts • 27 Classics)"]
         CloudflareR2[("☁️ Cloudflare R2 Private Bucket\n(covers/{id}.jpg • books/{id}.txt.gz)")]
-        GutenbergCDN["🌐 Official PG rsync & PGLAF Mirrors (CLI Only)\n(gutenberg.pglaf.org • aleph.gutenberg.org • rsync.ibiblio.org • gutenberg.readingroo.ms)"]
+        GutenbergCDN["🌐 Official PG rsync & Weekly Feeds (CLI Only)\n(aleph.gutenberg.org • rsync.ibiblio.org • gutenberg.pglaf.org)"]
         WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
@@ -285,10 +285,9 @@ flowchart TD
     SyncTranslations -.->|"Wikidata P2034 Query & Fallback Snapshot"| WikidataSPARQL
     SyncR2 <-->|"ListObjectsV2 / PutObject / DeleteObject & Merged 90d State"| CloudflareR2
     ScanR2 -.->|"Read-Only ListObjectsV2 / .txt.gz Term Audit"| CloudflareR2
-    SyncR2 -.->|"aleph ↔ ibiblio rsync --files-from / PGLAF HTTPS Fallback"| GutenbergCDN
+    SyncR2 -.->|"aleph ↔ ibiblio rsync --files-from (CLI Only)"| GutenbergCDN
     SyncQuotes -->|"Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert"| SupabaseCloud
-    SyncQuotes -.->|"R2 books/{id}.txt.gz First (0s Delay) when R2 Configured"| CloudflareR2
-    SyncQuotes -.->|"8.0s–16.0s Float-Paced 3-Mirror Fallback (pglaf,aleph,readingroo)"| GutenbergCDN
+    SyncQuotes -.->|"Strict R2-Only books/{id}.txt.gz Reads (0s External Delay)"| CloudflareR2
     SyncEngine -.->|"Live Run: Purge catalog,quotes,translations[,r2-tags]"| PurgeVercel
     SyncR2 -.->|"Delete/Force Overwrite: Conditional covers/book-content Purge"| PurgeVercel
     SyncTranslations -.->|"Manual Live Run: Purge translations"| PurgeVercel

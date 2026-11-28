@@ -88,14 +88,15 @@ describe('CopyrightPage', () => {
     expect(screen.getByText(/cover_cache/i)).toBeInTheDocument();
     expect(screen.getByText(/300 covers \/ 30-day LRU/i)).toBeInTheDocument();
     expect(screen.getByText(/offline_books/i)).toBeInTheDocument();
-    expect(screen.getByText(/Official Bulk Data Feeds & Background Sync:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Official Bulk Data Feeds & Background `rsync` Architecture:/i)).toBeInTheDocument();
     expect(screen.getByText(/pg_catalog\.csv\.gz/i)).toBeInTheDocument();
     expect(screen.getByText(/rdf-files\.tar\.bz2/i)).toBeInTheDocument();
     expect(screen.getByText(/rsync\.ibiblio\.org/i)).toBeInTheDocument();
     expect(screen.getByText(/gutenberg\.pglaf\.org/i)).toBeInTheDocument();
     expect(screen.getByText(/<dcterms:rights>/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium-Catalog-Sync\/1\.0/i)).toBeInTheDocument();
-    expect(screen.getByText(/Bookarium-R2-Sync\/1\.0/i)).toBeInTheDocument();
+    expect(screen.queryByText(/gutenberg\.readingroo\.ms/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Bookarium-R2-Sync\/1\.0/i)).not.toBeInTheDocument();
     expect(
       screen.getByText(
         /not officially affiliated with, sponsored by, or endorsed by Project Gutenberg or the Project Gutenberg Literary Archive Foundation \(PGLAF\)/i

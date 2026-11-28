@@ -31,78 +31,70 @@ const SAMPLE_GUTENBERG_BOOK = [
 ].join('\n');
 
 describe('sync-featured-quotes pipeline', () => {
-  it('resolves PGLAF mirror URLs, uses canonical repository User-Agent, and never targets www.gutenberg.org', () => {
-    expect(quotesSync.USER_AGENT).toMatch(
-      /^Bookarium-PublicDomain-Reader\/1\.0 \(\+https?:\/\/.+\)$/
+  it('enforces Cloudflare R2-only text source normalization and core pool defaults', () => {
+    expect(Array.from(quotesSync.QUOTE_TEXT_SOURCES)).toEqual(['auto', 'r2']);
+    expect(quotesSync.normalizeQuoteTextSource('')).toBe('r2');
+    expect(quotesSync.normalizeQuoteTextSource('auto')).toBe('r2');
+    expect(quotesSync.normalizeQuoteTextSource('r2')).toBe('r2');
+    expect(quotesSync.normalizeQuoteTextSource('r2-only')).toBe('r2');
+    expect(() => quotesSync.normalizeQuoteTextSource('mirrors')).toThrow(
+      /mirror HTTP scraping is retired/i
     );
-    expect(quotesSync.buildDescriptiveUserAgent('Bookarium-Sync', '2.0')).toMatch(
-      /^Bookarium-Sync\/2\.0 \(\+https?:\/\/.+\)$/
+    expect(() => quotesSync.normalizeQuoteTextSource('https')).toThrow(
+      /mirror HTTP scraping is retired/i
+    );
+    expect(() => quotesSync.normalizeQuoteTextSource('https-mirrors')).toThrow(
+      /mirror HTTP scraping is retired/i
+    );
+    expect(() => quotesSync.normalizeQuoteTextSource('unexpected')).toThrow(
+      /Unsupported --source/
     );
     expect(quotesSync.DEFAULT_POPULAR_POOL_SIZE).toBe(500);
     expect(quotesSync.DEFAULT_RECENT_POOL_SIZE).toBe(64);
     expect(quotesSync.DEFAULT_MAX_PRUNE_PER_RUN).toBe(2000);
-    expect(quotesSync.resolveSelectedMirrors('pglaf,aleph')).toEqual([
-      'https://gutenberg.pglaf.org',
-      'https://aleph.gutenberg.org',
-    ]);
-    expect(quotesSync.resolveSelectedMirrors('invalid')).toEqual([
-      'https://gutenberg.pglaf.org',
-    ]);
-
-    const singleMirrorUrls = quotesSync.buildSingleMirrorCandidateUrls(
-      1342,
-      'https://gutenberg.pglaf.org/'
-    );
-    expect(singleMirrorUrls).toEqual([
-      'https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt',
-      'https://gutenberg.pglaf.org/1/3/4/1342/1342.txt',
-      'https://gutenberg.pglaf.org/1/3/4/1342/1342-8.txt',
-    ]);
-
-    const urls = quotesSync.buildMirrorCandidateUrls(1342);
-    expect(urls.length).toBeGreaterThanOrEqual(6);
-    expect(urls[0]).toBe('https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt');
-    for (const url of urls) {
-      expect(new URL(url).hostname).not.toBe('www.gutenberg.org');
-    }
-
-    expect(quotesSync.buildGutenbergPathDir(8)).toBe('0/8');
-    expect(quotesSync.buildGutenbergPathDir(84)).toBe('8/84');
-    expect(quotesSync.buildGutenbergPathDir(64317)).toBe('6/4/3/1/64317');
+    expect(quotesSync.MAX_BOOK_TEXT_BYTES).toBe(15 * 1024 * 1024);
   });
 
-  it('parses CLI arguments including --delay-range, --mirrors, --schedule-gate, --popular-pool, and --recent-pool', () => {
+  it('parses CLI arguments and rejects retired mirror/delay flags cleanly', () => {
     const parsed = quotesSync.parseCliArgs([
       '--dry-run',
       '--force',
       '--schedule-gate',
       '--limit=10',
-      '--delay-range=7.5-15.5',
       '--target-count=15',
       '--popular-pool=500',
       '--recent-pool=64',
       '--max-prune=1500',
-      '--mirrors=pglaf,readingroo',
+      '--source=r2',
       '--ids=1342,84',
     ]);
     expect(parsed.dryRun).toBe(true);
     expect(parsed.force).toBe(true);
     expect(parsed.scheduleGate).toBe(true);
     expect(parsed.limit).toBe(10);
-    expect(parsed.minDelaySec).toBe(7.5);
-    expect(parsed.maxDelaySec).toBe(15.5);
     expect(parsed.targetCount).toBe(15);
     expect(parsed.popularPool).toBe(500);
     expect(parsed.recentPool).toBe(64);
     expect(parsed.maxPrunePerRun).toBe(1500);
-    expect(parsed.mirrors).toEqual([
-      'https://gutenberg.pglaf.org',
-      'https://gutenberg.readingroo.ms',
-    ]);
+    expect(parsed.source).toBe('r2');
     expect(parsed.ids).toEqual([1342, 84]);
+
+    expect(() => quotesSync.parseCliArgs(['--delay-range=7.5-15.5'])).toThrow(
+      /mirror HTTP fallback is retired/i
+    );
+    expect(() => quotesSync.parseCliArgs(['--mirrors=pglaf,aleph'])).toThrow(
+      /mirror HTTP fallback is retired/i
+    );
+    expect(() => quotesSync.parseCliArgs(['--min-delay=4'])).toThrow(
+      /mirror HTTP fallback is retired/i
+    );
+    expect(() => quotesSync.parseCliArgs(['--source=mirrors'])).toThrow(
+      /mirror HTTP scraping is retired/i
+    );
 
     const defaultParsed = quotesSync.parseCliArgs([]);
     expect(defaultParsed.limit).toBe(50);
+    expect(defaultParsed.source).toBe('r2');
   });
 
   it('blends Two-Tier candidates (40 Popular + 10 Recent default, or custom 20 + 5) with overlap deduplication and automatic backfill, and prunes out-of-window quotes', async () => {
@@ -392,84 +384,39 @@ describe('sync-featured-quotes pipeline', () => {
     expect(sql).toContain('WHERE id = 1342;');
   });
 
-  it('fetches book text from single mirror or across PGLAF mirrors with failover and classifies mirror-level errors', async () => {
-    expect(quotesSync.isAllowedPglafMirrorUrl('https://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt')).toBe(true);
-    expect(quotesSync.isAllowedPglafMirrorUrl('https://www.gutenberg.org/files/1342/1342-0.txt')).toBe(false);
-    expect(quotesSync.isAllowedPglafMirrorUrl('http://gutenberg.pglaf.org/1/3/4/1342/1342-0.txt')).toBe(false);
+  it('fails fast on unconfigured R2 credentials and rejects retired PG mirror source modes', async () => {
+    await expect(
+      quotesSync.runFeaturedQuotesSync(
+        { source: 'mirrors', ids: [1342], dryRun: true },
+        { env: {}, logger: { log: vi.fn(), error: vi.fn() }, writeSeedFile: false }
+      )
+    ).rejects.toThrow(/mirror HTTP scraping is retired/i);
 
-    const blockedMirrorRes = await quotesSync.fetchBookTextFromSingleMirror(
-      1342,
-      'https://www.gutenberg.org',
-      vi.fn()
-    );
-    expect(blockedMirrorRes.ok).toBe(false);
-    expect(blockedMirrorRes.status).toBe(403);
+    await expect(
+      quotesSync.runFeaturedQuotesSync(
+        { ids: [1342], dryRun: true },
+        { env: { R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef' }, logger: { log: vi.fn(), error: vi.fn() }, writeSeedFile: false }
+      )
+    ).rejects.toThrow(/Partial Cloudflare R2 configuration|requires R2_ACCOUNT_ID/i);
 
-    const redirectBlockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      url: 'https://www.gutenberg.org/files/1342/1342-0.txt',
-      text: async () => SAMPLE_GUTENBERG_BOOK,
-    });
-    const redirectBlocked = await quotesSync.fetchBookTextFromSingleMirror(
-      1342,
-      'https://aleph.gutenberg.org',
-      redirectBlockFetch
-    );
-    expect(redirectBlocked.ok).toBe(false);
-    expect(redirectBlocked.status).toBe(403);
-
-    const oversizedFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => String(quotesSync.MAX_BOOK_TEXT_BYTES + 1024) },
-      text: async () => SAMPLE_GUTENBERG_BOOK,
-    });
-    const oversizedRes = await quotesSync.fetchBookTextFromSingleMirror(
-      1342,
-      'https://aleph.gutenberg.org',
-      oversizedFetch
-    );
-    expect(oversizedRes.ok).toBe(false);
-    expect(oversizedRes.status).toBe(413);
-
-    const rateLimitFetch = vi.fn().mockResolvedValue({ ok: false, status: 429 });
-    const single429 = await quotesSync.fetchBookTextFromSingleMirror(
-      1342,
-      'https://aleph.gutenberg.org',
-      rateLimitFetch
-    );
-    expect(single429.ok).toBe(false);
-    expect(single429.isMirrorLevelError).toBe(true);
-    expect(single429.status).toBe(429);
-
-    const notFoundFetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
-    const single404 = await quotesSync.fetchBookTextFromSingleMirror(
-      1342,
-      'https://aleph.gutenberg.org',
-      notFoundFetch
-    );
-    expect(single404.ok).toBe(false);
-    expect(single404.isMirrorLevelError).toBe(false);
-    expect(single404.status).toBe(404);
-
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('Mirror 1 timeout'))
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () => SAMPLE_GUTENBERG_BOOK,
-      });
-
-    const result = await quotesSync.fetchBookTextFromMirrors(1342, fetchMock);
-    expect(result.text).toContain('truth universally acknowledged');
-    expect(new URL(result.mirrorUrl).hostname).toBe('aleph.gutenberg.org');
-
-    const failFetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
-    await expect(quotesSync.fetchBookTextFromMirrors(1342, failFetch)).rejects.toThrow(
-      /Failed to fetch plain text/
-    );
+    await expect(
+      quotesSync.runFeaturedQuotesSync(
+        { dryRun: false },
+        {
+          env: {
+            R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+            R2_BUCKET_NAME: 'bookarium-test-bucket',
+            R2_ACCESS_KEY_ID: 'mock-r2-access-key',
+            R2_SECRET_ACCESS_KEY: 'mock-r2-secret-signing-key',
+            NEXT_PUBLIC_SUPABASE_URL: '',
+            SUPABASE_SERVICE_ROLE_KEY: '',
+          },
+        }
+      )
+    ).rejects.toThrow(/Missing NEXT_PUBLIC_SUPABASE_URL/);
   });
 
-  it('queries public.books by download_count DESC and executes runFeaturedQuotesSync across per-mirror workers, cooldowns, and sentinel fallbacks', async () => {
+  it('queries public.books by download_count DESC and executes runFeaturedQuotesSync strictly against Cloudflare R2 with sentinel fallback', async () => {
     const tmpDir = fs.mkdtempSync(path.join(process.cwd(), '.tmp-quotes-env-'));
     try {
       fs.writeFileSync(path.join(tmpDir, '.env'), 'TEST_QUOTE_ENV="loaded_val"\n# comment\n', 'utf8');
@@ -484,7 +431,7 @@ describe('sync-featured-quotes pipeline', () => {
         { dryRun: false },
         { env: { NEXT_PUBLIC_SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' } }
       )
-    ).rejects.toThrow(/Missing NEXT_PUBLIC_SUPABASE_URL/);
+    ).rejects.toThrow(/requires R2_ACCOUNT_ID/);
 
     const existingTenQuotes = Array.from({ length: 10 }, (_, idx) => ({
       chapterLabel: `Ch ${idx + 1}`,
@@ -583,42 +530,26 @@ describe('sync-featured-quotes pipeline', () => {
       })),
     };
 
-    // Simulate aleph returning 429 twice (triggering cooldown + worker halt), while pglaf & readingroo succeed
-    // and volume 99999 returning 404 (triggering sentinel spread persistence)
-    const fetchMock = vi.fn(async (url: string) => {
-      const parsedUrl = new URL(url);
-      if (parsedUrl.hostname === 'aleph.gutenberg.org') {
-        return { ok: false, status: 429 };
-      }
-      if (parsedUrl.pathname.includes('/99999')) {
-        return { ok: false, status: 404 };
-      }
-      return {
-        ok: true,
-        status: 200,
-        text: async () => SAMPLE_GUTENBERG_BOOK,
-      };
-    });
-    const sleepMock = vi.fn().mockResolvedValue(undefined);
     const silentLogger = { log: vi.fn(), error: vi.fn() };
+    const fetchBookFromR2Mock = vi.fn(async (bookId: number) => {
+      if (bookId === 99999) {
+        return {
+          status: 'ok',
+          text: 'Short plain catalog preface without dialogue or extractable spreads. '.repeat(12),
+        };
+      }
+      return { status: 'ok', text: SAMPLE_GUTENBERG_BOOK };
+    });
 
     const summary = await quotesSync.runFeaturedQuotesSync(
       {
         limit: 6,
-        minDelaySec: 8,
-        maxDelaySec: 16,
-        mirrorCooldownMs: 30000,
-        mirrors: ['pglaf', 'aleph', 'readingroo'],
       },
       {
+        env: {},
         supabaseClient: mockSupabase,
-        fetchBookFromR2: vi.fn(async (bookId: number) =>
-          bookId === 84
-            ? { status: 'ok', text: SAMPLE_GUTENBERG_BOOK }
-            : { status: 'missing' }
-        ),
-        fetchFn: fetchMock,
-        sleepFn: sleepMock,
+        fetchBookFromR2: fetchBookFromR2Mock,
+        sleepFn: vi.fn().mockResolvedValue(undefined),
         logger: silentLogger,
         writeSeedFile: false,
       }
@@ -626,16 +557,10 @@ describe('sync-featured-quotes pipeline', () => {
 
     expect(summary.processed).toBe(5);
     expect(summary.skippedExisting).toBe(0); // 1342 already filtered out of Two-Tier candidate pool (>=10 quotes)
-    expect(summary.fromR2).toBe(1); // 84 extracted directly from Cloudflare R2
-    expect(summary.fromMirrors).toBe(3); // 2701, 64317, 11 downloaded across healthy mirrors
-    expect(summary.sentinelMarked).toBe(1); // 99999 marked with 1-item sentinel spread after 404
+    expect(summary.fromR2).toBe(5); // 84, 2701, 64317, 11, 99999 served from Cloudflare R2
+    expect(summary.r2Missing).toBe(0);
+    expect(summary.sentinelMarked).toBe(1); // 99999 marked with 1-item sentinel spread when extractable spreads == 0
     expect(summary.updated).toBe(4); // 84, 2701, 64317, 11 updated with multi-quote spreads
-    expect(summary.mirrorBreakdown['https://aleph.gutenberg.org']).toBeUndefined();
-    expect(
-      (summary.mirrorBreakdown['https://gutenberg.pglaf.org'] || 0) +
-        (summary.mirrorBreakdown['https://gutenberg.readingroo.ms'] || 0)
-    ).toBe(3);
-    expect(sleepMock).toHaveBeenCalledWith(30000); // Mirror cooldown sleep triggered on first 429
     expect(updateEqMock).toHaveBeenCalledTimes(5); // 4 updated + 1 sentinel
   });
 });
@@ -827,11 +752,11 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     const report = quotesSync.formatRunReport(
       {
         pruned: 2,
-        mirrorBreakdown: { 'https://gutenberg.pglaf.org': 1 },
+        fromR2: 1,
         progress,
         books: [
           { order: 3, id: 99999, title: 'Gutenberg Volume #99999', tier: 'outside', source: 'none', outcome: 'not-found', quoteCount: 0, existingQuoteCount: 0 },
-          { order: 1, id: 84, title: 'Frankenstein | Or\nThe Modern Prometheus', tier: 'top', source: 'https://gutenberg.pglaf.org', outcome: 'updated', quoteCount: 14, existingQuoteCount: 6 },
+          { order: 1, id: 84, title: 'Frankenstein | Or\nThe Modern Prometheus', tier: 'top', source: 'r2', outcome: 'updated', quoteCount: 14, existingQuoteCount: 6 },
           { order: 2, id: 1342, title: 'Pride and Prejudice', tier: 'top', source: 'stored', outcome: 'already-quoted', quoteCount: 14, existingQuoteCount: 14 },
         ],
       },
@@ -843,9 +768,9 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(report).toContain('| Rolling Recent | 1 | 0 | 1 | 0% |');
     expect(report).toContain('Estimated completion: ~1 more run(s)');
     expect(report).toContain('Saved: 1 · Refreshed: 0 · No quotes (placeholder): 0 · Already quoted: 1 · Not found: 1 · Failed: 0 · Pruned: 2');
-    expect(report).toContain('Mirrors: gutenberg.pglaf.org 1');
+    expect(report).toContain('Cloudflare R2 1');
     expect(report).toContain(
-      '| 1 | Top | 84 | Frankenstein \\| Or The Modern Prometheus | gutenberg.pglaf.org | ✅ Saved | 6 → 14 |'
+      '| 1 | Top | 84 | Frankenstein \\| Or The Modern Prometheus | Cloudflare R2 | ✅ Saved | 6 → 14 |'
     );
     expect(report).toContain('| 2 | Top | 1342 | Pride and Prejudice | Database | ⏭️ Already has quotes | 14 |');
     expect(report).toContain('| 3 | Outside pools | 99999 | Gutenberg Volume #99999 | — | ❓ Not in catalog | — |');
@@ -853,7 +778,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(report.indexOf('| 1 | Top | 84 |')).toBeLessThan(report.indexOf('| 3 | Outside pools |'));
 
     const noProgress = quotesSync.formatRunReport(
-      { pruned: 0, mirrorBreakdown: {}, progress: null, books: [] },
+      { pruned: 0, progress: null, books: [] },
       { tierResolutionError: 'pool scan timeout' }
     );
     expect(noProgress).toContain('_Tier progress unavailable (pool scan failed: pool scan timeout)._');
@@ -913,7 +838,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     const consoleSummary = quotesSync.formatConsoleSummary(
       {
         pruned: 3,
-        mirrorBreakdown: { 'https://gutenberg.pglaf.org': 2 },
+        fromR2: 2,
         books: [
           { outcome: 'updated' },
           { outcome: 'refreshed' },
@@ -931,7 +856,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     );
     expect(consoleSummary).toContain('✔ Featured Quotes Sync Complete (DRY RUN)!');
     expect(consoleSummary).toContain('1 saved · 1 refreshed · 1 placeholder · 0 skipped · 0 failed · 3 pruned');
-    expect(consoleSummary).toContain('Mirrors:        gutenberg.pglaf.org (2)');
+    expect(consoleSummary).toContain('From R2:        2 book(s) (0 external requests)');
     expect(consoleSummary).toContain('Top Popular:    2/4 ingested (2 remaining · 50.0% · +1 this run)');
     expect(consoleSummary).toContain('Rolling Recent: 1/2 ingested (1 remaining · 50.0% · +1 this run)');
     expect(consoleSummary).toContain('Total Pool:     3/6 ingested (3 remaining · 50.0% · ~2 run(s) left)');
@@ -964,14 +889,13 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     );
     const logger = { log: vi.fn(), error: vi.fn() };
     await quotesSync.runFeaturedQuotesSync(
-      { limit: 3, minDelaySec: 8, maxDelaySec: 8, mirrors: ['pglaf'] },
+      { limit: 3 },
       {
         env: {},
         supabaseClient: client,
-        fetchFn: vi.fn().mockResolvedValue({
-          ok: true,
-          status: 200,
-          text: async () => SAMPLE_GUTENBERG_BOOK,
+        fetchBookFromR2: vi.fn().mockResolvedValue({
+          status: 'ok',
+          text: SAMPLE_GUTENBERG_BOOK,
         }),
         sleepFn: vi.fn().mockResolvedValue(undefined),
         rng: () => 0,
@@ -992,7 +916,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(logLines.some((l) => l.includes('[Top 1/3 · Pool: 2/4 (50.0%)] #2 "Book 2"'))).toBe(true);
     expect(
       logLines.some((l) =>
-        l.includes('[Top 3/3 · Pool: 4/4 (100.0%)] #4 "Book 4": 2 quotes saved (source: gutenberg.pglaf.org · waited 8.0s).')
+        l.includes('[Top 3/3 · Pool: 4/4 (100.0%)] #4 "Book 4": 2 quotes saved (source: Cloudflare R2).')
       )
     ).toBe(true);
     expect(logLines.some((l) => l.includes('[Supabase Content]'))).toBe(false);
@@ -1122,7 +1046,13 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       logger.log.mockClear();
       const skippedSummary = await quotesSync.runFeaturedQuotesSync(
         { ids: [90123], limit: 10 },
-        { env: {}, supabaseClient: copyrightedEnv.client, logger, writeSeedFile: false }
+        {
+          env: {},
+          supabaseClient: copyrightedEnv.client,
+          fetchBookFromR2: vi.fn(),
+          logger,
+          writeSeedFile: false,
+        }
       );
       expect(skippedSummary.processed).toBe(0);
       expect(skippedSummary.books[0]).toMatchObject({ id: 90123, outcome: 'copyrighted' });
@@ -1135,7 +1065,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     }
   });
 
-  it('falls back to Manual labels when the tier pool scan fails, and fails books left queued after all mirrors halt', async () => {
+  it('falls back to Manual labels when the tier pool scan fails, and records failed outcomes when R2 reads throw', async () => {
     // Pool scan failure is recorded but never blocks a manual run
     const scanFailOptions: Record<string, unknown> = { ids: [1342], limit: 10 };
     const noOrderSupabase = {
@@ -1151,7 +1081,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(typeof scanFailOptions._tierResolutionError).toBe('string');
     expect(scanFailOptions._candidateTiers).toBeUndefined();
 
-    // Single mirror rate-limits every request: first two books fail, worker halts, third is left queued
+    // Transient R2 read failures mark books as failed without external HTTP fallbacks
     const books = [
       catalogRow({ id: 2701, title: 'Moby Dick' }),
       catalogRow({ id: 11, title: 'Alice in Wonderland' }),
@@ -1160,11 +1090,11 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     const { client } = createCatalogSupabase(books, books, []);
     const logger = { log: vi.fn(), error: vi.fn() };
     const summary = await quotesSync.runFeaturedQuotesSync(
-      { ids: [2701, 11, 98], limit: 10, mirrors: ['pglaf'], mirrorCooldownMs: 0 },
+      { ids: [2701, 11, 98], limit: 10 },
       {
         env: {},
         supabaseClient: client,
-        fetchFn: vi.fn().mockResolvedValue({ ok: false, status: 429 }),
+        fetchBookFromR2: vi.fn().mockRejectedValue(new Error('R2 read timeout')),
         sleepFn: vi.fn().mockResolvedValue(undefined),
         logger,
         writeSeedFile: false,
@@ -1175,9 +1105,9 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     const notes = (summary.books as LedgerEntry[]).map((b) => `${b.id}:${b.outcome}:${b.note}`);
     expect(notes).toEqual(
       expect.arrayContaining([
-        '2701:failed:enabled mirrors unavailable',
-        '11:failed:enabled mirrors unavailable',
-        '98:failed:all enabled mirrors halted',
+        '2701:failed:R2 read timeout',
+        '11:failed:R2 read timeout',
+        '98:failed:R2 read timeout',
       ])
     );
     expect(summary.books.every((b: LedgerEntry) => b.tier === 'top')).toBe(true);
@@ -1257,7 +1187,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       const logger = { log: vi.fn(), error: vi.fn() };
 
       const summary = await quotesSync.runFeaturedQuotesSync(
-        { diffFile: diffPath, limit: 1, mirrors: ['pglaf'] },
+        { diffFile: diffPath, limit: 1 },
         {
           env: {},
           supabaseClient: client,
@@ -1456,8 +1386,14 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     };
     const coldLogger = { log: vi.fn(), error: vi.fn() };
     const coldSummary = await quotesSync.runFeaturedQuotesSync(
-      { popularPool: 1, recentPool: 2, limit: 10, mirrors: ['pglaf'] },
-      { env: {}, supabaseClient: coldStartSupabase, logger: coldLogger, writeSeedFile: false }
+      { popularPool: 1, recentPool: 2, limit: 10 },
+      {
+        env: {},
+        supabaseClient: coldStartSupabase,
+        fetchBookFromR2: vi.fn(),
+        logger: coldLogger,
+        writeSeedFile: false,
+      }
     );
     expect(coldSummary.pruned).toBe(2);
     expect(coldPruneInMock).toHaveBeenCalledWith('id', [44444, 75001]);
@@ -1481,34 +1417,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     ).toBe(true);
   });
 
-  it('resolves canonical site origin fallback from NEXT_PUBLIC_SITE_URL and normalized Vercel production hostnames', () => {
-    expect(quotesSync.resolveSiteOriginFallback({})).toBe('https://bookarium.vercel.app');
-    expect(
-      quotesSync.resolveSiteOriginFallback({
-        VERCEL_PROJECT_PRODUCTION_URL: 'bookarium.ro/',
-      })
-    ).toBe('https://bookarium.ro');
-    expect(
-      quotesSync.resolveSiteOriginFallback({
-        NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
-        VERCEL_PROJECT_PRODUCTION_URL: 'ignored.example.com',
-      })
-    ).toBe('https://cdn.bookarium.ro');
-    expect(
-      quotesSync.resolveSiteOriginFallback({
-        NEXT_PUBLIC_SITE_URL: 'https://primary.bookarium.ro///',
-        NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: 'cdn.bookarium.ro',
-      })
-    ).toBe('https://primary.bookarium.ro');
-    expect(
-      quotesSync.resolveSiteOriginFallback({
-        NEXT_PUBLIC_SITE_URL: 'javascript:alert(1)',
-        VERCEL_PROJECT_PRODUCTION_URL: 'http://localhost:3000/',
-      })
-    ).toBe('http://localhost:3000');
-  });
-
-  it('reads books/<id>.txt.gz from private R2 first ahead of PGLAF mirrors when configured and falls back cleanly on R2 miss', async () => {
+  it('reads books/<id>.txt.gz strictly from private R2 and records non-sentinel r2-miss without touching PG mirrors', async () => {
     const sampleBookText = Array.from(
       { length: 22 },
       (_, i) =>
@@ -1559,25 +1468,6 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       }),
     };
 
-    const mirrorFetchMock = vi.fn(async (url: string) => {
-      if (url.includes('gutenberg.pglaf.org/8/84/84-0.txt')) {
-        return {
-          ok: true,
-          status: 200,
-          url,
-          headers: { get: () => 'text/plain; charset=utf-8' },
-          text: async () => sampleBookText,
-        };
-      }
-      return {
-        ok: false,
-        status: 404,
-        url,
-        headers: { get: () => 'text/plain' },
-        text: async () => 'Not Found',
-      };
-    });
-
     const fetchBookFromR2Mock = vi.fn(async (bookId: number) => {
       if (bookId === 1342) {
         return { status: 'ok', text: sampleBookText };
@@ -1586,11 +1476,10 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     });
 
     const summary = await quotesSync.runFeaturedQuotesSync(
-      { ids: [1342, 84], limit: 2, minDelaySec: 0, maxDelaySec: 0, mirrors: ['pglaf'], targetCount: 10 },
+      { ids: [1342, 84], limit: 2, targetCount: 10 },
       {
         env: {},
         supabaseClient: r2Supabase,
-        fetchFn: mirrorFetchMock,
         fetchBookFromR2: fetchBookFromR2Mock,
         sleepFn: async () => {},
         logger: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
@@ -1600,51 +1489,37 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
 
     expect(quotesSync.describeQuoteSource('r2')).toBe('Cloudflare R2');
     expect(fetchBookFromR2Mock).toHaveBeenCalledTimes(2);
-    // 1342 came straight from R2 without touching PGLAF mirrors; only 84 hit PGLAF
+    // 1342 came straight from R2; 84 recorded cleanly as r2-miss without external HTTP requests
     expect(summary.fromR2).toBe(1);
-    expect(summary.fromMirrors).toBe(1);
-    expect(summary.updated).toBe(2);
-    expect(mirrorFetchMock.mock.calls.every(([u]: [string]) => !u.includes('1342'))).toBe(true);
+    expect(summary.r2Missing).toBe(1);
+    expect(summary.sentinelMarked).toBe(0);
+    expect(summary.updated).toBe(1);
     expect(summary.report).toContain('Cloudflare R2 1');
     expect(summary.books.find((b: { id: number }) => b.id === 1342)?.source).toBe('r2');
+    expect(summary.books.find((b: { id: number }) => b.id === 84)?.outcome).toBe('r2-miss');
   });
 
-  it('supports --source=auto|r2|mirrors, --mirrors=none, --help, startup Text Source telemetry, and non-sentinel r2-miss handling', async () => {
+  it('supports --source=auto|r2, rejects --mirrors/--source=mirrors, displays startup Text Source telemetry, and records non-sentinel r2-miss handling', async () => {
     expect(quotesSync.normalizeQuoteTextSource('r2-only')).toBe('r2');
-    expect(quotesSync.normalizeQuoteTextSource('https-mirrors')).toBe('mirrors');
-    expect(quotesSync.normalizeQuoteTextSource('unexpected')).toBe('auto');
-    expect(quotesSync.resolveSelectedMirrors('none')).toEqual([]);
-    expect(quotesSync.resolveSelectedMirrors([])).toEqual([]);
+    expect(quotesSync.normalizeQuoteTextSource('auto')).toBe('r2');
+    expect(() => quotesSync.normalizeQuoteTextSource('https-mirrors')).toThrow(
+      /mirror HTTP scraping is retired/i
+    );
+    expect(() => quotesSync.parseCliArgs(['--help', '--mirrors=none'])).toThrow(
+      /mirror HTTP fallback is retired/i
+    );
 
-    const parsedR2 = quotesSync.parseCliArgs(['--help', '--source=r2', '--mirrors=none']);
+    const parsedR2 = quotesSync.parseCliArgs(['--help', '--source=r2']);
     expect(parsedR2.help).toBe(true);
     expect(parsedR2.source).toBe('r2');
-    expect(parsedR2.mirrors).toEqual([]);
 
     const usageLogs: string[] = [];
     quotesSync.printUsageGuide({ log: (msg: string) => usageLogs.push(msg) });
     expect(usageLogs.join('\n')).toContain('--source=MODE');
 
-    expect(
-      quotesSync.formatTextSourceDescription('auto', {
-        r2Configured: true,
-        mirrors: ['https://gutenberg.pglaf.org'],
-      })
-    ).toBe('auto — Cloudflare R2 primary (0s delay) -> fallback: gutenberg.pglaf.org');
-    expect(
-      quotesSync.formatTextSourceDescription('auto', {
-        r2Configured: false,
-        mirrors: ['https://gutenberg.pglaf.org'],
-      })
-    ).toBe('auto — R2_* unset, using HTTPS mirrors: gutenberg.pglaf.org');
-    expect(quotesSync.formatTextSourceDescription('r2')).toBe(
-      'r2 — Cloudflare R2 only (0s delay, zero mirror fallback)'
+    expect(quotesSync.formatTextSourceDescription()).toBe(
+      'r2 — Cloudflare R2 only (0s delay, zero external mirror requests)'
     );
-    expect(
-      quotesSync.formatTextSourceDescription('mirrors', {
-        mirrors: ['https://gutenberg.pglaf.org', 'https://aleph.gutenberg.org'],
-      })
-    ).toBe('mirrors — HTTPS mirrors only (gutenberg.pglaf.org, aleph.gutenberg.org)');
 
     const bannerWithSource = quotesSync.formatInitialPoolBanner({
       topPoolSize: 500,
@@ -1654,12 +1529,10 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       batchTopCount: 10,
       batchRecentCount: 0,
       totalBatchCount: 10,
-      textSource: 'auto',
-      r2Configured: true,
-      mirrors: ['https://gutenberg.pglaf.org'],
+      textSource: 'r2',
     });
     expect(bannerWithSource).toContain(
-      '• Text Source:    auto — Cloudflare R2 primary (0s delay) -> fallback: gutenberg.pglaf.org'
+      '• Text Source:    r2 — Cloudflare R2 only (0s delay, zero external mirror requests)'
     );
 
     // 1) Fail fast when source=r2 and R2_* is unconfigured
@@ -1674,7 +1547,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       )
     ).rejects.toThrow(/requires R2_ACCOUNT_ID/);
 
-    // 2) r2 mode extracts R2 hits and records R2 misses without mirror fetches or false sentinel writes
+    // 2) Reject oversize (>15 MB) R2 payload cleanly while extracting normal R2 hits and skipping R2 misses
     const sampleBookText = Array.from(
       { length: 14 },
       (_, i) =>
@@ -1726,24 +1599,16 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       })),
     });
 
-    const mirrorFetchSpy = vi.fn(async (url: string) => ({
-      ok: true,
-      status: 200,
-      url,
-      headers: { get: () => 'text/plain; charset=utf-8' },
-      text: async () => sampleBookText,
-    }));
     const r2FetchMock = vi.fn(async (bookId: number) =>
       bookId === 1342 ? { status: 'ok', text: sampleBookText } : { status: 'not_found' }
     );
     const logs: string[] = [];
 
     const r2OnlySummary = await quotesSync.runFeaturedQuotesSync(
-      { source: 'r2', ids: [1342, 84], limit: 2, minDelaySec: 0, maxDelaySec: 0, targetCount: 10 },
+      { source: 'r2', ids: [1342, 84], limit: 2, targetCount: 10 },
       {
         env: {},
         supabaseClient: buildTestSupabase(),
-        fetchFn: mirrorFetchSpy,
         fetchBookFromR2: r2FetchMock,
         sleepFn: async () => {},
         logger: { log: (m: string) => logs.push(m), error: vi.fn(), warn: vi.fn() },
@@ -1755,44 +1620,25 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     expect(r2OnlySummary.r2Missing).toBe(1);
     expect(r2OnlySummary.sentinelMarked).toBe(0);
     expect(r2OnlySummary.updated).toBe(1);
-    expect(mirrorFetchSpy).not.toHaveBeenCalled();
     expect(persistedUpdates.map((u) => u.id)).toEqual([1342]);
     expect(r2OnlySummary.books.find((b: { id: number }) => b.id === 84)?.outcome).toBe('r2-miss');
     expect(r2OnlySummary.report).toContain('**Text Source**: `r2 — Cloudflare R2 only');
     expect(r2OnlySummary.report).toContain('R2 miss (skipped): 1');
     expect(logs.join('\n')).toContain('1 r2-miss');
 
-    // 3) mirrors mode bypasses R2 completely even when R2 callback is available
-    persistedUpdates.length = 0;
-    r2FetchMock.mockClear();
-    const mirrorsOnlySummary = await quotesSync.runFeaturedQuotesSync(
-      {
-        source: 'mirrors',
-        ids: [1342, 84],
-        limit: 2,
-        minDelaySec: 0,
-        maxDelaySec: 0,
-        mirrors: ['pglaf'],
-        targetCount: 10,
-      },
-      {
-        env: {},
-        supabaseClient: buildTestSupabase(),
-        fetchFn: mirrorFetchSpy,
-        fetchBookFromR2: r2FetchMock,
-        sleepFn: async () => {},
-        logger: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
-        writeSeedFile: false,
-      }
-    );
-
-    expect(r2FetchMock).not.toHaveBeenCalled();
-    expect(mirrorsOnlySummary.fromR2).toBe(0);
-    expect(mirrorsOnlySummary.fromMirrors).toBe(2);
-    expect(mirrorsOnlySummary.updated).toBe(2);
-    expect(mirrorsOnlySummary.report).toContain(
-      '**Text Source**: `mirrors — HTTPS mirrors only (gutenberg.pglaf.org)`'
-    );
+    // 3) Reject retired mirrors mode cleanly
+    await expect(
+      quotesSync.runFeaturedQuotesSync(
+        { source: 'mirrors', ids: [1342], limit: 1 },
+        {
+          env: {},
+          supabaseClient: buildTestSupabase(),
+          fetchBookFromR2: r2FetchMock,
+          logger: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
+          writeSeedFile: false,
+        }
+      )
+    ).rejects.toThrow(/mirror HTTP scraping is retired/i);
   });
 
   it('evaluates infrastructure failure thresholds strictly via shouldFailFeaturedQuotesRun', () => {
@@ -1877,7 +1723,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     );
 
     const summary = await quotesSync.runFeaturedQuotesSync(
-      { source: 'r2', ids: [1342, 84, 2701, 98], limit: 4, minDelaySec: 0, maxDelaySec: 0, targetCount: 10 },
+      { source: 'r2', ids: [1342, 84, 2701, 98], limit: 4, targetCount: 10 },
       {
         env: { GITHUB_ACTIONS: 'true' },
         supabaseClient: mockClient,

@@ -1,7 +1,7 @@
 /**
  * @module
  * @scope Project Gutenberg structural chapter parser (`parseGutenbergChapters`) and duplicate heading suppression (`stripDuplicateLeadingChapterHeading`).
- * @invariant Preserve the Project Gutenberg `Colophon & License` section on parsed multi-chapter books and suppress front-matter TOC false chapter splits.
+ * @invariant Preserve the Project Gutenberg `Colophon & License` section on parsed books (including both `preBody` `1.E.1` header notice and `postBody` license footer across single-section `Complete Volume` books without shifting `chapterIndex: 0`) and suppress front-matter TOC false chapter splits.
  * @invariant Keep `chapter.content` unmodified while stripping duplicate top headings inside `stripDuplicateLeadingChapterHeading` so virtual page boundaries and canonical text offsets never shift.
  * @rationale Project Gutenberg terms require retaining license notices in distributed e-texts, while display-only heading stripping prevents redundant stacked chapter banners without invalidating saved page coordinates or annotations.
  * @adr ADR-017, ADR-028, ADR-069
@@ -500,12 +500,13 @@ export function parseGutenbergChapters(rawText: string | undefined | null): Chap
         startPageNumber: 1,
         pageCount: 1,
       });
-      if (postBody.trim().length > 0) {
+      const licenseParts = [postBody.trim(), startMatch ? preBody.trim() : ''].filter(Boolean);
+      if (licenseParts.length > 0) {
         sections.push({
           id: 1,
           title: 'Project Gutenberg License & Colophon',
           displayTitle: 'Colophon & License',
-          content: reflowGutenbergParagraphs(postBody.trim()),
+          content: reflowGutenbergParagraphs(licenseParts.join('\n\n')),
           startPageNumber: 1,
           pageCount: 1,
         });

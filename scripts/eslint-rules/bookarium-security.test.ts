@@ -392,7 +392,7 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(violations[9].message).toContain('dynamic new RegExp() constructor');
     });
 
-    it('clears taint when values pass through sanitizers or isAllowedR2EndpointUrl() / isAllowedPglafMirrorUrl() guards', () => {
+    it('clears taint when values pass through sanitizers or isAllowedR2EndpointUrl() / isAllowedRdfFeedUrl() guards', () => {
       const clean = runRuleOnCode(
         'no-tainted-request-sink',
         `import { NextResponse } from 'next/server';
@@ -420,12 +420,15 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       const cleanCli = runRuleOnCode(
         'no-tainted-request-sink',
         `const targetUrl = process.argv[2] || '';
-        function isAllowedPglafMirrorUrl(u: string) { return u.startsWith('https://gutenberg.pglaf.org/'); }
+        function isAllowedRdfFeedUrl(u: string) {
+          const p = new URL(u);
+          return p.protocol === 'https:' && p.hostname === 'gutenberg.pglaf.org';
+        }
         async function run() {
-          if (!isAllowedPglafMirrorUrl(targetUrl)) return;
+          if (!isAllowedRdfFeedUrl(targetUrl)) return;
           await fetch(targetUrl);
         }`,
-        'scripts/sync-featured-quotes.js'
+        'scripts/sync-gutenberg-catalog.js'
       );
       expect(cleanCli).toHaveLength(0);
     });
@@ -683,19 +686,31 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       expect(msgs.some((m) => m.includes('Incomplete URL substring sanitization (CodeQL CWE-20)'))).toBe(true);
     });
 
-    it('permits copyright=false, mirror-prioritized fetches in CLI scripts, single-column download_count ordering, and PK-bounded quote queries while blocking runtime mirror fetches in src/', () => {
+    it('permits copyright=false, single-column download_count ordering, and PK-bounded quote queries while blocking mirror fetch() in both src/ and scripts/', () => {
       const cleanCli = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',
-        `export async function goodCatalogFetch(supabase: any, ids: number[]) {
+        `export async function goodCatalogQuery(supabase: any, ids: number[]) {
           const params = new URLSearchParams();
           params.set('copyright', 'false');
-          await fetch('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
           await supabase.from('books').select('*').order('download_count', { ascending: false });
           await supabase.from('books').select('id').in('id', ids).neq('quotes', '[]').order('download_count', { ascending: false });
         }`,
         'scripts/sync-featured-quotes.js'
       );
       expect(cleanCli).toHaveLength(0);
+
+      const cliMirrorViolations = runRuleOnCode(
+        'enforce-gutenberg-and-copyright-policy',
+        `export async function badCliMirrorFetch() {
+          await fetch('https://aleph.gutenberg.org/cache/epub/1342/pg1342.txt');
+          await fetch('https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.txt');
+        }`,
+        'scripts/sync-r2-assets.js'
+      );
+      expect(cliMirrorViolations).toHaveLength(2);
+      expect(cliMirrorViolations[0].message).toContain(
+        'bulk HTTP fetch() to Project Gutenberg mirrors in scripts/ is forbidden'
+      );
 
       const runtimeMirrorViolations = runRuleOnCode(
         'enforce-gutenberg-and-copyright-policy',
@@ -711,18 +726,18 @@ describe('scripts/eslint-rules/bookarium-security AST & Taint Engine', () => {
       );
     });
 
-    it('permits R2 and Gutenberg asset fetch helpers registered in FETCH_SANITIZER_FUNCTIONS across CLI scripts', () => {
+    it('permits R2 and catalog feed URL allowlist guards registered in FETCH_SANITIZER_FUNCTIONS across CLI scripts', () => {
       const cleanR2Cli = runRuleOnCode(
         'no-tainted-request-sink',
         `function isAllowedR2EndpointUrl(u: string) { return u.startsWith('https://'); }
-        function isAllowedGutenbergAssetUrl(u: string) { return u.startsWith('https://'); }
+        function isAllowedRdfFeedUrl(u: string) { return u.startsWith('https://'); }
         export async function runCli(argv: string[]) {
           const url = String(argv[0] || '');
-          if (isAllowedR2EndpointUrl(url) || isAllowedGutenbergAssetUrl(url)) {
+          if (isAllowedR2EndpointUrl(url) || isAllowedRdfFeedUrl(url)) {
             await fetch(url);
           }
         }`,
-        'scripts/sync-r2-assets.js'
+        'scripts/sync-gutenberg-catalog.js'
       );
       expect(cleanR2Cli).toHaveLength(0);
     });

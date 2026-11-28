@@ -344,7 +344,6 @@ function resolveFeedMirrors(defaultMirrors = GUTENBERG_CSV_FEED_MIRRORS, feedSou
 const ALLOWED_RDF_FEED_HOSTS = new Set([
   'gutenberg.pglaf.org',
   'aleph.gutenberg.org',
-  'gutenberg.readingroo.ms',
 ]);
 
 function isHtmlContentType(contentType) {

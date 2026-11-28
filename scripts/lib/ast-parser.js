@@ -1382,7 +1382,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'CLI Data Ingestion Pipelines & AST Security Rules',
       scope: '`scripts/**/*.test.ts`',
       match: (f) => f.startsWith('scripts/'),
-      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF-first failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, Cloudflare R2 `ListObjectsV2` / `rsync --files-from` / PGLAF HTTPS delta asset sync (`_meta/r2-sync-state.json.gz`, copyright/withdrawn pruning, bounded `$GITHUB_STEP_SUMMARY` tables), shared zero-dependency R2 SigV4 helpers (`r2-sigv4.test.ts`), TTY/CI-aware CLI progress telemetry (`cli-progress.test.ts`), & read-only `.txt.gz` integrity scanning (`scan-r2-content.test.ts`), `quote-diff.json` hand-off, R2-first + PGLAF mirror-first featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
+      strategy: 'Hermetic `pg_catalog.csv.gz` & `rdf-files.tar.bz2` streaming decompression (PGLAF/Aleph failover, `--feed-source` pinning, `<dcterms:rights>` extraction & HTML outage rejection), RFC 4180 CSV parsing, in-RAM `gutenberg-catalog-cache.json.gz` snapshot diffing, Cloudflare R2 `ListObjectsV2` / targeted `rsync --files-from` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org`) delta asset sync (`_meta/r2-sync-state.json.gz`, copyright/withdrawn pruning, bounded `$GITHUB_STEP_SUMMARY` tables), shared zero-dependency R2 SigV4 helpers (`r2-sigv4.test.ts`), TTY/CI-aware CLI progress telemetry (`cli-progress.test.ts`), & read-only `.txt.gz` integrity scanning (`scan-r2-content.test.ts`), `quote-diff.json` hand-off, strict Cloudflare R2-only featured quotes extraction, Wikidata SPARQL FRBR translation clustering, Babel AST / SQL contract & layer-boundary checks (`ast-parser.test.ts`), stateless SAST validator checks (`sast-validators.test.ts`), and 9-rule ESLint AST & request-taint security verification.',
     },
   ];
 
@@ -1625,7 +1625,7 @@ function extractEnvironmentDependencyCatalog(rootDir, srcDir) {
     GUTENBERG_CONTACT_EMAIL: {
       scope: 'Server-Side Fetcher & CLI Pipelines (Optional)',
       fallback: 'Omitted: Automated `User-Agent` headers cleanly identify via the public repository URL without exposing private emails.',
-      purpose: 'Optional contact email address appended to `User-Agent` headers across Project Gutenberg mirrors and Wikidata SPARQL queries.',
+      purpose: 'Optional contact email address appended to `User-Agent` headers across weekly Gutenberg feed requests and Wikidata SPARQL queries.',
     },
     BOOKARIUM_REPO_URL: {
       scope: 'Server-Side Fetcher, CLI Pipelines & Config (Optional)',
@@ -4782,7 +4782,6 @@ function extractRuntimeSpecConstants(rootDirPath) {
 
   const parserCfg = parserTypesDecl.objects.get('GUTENBERG_PARSER_CONFIG') || {};
   const rsyncHostsObj = syncR2Decl.objects.get('RSYNC_HOSTS') || {};
-  const quoteMirrorsObj = syncQuotesDecl.objects.get('MIRROR_SHORTCUT_MAP') || {};
   const factoryPrefObj = preferencesSyncDecl.objects.get('FACTORY_PREFERENCES') || {};
   const preferencesKeyCount =
     preferencesSyncDecl.objectKeyCounts.get('FACTORY_PREFERENCES') ||
@@ -4870,7 +4869,6 @@ function extractRuntimeSpecConstants(rootDirPath) {
       quotePopularPoolSize: syncQuotesDecl.scalars.get('DEFAULT_POPULAR_POOL_SIZE') ?? syncCatalogDecl.scalars.get('DEFAULT_QUOTE_POPULAR_POOL_SIZE') ?? 500,
       quoteRecentPoolSize: syncQuotesDecl.scalars.get('DEFAULT_RECENT_POOL_SIZE') ?? syncCatalogDecl.scalars.get('DEFAULT_QUOTE_RECENT_POOL_SIZE') ?? 64,
       quoteMaxPrunePerRun: syncQuotesDecl.scalars.get('DEFAULT_MAX_PRUNE_PER_RUN') ?? 2000,
-      quoteMirrorKeys: Object.keys(quoteMirrorsObj).length > 0 ? Object.keys(quoteMirrorsObj) : ['pglaf', 'aleph', 'readingroo'],
       r2MissingRecheckDays: syncR2Decl.scalars.get('DEFAULT_MISSING_RECHECK_DAYS') ?? 90,
       r2MinActiveForPrune: syncR2Decl.scalars.get('MIN_ACTIVE_CATALOG_FOR_PRUNE') ?? 50000,
       r2MaxPrunePerRun: syncR2Decl.scalars.get('DEFAULT_MAX_PRUNE_PER_RUN') ?? 500,

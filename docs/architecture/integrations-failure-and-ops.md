@@ -15,7 +15,7 @@
 5. **Jurisdictional Copyright Gatekeeping & Bibliographic Preservation**: The streaming route (`/api/books/content`) intercepts requests from non-US jurisdictions, verifying author/translator death years against Berne/local terms and returning `HTTP 451 Unavailable For Legal Reasons` for protected titles. Concurrently, the catalog pipeline supports `includeRestrictedMetadata=true` for explicit IDs, ensuring personal collections (Notebook, Bookmarks) and reader error screens display authentic bibliographic citations (titles, authors, subjects) without opening prohibited full-text streams.
 6. **Multi-Tier Text Streaming & Private Cloudflare R2 Hosting (Zero Runtime PG Fallback)**: Plain text is served on-demand from Tier 0 (`bookContentLruCache`: 24h TTL / 20-book lazy in-memory LRU cache preventing repeated R2 reads across jurisdictions) and Tier 1 (private Cloudflare R2 `books/<id>.txt.gz` streamed and decompressed via AWS SigV4 with fail-closed `404` miss / `503` unconfigured / `502` upstream responses, zero Supabase `books.content` queries, and zero runtime PG fallback) with in-flight promise coalescing (`inFlightR2Fetches`) and a 24h contributor metadata cache.
 7. **Native IndexedDB Offline Cache**: Opened and downloaded unabridged texts are cached in browser IndexedDB for 100% offline access with client-side jurisdictional protection preventing illicit cross-border reading.
-8. **Fault-Isolated Weekly Catalog Synchronization, Checkpointed R2 Delta Assets & Multi-Mirror Quotes**: Project Gutenberg's official `rdf-files.tar.bz2` and `pg_catalog.csv.gz` feeds (`78,000+` public domain titles) are streamed and decompressed on-the-fly from official Gutenberg mirrors (`gutenberg.pglaf.org` -> `aleph.gutenberg.org`) via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, preserving cached/DB `copyright: true` flags and deferring unverified brand-new rows on RDF outages (`reconcileBatchWithoutRdfRights`), diffing all 78,000+ rows in RAM against `gutenberg-catalog-cache.json.gz` (~39 MB/week read egress saved), publishing the updated snapshot immediately ahead of downstream steps, and chaining fault-isolated (`continue-on-error: true` + end-of-job outcome checks) Cloudflare R2 delta sync (`scripts/sync-r2-assets.js` with `assertValidR2ConfigIfPresent`, read-fail state protection + remote union merge + `try ... finally` checkpoints, bounded concurrency `8`, mid-batch budget checks, and conditional `covers`/`book-content` purge tags), Wikidata translations (`45s` timeout + bisected FK-safe retries), R2-first 3-mirror quotes (`pglaf,aleph,readingroo`), and `if: always()` Edge cache purging.
+8. **Fault-Isolated Weekly Catalog Synchronization, Checkpointed `rsync` R2 Delta Assets & R2-Only Quotes**: Project Gutenberg's official `rdf-files.tar.bz2` and `pg_catalog.csv.gz` feeds (`78,000+` public domain titles) are streamed and decompressed on-the-fly from official Gutenberg feed mirrors (`gutenberg.pglaf.org` -> `aleph.gutenberg.org`) via GitHub Actions (`.github/workflows/catalog-sync.yml`) or `npm run catalog:sync`, preserving cached/DB `copyright: true` flags and deferring unverified brand-new rows on RDF outages (`reconcileBatchWithoutRdfRights`), diffing all 78,000+ rows in RAM against `gutenberg-catalog-cache.json.gz` (~39 MB/week read egress saved), publishing the updated snapshot immediately ahead of downstream steps, and chaining fault-isolated (`continue-on-error: true` + end-of-job outcome checks) Cloudflare R2 delta sync (`scripts/sync-r2-assets.js` via targeted multi-host `rsync` with `assertValidR2ConfigIfPresent`, read-fail state protection + remote union merge + `try ... finally` checkpoints, bounded concurrency `8`, mid-batch budget checks, and conditional `covers`/`book-content` purge tags), Wikidata translations (`45s` timeout + bisected FK-safe retries), strict R2-only quotes (`sync-featured-quotes.js --source=r2 --diff-file=quote-diff.json`), and `if: always()` Edge cache purging.
 
 ---
 
@@ -37,7 +37,7 @@ flowchart LR
         CloudflareR2[("☁️ Cloudflare R2 Private Bucket\n(https://{account}.r2.cloudflarestorage.com • AWS SigV4)")]
         SupaDB[("⚡ Supabase PostgreSQL & PostgREST\n(https://*.supabase.co/rest/v1/*)")]
         SupaAuth["🔐 Supabase Auth & Cloudflare Turnstile\n(https://*.supabase.co/auth/v1/* • challenges.cloudflare.com)"]
-        GutenbergMirrors["📚 Official PG rsync & PGLAF Mirrors (CLI Only)\n(aleph ↔ ibiblio rsync + PGLAF HTTPS Text/Cover Sync)"]
+        GutenbergMirrors["📚 Official PG rsync Hosts (CLI Only)\n(aleph.gutenberg.org ↔ rsync.ibiblio.org)"]
         GutenbergFeeds["📦 Gutenberg Catalog Feeds (2 Official Mirrors)\n(rdf-files.tar.bz2 & pg_catalog.csv.gz)"]
         WikidataAPI["🌍 Wikidata SPARQL Endpoint\n(https://query.wikidata.org/sparql)"]
         VercelCacheAPI["🧹 Vercel Edge Cache Purge API\n(api.vercel.com/v1/edge-cache/dangerously-delete-by-tags)"]
@@ -53,7 +53,7 @@ flowchart LR
     CLITier <-->|"AWS SigV4 List/Put/Delete & R2-First Quotes"| CloudflareR2
     CLITier -->|"Bulk Upsert (Service Role / Anon)"| SupaDB
     CLITier -->|"Weekly RDF + CSV Stream"| GutenbergFeeds
-    CLITier -.->|"Targeted rsync --files-from / HTTPS Fallback"| GutenbergMirrors
+    CLITier -.->|"Targeted rsync --files-from (CLI Only)"| GutenbergMirrors
     CLITier -->|"Weekly P2034/P407 FRBR Query"| WikidataAPI
     CLITier -.->|"Post-Sync & Manual Tag Invalidation (VERCEL_API_TOKEN)"| VercelCacheAPI
 ```
@@ -160,7 +160,7 @@ flowchart TD
         Serverless["⚙️ Next.js Serverless Functions (vercel.json: iad1, maxDuration: 30s)\n• /api/books, /api/books/content, /api/books/translations, /api/profiles/card, /covers/[file], /og/books/[file], /auth/callback\n• In-Memory 24h Metadata LRU (1,000 entries), 20-Book Text LRU & Rate Limiters"]
         SupabaseUS[("🗄️ Supabase PostgreSQL (Co-Located US-East)\n• 14 RLS Tables • 19 B-Tree/GIN Indexes • 9 Stored Functions")]
         CloudflareR2US[("☁️ Cloudflare R2 Private Bucket\n(Zero-Egress covers/*.jpg & books/*.txt.gz)")]
-        GutenbergUS["🏛️ Official PG rsync & PGLAF Mirrors\n(CLI Sync & Weekly Feeds Only)"]
+        GutenbergUS["🏛️ Official PG rsync Hosts & Weekly Feeds\n(CLI Sync & Weekly Feeds Only)"]
     end
 
     subgraph GitHubOps ["GitHub Actions Autonomous CI/CD & Data Operations"]
@@ -191,7 +191,7 @@ flowchart TD
     CatalogCron -->|"Upsert 78k+ Volumes, FRBR Clusters & Two-Tier Quotes"| SupabaseUS
     CatalogCron -->|"Official Mirror Feeds (rsync / PGLAF)"| GutenbergUS
     CatalogCron <-->|"Step 2 R2 Delta & R2-First Quotes"| CloudflareR2US
-    R2Cron -.->|"Targeted rsync/HTTPS Bulk Backfill"| CloudflareR2US
+    R2Cron -.->|"Targeted rsync Bulk Backfill"| CloudflareR2US
     R2ContentScan -.->|"Read-Only ListObjectsV2 / .txt.gz Term Scan"| CloudflareR2US
     R2Cron -.->|"Conditional Delete/Force Purge: covers,book-content"| EdgeCDN
     CatalogCron -.->|"Purge Tags: catalog,quotes,translations[,r2-tags]"| EdgeCDN

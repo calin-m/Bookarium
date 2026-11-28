@@ -44,8 +44,6 @@ const UNIVERSAL_SANITIZER_FUNCTIONS = new Set([
 const URL_ALLOWLIST_GUARD_FUNCTIONS = new Set([
   'isAllowedRdfFeedUrl',
   'isAllowedCsvFeedUrl',
-  'isAllowedGutenbergAssetUrl',
-  'isAllowedPglafMirrorUrl',
   'isAllowedR2EndpointUrl',
 ]);
 
@@ -664,7 +662,7 @@ function evaluateNodeTaint(node, taintedVars, sanitizedVars, targetSink = '*') {
 
 /**
  * Extracts identifier names and their allowed sinks guarded by allowlisted URL guards
- * (`isAllowedR2EndpointUrl`, `isAllowedGutenbergAssetUrl`, `isAllowedPglafMirrorUrl`, etc.)
+ * (`isAllowedR2EndpointUrl`, `isAllowedRdfFeedUrl`, `isAllowedCsvFeedUrl`, etc.)
  * or numeric guards (`isInteger`, `isFinite`) inside an `IfStatement` test.
  */
 function extractUrlValidatorGuardedVars(testNode) {
@@ -791,7 +789,7 @@ const rules = {
           if (directTaint) {
             context.report({
               node: urlArg,
-              message: `Unsafe fetch() call with direct untrusted input from ${directTaint}. Validate URL via isAllowedR2EndpointUrl(), isAllowedGutenbergAssetUrl(), or isAllowedPglafMirrorUrl() first.`,
+              message: `Unsafe fetch() call with direct untrusted input from ${directTaint}. Validate URL via isAllowedR2EndpointUrl(), isAllowedRdfFeedUrl(), or isAllowedCsvFeedUrl() first.`,
             });
           }
         },
@@ -1867,7 +1865,7 @@ const rules = {
             if (taint) {
               context.report({
                 node: arg0,
-                message: `Tainted data from ${taint} reaches ${isNodeHttpCall ? `${objectName}.${methodName}` : 'fetch'}() sink without sanitization (SSRF risk). Validate with isAllowedR2EndpointUrl(), isAllowedGutenbergAssetUrl(), or numeric/origin sanitization first.`,
+                message: `Tainted data from ${taint} reaches ${isNodeHttpCall ? `${objectName}.${methodName}` : 'fetch'}() sink without sanitization (SSRF risk). Validate with isAllowedR2EndpointUrl(), isAllowedRdfFeedUrl(), or numeric/origin sanitization first.`,
               });
             }
             return;
@@ -2456,17 +2454,16 @@ const rules = {
 
   /**
    * 9. `bookarium-security/enforce-gutenberg-and-copyright-policy`
-   * Enforces Rule 2 & Rule 4 (Public Domain Integrity & Zero Runtime Project Gutenberg Policy):
+   * Enforces Rule 2 & Rule 4 (Public Domain Integrity & Zero Mirror Scraping Policy):
    * - Forbids `copyright=true` in query strings or URLSearchParams.set('copyright', 'true')
-   * - Forbids direct fetch('https://www.gutenberg.org/...') calls across all code
-   * - Forbids runtime fetch() calls to Project Gutenberg or mirror hosts inside `src/`
+   * - Forbids direct fetch() to www.gutenberg.org and PG/mirror hosts across both `src/` and `scripts/`
    */
   'enforce-gutenberg-and-copyright-policy': {
     meta: {
       type: 'problem',
       docs: {
         description:
-          'Enforce Cloudflare R2 runtime isolation, strict copyright=false public domain queries, and zero direct www.gutenberg.org fetches.',
+          'Enforce Cloudflare R2 runtime isolation, strict copyright=false public domain queries, and zero direct www.gutenberg.org or PG mirror fetch() calls.',
       },
       schema: [],
     },
@@ -2746,16 +2743,17 @@ const rules = {
               context.report({
                 node: urlArg,
                 message:
-                  'Project Gutenberg policy violation (Rule 2/4): direct fetch() to www.gutenberg.org is forbidden. Use Cloudflare R2 at runtime or official bulk feeds/mirrors in scheduled CLI scripts.',
+                  'Project Gutenberg policy violation (Rule 2/4): direct fetch() to www.gutenberg.org is forbidden. Use Cloudflare R2 at runtime, rsync for binary assets, or official weekly catalog feeds (https.get on /cache/epub/feeds/) in sync-gutenberg-catalog.js.',
               });
             } else if (
-              isRuntimeSrcFile &&
+              !isTestFile &&
               /^https?:\/\/(?:aleph\.gutenberg\.org|gutenberg\.pglaf\.org|gutenberg\.readingroo\.ms)\b/i.test(rawUrl)
             ) {
               context.report({
                 node: urlArg,
-                message:
-                  'Project Gutenberg policy violation (ADR-084): runtime fetch() to Project Gutenberg mirrors in src/ is forbidden. Serve books and covers strictly from Cloudflare R2 via /api/books/content.',
+                message: isRuntimeSrcFile
+                  ? 'Project Gutenberg policy violation (ADR-084): runtime fetch() to Project Gutenberg mirrors in src/ is forbidden. Serve books and covers strictly from Cloudflare R2 via /api/books/content.'
+                  : 'Project Gutenberg policy violation (Rule 2/4): bulk HTTP fetch() to Project Gutenberg mirrors in scripts/ is forbidden. Use rsync (sync-r2-assets.js), Cloudflare R2 (sync-featured-quotes.js), or weekly Node https.get catalog feeds (sync-gutenberg-catalog.js).',
               });
             }
           }

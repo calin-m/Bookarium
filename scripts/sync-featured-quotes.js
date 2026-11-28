@@ -1,29 +1,24 @@
 #!/usr/bin/env node
 /**
- * Bookarium — R2-First & Multi-Mirror Featured Quotes Extraction & Sync Pipeline
+ * Bookarium — R2-Only Featured Quotes Extraction & Sync Pipeline
  *
  * Resolves Two-Tier quote candidates via `--diff-file=quote-diff.json` (or `idx_books_download_count` + `books_pkey`
  * primary-key scans) and scans populated rows via `idx_books_with_quotes_popular`,
- * supports selectable text sources (`--source=auto|r2|mirrors`) reading private Cloudflare R2
- * (`books/<id>.txt.gz`, 0s delay) ahead of dedicated PGLAF/PG workers (`gutenberg.pglaf.org`,
- * `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) with independent `8.0s–16.0s`
- * randomized float delays and error circuit-breaker cooldowns, extracts `10–16`
- * multi-quote spreads per volume, and updates `public.books.quotes` JSONB.
+ * reading unabridged texts strictly from private Cloudflare R2 (`books/<id>.txt.gz`, `0s` delay, zero Project Gutenberg
+ * mirror requests), extracts `10–16` multi-quote spreads per volume, and updates `public.books.quotes` JSONB.
  *
  * @module scripts/sync-featured-quotes
  * @scope Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
- * @invariant Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing, failing non-zero via `shouldFailFeaturedQuotesRun` when `updated === 0` or `>= 50%` of `>= 5` attempted volumes fail, and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
+ * @invariant Enforce strict Cloudflare R2-only text retrieval (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay, zero Project Gutenberg mirror scraping fallback), failing fast when partial/malformed `R2_*` credentials exist or when `R2_*` is unconfigured (`assertValidR2ConfigIfPresent`), failing non-zero via `shouldFailFeaturedQuotesRun` when `failed > 0 && (updated === 0 || failed / (updated + failed) >= 0.5)`, and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries or counting failures, while enforcing `MAX_BOOK_TEXT_BYTES` (`15 MB`) text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available R2 text yields 0 extractable spreads.
  * @invariant Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
- * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while retaining official PGLAF/Aleph/ReadingRoo mirror fallback for scheduled/manual runs without contacting `www.gutenberg.org`, and avoids 78k-row PostgreSQL statement timeouts.
+ * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), eliminates 100% of automated HTTP mirror scraping against Project Gutenberg servers during CI quote extraction, avoids 78k-row PostgreSQL statement timeouts, and ensures uncached volumes cleanly retry on later runs after `r2:sync` populates R2.
  * @adr ADR-074, ADR-080, ADR-083, ADR-084, ADR-085, ADR-087
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
- *   node scripts/sync-featured-quotes.js --source=auto --limit=50 --delay-range=8-16 --mirrors=pglaf
  *   node scripts/sync-featured-quotes.js --source=r2 --limit=50
- *   node scripts/sync-featured-quotes.js --source=mirrors --mirrors=pglaf,aleph --ids=1342,84
- *   node scripts/sync-featured-quotes.js --schedule-gate --mirrors=pglaf
- *   node scripts/sync-featured-quotes.js --ids=1342,84,2701 --force
+ *   node scripts/sync-featured-quotes.js --source=r2 --ids=1342,84,2701 --force
+ *   node scripts/sync-featured-quotes.js --schedule-gate
  */
 
 const fs = require('fs');
@@ -33,7 +28,7 @@ const {
   PRIORITY_HERO_BOOK_IDS,
   PRIORITY_HERO_BOOK_ID_SET,
   loadEnv,
-  isR2Configured,
+  assertValidR2ConfigIfPresent,
   fetchBookTextFromR2,
 } = require('./sync-r2-assets');
 const {
@@ -42,152 +37,43 @@ const {
   createCliProgressReporter,
 } = require('./lib/cli-progress');
 
-function resolveSiteOriginFallback(env = process.env) {
-  const candidates = [
-    env.NEXT_PUBLIC_SITE_URL,
-    env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL,
-    env.VERCEL_PROJECT_PRODUCTION_URL,
-  ];
-  for (const raw of candidates) {
-    const trimmed = (raw || '').trim().replace(/\/+$/, '');
-    if (!trimmed) continue;
-    const withProtocol = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
-      ? trimmed
-      : `https://${trimmed}`;
-    try {
-      const parsed = new URL(withProtocol);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-        return parsed.origin;
-      }
-    } catch {}
-  }
-  return 'https://bookarium.vercel.app';
-}
-
-function resolveRepositoryUrl() {
-  if (process.env.NEXT_PUBLIC_GITHUB_REPO) {
-    return process.env.NEXT_PUBLIC_GITHUB_REPO.trim();
-  }
-  if (process.env.BOOKARIUM_REPO_URL) {
-    return process.env.BOOKARIUM_REPO_URL.trim();
-  }
-  if (process.env.GITHUB_REPOSITORY) {
-    return `https://github.com/${process.env.GITHUB_REPOSITORY.trim().replace(/^\/+|\/+$/g, '')}`;
-  }
-  if (process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG) {
-    return `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER.trim()}/${process.env.VERCEL_GIT_REPO_SLUG.trim()}`;
-  }
-  try {
-    const raw = require('child_process').execSync('git config --get remote.origin.url', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    if (raw) {
-      return raw.replace(/^git@([^:]+):/, 'https://$1/').replace(/\.git$/, '');
-    }
-  } catch {}
-  return resolveSiteOriginFallback(process.env);
-}
-
-function buildDescriptiveUserAgent(appName = 'Bookarium-PublicDomain-Reader', version = '1.0') {
-  const repoOrSiteUrl = resolveRepositoryUrl();
-  const email = (process.env.GUTENBERG_CONTACT_EMAIL || '').trim();
-  const contactPart = email ? `+${repoOrSiteUrl}; ${email}` : `+${repoOrSiteUrl}`;
-  return `${appName}/${version} (${contactPart})`;
-}
-
-const USER_AGENT = buildDescriptiveUserAgent();
-
-const MIRROR_SHORTCUT_MAP = {
-  pglaf: 'https://gutenberg.pglaf.org',
-  aleph: 'https://aleph.gutenberg.org',
-  readingroo: 'https://gutenberg.readingroo.ms',
-};
-
-const GUTENBERG_MIRRORS = [
-  'https://gutenberg.pglaf.org',
-  'https://aleph.gutenberg.org',
-  'https://gutenberg.readingroo.ms',
-];
-
 const DEFAULT_POPULAR_POOL_SIZE = 500;
 const DEFAULT_RECENT_POOL_SIZE = 64;
 const DEFAULT_RECENT_BATCH_RATIO = 0.2;
 const DEFAULT_MAX_PRUNE_PER_RUN = 2000;
 const PRUNE_CHUNK_SIZE = 25;
 const MAX_BOOK_TEXT_BYTES = 15 * 1024 * 1024;
-const ALLOWED_PGLAF_MIRROR_HOSTS = new Set([
-  'gutenberg.pglaf.org',
-  'aleph.gutenberg.org',
-  'gutenberg.readingroo.ms',
-]);
 
-function isAllowedPglafMirrorUrl(rawUrl) {
-  if (!rawUrl || typeof rawUrl !== 'string') return false;
-  try {
-    const parsed = new URL(rawUrl);
-    return (
-      parsed.protocol === 'https:' &&
-      ALLOWED_PGLAF_MIRROR_HOSTS.has(parsed.hostname.toLowerCase())
-    );
-  } catch {
-    return false;
-  }
-}
+const QUOTE_TEXT_SOURCES = new Set(['auto', 'r2']);
 
 /**
- * Canonical 27 Hero & Editorial Classic Book IDs imported from `scripts/sync-r2-assets.js` (`FEATURED_HERO_BOOKS`).
- */
-
-const QUOTE_TEXT_SOURCES = new Set(['auto', 'r2', 'mirrors']);
-
-/**
- * Normalizes quote text retrieval mode (`auto` | `r2` | `mirrors`).
+ * Normalizes quote text retrieval mode (`r2`; retired `mirrors` / `https` modes fail explicitly).
  */
 function normalizeQuoteTextSource(rawSource) {
   const normalized = String(rawSource || '')
     .trim()
     .toLowerCase();
-  if (normalized === 'r2' || normalized === 'r2-only') return 'r2';
+  if (!normalized || normalized === 'auto' || normalized === 'r2' || normalized === 'r2-only') {
+    return 'r2';
+  }
   if (
     normalized === 'mirrors' ||
     normalized === 'https' ||
     normalized === 'https-mirrors' ||
     normalized === 'mirrors-only'
   ) {
-    return 'mirrors';
+    throw new Error(
+      `Unsupported --source="${rawSource}". Project Gutenberg mirror HTTP scraping is retired per ToS compliance; use Cloudflare R2 (--source=r2).`
+    );
   }
-  return QUOTE_TEXT_SOURCES.has(normalized) ? normalized : 'auto';
+  throw new Error(
+    `Unsupported --source="${rawSource}". Expected r2 (or auto -> r2).`
+  );
 }
 
 /**
- * Resolves a comma-separated list of mirror shortcodes (`pglaf,aleph,readingroo`),
- * `'none'` (disable mirror fallback explicitly), or full HTTPS mirror origins
- * into canonical mirror base URLs.
+ * Canonical 27 Hero & Editorial Classic Book IDs imported from `scripts/sync-r2-assets.js` (`FEATURED_HERO_BOOKS`).
  */
-function resolveSelectedMirrors(rawMirrors) {
-  if (Array.isArray(rawMirrors) && rawMirrors.length === 0) return [];
-  if (typeof rawMirrors === 'string' && rawMirrors.trim().toLowerCase() === 'none') return [];
-  if (!rawMirrors) return [...GUTENBERG_MIRRORS];
-  const list = Array.isArray(rawMirrors)
-    ? rawMirrors
-    : String(rawMirrors)
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-
-  if (list.length === 0 || (list.length === 1 && list[0] === 'none')) return [];
-
-  const resolved = [];
-  for (const item of list) {
-    if (MIRROR_SHORTCUT_MAP[item]) {
-      resolved.push(MIRROR_SHORTCUT_MAP[item]);
-    } else if (GUTENBERG_MIRRORS.includes(item.replace(/\/+$/, ''))) {
-      resolved.push(item.replace(/\/+$/, ''));
-    }
-  }
-  return resolved.length > 0 ? Array.from(new Set(resolved)) : ['https://gutenberg.pglaf.org'];
-}
 
 function parseCliArgs(argv = process.argv.slice(2)) {
   const options = {
@@ -195,20 +81,16 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     dryRun: false,
     force: false,
     scheduleGate: false,
-    source: 'auto',
+    source: 'r2',
     minIntervalHours: 1,
     maxIntervalHours: 2,
     limit: 50,
     popularPool: DEFAULT_POPULAR_POOL_SIZE,
     recentPool: DEFAULT_RECENT_POOL_SIZE,
     maxPrunePerRun: null,
-    minDelaySec: 8,
-    maxDelaySec: 16,
-    mirrorCooldownMs: 30000,
     targetCount: 14,
     ids: null,
     diffFile: null,
-    mirrors: [...GUTENBERG_MIRRORS],
   };
 
   for (const arg of argv) {
@@ -237,25 +119,18 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     } else if (arg.startsWith('--max-prune=')) {
       const val = parseInt(arg.split('=')[1], 10);
       if (Number.isInteger(val) && val > 0) options.maxPrunePerRun = val;
-    } else if (arg.startsWith('--delay-range=')) {
-      const parts = arg.split('=')[1].split('-');
-      if (parts.length === 2) {
-        const minVal = parseFloat(parts[0]);
-        const maxVal = parseFloat(parts[1]);
-        if (Number.isFinite(minVal) && minVal >= 0) options.minDelaySec = minVal;
-        if (Number.isFinite(maxVal) && maxVal >= 0) options.maxDelaySec = maxVal;
-      }
-    } else if (arg.startsWith('--min-delay=')) {
-      const val = parseFloat(arg.split('=')[1]);
-      if (Number.isFinite(val) && val >= 0) options.minDelaySec = val;
-    } else if (arg.startsWith('--max-delay=')) {
-      const val = parseFloat(arg.split('=')[1]);
-      if (Number.isFinite(val) && val >= 0) options.maxDelaySec = val;
+    } else if (
+      arg.startsWith('--mirrors=') ||
+      arg.startsWith('--delay-range=') ||
+      arg.startsWith('--min-delay=') ||
+      arg.startsWith('--max-delay=')
+    ) {
+      throw new Error(
+        `Unsupported flag "${arg}". Project Gutenberg mirror HTTP fallback is retired; quotes sync strictly from private Cloudflare R2.`
+      );
     } else if (arg.startsWith('--target-count=')) {
       const val = parseInt(arg.split('=')[1], 10);
       if (Number.isInteger(val) && val >= 10 && val <= 16) options.targetCount = val;
-    } else if (arg.startsWith('--mirrors=')) {
-      options.mirrors = resolveSelectedMirrors(arg.split('=')[1]);
     } else if (arg.startsWith('--ids=')) {
       const rawIds = arg
         .split('=')[1]
@@ -264,10 +139,6 @@ function parseCliArgs(argv = process.argv.slice(2)) {
         .filter((n) => Number.isInteger(n) && n > 0);
       if (rawIds.length > 0) options.ids = rawIds;
     }
-  }
-
-  if (options.maxDelaySec < options.minDelaySec) {
-    options.maxDelaySec = options.minDelaySec;
   }
 
   return options;
@@ -408,153 +279,6 @@ async function evaluateScheduleGate(supabase, options, nowMs = Date.now()) {
     elapsedHours: Number((elapsedMs / 3600000).toFixed(2)),
     requiredWindowHours: Number((requiredWindowMs / 3600000).toFixed(2)),
   };
-}
-
-/**
- * Builds the canonical Project Gutenberg mirror directory path for a given book ID.
- * E.g. 8 -> "0/8", 84 -> "8/84", 1342 -> "1/3/4/1342", 64317 -> "6/4/3/1/64317"
- */
-function buildGutenbergPathDir(bookId) {
-  const str = String(bookId).trim();
-  if (str.length <= 1) {
-    return `0/${str}`;
-  }
-  const prefixDirs = str.slice(0, -1).split('').join('/');
-  return `${prefixDirs}/${str}`;
-}
-
-/**
- * Builds candidate HTTPS plain-text URLs for a single PGLAF bulk mirror.
- */
-function buildSingleMirrorCandidateUrls(bookId, mirrorBaseUrl) {
-  const dir = buildGutenbergPathDir(bookId);
-  const base = String(mirrorBaseUrl || '').replace(/\/+$/, '');
-  const filenames = [`${bookId}-0.txt`, `${bookId}.txt`, `${bookId}-8.txt`];
-  return filenames.map((fname) => `${base}/${dir}/${fname}`);
-}
-
-/**
- * Builds candidate HTTPS plain-text URLs strictly across official PGLAF bulk mirrors.
- * Never includes www.gutenberg.org.
- */
-function buildMirrorCandidateUrls(bookId, mirrors = GUTENBERG_MIRRORS) {
-  const urls = [];
-  for (const mirror of mirrors) {
-    urls.push(...buildSingleMirrorCandidateUrls(bookId, mirror));
-  }
-  return urls;
-}
-
-/**
- * Attempts to fetch plain text for a book from a single assigned PGLAF mirror.
- * Distinguishes between 404 file-variant misses and mirror-level errors (429/403/5xx/timeout).
- */
-async function fetchBookTextFromSingleMirror(
-  bookId,
-  mirrorBaseUrl,
-  fetchFn = globalThis.fetch
-) {
-  const candidateUrls = buildSingleMirrorCandidateUrls(bookId, mirrorBaseUrl);
-
-  for (const url of candidateUrls) {
-    if (!isAllowedPglafMirrorUrl(url)) {
-      return {
-        ok: false,
-        isMirrorLevelError: true,
-        status: 403,
-        error: `Blocked untrusted mirror URL: ${url}`,
-      };
-    }
-    try {
-      const response = await fetchFn(url, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          Accept: 'text/plain,*/*;q=0.8',
-        },
-        signal: AbortSignal.timeout(25000),
-      });
-
-      if (response && response.ok) {
-        if (response.url && !isAllowedPglafMirrorUrl(response.url)) {
-          return {
-            ok: false,
-            isMirrorLevelError: true,
-            status: 403,
-            error: `Blocked redirect to untrusted host: ${response.url}`,
-          };
-        }
-        const contentLength =
-          response.headers && typeof response.headers.get === 'function'
-            ? parseInt(response.headers.get('content-length') || '0', 10)
-            : 0;
-        if (Number.isFinite(contentLength) && contentLength > MAX_BOOK_TEXT_BYTES) {
-          return {
-            ok: false,
-            isMirrorLevelError: false,
-            status: 413,
-            error: `Volume #${bookId} exceeds 15 MB text limit on ${mirrorBaseUrl}`,
-          };
-        }
-        const text = await response.text();
-        if (
-          text &&
-          text.length <= MAX_BOOK_TEXT_BYTES &&
-          text.trim().length >= 500 &&
-          !/<!DOCTYPE html/i.test(text.slice(0, 300))
-        ) {
-          return {
-            ok: true,
-            text,
-            mirrorUrl: url,
-            isMirrorLevelError: false,
-          };
-        }
-      } else if (response && typeof response.status === 'number') {
-        if (response.status === 429 || response.status === 403 || response.status >= 500) {
-          return {
-            ok: false,
-            isMirrorLevelError: true,
-            status: response.status,
-            error: `HTTP ${response.status} on ${mirrorBaseUrl}`,
-          };
-        }
-      }
-    } catch (err) {
-      return {
-        ok: false,
-        isMirrorLevelError: true,
-        status: 0,
-        error: err.message || `Network error on ${mirrorBaseUrl}`,
-      };
-    }
-  }
-
-  return {
-    ok: false,
-    isMirrorLevelError: false,
-    status: 404,
-    error: `Volume #${bookId} not found on ${mirrorBaseUrl}`,
-  };
-}
-
-/**
- * Sequentially attempts PGLAF bulk mirrors until a valid plain-text body is retrieved.
- */
-async function fetchBookTextFromMirrors(bookId, fetchFn = globalThis.fetch) {
-  let lastError = null;
-  for (const mirror of GUTENBERG_MIRRORS) {
-    const res = await fetchBookTextFromSingleMirror(bookId, mirror, fetchFn);
-    if (res.ok) {
-      return { text: res.text, mirrorUrl: res.mirrorUrl };
-    }
-    lastError = new Error(res.error);
-  }
-
-  throw new Error(
-    `Failed to fetch plain text for book #${bookId} across PGLAF mirrors${
-      lastError ? `: ${lastError.message}` : ''
-    }`
-  );
 }
 
 /**
@@ -1569,26 +1293,8 @@ function computeTierProgress({
 /**
  * Formats a concise single-line description of the active quote text-retrieval strategy.
  */
-function formatTextSourceDescription(
-  textSource = 'auto',
-  { r2Configured = false, mirrors = [] } = {}
-) {
-  const mode = normalizeQuoteTextSource(textSource);
-  const mirrorHosts = (Array.isArray(mirrors) ? mirrors : [])
-    .map((m) => describeQuoteSource(m))
-    .filter((h) => h && h !== '—');
-  const mirrorLabel = mirrorHosts.length > 0 ? mirrorHosts.join(', ') : 'none (skip uncached)';
-
-  if (mode === 'r2') {
-    return 'r2 — Cloudflare R2 only (0s delay, zero mirror fallback)';
-  }
-  if (mode === 'mirrors') {
-    return `mirrors — HTTPS mirrors only (${mirrorLabel})`;
-  }
-  if (r2Configured) {
-    return `auto — Cloudflare R2 primary (0s delay) -> fallback: ${mirrorLabel}`;
-  }
-  return `auto — R2_* unset, using HTTPS mirrors: ${mirrorLabel}`;
+function formatTextSourceDescription() {
+  return 'r2 — Cloudflare R2 only (0s delay, zero external mirror requests)';
 }
 
 /**
@@ -1604,8 +1310,6 @@ function formatInitialPoolBanner({
   totalBatchCount = 0,
   outOfWindowCount = 0,
   textSource = null,
-  r2Configured = false,
-  mirrors = [],
 } = {}) {
   const topRemaining = Math.max(0, topPoolSize - topDone);
   const topPct = topPoolSize > 0 ? (Math.round((topDone / topPoolSize) * 1000) / 10).toFixed(1) : '100.0';
@@ -1623,7 +1327,7 @@ function formatInitialPoolBanner({
   ];
   if (textSource) {
     lines.push(
-      `  • Text Source:    ${formatTextSourceDescription(textSource, { r2Configured, mirrors })}`
+      `  • Text Source:    ${formatTextSourceDescription()}`
     );
   }
   if (outOfWindowCount > 0) {
@@ -1680,7 +1384,7 @@ function formatRunReport(summary, context = {}) {
   const activeSource = context.textSource || summary.textSource;
   if (activeSource) {
     lines.push(
-      `**Text Source**: \`${formatTextSourceDescription(activeSource, { r2Configured: Boolean(context.r2Configured ?? summary.r2Configured), mirrors: context.mirrors || summary.mirrors || [] })}\``,
+      `**Text Source**: \`${formatTextSourceDescription()}\``,
       ''
     );
   }
@@ -1749,16 +1453,8 @@ function formatRunReport(summary, context = {}) {
     thisRunMetrics.push(`R2 miss (skipped): ${r2MissCount}`);
   }
   lines.push(thisRunMetrics.join(' · '), '');
-  const mirrorEntries = Object.entries(summary.mirrorBreakdown || {});
-  if (summary.fromR2 > 0 || mirrorEntries.length > 0) {
-    const parts = [];
-    if (summary.fromR2 > 0) parts.push(`Cloudflare R2 ${summary.fromR2}`);
-    if (mirrorEntries.length > 0) {
-      parts.push(
-        `Mirrors: ${mirrorEntries.map(([url, n]) => `${describeQuoteSource(url)} ${n}`).join(', ')}`
-      );
-    }
-    lines.push(parts.join(' · '), '');
+  if (summary.fromR2 > 0) {
+    lines.push(`Cloudflare R2 ${summary.fromR2}`, '');
   }
 
   lines.push('### Books Processed', '');
@@ -1797,13 +1493,7 @@ function formatConsoleSummary(summary, context = {}) {
   ];
 
   if (summary.fromR2 > 0) {
-    lines.push(`  • From R2:        ${summary.fromR2} book(s) (0 mirror delay)`);
-  }
-  const mirrorEntries = Object.entries(summary.mirrorBreakdown || {});
-  if (mirrorEntries.length > 0) {
-    lines.push(
-      `  • Mirrors:        ${mirrorEntries.map(([url, n]) => `${describeQuoteSource(url)} (${n})`).join(', ')}`
-    );
+    lines.push(`  • From R2:        ${summary.fromR2} book(s) (0 external requests)`);
   }
 
   const progress = summary.progress;
@@ -2024,16 +1714,14 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   const env = deps.env || loadEnv();
   const options = { ...parseCliArgs([]), ...customOptions };
   const textSource = normalizeQuoteTextSource(options.source);
-  const r2Configured = typeof deps.fetchBookFromR2 === 'function' || isR2Configured(env);
-  if (textSource === 'r2' && !r2Configured) {
+  const validatedR2Config =
+    typeof deps.fetchBookFromR2 === 'function' ? true : Boolean(assertValidR2ConfigIfPresent(env));
+  const r2Configured = validatedR2Config;
+  if (!r2Configured) {
     throw new Error(
-      'Cloudflare R2 text_source="r2" requires R2_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY to be configured.'
+      'Cloudflare R2 text_source="r2" requires R2_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY to be configured (Project Gutenberg mirror fallback has been retired).'
     );
   }
-  const resolvedMirrors =
-    textSource === 'r2'
-      ? []
-      : resolveSelectedMirrors(deps.mirrors !== undefined ? deps.mirrors : options.mirrors);
 
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -2060,19 +1748,16 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
   const summary = {
     textSource,
     r2Configured,
-    mirrors: resolvedMirrors,
     processed: 0,
     updated: 0,
     skippedExisting: 0,
     skippedByScheduleGate: false,
     fromR2: 0,
     r2Missing: 0,
-    fromMirrors: 0,
     sentinelMarked: 0,
     pruned: 0,
     pruneStats: null,
     failed: 0,
-    mirrorBreakdown: {},
     sqlStatements: [],
     books: [],
     progress: null,
@@ -2176,13 +1861,11 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       totalBatchCount: booksToProcess.length,
       outOfWindowCount,
       textSource,
-      r2Configured,
-      mirrors: resolvedMirrors,
     });
     logger.log(banner);
   } else {
     logger.log(
-      `📚 Bookarium Featured Quotes Sync\n  • Text Source:    ${formatTextSourceDescription(textSource, { r2Configured, mirrors: resolvedMirrors })}`
+      `📚 Bookarium Featured Quotes Sync\n  • Text Source:    ${formatTextSourceDescription()}`
     );
   }
   const recordBook = (book, fields) => {
@@ -2269,8 +1952,6 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
       dryRun: options.dryRun,
       tierResolutionError: options._tierResolutionError,
       textSource,
-      r2Configured,
-      mirrors: resolvedMirrors,
     });
     logger.log(formatConsoleSummary(summary, { dryRun: options.dryRun }));
     if (summary.failed > 0) {
@@ -2407,8 +2088,6 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     return true;
   }
 
-  const mirrorWorkQueue = [];
-
   for (const book of booksToProcess) {
     summary.processed++;
     try {
@@ -2431,197 +2110,39 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         continue;
       }
 
-      const hasR2 = textSource !== 'mirrors' && r2Configured;
-      const r2Res = hasR2
-        ? typeof deps.fetchBookFromR2 === 'function'
+      const r2Res =
+        typeof deps.fetchBookFromR2 === 'function'
           ? await deps.fetchBookFromR2(book.id)
-          : await fetchBookTextFromR2(book.id, { env, fetchFn })
-        : null;
-      if (r2Res && r2Res.status === 'ok' && typeof r2Res.text === 'string' && r2Res.text.trim().length >= 500) {
+          : await fetchBookTextFromR2(book.id, { env, fetchFn });
+      if (
+        r2Res &&
+        r2Res.status === 'ok' &&
+        typeof r2Res.text === 'string' &&
+        r2Res.text.length <= MAX_BOOK_TEXT_BYTES &&
+        r2Res.text.trim().length >= 500
+      ) {
         summary.fromR2++;
         await persistExtractedBookQuotes(book, existingQuotes, r2Res.text, 'r2', 0);
-      } else if (textSource === 'r2' || resolvedMirrors.length === 0) {
+      } else {
         summary.r2Missing++;
-        const skipNote =
-          textSource === 'r2' ? 'r2-only mode' : 'no fallback mirrors enabled';
         recordBook(book, {
           outcome: 'r2-miss',
           source: 'none',
           existingQuoteCount: existingQuotes.length,
-          note: skipNote,
+          note: 'r2-only mode',
         });
         if (useCondensedProgress) {
           tickQuotesProgress();
         } else {
           logger.log(
-            `${bookPrefix(book.id)} #${book.id} "${book.title}": not cached in R2 (${skipNote}), skipped cleanly without writing placeholder.`
+            `${bookPrefix(book.id)} #${book.id} "${book.title}": not cached in R2 (r2-only mode), skipped cleanly without writing placeholder.`
           );
         }
-      } else {
-        mirrorWorkQueue.push({
-          book,
-          existingQuotes,
-          attemptedMirrors: new Set(),
-        });
       }
     } catch (err) {
       summary.failed++;
       recordBook(book, { outcome: 'failed', note: err.message });
       emitEvent(`[Error] #${book.id} "${book.title}": ${err.message}`, 'error');
-      tickQuotesProgress();
-    }
-  }
-
-  if (mirrorWorkQueue.length > 0 && resolvedMirrors.length > 0) {
-    const mirrors = resolvedMirrors;
-    const activeMirrors = new Set(mirrors);
-    let inFlightCount = 0;
-    const queueWaiters = [];
-    const notifyQueueChange = () => {
-      while (queueWaiters.length > 0) {
-        const wake = queueWaiters.shift();
-        wake();
-      }
-    };
-
-    const runMirrorWorker = async (mirrorBaseUrl) => {
-      let workerDownloads = 0;
-      let consecutiveMirrorErrors = 0;
-
-      while (activeMirrors.has(mirrorBaseUrl)) {
-        const candidateIdx = mirrorWorkQueue.findIndex(
-          (item) => !item.attemptedMirrors.has(mirrorBaseUrl)
-        );
-        if (candidateIdx === -1) {
-          if (inFlightCount === 0) {
-            break;
-          }
-          await new Promise((resolve) => queueWaiters.push(resolve));
-          continue;
-        }
-
-        const [workItem] = mirrorWorkQueue.splice(candidateIdx, 1);
-        workItem.attemptedMirrors.add(mirrorBaseUrl);
-        inFlightCount++;
-
-        let waitedMs = 0;
-        if (workerDownloads > 0) {
-          waitedMs = computeRandomDelayMs(
-            options.minDelaySec,
-            options.maxDelaySec,
-            deps.rng
-          );
-          await sleepFn(waitedMs);
-        }
-
-        workerDownloads++;
-        const fetchRes = await fetchBookTextFromSingleMirror(
-          workItem.book.id,
-          mirrorBaseUrl,
-          fetchFn
-        );
-
-        if (fetchRes.ok) {
-          consecutiveMirrorErrors = 0;
-          summary.fromMirrors++;
-          summary.mirrorBreakdown[mirrorBaseUrl] =
-            (summary.mirrorBreakdown[mirrorBaseUrl] || 0) + 1;
-          try {
-            await persistExtractedBookQuotes(
-              workItem.book,
-              workItem.existingQuotes,
-              fetchRes.text,
-              mirrorBaseUrl,
-              waitedMs
-            );
-          } catch (err) {
-            summary.failed++;
-            recordBook(workItem.book, { outcome: 'failed', source: mirrorBaseUrl, note: err.message });
-            emitEvent(`[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`, 'error');
-            tickQuotesProgress();
-          }
-          inFlightCount--;
-          notifyQueueChange();
-        } else {
-          if (fetchRes.isMirrorLevelError) {
-            consecutiveMirrorErrors++;
-            emitEvent(
-              `[Mirror Worker ${mirrorBaseUrl}] Mirror error on #${workItem.book.id}: ${fetchRes.error}`,
-              'error'
-            );
-            if (consecutiveMirrorErrors >= 2) {
-              activeMirrors.delete(mirrorBaseUrl);
-              emitEvent(
-                `[Mirror Worker ${mirrorBaseUrl}] Halting worker after ${consecutiveMirrorErrors} consecutive mirror errors.`,
-                'error'
-              );
-            }
-          }
-
-          const remainingHealthyMirrors = Array.from(activeMirrors).filter(
-            (m) => !workItem.attemptedMirrors.has(m)
-          );
-          if (remainingHealthyMirrors.length > 0) {
-            mirrorWorkQueue.push(workItem);
-          } else {
-            if (!fetchRes.isMirrorLevelError) {
-              try {
-                await saveQuotesToDatabase(workItem.book, [
-                  buildSentinelQuoteSpread(workItem.book),
-                ]);
-                summary.sentinelMarked++;
-                recordBook(workItem.book, {
-                  outcome: 'no-quotes',
-                  existingQuoteCount: workItem.existingQuotes.length,
-                  note: 'text not available on enabled mirrors',
-                });
-                const waitSuffix = waitedMs > 0 ? ` · waited ${(waitedMs / 1000).toFixed(1)}s` : '';
-                emitEvent(
-                  `${bookPrefix(workItem.book.id)} #${workItem.book.id} "${workItem.book.title}": text not available on enabled mirrors, placeholder saved (${describeQuoteSource(mirrorBaseUrl)}${waitSuffix}).`
-                );
-              } catch (err) {
-                summary.failed++;
-                recordBook(workItem.book, { outcome: 'failed', note: err.message });
-                emitEvent(
-                  `[Error] #${workItem.book.id} "${workItem.book.title}": ${err.message}`,
-                  'error'
-                );
-              }
-              tickQuotesProgress();
-            } else {
-              summary.failed++;
-              recordBook(workItem.book, {
-                outcome: 'failed',
-                note: 'enabled mirrors unavailable',
-              });
-              emitEvent(
-                `[Error] #${workItem.book.id} "${workItem.book.title}": Exhausted enabled PGLAF mirrors.`,
-                'error'
-              );
-              tickQuotesProgress();
-            }
-          }
-
-          inFlightCount--;
-          notifyQueueChange();
-
-          if (fetchRes.isMirrorLevelError && activeMirrors.has(mirrorBaseUrl)) {
-            await sleepFn(options.mirrorCooldownMs);
-          }
-        }
-      }
-    };
-
-    await Promise.all(mirrors.map((mirrorUrl) => runMirrorWorker(mirrorUrl)));
-
-    // Books left in the queue only when every enabled mirror worker halted
-    for (const leftover of mirrorWorkQueue.splice(0)) {
-      summary.failed++;
-      recordBook(leftover.book, { outcome: 'failed', note: 'all enabled mirrors halted' });
-      emitEvent(
-        `[Error] #${leftover.book.id} "${leftover.book.title}": All enabled mirror workers halted before this book was fetched.`,
-        'error'
-      );
       tickQuotesProgress();
     }
   }
@@ -2651,10 +2172,8 @@ Bookarium Featured Quotes Synchronization Engine
 Maintains the Two-Tier Bounded Quote Pool (500 Popular + 64 Recent) in public.books.quotes.
 
 Options:
-  --source=MODE         Text retrieval mode: auto (R2 first -> mirrors), r2 (R2 only, 0s delay), mirrors (PG HTTPS only)
-  --mirrors=LIST|none   Comma-separated mirrors (pglaf,aleph,readingroo) or 'none' to disable fallback
+  --source=MODE         Text retrieval mode: r2 (Cloudflare R2 only, 0s delay; auto maps to r2)
   --limit=N             Max candidate volumes to process (default: 50)
-  --delay-range=MIN-MAX Randomized mirror delay range in seconds (default: 8-16; R2 uses 0s)
   --target-count=N      Target quotes per book between 10 and 16 (default: 14)
   --ids=1342,84         Comma-separated Gutenberg IDs for targeted backfill
   --diff-file=PATH      Optional quote-diff.json handoff emitted by sync-gutenberg-catalog.js
@@ -2693,12 +2212,6 @@ if (require.main === module) {
 /* v8 ignore stop */
 
 module.exports = {
-  USER_AGENT,
-  resolveSiteOriginFallback,
-  resolveRepositoryUrl,
-  buildDescriptiveUserAgent,
-  MIRROR_SHORTCUT_MAP,
-  GUTENBERG_MIRRORS,
   QUOTE_TEXT_SOURCES,
   normalizeQuoteTextSource,
   DEFAULT_POPULAR_POOL_SIZE,
@@ -2707,18 +2220,11 @@ module.exports = {
   DEFAULT_MAX_PRUNE_PER_RUN,
   MAX_BOOK_TEXT_BYTES,
   PRIORITY_HERO_BOOK_IDS,
-  isAllowedPglafMirrorUrl,
   loadEnv,
-  resolveSelectedMirrors,
   parseCliArgs,
   computeRandomDelayMs,
   computeScheduleWindowMs,
   evaluateScheduleGate,
-  buildGutenbergPathDir,
-  buildSingleMirrorCandidateUrls,
-  buildMirrorCandidateUrls,
-  fetchBookTextFromSingleMirror,
-  fetchBookTextFromMirrors,
   stripBoilerplateAndSplitParagraphs,
   wrapCleanQuote,
   extractBookQuoteSpreads,

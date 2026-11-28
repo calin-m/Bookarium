@@ -57,7 +57,7 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
       expect(syncR2Assets.getR2Config({ ...TEST_R2_ENV, R2_BUCKET_NAME: '../bad..bucket' })).toBeNull();
     });
 
-    it('restricts R2 endpoints and PG asset URLs strictly to HTTPS allowlisted hosts', () => {
+    it('restricts R2 endpoints strictly to HTTPS allowlisted hosts', () => {
       expect(
         syncR2Assets.isAllowedR2EndpointUrl(
           'https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/bookarium-test-bucket/books/1342.txt.gz'
@@ -69,32 +69,17 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
         )
       ).toBe(false);
       expect(syncR2Assets.isAllowedR2EndpointUrl('https://evil.example.com/bucket')).toBe(false);
-
-      expect(
-        syncR2Assets.isAllowedGutenbergAssetUrl('https://gutenberg.pglaf.org/cache/epub/1342/pg1342.txt')
-      ).toBe(true);
-      expect(
-        syncR2Assets.isAllowedGutenbergAssetUrl('https://aleph.gutenberg.org/1/3/4/1342/1342-0.txt')
-      ).toBe(true);
-      expect(
-        syncR2Assets.isAllowedGutenbergAssetUrl('https://gutenberg.readingroo.ms/cache/epub/1342/pg1342.cover.medium.jpg')
-      ).toBe(true);
-      expect(
-        syncR2Assets.isAllowedGutenbergAssetUrl('https://www.gutenberg.org/cache/epub/1342/pg1342.txt')
-      ).toBe(false);
     });
   });
 
   describe('parseCliArgs & transfer engine detection', () => {
-    it('parses flags cleanly and rejects malformed CLI values', () => {
+    it('parses flags cleanly and rejects malformed or retired HTTPS CLI values', () => {
       const parsed = syncR2Assets.parseCliArgs([
         '--dry-run',
         '--limit=500',
         '--ids=1342,84,1342',
         '--cache-file=gutenberg-catalog-cache.json.gz',
         '--source=wsl-rsync',
-        '--mirror=aleph',
-        '--delay-range=2-4',
         '--max-minutes=25',
         '--books-only',
         '--force',
@@ -110,9 +95,6 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
         ids: [1342, 84],
         cacheFile: 'gutenberg-catalog-cache.json.gz',
         source: 'wsl-rsync',
-        mirrors: ['https://aleph.gutenberg.org'],
-        delayMin: 2,
-        delayMax: 4,
         maxMinutes: 25,
         syncBooks: true,
         syncCovers: false,
@@ -125,20 +107,24 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
 
       expect(() => syncR2Assets.parseCliArgs(['--limit=0'])).toThrow(/Invalid --limit/);
       expect(() => syncR2Assets.parseCliArgs(['--source=ftp'])).toThrow(/Unsupported --source/);
-      expect(() => syncR2Assets.parseCliArgs(['--mirror=www'])).toThrow(/Unsupported --mirror/);
+      expect(() => syncR2Assets.parseCliArgs(['--source=https'])).toThrow(/Unsupported --source/);
+      expect(() => syncR2Assets.parseCliArgs(['--mirror=aleph'])).toThrow(/Bulk HTTPS mirror transfers are retired/);
+      expect(() => syncR2Assets.parseCliArgs(['--delay-range=2-4'])).toThrow(/Bulk HTTPS mirror transfers are retired/);
       expect(() => syncR2Assets.parseCliArgs(['--ids=1342,abc'])).toThrow(/Invalid Gutenberg ID/);
       expect(() => syncR2Assets.parseCliArgs(['--max-minutes=-5'])).toThrow(/Invalid --max-minutes/);
     });
 
-    it('resolves rsync, wsl-rsync, or https transfer engines safely based on OS capabilities', () => {
-      expect(syncR2Assets.resolveTransferEngine('https', 'linux')).toBe('https');
+    it('resolves rsync or wsl-rsync transfer engines safely and rejects retired https mode', () => {
+      expect(() => syncR2Assets.resolveTransferEngine('https', 'linux')).toThrow(
+        /Bulk HTTPS asset sync has been retired/
+      );
       expect(syncR2Assets.resolveTransferEngine('wsl-rsync', 'win32')).toBe('wsl-rsync');
       expect(
         syncR2Assets.resolveTransferEngine('auto', 'linux', () => ({ status: 0 }))
       ).toBe('rsync');
-      expect(
+      expect(() =>
         syncR2Assets.resolveTransferEngine('auto', 'win32', () => ({ status: 1 }))
-      ).toBe('https');
+      ).toThrow(/rsync \(or Windows WSL rsync\) is required/);
       expect(
         syncR2Assets.resolveTransferEngine('rsync', 'win32', () => ({ status: 1 }))
       ).toBe('wsl-rsync');
@@ -395,11 +381,11 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
       }
     });
 
-    it('supports PGLAF HTTPS fallback, respects --max-minutes cutoff, caps huge ledgers cleanly, and skips unconfigured runs', async () => {
+    it('rejects retired HTTPS fallback mode, requires rsync/wsl-rsync binaries, caps huge ledgers cleanly, and skips unconfigured runs', async () => {
       const unconfRes = await syncR2Assets.runR2AssetSync({}, { env: {}, logger: { log: vi.fn() } });
       expect(unconfRes.skippedUnconfigured).toBe(true);
 
-      const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
+      const emptyR2Fetch = vi.fn(async (url: string, init: RequestInit = {}) => {
         const parsed = new URL(url);
         const method = String(init.method || 'GET').toUpperCase();
         if (parsed.hostname.endsWith('.r2.cloudflarestorage.com')) {
@@ -409,21 +395,28 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
           if (method === 'GET') return makeTextResponse(404, 'Not Found');
           return makeTextResponse(200, '');
         }
-        if (url.includes('1342/pg1342.txt')) {
-          return makeTextResponse(200, 'Pride and Prejudice full HTTPS body');
-        }
-        if (url.includes('1342/pg1342.cover.medium.jpg')) {
-          return makeBinaryResponse(200, Buffer.from([0xff, 0xd8, 0xff]));
-        }
-        return makeTextResponse(404, 'Missing');
+        return makeTextResponse(404, 'Not Found');
       });
 
-      const httpsRes = await syncR2Assets.runR2AssetSync(
-        { ids: [1342], source: 'https', delayMin: 0, delayMax: 0 },
-        { env: TEST_R2_ENV, fetchFn: fetchMock, sleepFn: async () => {}, logger: { log: vi.fn() } }
-      );
-      expect(httpsRes.textsUploaded).toBe(1);
-      expect(httpsRes.coversUploaded).toBe(1);
+      await expect(
+        syncR2Assets.runR2AssetSync(
+          { ids: [1342], source: 'https' },
+          { env: TEST_R2_ENV, fetchFn: emptyR2Fetch, logger: { log: vi.fn() } }
+        )
+      ).rejects.toThrow(/Bulk HTTPS asset sync has been retired/);
+
+      await expect(
+        syncR2Assets.runR2AssetSync(
+          { ids: [1342], source: 'auto' },
+          {
+            env: TEST_R2_ENV,
+            fetchFn: emptyR2Fetch,
+            platform: 'win32',
+            spawnSyncFn: () => ({ status: 1 }),
+            logger: { log: vi.fn() },
+          }
+        )
+      ).rejects.toThrow(/rsync \(or Windows WSL rsync\) is required/);
 
       const hugeChangedBooks = Array.from({ length: 120 }, (_, i) => ({
         id: i + 1,
@@ -695,20 +688,30 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
           }),
         };
 
+        const forceSpawnMock = vi.fn((_cmd: string, args: string[], opts: { cwd: string }) => {
+          const proc = new EventEmitter();
+          const sourceArg = args[args.length - 2];
+          if (sourceArg === syncR2Assets.RSYNC_EPUB_SOURCE) {
+            fs.mkdirSync(path.join(opts.cwd, '1342'), { recursive: true });
+            fs.writeFileSync(path.join(opts.cwd, '1342', 'pg1342.txt'), 'Updated full text content', 'utf8');
+          }
+          queueMicrotask(() => proc.emit('close', 0));
+          return proc;
+        });
+
         const forceLogs: string[] = [];
         const forceSummary = await syncR2Assets.runR2AssetSync(
           {
             catalogSource: 'supabase',
             force: true,
-            source: 'https',
-            delayMin: 0,
-            delayMax: 0,
+            source: 'rsync',
             purgeTagsFile: purgeFile,
           },
           {
             env: { ...TEST_R2_ENV, GITHUB_ACTIONS: 'true' },
             supabase: mockSupabase,
             fetchFn: forceFetch,
+            spawnFn: forceSpawnMock,
             sleepFn: async () => {},
             progressOptions: { ciMinTotalForPercent: 1, ciPercentStep: 50 },
             logger: { log: (m: string) => forceLogs.push(m), warn: warnSpy, error: vi.fn() },
@@ -720,7 +723,7 @@ describe('sync-r2-assets CLI & SigV4 R2 engine', () => {
         expect(forceSummary.purgeTags).toEqual(['book-content']);
         expect(fs.readFileSync(purgeFile, 'utf8')).toBe('book-content');
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read existing _meta/r2-sync-state.json.gz'));
-        expect(forceLogs.some((line) => line.includes('HTTPS [100.0% | 1 / 1]: +1 texts'))).toBe(true);
+        expect(forceLogs.some((line) => line.includes('+1 texts'))).toBe(true);
       } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
       }

@@ -17,7 +17,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-276%20Suites%20%7C%202891%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-276%20Suites%20%7C%202890%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![MSW](https://img.shields.io/badge/MSW-3.0.7-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)
 [![Code Coverage](https://img.shields.io/badge/Coverage-97.34%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
@@ -73,7 +73,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2891 tests across 276 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2890 tests across 276 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–16`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -116,10 +116,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.97)
+## 🛠️ Latest Improvements (v2.9.98)
 
-- **Explicit Project Gutenberg (PGLAF) Non-Affiliation Disclosure & Neutral Archive Framing (`src/app/copyright/page.tsx`, `src/app/privacy/page.tsx`, `src/components/presentation/Footer.tsx`)**: Clarified in Section 3 of `/copyright` and Col 4 of the site-wide `Footer` that Bookarium is an independent open-source reader not officially affiliated with, sponsored by, or endorsed by Project Gutenberg or the Project Gutenberg Literary Archive Foundation (PGLAF), and renamed Section 6 (`/copyright`) to **Upstream Open Cultural Archives** and Section 7 (`/privacy`) to **Infrastructure Providers & Open Archives** (`ADR-044`).
-- **Pass 5 Anti-Endorsement Legal Parity Enforcement & Co-Located Tests (`scripts/lib/sast-validators.js`, `scripts/lib/sast-validators.test.ts`, `src/app/copyright/page.test.tsx`, `src/app/privacy/page.test.tsx`, `src/components/presentation/Footer.test.tsx`, `docs/DECISIONS.md`)**: Extended `auditLegalDocumentationParity` to fail closed if `/copyright` drops explicit PGLAF non-affiliation tokens (`Project Gutenberg Literary Archive Foundation`, `not officially affiliated`) or if `/copyright` or `/privacy` reintroduce implied-partnership headings (`Open Cultural Preservation Partners`, `Infrastructure Partners`), with matching UI and adversarial SAST tests (`ADR-073`).
+- **Zero Bulk PG HTTP Scraping Across `r2:sync`, `quotes:sync`, Workflows & AST Security Rules (`scripts/sync-r2-assets.js`, `scripts/sync-featured-quotes.js`, `scripts/sync-gutenberg-catalog.js`, `.github/workflows/r2-sync.yml`, `.github/workflows/catalog-sync.yml`, `.github/workflows/quotes-sync.yml`, `scripts/eslint-rules/bookarium-security.js`, `scripts/lib/sast-validators.js`, `src/config/api-endpoints.ts`)**: Retired all bulk HTTPS mirror fallback modes (`--source=https`, `--source=mirrors`, `--mirror=`, `--delay-range=`, `gutenberg.readingroo.ms` feed/asset scraping, and unused `GUTENBERG_*_BASE_URL` constants); enforced native/WSL `rsync` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org`) for R2 asset syncs, Cloudflare R2-only reads (`books/<id>.txt.gz`) for quote extraction, strict `gutenberg.pglaf.org` / `aleph.gutenberg.org` weekly CSV/RDF feeds, AST bans on PG/mirror `fetch()` across both `src/` and `scripts/`, and SAST `/copyright` disclosure parity checks (`ADR-083`, `ADR-084`, `ADR-073`).
+- **Complete Volume Header License Colophon Preservation & Copyright Manifest Alignment (`src/lib/gutenberg/segmentation.ts`, `src/app/copyright/page.tsx`, `src/lib/gutenberg/segmentation.test.ts`, `src/app/copyright/page.test.tsx`)**: Preserved Gutenberg header license/trademark notices (`preBody` including Section `1.E.1`) inside `sections[1]` (`Colophon & License`) whenever `Complete Volume` fallback segmentation activates without shifting `sections[0]` offsets for existing bookmarks or highlights, and updated `/copyright` Section 3 to reflect strict `rsync` bulk asset transfers, weekly `pglaf`/`aleph` catalog feeds, and private R2-only quote extraction (`ADR-084`, `ADR-073`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -134,7 +134,7 @@ Bookarium offers a **100% Free, End-User Zero-Key Reading Experience** powered b
 |---|---|---|
 | **Dedicated Supabase Catalog** | [`public.books`](#step-3-populate-public-domain-catalog--private-cloudflare-r2-storage) (PostgreSQL) | Primary catalog provider hosting 78,000+ Project Gutenberg titles with automated GIN full-text search (`search_vector`) and pre-computed author lifespan indexes, delivering sub-50ms single-book copyright verification, consistent ~1–2s 32-volume catalog page searches, and zero-egress searches. |
 | **Bundled Curated Classics Archive** | [`src/lib/catalog/curated-fallback.ts`](src/lib/catalog/curated-fallback.ts) | Zero-network bundled classic anthology (`FEATURED_HERO_BOOKS`, strict `copyright=false` jurisdictional filtering) automatically serving `/api/books` searches during offline-first previews or unconfigured local dev without external API dependencies (`ADR-080`). |
-| **Cloudflare R2 & Archive Feeds** | Private R2 Bucket • [`gutenberg.org`](https://www.gutenberg.org/) | Zero-egress private Cloudflare R2 storage serving pre-seeded cover artwork (`covers/<id>.jpg`) and gzipped public-domain texts (`books/<id>.txt.gz`, failing closed `404`/`503` without `R2_*` and zero runtime PG fallback), paired with background CLI multi-host `rsync` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org`) and official PGLAF mirror feeds (`gutenberg.pglaf.org`, `aleph.gutenberg.org`, `gutenberg.readingroo.ms`) (`ADR-082`, `ADR-083`, `ADR-084`). *(Note: Hosting the full 78k+ catalog exceeds Cloudflare R2's 10 GB free-tier allowance — see [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md)).* |
+| **Cloudflare R2 & Archive Feeds** | Private R2 Bucket • [`gutenberg.org`](https://www.gutenberg.org/) | Zero-egress private Cloudflare R2 storage serving pre-seeded cover artwork (`covers/<id>.jpg`) and gzipped public-domain texts (`books/<id>.txt.gz`, failing closed `404`/`503` without `R2_*` and zero runtime PG fallback), paired strictly with background CLI multi-host `rsync` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org`) for bulk texts/covers and official weekly catalog CSV/RDF feeds (`gutenberg.pglaf.org`, `aleph.gutenberg.org`) (`ADR-082`, `ADR-083`, `ADR-084`). *(Note: Hosting the full 78k+ catalog exceeds Cloudflare R2's 10 GB free-tier allowance — see [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md)).* |
 | **Wikidata SPARQL Knowledge Graph** | [`query.wikidata.org`](https://query.wikidata.org/) • [`CC0 1.0`](https://www.wikidata.org/) | Open public-domain bibliographic knowledge graph (`wdt:P2034` Project Gutenberg eBook ID, `wdt:P407` / `wdt:P424` language of work) powering relational FRBR work clustering across multilingual editions (`public.book_translations`). |
 | **Supabase (Auth, Sync & Catalog)** | [`supabase.com`](https://supabase.com/) | Cloud authentication, user library synchronization (bookshelves, annotations, progress, streaks, accolades) with RLS user isolation, and dedicated public domain catalog. |
 | **Vercel Edge Platform** | [`vercel.com`](https://vercel.com/) | High-performance edge deployment, dynamic SSR route handlers, zero-config production caching, global CDN delivery, and cookie-less aggregate performance telemetry (Vercel Web Analytics & Speed Insights). |
@@ -312,7 +312,7 @@ flowchart TD
     subgraph UpstreamServices ["100% Public Domain & Cloud Infrastructure"]
         CuratedArchive["📚 Bundled Curated Archive\n(featured-books.ts • 27 Classics)"]
         CloudflareR2[("☁️ Cloudflare R2 Private Bucket\n(covers/{id}.jpg • books/{id}.txt.gz)")]
-        GutenbergCDN["🌐 Official PG rsync & PGLAF Mirrors (CLI Only)\n(gutenberg.pglaf.org • aleph.gutenberg.org • rsync.ibiblio.org • gutenberg.readingroo.ms)"]
+        GutenbergCDN["🌐 Official PG rsync & Weekly Feeds (CLI Only)\n(aleph.gutenberg.org • rsync.ibiblio.org • gutenberg.pglaf.org)"]
         WikidataSPARQL["🌐 Wikidata SPARQL (CC0 1.0)\n(P2034 Gutenberg ID & P407/P424 Language Clusters)"]
         SupabaseCloud[("⚡ Supabase Cloud (PostgreSQL)\n(public.books, book_translations, profiles, shelves, progress, habits, accolades)")]
         SyncEngine["🔄 Gutenberg Catalog Sync Engine\n(scripts/sync-gutenberg-catalog.js • .github/workflows/catalog-sync.yml)"]
@@ -467,10 +467,9 @@ flowchart TD
     SyncTranslations -.->|"Wikidata P2034 Query & Fallback Snapshot"| WikidataSPARQL
     SyncR2 <-->|"ListObjectsV2 / PutObject / DeleteObject & Merged 90d State"| CloudflareR2
     ScanR2 -.->|"Read-Only ListObjectsV2 / .txt.gz Term Audit"| CloudflareR2
-    SyncR2 -.->|"aleph ↔ ibiblio rsync --files-from / PGLAF HTTPS Fallback"| GutenbergCDN
+    SyncR2 -.->|"aleph ↔ ibiblio rsync --files-from (CLI Only)"| GutenbergCDN
     SyncQuotes -->|"Weekly Delta & On-Demand Two-Tier Quotes JSONB Upsert"| SupabaseCloud
-    SyncQuotes -.->|"R2 books/{id}.txt.gz First (0s Delay) when R2 Configured"| CloudflareR2
-    SyncQuotes -.->|"8.0s–16.0s Float-Paced 3-Mirror Fallback (pglaf,aleph,readingroo)"| GutenbergCDN
+    SyncQuotes -.->|"Strict R2-Only books/{id}.txt.gz Reads (0s External Delay)"| CloudflareR2
     SyncEngine -.->|"Live Run: Purge catalog,quotes,translations[,r2-tags]"| PurgeVercel
     SyncR2 -.->|"Delete/Force Overwrite: Conditional covers/book-content Purge"| PurgeVercel
     SyncTranslations -.->|"Manual Live Run: Purge translations"| PurgeVercel
@@ -633,20 +632,20 @@ npm run catalog:sync -- --cache-file=gutenberg-catalog-cache.json.gz --diff-outp
 >      1. **Catalog Sync (`catalog:sync`)**: Restores the permanent **`catalog-cache` GitHub Release snapshot** (`gutenberg-catalog-cache.json.gz` verified against its `.sha256` sidecar via `crypto.timingSafeEqual`, preserving cached/DB `copyright: true` flags and deferring unverified new entries under RDF outages via `reconcileBatchWithoutRdfRights`, while diffing all 78k+ catalog rows and withdrawn IDs 100% in RAM to save `~39 MB/week` of Supabase read egress), streams `rdf-files.tar.bz2` and `pg_catalog.csv.gz` across official Gutenberg mirrors with `Content-Length` truncation and non-zero `tar` guards plus wire `SHA-256` summary logging, exact-diff upserts new/changed books and reconciles withdrawn IDs in `public.books`, emits `quote-diff.json`, and **immediately** updates `catalog-cache` Release assets (`>= 50,000` floor).
 >      2. **Cloudflare R2 Delta Asset Sync (`r2:sync --source=rsync --rsync-host=auto --max-minutes=25`, `continue-on-error: true` fault-isolated)**: Audits R2 `books/` & `covers/` keys via `ListObjectsV2`, skips permanently missing assets cached in `_meta/r2-sync-state.json.gz` (`90-day` TTL with HTTP/corrupt read protection, race-safe union merges, and `try ... finally` checkpoints), deletes copyrighted/withdrawn items (`DeleteObject`), uploads missing `.txt.gz`/`.jpg` deltas via multi-host `aleph.gutenberg.org` ↔ `rsync.ibiblio.org` targeted `rsync --files-from` + `DEFAULT_R2_PUT_CONCURRENCY = 8`, emits conditional `--purge-tags-file` tags on deletes/`--force` overwrites, and logs `Bucket Coverage`, `rsync Host Order / Used`, & bounded `Changed Volumes` tables to `$GITHUB_STEP_SUMMARY`. *(Skips `exit 0` only when all 4 `R2_*` secrets are unset; fails fast on partial/malformed configs).*
 >      3. **Relational Translations Sync (`translations:sync`, `continue-on-error: true` fault-isolated)**: Queries Wikidata `P2034` (`45,000ms` socket timeout with offline snapshot fallback), runs retry-hardened FK pre-checks (`filterValidCatalogBookIds`) + bisected `upsertTranslationBatchesWithRetry` batches into `public.book_translations`.
->      4. **Featured Quotes Delta Sync (`quotes:sync --source=auto --mirrors=pglaf,aleph,readingroo --diff-file=quote-diff.json`, `continue-on-error: true` fault-isolated)**: Consumes `quote-diff.json`, reads `books/<id>.txt.gz` from private R2 first (0s delay) ahead of 3-mirror PG fallback (`8.0s–16.0s` float pacing) to ingest `10–16` multi-quote spreads across the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)**, prunes Option-A `1-for-1` out-of-window surplus up to `2,000` books per run (`--max-prune`), publishes `From R2`, `Out-of-Window (Pruned)` & `🧹 Pruned` telemetry (`$GITHUB_STEP_SUMMARY`), and evaluates infra failure thresholds via `shouldFailFeaturedQuotesRun`.
+>      4. **Featured Quotes Delta Sync (`quotes:sync --source=r2 --diff-file=quote-diff.json`, `continue-on-error: true` fault-isolated)**: Consumes `quote-diff.json` and reads `books/<id>.txt.gz` strictly from private R2 (`0s` external mirror delay, skipping gracefully with `exit 0` when all 4 `R2_*` secrets are unset and recording uncached volumes as non-sentinel `r2-miss` skips) to ingest `10–16` multi-quote spreads across the **Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`)**, prunes Option-A `1-for-1` out-of-window surplus up to `2,000` books per run (`--max-prune`), publishes `From R2`, `Out-of-Window (Pruned)` & `🧹 Pruned` telemetry (`$GITHUB_STEP_SUMMARY`), and evaluates infra failure thresholds via `shouldFailFeaturedQuotesRun`.
 >      5. **Vercel Edge Cache Purge (`node scripts/purge-vercel-cache.js --tags=catalog,quotes,translations[,r2-tags]`) & Final Outcome Verification**: Runs when `dry_run != 'true'` and catalog/translations/quotes succeeded (`if: always()`), followed by final step outcome verification so transient downstream failures surface clearly without blocking cache purges.
 > 2. **Automated `catalog-cache` Tag Sync & Manual Utility Workflows ([`catalog-tag-sync.yml`](.github/workflows/catalog-tag-sync.yml), [`r2-sync.yml`](.github/workflows/r2-sync.yml), [`r2-content-scan.yml`](.github/workflows/r2-content-scan.yml), [`translations-sync.yml`](.github/workflows/translations-sync.yml), [`quotes-sync.yml`](.github/workflows/quotes-sync.yml) & [`cache-purge.yml`](.github/workflows/cache-purge.yml))**:
 >    - [`catalog-tag-sync.yml`](.github/workflows/catalog-tag-sync.yml) (`push` to `master` + `workflow_dispatch`) advances `refs/tags/catalog-cache` in place without touching `gutenberg-catalog-cache.json.gz` or `.sha256` (so GitHub Release `Source code (zip)`/`(tar.gz)` stay current alongside code pushes, while catalog snapshots only update on live `catalog-sync.yml` runs).
->    - [`r2-sync.yml`](.github/workflows/r2-sync.yml) provides a manual `workflow_dispatch` workflow (`90m` timeout / `max-minutes=75`) supporting selectable `catalog_source` (`auto`, `snapshot`, `supabase`) and `rsync_host` (`auto` / `aleph` $\rightarrow$ `ibiblio`, or `ibiblio` $\rightarrow$ `aleph`) for bulk initial R2 seeding or ID repairs via multi-host `rsync` or `https`, conditionally purging `covers`/`book-content` tags only when `r2-purge-tags.txt` is non-empty.
->    - [`r2-content-scan.yml`](.github/workflows/r2-content-scan.yml) provides a zero-`npm ci` manual `workflow_dispatch` audit (`60m` timeout) scanning stored `books/<id>.txt.gz` objects for configurable terms (`asiafilm` default) with `--dry-run` `0`-Class-B previews and `$GITHUB_STEP_SUMMARY` reports.
->    - Configured as `workflow_dispatch`-only manual utilities (no overlapping cron schedules and no 60-day GitHub Actions inactivity warnings) so you can trigger targeted translation updates or custom quote backfills (`text_source`: `auto` | `r2` | `mirrors`, `limit`, `ids`, `mirror_pglaf`/`mirror_aleph`/`mirror_readingroo`, `force_refresh`, `dry_run`), each automatically invalidating its corresponding Vercel Edge cache tag (`translations` or `quotes`) when `dry_run != 'true'`.
+>    - [`r2-sync.yml`](.github/workflows/r2-sync.yml) provides a manual `workflow_dispatch` workflow (`90m` timeout / `max-minutes=75`) supporting selectable `catalog_source` (`auto`, `snapshot`, `supabase`), `source` (`auto`, `rsync`, `wsl-rsync`), and `rsync_host` (`auto` / `aleph` $\rightarrow$ `ibiblio`, or `ibiblio` $\rightarrow$ `aleph`) for bulk initial R2 seeding or ID repairs strictly via multi-host `rsync` (zero bulk HTTP scraping), conditionally purging `covers`/`book-content` tags only when `r2-purge-tags.txt` is non-empty.
+>    - [`r2-content-scan.yml`](.github/workflows/r2-content-scan.yml) (`workflow_dispatch`) provides a zero-`npm ci` manual `workflow_dispatch` audit (`60m` timeout) scanning stored `books/<id>.txt.gz` objects for configurable terms (`asiafilm` default) with `--dry-run` `0`-Class-B previews and `$GITHUB_STEP_SUMMARY` reports.
+>    - Configured as `workflow_dispatch`-only manual utilities (no overlapping cron schedules and no 60-day GitHub Actions inactivity warnings) so you can trigger targeted translation updates or R2-only quote backfills (`limit`, `target_count`, `ids`, `force_refresh`, `dry_run` reading private R2 `books/<id>.txt.gz`), each automatically invalidating its corresponding Vercel Edge cache tag (`translations` or `quotes`) when `dry_run != 'true'`.
 >    - [`cache-purge.yml`](.github/workflows/cache-purge.yml) (`Manual Cache Purge`) provides a zero-`npm ci` standalone workflow with unchecked-by-default tag checkboxes (`purge_catalog`, `purge_quotes`, `purge_translations`, `purge_covers`, `purge_book_content` requiring at least one selected via fail-fast validation), `target` (`production` / `preview`), and `dry_run`.
 
 #### Option B: Curated Masterworks Starter Seed (10 Books Metadata Only)
 ```bash
 npm run catalog:ingest -- --curated --dry-run
 # 1. Paste and run generated supabase/seed_books.sql in the Supabase SQL Editor (populates metadata rows)
-# 2. Seed matching covers/texts into private Cloudflare R2 via Option E (`npm run r2:sync -- --ids=1342,84,... --source=https`)
+# 2. Seed matching covers/texts into private Cloudflare R2 via Option E (`npm run r2:sync -- --ids=1342,84,... --source=rsync`)
 ```
 
 #### Option C: Ingest Relational Translations (Multilingual Edition Links)
@@ -659,9 +658,9 @@ npm run translations:sync -- --all          # Full live translation clustering &
 #### Option D: Ingest Featured Literary Quotes (`10–16` Multi-Quote Spreads/Book)
 ```bash
 npm run quotes:sync -- --dry-run            # Generates supabase/seed_quotes.sql locally without mutating Supabase
-npm run quotes:sync -- --ids=1342,84,2701   # Sync specific classics by Gutenberg ID
-npm run quotes:sync -- --limit=50           # Live Two-Tier batch (40 Popular + 10 Recent)
-npm run quotes:sync -- --ids=1342 --force   # Re-extract & overwrite quotes for specific IDs
+npm run quotes:sync -- --ids=1342,84,2701   # Sync specific classics by Gutenberg ID from R2
+npm run quotes:sync -- --limit=50           # Live Two-Tier batch (40 Popular + 10 Recent) from R2
+npm run quotes:sync -- --ids=1342 --force   # Re-extract & overwrite quotes for specific IDs from R2
 ```
 
 #### Option E: Provision & Synchronize Private Cloudflare R2 Covers & Gzipped Texts
@@ -670,13 +669,14 @@ npm run quotes:sync -- --ids=1342 --force   # Re-extract & overwrite quotes for 
    - **Object Read Only** (for Vercel Production Runtime & local `.env.local` web app reads).
    - **Object Read & Write** scoped to `bookarium-assets` (for CLI `npm run r2:sync` & GitHub Actions Secrets).
    - *(Note: Storing all `~78,000+` covers and `.txt.gz` volumes exceeds Cloudflare R2's `10 GB` free storage allowance and incurs standard R2 storage billing).*
-3. Seed missing assets (omit `--cache-file` if you did not save `gutenberg-catalog-cache.json.gz` in Option A, or use `--source=wsl-rsync` / `--source=https` on Windows):
+3. Seed missing assets (omit `--cache-file` if you did not save `gutenberg-catalog-cache.json.gz` in Option A, or use `--source=wsl-rsync` on Windows):
 
 ```bash
 npm run r2:sync -- --dry-run --limit=100                 # Inspect R2 inventory & delta plan
-npm run r2:sync -- --ids=1342,84 --source=https --force   # Upload/refresh specific classics via PGLAF HTTPS
+npm run r2:sync -- --ids=1342,84 --source=rsync --force  # Upload/refresh specific classics via rsync
 npm run r2:sync -- --cache-file=gutenberg-catalog-cache.json.gz --source=rsync --max-minutes=25
 npm run r2:sync -- --source=wsl-rsync --max-minutes=25    # Direct Supabase PK scan + WSL rsync on Windows
+```
 npm run r2:scan -- --dry-run                             # Count stored R2 books (0 Class B reads)
 npm run r2:scan                                          # Scan stored books/*.txt.gz for 'asiafilm'
 ```
@@ -744,11 +744,11 @@ Bookarium enforces an automated 7-Pillar SAST & OWASP defense-in-depth model acr
 | `npm run docs:sync` | Auto-generates `docs/ARCHITECTURE.md` (+ `docs/architecture/*.md`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `docs/GITHUB_ACTIONS.md` workflow/SHA tables, `ROADMAP.md`, `CHANGELOG.md`, `SECURITY.md`, and `docs/QUALITY_AUDIT_REPORT.md` from source AST & YAML |
 | `npm run report` | Regenerates `docs/QUALITY_AUDIT_REPORT.md` & `docs/quality-audit-results.json` standalone |
 | `npm run catalog:sync` | Synchronizes Project Gutenberg's catalog feed into Supabase via cached RAM diffs and emits quote-diff candidates ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
-| `npm run r2:sync` | Synchronizes missing public-domain `.txt.gz` texts & `.jpg` covers into private Cloudflare R2 via `ListObjectsV2` + `rsync --files-from` / HTTPS (with checkpointed state protection, bounded concurrency, and conditional `covers`/`book-content` purge tags) and prunes copyrighted/withdrawn keys ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
+| `npm run r2:sync` | Synchronizes missing public-domain `.txt.gz` texts & `.jpg` covers into private Cloudflare R2 strictly via `ListObjectsV2` + `rsync --files-from` (`aleph.gutenberg.org` ↔ `rsync.ibiblio.org` / Windows `wsl-rsync` with checkpointed state protection, bounded concurrency, and conditional `covers`/`book-content` purge tags) and prunes copyrighted/withdrawn keys ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
 | `npm run r2:scan` | Scans stored R2 `books/<id>.txt.gz` texts for unwanted or injected terms (`asiafilm` default) using zero third-party dependencies, `0` Vercel/Supabase compute, and `$0` R2 egress ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
 | `npm run catalog:ingest` | Generates idempotent curated starter catalog metadata (`supabase/seed_books.sql`) for local setup *(legacy `--with-content` scraping deprecated in favor of R2)* |
 | `npm run translations:sync` | Clusters multilingual FRBR editions via Wikidata SPARQL and batch-upserts `public.book_translations` ([Actions Runbook](docs/GITHUB_ACTIONS.md)) |
-| `npm run quotes:sync` | Maintains the Two-Tier bounded quote pool in `public.books.quotes` reading R2 `.txt.gz` first when configured ahead of 3-mirror PG fallback (`pglaf,aleph,readingroo` weekly) and CI Run Reports ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
+| `npm run quotes:sync` | Maintains the Two-Tier bounded quote pool in `public.books.quotes` strictly reading private R2 `.txt.gz` (`0s` external mirror delay, non-sentinel `r2-miss` skips) with CI Run Reports ([Pipeline Guide](docs/PIPELINE_GUIDE.md)) |
 | `npm run build` / `npm start` | Compiles optimized Next.js 16 production bundle and serves production build locally |
 
 > ⚡ **Running in GitHub Actions?** See [**`docs/GITHUB_ACTIONS.md`**](docs/GITHUB_ACTIONS.md) for how these commands and security checks execute across all **11** workflows (`.github/workflows/catalog-sync.yml`, `catalog-tag-sync.yml`, `r2-sync.yml`, `r2-content-scan.yml`, `quotes-sync.yml`, `translations-sync.yml`, `cache-purge.yml`, `ci.yml`, `codeql.yml`, `dependency-review.yml`, and `release.yml`, including dry-run flags and required secrets).

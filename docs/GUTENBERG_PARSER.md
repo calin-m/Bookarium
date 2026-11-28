@@ -1,7 +1,7 @@
 # Project Gutenberg Text Processing & Segmentation Engine — Bookarium
 
 > **Auto-Generated Living Reference**: Programmatically compiled from Source AST via `scripts/generate-parser-docs.js` (Governance Rule 2).  
-> **Last Synchronized**: `2026-11-16`  
+> **Last Synchronized**: `2026-11-28`  
 > **Target Subsystem**: `src/lib/gutenberg/` (100% Client/Worker Compatible, Zero Node.js Dependencies)
 
 ---
@@ -182,8 +182,8 @@ Splits prose without ever breaking words across virtual page turns using a 3-tie
 - **Zero-Offset-Shift Display Deduplication**: Strips the redundant leading heading/subtitle line on Page 1 when the Reader Surface renders `<h2>{chapter.displayTitle}</h2>` above it, while keeping `chapter.content` unchanged during pagination and search indexing.
 
 ### 7. Single-Section Colophon & License Preservation (`segmentBookChapters`)
-- When an unabridged volume contains no recognizable structural chapter headings (`splitIndices.length === 0`) and falls back to a single `Complete Volume` section at `index: 0`, the parser still inspects `licenseContent` extracted after `*** END OF THE PROJECT GUTENBERG EBOOK ... ***`.
-- If an explicit Project Gutenberg footer/license marker is present, a dedicated `Colophon & License` section (`id: "colophon-license"`) is appended at `index: 1` to guarantee 100% Project Gutenberg trademark and license compliance on single-section monographs, essays, and plays.
+- When an unabridged volume contains no recognizable structural chapter headings (`splitIndices.length === 0`) and falls back to a single `Complete Volume` section at `index: 0` (leaving body offsets unshifted for saved bookmarks/highlights), the parser inspects both `postBody` extracted after `*** END OF THE PROJECT GUTENBERG EBOOK ... ***` and any `preBody` header notice preceding `*** START OF THE PROJECT GUTENBERG EBOOK ... ***` (including Project Gutenberg Section `1.E.1`).
+- Whenever either `postBody` or start-marker-bounded `preBody` text is present, a dedicated `Colophon & License` section (`id: "colophon-license"`) is appended at `index: 1` containing `[postBody.trim(), startMatch ? preBody.trim() : ''].filter(Boolean)` to guarantee 100% Project Gutenberg trademark and license compliance on single-section monographs, essays, and plays.
 
 ---
 
