@@ -27,7 +27,7 @@ ALTER TABLE supabase_migrations.schema_migrations ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT,
-  username TEXT UNIQUE,
+  username TEXT,
   bio TEXT,
   bio_book_id INTEGER,
   bio_book_title TEXT,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- Idempotent column additions for existing installations
 ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS username TEXT UNIQUE,
+  ADD COLUMN IF NOT EXISTS username TEXT,
   ADD COLUMN IF NOT EXISTS bio TEXT,
   ADD COLUMN IF NOT EXISTS bio_book_id INTEGER,
   ADD COLUMN IF NOT EXISTS bio_book_title TEXT,
@@ -57,6 +57,10 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS show_saved_books BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS show_custom_shelves BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS preferences JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- Drop redundant case-sensitive UNIQUE constraint superseded by unique_profile_username_lower
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_username_key;
 
 -- Case-insensitive unique index for public scholar handles
 CREATE UNIQUE INDEX IF NOT EXISTS unique_profile_username_lower
@@ -303,6 +307,13 @@ CREATE POLICY "Users can insert their own favorites"
   TO authenticated
   WITH CHECK ((select auth.uid()) = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own favorites" ON public.user_favorites;
+CREATE POLICY "Users can update their own favorites"
+  ON public.user_favorites FOR UPDATE
+  TO authenticated
+  USING ((select auth.uid()) = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
+
 DROP POLICY IF EXISTS "Users can delete their own favorites" ON public.user_favorites;
 CREATE POLICY "Users can delete their own favorites"
   ON public.user_favorites FOR DELETE
@@ -401,6 +412,9 @@ CREATE POLICY "Users can delete their own annotations"
 
 CREATE INDEX IF NOT EXISTS idx_user_annotations_user_book 
   ON public.user_annotations(user_id, book_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_annotations_book_user
+  ON public.user_annotations(book_id, user_id);
 
 -- ============================================================================
 -- 7. User Book Curation Table (Personal 1-5 Star Ratings & Reading Statuses)
@@ -828,11 +842,7 @@ CREATE POLICY "Service role can manage book translations"
 CREATE TABLE IF NOT EXISTS public.reader_circles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  requester_username TEXT NOT NULL DEFAULT '',
-  requester_display_name TEXT NOT NULL DEFAULT 'Scholar',
   recipient_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  recipient_username TEXT NOT NULL DEFAULT '',
-  recipient_display_name TEXT NOT NULL DEFAULT 'Scholar',
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -840,14 +850,25 @@ CREATE TABLE IF NOT EXISTS public.reader_circles (
   CHECK (requester_id <> recipient_id)
 );
 
-ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS requester_username TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS requester_display_name TEXT NOT NULL DEFAULT 'Scholar';
-ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS recipient_username TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS recipient_display_name TEXT NOT NULL DEFAULT 'Scholar';
+-- Safe idempotent deduplication of any pre-existing symmetric (A->B / B->A) pairs before enforcing undirected uniqueness
+DO $$
+BEGIN
+  DELETE FROM public.reader_circles a
+  USING public.reader_circles b
+  WHERE a.ctid <> b.ctid
+    AND LEAST(a.requester_id, a.recipient_id) = LEAST(b.requester_id, b.recipient_id)
+    AND GREATEST(a.requester_id, a.recipient_id) = GREATEST(b.requester_id, b.recipient_id)
+    AND (
+      (a.status = 'pending' AND b.status = 'accepted')
+      OR (a.status = b.status AND (a.created_at > b.created_at OR (a.created_at = b.created_at AND a.id > b.id)))
+    );
+END $$;
 
 -- Note: idx_reader_circles_requester is dropped because requester_id is the leading column of UNIQUE(requester_id, recipient_id)
 DROP INDEX IF EXISTS public.idx_reader_circles_requester;
 CREATE INDEX IF NOT EXISTS idx_reader_circles_recipient ON public.reader_circles(recipient_id);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_reader_circles_pair
+  ON public.reader_circles (LEAST(requester_id, recipient_id), GREATEST(requester_id, recipient_id));
 
 ALTER TABLE public.reader_circles ENABLE ROW LEVEL SECURITY;
 
@@ -885,11 +906,7 @@ CREATE TABLE IF NOT EXISTS public.symposium_sessions (
   book_id INTEGER NOT NULL,
   book_title TEXT NOT NULL DEFAULT '',
   host_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  host_username TEXT NOT NULL DEFAULT '',
-  host_display_name TEXT NOT NULL DEFAULT 'Scholar',
   fellow_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  fellow_username TEXT NOT NULL DEFAULT '',
-  fellow_display_name TEXT NOT NULL DEFAULT 'Scholar',
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed')),
   host_chapter INTEGER NOT NULL DEFAULT 0,
   host_progress INTEGER NOT NULL DEFAULT 0 CHECK (host_progress >= 0 AND host_progress <= 100),
@@ -902,17 +919,31 @@ CREATE TABLE IF NOT EXISTS public.symposium_sessions (
 );
 
 ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS book_title TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_username TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_display_name TEXT NOT NULL DEFAULT 'Scholar';
-ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_username TEXT NOT NULL DEFAULT '';
-ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_display_name TEXT NOT NULL DEFAULT 'Scholar';
 ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_chapter INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS host_progress INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_chapter INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_progress INTEGER NOT NULL DEFAULT 0;
 
+-- Safe idempotent deduplication of any pre-existing symmetric (book_id, A->B / B->A) pacts before enforcing undirected uniqueness
+DO $$
+BEGIN
+  DELETE FROM public.symposium_sessions a
+  USING public.symposium_sessions b
+  WHERE a.ctid <> b.ctid
+    AND a.book_id = b.book_id
+    AND LEAST(a.host_id, a.fellow_id) = LEAST(b.host_id, b.fellow_id)
+    AND GREATEST(a.host_id, a.fellow_id) = GREATEST(b.host_id, b.fellow_id)
+    AND (
+      (CASE a.status WHEN 'completed' THEN 3 WHEN 'active' THEN 2 ELSE 1 END)
+        < (CASE b.status WHEN 'completed' THEN 3 WHEN 'active' THEN 2 ELSE 1 END)
+      OR (a.status = b.status AND (a.created_at > b.created_at OR (a.created_at = b.created_at AND a.id > b.id)))
+    );
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_symposium_sessions_host ON public.symposium_sessions(host_id);
 CREATE INDEX IF NOT EXISTS idx_symposium_sessions_fellow ON public.symposium_sessions(fellow_id);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_symposium_sessions_pair
+  ON public.symposium_sessions (book_id, LEAST(host_id, fellow_id), GREATEST(host_id, fellow_id));
 -- Note: idx_symposium_sessions_book is dropped because book_id is the leading column of UNIQUE(book_id, host_id, fellow_id)
 DROP INDEX IF EXISTS public.idx_symposium_sessions_book;
 
@@ -987,7 +1018,7 @@ BEGIN
     p.username,
     COALESCE(p.display_name, 'Scholar') AS display_name
   FROM public.profiles p
-  WHERE LOWER(p.username) = LOWER(TRIM(target_username))
+  WHERE lower(trim(p.username)) = lower(trim(target_username))
   LIMIT 1;
 END;
 $$;
@@ -996,88 +1027,10 @@ REVOKE EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) FROM anon;
 GRANT EXECUTE ON FUNCTION public.lookup_scholar_by_username(TEXT) TO authenticated;
 
--- Automatic Profile Identity Propagation to Reader Circles and Literary Symposiums
-CREATE OR REPLACE FUNCTION public.handle_profile_identity_sync()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  -- Sync updated username and display_name into reader_circles
-  UPDATE public.reader_circles
-  SET requester_username = COALESCE(NEW.username, requester_username),
-      requester_display_name = COALESCE(NEW.display_name, requester_display_name),
-      updated_at = timezone('utc'::text, now())
-  WHERE requester_id = NEW.id;
-
-  UPDATE public.reader_circles
-  SET recipient_username = COALESCE(NEW.username, recipient_username),
-      recipient_display_name = COALESCE(NEW.display_name, recipient_display_name),
-      updated_at = timezone('utc'::text, now())
-  WHERE recipient_id = NEW.id;
-
-  -- Sync updated username and display_name into symposium_sessions
-  UPDATE public.symposium_sessions
-  SET host_username = COALESCE(NEW.username, host_username),
-      host_display_name = COALESCE(NEW.display_name, host_display_name),
-      updated_at = timezone('utc'::text, now())
-  WHERE host_id = NEW.id;
-
-  UPDATE public.symposium_sessions
-  SET fellow_username = COALESCE(NEW.username, fellow_username),
-      fellow_display_name = COALESCE(NEW.display_name, fellow_display_name),
-      updated_at = timezone('utc'::text, now())
-  WHERE fellow_id = NEW.id;
-
-  RETURN NEW;
-END;
-$$;
-
--- Security hardening: Trigger functions should never be executable via PostgREST RPC
-REVOKE EXECUTE ON FUNCTION public.handle_profile_identity_sync() FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.handle_profile_identity_sync() FROM anon;
-REVOKE EXECUTE ON FUNCTION public.handle_profile_identity_sync() FROM authenticated;
-
+-- Retire legacy profile identity cascade trigger (ADR-087 Item 7):
+-- Scholar usernames and display names are hydrated live from public.profiles via companion RLS.
 DROP TRIGGER IF EXISTS trg_profile_identity_sync ON public.profiles;
-CREATE TRIGGER trg_profile_identity_sync
-  AFTER UPDATE OF username, display_name ON public.profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_profile_identity_sync();
-
--- Idempotent data healing for existing reader_circles rows
-UPDATE public.reader_circles rc
-SET requester_username = p.username,
-    requester_display_name = COALESCE(p.display_name, rc.requester_display_name)
-FROM public.profiles p
-WHERE rc.requester_id = p.id
-  AND p.username IS NOT NULL
-  AND (rc.requester_username = '' OR rc.requester_username = 'scholar' OR rc.requester_username <> p.username);
-
-UPDATE public.reader_circles rc
-SET recipient_username = p.username,
-    recipient_display_name = COALESCE(p.display_name, rc.recipient_display_name)
-FROM public.profiles p
-WHERE rc.recipient_id = p.id
-  AND p.username IS NOT NULL
-  AND (rc.recipient_username = '' OR rc.recipient_username = 'scholar' OR rc.recipient_username <> p.username);
-
--- Idempotent data healing for existing symposium_sessions rows
-UPDATE public.symposium_sessions ss
-SET host_username = p.username,
-    host_display_name = COALESCE(p.display_name, ss.host_display_name)
-FROM public.profiles p
-WHERE ss.host_id = p.id
-  AND p.username IS NOT NULL
-  AND (ss.host_username = '' OR ss.host_username = 'scholar' OR ss.host_username <> p.username);
-
-UPDATE public.symposium_sessions ss
-SET fellow_username = p.username,
-    fellow_display_name = COALESCE(p.display_name, ss.fellow_display_name)
-FROM public.profiles p
-WHERE ss.fellow_id = p.id
-  AND p.username IS NOT NULL
-  AND (ss.fellow_username = '' OR ss.fellow_username = 'scholar' OR ss.fellow_username <> p.username);
+DROP FUNCTION IF EXISTS public.handle_profile_identity_sync();
 
 -- ============================================================================
 -- 12. Security Hardening: Participant Update Guards & Payload Ceiling Constraints
@@ -1093,7 +1046,7 @@ AS $$
 DECLARE
   current_user_id UUID := auth.uid();
 BEGIN
-  -- Allow nested triggers (such as trg_profile_identity_sync) and service-role / maintenance queries without JWT
+  -- Allow nested triggers and service-role / maintenance queries without JWT
   IF pg_trigger_depth() > 1 OR current_user_id IS NULL THEN
     RETURN NEW;
   END IF;
@@ -1107,15 +1060,6 @@ BEGIN
     -- Only the recipient can accept a pending invitation
     IF OLD.status = 'pending' AND NEW.status = 'accepted' AND current_user_id <> OLD.recipient_id THEN
       RAISE EXCEPTION 'Only the recipient may accept a reader circle invitation.';
-    END IF;
-
-    -- The requester cannot change recipient details, and recipient cannot change requester details
-    IF current_user_id = OLD.requester_id THEN
-      NEW.recipient_username := OLD.recipient_username;
-      NEW.recipient_display_name := OLD.recipient_display_name;
-    ELSIF current_user_id = OLD.recipient_id THEN
-      NEW.requester_username := OLD.requester_username;
-      NEW.requester_display_name := OLD.requester_display_name;
     END IF;
 
   ELSIF TG_TABLE_NAME = 'symposium_sessions' THEN
@@ -1134,9 +1078,6 @@ BEGIN
       IF OLD.status = 'pending' AND NEW.status = 'active' THEN
         RAISE EXCEPTION 'Host cannot self-accept a pending symposium invitation.';
       END IF;
-      -- Host cannot overwrite fellow identity
-      NEW.fellow_username := OLD.fellow_username;
-      NEW.fellow_display_name := OLD.fellow_display_name;
 
     -- Fellow-scoped permissions
     ELSIF current_user_id = OLD.fellow_id THEN
@@ -1148,9 +1089,6 @@ BEGIN
       IF NEW.book_title <> OLD.book_title THEN
         RAISE EXCEPTION 'Fellow cannot modify shared book title.';
       END IF;
-      -- Fellow cannot overwrite host identity
-      NEW.host_username := OLD.host_username;
-      NEW.host_display_name := OLD.host_display_name;
     ELSE
       RAISE EXCEPTION 'Unauthorized symposium update.';
     END IF;
@@ -1492,6 +1430,19 @@ ALTER TABLE public.book_translations
   DROP COLUMN IF EXISTS confidence_score,
   DROP COLUMN IF EXISTS source,
   DROP COLUMN IF EXISTS created_at;
+
+-- 4. Retire duplicated scholar identity columns from fellowship tables (hydrated live from public.profiles, ADR-087 Item 7)
+ALTER TABLE public.reader_circles
+  DROP COLUMN IF EXISTS requester_username,
+  DROP COLUMN IF EXISTS requester_display_name,
+  DROP COLUMN IF EXISTS recipient_username,
+  DROP COLUMN IF EXISTS recipient_display_name;
+
+ALTER TABLE public.symposium_sessions
+  DROP COLUMN IF EXISTS host_username,
+  DROP COLUMN IF EXISTS host_display_name,
+  DROP COLUMN IF EXISTS fellow_username,
+  DROP COLUMN IF EXISTS fellow_display_name;
 
 DO $$
 BEGIN

@@ -2,9 +2,9 @@
  * @module src/stores/useFellowshipStore
  * @scope Reader Circle 1-on-1 fellowship state, per-volume Literary Symposium dual-reading sessions, and offline symposium progress outbox.
  * @invariant Guard `fetchFellowshipData` / `syncWithCloud` behind `verifyActiveCloudSession` and `coalesceInFlightByUser` (`15,000ms` passive cooldown invalidated on membership or symposium mutations).
- * @invariant Resolve placeholder usernames cleanly via `healProfileIdentity` / `fetchScholarProfilesMap` without leaking private profile PII or overwriting verified scholar handles.
- * @rationale Pre-sync session validation and per-user promise coalescing stop participant RLS errors after cookie expiry while keeping companion progress synchronized offline-first.
- * @adr ADR-055, ADR-069, ADR-080
+ * @invariant Write strictly normalized relational participant IDs to `reader_circles` and `symposium_sessions` (zero duplicated username/display_name columns) and hydrate live scholar handles from `public.profiles` via `fetchScholarProfilesMap` / `hydrateReaderCircleRow` / `hydrateSymposiumSessionRow` without leaking private profile PII.
+ * @rationale Pre-sync session validation, per-user promise coalescing, and single-source-of-truth `public.profiles` hydration eliminate multi-row profile cascade triggers while keeping companion progress synchronized offline-first.
+ * @adr ADR-055, ADR-069, ADR-080, ADR-087
  */
 
 import { create } from 'zustand';
@@ -21,9 +21,14 @@ import { useHasMounted } from '@/hooks/useHasMounted';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import type { ReaderCircleRow, SymposiumSessionRow } from '@/types/database.types';
 import {
-  healProfileIdentity,
+  isPlaceholderUsername,
+  hydrateReaderCircleRow,
+  hydrateSymposiumSessionRow,
   fetchScholarProfilesMap,
   resolveSelfScholarIdentity,
+  type ScholarProfileIdentity,
+  type LegacyOrLeanReaderCircleRow,
+  type LegacyOrLeanSymposiumSessionRow,
 } from '@/lib/fellowship-cloud-sync';
 
 export {
@@ -236,79 +241,100 @@ export const useFellowshipStore = create<FellowshipState>()(
                   .order('updated_at', { ascending: false }),
               ]);
 
-              const rawCircles =
+              const rawCircles: LegacyOrLeanReaderCircleRow[] =
                 !circlesRes.error && circlesRes.data ? circlesRes.data : get().circles;
-              const rawSymposiums =
+              const rawSymposiums: LegacyOrLeanSymposiumSessionRow[] =
                 !symposiumsRes.error && symposiumsRes.data ? symposiumsRes.data : get().symposiums;
 
-              // Find companion IDs across circles and symposiums to heal stale usernames/names
-              const companionIds = new Set<string>();
-              for (const c of rawCircles) {
-                if (c.requester_id && c.requester_id !== userId) companionIds.add(c.requester_id);
-                if (c.recipient_id && c.recipient_id !== userId) companionIds.add(c.recipient_id);
-              }
-              for (const s of rawSymposiums) {
-                if (s.host_id && s.host_id !== userId) companionIds.add(s.host_id);
-                if (s.fellow_id && s.fellow_id !== userId) companionIds.add(s.fellow_id);
-              }
-
-              let healedCircles = rawCircles;
-              let healedSymposiums = rawSymposiums;
-
-              if (companionIds.size > 0) {
-                const profileMap = await fetchScholarProfilesMap(
-                  supabase,
-                  Array.from(companionIds)
+              // Build offline-safe fallback identities from previously hydrated rows + current user auth state
+              const fallbackIdentities = new Map<string, ScholarProfileIdentity>();
+              const recordFallback = (id?: string, username?: string, displayName?: string) => {
+                if (!id) return;
+                const existing = fallbackIdentities.get(id);
+                const nextUsername =
+                  username && !isPlaceholderUsername(username)
+                    ? username
+                    : existing?.username || username || null;
+                const nextDisplayName = displayName?.trim() || existing?.display_name || null;
+                fallbackIdentities.set(id, {
+                  username: nextUsername,
+                  display_name: nextDisplayName,
+                });
+              };
+              for (const existingCircle of get().circles) {
+                recordFallback(
+                  existingCircle.requester_id,
+                  existingCircle.requester_username,
+                  existingCircle.requester_display_name
                 );
+                recordFallback(
+                  existingCircle.recipient_id,
+                  existingCircle.recipient_username,
+                  existingCircle.recipient_display_name
+                );
+              }
+              for (const existingSym of get().symposiums) {
+                recordFallback(
+                  existingSym.host_id,
+                  existingSym.host_username,
+                  existingSym.host_display_name
+                );
+                recordFallback(
+                  existingSym.fellow_id,
+                  existingSym.fellow_username,
+                  existingSym.fellow_display_name
+                );
+              }
 
-                if (profileMap.size > 0) {
-                  healedCircles = rawCircles.map((c) => {
-                    const [reqU, reqD] = healProfileIdentity(
-                      profileMap,
-                      c.requester_id,
-                      c.requester_username,
-                      c.requester_display_name
-                    );
-                    const [recU, recD] = healProfileIdentity(
-                      profileMap,
-                      c.recipient_id,
-                      c.recipient_username,
-                      c.recipient_display_name
-                    );
+              const liveAuthState = useAuthStore.getState();
+              const selfProfile = liveAuthState.profile;
+              const selfDisplayName =
+                selfProfile?.display_name ||
+                (typeof liveAuthState.user?.user_metadata?.display_name === 'string'
+                  ? liveAuthState.user.user_metadata.display_name
+                  : null);
+              if (selfProfile?.username || selfDisplayName) {
+                recordFallback(userId, selfProfile?.username || undefined, selfDisplayName || undefined);
+              }
 
-                    return {
-                      ...c,
-                      requester_username: reqU,
-                      requester_display_name: reqD,
-                      recipient_username: recU,
-                      recipient_display_name: recD,
-                    };
-                  });
-
-                  healedSymposiums = rawSymposiums.map((s) => {
-                    const [hostU, hostD] = healProfileIdentity(
-                      profileMap,
-                      s.host_id,
-                      s.host_username,
-                      s.host_display_name
-                    );
-                    const [fellowU, fellowD] = healProfileIdentity(
-                      profileMap,
-                      s.fellow_id,
-                      s.fellow_username,
-                      s.fellow_display_name
-                    );
-
-                    return {
-                      ...s,
-                      host_username: hostU,
-                      host_display_name: hostD,
-                      fellow_username: fellowU,
-                      fellow_display_name: fellowD,
-                    };
-                  });
+              // Collect participant IDs across circles and symposiums for a single batched public.profiles lookup
+              const participantIds = new Set<string>();
+              const needsSelfProfileFetch = isPlaceholderUsername(selfProfile?.username);
+              for (const c of rawCircles) {
+                if (c.requester_id && (c.requester_id !== userId || needsSelfProfileFetch)) {
+                  participantIds.add(c.requester_id);
+                }
+                if (c.recipient_id && (c.recipient_id !== userId || needsSelfProfileFetch)) {
+                  participantIds.add(c.recipient_id);
                 }
               }
+              for (const s of rawSymposiums) {
+                if (s.host_id && (s.host_id !== userId || needsSelfProfileFetch)) {
+                  participantIds.add(s.host_id);
+                }
+                if (s.fellow_id && (s.fellow_id !== userId || needsSelfProfileFetch)) {
+                  participantIds.add(s.fellow_id);
+                }
+              }
+
+              const profileMap =
+                participantIds.size > 0
+                  ? await fetchScholarProfilesMap(supabase, Array.from(participantIds))
+                  : new Map<string, ScholarProfileIdentity>();
+
+              if (!profileMap.has(userId) && (selfProfile?.username || selfDisplayName)) {
+                profileMap.set(userId, {
+                  username: selfProfile?.username || null,
+                  display_name: selfDisplayName || null,
+                });
+              }
+
+              const healedCircles: ReaderCircleRow[] = rawCircles.map((c) =>
+                hydrateReaderCircleRow(c, profileMap, fallbackIdentities)
+              );
+              const healedSymposiums: SymposiumSessionRow[] = rawSymposiums.map((s) =>
+                hydrateSymposiumSessionRow(s, profileMap, fallbackIdentities)
+              );
 
               set({
                 circles: healedCircles,
@@ -463,20 +489,24 @@ export const useFellowshipStore = create<FellowshipState>()(
               .from('reader_circles')
               .insert({
                 requester_id: optimisticCircle.requester_id,
-                requester_username: optimisticCircle.requester_username,
-                requester_display_name: optimisticCircle.requester_display_name,
                 recipient_id: optimisticCircle.recipient_id,
-                recipient_username: optimisticCircle.recipient_username,
-                recipient_display_name: optimisticCircle.recipient_display_name,
                 status: 'pending',
               })
               .select('*')
               .single();
 
             if (!error && data) {
-              set((s) => ({ circles: [data, ...s.circles] }));
+              const inviteIdentities = new Map<string, ScholarProfileIdentity>([
+                [currentUser.id, { username: myUsername, display_name: myDisplayName }],
+                [recipient.id, { username: recipient.username, display_name: recipient.displayName }],
+              ]);
+              const hydratedCircle = hydrateReaderCircleRow(
+                data as LegacyOrLeanReaderCircleRow,
+                inviteIdentities
+              );
+              set((s) => ({ circles: [hydratedCircle, ...s.circles] }));
               void invalidateFellowshipAndAnnotationCooldowns(currentUser.id);
-              return { error: null, circle: data };
+              return { error: null, circle: hydratedCircle };
             }
           } catch {
             // Fall through to local optimistic state
@@ -636,20 +666,24 @@ export const useFellowshipStore = create<FellowshipState>()(
                 book_id: optimisticSession.book_id,
                 book_title: optimisticSession.book_title,
                 host_id: optimisticSession.host_id,
-                host_username: optimisticSession.host_username,
-                host_display_name: optimisticSession.host_display_name,
                 fellow_id: optimisticSession.fellow_id,
-                fellow_username: optimisticSession.fellow_username,
-                fellow_display_name: optimisticSession.fellow_display_name,
                 status: 'pending',
               })
               .select('*')
               .single();
 
             if (!error && data) {
-              set((s) => ({ symposiums: [data, ...s.symposiums] }));
+              const symIdentities = new Map<string, ScholarProfileIdentity>([
+                [currentUser.id, { username: myUsername, display_name: myDisplayName }],
+                [fellowId, { username: fellowUsername, display_name: fellowDisplayName }],
+              ]);
+              const hydratedSession = hydrateSymposiumSessionRow(
+                data as LegacyOrLeanSymposiumSessionRow,
+                symIdentities
+              );
+              set((s) => ({ symposiums: [hydratedSession, ...s.symposiums] }));
               void invalidateFellowshipAndAnnotationCooldowns(currentUser.id);
-              return { error: null, session: data };
+              return { error: null, session: hydratedSession };
             }
           } catch {
             // Fall through to local state

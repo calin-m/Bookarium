@@ -429,11 +429,7 @@ export interface Database {
         Row: {
           id: string;
           requester_id: string;
-          requester_username: string;
-          requester_display_name: string;
           recipient_id: string;
-          recipient_username: string;
-          recipient_display_name: string;
           status: 'pending' | 'accepted';
           created_at: string;
           updated_at: string;
@@ -441,11 +437,7 @@ export interface Database {
         Insert: {
           id?: string;
           requester_id: string;
-          requester_username?: string;
-          requester_display_name?: string;
           recipient_id: string;
-          recipient_username?: string;
-          recipient_display_name?: string;
           status?: 'pending' | 'accepted';
           created_at?: string;
           updated_at?: string;
@@ -453,11 +445,7 @@ export interface Database {
         Update: {
           id?: string;
           requester_id?: string;
-          requester_username?: string;
-          requester_display_name?: string;
           recipient_id?: string;
-          recipient_username?: string;
-          recipient_display_name?: string;
           status?: 'pending' | 'accepted';
           created_at?: string;
           updated_at?: string;
@@ -470,11 +458,7 @@ export interface Database {
           book_id: number;
           book_title: string;
           host_id: string;
-          host_username: string;
-          host_display_name: string;
           fellow_id: string;
-          fellow_username: string;
-          fellow_display_name: string;
           status: 'pending' | 'active' | 'completed';
           host_chapter: number;
           host_progress: number;
@@ -488,11 +472,7 @@ export interface Database {
           book_id: number;
           book_title?: string;
           host_id: string;
-          host_username?: string;
-          host_display_name?: string;
           fellow_id: string;
-          fellow_username?: string;
-          fellow_display_name?: string;
           status?: 'pending' | 'active' | 'completed';
           host_chapter?: number;
           host_progress?: number;
@@ -506,11 +486,7 @@ export interface Database {
           book_id?: number;
           book_title?: string;
           host_id?: string;
-          host_username?: string;
-          host_display_name?: string;
           fellow_id?: string;
-          fellow_username?: string;
-          fellow_display_name?: string;
           status?: 'pending' | 'active' | 'completed';
           host_chapter?: number;
           host_progress?: number;
@@ -576,5 +552,27 @@ export type DatabaseBook = Database['public']['Tables']['books']['Row'];
 export type BookTranslationRow = Database['public']['Tables']['book_translations']['Row'];
 export type BookTranslationInsert = Database['public']['Tables']['book_translations']['Insert'];
 export type BookTranslationUpdate = Database['public']['Tables']['book_translations']['Update'];
-export type ReaderCircleRow = Database['public']['Tables']['reader_circles']['Row'];
-export type SymposiumSessionRow = Database['public']['Tables']['symposium_sessions']['Row'];
+export type ReaderCircleDbRow = Database['public']['Tables']['reader_circles']['Row'];
+export type SymposiumSessionDbRow = Database['public']['Tables']['symposium_sessions']['Row'];
+
+/**
+ * Client-hydrated Reader Circle row joining normalized `public.reader_circles`
+ * with live scholar identities from `public.profiles`.
+ */
+export interface ReaderCircleRow extends ReaderCircleDbRow {
+  requester_username: string;
+  requester_display_name: string;
+  recipient_username: string;
+  recipient_display_name: string;
+}
+
+/**
+ * Client-hydrated Literary Symposium row joining normalized `public.symposium_sessions`
+ * with live scholar identities from `public.profiles`.
+ */
+export interface SymposiumSessionRow extends SymposiumSessionDbRow {
+  host_username: string;
+  host_display_name: string;
+  fellow_username: string;
+  fellow_display_name: string;
+}

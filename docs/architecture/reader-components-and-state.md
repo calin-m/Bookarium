@@ -359,7 +359,7 @@ Programmatically extracted from **4 TypeScript Type Modules** in `src/types/` us
 | **`accolades.types`** | [`src/types/accolades.types.ts`](../../src/types/accolades.types.ts) | `AccoladeEvaluationContext`, `AccoladeDefinition`, `UnlockedAccolade`, `AccoladeProgress`, `AccoladeEvaluationResult` | `AccoladeId`, `AccoladeTier`, `AccoladeCategory` |
 | **`book.types`** | [`src/types/book.types.ts`](../../src/types/book.types.ts) | `Author`, `BookPassage`, `CatalogBook`, `CatalogResponse`, `BookCuration`, `Book`, `ActiveReadingVolume` | `ReadingStatus`, `LedgerFilter`, `LedgerItemStatus` |
 | **`catalog.types`** | [`src/types/catalog.types.ts`](../../src/types/catalog.types.ts) | `CatalogQueryOptions`, `CatalogQueryResult`, `ICatalogProvider` | _None_ |
-| **`database.types`** | [`src/types/database.types.ts`](../../src/types/database.types.ts) | `Database` | `Json`, `Profile`, `Bookshelf`, `BookshelfItem`, `UserFavorite`, `ReadingProgress`, `UserAnnotation`, `UserBookCuration`, `UserReadingHabits`, `UserAccolade`, `DatabaseBook`, `BookTranslationRow`, `BookTranslationInsert`, `BookTranslationUpdate`, `ReaderCircleRow`, `SymposiumSessionRow` |
+| **`database.types`** | [`src/types/database.types.ts`](../../src/types/database.types.ts) | `Database`, `ReaderCircleRow`, `SymposiumSessionRow` | `Json`, `Profile`, `Bookshelf`, `BookshelfItem`, `UserFavorite`, `ReadingProgress`, `UserAnnotation`, `UserBookCuration`, `UserReadingHabits`, `UserAccolade`, `DatabaseBook`, `BookTranslationRow`, `BookTranslationInsert`, `BookTranslationUpdate`, `ReaderCircleDbRow`, `SymposiumSessionDbRow` |
 
 ---
 

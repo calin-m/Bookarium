@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 28 Nov 2026 10:04:50 GMT  
+**Last Generated**: Sat, 28 Nov 2026 11:10:10 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2873 passed  
+**Total Verified Tests**: 2875 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2873 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2875 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.35%** (18006/18495) — *Target: $\ge$ 95%*
-- **Statements**: **95.98%** (19364/20175) — *Target: $\ge$ 95%*
-- **Functions**: **94.89%** (3756/3958) — *Target: $\ge$ 92%*
-- **Branches**: **88.23%** (18023/20425) — *Target: $\ge$ 85%*
+- **Lines**: **97.35%** (18039/18529) — *Target: $\ge$ 95%*
+- **Statements**: **95.97%** (19392/20205) — *Target: $\ge$ 95%*
+- **Functions**: **94.87%** (3758/3961) — *Target: $\ge$ 92%*
+- **Branches**: **88.21%** (18080/20496) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2873 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2875 Tests)
 
 ### 🚀 App Routes & Pages (34 Suites · 291 Tests)
 
@@ -1823,7 +1823,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 252 Tests)
+### ⚡ Zustand State Stores (10 Suites · 253 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -2009,7 +2009,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (15 tests)</summary>
+<summary><b><code>src/stores/useFellowshipStore.test.ts</code></b> (16 tests)</summary>
 
 - ✔ `invites a Fellow Scholar by @username via RPC lookup and accepts invitation`
 - ✔ `validates empty and self @username invitations and handles missing handles`
@@ -2026,6 +2026,7 @@
 - ✔ `prunes orphaned pendingSymposiumProgress and fellowAnnotations on removeFellow, leaveSymposium, and fetchFellowshipData`
 - ✔ `respects minSyncIntervalMs passive cooldown and invalidates on pending progress, explicit refresh, clear, or membership mutations`
 - ✔ `skips fellowship Supabase queries when verifyActiveCloudSession fails under an auth-capable client`
+- ✔ `writes strictly relational payloads on invite creation and hydrates lean DB rows from public.profiles (including cold-device self & renames)`
 
 </details>
 
@@ -2137,7 +2138,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (61 Suites · 769 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 770 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2466,10 +2467,11 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/fellowship-cloud-sync.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/fellowship-cloud-sync.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `evaluates placeholder usernames and formats fellow scholar labels`
-- ✔ `heals placeholder usernames from a profile map without overwriting valid handles`
+- ✔ `prefers authoritative live profile handles and falls back cleanly when offline or placeholder`
+- ✔ `hydrates lean normalized reader_circles and symposium_sessions rows from profiles and offline fallbacks`
 - ✔ `fetches scholar profile maps and resolves self scholar identity from Supabase`
 
 </details>

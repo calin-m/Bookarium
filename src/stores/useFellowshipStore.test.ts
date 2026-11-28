@@ -1070,6 +1070,179 @@ describe('useFellowshipStore', () => {
       shouldVerifySpy.mockRestore();
       verifySessionSpy.mockRestore();
     });
+
+    it('writes strictly relational payloads on invite creation and hydrates lean DB rows from public.profiles (including cold-device self & renames)', async () => {
+      const circleInsertSpy = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: 'lean-circle-1',
+              requester_id: 'user-host',
+              recipient_id: 'user-fellow',
+              status: 'pending',
+              created_at: '2026-11-28T00:00:00Z',
+              updated_at: '2026-11-28T00:00:00Z',
+            },
+            error: null,
+          }),
+        }),
+      });
+      const symInsertSpy = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: 'lean-sym-1',
+              book_id: 1342,
+              book_title: 'Pride and Prejudice',
+              host_id: 'user-host',
+              fellow_id: 'user-fellow',
+              status: 'pending',
+              host_chapter: 0,
+              host_progress: 0,
+              fellow_chapter: 0,
+              fellow_progress: 0,
+              created_at: '2026-11-28T00:00:00Z',
+              updated_at: '2026-11-28T00:00:00Z',
+            },
+            error: null,
+          }),
+        }),
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'reader_circles') {
+          return { insert: circleInsertSpy };
+        }
+        if (table === 'symposium_sessions') {
+          return { insert: symInsertSpy };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      const circleRes = await useFellowshipStore.getState().inviteFellowByProfile({
+        id: 'user-fellow',
+        username: 'old_fellow_handle',
+        displayName: 'Old Fellow Name',
+      });
+      expect(circleRes.error).toBeNull();
+      expect(circleInsertSpy).toHaveBeenCalledWith({
+        requester_id: 'user-host',
+        recipient_id: 'user-fellow',
+        status: 'pending',
+      });
+      const circleArg = circleInsertSpy.mock.calls[0][0] as Record<string, unknown>;
+      expect(circleArg).not.toHaveProperty('requester_username');
+      expect(circleArg).not.toHaveProperty('requester_display_name');
+      expect(circleArg).not.toHaveProperty('recipient_username');
+      expect(circleArg).not.toHaveProperty('recipient_display_name');
+      expect(circleRes.circle?.recipient_username).toBe('old_fellow_handle');
+      expect(circleRes.circle?.requester_username).toBe('jane_austen');
+
+      const symRes = await useFellowshipStore.getState().createSymposiumInvite({
+        bookId: 1342,
+        bookTitle: 'Pride and Prejudice',
+        fellowId: 'user-fellow',
+        fellowUsername: 'old_fellow_handle',
+        fellowDisplayName: 'Old Fellow Name',
+      });
+      expect(symRes.error).toBeNull();
+      expect(symInsertSpy).toHaveBeenCalledWith({
+        book_id: 1342,
+        book_title: 'Pride and Prejudice',
+        host_id: 'user-host',
+        fellow_id: 'user-fellow',
+        status: 'pending',
+      });
+      const symArg = symInsertSpy.mock.calls[0][0] as Record<string, unknown>;
+      expect(symArg).not.toHaveProperty('host_username');
+      expect(symArg).not.toHaveProperty('host_display_name');
+      expect(symArg).not.toHaveProperty('fellow_username');
+      expect(symArg).not.toHaveProperty('fellow_display_name');
+      expect(symRes.session?.fellow_username).toBe('old_fellow_handle');
+
+      // Simulate cold device (profile not yet hydrated in useAuthStore) + fellow renamed handle in public.profiles
+      useAuthStore.setState({
+        user: { id: 'user-host', email: 'austen@bookarium.test', user_metadata: {} } as never,
+        profile: null,
+      });
+      const profilesInSpy = vi.fn().mockResolvedValue({
+        data: [
+          { id: 'user-host', username: 'jane_austen_reloaded', display_name: 'Jane Austen' },
+          { id: 'user-fellow', username: 'renamed_bronte', display_name: 'Charlotte Brontë' },
+        ],
+        error: null,
+      });
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'reader_circles') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'lean-circle-1',
+                  requester_id: 'user-host',
+                  recipient_id: 'user-fellow',
+                  status: 'accepted',
+                  created_at: '2026-11-28T00:00:00Z',
+                  updated_at: '2026-11-28T00:00:00Z',
+                },
+              ],
+              error: null,
+            }),
+          };
+        }
+        if (table === 'symposium_sessions') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'lean-sym-1',
+                  book_id: 1342,
+                  book_title: 'Pride and Prejudice',
+                  host_id: 'user-host',
+                  fellow_id: 'user-fellow',
+                  status: 'active',
+                  host_chapter: 2,
+                  host_progress: 30,
+                  fellow_chapter: 1,
+                  fellow_progress: 15,
+                  created_at: '2026-11-28T00:00:00Z',
+                  updated_at: '2026-11-28T00:00:00Z',
+                },
+              ],
+              error: null,
+            }),
+          };
+        }
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: profilesInSpy,
+          };
+        }
+        return { select: vi.fn().mockReturnThis() };
+      });
+
+      await useFellowshipStore.getState().fetchFellowshipData('user-host');
+
+      expect(profilesInSpy).toHaveBeenCalledWith(
+        'id',
+        expect.arrayContaining(['user-host', 'user-fellow'])
+      );
+      const syncedCircle = useFellowshipStore.getState().circles[0];
+      expect(syncedCircle.requester_username).toBe('jane_austen_reloaded');
+      expect(syncedCircle.recipient_username).toBe('renamed_bronte');
+      expect(syncedCircle.recipient_display_name).toBe('Charlotte Brontë');
+
+      const syncedSym = useFellowshipStore.getState().symposiums[0];
+      expect(syncedSym.host_username).toBe('jane_austen_reloaded');
+      expect(syncedSym.fellow_username).toBe('renamed_bronte');
+      expect(syncedSym.fellow_display_name).toBe('Charlotte Brontë');
+    });
   });
 });
 

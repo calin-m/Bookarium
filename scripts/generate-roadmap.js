@@ -246,7 +246,7 @@ const ROADMAP_MILESTONES = [
     features: [
       {
         title: 'Reader Circles & Fellow Scholar Invitations (`public.reader_circles`)',
-        description: 'Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, companion identity RLS resolution across Private Sanctuaries (`is_public = false`), automatic profile identity sync (`handle_profile_identity_sync`), and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).',
+        description: 'Persistent two-way fellowship connections ("Invite to Reader Circle" on `/u/[username]` and `/account`), accept/decline handshakes, undirected pair uniqueness, live authoritative `public.profiles` identity hydration across Private Sanctuaries (`is_public = false`) via companion RLS, and zero-PII `@username` discovery backed by idempotent Supabase PostgreSQL RLS (`useFellowshipStore.ts`).',
         check: () =>
           fileContains('supabase/schema.sql', 'CREATE TABLE IF NOT EXISTS public.reader_circles') &&
           fileExists('src/stores/useFellowshipStore.ts'),

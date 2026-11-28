@@ -275,16 +275,16 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/fellowship-cloud-sync.ts`](../src/lib/fellowship-cloud-sync.ts) *(Tier-2 Protected)*
 
-- **Intended Scope (`@scope`)**: Privacy-safe scholar identity resolution, handle formatting, and non-regressive profile healing for Reader Circles and Symposiums.
+- **Intended Scope (`@scope`)**: Privacy-safe scholar identity resolution, handle formatting, and authoritative `public.profiles` hydration for normalized Reader Circles and Symposiums.
 - **Behavioral Invariants (`@invariant`)**:
-  - Treat blank, `'scholar'`, and `'fellow_scholar'` strings as replaceable placeholders (`isPlaceholderUsername`) and preserve authentic usernames during `healProfileIdentity`.
-  - Batch-query only non-sensitive public columns (`id, username, display_name`) from `public.profiles` and degrade gracefully to empty maps when offline.
+  - Treat blank, `'scholar'`, and `'fellow_scholar'` strings as replaceable placeholders (`isPlaceholderUsername`) and prefer authoritative live `public.profiles` usernames/display names during `healProfileIdentity` while falling back cleanly to cached local identities offline.
+  - Batch-query only non-sensitive public columns (`id, username, display_name`) from `public.profiles` and hydrate lean `reader_circles`/`symposium_sessions` DB rows via `hydrateReaderCircleRow` / `hydrateSymposiumSessionRow` without storing duplicated identity columns in PostgreSQL.
 - **Design Rationale (`@rationale`)**:
-  - Keeping fellow handle resolution zero-PII and offline-resilient lets Bookmarks, Notebook, and Reader popovers attribute shared highlights without exposing emails or crashing offline.
-- **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-055](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-068](DECISIONS.md)
+  - Keeping `public.profiles` as the single source of truth eliminates multi-row profile cascade triggers while keeping fellow handle resolution zero-PII and offline-resilient across Bookmarks, Notebook, Account, and Reader popovers.
+- **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-055](DECISIONS.md), [ADR-059](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`src/lib/annotation-cloud-sync.ts`](../src/lib/annotation-cloud-sync.ts), [`src/stores/useFellowshipStore.ts`](../src/stores/useFellowshipStore.ts))
 - **Cross-Boundary Coupling**: DB Tables: `public.profiles`
-- **Test Contract**: [`src/lib/fellowship-cloud-sync.test.ts`](../src/lib/fellowship-cloud-sync.test.ts) (3 tests)
+- **Test Contract**: [`src/lib/fellowship-cloud-sync.test.ts`](../src/lib/fellowship-cloud-sync.test.ts) (4 tests)
 
 #### [`src/lib/gutenberg-parser.ts`](../src/lib/gutenberg-parser.ts) *(Tier-4 Protected)*
 
@@ -656,13 +656,13 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Reader Circle 1-on-1 fellowship state, per-volume Literary Symposium dual-reading sessions, and offline symposium progress outbox.
 - **Behavioral Invariants (`@invariant`)**:
   - Guard `fetchFellowshipData` / `syncWithCloud` behind `verifyActiveCloudSession` and `coalesceInFlightByUser` (`15,000ms` passive cooldown invalidated on membership or symposium mutations).
-  - Resolve placeholder usernames cleanly via `healProfileIdentity` / `fetchScholarProfilesMap` without leaking private profile PII or overwriting verified scholar handles.
+  - Write strictly normalized relational participant IDs to `reader_circles` and `symposium_sessions` (zero duplicated username/display_name columns) and hydrate live scholar handles from `public.profiles` via `fetchScholarProfilesMap` / `hydrateReaderCircleRow` / `hydrateSymposiumSessionRow` without leaking private profile PII.
 - **Design Rationale (`@rationale`)**:
-  - Pre-sync session validation and per-user promise coalescing stop participant RLS errors after cookie expiry while keeping companion progress synchronized offline-first.
-- **Governing Decisions (`@adr`)**: [ADR-055](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Pre-sync session validation, per-user promise coalescing, and single-source-of-truth `public.profiles` hydration eliminate multi-row profile cascade triggers while keeping companion progress synchronized offline-first.
+- **Governing Decisions (`@adr`)**: [ADR-055](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 20 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountSymposiumSection.tsx`](../src/components/account/AccountSymposiumSection.tsx), [`src/components/account/symposium/FellowshipInvitationsSubTab.tsx`](../src/components/account/symposium/FellowshipInvitationsSubTab.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.profiles`, `public.reader_circles`, `public.symposium_sessions` · RPCs: `public.lookup_scholar_by_username()` · Storage/Cookies: `bookarium-fellowship-storage`
-- **Test Contract**: [`src/stores/useFellowshipStore.test.ts`](../src/stores/useFellowshipStore.test.ts) (15 tests)
+- **Test Contract**: [`src/stores/useFellowshipStore.test.ts`](../src/stores/useFellowshipStore.test.ts) (16 tests)
 
 #### [`src/stores/useHabitsStore.ts`](../src/stores/useHabitsStore.ts) *(Tier-2 Protected)*
 

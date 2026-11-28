@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.93',
+    date: '2026-11-28',
+    title: 'PostgreSQL Index/RLS Scalability Hardening, Fellowship Identity Normalization & Full-Stack Scalability Governance',
+    sections: {
+      Changed: [
+        '**PostgreSQL RLS, Index-Alignment & Undirected Uniqueness Hardening (`supabase/schema.sql`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Added the missing owner-scoped `UPDATE` RLS policy on `public.user_favorites` so cross-device `.upsert()` retries never hit `42501`, aligned `public.lookup_scholar_by_username()` with `lower(trim(p.username))` on `unique_profile_username_lower` while dropping the redundant case-sensitive `profiles_username_key` constraint, added `idx_user_annotations_book_user (book_id, user_id)` to prevent full-table scans on Symposium marginalia queries at scale, and added safe deduplication + undirected functional unique indexes (`unique_reader_circles_pair`, `unique_symposium_sessions_pair`; `16 -> 19` explicit indexes) blocking concurrent symmetric invite duplicates (`ADR-073`, `ADR-087`).',
+        '**Fellowship Identity Normalization & Full-Stack Scalability Governance (`supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/fellowship-cloud-sync.ts`, `src/stores/useFellowshipStore.ts`, `scripts/generate-roadmap.js`, `README.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Retired `8` duplicated `*_username`/`*_display_name` columns from `public.reader_circles` and `public.symposium_sessions` along with the 4-`UPDATE` `public.handle_profile_identity_sync()` cascade trigger, simplified `enforce_fellowship_update_guard()`, narrowed `Database["public"]["Tables"]` 1:1 with PostgreSQL while preserving hydrated client view-models (`hydrateReaderCircleRow`, `hydrateSymposiumSessionRow`) backed by authoritative batched `public.profiles` lookups (including cold-device self hydration and offline fallbacks), and codified a **Full-Stack Scalability & Growth Architecture Standard** across `AGENTS.md` and `.agents/AGENTS.md` (`ADR-087`).',
+      ],
+    },
+  },
+  {
     version: '2.9.92',
     date: '2026-11-28',
     title: 'Non-Breaking PostgreSQL Storage, Index & Query Hygiene (`books.content`/`media_type`, Duplicate Index & `profiles` Consolidation)',

@@ -94,13 +94,13 @@ flowchart TD
         FelProfileLRU["🌐 /u/[username] (profile-layout-utils.ts)\n• 5m TTL / 500-Entry serverProfileCache LRU + ILIKE Escape\n• Collapses Private & Missing Handles -> private_or_missing"]
     end
 
-    subgraph DualStoreOrchestration ["2. Dual-Store Identity Healing & Marginalia Reconciliation"]
-        FelStores["🤝 useFellowshipStore & fellowship-cloud-sync.ts\n• circles, symposiums & pendingSymposiumProgress Outbox\n• isPlaceholderUsername & healProfileIdentity Guards\n• 15,000ms Cooldown + coalesceInFlightByUser"]
+    subgraph DualStoreOrchestration ["2. Dual-Store Live Profile Hydration & Marginalia Reconciliation"]
+        FelStores["🤝 useFellowshipStore & fellowship-cloud-sync.ts\n• Lean Relational Writes + Live public.profiles Hydration\n• hydrateReaderCircleRow / hydrateSymposiumSessionRow + Offline Fallback\n• 15,000ms Cooldown + coalesceInFlightByUser"]
         FelAnnot["🔖 useAnnotationStore & annotation-cloud-sync.ts\n• buildFellowScholarsMap & resolveFellowIdentityMap\n• reconcileFellowAnnotationsWithSymposiums & Prune\n• ReaderAnnotationsDrawer + Spoiler Shield Isolation"]
     end
 
-    subgraph DatabaseGuards ["3. PostgreSQL Row Triggers & Scoped Marginalia RLS"]
-        FelTriggers["🛡️ BEFORE UPDATE Triggers & Sync (supabase/schema.sql)\n• handle_profile_identity_sync -> Cascades Handle Updates\n• enforce_fellowship_update_guard -> Locks Immutable Keys,\n  Recipient-Only Accept & Opposing Progress/Book Title\n• Permits Nested Trigger Sync (pg_trigger_depth > 1)"]
+    subgraph DatabaseGuards ["3. PostgreSQL Row Triggers, Undirected Uniqueness & Scoped Marginalia RLS"]
+        FelTriggers["🛡️ BEFORE UPDATE Guards & Pair Uniqueness (supabase/schema.sql)\n• enforce_fellowship_update_guard -> Locks Immutable Keys,\n  Recipient-Only Accept & Opposing Progress/Book Title\n• unique_reader_circles_pair & unique_symposium_sessions_pair\n• idx_user_annotations_book_user -> Fast Symposium Marginalia Scans"]
         FelRLS[("🗄️ RLS Tables & Erasure Cascade\n• reader_circles & symposium_sessions (Participant Policy)\n• user_annotations SELECT Policy (active / completed Match)\n• delete_current_user() + ON DELETE CASCADE Purge")]
     end
 
