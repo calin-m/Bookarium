@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.96] - 2026-11-28
+### *Global Reduced-Motion Enforcement, Exit-Safe Modal Springs & Tier-Gated Choreography*
+
+### Changed
+- **Global `MotionConfig` Accessibility, Wax-Seal Spring Celebrations & Exit-Animated `AuthModal` (`src/app/providers.tsx`, `src/components/accolades/AccoladeCelebrationModal.tsx`, `src/components/auth/AuthModal.tsx`)**: Wrapped the root client tree in `<MotionConfig reducedMotion="user">` and latched `hasOpenedAuthModal` in `Providers` so dynamic `AuthModal` stays unloaded until opened while playing `AnimatePresence` exits and resetting transient inputs via `onExitComplete` and reopen guards; upgraded `AccoladeCelebrationModal` with `motionTokens.spring.snappy` modal enter/exit and bouncy wax-seal medallion choreography (`ADR-080`).
+- **`AnimatePresence` Overlay Exits & Tier-Gated Compendium Staggers (`AccountBottomDock.tsx`, `Navbar.tsx`, `QuickColorSwatchPopover.tsx`, `ReaderSubHeaderRibbon.tsx`, `ReaderSpeechBar.tsx`, `ReaderFloatingToolsPod.tsx`, `ReaderFooter.test.tsx`, `ReaderSurface.tsx`, `BookCard.tsx`, `MotionReveal.tsx`, `StaggerGroup.tsx`, `AccountAccoladesCard.tsx`)**: Replaced one-way `animate-in` popovers, menus, ribbons, speed controls, floating tools shell (with aligned `ReaderFooter.test.tsx` shell assertions), font-zoom HUD, and card topic popovers with smooth `AnimatePresence` enter/exit springs while isolating `-translate-x-1/2` centering wrappers, and activated `usePerformanceTier().allowHeavyMotion` + `useHasMounted()`-gated `StaggerGroup`/`MotionReveal` cascades (`ADR-080`).
+- **High-Coupling `Tier-4` Contract Sweep (`105 -> 111`) & Matrix Generator / Contributor Docs Parity (`motion-config.ts`, `Navbar.tsx`, `ConfirmActionModal.tsx`, `Select.tsx`, `annotation-tokens.ts`, `accolades.types.ts`, `scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `.agents/AGENTS.md`, `CONTRIBUTING.md`)**: Promoted all remaining `score >= 15` modules into `TIER_4_CONTRACTED_MODULES` with pure JSDoc contracts, separated `overridePurposeMap` from `purposeMap` so `eslint` devDependencies display accurately, synced Diagrams `2` & `16` plus `Providers` / Next.js 16 bundler prose (`ADR-081`).
+
+
 ## [2.9.95] - 2026-11-28
 ### *PowerShell Structured Commit Template & Full-Repository Living Documentation Alignment*
 

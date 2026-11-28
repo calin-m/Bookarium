@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, ZoomIn } from 'lucide-react';
+import { motionTokens } from '@/components/motion/motion-config';
 import type { ReaderTheme, ReaderFontFamily } from '@/stores/useReaderStore';
 import {
   stripDuplicateLeadingChapterHeading,
@@ -1018,21 +1020,30 @@ export const ReaderSurface: React.FC<ReaderSurfaceProps> = ({
       }}
     >
       {/* Floating Font Size Zoom HUD Pill */}
-      {zoomFeedback?.visible && (
-        <div
-          data-testid="font-zoom-hud"
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-stone-900/90 text-white dark:bg-stone-100/95 dark:text-stone-900 shadow-2xl border border-white/20 font-mono text-xs font-bold flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 pointer-events-none"
-        >
-          <ZoomIn className="w-3.5 h-3.5 text-primary-400 dark:text-primary-600" />
-          <span>Font Size: {zoomFeedback.size}px</span>
-          {zoomFeedback.size === READER_FONT_CONFIG.MIN_SIZE && (
-            <span className="text-[10px] text-amber-400 font-bold uppercase">(Min)</span>
+      <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <AnimatePresence>
+          {zoomFeedback?.visible && (
+            <motion.div
+              key="font-zoom-hud"
+              data-testid="font-zoom-hud"
+              initial={{ opacity: 0, scale: 0.94, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: -4 }}
+              transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.smooth }}
+              className="px-4 py-2 rounded-full bg-stone-900/90 text-white dark:bg-stone-100/95 dark:text-stone-900 shadow-2xl border border-white/20 font-mono text-xs font-bold flex items-center gap-2 pointer-events-none"
+            >
+              <ZoomIn className="w-3.5 h-3.5 text-primary-400 dark:text-primary-600" />
+              <span>Font Size: {zoomFeedback.size}px</span>
+              {zoomFeedback.size === READER_FONT_CONFIG.MIN_SIZE && (
+                <span className="text-[10px] text-amber-400 font-bold uppercase">(Min)</span>
+              )}
+              {zoomFeedback.size === READER_FONT_CONFIG.MAX_SIZE && (
+                <span className="text-[10px] text-amber-400 font-bold uppercase">(Max)</span>
+              )}
+            </motion.div>
           )}
-          {zoomFeedback.size === READER_FONT_CONFIG.MAX_SIZE && (
-            <span className="text-[10px] text-amber-400 font-bold uppercase">(Max)</span>
-          )}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
       <article
         key={readingMode === 'paginated' ? `p-${activeChapterIndex}-${chapterPage ?? (contentToDisplay?.slice(0, 30) || '0')}` : `s-${activeChapterIndex}`}
         onMouseUp={handleSelection}

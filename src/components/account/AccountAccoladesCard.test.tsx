@@ -134,5 +134,34 @@ describe('AccountAccoladesCard', () => {
     expect(html).not.toContain('border-border/50');
     expect(html).not.toContain('border-border/40');
   });
+
+  it('renders compendium grid with performance-tier-gated StaggerGroup across allowHeavyMotion true and false', async () => {
+    const perfModule = await import('@/hooks/usePerformanceTier');
+    const perfSpy = vi.spyOn(perfModule, 'usePerformanceTier');
+
+    try {
+      perfSpy.mockReturnValue({
+        tier: 'high',
+        allowHeavyMotion: true,
+        enablePrefetching: true,
+        cores: 8,
+      });
+      const { rerender } = render(<AccountAccoladesCard />);
+      expect(screen.getByTestId('accolades-compendium-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('accolade-card-seven-day-sage')).toBeInTheDocument();
+
+      perfSpy.mockReturnValue({
+        tier: 'low',
+        allowHeavyMotion: false,
+        enablePrefetching: false,
+        cores: 2,
+      });
+      rerender(<AccountAccoladesCard activeCategory="streaks" />);
+      expect(screen.getByTestId('accolades-compendium-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('accolade-card-seven-day-sage')).toBeInTheDocument();
+    } finally {
+      perfSpy.mockRestore();
+    }
+  });
 });
 

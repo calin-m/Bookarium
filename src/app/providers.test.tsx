@@ -377,5 +377,27 @@ describe('Providers component', () => {
       vi.useRealTimers();
     }
   });
+
+  it('latches AuthModal mount on open, keeps exit-safe mount on close, and wraps children inside MotionConfig', async () => {
+    render(
+      <Providers>
+        <div>Child Content</div>
+      </Providers>
+    );
+
+    expect(screen.queryByTestId('auth-modal-card')).not.toBeInTheDocument();
+
+    act(() => {
+      useAuthStore.getState().openAuthModal('sign_in');
+    });
+
+    expect(await screen.findByTestId('auth-modal-card')).toBeInTheDocument();
+
+    act(() => {
+      useAuthStore.getState().closeAuthModal();
+    });
+
+    expect(screen.queryByTestId('auth-modal-card')).not.toBeInTheDocument();
+  });
 });
 

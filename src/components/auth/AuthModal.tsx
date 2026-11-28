@@ -14,6 +14,8 @@ import { Alert } from '@/components/ui/Alert';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { generateStrongPassword as generatePasswordUtil, evaluatePasswordStrength } from '@/lib/password';
 import { ContentCrossfade } from '@/components/motion/ContentCrossfade';
+import { motion, AnimatePresence } from 'framer-motion';
+import { motionTokens } from '@/components/motion/motion-config';
 import { EmailSentView } from './EmailSentView';
 import {
   TurnstileWidget,
@@ -100,6 +102,32 @@ export const AuthModal: React.FC = () => {
   const [honeypot, setHoneypot] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [prevIsAuthModalOpen, setPrevIsAuthModalOpen] = useState(isAuthModalOpen);
+
+  const resetTransientFormState = useCallback(() => {
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setFullName('');
+    setShowPassword(false);
+    setCopiedPassword(false);
+    setMagicLinkSent(false);
+    setVerificationEmailSent(false);
+    setResetPasswordSent(false);
+    setIsResending(false);
+    setResendSuccess(false);
+    setResendCooldown(0);
+    setHoneypot('');
+    setCaptchaToken(null);
+    setResendNotice(null);
+  }, []);
+
+  if (isAuthModalOpen !== prevIsAuthModalOpen) {
+    setPrevIsAuthModalOpen(isAuthModalOpen);
+    if (isAuthModalOpen) {
+      resetTransientFormState();
+    }
+  }
 
   const turnstileSiteKey = getTurnstileSiteKey();
   const titleId = useId();
@@ -167,8 +195,6 @@ export const AuthModal: React.FC = () => {
       resetTurnstileWidget();
     }
   };
-
-  if (!isAuthModalOpen) return null;
 
   const generateStrongPassword = () => {
     const result = generatePasswordUtil();
@@ -257,19 +283,30 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
-      onClick={closeAuthModal}
-    >
-      <div
-        ref={cardRef}
-        data-testid="auth-modal-card"
-        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col text-foreground"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AnimatePresence onExitComplete={resetTransientFormState}>
+      {isAuthModalOpen && (
+        <motion.div
+          key="auth-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.fade }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={closeAuthModal}
+        >
+          <motion.div
+            ref={cardRef}
+            data-testid="auth-modal-card"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.2, ease: motionTokens.ease.smooth }}
+            className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col text-foreground"
+            onClick={(e) => e.stopPropagation()}
+          >
         {/* Header */}
         <div
           data-testid="auth-modal-header"
@@ -684,8 +721,10 @@ export const AuthModal: React.FC = () => {
         </>
       )}
     </ContentCrossfade>
-        </div>
-      </div>
-    </div>
+          </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

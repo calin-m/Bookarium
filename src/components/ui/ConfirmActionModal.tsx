@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/components/ui/ConfirmActionModal
+ * @scope Shared destructive/warning confirmation dialog (`ConfirmActionModal`) built atop `<Modal>` for irreversible collection, session, and account actions.
+ * @invariant Compose `<Modal>` with transparent backdrop override (`bg-transparent backdrop-blur-none`), keep Cancel and destructive Confirm `<Button>` actions explicitly typed (`type="button"`), and forward caller `buttonSize` and explicit `modalTestId`/`dialogTestId`/`confirmTestId`/`cancelTestId` selectors cleanly.
+ * @rationale Centralizing confirmation typography, spacing, and backdrop pass-through prevents duplicate warning modal markup while layering cleanly over secondary drawers and sheets.
+ * @adr ADR-075, ADR-080
+ */
+
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from './Modal';

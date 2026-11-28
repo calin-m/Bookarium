@@ -1,3 +1,11 @@
+/**
+ * @module src/components/ui/Select
+ * @scope Accessible forwarded-ref native `<select>` UI primitive (`Select`) with optional decorative icon/chevron slots.
+ * @invariant Return a bare `<select>` node with zero wrapper `<div>` elements whenever `leftIcon`, `rightChevron`, and `wrapperClassName` are omitted, forwarding `ref` and native HTML select attributes directly.
+ * @rationale Avoiding unrequested wrapper elements preserves exact flex-item and inline layout geometry in tight toolbars while still allowing icon-adorned selects where explicitly requested.
+ * @adr ADR-080
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 

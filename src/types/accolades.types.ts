@@ -1,6 +1,9 @@
 /**
- * Literary Accolades & Ex-Libris Bookplates - Type Definitions
- * Bookarium Milestone 4, Point 1
+ * @module src/types/accolades.types
+ * @scope Canonical TypeScript contracts (`AccoladeId`, `AccoladeTier`, `AccoladeCategory`, `AccoladeDefinition`, `UnlockedAccolade`, `AccoladeProgress`, `AccoladeEvaluationResult`) for literary accolades and Ex-Libris bookplates.
+ * @invariant Keep `AccoladeId`, `AccoladeTier`, and `AccoladeCategory` unions synchronized with `ACCOLADES_CATALOG` and `evaluate` context shapes (`AccoladeEvaluationContext`) across client engines, Supabase serialization, and Account UI views.
+ * @rationale Isolating accolade domain types in a pure dependency-free contract module prevents circular dependencies between store persistence, evaluation math, and 3D bookplate components.
+ * @adr ADR-025, ADR-080
  */
 
 export type AccoladeId =

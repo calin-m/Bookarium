@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
 > **Last Synchronized**: `2026-11-28`  
-> **Topology Health**: `268` Modules Analyzed • `1163` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `268` Modules Analyzed • `1177` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -43,7 +43,7 @@ flowchart LR
 
     subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx -> BookReaderClient.tsx • useReaderHabitTelemetry)"]
         Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Share Action + Desktop lg: Tools • Tactile Slide)"]
-        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]
+        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon • AnimatePresence)"]
         ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • ReaderHighlightAdjustOverlay • reader-bookmark-geometry.ts)"]
         ProgressBar["Top Reading Progress Indicator"]
         ResumeToast["Exact-Page Auto-Resume Toast"]
@@ -52,7 +52,7 @@ flowchart LR
         SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]
         LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]
         Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]
-        AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]
+        AudioBar["Speech Narration Bar (ReaderSpeechBar)\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x • AnimatePresence Speed Menu)"]
         HighlightPop["Highlight & Selection Adjust Overlays (TextHighlightPopover • ReaderHighlightAdjustOverlay • + Sentence/+ Paragraph)"]
         AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\n(7 Archival Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]
         InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]
@@ -183,8 +183,8 @@ Auto-extracted dynamically from **119 Production UI Components** using Babel AST
 | **`ReadingStatusSelector`** | Bookshelf | `ReadingStatusSelectorProps` | `status`, `onChange`, `bookId`, `bookTitle`, `size`, `showClear`, `className` | [`src/components/bookshelf/ReadingStatusSelector.tsx`](../../src/components/bookshelf/ReadingStatusSelector.tsx) |
 | **`ContentCrossfade`** | Motion | `ContentCrossfadeProps` | `transitionKey`, `children`, `variant`, `className`, `style`, `dataTestId` | [`src/components/motion/ContentCrossfade.tsx`](../../src/components/motion/ContentCrossfade.tsx) |
 | **`motion-config`** | Motion | _Autonomous_ | None (Self-Contained) | [`src/components/motion/motion-config.ts`](../../src/components/motion/motion-config.ts) |
-| **`MotionReveal`** | Motion | `MotionRevealProps` | `children`, `delay`, `className` | [`src/components/motion/MotionReveal.tsx`](../../src/components/motion/MotionReveal.tsx) |
-| **`StaggerGroup`** | Motion | `StaggerGroupProps` | `children`, `className` | [`src/components/motion/StaggerGroup.tsx`](../../src/components/motion/StaggerGroup.tsx) |
+| **`MotionReveal`** | Motion | `MotionRevealProps` | `children`, `delay`, `className`, `staggerChild`, `disabled` | [`src/components/motion/MotionReveal.tsx`](../../src/components/motion/MotionReveal.tsx) |
+| **`StaggerGroup`** | Motion | `StaggerGroupProps` | `children`, `className`, `disabled` | [`src/components/motion/StaggerGroup.tsx`](../../src/components/motion/StaggerGroup.tsx) |
 | **`AdvancedFilterDrawer`** | Presentation | `AdvancedFilterDrawerProps` | `isOpen`, `onClose`, `selectedEra`, `onEraChange`, `selectedSort`, `onSortChange`, `selectedTopic`, `onTopicChange`, `selectedLanguage`, `onLanguageChange`, `selectedFormat`, `onFormatChange`, `onApplyFilters`, `onResetAll`, `activeFilterCount` | [`src/components/presentation/AdvancedFilterDrawer.tsx`](../../src/components/presentation/AdvancedFilterDrawer.tsx) |
 | **`BookCard`** | Presentation | `BookCardProps` | `book`, `isOffline`, `hideOfflineBadge`, `onDownloadClick`, `onRemoveOfflineClick`, `onPreviewClick`, `isPreviewActive`, `activeView`, `onTopicClick` | [`src/components/presentation/BookCard.tsx`](../../src/components/presentation/BookCard.tsx) |
 | **`BookGrid`** | Presentation | `BookGridProps` | `books`, `isLoading`, `isError`, `onRetry`, `page`, `onPageChange`, `hasNextPage`, `onDownloadClick`, `onRemoveOfflineClick`, `onPreviewClick`, `activePreviewBookId`, `emptyTitle`, `emptyDescription`, `viewMode`, `onViewModeChange`, `initialViewMode`, `showViewToggle`, `onBrowseCatalog`, `searchQuery`, `onClearSearch`, `activeView`, `showShelfControls`, `totalBooksCount`, `favoritesOnly`, `onClearFavoritesOnly`, `onTopicClick`, `pageSize` | [`src/components/presentation/BookGrid.tsx`](../../src/components/presentation/BookGrid.tsx) |

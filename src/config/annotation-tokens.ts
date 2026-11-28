@@ -1,3 +1,11 @@
+/**
+ * @module src/config/annotation-tokens
+ * @scope Authoritative 7-color archival highlight token registry (`ANNOTATION_COLOR_CONFIG`, `ANNOTATION_COLOR_LIST`), multi-color filter badge styling (`ALL_COLORS_FILTER_BADGE`), and pinned bookmark theme tokens (`BOOKMARK_DRAWER_TOKEN`).
+ * @invariant Derive `ANNOTATION_COLOR_LIST` directly from `ANNOTATION_COLOR_CONFIG` across every `HighlightColor` key and keep all 7 Light/Sepia/Dark highlighter surfaces distinct from `BOOKMARK_DRAWER_TOKEN` primary leather tones.
+ * @rationale Single-source token configuration keeps reader `<mark>` styles, hover selections, adjust-handle overlap rings, and notebook color swatches synchronized without hardcoding color lists in components.
+ * @adr ADR-019, ADR-080
+ */
+
 import type { HighlightColor } from '@/stores/useAnnotationStore';
 
 export interface AnnotationColorTheme {

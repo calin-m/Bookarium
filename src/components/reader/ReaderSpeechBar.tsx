@@ -19,6 +19,7 @@ import { cleanVoiceName, normalizeSpeechLang } from '@/lib/speech-utils';
 import type { UseReaderSpeechReturn } from '@/hooks/reader/useReaderSpeech';
 import { cn } from '@/lib/utils';
 import { Select } from '@/components/ui/Select';
+import { motionTokens } from '@/components/motion/motion-config';
 
 export interface ReaderSpeechBarProps {
   speech?: UseReaderSpeechReturn;
@@ -613,36 +614,43 @@ export const ReaderSpeechBar: React.FC<ReaderSpeechBarProps> = ({
                       <span>{rate}x</span>
                     </button>
 
-                    {isSpeedMenuOpen && (
-                      <div
-                        className={cn(
-                          'absolute bottom-full right-0 mb-2 p-1 rounded-xl border shadow-xl flex flex-col gap-0.5 z-50 min-w-[70px] animate-in fade-in zoom-in-95 duration-150',
-                          activeTheme.border,
-                          activeTheme.drawerBg
-                        )}
-                      >
-                        {SPEED_PRESETS.map((speed) => (
-                          <button
-                            key={speed}
-                            type="button"
-                            onClick={() => {
-                              onRateChange(speed);
-                              setIsSpeedMenuOpen(false);
-                            }}
-                            className={cn(
-                              'px-2.5 py-1 text-[11px] font-mono rounded-md text-left transition-colors cursor-pointer',
-                              rate === speed
-                                ? `${activeTheme.activePill} font-bold`
-                                : theme === 'sepia'
-                                ? 'hover:bg-[#402a1d]'
-                                : 'hover:bg-stone-100 dark:hover:bg-stone-800'
-                            )}
-                          >
-                            {speed}x
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <AnimatePresence>
+                      {isSpeedMenuOpen && (
+                        <motion.div
+                          key="speech-speed-menu"
+                          initial={{ opacity: 0, scale: 0.94, y: 4 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.94, y: 4 }}
+                          transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.smooth }}
+                          className={cn(
+                            'absolute bottom-full right-0 mb-2 p-1 rounded-xl border shadow-xl flex flex-col gap-0.5 z-50 min-w-[70px] origin-bottom-right',
+                            activeTheme.border,
+                            activeTheme.drawerBg
+                          )}
+                        >
+                          {SPEED_PRESETS.map((speed) => (
+                            <button
+                              key={speed}
+                              type="button"
+                              onClick={() => {
+                                onRateChange(speed);
+                                setIsSpeedMenuOpen(false);
+                              }}
+                              className={cn(
+                                'px-2.5 py-1 text-[11px] font-mono rounded-md text-left transition-colors cursor-pointer',
+                                rate === speed
+                                  ? `${activeTheme.activePill} font-bold`
+                                  : theme === 'sepia'
+                                  ? 'hover:bg-[#402a1d]'
+                                  : 'hover:bg-stone-100 dark:hover:bg-stone-800'
+                              )}
+                            >
+                              {speed}x
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>

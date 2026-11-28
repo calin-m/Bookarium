@@ -916,8 +916,8 @@ describe('ast-parser architectural & SQL verification engine', () => {
     expect(astParser.TIER_1_CONTRACTED_MODULES.length).toBe(20);
     expect(astParser.TIER_2_CONTRACTED_MODULES.length).toBe(22);
     expect(astParser.TIER_3_CONTRACTED_MODULES.length).toBe(34);
-    expect(astParser.TIER_4_CONTRACTED_MODULES.length).toBe(29);
-    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(105);
+    expect(astParser.TIER_4_CONTRACTED_MODULES.length).toBe(35);
+    expect(astParser.PROTECTED_CONTRACTED_MODULES.length).toBe(111);
 
     const byFile = new Map(catalog.modules.map((m) => [m.file, m]));
     expect(byFile.get('src/app/auth/callback/route.ts')?.layer).toBe('Edge Proxy & API Routes');

@@ -2,8 +2,8 @@
 
 /**
  * @module src/app/providers
- * @scope Client runtime provider orchestrating TanStack Query defaults, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
- * @invariant Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud` (passing `{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }` on bootstrap mount and `bookarium:auth-token-refreshed`), and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
+ * @scope Client runtime provider orchestrating TanStack Query defaults, global Framer Motion `MotionConfig` accessibility, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
+ * @invariant Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, wrap rendered client overlays inside `<MotionConfig reducedMotion="user">` while latching `hasOpenedAuthModal` so lazy-loaded `AuthModal` completes exit animations, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud` (passing `{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }` on bootstrap mount and `bookarium:auth-token-refreshed`), and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
  * @rationale Consolidating session lifecycle listeners, token-refresh events (`bookarium:auth-token-refreshed`), and reconnect outbox synchronization in a single client boundary keeps Zustand stores decoupled from DOM/window listeners.
  * @adr ADR-005, ADR-069, ADR-072, ADR-080, ADR-086
  */
@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MotionConfig } from 'framer-motion';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { initializeJurisdiction } from '@/stores/useJurisdictionStore';
 import { initializeTheme, type AppTheme } from '@/stores/useThemeStore';
@@ -74,6 +75,10 @@ export function Providers({
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthModalOpen = useAuthStore((s) => s.isAuthModalOpen);
+  const [hasOpenedAuthModal, setHasOpenedAuthModal] = useState(isAuthModalOpen);
+  if (isAuthModalOpen && !hasOpenedAuthModal) {
+    setHasOpenedAuthModal(true);
+  }
   const lastSyncTimeRef = useRef<number>(0);
 
   useEffect(() => {
@@ -194,10 +199,12 @@ export function Providers({
   return (
     <AuthHintContext.Provider value={initialIsAuthenticated}>
       <QueryClientProvider client={queryClient}>
-        <ServiceWorkerRegister />
-        <GlobalTitleTooltip />
-        {children}
-        {isAuthModalOpen && <AuthModal />}
+        <MotionConfig reducedMotion="user">
+          <ServiceWorkerRegister />
+          <GlobalTitleTooltip />
+          {children}
+          {hasOpenedAuthModal && <AuthModal />}
+        </MotionConfig>
       </QueryClientProvider>
     </AuthHintContext.Provider>
   );

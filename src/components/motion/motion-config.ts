@@ -1,3 +1,11 @@
+/**
+ * @module src/components/motion/motion-config
+ * @scope Shared Framer Motion timing curves, spring physics presets (`motionTokens`), and reusable reveal/stagger variants (`fadeInVariants`, `staggerContainerVariants`).
+ * @invariant Keep `motionTokens` deeply immutable via `as const` so `motionTokens.ease.smooth` and `motionTokens.ease.fade` infer 4-tuple `BezierDefinition` types across `framer-motion` transitions without widening to `number[]`.
+ * @rationale Centralizing physics tokens and `as const` easing tuples guarantees consistent editorial motion choreography across overlays and ribbons while preventing `motion-dom` type-widening build failures.
+ * @adr ADR-047, ADR-080
+ */
+
 export const motionTokens = {
   spring: {
     snappy: { type: 'spring', stiffness: 400, damping: 30 },

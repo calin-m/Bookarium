@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Palette } from 'lucide-react';
+import { motionTokens } from '@/components/motion/motion-config';
 import type { HighlightColor } from '@/stores/useAnnotationStore';
 import {
   ANNOTATION_COLOR_LIST,
@@ -108,32 +110,39 @@ export const QuickColorSwatchPopover: React.FC<
         <Palette className="w-2.5 h-2.5 opacity-70" />
       </button>
 
-      {isColorPickerOpen && (
-        <div
-          data-testid={`quick-color-popover-${annotationId}`}
-          className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md"
-        >
-          {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
-            const isSelected = savedColor === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                aria-label={`Change highlight color to ${c.label}`}
-                title={`Change to ${c.label}`}
-                onClick={async () => {
-                  await onSelectColor(annotationId, c.id);
-                  setIsColorPickerOpen(false);
-                }}
-                data-testid={`quick-color-btn-${annotationId}-${c.id}`}
-                className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
-                  isSelected ? c.activeRing : ''
-                }`}
-              />
-            );
-          })}
-        </div>
-      )}
+      <AnimatePresence>
+        {isColorPickerOpen && (
+          <motion.div
+            key={`quick-color-popover-${annotationId}`}
+            data-testid={`quick-color-popover-${annotationId}`}
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.12, ease: motionTokens.ease.smooth }}
+            className="absolute right-0 top-full mt-1.5 z-20 p-1.5 rounded-xl border border-border bg-card shadow-booksaw flex items-center gap-1.5 backdrop-blur-md origin-top-right"
+          >
+            {HIGHLIGHT_COLOR_SWATCHES.map((c) => {
+              const isSelected = savedColor === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-label={`Change highlight color to ${c.label}`}
+                  title={`Change to ${c.label}`}
+                  onClick={async () => {
+                    await onSelectColor(annotationId, c.id);
+                    setIsColorPickerOpen(false);
+                  }}
+                  data-testid={`quick-color-btn-${annotationId}-${c.id}`}
+                  className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 active:scale-95 cursor-pointer focus-visible:outline-none ${c.pillClass} ${
+                    isSelected ? c.activeRing : ''
+                  }`}
+                />
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -143,9 +143,11 @@ describe('ReaderFooter', () => {
       fireEvent.click(settingsBtn);
       expect(settingsBtn).toHaveAttribute('aria-expanded', 'true');
       const floatingBar = screen.getByTestId('footer-floating-tools-bar');
+      const floatingShell = floatingBar.parentElement;
       expect(floatingBar).toBeInTheDocument();
-      expect(floatingBar).toHaveClass('fixed', 'right-2.5', 'z-[10002]', 'lg:hidden', 'flex-col', 'opacity-100');
-      expect(floatingBar).toHaveStyle({ bottom: '96px' });
+      expect(floatingShell).toHaveClass('fixed', 'right-2.5', 'z-[10002]', 'lg:hidden');
+      expect(floatingBar).toHaveClass('flex-col', 'opacity-100');
+      expect(floatingShell).toHaveStyle({ bottom: '96px' });
 
       // 4. Deterministic Ref-Based Idle Opacity State Machine (3,000ms post-release countdown):
       // Advance 2,000ms while already at opacity-100, then tap the toolbar -> timer resets for a full 3,000ms
@@ -254,7 +256,7 @@ describe('ReaderFooter', () => {
           onThemeChange={onThemeChange}
         />
       );
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '252px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '252px' });
       expect(screen.getByTestId('footer-annotations-badge')).toHaveTextContent('99+');
 
       // Simulate Read Aloud minimizing to compact pill ([data-testid="speech-bar-minimized"])
@@ -265,13 +267,13 @@ describe('ReaderFooter', () => {
       });
       // Wait for MutationObserver microtask if needed or trigger re-render
       await act(async () => {});
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '152px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '152px' });
 
       act(() => {
         document.body.removeChild(minimizedPill);
       });
       await act(async () => {});
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '252px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '252px' });
 
       fireEvent.click(screen.getByLabelText('Current theme: light. Click to switch theme.'));
       expect(onThemeChange).toHaveBeenCalledWith('sepia');
@@ -284,24 +286,24 @@ describe('ReaderFooter', () => {
       );
       fireEvent(window, new MouseEvent('pointermove', { clientY: 400 })); // Dragged up by 100px -> 252 + 100 = 352px
       fireEvent.pointerUp(window);
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '352px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '352px' });
 
       // Drag down past minimum bound -> clamps strictly at minBottomPx (252px when expanded speech is open)
       fireEvent.mouseDown(dragHandle, { clientY: 400 });
       fireEvent.mouseMove(window, { clientY: 900 });
       fireEvent.mouseUp(window);
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '252px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '252px' });
 
       // Whole-pod drag starting directly on a button (> 6px movement moves toolbar and suppresses accidental button click)
       const speechBtn = screen.getByLabelText('Read Aloud Narration');
       onToggleSpeech.mockClear();
       fireEvent.mouseDown(speechBtn, { clientY: 500 });
       fireEvent.mouseMove(window, { clientY: 497 }); // 3px <= 6px threshold -> no drag yet
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '252px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '252px' });
       fireEvent.mouseMove(window, { clientY: 420 }); // 80px > 6px threshold -> drags to 252 + 80 = 332px
       fireEvent.mouseUp(window);
       fireEvent.click(speechBtn); // Suppressed by onClickCapture after drag!
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '332px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '332px' });
       expect(onToggleSpeech).not.toHaveBeenCalled();
 
       // Touch drag on whole pod and drag handle
@@ -310,12 +312,12 @@ describe('ReaderFooter', () => {
       });
       fireEvent.touchMove(window, { touches: [{ clientY: 450 }] }); // +50px -> 382px
       fireEvent.touchEnd(window);
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '382px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '382px' });
 
       fireEvent.touchStart(dragHandle, { touches: [{ clientY: 500, clientX: 300 }] });
       fireEvent.touchMove(window, { touches: [{ clientY: 550, clientX: 300 }] }); // -50px -> 332px
       fireEvent.touchEnd(window);
-      expect(screen.getByTestId('footer-floating-tools-bar')).toHaveStyle({ bottom: '332px' });
+      expect(screen.getByTestId('footer-floating-tools-bar').parentElement).toHaveStyle({ bottom: '332px' });
       fireEvent.touchStart(dragHandle, { touches: [] });
 
       // Velocity-based inertial flick projection on release (multi-frame swipe glides & clamps cleanly)
@@ -331,7 +333,7 @@ describe('ReaderFooter', () => {
       fireEvent.mouseUp(window);
       // Inertial projection: 372 + 1.0 * 140 = 512px, clamped to maxBottomPx (max(252, innerHeight - 340) = 428px in JSDOM 768px)
       expect(
-        parseInt(screen.getByTestId('footer-floating-tools-bar').style.bottom, 10)
+        parseInt(screen.getByTestId('footer-floating-tools-bar').parentElement?.style.bottom || '0', 10)
       ).toBeGreaterThan(372);
 
       // Pausing > 120ms between moves decays velocityY to 0 so careful placement stops at exact finger position

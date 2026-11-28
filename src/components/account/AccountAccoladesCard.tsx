@@ -25,6 +25,10 @@ import { buildAccoladeContext, evaluateAccolades } from '@/lib/accolades-engine'
 import { calculateCompletedBooksCount } from '@/lib/reading-analytics';
 import { Alert } from '@/components/ui/Alert';
 import { ExLibrisBookplate } from '@/components/accolades/ExLibrisBookplate';
+import { MotionReveal } from '@/components/motion/MotionReveal';
+import { StaggerGroup } from '@/components/motion/StaggerGroup';
+import { useHasMounted } from '@/hooks/useHasMounted';
+import { usePerformanceTier } from '@/hooks/usePerformanceTier';
 
 const AccoladeCelebrationModal = dynamic(
   () => import('@/components/accolades/AccoladeCelebrationModal').then((mod) => mod.AccoladeCelebrationModal),
@@ -65,6 +69,9 @@ export function AccountAccoladesCard({
     evaluateAndUnlock,
     isHydrated,
   } = useHydratedAccolades();
+  const hasMounted = useHasMounted();
+  const { allowHeavyMotion } = usePerformanceTier();
+  const enableStagger = hasMounted && allowHeavyMotion;
 
   const habits = useHydratedHabits();
   const bookshelf = useHydratedBookshelf();
@@ -317,19 +324,26 @@ export function AccountAccoladesCard({
         </div>
 
         {/* Bookplate Grid */}
-        <div
+        <StaggerGroup
           key={`accolade-cat-${activeCategory}`}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-2 animate-in fade-in duration-150"
+          disabled={!enableStagger}
+          data-testid="accolades-compendium-grid"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-2"
         >
           {filteredCatalog.map((def) => (
-            <ExLibrisBookplate
+            <MotionReveal
               key={def.id}
-              definition={def}
-              progress={progressMap[def.id]}
-              onTogglePin={handleTogglePin}
-            />
+              staggerChild
+              disabled={!enableStagger}
+            >
+              <ExLibrisBookplate
+                definition={def}
+                progress={progressMap[def.id]}
+                onTogglePin={handleTogglePin}
+              />
+            </MotionReveal>
           ))}
-        </div>
+        </StaggerGroup>
       </div>
 
       {/* Celebration Modal (Mounted for seamless popups when accolades unlock) */}

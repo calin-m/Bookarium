@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture**: Programmatically compiled from Source AST via `scripts/lib/ast-parser.js` (Governance Rule 2).  
 > **Last Synchronized**: `2026-11-28`  
-> **Topology Health**: `268` Modules Analyzed • `1163` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `268` Modules Analyzed • `1177` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -17,7 +17,7 @@ flowchart TD
     User["👤 Reader / Public Domain Scholar"]
     
     subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]
-        Providers["providers.tsx\n(QueryClient, Auth Init, Cloud Sync, verifyActiveSessionValidity, IP/UA Reconciliation, GlobalTitleTooltip & Dynamic AuthModal)"]
+        Providers["providers.tsx\n(QueryClient, MotionConfig reducedMotion, Auth Init, Cloud Sync, verifyActiveSessionValidity, IP/UA Reconciliation, GlobalTitleTooltip & Latched AuthModal)"]
         SWReg["ServiceWorkerRegister.tsx & public/sw.js\n(App Shell v7, Static Asset Warmup & Offline Fallback)"]
         AuthModalNode["AuthModal.tsx, EmailSentView.tsx & TurnstileWidget.tsx\n(Sign-In, Sign-Up, Turnstile CAPTCHA, Honeypot, OAuth, Magic Link & Reset)"]
         Nav["Navbar.tsx\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]
@@ -344,7 +344,7 @@ Bookarium enforces a deterministic 7-stage quality assurance pipeline (`scripts/
 | **Pass 2** | MSW Server & React Query Validation | `vitest run src/hooks/queries src/app/api` | Validates edge proxy routes, rate limiters, and TanStack Query hooks against MSW |
 | **Pass 3** | Unit & Integration Test Suites | `vitest run --coverage` | Tiered 95/95/92/85% coverage floor across all co-located suites |
 | **Pass 4** | Living AST Documentation Sync | `docs:sync` toolchain | Auto-generates living `ARCHITECTURE.md` hub, `7` `docs/architecture/*.md` subsystem specs, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `GUTENBERG_PARSER.md`, `SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, and `QUALITY_AUDIT_REPORT.md` |
-| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 19 mandatory governance docs, bidirectional `docs/ARCHITECTURE.md`<->`docs/architecture/*.md` TOC & corpus parity, circular `SECURITY.md` symbol/table/feed parity (`auditSecurityDocumentationParity`), dynamic `/privacy`/`/copyright`/`AccountDeleteModal` technical & erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams (`validateMermaidDiagramsInMarkdown`), `@scope`/`@invariant`/`@adr` behavioral contracts across 105 Tier-1..Tier-4 protected modules + bidirectional `docs/SYSTEM_CONTRACTS.md` heading/count parity, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |
+| **Pass 5** | ADR, Schema, Inventory, Doc Parity & Test Co-Location | Markdown/SQL/TS AST & filesystem co-location verification | Validates contiguous ADR sequence & 4-field schema, 19 mandatory governance docs, bidirectional `docs/ARCHITECTURE.md`<->`docs/architecture/*.md` TOC & corpus parity, circular `SECURITY.md` symbol/table/feed parity (`auditSecurityDocumentationParity`), dynamic `/privacy`/`/copyright`/`AccountDeleteModal` technical & erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams (`validateMermaidDiagramsInMarkdown`), `@scope`/`@invariant`/`@adr` behavioral contracts across 111 Tier-1..Tier-4 protected modules + bidirectional `docs/SYSTEM_CONTRACTS.md` heading/count parity, semantic command/metric/workflow-count parity, dead-path & `17`-map orphaned generator lookup key checks, placeholder-prose guards, 1:1 `src/`<->architecture corpus inventory, 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules, and 100% 1:1 co-located `.test.ts(x)` suites across `src/` & CLI/AST scripts |
 | **Pass 6** | Code Quality, Custom AST Security Lint & Dead Code Audit | `eslint . --max-warnings 0` (`bookarium-security`) & Knip | Zero ESLint errors or warnings across Next.js, TypeScript, and 9 custom AST/taint security rules (`src/`, `scripts/`, `public/sw.js`, `next.config.ts` audited via Pass 0.75); zero dead files/exports |
 | **Pass 7** | Production Application Build & Live HTTP Smoke Probe | `next build` + `.next/routes-manifest.json` + loopback `next start` probe | Optimized production Next.js bundle compilation within byte budget, compiled security header parity (`X-Frame-Options: DENY`, `object-src 'none'`, `frame-ancestors 'none'`), and live runtime HTTP verification of headers, `400` SSRF/param blocking, and origin-locked `/auth/callback` redirects |
 

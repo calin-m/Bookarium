@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { motionTokens } from '@/components/motion/motion-config';
 import { useCursorTooltip } from '@/hooks/useCursorTooltip';
 import {
   CursorTooltip,
@@ -455,45 +457,52 @@ export const BookCard: React.FC<BookCardProps> = ({
             </div>
 
             {/* Unabridged Tag Popover (Sibling to inner pills strip, opens upwards cleanly without clipping) */}
-            {isTagPopoverOpen && (
-              <div
-                ref={popoverRef}
-                onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-full left-0 right-0 sm:right-auto sm:w-64 mb-1.5 z-30 p-2.5 bg-popover text-popover-foreground backdrop-blur-md border border-border rounded-xl shadow-xl space-y-1.5 text-left animate-in fade-in zoom-in-95 duration-150"
-              >
-                <div className="flex items-center justify-between border-b border-border pb-1">
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-muted-foreground">
-                    All Topics ({tagSet.allTags.length})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsTagPopoverOpen(false)}
-                    className="text-muted-foreground hover:text-foreground p-0.5 rounded"
-                    aria-label="Close topic list"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="max-h-[min(320px,65vh)] overflow-y-auto py-0.5 flex flex-wrap gap-1">
-                  {tagSet.allTags.map((tag) => (
-                    <span
-                      key={tag}
-                      onClick={() => {
-                        if (onTopicClick) {
-                          onTopicClick(tag);
-                          setIsTagPopoverOpen(false);
-                        }
-                      }}
-                      className={`inline-block text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border font-sans ${
-                        onTopicClick ? 'cursor-pointer hover:bg-muted/80 hover:text-primary transition-colors' : ''
-                      }`}
-                    >
-                      {tag}
+            <AnimatePresence>
+              {isTagPopoverOpen && (
+                <motion.div
+                  key={`book-card-tags-popover-${book.id}`}
+                  ref={popoverRef}
+                  onClick={(e) => e.stopPropagation()}
+                  initial={{ opacity: 0, scale: 0.94, y: 4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94, y: 4 }}
+                  transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.smooth }}
+                  className="absolute bottom-full left-0 right-0 sm:right-auto sm:w-64 mb-1.5 z-30 p-2.5 bg-popover text-popover-foreground backdrop-blur-md border border-border rounded-xl shadow-xl space-y-1.5 text-left origin-bottom-left"
+                >
+                  <div className="flex items-center justify-between border-b border-border pb-1">
+                    <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-muted-foreground">
+                      All Topics ({tagSet.allTags.length})
                     </span>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <button
+                      type="button"
+                      onClick={() => setIsTagPopoverOpen(false)}
+                      className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+                      aria-label="Close topic list"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="max-h-[min(320px,65vh)] overflow-y-auto py-0.5 flex flex-wrap gap-1">
+                    {tagSet.allTags.map((tag) => (
+                      <span
+                        key={tag}
+                        onClick={() => {
+                          if (onTopicClick) {
+                            onTopicClick(tag);
+                            setIsTagPopoverOpen(false);
+                          }
+                        }}
+                        className={`inline-block text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border font-sans ${
+                          onTopicClick ? 'cursor-pointer hover:bg-muted/80 hover:text-primary transition-colors' : ''
+                        }`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="space-y-1.5 sm:space-y-2 pt-1.5 sm:pt-2 border-t border-border">

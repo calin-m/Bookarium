@@ -27,10 +27,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 ## 📊 Contract Coverage Telemetry (Across All Executable Modules)
 
 - **Total Scanned Executable Modules**: `292` (`src/**`, `scripts/**/*.js`, `next.config.ts`, `public/sw.js`)
-- **Annotated Contract Modules**: `105` (**36%** coverage; `20` Tier-1 + `22` Tier-2 + `34` Tier-3 + `29` Tier-4 = `105` Protected)
-- **Extracted Module Invariants**: `171`
+- **Annotated Contract Modules**: `111` (**38%** coverage; `20` Tier-1 + `22` Tier-2 + `34` Tier-3 + `35` Tier-4 = `111` Protected)
+- **Extracted Module Invariants**: `177`
 - **Symbol-Level Contracts**: `1`
-- **Pending Annotation Queue**: `187` *(auto-ranked below by AST blast radius & external boundary exposure)*
+- **Pending Annotation Queue**: `181` *(auto-ranked below by AST blast radius & external boundary exposure)*
 
 | Architectural Layer | Total Modules | Contracted | Pending | Coverage |
 | :--- | :---: | :---: | :---: | :---: |
@@ -40,8 +40,8 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 | **React Hooks & Queries** | `36` | `13` | `23` | 36.1% |
 | **Web Workers** | `2` | `2` | `0` | 100.0% |
 | **App Router Pages & Layouts** | `26` | `7` | `19` | 26.9% |
-| **UI & Feature Components** | `119` | `4` | `115` | 3.4% |
-| **Config & Type Contracts** | `18` | `8` | `10` | 44.4% |
+| **UI & Feature Components** | `119` | `8` | `111` | 6.7% |
+| **Config & Type Contracts** | `18` | `10` | `8` | 55.6% |
 | **CLI Pipelines & Governance** | `22` | `14` | `8` | 63.6% |
 
 ---
@@ -918,7 +918,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Guaranteeing identical SSR and initial client HTML prevents React hydration mismatch errors across persisted Zustand stores, localStorage caches, and responsive layout hooks.
 - **Governing Decisions (`@adr`)**: [ADR-079](DECISIONS.md), [ADR-081](DECISIONS.md)
-- **AST Blast Radius**: 17 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/presentation/LiteraryQuotes.tsx`](../src/components/presentation/LiteraryQuotes.tsx), [`src/components/presentation/StickyCatalogToolbar.tsx`](../src/components/presentation/StickyCatalogToolbar.tsx), [`src/components/presentation/bookshelf/BookshelfMobileModal.tsx`](../src/components/presentation/bookshelf/BookshelfMobileModal.tsx), …)
+- **AST Blast Radius**: 18 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/presentation/LiteraryQuotes.tsx`](../src/components/presentation/LiteraryQuotes.tsx), [`src/components/presentation/StickyCatalogToolbar.tsx`](../src/components/presentation/StickyCatalogToolbar.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/hooks/useHasMounted.test.ts`](../src/hooks/useHasMounted.test.ts) (1 tests)
 
@@ -1029,15 +1029,15 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/app/providers.tsx`](../src/app/providers.tsx) *(Tier-2 Protected)*
 
-- **Intended Scope (`@scope`)**: Client runtime provider orchestrating TanStack Query defaults, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
+- **Intended Scope (`@scope`)**: Client runtime provider orchestrating TanStack Query defaults, global Framer Motion `MotionConfig` accessibility, synchronous jurisdiction/theme initialization, auth notice consumption, online/focus/interval session validity polling, and multi-store cloud sync triggers.
 - **Behavioral Invariants (`@invariant`)**:
-  - Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud` (passing `{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }` on bootstrap mount and `bookarium:auth-token-refreshed`), and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
+  - Hydrate `initializeJurisdiction` and `initializeTheme` synchronously during initial state setup, wrap rendered client overlays inside `<MotionConfig reducedMotion="user">` while latching `hasOpenedAuthModal` so lazy-loaded `AuthModal` completes exit animations, honor passive sync cooldown (`lastSyncTimeRef`), trigger `verifyActiveSessionValidity` on `online`, `visibilitychange` (`visible`), and visible-tab `60_000ms` intervals while flushing `syncAllStoresWithCloud` (passing `{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }` on bootstrap mount and `bookarium:auth-token-refreshed`), and consume one-time `auth_notice` / `auth_error` URL params via `window.history.replaceState`.
 - **Design Rationale (`@rationale`)**:
   - Consolidating session lifecycle listeners, token-refresh events (`bookarium:auth-token-refreshed`), and reconnect outbox synchronization in a single client boundary keeps Zustand stores decoupled from DOM/window listeners.
 - **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md)
 - **AST Blast Radius**: 2 runtime, 0 type-only ([`src/app/layout.tsx`](../src/app/layout.tsx), [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx))
 - **Cross-Boundary Coupling**: Signals: listens `CustomEvent:bookarium:auth-token-refreshed`
-- **Test Contract**: [`src/app/providers.test.tsx`](../src/app/providers.test.tsx) (13 tests)
+- **Test Contract**: [`src/app/providers.test.tsx`](../src/app/providers.test.tsx) (14 tests)
 
 #### [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts) *(Tier-3 Protected)*
 
@@ -1077,7 +1077,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Test Contract**: [`src/app/u/[username]/profile-layout-utils.test.ts`](../src/app/u/[username]/profile-layout-utils.test.ts) (10 tests)
 
 
-### Layer: UI & Feature Components (4 Contracted)
+### Layer: UI & Feature Components (8 Contracted)
 
 #### [`src/components/auth/TurnstileWidget.tsx`](../src/components/auth/TurnstileWidget.tsx) *(Tier-2 Protected)*
 
@@ -1091,6 +1091,30 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Env Vars: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - **Test Contract**: [`src/components/auth/TurnstileWidget.test.tsx`](../src/components/auth/TurnstileWidget.test.tsx) (2 tests)
 
+#### [`src/components/motion/motion-config.ts`](../src/components/motion/motion-config.ts) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Shared Framer Motion timing curves, spring physics presets (`motionTokens`), and reusable reveal/stagger variants (`fadeInVariants`, `staggerContainerVariants`).
+- **Behavioral Invariants (`@invariant`)**:
+  - Keep `motionTokens` deeply immutable via `as const` so `motionTokens.ease.smooth` and `motionTokens.ease.fade` infer 4-tuple `BezierDefinition` types across `framer-motion` transitions without widening to `number[]`.
+- **Design Rationale (`@rationale`)**:
+  - Centralizing physics tokens and `as const` easing tuples guarantees consistent editorial motion choreography across overlays and ribbons while preventing `motion-dom` type-widening build failures.
+- **Governing Decisions (`@adr`)**: [ADR-047](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 12 runtime, 0 type-only ([`src/components/accolades/AccoladeCelebrationModal.tsx`](../src/components/accolades/AccoladeCelebrationModal.tsx), [`src/components/account/AccountBottomDock.tsx`](../src/components/account/AccountBottomDock.tsx), [`src/components/auth/AuthModal.tsx`](../src/components/auth/AuthModal.tsx), [`src/components/motion/MotionReveal.tsx`](../src/components/motion/MotionReveal.tsx), …)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/components/motion/motion-config.test.ts`](../src/components/motion/motion-config.test.ts) (2 tests)
+
+#### [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Top navigation bar orchestrating view switching, collection counters, auth CTA/account hover menu, theme cycling, and hardware-adaptive active underline gliding.
+- **Behavioral Invariants (`@invariant`)**:
+  - Preserve zero-flash auth chrome via `initialIsAuthenticated`, `useAuthHint()`, and `STORAGE_KEYS.AUTH_HINT` (`bookarium-auth-hint`), disambiguate touch taps from desktop pointer hover on the Account dropdown inside `<AnimatePresence>`, gate sliding indicator updates behind `allowHeavyMotion`, and skip indicator measurement when `activeView === 'account'`.
+- **Design Rationale (`@rationale`)**:
+  - Coupling server auth hints, touch/pointer separation, and capability-gated layout measurement eliminates hydration CTA flicker, sticky mobile hover traps, and main-thread jank on lower-tier devices.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-072](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 6 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/copyright/page.tsx`](../src/app/copyright/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), …)
+- **Cross-Boundary Coupling**: Storage/Cookies: `bookarium-auth-hint`
+- **Test Contract**: [`src/components/presentation/Navbar.test.tsx`](../src/components/presentation/Navbar.test.tsx) (41 tests)
+
 #### [`src/components/ui/Button.tsx`](../src/components/ui/Button.tsx) *(Tier-4 Protected)*
 
 - **Intended Scope (`@scope`)**: Polymorphic accessible button primitive (`Button`) supporting `ButtonVariant` and `ButtonSize` design tokens alongside loading state disablement.
@@ -1102,6 +1126,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: 46 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/auth/confirm-deletion/page.tsx`](../src/app/auth/confirm-deletion/page.tsx), [`src/app/error.tsx`](../src/app/error.tsx), [`src/app/not-found.tsx`](../src/app/not-found.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/components/ui/Button.test.tsx`](../src/components/ui/Button.test.tsx) (5 tests)
+
+#### [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Shared destructive/warning confirmation dialog (`ConfirmActionModal`) built atop `<Modal>` for irreversible collection, session, and account actions.
+- **Behavioral Invariants (`@invariant`)**:
+  - Compose `<Modal>` with transparent backdrop override (`bg-transparent backdrop-blur-none`), keep Cancel and destructive Confirm `<Button>` actions explicitly typed (`type="button"`), and forward caller `buttonSize` and explicit `modalTestId`/`dialogTestId`/`confirmTestId`/`cancelTestId` selectors cleanly.
+- **Design Rationale (`@rationale`)**:
+  - Centralizing confirmation typography, spacing, and backdrop pass-through prevents duplicate warning modal markup while layering cleanly over secondary drawers and sheets.
+- **Governing Decisions (`@adr`)**: [ADR-075](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 8 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/components/account/AccountIdentityCard.tsx`](../src/components/account/AccountIdentityCard.tsx), [`src/components/account/AccountNarrationSubPanel.tsx`](../src/components/account/AccountNarrationSubPanel.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx), …)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/components/ui/ConfirmActionModal.test.tsx`](../src/components/ui/ConfirmActionModal.test.tsx) (1 tests)
 
 #### [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) *(Tier-4 Protected)*
 
@@ -1127,8 +1163,20 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/components/ui/Modal.test.tsx`](../src/components/ui/Modal.test.tsx) (9 tests)
 
+#### [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) *(Tier-4 Protected)*
 
-### Layer: Config & Type Contracts (8 Contracted)
+- **Intended Scope (`@scope`)**: Accessible forwarded-ref native `<select>` UI primitive (`Select`) with optional decorative icon/chevron slots.
+- **Behavioral Invariants (`@invariant`)**:
+  - Return a bare `<select>` node with zero wrapper `<div>` elements whenever `leftIcon`, `rightChevron`, and `wrapperClassName` are omitted, forwarding `ref` and native HTML select attributes directly.
+- **Design Rationale (`@rationale`)**:
+  - Avoiding unrequested wrapper elements preserves exact flex-item and inline layout geometry in tight toolbars while still allowing icon-adorned selects where explicitly requested.
+- **Governing Decisions (`@adr`)**: [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 8 runtime, 0 type-only ([`src/components/account/AccountNarrationSubPanel.tsx`](../src/components/account/AccountNarrationSubPanel.tsx), [`src/components/presentation/BookmarkCard.tsx`](../src/components/presentation/BookmarkCard.tsx), [`src/components/presentation/CollectionSortDropdown.tsx`](../src/components/presentation/CollectionSortDropdown.tsx), [`src/components/presentation/LanguageSelector.tsx`](../src/components/presentation/LanguageSelector.tsx), …)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/components/ui/Select.test.tsx`](../src/components/ui/Select.test.tsx) (2 tests)
+
+
+### Layer: Config & Type Contracts (10 Contracted)
 
 #### [`next.config.ts`](../next.config.ts) *(Tier-1 Protected)*
 
@@ -1141,6 +1189,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`scripts/lib/sast-validators.test.ts`](../scripts/lib/sast-validators.test.ts) (18 tests)
+
+#### [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Authoritative 7-color archival highlight token registry (`ANNOTATION_COLOR_CONFIG`, `ANNOTATION_COLOR_LIST`), multi-color filter badge styling (`ALL_COLORS_FILTER_BADGE`), and pinned bookmark theme tokens (`BOOKMARK_DRAWER_TOKEN`).
+- **Behavioral Invariants (`@invariant`)**:
+  - Derive `ANNOTATION_COLOR_LIST` directly from `ANNOTATION_COLOR_CONFIG` across every `HighlightColor` key and keep all 7 Light/Sepia/Dark highlighter surfaces distinct from `BOOKMARK_DRAWER_TOKEN` primary leather tones.
+- **Design Rationale (`@rationale`)**:
+  - Single-source token configuration keeps reader `<mark>` styles, hover selections, adjust-handle overlap rings, and notebook color swatches synchronized without hardcoding color lists in components.
+- **Governing Decisions (`@adr`)**: [ADR-019](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 8 runtime, 0 type-only ([`src/components/presentation/notebook/NotebookFilterStrip.tsx`](../src/components/presentation/notebook/NotebookFilterStrip.tsx), [`src/components/presentation/notebook/QuickColorSwatchPopover.tsx`](../src/components/presentation/notebook/QuickColorSwatchPopover.tsx), [`src/components/reader/ReaderAnnotationsDrawer.tsx`](../src/components/reader/ReaderAnnotationsDrawer.tsx), [`src/components/reader/ReaderFloatingToolsPod.tsx`](../src/components/reader/ReaderFloatingToolsPod.tsx), …)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: [`src/config/annotation-tokens.test.ts`](../src/config/annotation-tokens.test.ts) (5 tests)
 
 #### [`src/config/featured-books.ts`](../src/config/featured-books.ts) *(Tier-4 Protected)*
 
@@ -1202,6 +1262,18 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **AST Blast Radius**: 37 runtime, 0 type-only ([`src/app/api/books/content/asset-renders.ts`](../src/app/api/books/content/asset-renders.ts), [`src/app/api/profiles/card/route.ts`](../src/app/api/profiles/card/route.ts), [`src/app/auth/callback/route.ts`](../src/app/auth/callback/route.ts), [`src/app/copyright/layout.tsx`](../src/app/copyright/layout.tsx), …)
 - **Cross-Boundary Coupling**: Env Vars: `BOOKARIUM_REPO_URL`, `GUTENBERG_CONTACT_EMAIL`, `NEXT_PUBLIC_GITHUB_REPO`, `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`, `NEXT_PUBLIC_LEGAL_CONTACT_FORM`, `NEXT_PUBLIC_SITE_URL`
 - **Test Contract**: [`src/config/site-config.test.ts`](../src/config/site-config.test.ts) (6 tests)
+
+#### [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) *(Tier-4 Protected)*
+
+- **Intended Scope (`@scope`)**: Canonical TypeScript contracts (`AccoladeId`, `AccoladeTier`, `AccoladeCategory`, `AccoladeDefinition`, `UnlockedAccolade`, `AccoladeProgress`, `AccoladeEvaluationResult`) for literary accolades and Ex-Libris bookplates.
+- **Behavioral Invariants (`@invariant`)**:
+  - Keep `AccoladeId`, `AccoladeTier`, and `AccoladeCategory` unions synchronized with `ACCOLADES_CATALOG` and `evaluate` context shapes (`AccoladeEvaluationContext`) across client engines, Supabase serialization, and Account UI views.
+- **Design Rationale (`@rationale`)**:
+  - Isolating accolade domain types in a pure dependency-free contract module prevents circular dependencies between store persistence, evaluation math, and 3D bookplate components.
+- **Governing Decisions (`@adr`)**: [ADR-025](DECISIONS.md), [ADR-080](DECISIONS.md)
+- **AST Blast Radius**: 6 runtime, 3 type-only ([`src/components/accolades/AccoladeCelebrationModal.tsx`](../src/components/accolades/AccoladeCelebrationModal.tsx), [`src/components/accolades/ExLibrisBookplate.tsx`](../src/components/accolades/ExLibrisBookplate.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/config/accolades-config.ts`](../src/config/accolades-config.ts), [`src/app/account/page.tsx`](../src/app/account/page.tsx) *(type)*, [`src/components/account/AccountBottomDock.tsx`](../src/components/account/AccountBottomDock.tsx) *(type)*, …)
+- **Cross-Boundary Coupling**: Self-contained / pure domain computation
+- **Test Contract**: _Covered via runtime/verification harness_
 
 #### [`src/types/book.types.ts`](../src/types/book.types.ts) *(Tier-4 Protected)*
 
@@ -1408,19 +1480,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 ---
 
-## 📋 AST-Prioritized Pending Contract Queue (187 Modules)
+## 📋 AST-Prioritized Pending Contract Queue (181 Modules)
 
 Unannotated modules ranked automatically by AST **fan-in blast radius** and **cross-boundary exposure** (`Supabase DB`, `RPC`, `/api/*`, `CustomEvent`/`BroadcastChannel`, `localStorage`/Cookies, `process.env.*`):
 
-### High-Coupling Priority Candidates (35 Modules, Score >= 8)
+### High-Coupling Priority Candidates (30 Modules, Score >= 8)
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
-| `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
-| `16` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
-| `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
-| `16` | [`src/config/annotation-tokens.ts`](../src/config/annotation-tokens.ts) | Config & Type Contracts | `8` / `0` | Pure / internal |
-| `15` | [`src/types/accolades.types.ts`](../src/types/accolades.types.ts) | Config & Type Contracts | `6` / `3` | Pure / internal |
 | `14` | [`src/config/accolades-config.ts`](../src/config/accolades-config.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/config/api-endpoints.ts`](../src/config/api-endpoints.ts) | Config & Type Contracts | `7` / `0` | Pure / internal |
 | `14` | [`src/lib/gutenberg/types.ts`](../src/lib/gutenberg/types.ts) | Domain Engines & Adapters | `5` / `0` | Pure / internal |
@@ -1431,6 +1498,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `12` | [`src/lib/smart-search.ts`](../src/lib/smart-search.ts) | Domain Engines & Adapters | `4` / `0` | Pure / internal |
 | `11` | [`src/config/catalog-filters.ts`](../src/config/catalog-filters.ts) | Config & Type Contracts | `5` / `1` | Pure / internal |
 | `11` | [`src/hooks/useDialogFocusTrap.ts`](../src/hooks/useDialogFocusTrap.ts) | React Hooks & Queries | `4` / `0` | Pure / internal |
+| `11` | [`src/hooks/usePerformanceTier.ts`](../src/hooks/usePerformanceTier.ts) | React Hooks & Queries | `4` / `0` | Pure / internal |
 | `10` | [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx) | App Router Pages & Layouts | `0` / `0` | API Calls: `/covers/[file]`, `/og/books/[file]` |
 | `10` | [`src/components/motion/ContentCrossfade.tsx`](../src/components/motion/ContentCrossfade.tsx) | UI & Feature Components | `5` / `0` | Pure / internal |
 | `10` | [`src/components/presentation/DownloadDrawer.tsx`](../src/components/presentation/DownloadDrawer.tsx) | UI & Feature Components | `3` / `0` | API Calls: `/api/books/content` |
@@ -1443,7 +1511,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `10` | [`src/lib/speech-utils.ts`](../src/lib/speech-utils.ts) | Domain Engines & Adapters | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useAmbientDockScrollState.ts`](../src/hooks/useAmbientDockScrollState.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useCursorTooltip.ts`](../src/hooks/useCursorTooltip.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
-| `9` | [`src/hooks/usePerformanceTier.ts`](../src/hooks/usePerformanceTier.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `9` | [`src/hooks/useTouchDevice.ts`](../src/hooks/useTouchDevice.ts) | React Hooks & Queries | `3` / `0` | Pure / internal |
 | `8` | [`src/components/presentation/CollectionEmptyState.tsx`](../src/components/presentation/CollectionEmptyState.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
@@ -1452,7 +1519,7 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `8` | [`src/components/ui/Textarea.tsx`](../src/components/ui/Textarea.tsx) | UI & Feature Components | `4` / `0` | Pure / internal |
 | `8` | [`src/config/views.config.ts`](../src/config/views.config.ts) | Config & Type Contracts | `3` / `2` | Pure / internal |
 
-<details><summary>Standard & Leaf Modules Pending Optional Annotation (152 Modules)</summary>
+<details><summary>Standard & Leaf Modules Pending Optional Annotation (151 Modules)</summary>
 
 | Priority Score | Module | Layer | Callers (Runtime / Type) | Cross-Boundary Touchpoints |
 | :---: | :--- | :--- | :---: | :--- |
@@ -1507,7 +1574,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `4` | [`src/app/account/page.tsx`](../src/app/account/page.tsx) | App Router Pages & Layouts | `1` / `0` | Leaf / pure |
 | `4` | [`src/components/accolades/ExLibrisBookplate.tsx`](../src/components/accolades/ExLibrisBookplate.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/bookshelf/ReadingStatusSelector.tsx`](../src/components/bookshelf/ReadingStatusSelector.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
-| `4` | [`src/components/motion/motion-config.ts`](../src/components/motion/motion-config.ts) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/presentation/BookCard.tsx`](../src/components/presentation/BookCard.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/presentation/CopyrightNoticeBanner.tsx`](../src/components/presentation/CopyrightNoticeBanner.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
 | `4` | [`src/components/presentation/OpenBookLeftPageSpread.tsx`](../src/components/presentation/OpenBookLeftPageSpread.tsx) | UI & Feature Components | `2` / `0` | Leaf / pure |
@@ -1557,6 +1623,8 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/account/symposium/SymposiumPactsSubTab.tsx`](../src/components/account/symposium/SymposiumPactsSubTab.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/auth/AuthModal.tsx`](../src/components/auth/AuthModal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/auth/EmailSentView.tsx`](../src/components/auth/EmailSentView.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/motion/MotionReveal.tsx`](../src/components/motion/MotionReveal.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
+| `2` | [`src/components/motion/StaggerGroup.tsx`](../src/components/motion/StaggerGroup.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/AdvancedFilterDrawer.tsx`](../src/components/presentation/AdvancedFilterDrawer.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/BookGrid.tsx`](../src/components/presentation/BookGrid.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/presentation/BookmarkCard.tsx`](../src/components/presentation/BookmarkCard.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
@@ -1606,8 +1674,6 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `2` | [`src/components/ui/Card.tsx`](../src/components/ui/Card.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/components/ui/EditorialUnderlineTabs.tsx`](../src/components/ui/EditorialUnderlineTabs.tsx) | UI & Feature Components | `1` / `0` | Leaf / pure |
 | `2` | [`src/config/translation-languages.ts`](../src/config/translation-languages.ts) | Config & Type Contracts | `1` / `0` | Leaf / pure |
-| `0` | [`src/components/motion/MotionReveal.tsx`](../src/components/motion/MotionReveal.tsx) | UI & Feature Components | `0` / `0` | Leaf / pure |
-| `0` | [`src/components/motion/StaggerGroup.tsx`](../src/components/motion/StaggerGroup.tsx) | UI & Feature Components | `0` / `0` | Leaf / pure |
 
 </details>
 

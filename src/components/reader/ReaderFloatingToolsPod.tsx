@@ -8,6 +8,8 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { motionTokens } from '@/components/motion/motion-config';
 import {
   Search,
   Settings,
@@ -373,203 +375,215 @@ export const ReaderFloatingToolsPod: React.FC<
       )}
 
       {/* Right-Edge Vertical Floating Toolbar via Document Portal (z-[10002] Above Read Aloud Bar) */}
-      {effectiveToolsMenuOpen &&
-        hasSecondaryTools &&
+      {hasSecondaryTools &&
         typeof document !== 'undefined' &&
         createPortal(
-          <div
-            role="toolbar"
-            aria-label="Mobile Reader Tools"
-            data-testid="footer-floating-tools-bar"
-            data-prevent-swipe
-            onPointerEnter={pauseIdleTimerAndWake}
-            onPointerLeave={scheduleIdleDim}
-            onPointerDown={(e) => {
-              handleStartToolbarDrag(e.clientY, e.clientX, false);
-            }}
-            onMouseDown={(e) => {
-              handleStartToolbarDrag(e.clientY, e.clientX, false);
-            }}
-            onTouchStart={(e) => {
-              if (e.touches.length > 0) {
-                handleStartToolbarDrag(
-                  e.touches[0].clientY,
-                  e.touches[0].clientX,
-                  false
-                );
-              } else {
-                scheduleIdleDim();
-              }
-            }}
-            onClickCapture={(e) => {
-              if (suppressNextClickRef.current) {
-                suppressNextClickRef.current = false;
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-              }
-              scheduleIdleDim();
-            }}
-            style={{ bottom: `${effectiveBottomPx}px` }}
-            className={`fixed right-2.5 sm:right-4 z-[10002] lg:hidden flex flex-col items-center gap-1.5 p-1.5 rounded-2xl border backdrop-blur-xs origin-bottom-right ${
-              isDraggingToolbar
-                ? 'transition-opacity duration-200'
-                : 'transition-[bottom,opacity,transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] animate-in fade-in zoom-in-95'
-            } ${
-              isDraggingToolbar || !isToolbarIdle
-                ? 'opacity-100 shadow-xl'
-                : 'opacity-35 hover:opacity-100 shadow-sm'
-            } ${activeTheme.drawerBg} ${activeTheme.border}`}
-          >
-            {/* Top Enlarged Vertical Drag Handle Capsule */}
-            <div
-              role="slider"
-              tabIndex={0}
-              aria-label="Drag to reposition reader tools vertically"
-              aria-orientation="vertical"
-              aria-valuemin={minBottomPx}
-              aria-valuemax={maxBottomPx}
-              aria-valuenow={effectiveBottomPx}
-              data-testid="footer-floating-tools-drag-handle"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleStartToolbarDrag(e.clientY, e.clientX, true);
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleStartToolbarDrag(e.clientY, e.clientX, true);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                if (e.touches.length > 0) {
-                  handleStartToolbarDrag(
-                    e.touches[0].clientY,
-                    e.touches[0].clientX,
-                    true
-                  );
-                } else {
-                  scheduleIdleDim();
-                }
-              }}
-              className={`w-full flex items-center justify-center py-1.5 px-2 border-b ${activeTheme.border} rounded-t-lg cursor-grab active:cursor-grabbing touch-none select-none ${activeTheme.textMuted} hover:text-foreground transition-colors`}
-              title="Drag up or down to reposition toolbar"
-            >
-              <GripHorizontal className="w-4 h-4 opacity-70" />
-            </div>
-
-            {onThemeChange && (
-              <button
-                type="button"
-                onClick={() => {
-                  scheduleIdleDim();
-                  onThemeChange(NEXT_READER_THEME[theme]);
-                }}
-                aria-label={`Current theme: ${theme}. Click to switch theme.`}
-                title={`Current theme: ${theme}. Click to switch theme.`}
-                className={`p-2 rounded-xl border shrink-0 transition-all cursor-pointer active:scale-95 ${activeTheme.button}`}
-              >
-                {theme === 'light' ? (
-                  <Sun className="w-4 h-4 text-amber-500" />
-                ) : theme === 'sepia' ? (
-                  <Coffee className="w-4 h-4 text-amber-500" />
-                ) : (
-                  <Moon className="w-4 h-4 text-indigo-400" />
-                )}
-              </button>
-            )}
-
-            {onToggleControls && (
-              <button
-                type="button"
-                onClick={() => {
-                  scheduleIdleDim();
-                  onToggleControls();
-                }}
-                aria-label="Typography & Theme Controls"
-                title="Typography & Appearance"
-                className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                  isControlsOpen ? activeTheme.activePill : activeTheme.button
+          <AnimatePresence>
+            {effectiveToolsMenuOpen && (
+              <motion.div
+                key="footer-floating-tools-shell"
+                initial={{ opacity: 0, scale: 0.94, y: 6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 6 }}
+                transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.smooth }}
+                style={{ bottom: `${effectiveBottomPx}px` }}
+                className={`fixed right-2.5 sm:right-4 z-[10002] lg:hidden origin-bottom-right ${
+                  isDraggingToolbar
+                    ? ''
+                    : 'transition-[bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
                 }`}
               >
-                <Sliders className="w-4 h-4" />
-              </button>
-            )}
-
-            {onToggleAnnotations && (
-              <button
-                type="button"
-                onClick={() => {
-                  scheduleIdleDim();
-                  onToggleAnnotations();
-                }}
-                aria-label="Notes & Highlights"
-                title={
-                  hasPinnedBookmark
-                    ? 'View Notes, Highlights & Bookmark'
-                    : 'View Notes & Highlights'
-                }
-                className={`relative p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                  isAnnotationsOpen
-                    ? activeTheme.activePill
-                    : activeTheme.button
-                }`}
-              >
-                <Highlighter className="w-4 h-4" />
-                {annotationsCount > 0 ? (
-                  <span
-                    data-testid="footer-annotations-badge"
-                    className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary-600 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-2xs"
+                <div
+                  role="toolbar"
+                  aria-label="Mobile Reader Tools"
+                  data-testid="footer-floating-tools-bar"
+                  data-prevent-swipe
+                  onPointerEnter={pauseIdleTimerAndWake}
+                  onPointerLeave={scheduleIdleDim}
+                  onPointerDown={(e) => {
+                    handleStartToolbarDrag(e.clientY, e.clientX, false);
+                  }}
+                  onMouseDown={(e) => {
+                    handleStartToolbarDrag(e.clientY, e.clientX, false);
+                  }}
+                  onTouchStart={(e) => {
+                    if (e.touches.length > 0) {
+                      handleStartToolbarDrag(
+                        e.touches[0].clientY,
+                        e.touches[0].clientX,
+                        false
+                      );
+                    } else {
+                      scheduleIdleDim();
+                    }
+                  }}
+                  onClickCapture={(e) => {
+                    if (suppressNextClickRef.current) {
+                      suppressNextClickRef.current = false;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    scheduleIdleDim();
+                  }}
+                  className={`flex flex-col items-center gap-1.5 p-1.5 rounded-2xl border backdrop-blur-xs transition-[opacity,box-shadow] duration-200 ${
+                    isDraggingToolbar || !isToolbarIdle
+                      ? 'opacity-100 shadow-xl'
+                      : 'opacity-35 hover:opacity-100 shadow-sm'
+                  } ${activeTheme.drawerBg} ${activeTheme.border}`}
+                >
+                  {/* Top Enlarged Vertical Drag Handle Capsule */}
+                  <div
+                    role="slider"
+                    tabIndex={0}
+                    aria-label="Drag to reposition reader tools vertically"
+                    aria-orientation="vertical"
+                    aria-valuemin={minBottomPx}
+                    aria-valuemax={maxBottomPx}
+                    aria-valuenow={effectiveBottomPx}
+                    data-testid="footer-floating-tools-drag-handle"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleStartToolbarDrag(e.clientY, e.clientX, true);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleStartToolbarDrag(e.clientY, e.clientX, true);
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                      if (e.touches.length > 0) {
+                        handleStartToolbarDrag(
+                          e.touches[0].clientY,
+                          e.touches[0].clientX,
+                          true
+                        );
+                      } else {
+                        scheduleIdleDim();
+                      }
+                    }}
+                    className={`w-full flex items-center justify-center py-1.5 px-2 border-b ${activeTheme.border} rounded-t-lg cursor-grab active:cursor-grabbing touch-none select-none ${activeTheme.textMuted} hover:text-foreground transition-colors`}
+                    title="Drag up or down to reposition toolbar"
                   >
-                    {annotationsCount > 99 ? '99+' : annotationsCount}
-                  </span>
-                ) : hasPinnedBookmark ? (
-                  <span
-                    data-testid="footer-annotations-bookmark-dot"
-                    aria-hidden="true"
-                    className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${BOOKMARK_DRAWER_TOKEN.dotClass} border border-white dark:border-stone-900 shadow-2xs`}
-                  />
-                ) : null}
-              </button>
-            )}
+                    <GripHorizontal className="w-4 h-4 opacity-70" />
+                  </div>
 
-            {onToggleSpeech && (
-              <button
-                type="button"
-                onClick={() => {
-                  scheduleIdleDim();
-                  onToggleSpeech();
-                }}
-                aria-label="Read Aloud Narration"
-                title="Listen with Read Aloud"
-                className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                  isSpeechOpen ? activeTheme.activePill : activeTheme.button
-                }`}
-              >
-                <Headphones className="w-4 h-4" />
-              </button>
-            )}
+                  {onThemeChange && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        scheduleIdleDim();
+                        onThemeChange(NEXT_READER_THEME[theme]);
+                      }}
+                      aria-label={`Current theme: ${theme}. Click to switch theme.`}
+                      title={`Current theme: ${theme}. Click to switch theme.`}
+                      className={`p-2 rounded-xl border shrink-0 transition-all cursor-pointer active:scale-95 ${activeTheme.button}`}
+                    >
+                      {theme === 'light' ? (
+                        <Sun className="w-4 h-4 text-amber-500" />
+                      ) : theme === 'sepia' ? (
+                        <Coffee className="w-4 h-4 text-amber-500" />
+                      ) : (
+                        <Moon className="w-4 h-4 text-indigo-400" />
+                      )}
+                    </button>
+                  )}
 
-            {onToggleTranslations && (
-              <button
-                type="button"
-                onClick={() => {
-                  scheduleIdleDim();
-                  onToggleTranslations();
-                }}
-                aria-label="Language Editions & Translations"
-                title="Translations"
-                className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                  isTranslationsOpen
-                    ? activeTheme.activePill
-                    : activeTheme.button
-                }`}
-              >
-                <Globe className="w-4 h-4" />
-              </button>
+                  {onToggleControls && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        scheduleIdleDim();
+                        onToggleControls();
+                      }}
+                      aria-label="Typography & Theme Controls"
+                      title="Typography & Appearance"
+                      className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                        isControlsOpen ? activeTheme.activePill : activeTheme.button
+                      }`}
+                    >
+                      <Sliders className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {onToggleAnnotations && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        scheduleIdleDim();
+                        onToggleAnnotations();
+                      }}
+                      aria-label="Notes & Highlights"
+                      title={
+                        hasPinnedBookmark
+                          ? 'View Notes, Highlights & Bookmark'
+                          : 'View Notes & Highlights'
+                      }
+                      className={`relative p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                        isAnnotationsOpen
+                          ? activeTheme.activePill
+                          : activeTheme.button
+                      }`}
+                    >
+                      <Highlighter className="w-4 h-4" />
+                      {annotationsCount > 0 ? (
+                        <span
+                          data-testid="footer-annotations-badge"
+                          className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary-600 text-white text-[9px] font-mono font-bold flex items-center justify-center shadow-2xs"
+                        >
+                          {annotationsCount > 99 ? '99+' : annotationsCount}
+                        </span>
+                      ) : hasPinnedBookmark ? (
+                        <span
+                          data-testid="footer-annotations-bookmark-dot"
+                          aria-hidden="true"
+                          className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${BOOKMARK_DRAWER_TOKEN.dotClass} border border-white dark:border-stone-900 shadow-2xs`}
+                        />
+                      ) : null}
+                    </button>
+                  )}
+
+                  {onToggleSpeech && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        scheduleIdleDim();
+                        onToggleSpeech();
+                      }}
+                      aria-label="Read Aloud Narration"
+                      title="Listen with Read Aloud"
+                      className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                        isSpeechOpen ? activeTheme.activePill : activeTheme.button
+                      }`}
+                    >
+                      <Headphones className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {onToggleTranslations && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        scheduleIdleDim();
+                        onToggleTranslations();
+                      }}
+                      aria-label="Language Editions & Translations"
+                      title="Translations"
+                      className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                        isTranslationsOpen
+                          ? activeTheme.activePill
+                          : activeTheme.button
+                      }`}
+                    >
+                      <Globe className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             )}
-          </div>,
+          </AnimatePresence>,
           document.body
         )}
     </div>

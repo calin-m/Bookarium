@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 28 Nov 2026 13:59:37 GMT  
+**Last Generated**: Sat, 28 Nov 2026 15:04:39 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2886 passed  
+**Total Verified Tests**: 2891 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2886 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2891 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 105 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 111 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.34%** (18150/18645) — *Target: $\ge$ 95%*
-- **Statements**: **95.96%** (19510/20331) — *Target: $\ge$ 95%*
-- **Functions**: **94.86%** (3772/3976) — *Target: $\ge$ 92%*
-- **Branches**: **88.18%** (18250/20694) — *Target: $\ge$ 85%*
+- **Lines**: **97.34%** (18174/18669) — *Target: $\ge$ 95%*
+- **Statements**: **95.96%** (19532/20353) — *Target: $\ge$ 95%*
+- **Functions**: **94.87%** (3773/3977) — *Target: $\ge$ 92%*
+- **Branches**: **88.2%** (18286/20731) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2886 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2891 Tests)
 
-### 🚀 App Routes & Pages (34 Suites · 292 Tests)
+### 🚀 App Routes & Pages (34 Suites · 293 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -402,7 +402,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/providers.test.tsx</code></b> (13 tests)</summary>
+<summary><b><code>src/app/providers.test.tsx</code></b> (14 tests)</summary>
 
 - ✔ `should render children within QueryClientProvider`
 - ✔ `should call syncAllStoresWithCloud only after auth initialization finishes (!isLoading)`
@@ -417,6 +417,7 @@
 - ✔ `initializes theme in store when initialTheme is provided and never reverts client theme changes on rerender`
 - ✔ `suppresses duplicate visibilitychange sync within 15s cooldown but keeps auth-token-refreshed unthrottled`
 - ✔ `reconciles server-side session origin on mount and validates active session on online, visibilitychange, and visible 60s polling`
+- ✔ `latches AuthModal mount on open, keeps exit-safe mount on close, and wraps children inside MotionConfig`
 
 </details>
 
@@ -1771,10 +1772,10 @@
 
 </details>
 
-### 🔐 Authentication & Security (3 Suites · 33 Tests)
+### 🔐 Authentication & Security (3 Suites · 34 Tests)
 
 <details>
-<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (26 tests)</summary>
+<summary><b><code>src/components/auth/AuthModal.test.tsx</code></b> (27 tests)</summary>
 
 - ✔ `renders nothing when isAuthModalOpen is false`
 - ✔ `renders Sign In view with email and password inputs`
@@ -1802,6 +1803,7 @@
 - ✔ `renders Continue with Google button on sign_in and sign_up views and invokes signInWithOAuth`
 - ✔ `keeps Email not confirmed Resend Link visible while awaiting Turnstile re-check and forwards verified token across both resend flows`
 - ✔ `bounds dialog height to mobile viewport with a pinned header and scrollable Sign Up body`
+- ✔ `resets transient local inputs cleanly when reopened after closing`
 
 </details>
 
@@ -3862,7 +3864,7 @@
 
 </details>
 
-### 🧩 UI Primitives & Motion (68 Suites · 321 Tests)
+### 🧩 UI Primitives & Motion (68 Suites · 324 Tests)
 
 <details>
 <summary><b><code>src/components/accolades/AccoladeCelebrationModal.test.tsx</code></b> (7 tests)</summary>
@@ -3893,7 +3895,7 @@
 </details>
 
 <details>
-<summary><b><code>src/components/account/AccountAccoladesCard.test.tsx</code></b> (7 tests)</summary>
+<summary><b><code>src/components/account/AccountAccoladesCard.test.tsx</code></b> (8 tests)</summary>
 
 - ✔ `renders card title, subtitle, and subtle category indicator without inline tab strip`
 - ✔ `shows empty showcase message when no bookplates are pinned`
@@ -3902,6 +3904,7 @@
 - ✔ `displays warning when trying to pin more than 3 bookplates`
 - ✔ `invokes cloud sync on mount with passive cooldown if userId is provided`
 - ✔ `applies theme-aware solid borders without vanishing fractional opacities`
+- ✔ `renders compendium grid with performance-tier-gated StaggerGroup across allowHeavyMotion true and false`
 
 </details>
 
@@ -4098,16 +4101,18 @@
 </details>
 
 <details>
-<summary><b><code>src/components/motion/MotionReveal.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/motion/MotionReveal.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `should render children elements properly`
+- ✔ `supports staggerChild and disabled modes cleanly inside StaggerGroup`
 
 </details>
 
 <details>
-<summary><b><code>src/components/motion/StaggerGroup.test.tsx</code></b> (1 tests)</summary>
+<summary><b><code>src/components/motion/StaggerGroup.test.tsx</code></b> (2 tests)</summary>
 
 - ✔ `should render staggered child nodes`
+- ✔ `renders cleanly when disabled is true`
 
 </details>
 

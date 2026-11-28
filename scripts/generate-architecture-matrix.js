@@ -299,7 +299,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 264) {
     '@vercel/analytics': 'Privacy-preserving, cookie-less audience telemetry on Vercel Edge.',
     '@vercel/speed-insights': 'Real User Monitoring (RUM) for Core Web Vitals (LCP, FID, CLS, INP).',
     clsx: 'Utility for constructing conditional classNames efficiently.',
-    'framer-motion': 'Hardware-accelerated 3D leaf-flip, FLIP modal geometry and page transitions.',
+    'framer-motion': 'AnimatePresence enter/exit springs across modals, popovers, and ribbons, Accolades seal choreography, global MotionConfig reduced-motion enforcement, and performance-tier-gated StaggerGroup/MotionReveal cascades.',
     'lucide-react': 'Accessible SVG icon primitives across reading workbench and UI dialogs.',
     next: 'Next.js 16 App Router full-stack framework with React Server Components and Turbopack.',
     react: 'React 19 declarative component and rendering engine.',
@@ -331,8 +331,9 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 264) {
     tailwindcss: 'Utility-first CSS framework v4 with Oxide compiler engine.',
     typescript: 'Static type system verifying strict compile-time safety (zero any).',
     vitest: `Fast Vite-native test runner executing all ${totalSuites} unit and integration suites.`,
+  };
 
-    // Overrides
+  const overridePurposeMap = {
     'fast-glob': 'Supply-chain override replacing fast-glob with tinyglobby to eliminate CVE vulnerabilities.',
     'postcss-selector-parser': 'Supply-chain override pinning selector parser to patched secure release.',
     '@typescript-eslint/typescript-estree':
@@ -377,7 +378,7 @@ function extractNodeEcosystemCatalog(rootDirPath, totalSuites = 264) {
         name,
         version: formattedVersion,
         tier: 'Supply-Chain Security Override',
-        purpose: purposeMap[name] || 'Dependency security override.',
+        purpose: overridePurposeMap[name] || purposeMap[name] || 'Dependency security override.',
       });
     }
   }
@@ -999,7 +1000,7 @@ function generateMarkdown() {
     '    User["👤 Reader / Public Domain Scholar"]',
     '    ',
     '    subgraph FrontendSPA ["Client SPA Layer (Next.js 16 App Router)"]',
-    '        Providers["providers.tsx\\n(QueryClient, Auth Init, Cloud Sync, verifyActiveSessionValidity, IP/UA Reconciliation, GlobalTitleTooltip & Dynamic AuthModal)"]',
+    '        Providers["providers.tsx\\n(QueryClient, MotionConfig reducedMotion, Auth Init, Cloud Sync, verifyActiveSessionValidity, IP/UA Reconciliation, GlobalTitleTooltip & Latched AuthModal)"]',
     `        SWReg["ServiceWorkerRegister.tsx & public/sw.js\\n(App Shell ${swMeta.versionLabel}, Static Asset Warmup & Offline Fallback)"]`,
     '        AuthModalNode["AuthModal.tsx, EmailSentView.tsx & TurnstileWidget.tsx\\n(Sign-In, Sign-Up, Turnstile CAPTCHA, Honeypot, OAuth, Magic Link & Reset)"]',
     '        Nav["Navbar.tsx\\n(Brand Reset, View Switcher, Single-Phase Gliding Active Underline Cradle, Theme Cycler)"]',
@@ -1334,7 +1335,7 @@ function generateMarkdown() {
     '',
     '    subgraph ReaderView ["Dedicated Focus Reader (src/app/read/[id]/page.tsx -> BookReaderClient.tsx • useReaderHabitTelemetry)"]',
     '        Toolbar["Top Editorial Reader Bar & Sliding Tray (ReaderHeader • Share Action + Desktop lg: Tools • Tactile Slide)"]',
-    '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon)"]',
+    '        SubHeader["Sub-Header Status Ribbon (ReaderSubHeaderRibbon • AnimatePresence)"]',
     '        ContentArea["Book Page Rendering Area (ReaderSurface • ReaderRowBookmark • ReaderHighlightAdjustOverlay • reader-bookmark-geometry.ts)"]',
     '        ProgressBar["Top Reading Progress Indicator"]',
     '        ResumeToast["Exact-Page Auto-Resume Toast"]',
@@ -1343,7 +1344,7 @@ function generateMarkdown() {
     '        SearchDrawer["In-Book Search Drawer (ReaderSearchDrawer)"]',
     '        LangDrawer["Language Editions Drawer (ReaderLanguageDrawer)"]',
     '        Controls["Appearance & Typography Popover (ReaderControls • Font, Line Height, Brightness 30%-100%, Theme, Custom Defaults)"]',
-    '        AudioBar["Speech Narration Bar (ReaderSpeechBar)\\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x)"]',
+    '        AudioBar["Speech Narration Bar (ReaderSpeechBar)\\n(useReaderSpeech • SpeechSynthesis • 0.85x-2.0x • AnimatePresence Speed Menu)"]',
     '        HighlightPop["Highlight & Selection Adjust Overlays (TextHighlightPopover • ReaderHighlightAdjustOverlay • + Sentence/+ Paragraph)"]',
     '        AnnotDrawer["Annotations Drawer (ReaderAnnotationsDrawer)\\n(7 Archival Highlighters • Pinned Bookmark • Symposium Marginalia • Spoiler Shield)"]',
     '        InfoModal["Archival Metadata Modal (GutenbergInfoModal)"]',
@@ -1828,7 +1829,7 @@ function generateMarkdown() {
   const pageDescriptions = {
     'src/app/layout.tsx': 'Root HTML shell, canonical `SITE_CONFIG.NAME` (`Bookarium`) tab/OpenGraph title, font initialization, theme class hydration, SSR hourly/daily featured book seeds (`getHourlyFeaturedBook`, `getDailyClassicBook`), and global React Query / Service Worker provider wrapper.',
     'src/app/providers.tsx':
-      `Root client provider initializing TanStack \`QueryClient\`, Strict-Mode-coalesced Supabase authentication (\`initializeAuth\`, \`onAuthStateChange\`, \`bookarium:auth-token-refreshed\` forwarding \`{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }\` with \`${runtimeSpec.hooks.passiveSyncCooldownMs.toLocaleString('en-US')}ms\` auth profile cooldown while keeping \`visibilitychange\` and \`online\` unthrottled), non-blocking browser IP/UA reconciliation (\`reconcileClientSessionOrigin\`), visible-tab (\`60,000ms\`), \`visibilitychange\`, and \`online\` remote session revocation detection (\`verifyActiveSessionValidity\`), auth callback notice handling (\`email_verified\`, \`recovery_cross_device\`, and \`deletion_cross_device\` routing into \`AuthModal\`), \`${runtimeSpec.hooks.passiveSyncCooldownMs.toLocaleString('en-US')}ms\` render-pure \`lastSyncTimeRef\` cooldown guarding \`syncAllStoresWithCloud\` reconciliation and \`online\` / \`visibilitychange\` flushes, \`GlobalTitleTooltip\` stylized tooltip delegation, and dynamic \`AuthModal\` rendering.`,
+      `Root client provider initializing TanStack \`QueryClient\`, global Framer Motion \`<MotionConfig reducedMotion="user">\` accessibility enforcement, Strict-Mode-coalesced Supabase authentication (\`initializeAuth\`, \`onAuthStateChange\`, \`bookarium:auth-token-refreshed\` forwarding \`{ authMinSyncIntervalMs: PASSIVE_SYNC_COOLDOWN_MS }\` with \`${runtimeSpec.hooks.passiveSyncCooldownMs.toLocaleString('en-US')}ms\` auth profile cooldown while keeping \`visibilitychange\` and \`online\` unthrottled), non-blocking browser IP/UA reconciliation (\`reconcileClientSessionOrigin\`), visible-tab (\`60,000ms\`), \`visibilitychange\`, and \`online\` remote session revocation detection (\`verifyActiveSessionValidity\`), auth callback notice handling (\`email_verified\`, \`recovery_cross_device\`, and \`deletion_cross_device\` routing into \`AuthModal\`), \`${runtimeSpec.hooks.passiveSyncCooldownMs.toLocaleString('en-US')}ms\` render-pure \`lastSyncTimeRef\` cooldown guarding \`syncAllStoresWithCloud\` reconciliation and \`online\` / \`visibilitychange\` flushes, \`GlobalTitleTooltip\` stylized tooltip delegation, and exit-safe latched \`hasOpenedAuthModal\` dynamic \`AuthModal\` rendering.`,
     'src/app/loading.tsx': 'Next.js App Router streaming & pre-hydration loading splash boundary rendering the vector Bookarium crest and animated loading indicator.',
     'src/app/globals.css': 'Tailwind CSS v4 Oxide stylesheet defining Day (`#fcfbf9`), Cozy Coffee Sepia (`#2b1d16`), and Dark Obsidian (`#0e1117`) theme tokens, 3D hardcover book hinge physics (`.book-center-crease`, `.preserve-3d`), directional view-slide keyframes (`.animate-view-slide-left`, `.animate-view-slide-right` with `360ms` tactile slide & nested `.animate-page-turn` suppression inside `@media (max-width: 1366px), (pointer: coarse)` vs. `0ms` outer switch & preserved `180ms` inner `.animate-page-turn` on `> 1366px` non-tactile PCs), and custom reader scrollbars.',
     'src/app/page.tsx': 'Primary SPA workbench hosting Catalog, Bookshelf, Favorites, Bookmarks, and Commonplace Notebook views with edge URL rewrites, sort-aware unfiltered Catalog headings (`CATALOG_SORT_TITLES` resolving `Recent Books`, `Popular Books`, and `Oldest Books` via `VIEW_CONTENT_CONFIG.catalog.getTitle({ search, topic, era, sort })` while preserving `Search Catalog` precedence when filters or search terms are active), asymmetric directional collection transitions (`NAVBAR_TRANSITION_ORDER` slide into/between collections on both tactile swipes and `Navbar` tab clicks/taps + instantaneous `0ms` return to `catalog` so repeated `Catalog` -> `Bookshelf` transitions replay reliably), 12-hour sliding-cache hero/editorial boundary guards (`selectHourlyHeroFromPool`, `selectDailyClassicFromPool`), and dynamic `NAVBAR_VIEW_CONFIG` tab title synchronization (`Bookarium` / `Bookarium | <View>`).',
@@ -2511,7 +2512,7 @@ function generateMarkdown() {
     '',
     '    subgraph TestRunner ["Vitest 5 Runner & JSDOM Bootstrap"]',
     '        VitestCfg["⚙️ vitest.config.mts\\n• jsdom 31 environment • maxWorkers: 4 (CI) / <= 8 (local)\\n• @/* path alias • V8 Coverage (./coverage)"]',
-    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver, AnimationEvent)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
+    '        TestSetup["🧰 src/test/setup.ts\\n• @testing-library/jest-dom/vitest & fail-closed onUnhandledFrame\\n• next/dynamic chunk pre-resolution (pendingDynamicImports)\\n• framer-motion synchronous forwardRef mock (...actual preserves MotionConfig & tokens)\\n• JSDOM polyfills (IndexedDB, SpeechSynthesis, matchMedia, ResizeObserver, AnimationEvent)\\n• Per-test localStorage.clear() & vi.clearAllMocks()"]',
     '        MSWServer["🌐 src/mocks/server.ts & src/mocks/handlers.ts\\n• MSW v3 setupServer(...handlers) lifecycle + handleUnhandledMswFrame\\n• GET /api/books, /api/books/content, /api/books/translations\\n• Supabase/*.co/:54321 503 catch-all (Zero external PG mocks)\\n• mockBooks fixtures (0 external network calls)"]',
     '    end',
     '',

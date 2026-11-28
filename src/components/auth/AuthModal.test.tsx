@@ -945,4 +945,34 @@ describe('AuthModal Component', () => {
     fireEvent.click(signInSwitcher);
     expect(setAuthModalView).toHaveBeenCalledWith('sign_in');
   });
+
+  it('resets transient local inputs cleanly when reopened after closing', () => {
+    const mockState = {
+      user: null,
+      isAuthModalOpen: true,
+      authModalView: 'sign_in' as const,
+      error: null,
+      closeAuthModal: vi.fn(),
+      setAuthModalView: vi.fn(),
+      setError: vi.fn(),
+      signInWithPassword: mockSignInWithPassword,
+    };
+
+    (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => mockState);
+    const { rerender } = render(<AuthModal />);
+
+    const emailInput = screen.getByPlaceholderText('reader@bookarium.org') as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'stale@example.com' } });
+    expect(emailInput.value).toBe('stale@example.com');
+
+    // Close modal without unmounting host component
+    mockState.isAuthModalOpen = false;
+    rerender(<AuthModal />);
+    expect(screen.queryByTestId('auth-modal-card')).not.toBeInTheDocument();
+
+    // Reopen modal -> local state starts clean
+    mockState.isAuthModalOpen = true;
+    rerender(<AuthModal />);
+    expect((screen.getByPlaceholderText('reader@bookarium.org') as HTMLInputElement).value).toBe('');
+  });
 });

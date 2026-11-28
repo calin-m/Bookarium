@@ -16,5 +16,16 @@ describe('StaggerGroup component', () => {
     expect(screen.getByText('Item 1')).toBeInTheDocument();
     expect(screen.getByText('Item 2')).toBeInTheDocument();
   });
+
+  it('renders cleanly when disabled is true', () => {
+    render(
+      <StaggerGroup data-testid="stagger-group-disabled" disabled>
+        <div>Static Item</div>
+      </StaggerGroup>
+    );
+
+    expect(screen.getByTestId('stagger-group-disabled')).toBeInTheDocument();
+    expect(screen.getByText('Static Item')).toBeInTheDocument();
+  });
 });
 

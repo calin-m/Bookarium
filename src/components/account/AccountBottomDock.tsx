@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { motionTokens } from '@/components/motion/motion-config';
 import {
   ArrowUp,
   Award,
@@ -189,56 +191,65 @@ export const AccountBottomDock: React.FC<AccountBottomDockProps> = ({
         className="relative flex items-center gap-1 sm:gap-1.5"
       >
         {/* Upward Glassmorphic Category Popover for Habits & Accolades */}
-        {mode === 'habits' && isFilterOpen && (
-          <div
-            role="dialog"
-            aria-label="Filter accolades by category"
-            data-testid="account-dock-filter-popover"
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 rounded-2xl border border-border bg-card/95 backdrop-blur-md p-2 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150"
-          >
-            <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold border-b border-border mb-1">
-              Accolade Categories
-            </div>
-            <div className="space-y-0.5">
-              {ACCOLADE_CATEGORIES.map((category) => {
-                const isSelected = accoladeCategory === category.id;
-                const count =
-                  accoladeCategoryCounts?.[category.id] ?? DEFAULT_CATEGORY_COUNTS[category.id];
-                return (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => {
-                      onAccoladeCategoryChange?.(category.id);
-                      setFilterOpen(false);
-                      onJumpToSection('account-accolades-card');
-                    }}
-                    data-testid={`account-dock-category-${category.id}`}
-                    className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-primary text-primary-foreground font-bold'
-                        : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 min-w-0 truncate">
-                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                      <span className="truncate">{category.label}</span>
-                    </span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                        isSelected
-                          ? 'bg-primary-foreground/20 text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-20 pointer-events-none">
+          <AnimatePresence>
+            {mode === 'habits' && isFilterOpen && (
+              <motion.div
+                key="account-dock-filter-popover"
+                role="dialog"
+                aria-label="Filter accolades by category"
+                data-testid="account-dock-filter-popover"
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.smooth }}
+                className="pointer-events-auto w-64 rounded-2xl border border-border bg-card/95 backdrop-blur-md p-2 shadow-xl origin-bottom"
+              >
+                <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold border-b border-border mb-1">
+                  Accolade Categories
+                </div>
+                <div className="space-y-0.5">
+                  {ACCOLADE_CATEGORIES.map((category) => {
+                    const isSelected = accoladeCategory === category.id;
+                    const count =
+                      accoladeCategoryCounts?.[category.id] ?? DEFAULT_CATEGORY_COUNTS[category.id];
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => {
+                          onAccoladeCategoryChange?.(category.id);
+                          setFilterOpen(false);
+                          onJumpToSection('account-accolades-card');
+                        }}
+                        data-testid={`account-dock-category-${category.id}`}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs font-mono transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground font-bold'
+                            : 'text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 min-w-0 truncate">
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          <span className="truncate">{category.label}</span>
+                        </span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                            isSelected
+                              ? 'bg-primary-foreground/20 text-primary-foreground'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Mode 1: Scholar Profile Quick Jumps */}
         {mode === 'profile' && (

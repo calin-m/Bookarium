@@ -1,8 +1,18 @@
 'use client';
 
+/**
+ * @module src/components/presentation/Navbar
+ * @scope Top navigation bar orchestrating view switching, collection counters, auth CTA/account hover menu, theme cycling, and hardware-adaptive active underline gliding.
+ * @invariant Preserve zero-flash auth chrome via `initialIsAuthenticated`, `useAuthHint()`, and `STORAGE_KEYS.AUTH_HINT` (`bookarium-auth-hint`), disambiguate touch taps from desktop pointer hover on the Account dropdown inside `<AnimatePresence>`, gate sliding indicator updates behind `allowHeavyMotion`, and skip indicator measurement when `activeView === 'account'`.
+ * @rationale Coupling server auth hints, touch/pointer separation, and capability-gated layout measurement eliminates hydration CTA flicker, sticky mobile hover traps, and main-thread jank on lower-tier devices.
+ * @adr ADR-005, ADR-072, ADR-080
+ */
+
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { motionTokens } from '@/components/motion/motion-config';
 import { Sun, Moon, Coffee, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
 import { useHydratedBookshelfCounts } from '@/stores/useBookshelfStore';
 import { useHydratedAnnotationCount } from '@/stores/useAnnotationStore';
@@ -359,50 +369,57 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </Link>
 
-              {isAccountMenuOpen && (
-                <div
-                  data-testid="navbar-account-hover-menu"
-                  role="menu"
-                  aria-label="Account Quick Actions"
-                  className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-border bg-card shadow-xl p-1.5 z-50 animate-in fade-in duration-150"
-                >
-                  {(profile?.display_name || user) && (
-                    <div className="px-2.5 py-2 border-b border-border mb-1">
-                      <p className="text-xs font-serif font-bold text-foreground truncate">
-                        {profile?.display_name ||
-                          (typeof user?.user_metadata?.display_name === 'string'
-                            ? user.user_metadata.display_name
-                            : 'Scholar')}
-                      </p>
-                    </div>
-                  )}
-
-                  <Link
-                    href={ROUTES.ACCOUNT}
-                    role="menuitem"
-                    onClick={() => setIsAccountMenuOpen(false)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-foreground hover:bg-muted transition-colors"
+              <AnimatePresence>
+                {isAccountMenuOpen && (
+                  <motion.div
+                    key="navbar-account-hover-menu"
+                    data-testid="navbar-account-hover-menu"
+                    role="menu"
+                    aria-label="Account Quick Actions"
+                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                    transition={{ duration: motionTokens.duration.fast, ease: motionTokens.ease.smooth }}
+                    className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-border bg-card shadow-xl p-1.5 z-50 origin-top-right"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span>Account Sanctuary</span>
-                  </Link>
+                    {(profile?.display_name || user) && (
+                      <div className="px-2.5 py-2 border-b border-border mb-1">
+                        <p className="text-xs font-serif font-bold text-foreground truncate">
+                          {profile?.display_name ||
+                            (typeof user?.user_metadata?.display_name === 'string'
+                              ? user.user_metadata.display_name
+                              : 'Scholar')}
+                        </p>
+                      </div>
+                    )}
 
-                  <button
-                    type="button"
-                    role="menuitem"
-                    data-testid="navbar-hover-sign-out-button"
-                    onClick={async () => {
-                      setIsAccountMenuOpen(false);
-                      await signOut();
-                      router.push(ROUTES.HOME);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer mt-0.5"
-                  >
-                    <LogOut className="w-3.5 h-3.5 shrink-0" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              )}
+                    <Link
+                      href={ROUTES.ACCOUNT}
+                      role="menuitem"
+                      onClick={() => setIsAccountMenuOpen(false)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-foreground hover:bg-muted transition-colors"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>Account Sanctuary</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      data-testid="navbar-hover-sign-out-button"
+                      onClick={async () => {
+                        setIsAccountMenuOpen(false);
+                        await signOut();
+                        router.push(ROUTES.HOME);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer mt-0.5"
+                    >
+                      <LogOut className="w-3.5 h-3.5 shrink-0" />
+                      <span>Sign Out</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <Button
