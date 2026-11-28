@@ -444,17 +444,16 @@ describe('AccountPage', () => {
     fireEvent.click(within(preferencesPanel).getByText('Sepia'));
     expect(useThemeStore.getState().theme).toBe('sepia');
     expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
-    expect(mockUpdateProfile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        preferred_theme: 'sepia',
-        font_size: expect.any(Number),
-        preferences: expect.objectContaining({
-          active: expect.objectContaining({
-            theme: 'sepia',
-          }),
+    expect(mockUpdateProfile).toHaveBeenCalledWith({
+      preferences: expect.objectContaining({
+        active: expect.objectContaining({
+          theme: 'sepia',
+          fontSize: expect.any(Number),
         }),
-      })
-    );
+      }),
+    });
+    expect(mockUpdateProfile.mock.calls[0][0]).not.toHaveProperty('preferred_theme');
+    expect(mockUpdateProfile.mock.calls[0][0]).not.toHaveProperty('font_size');
 
     // Sticky Scroll Navigation Setting
     expect(within(preferencesPanel).getByText('Smart Auto-Hide Active')).toBeInTheDocument();

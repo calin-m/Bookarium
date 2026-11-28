@@ -12,7 +12,7 @@
  * @invariant Enforce all anti-collision clustering defenses (`isOmnibusOrAnthology`, surname compatibility, significant keyword matching, singleton pruning), enforce bounded `WIKIDATA_SPARQL_TIMEOUT_MS` (`45s`) HTTP socket timeout cleanly triggering `Defense 3` snapshot fallback, validate `book_id` public-domain catalog presence (`copyright !== true` via `filterValidCatalogBookIds` and `WHERE b.copyright = false` in `generateAtomicSeedSql`, handling empty-catalog `validBookIds.size === 0` skips), and execute bounded-retry bisected upserts (`upsertTranslationBatchesWithRetry`) failing non-zero on persistent write errors.
  * @invariant Support offline `--dry-run` / `--output=...` atomic SQL seed generation (`generateAtomicSeedSql`) cleanly even when Supabase env credentials are absent.
  * @rationale Strict anthology rejection, socket-bounded Wikidata queries, catalog FK pre-validation, bisected batch retries, and public-domain `copyright !== true` filtering eliminate stalled CI runners, silent upsert drops, spurious cross-author translation links, and copyrighted volume associations.
- * @adr ADR-010, ADR-038, ADR-080, ADR-085
+ * @adr ADR-010, ADR-038, ADR-080, ADR-085, ADR-087
  * 
  * Usage:
  *   node scripts/ingest-translations.js --dry-run
@@ -492,21 +492,21 @@ function generateAtomicSeedSql(translations = []) {
   sql += `-- Total Rows: ${translations.length}\n`;
   sql += `-- ============================================================================\n\n`;
   sql += `BEGIN;\n\n`;
-  sql += `INSERT INTO public.book_translations (work_id, book_id, language, is_original, confidence_score, source)\n`;
-  sql += `SELECT v.work_id, v.book_id, v.language, v.is_original, v.confidence_score, v.source\n`;
+  sql += `INSERT INTO public.book_translations (work_id, book_id, language, is_original)\n`;
+  sql += `SELECT v.work_id, v.book_id, v.language, v.is_original\n`;
   sql += `FROM (VALUES\n`;
 
   const rows = translations.map(
     (t) =>
-      `  ('${t.work_id.replace(/'/g, "''")}', ${t.book_id}, '${t.language.replace(/'/g, "''")}', ${Boolean(t.is_original)}, ${Number(t.confidence_score || 1.0).toFixed(2)}, '${t.source.replace(/'/g, "''")}')`
+      `  ('${t.work_id.replace(/'/g, "''")}', ${t.book_id}, '${t.language.replace(/'/g, "''")}', ${Boolean(t.is_original)})`
   );
 
   sql += rows.join(',\n');
-  sql += `\n) AS v(work_id, book_id, language, is_original, confidence_score, source)\n`;
+  sql += `\n) AS v(work_id, book_id, language, is_original)\n`;
   sql += `JOIN public.books b ON b.id = v.book_id\n`;
   sql += `WHERE b.copyright = false\n`;
   sql += `ON CONFLICT (work_id, book_id) DO UPDATE\n`;
-  sql += `SET language = EXCLUDED.language, confidence_score = EXCLUDED.confidence_score, source = EXCLUDED.source;\n\n`;
+  sql += `SET language = EXCLUDED.language;\n\n`;
   sql += `COMMIT;\n`;
 
   return sql;
@@ -598,7 +598,7 @@ Options:
       }
       const list = clusters.get(workId);
       if (!list.some((item) => item.bookId === bookId)) {
-        list.push({ workId, bookId, language: lang, source: 'authority_wikidata' });
+        list.push({ workId, bookId, language: lang });
       }
     }
   }
@@ -618,8 +618,6 @@ Options:
         book_id: ed.bookId,
         language: ed.language,
         is_original: false,
-        confidence_score: 1.0,
-        source: ed.source,
       });
     }
   }

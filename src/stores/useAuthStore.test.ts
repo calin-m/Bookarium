@@ -2152,6 +2152,38 @@ describe('useAuthStore', () => {
       await useAuthStore.getState().syncWithCloud('other-target-id');
       expect(updateMock).toHaveBeenCalledWith({ bio: 'Queued offline bio' });
       expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
+
+      // Strips retired preferred_theme/font_size columns from persisted offline outbox before flushing
+      updateMock.mockClear();
+      useAuthStore.setState({
+        user,
+        pendingProfileUpdates: {
+          preferred_theme: 'dark',
+          font_size: 20,
+          bio: 'Sanitized offline bio',
+          updated_at: '2026-11-28T10:00:00.000Z',
+        } as never,
+      });
+      await useAuthStore.getState().syncWithCloud('user-sync-9');
+      expect(updateMock).toHaveBeenCalledWith({
+        bio: 'Sanitized offline bio',
+        updated_at: '2026-11-28T10:00:00.000Z',
+      });
+      expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
+
+      // Clears retired-only offline pendingProfileUpdates without issuing an empty Supabase update
+      updateMock.mockClear();
+      useAuthStore.setState({
+        user,
+        pendingProfileUpdates: {
+          preferred_theme: 'sepia',
+          font_size: 22,
+          updated_at: '2026-11-28T10:01:00.000Z',
+        } as never,
+      });
+      await useAuthStore.getState().syncWithCloud('user-sync-9');
+      expect(updateMock).not.toHaveBeenCalled();
+      expect(useAuthStore.getState().pendingProfileUpdates).toBeNull();
     });
   });
 });

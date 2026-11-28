@@ -29,7 +29,7 @@ Before opening a PR, familiarize yourself with Bookarium's state and rendering p
 - **Remote Data Fetching**: TanStack React Query (`useBooks`, `useFeaturedQuotes`, `useQuoteEnrichedBooks`, `useBookContent`, `useBookTranslations`).
 - **Local-First State Management**: 10 Zustand stores (`useBookshelfStore`, `useReaderStore`, `useAuthStore`, `useFellowshipStore`, `useAnnotationStore`, `useAccoladesStore`, `useHabitsStore`, `useJurisdictionStore`, `usePreferencesStore`, `useThemeStore`).
 - **Background Threading**: Web Workers (`src/workers/gutenberg.worker.ts`, `useGutenbergParserWorker.ts`) offloading chapter regex splitting and pagination spread math.
-- **Self-Hosted Asset Proxy**: Same-origin `/api/books/content` route streaming pre-seeded cover artwork (`covers/<id>.jpg`) and gzipped plain text (`books/<id>.txt.gz`) strictly from private **Cloudflare R2** storage via AWS SigV4 (`src/lib/r2-client.ts`, alongside optional Supabase `public.books.content`), failing closed (`404`/`503`) with zero runtime Project Gutenberg fallback or browser cover hotlinking.
+- **Self-Hosted Asset Proxy**: Same-origin `/api/books/content` route streaming pre-seeded cover artwork (`covers/<id>.jpg`) and gzipped plain text (`books/<id>.txt.gz`) strictly from private **Cloudflare R2** storage via AWS SigV4 (`src/lib/r2-client.ts`), failing closed (`404`/`503`) with zero runtime Project Gutenberg fallback or browser cover hotlinking.
 - **Offline Persistence**: Dual-layer browser storage (localStorage for positions/preferences; IndexedDB for multi-megabyte unabridged book volumes and cover caches) backed by an App Shell Service Worker (`public/sw.js`).
 - **Styling**: Tailwind CSS v4 (Oxide) with hardware-accelerated Framer Motion transitions.
 

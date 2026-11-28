@@ -207,7 +207,9 @@ describe('scripts/ingest-translations Engine', () => {
       expect(sql).toContain('JOIN public.books b ON b.id = v.book_id');
       expect(sql).toContain('WHERE b.copyright = false');
       expect(sql).toContain('ON CONFLICT (work_id, book_id) DO UPDATE');
-      expect(sql).toContain("('Q170583', 1342, 'en', true, 1.00, 'authority_wikidata')");
+      expect(sql).toContain("('Q170583', 1342, 'en', true)");
+      expect(sql).not.toContain('confidence_score');
+      expect(sql).not.toContain('authority_wikidata');
     });
   });
 

@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Fri, 27 Nov 2026 19:41:05 GMT  
+**Last Generated**: Sat, 28 Nov 2026 10:04:50 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2874 passed  
+**Total Verified Tests**: 2873 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2874 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2873 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.36%** (17992/18478) — *Target: $\ge$ 95%*
-- **Statements**: **95.99%** (19349/20156) — *Target: $\ge$ 95%*
-- **Functions**: **94.91%** (3753/3954) — *Target: $\ge$ 92%*
-- **Branches**: **88.27%** (18016/20409) — *Target: $\ge$ 85%*
+- **Lines**: **97.35%** (18006/18495) — *Target: $\ge$ 95%*
+- **Statements**: **95.98%** (19364/20175) — *Target: $\ge$ 95%*
+- **Functions**: **94.89%** (3756/3958) — *Target: $\ge$ 92%*
+- **Branches**: **88.23%** (18023/20425) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2874 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2873 Tests)
 
 ### 🚀 App Routes & Pages (34 Suites · 291 Tests)
 
@@ -136,10 +136,10 @@
 - ✔ `should fetch and return book text from private R2 for valid public domain id in US`
 - ✔ `should stream public domain book from R2 to GB user when metadata confirms death year <= 1955`
 - ✔ `should return 502 if R2 storage requests fail or time out`
-- ✔ `streams content directly from Supabase (Tier 1) without external network fetch`
+- ✔ `routes cold text reads directly to private R2 without querying retired public.books.content`
 - ✔ `coalesces concurrent in-flight requests for the same bookId into a single R2 fetch`
 - ✔ `serves subsequent cross-jurisdiction requests from the server-side in-memory LRU cache and evicts oldest entries past capacity`
-- ✔ `degrades cleanly from Tier 1 Supabase abortSignal timeout to Tier 1.5 Cloudflare R2 without contacting Gutenberg`
+- ✔ `streams directly from private Cloudflare R2 without querying books.content or contacting Project Gutenberg`
 - ✔ `rejects R2 HTML outage pages and oversized gzip payloads fail-closed with 502`
 - ✔ `streams cover image strictly from private R2 with Content-Type: image/jpeg and 30d cache headers`
 - ✔ `returns 404 without falling back to Project Gutenberg when cover is missing in R2 or R2 is unconfigured`
@@ -2137,7 +2137,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (61 Suites · 770 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 769 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2632,8 +2632,8 @@
 - ✔ `schedules debounced cloud sync and pushes preferences payload to updateProfile`
 - ✔ `hydrates local stores from structured cloud profile.preferences when remote is newer`
 - ✔ `pushes newer local preferences to cloud when local preferencesUpdatedAt is newer than remote`
-- ✔ `falls back to legacy profile.preferred_theme and profile.font_size when structured preferences is empty`
-- ✔ `self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over default legacy light on refresh`
+- ✔ `supports non-writing fallback reads on pre-migration legacy profile payloads and emits preferences-only updates`
+- ✔ `self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over empty cloud preferences on refresh`
 
 </details>
 
@@ -3042,7 +3042,7 @@
 </details>
 
 <details>
-<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (9 tests)</summary>
+<summary><b><code>scripts/ingest-catalog.test.ts</code></b> (8 tests)</summary>
 
 - ✔ `prioritizes explicit NEXT_PUBLIC_GITHUB_REPO and optional contact email`
 - ✔ `falls back through GITHUB_REPOSITORY and VERCEL_GIT_REPO_* cleanly`
@@ -3050,8 +3050,7 @@
 - ✔ `returns null bounds when contributor lists are empty`
 - ✔ `computes max death across authors and translators under Berne Art. 7bis/Art. 2(3)`
 - ✔ `uses birth + 100 heuristic when death_year is missing, and fails closed if any contributor lacks both years`
-- ✔ `emits idempotent ON CONFLICT upsert SQL and escapes single quotes safely`
-- ✔ `emits dollar-quoted idempotent content UPDATE statements only for books with content`
+- ✔ `emits idempotent ON CONFLICT metadata upsert SQL, escapes single quotes safely, and omits retired columns`
 - ✔ `resolves NEXT_PUBLIC_SITE_URL, normalized Vercel production domains, and clean default fallback`
 
 </details>
@@ -3232,7 +3231,7 @@
 - ✔ `adaptively splits the batch in half when encountering statement timeout`
 - ✔ `ignores JSONB key-order differences when all catalog fields match byte-for-byte`
 - ✔ `detects even a single-character, single-space, or lifespan year change across any catalog field`
-- ✔ `deduplicates duplicate book IDs within a batch and filters out unchanged rows while stripping quotes and retired formats`
+- ✔ `deduplicates duplicate book IDs within a batch and filters out unchanged rows while stripping quotes and retired formats/media_type/content`
 - ✔ `retries in place and adaptively splits .in(id, batchIds) when encountering connection pool timeouts`
 - ✔ `re-checks database state before retrying a timed-out upsertBatch so already-updated books are not re-sent`
 - ✔ `skips pruning if activeCatalogIds is below the safety floor`

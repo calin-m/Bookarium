@@ -76,11 +76,16 @@ describe('PrivacyPage', () => {
     expect(screen.getByText(/window\.speechSynthesis/i)).toBeInTheDocument();
     expect(screen.getByText(/Bookarium never records reader voice input/i)).toBeInTheDocument();
 
-    // Section 4: Account Data & Cloud Sync
+    // Section 4: Account Data, Signup Provisioning & Public vs Private Account Modes
     expect(screen.getByText(/4\. Cloud Sync & Account Data/i)).toBeInTheDocument();
     expect(screen.getByText(/GDPR Article 6\(1\)\(b\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Created on Sign-Up \(Account & Profile Initialization\):/i)).toBeInTheDocument();
+    expect(screen.getByText(/Full Name/i)).toBeInTheDocument();
+    expect(screen.getByText(/display_name/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/is_public = false/i)).toHaveLength(2);
     expect(screen.getByText(/Google OAuth identity metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/user_book_curation/i)).toBeInTheDocument();
+    expect(screen.getByText(/book_title/i)).toBeInTheDocument();
     expect(screen.getByText(/user_annotations/i)).toBeInTheDocument();
     expect(screen.getByText(/symposium_sessions/i)).toBeInTheDocument();
     expect(
@@ -89,6 +94,24 @@ describe('PrivacyPage', () => {
     expect(
       screen.getByText(/inspect masked network IP and device labels or revoke active sessions/i)
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Private vs\. Public Account Modes \(Private by Default on Sign-Up\)/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Private Sanctuary \(Default on Sign-Up\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Public Scholar Profile \(Opt-In — Where to Change\)/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Enable Public Scholar Profile/i)).toBeInTheDocument();
+    expect(screen.getByText(/Public Shelf/i)).toBeInTheDocument();
+    const accountLinks = screen.getAllByRole('link', { name: '/account' });
+    expect(accountLinks.length).toBeGreaterThanOrEqual(2);
+    for (const link of accountLinks) {
+      expect(link).toHaveAttribute('href', ROUTES.ACCOUNT);
+    }
+    expect(screen.getByRole('link', { name: '/bookshelf' })).toHaveAttribute(
+      'href',
+      ROUTES.BOOKSHELF
+    );
 
     // Section 5: User Rights & Self-Service Erasure
     expect(screen.getByText(/5\. Your Rights & Self-Service Data Erasure/i)).toBeInTheDocument();

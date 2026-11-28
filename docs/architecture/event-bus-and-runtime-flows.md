@@ -1,8 +1,8 @@
 # Event Bus, Reactive Signals & Runtime Execution Workflows — Bookarium
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
-> **Last Synchronized**: `2026-11-27`  
-> **Topology Health**: `268` Modules Analyzed • `1159` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Last Synchronized**: `2026-11-28`  
+> **Topology Health**: `268` Modules Analyzed • `1157` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -185,7 +185,7 @@ sequenceDiagram
             API-->>Hook: HTTP 451 Unavailable For Legal Reasons
             Hook-->>Reader: Render ReaderErrorView with Declarative CopyrightNoticeBanner
         else Public Domain Verified
-            API->>Upstream: Fetch Text (20-Book LRU -> Tier 1: Supabase public.books.content [optional] -> Tier 2: Strict R2 .txt.gz (404/503 fail-closed, 0 PG fallback))
+            API->>Upstream: Fetch Text (20-Book LRU -> Tier 1: Strict Private Cloudflare R2 .txt.gz (404/503 fail-closed, 0 PG fallback))
             Upstream-->>API: Plain-Text Stream (UTF-8)
             API-->>Hook: 200 OK (s-maxage=86400, Vary: x-vercel-ip-country, Accept-Encoding, Vercel-Cache-Tag: book-content)
             Hook->>IDB: Auto-Cache Volume & Verified Author Lifespans in IndexedDB

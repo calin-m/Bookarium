@@ -590,14 +590,14 @@ async function fetchCatalogFromSupabase(supabase, options = {}) {
   if (Array.isArray(options.ids) && options.ids.length > 0) {
     const { data, error } = await supabase
       .from('books')
-      .select('id, title, copyright, media_type, download_count')
+      .select('id, title, copyright, download_count')
       .in('id', options.ids);
     if (error) throw new Error(`Supabase catalog lookup failed: ${error.message}`);
     return (data || []).map((r) => ({
       id: r.id,
       title: r.title || `Gutenberg #${r.id}`,
       copyright: Boolean(r.copyright),
-      media_type: r.media_type || 'Text',
+      media_type: 'Text',
       download_count: typeof r.download_count === 'number' ? r.download_count : 0,
     }));
   }
@@ -607,7 +607,7 @@ async function fetchCatalogFromSupabase(supabase, options = {}) {
   while (true) {
     const { data, error } = await supabase
       .from('books')
-      .select('id, title, copyright, media_type, download_count')
+      .select('id, title, copyright, download_count')
       .gt('id', cursorId)
       .order('id', { ascending: true })
       .limit(pageSize);
@@ -621,7 +621,7 @@ async function fetchCatalogFromSupabase(supabase, options = {}) {
           id: r.id,
           title: r.title || `Gutenberg #${r.id}`,
           copyright: Boolean(r.copyright),
-          media_type: r.media_type || 'Text',
+          media_type: 'Text',
           download_count: typeof r.download_count === 'number' ? r.download_count : 0,
         });
         if (r.id > cursorId) cursorId = r.id;

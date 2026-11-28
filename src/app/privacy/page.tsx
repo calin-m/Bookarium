@@ -154,7 +154,7 @@ export default function PrivacyPage() {
           </section>
 
           {/* 4. Account Data & Cloud Sync */}
-          <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-3 shadow-xs">
+          <section className="bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-4 shadow-xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-border text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <Cloud className="w-5 h-5" />
@@ -170,16 +170,65 @@ export default function PrivacyPage() {
               If you choose to create an optional account via email/password, passwordless Magic Link, or Google OAuth, we store data strictly required to synchronize your library and optional social scholar features across devices:
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5 font-sans pl-1">
-              <li>Your email address, salted password hash (for email-password accounts) or Google OAuth identity metadata (when connected), and synced reader/narration preferences.</li>
-              <li>Custom bookshelves, favorited book IDs, personal 1–5 star ratings, and reading statuses (<code className="font-mono">bookshelves</code>, <code className="font-mono">bookshelf_items</code>, <code className="font-mono">user_favorites</code>, <code className="font-mono">user_book_curation</code>).</li>
-              <li>Cross-device reading positions, chapter progress, passage bookmarks, highlights, and written margin notes (<code className="font-mono">reading_progress</code>, <code className="font-mono">user_annotations</code>).</li>
-              <li>Reading habits (annual goals, calendar active dates, total reading and audio-listening duration, completed book counts) and unlocked accolades (<code className="font-mono">user_reading_habits</code>, <code className="font-mono">user_accolades</code>).</li>
-              <li>Optional opt-in Public Scholar Profile (<code className="font-mono">/u/&lt;username&gt;</code> and shareable card previews via <code className="font-mono">/api/profiles/card</code>): custom <code className="font-mono">@username</code>, display name, bio, motto book attribution, and per-section public visibility toggles (remaining hidden and marked <code className="font-mono">noindex</code> unless you explicitly enable public visibility).</li>
-              <li>Optional Reader Circles &amp; Literary Symposium pacts (<code className="font-mono">reader_circles</code>, <code className="font-mono">symposium_sessions</code>): accepted fellow handles and shared per-book chapter/progress checkpoints visible strictly to connected participants.</li>
               <li>
-                Active session metadata maintained natively by Supabase Auth (browser user-agent, session timestamps, and network IP) solely to secure your login state and let you inspect masked network IP and device labels or revoke active sessions from Account Security.
+                <strong className="text-foreground font-medium">Created on Sign-Up (Account &amp; Profile Initialization):</strong> Your email address, salted password hash (for email-password accounts) or Google OAuth identity metadata (when connected), the <strong>Full Name</strong> (<code className="font-mono">display_name</code>) entered at registration or provided by Google OAuth, an automatically created default <code className="font-mono">&apos;General&apos;</code> bookshelf, unified synced theme, display, reader, and narration <code className="font-mono">preferences</code>, a <strong>Private by default</strong> profile setting (<code className="font-mono">is_public = false</code>), and creation/update timestamps.
+              </li>
+              <li>
+                <strong className="text-foreground font-medium">Shelves, Favorites &amp; Curation (<code className="font-mono">bookshelves</code>, <code className="font-mono">bookshelf_items</code>, <code className="font-mono">user_favorites</code>, <code className="font-mono">user_book_curation</code>):</strong> Custom bookshelf names and per-shelf visibility settings, favorited and shelved book IDs alongside cached bibliographic metadata (<code className="font-mono">book_title</code>, <code className="font-mono">book_authors</code>, <code className="font-mono">cover_url</code>), personal 1–5 star ratings, reading statuses, and curation timestamps.
+              </li>
+              <li>
+                <strong className="text-foreground font-medium">Reading Coordinates &amp; Marginalia (<code className="font-mono">reading_progress</code>, <code className="font-mono">user_annotations</code>):</strong> Cross-device reading positions, chapter/scroll progress percentages, <code className="font-mono">last_read_at</code> timestamps, cached book metadata, pinned passage bookmarks, highlighted excerpts, color tags, and written margin notes.
+              </li>
+              <li>
+                <strong className="text-foreground font-medium">Habits &amp; Accolades (<code className="font-mono">user_reading_habits</code>, <code className="font-mono">user_accolades</code>):</strong> Annual goals and target years, calendar active dates, total reading and audio-listening duration, completed book counts, and unlocked/pinned accolades with unlock timestamps.
+              </li>
+              <li>
+                <strong className="text-foreground font-medium">Optional Fellowships &amp; Symposiums (<code className="font-mono">reader_circles</code>, <code className="font-mono">symposium_sessions</code>):</strong> Connected fellow <code className="font-mono">@username</code> handles and display names, shared book IDs/titles, chapter/progress checkpoints, and highlights or margin notes recorded for active or completed Symposium volumes—visible strictly to mutual participants.
+              </li>
+              <li>
+                <strong className="text-foreground font-medium">Active Session Security Telemetry (<code className="font-mono">auth.sessions</code>):</strong> Active session metadata maintained natively by Supabase Auth (browser user-agent, session timestamps, and network IP) solely to secure your login state and let you inspect masked network IP and device labels or revoke active sessions from Account Security.
               </li>
             </ul>
+
+            {/* Private vs Public Accounts Differentiation */}
+            <div className="bg-muted/50 border border-border rounded-xl p-4 sm:p-5 space-y-3 text-xs font-sans text-muted-foreground">
+              <div className="space-y-1">
+                <h3 className="font-mono font-bold uppercase tracking-wider text-foreground text-[11px]">
+                  Private vs. Public Account Modes (Private by Default on Sign-Up)
+                </h3>
+                <p className="leading-relaxed">
+                  Every account starts as a <strong>Private Account (Private Sanctuary)</strong> when created. Public sharing is strictly opt-in, reversible at any time, and separates your private reading workspace from an optional zero-PII showcase page (<code className="font-mono">/u/&lt;username&gt;</code> and shareable card previews via <code className="font-mono">/api/profiles/card</code>).
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                <div className="p-3 rounded-lg bg-card border border-border space-y-1.5">
+                  <span className="font-mono font-bold text-foreground block text-[11px]">
+                    Private Sanctuary (Default on Sign-Up)
+                  </span>
+                  <p className="text-[11px] leading-relaxed">
+                    New accounts initialize with <code className="font-mono">is_public = false</code>. Your profile URL renders a <code className="font-mono">noindex</code> Private Sanctuary notice, and your shelves, favorites, ratings, progress, unshared highlights, habits, accolades, and email remain isolated to you under Row Level Security. If you choose to accept or send a fellowship invitation via <code className="font-mono">@username</code>, connected companions can still see your handle/display name plus checkpoints and annotations inside shared Symposium books.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-card border border-border space-y-1.5">
+                  <span className="font-mono font-bold text-foreground block text-[11px]">
+                    Public Scholar Profile (Opt-In — Where to Change)
+                  </span>
+                  <p className="text-[11px] leading-relaxed">
+                    Switch between Private and Public anytime on{' '}
+                    <Link href={ROUTES.ACCOUNT} className="text-primary hover:underline underline-offset-4 font-medium">
+                      /account
+                    </Link>{' '}
+                    under the <strong>Scholar Profile</strong> tab by clicking <strong>Edit</strong>, setting a unique <code className="font-mono">@username</code>, and toggling <strong>Enable Public Scholar Profile</strong>. Choose what appears via <strong>Telemetry &amp; Accomplishment Visibility</strong> checkboxes (<strong>Reading Streak</strong>, <strong>Annual Goal</strong>, <strong>Saved Works</strong>, <strong>Custom Shelves</strong>), optional bio/highlighted quote attribution, up to 3 pinned accolades, and per-shelf <strong>Public Shelf</strong> / <strong>Private Shelf</strong> toggles on{' '}
+                    <Link href={ROUTES.BOOKSHELF} className="text-primary hover:underline underline-offset-4 font-medium">
+                      /bookshelf
+                    </Link>
+                    . Email, credentials, sessions, ratings, reading positions, Private Shelves, and unshared notes never become public.
+                  </p>
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* 5. User Rights & Self-Service Erasure */}

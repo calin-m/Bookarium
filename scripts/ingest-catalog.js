@@ -5,7 +5,7 @@
  * @module scripts/ingest-catalog
  * @scope Offline SQL starter seed generator compiling idempotent `supabase/seed_books.sql` from `CURATED_CLASSICS` (with `--with-content` live Gutenberg mirror scraping retired under ADR-084).
  * @invariant Retire legacy `--pages=N` Gutendex pagination and `--with-content` Project Gutenberg HTTP text scraping safely while emitting idempotent PostgreSQL `INSERT ... ON CONFLICT DO UPDATE` seed scripts without requiring network credentials for `--dry-run`.
- * @invariant Construct dynamic User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`, and keep pure `generateContentUpdateSql` formatter side-effect free.
+ * @invariant Construct dynamic User-Agent headers via `resolveIngestUserAgent` honoring `NEXT_PUBLIC_GITHUB_REPO`, `BOOKARIUM_REPO_URL`, `GITHUB_REPOSITORY`, or site origin fallbacks alongside optional `GUTENBERG_CONTACT_EMAIL`, and emit lean metadata-only `INSERT ... ON CONFLICT DO UPDATE` SQL omitting retired `formats`, `content`, and `media_type` columns.
  * @rationale Gives local developers and fresh Supabase installs clean curated catalog metadata SQL seeds aligned with `public.books` lifespan bounds while keeping online text storage strictly on Cloudflare R2 (`npm run r2:sync`).
  * @adr ADR-038, ADR-080, ADR-084, ADR-087
  *
@@ -120,7 +120,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Best Books Ever', 'Harvard Classics'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 55420,
     max_author_death_year: 1817,
     min_author_birth_year: 1775,
@@ -134,7 +133,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Gothic Fiction', 'Precursors of Science Fiction'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 85210,
     max_author_death_year: 1851,
     min_author_birth_year: 1797,
@@ -148,7 +146,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Best Books Ever'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 42150,
     max_author_death_year: 1891,
     min_author_birth_year: 1819,
@@ -162,7 +159,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Best Books Ever'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 41200,
     max_author_death_year: 1940,
     min_author_birth_year: 1896,
@@ -176,7 +172,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Children\'s Literature'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 31200,
     max_author_death_year: 1898,
     min_author_birth_year: 1832,
@@ -190,7 +185,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Detective Fiction'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 36400,
     max_author_death_year: 1930,
     min_author_birth_year: 1859,
@@ -204,7 +198,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Gothic Fiction', 'Horror'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 29800,
     max_author_death_year: 1912,
     min_author_birth_year: 1847,
@@ -218,7 +211,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Historical Fiction'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 22400,
     max_author_death_year: 1939,
     min_author_birth_year: 1828,
@@ -232,7 +224,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Crime Fiction'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 26500,
     max_author_death_year: 1946,
     min_author_birth_year: 1821,
@@ -246,7 +237,6 @@ const CURATED_CLASSICS = [
     bookshelves: ['Historical Fiction'],
     languages: ['en'],
     copyright: false,
-    media_type: 'Text',
     download_count: 21900,
     max_author_death_year: 1870,
     min_author_birth_year: 1812,
@@ -296,14 +286,10 @@ function computeLifespanBounds(authors = [], translators = []) {
 
 // Generate SQL statement for books
 function generateSql(books) {
-  const hasAnyContent = books.some((b) => Boolean(b.content));
   const columns = [
     '  id, title, authors, translators, subjects, bookshelves, languages,',
-    '  copyright, media_type, download_count, max_author_death_year, min_author_birth_year',
+    '  copyright, download_count, max_author_death_year, min_author_birth_year',
   ];
-  if (hasAnyContent) {
-    columns[1] += ', content';
-  }
 
   const lines = [
     '--',
@@ -311,9 +297,6 @@ function generateSql(books) {
     `-- Generated: ${new Date().toISOString()}`,
     `-- Total Volumes: ${books.length}`,
     '--',
-    '',
-    '-- Ensure content column exists on public.books',
-    'ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;',
     '',
     'INSERT INTO public.books (',
     ...columns,
@@ -333,10 +316,6 @@ function generateSql(books) {
     const maxDeath = b.max_author_death_year !== null && b.max_author_death_year !== undefined ? b.max_author_death_year : 'NULL';
     const minBirth = b.min_author_birth_year !== null && b.min_author_birth_year !== undefined ? b.min_author_birth_year : 'NULL';
 
-    const contentField = hasAnyContent
-      ? `,\n    ${b.content ? `$bookarium_txt_${b.id}$${b.content}$bookarium_txt_${b.id}$` : 'NULL'}`
-      : '';
-
     return `  -- Volume #${b.id}: ${escapedTitle}
   (
     ${b.id},
@@ -347,10 +326,9 @@ function generateSql(books) {
     ${bookshelvesArray},
     ${languagesArray},
     ${Boolean(b.copyright)},
-    '${b.media_type || 'Text'}',
     ${b.download_count || 0},
     ${maxDeath},
-    ${minBirth}${contentField}
+    ${minBirth}
   )`;
   });
 
@@ -363,41 +341,11 @@ function generateSql(books) {
   lines.push('  bookshelves = EXCLUDED.bookshelves,');
   lines.push('  languages = EXCLUDED.languages,');
   lines.push('  copyright = EXCLUDED.copyright,');
-  lines.push('  media_type = EXCLUDED.media_type,');
   lines.push('  download_count = EXCLUDED.download_count,');
   lines.push('  max_author_death_year = EXCLUDED.max_author_death_year,');
   lines.push('  min_author_birth_year = EXCLUDED.min_author_birth_year,');
-  if (hasAnyContent) {
-    lines.push('  content = COALESCE(EXCLUDED.content, public.books.content),');
-  }
   lines.push('  updated_at = NOW();');
   lines.push('');
-
-  return lines.join('\n');
-}
-
-// Helper: generate standalone UPDATE script for book contents
-function generateContentUpdateSql(books) {
-  const booksWithContent = books.filter((b) => Boolean(b.content));
-  const lines = [
-    '--',
-    '-- Bookarium — Curated Book Content Seeder',
-    '-- Idempotent plain-text updates for offline and instant streaming',
-    `-- Generated: ${new Date().toISOString()}`,
-    `-- Total Volumes: ${booksWithContent.length}`,
-    '--',
-    '',
-    '-- Ensure content column exists on public.books',
-    'ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;',
-    '',
-  ];
-
-  for (const b of booksWithContent) {
-    const tag = `$bookarium_txt_${b.id}$`;
-    lines.push(`-- Volume #${b.id}: ${b.title.replace(/'/g, "''")}`);
-    lines.push(`UPDATE public.books SET content = ${tag}${b.content}${tag}, updated_at = NOW() WHERE id = ${b.id};`);
-    lines.push('');
-  }
 
   return lines.join('\n');
 }
@@ -449,6 +397,5 @@ module.exports = {
   CURATED_CLASSICS,
   computeLifespanBounds,
   generateSql,
-  generateContentUpdateSql,
 };
 

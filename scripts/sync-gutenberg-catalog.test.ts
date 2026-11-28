@@ -282,10 +282,11 @@ describe('sync-gutenberg-catalog parser', () => {
       ]);
       expect(book.bookshelves).toEqual(['Best Books Ever', 'Harvard Classics']);
       expect(book.copyright).toBe(false);
-      expect(book.media_type).toBe('Text');
       expect(book.max_author_death_year).toBe(1817);
       expect(book.min_author_birth_year).toBe(1775);
       expect(book).not.toHaveProperty('formats');
+      expect(book).not.toHaveProperty('media_type');
+      expect(book).not.toHaveProperty('content');
     });
 
     it('normalizes multi-line and whitespace title strings cleanly', () => {
@@ -432,19 +433,31 @@ describe('sync-gutenberg-catalog parser', () => {
       ).toBe(true);
     });
 
-    it('deduplicates duplicate book IDs within a batch and filters out unchanged rows while stripping quotes and retired formats', async () => {
+    it('deduplicates duplicate book IDs within a batch and filters out unchanged rows while stripping quotes and retired formats/media_type/content', async () => {
       const duplicateBatch = [
         { ...baseBook, id: 1342, title: 'Old Duplicate Row' },
-        { ...baseBook, id: 1342, title: 'Pride and Prejudice', formats: { 'text/plain': 'https://stale.example/1342.txt' } }, // Unchanged vs DB
+        {
+          ...baseBook,
+          id: 1342,
+          title: 'Pride and Prejudice',
+          formats: { 'text/plain': 'https://stale.example/1342.txt' },
+          media_type: 'Text',
+          content: 'Retired inline text',
+        }, // Unchanged vs DB
         { ...baseBook, id: 84, title: 'Frankenstein; Or, The Modern Prometheus (Revised)' }, // Changed title vs DB
         { ...baseBook, id: 78001, title: 'Brand New Release' }, // New book not in DB
       ];
 
       const deduped = deduplicateBatchById(duplicateBatch);
       expect(deduped).toHaveLength(3);
-      expect(deduped.find((b: { id: number }) => b.id === 1342)).not.toHaveProperty('formats');
+      const deduped1342 = deduped.find((b: { id: number }) => b.id === 1342);
+      expect(deduped1342).not.toHaveProperty('formats');
+      expect(deduped1342).not.toHaveProperty('media_type');
+      expect(deduped1342).not.toHaveProperty('content');
       expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('quotes');
       expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('formats');
+      expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('media_type');
+      expect(CATALOG_DIFF_SELECT_COLUMNS).not.toContain('content');
       expect(CATALOG_DIFF_SELECT_COLUMNS).toContain('download_count');
 
       const inMock = vi.fn().mockResolvedValue({

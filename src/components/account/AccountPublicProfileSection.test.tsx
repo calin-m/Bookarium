@@ -25,8 +25,6 @@ const mockProfile: Profile = {
   show_bookshelves: true,
   show_saved_books: true,
   show_custom_shelves: true,
-  preferred_theme: 'light',
-  font_size: 18,
   created_at: '2025-01-01T00:00:00.000Z',
   updated_at: '2025-01-01T00:00:00.000Z',
 };

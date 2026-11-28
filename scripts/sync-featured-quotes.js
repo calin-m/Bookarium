@@ -12,10 +12,10 @@
  *
  * @module scripts/sync-featured-quotes
  * @scope Bounded Two-Tier quote extraction worker maintaining the `Top 500 Popular + Rolling 64 Most Recent` JSONB spread pool in `public.books.quotes`.
- * @invariant Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from Supabase `public.books.content` or private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing, failing non-zero via `shouldFailFeaturedQuotesRun` when `updated === 0` or `>= 50%` of `>= 5` attempted volumes fail, and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
+ * @invariant Select text transport via `normalizeQuoteTextSource` (`auto`, `r2`, `mirrors`), reading from private Cloudflare R2 (`books/<id>.txt.gz` via `fetchBookTextFromR2`, `0s` delay) ahead of Project Gutenberg mirror-first pacing (`8.0s–16.0s` per worker) unless `--source=mirrors`, failing fast in `r2` mode when `R2_*` credentials are missing, failing non-zero via `shouldFailFeaturedQuotesRun` when `updated === 0` or `>= 50%` of `>= 5` attempted volumes fail, and recording uncached R2 volumes as non-sentinel `r2-miss` skips without writing false `[]`/placeholder entries, while enforcing redirect SSRF validation (`isAllowedPglafMirrorUrl`), `15 MB` text limit, `row.copyright !== true` exclusion across both automated Two-Tier pools and manual `--ids` runs, and 1-item sentinel guard (`buildSentinelQuoteSpread`) when available text yields 0 extractable spreads.
  * @invariant Query quoted pool membership strictly via Primary-Key chunked `.in('id', chunk).neq('quotes', '[]')` (`books_pkey`) or partial index `idx_books_with_quotes_popular`, and prune out-of-window surplus via Option-A 1-for-1 sliding window up to `DEFAULT_MAX_PRUNE_PER_RUN` (`2,000`).
  * @rationale Keeps database `quotes` footprint bounded (`<= 564` active books / ~2 MB), shifts CI quote extraction off external Project Gutenberg mirrors onto zero-egress private R2 when populated while retaining official PGLAF/Aleph/ReadingRoo mirror fallback for scheduled/manual runs without contacting `www.gutenberg.org`, and avoids 78k-row PostgreSQL statement timeouts.
- * @adr ADR-074, ADR-080, ADR-083, ADR-084, ADR-085
+ * @adr ADR-074, ADR-080, ADR-083, ADR-084, ADR-085, ADR-087
  *
  * Usage:
  *   node scripts/sync-featured-quotes.js --dry-run
@@ -1382,7 +1382,7 @@ async function scanTwoTierPools(supabase, options) {
   const popularScanLimit = Math.max(popularPoolLimit * 2, 1000);
   const { data: popularRaw, error: popularErr } = await supabase
     .from('books')
-    .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count')
+    .select('id, title, authors, translators, subjects, languages, copyright, download_count')
     .order('download_count', { ascending: false })
     .limit(popularScanLimit);
 
@@ -1391,7 +1391,7 @@ async function scanTwoTierPools(supabase, options) {
   let heroRaw = [];
   const heroSelectQuery = supabase
     .from('books')
-    .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count');
+    .select('id, title, authors, translators, subjects, languages, copyright, download_count');
   if (heroSelectQuery && typeof heroSelectQuery.in === 'function') {
     const { data: heroRows, error: heroErr } = await heroSelectQuery.in(
       'id',
@@ -1432,7 +1432,7 @@ async function scanTwoTierPools(supabase, options) {
     const recentScanLimit = Math.max(recentPoolLimit * 5, 320);
     const { data: recRows, error: recErr } = await supabase
       .from('books')
-      .select('id, title, authors, translators, subjects, languages, copyright, media_type, download_count')
+      .select('id, title, authors, translators, subjects, languages, copyright, download_count')
       .order('id', { ascending: false })
       .limit(recentScanLimit);
     if (recErr) throw new Error(recErr.message);
@@ -1646,7 +1646,6 @@ function escapeMarkdownCell(value) {
 
 function describeQuoteSource(source) {
   if (source === 'r2') return 'Cloudflare R2';
-  if (source === 'supabase-content') return 'Stored text';
   if (source === 'stored') return 'Database';
   if (!source || source === 'none') return '—';
   try {
@@ -1898,7 +1897,7 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
     const requestedIds = options.ids.slice(0, options.limit);
     const { data, error } = await supabase
       .from('books')
-      .select('id, title, authors, translators, subjects, languages, copyright, quotes, content, download_count')
+      .select('id, title, authors, translators, subjects, languages, copyright, quotes, download_count')
       .in('id', requestedIds);
     if (error) throw new Error(error.message);
     const byId = new Map((data || []).map((row) => [row.id, row]));
@@ -1999,7 +1998,7 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
 
   if (candidates.length > 0) {
     const candidateIds = candidates.map((c) => c.id);
-    const detailQuery = supabase.from('books').select('id, quotes, content');
+    const detailQuery = supabase.from('books').select('id, quotes');
     if (detailQuery && typeof detailQuery.in === 'function') {
       const { data: details, error: detailErr } = await detailQuery.in('id', candidateIds);
       if (detailErr) throw new Error(detailErr.message);
@@ -2007,9 +2006,8 @@ async function fetchCandidateBooksFromSupabase(supabase, options) {
         const detailMap = new Map(details.map((d) => [d.id, d]));
         for (const cand of candidates) {
           const d = detailMap.get(cand.id);
-          if (d) {
-            if (d.quotes !== undefined) cand.quotes = d.quotes;
-            if (d.content !== undefined) cand.content = d.content;
+          if (d && d.quotes !== undefined) {
+            cand.quotes = d.quotes;
           }
         }
       }
@@ -2067,7 +2065,6 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
     updated: 0,
     skippedExisting: 0,
     skippedByScheduleGate: false,
-    fromSupabaseContent: 0,
     fromR2: 0,
     r2Missing: 0,
     fromMirrors: 0,
@@ -2434,43 +2431,38 @@ async function runFeaturedQuotesSync(customOptions = {}, deps = {}) {
         continue;
       }
 
-      if (book.content && book.content.trim().length >= 500) {
-        summary.fromSupabaseContent++;
-        await persistExtractedBookQuotes(book, existingQuotes, book.content, 'supabase-content', 0);
-      } else {
-        const hasR2 = textSource !== 'mirrors' && r2Configured;
-        const r2Res = hasR2
-          ? typeof deps.fetchBookFromR2 === 'function'
-            ? await deps.fetchBookFromR2(book.id)
-            : await fetchBookTextFromR2(book.id, { env, fetchFn })
-          : null;
-        if (r2Res && r2Res.status === 'ok' && typeof r2Res.text === 'string' && r2Res.text.trim().length >= 500) {
-          summary.fromR2++;
-          await persistExtractedBookQuotes(book, existingQuotes, r2Res.text, 'r2', 0);
-        } else if (textSource === 'r2' || resolvedMirrors.length === 0) {
-          summary.r2Missing++;
-          const skipNote =
-            textSource === 'r2' ? 'r2-only mode' : 'no fallback mirrors enabled';
-          recordBook(book, {
-            outcome: 'r2-miss',
-            source: 'none',
-            existingQuoteCount: existingQuotes.length,
-            note: skipNote,
-          });
-          if (useCondensedProgress) {
-            tickQuotesProgress();
-          } else {
-            logger.log(
-              `${bookPrefix(book.id)} #${book.id} "${book.title}": not cached in R2 (${skipNote}), skipped cleanly without writing placeholder.`
-            );
-          }
+      const hasR2 = textSource !== 'mirrors' && r2Configured;
+      const r2Res = hasR2
+        ? typeof deps.fetchBookFromR2 === 'function'
+          ? await deps.fetchBookFromR2(book.id)
+          : await fetchBookTextFromR2(book.id, { env, fetchFn })
+        : null;
+      if (r2Res && r2Res.status === 'ok' && typeof r2Res.text === 'string' && r2Res.text.trim().length >= 500) {
+        summary.fromR2++;
+        await persistExtractedBookQuotes(book, existingQuotes, r2Res.text, 'r2', 0);
+      } else if (textSource === 'r2' || resolvedMirrors.length === 0) {
+        summary.r2Missing++;
+        const skipNote =
+          textSource === 'r2' ? 'r2-only mode' : 'no fallback mirrors enabled';
+        recordBook(book, {
+          outcome: 'r2-miss',
+          source: 'none',
+          existingQuoteCount: existingQuotes.length,
+          note: skipNote,
+        });
+        if (useCondensedProgress) {
+          tickQuotesProgress();
         } else {
-          mirrorWorkQueue.push({
-            book,
-            existingQuotes,
-            attemptedMirrors: new Set(),
-          });
+          logger.log(
+            `${bookPrefix(book.id)} #${book.id} "${book.title}": not cached in R2 (${skipNote}), skipped cleanly without writing placeholder.`
+          );
         }
+      } else {
+        mirrorWorkQueue.push({
+          book,
+          existingQuotes,
+          attemptedMirrors: new Set(),
+        });
       }
     } catch (err) {
       summary.failed++;

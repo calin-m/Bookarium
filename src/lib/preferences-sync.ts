@@ -2,9 +2,9 @@
  * @module src/lib/preferences-sync
  * @scope Cross-store scholar preferences coordinator bundling active display/narration settings, `customDefaults` presets, and LWW `public.profiles.preferences` cloud sync.
  * @invariant Sanitize every untrusted local or cloud field through `sanitizePreferencesSnapshot` with clamped numeric bounds and resolve responsive baseline font sizing (`15px` / `17px` / `18px`) via `getFactoryPreferences`.
- * @invariant Perform Last-Write-Wins reconciliation strictly on `updatedAt` timestamps without resetting unauthenticated local customization on sign-out unless explicitly requested.
- * @rationale Centralizing cross-store capture/application breaks circular dependencies between `useThemeStore`, `useReaderStore`, `usePreferencesStore`, and `useAnnotationStore`.
- * @adr ADR-071, ADR-079, ADR-080
+ * @invariant Perform Last-Write-Wins reconciliation strictly on `updatedAt` timestamps in `public.profiles.preferences` JSONB (writing only `preferences`, with non-writing fallback read compatibility for pre-migration legacy payloads) without resetting unauthenticated local customization on sign-out unless explicitly requested.
+ * @rationale Centralizing cross-store capture/application breaks circular dependencies between `useThemeStore`, `useReaderStore`, `usePreferencesStore`, and `useAnnotationStore`, and consolidating settings into `profiles.preferences` removes split-brain legacy column dual-writes.
+ * @adr ADR-071, ADR-073, ADR-079, ADR-080, ADR-087
  */
 
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
@@ -246,8 +246,6 @@ export function cancelPendingPreferencesCloudSync(): void {
 export function buildProfilePreferencesPayload(
   updatedAtOverride?: string
 ): {
-  preferred_theme: string;
-  font_size: number;
   preferences: Json;
 } {
   const active = getActivePreferencesSnapshot();
@@ -261,8 +259,6 @@ export function buildProfilePreferencesPayload(
   };
 
   return {
-    preferred_theme: active.theme,
-    font_size: active.fontSize,
     preferences: payload as unknown as Json,
   };
 }
@@ -421,8 +417,8 @@ export function resetReaderAppearanceToDefaults(
 }
 
 /**
- * Reconciles `profile.preferences` (and fallback `preferred_theme` / `font_size`) from Supabase
- * against local preference stores using Last-Write-Wins (LWW) timestamps.
+ * Reconciles `profile.preferences` from Supabase against local preference stores using
+ * Last-Write-Wins (LWW) timestamps, with non-writing read fallback for pre-migration rows.
  */
 export function reconcileCloudPreferencesWithLocal(
   profile: Profile | null | undefined
@@ -480,19 +476,27 @@ export function reconcileCloudPreferencesWithLocal(
     return;
   }
 
-  // Fallback for legacy profile rows that only have preferred_theme or font_size populated
+  // Non-writing read fallback for any pre-migration profile row that still carries legacy keys
+  const legacyProfile = profile as unknown as {
+    preferred_theme?: unknown;
+    font_size?: unknown;
+  };
   if (!localUpdatedAt) {
-    if (isValidTheme(globalTheme) && globalTheme !== 'light' && profile.preferred_theme === 'light') {
+    if (
+      isValidTheme(globalTheme) &&
+      globalTheme !== 'light' &&
+      (legacyProfile.preferred_theme === undefined || legacyProfile.preferred_theme === 'light')
+    ) {
       useReaderStore.getState().setTheme(globalTheme);
       schedulePreferencesCloudSync(0);
       return;
     }
     const partialLegacy: Partial<ScholarPreferencesSnapshot> = {};
-    if (isValidTheme(profile.preferred_theme)) {
-      partialLegacy.theme = profile.preferred_theme;
+    if (isValidTheme(legacyProfile.preferred_theme)) {
+      partialLegacy.theme = legacyProfile.preferred_theme;
     }
-    if (typeof profile.font_size === 'number' && !Number.isNaN(profile.font_size)) {
-      partialLegacy.fontSize = profile.font_size;
+    if (typeof legacyProfile.font_size === 'number' && !Number.isNaN(legacyProfile.font_size)) {
+      partialLegacy.fontSize = legacyProfile.font_size;
     }
     if (Object.keys(partialLegacy).length > 0) {
       applyPreferencesSnapshot(partialLegacy, { syncCloud: false });

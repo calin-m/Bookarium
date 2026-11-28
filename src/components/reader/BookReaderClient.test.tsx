@@ -1539,14 +1539,13 @@ describe('Dedicated Reader Page (/read/[id])', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(550);
       });
-      expect(mockUpdateProfile).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          font_size: pinchedFontSize,
-          preferences: expect.objectContaining({
-            active: expect.objectContaining({ fontSize: pinchedFontSize }),
-          }),
-        })
-      );
+      expect(mockUpdateProfile).toHaveBeenLastCalledWith({
+        preferences: expect.objectContaining({
+          active: expect.objectContaining({ fontSize: pinchedFontSize }),
+        }),
+      });
+      expect(mockUpdateProfile.mock.calls.at(-1)?.[0]).not.toHaveProperty('font_size');
+      expect(mockUpdateProfile.mock.calls.at(-1)?.[0]).not.toHaveProperty('preferred_theme');
 
       // 2. Read-Aloud speed & narrator voice inside ReaderSpeechBar
       mockUpdateProfile.mockClear();

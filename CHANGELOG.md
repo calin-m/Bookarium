@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.92] - 2026-11-28
+### *Non-Breaking PostgreSQL Storage, Index & Query Hygiene (`books.content`/`media_type`, Duplicate Index & `profiles` Consolidation)*
+
+### Changed
+- **PostgreSQL Index Pruning, Partial Era Indexes & Compacted `search_vector` (`supabase/schema.sql`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Dropped `4` redundant B-Tree indexes (`idx_book_translations_work_lang`, `idx_user_book_curation_user_book`, `idx_reader_circles_requester`, `idx_symposium_sessions_book`, reducing explicit indexes from `20` to `16` with full `PK`/`UNIQUE` leading-column coverage), upgraded `idx_books_author_death_year` and `idx_books_author_birth_year` to partial B-Tree indexes (`WHERE ... IS NOT NULL`), and updated `public.books_search_vector_trigger()` to preserve exact phrase positions on `title` while stripping unneeded positions from `subjects` and `bookshelves` via `pg_catalog.strip(...)` (`ADR-073`, `ADR-087`).
+- **Zero-Downtime Retirement of `books.content`, `books.media_type`, `book_translations` Unused Metadata & `profiles.{preferred_theme, font_size}` (`src/app/api/books/content/route.ts`, `metadata-cache.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/preferences-sync.ts`, `src/stores/useAuthStore.ts`, `src/app/privacy/page.tsx`, `src/types/database.types.ts`, `supabase/seed_*.sql`, `scripts/ingest-*.js`, `scripts/sync-*.js`)**: Eliminated the redundant cold-read `SELECT content FROM public.books` probe ahead of Cloudflare R2, shrank `CATALOG_METADATA_COLUMNS` from `10 -> 9` columns (synthesizing `media_type: "Text"`), trimmed `book_translations` to `(work_id, book_id, language, is_original)`, consolidated `profiles` writes onto unified `preferences` JSONB with idempotent SQL backfill and offline `pendingProfileUpdates` sanitization (`sanitizeProfileUpdatePayload`), and stripped retired fields in `deduplicateBatchById()` for backwards-compatible `catalog-cache` diffs (`ADR-084`, `ADR-087`).
+
+
+## [2.9.91] - 2026-11-28
+### *Exhaustive Account Data Inventory & Private vs. Public Sanctuary Disclosures (/privacy)*
+
+### Changed
+- **Transparent Account-Creation Data Inventory & Private vs. Public Profile Guide (`src/app/privacy/page.tsx`, `src/app/privacy/page.test.tsx`, `docs/DECISIONS.md`, `scripts/generate-architecture-matrix.js`)**: Expanded `/privacy` Section 4 to itemize sign-up provisioning data (`Full Name` / `display_name`, default `General` bookshelf, initial preferences, `is_public = false` default, bibliographic fields, timestamps, and shared Symposium annotation visibility under RLS) alongside a dedicated Private Sanctuary (default at sign-up) vs. opt-in Public Scholar Profile guide documenting `/account` (`Scholar Profile` -> `Edit` -> `Enable Public Scholar Profile`) and per-shelf `/bookshelf` visibility controls (`ADR-033`, `ADR-044`).
+
+
 ## [2.9.90] - 2026-11-27
 ### *Reading Progress Title & Author Preservation, Offline Metadata Fallback & Zero-Extra-Query Cloud Backfill*
 

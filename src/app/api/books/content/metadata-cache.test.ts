@@ -230,7 +230,7 @@ describe('metadata-cache', () => {
     setCachedBookContent(1342, 'A'.repeat(1_850_000), 'r2');
     expect(getCachedBookContent(1342)).toBeUndefined();
 
-    setCachedBookContent(1342, 'Pride and Prejudice text', 'supabase');
+    setCachedBookContent(1342, 'Pride and Prejudice text', 'r2');
     setCachedBookContent(1342, 'Pride and Prejudice updated text', 'r2');
     expect(getCachedBookContent(1342)?.text).toBe('Pride and Prejudice updated text');
     expect(getCachedBookContent(1342)?.source).toBe('r2');
@@ -285,7 +285,7 @@ describe('metadata-cache', () => {
       book: { id: 4321, title: 'Global Persistent Title', authors: [] },
       expiresAt: Date.now() + 60_000,
     });
-    setCachedBookContent(4321, 'Persistent chapter text', 'supabase');
+    setCachedBookContent(4321, 'Persistent chapter text', 'r2');
 
     expect(globalState.__bookariumMetadataCache?.has(4321)).toBe(true);
     expect(globalState.__bookariumContentLruCache?.has(4321)).toBe(true);

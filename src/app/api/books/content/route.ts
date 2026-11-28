@@ -4,8 +4,8 @@
  * @invariant Reject disallowed query params (`ALLOWED_CONTENT_QUERY_KEYS`, allowing `s` exclusively with `type=card` and rejecting `?url=` upstream proxies with `400 no-store`), enforce defense-in-depth Fetch Metadata anti-deeplink & cross-site isolation (`guardContentAssetRequest` returning `403 no-store` outside `type=card` and headerless crawlers), enforce mode-scoped rate limiters, reject HTTP `200` `text/html` outage/interstitial pages (`isHtmlPayload`), and bound payloads (`MAX_R2_BOOK_BYTES` text / `MAX_R2_COVER_BYTES` cover).
  * @invariant Enforce `HTTP 451` gatekeeping whenever resolved metadata restricts a volume in the caller's jurisdiction (including US `copyright === true` blocks) on plain-text and `type=card` requests, fail closed with `503` for non-US requests when metadata is unavailable, and bypass `resolveBookMetadata` for `type=cover` requests; emit `Cross-Origin-Resource-Policy: cross-origin` exclusively for `200` `type=card` PNGs.
  * @invariant Serve `type=cover` and plain text strictly from private Cloudflare R2 (`404` on R2 miss, `503` when R2 is unconfigured for plain text / `404` for covers, zero Project Gutenberg or external mirror fallback), coalesce concurrent upstream R2 fetches per `bookId` inside `inFlightR2Fetches`, cache resolved text in `bookContentLruCache`, and attach `Vercel-Cache-Tag` (`covers` on `200` cover responses, `book-content` on `200` plain-text responses) while keeping `no-store` errors untagged.
- * @rationale Keeping R2 credentials server-only eliminates browser/runtime Project Gutenberg requests and external cover hotlinking completely, ensuring 100% ToS compliance while preserving IndexedDB offline reading and optional Supabase `books.content` reads.
- * @adr ADR-016, ADR-022, ADR-039, ADR-080, ADR-082, ADR-084
+ * @rationale Keeping R2 credentials server-only eliminates browser/runtime Project Gutenberg requests and external cover hotlinking completely, ensuring 100% ToS compliance while routing online text directly from private Cloudflare R2 (`bookContentLruCache` -> R2) with zero redundant Supabase `books.content` queries and full IndexedDB offline reading.
+ * @adr ADR-016, ADR-022, ADR-039, ADR-080, ADR-082, ADR-084, ADR-087
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -36,8 +36,6 @@ import {
   renderBookCardAssetResponse,
   fetchR2CoverAssetResponse,
 } from './asset-renders';
-import { isSupabaseConfigured } from '@/lib/catalog/supabase-provider';
-import { createClient } from '@/lib/supabase/client';
 
 const ALLOWED_CONTENT_QUERY_KEYS = new Set(['id', 'type', 's']);
 const DEV_ONLY_CONTENT_QUERY_KEYS = new Set(['country']);
@@ -147,7 +145,7 @@ export async function GET(request: NextRequest) {
       'Vercel-Cache-Tag': 'book-content',
       ...buildApiSecurityHeaders('same-origin'),
     };
-    if (cachedBook.source === 'supabase' || cachedBook.source === 'r2') {
+    if (cachedBook.source === 'r2') {
       responseHeaders['X-Bookarium-Source'] = cachedBook.source;
     }
     return new NextResponse(cachedBook.text, {
@@ -157,39 +155,7 @@ export async function GET(request: NextRequest) {
   }
 
   // ==========================================================================
-  // Tier 1: Instant Streaming from Dedicated Supabase PostgreSQL Catalog
-  // ==========================================================================
-  if (isSupabaseConfigured()) {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('books')
-        .select('content')
-        .eq('id', bookId)
-        .abortSignal(AbortSignal.timeout(2500))
-        .maybeSingle();
-
-      if (!error && data?.content && data.content.trim().length > 0) {
-        setCachedBookContent(bookId, data.content, 'supabase');
-        return new NextResponse(data.content, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/plain; charset=utf-8',
-            'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
-            'Vary': 'x-vercel-ip-country, Accept-Encoding',
-            'Vercel-Cache-Tag': 'book-content',
-            'X-Bookarium-Source': 'supabase',
-            ...buildApiSecurityHeaders('same-origin'),
-          },
-        });
-      }
-    } catch {
-      // Degrade gracefully to Tier 1.5 / Tier 2 content source
-    }
-  }
-
-  // ==========================================================================
-  // Tier 2: Strict Private Cloudflare R2 Storage (books/<id>.txt.gz)
+  // Tier 1: Strict Private Cloudflare R2 Storage (books/<id>.txt.gz)
   // ==========================================================================
   let r2Promise = inFlightR2Fetches.get(bookId);
   if (!r2Promise) {

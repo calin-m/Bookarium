@@ -24,8 +24,6 @@ export interface Database {
           show_bookshelves: boolean;
           show_saved_books?: boolean;
           show_custom_shelves?: boolean;
-          preferred_theme: string | null;
-          font_size: number | null;
           preferences?: Json;
           created_at: string;
           updated_at: string;
@@ -44,8 +42,6 @@ export interface Database {
           show_bookshelves?: boolean;
           show_saved_books?: boolean;
           show_custom_shelves?: boolean;
-          preferred_theme?: string | null;
-          font_size?: number | null;
           preferences?: Json;
           created_at?: string;
           updated_at?: string;
@@ -64,8 +60,6 @@ export interface Database {
           show_bookshelves?: boolean;
           show_saved_books?: boolean;
           show_custom_shelves?: boolean;
-          preferred_theme?: string | null;
-          font_size?: number | null;
           preferences?: Json;
           created_at?: string;
           updated_at?: string;
@@ -358,12 +352,10 @@ export interface Database {
           bookshelves: string[];
           languages: string[];
           copyright: boolean;
-          media_type: string;
           download_count: number;
           max_author_death_year: number | null;
           min_author_birth_year: number | null;
           quotes?: Json | null;
-          content?: string | null;
           search_vector?: string | null;
           created_at: string;
           updated_at: string;
@@ -377,12 +369,10 @@ export interface Database {
           bookshelves?: string[];
           languages?: string[];
           copyright?: boolean;
-          media_type?: string;
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
           quotes?: Json | null;
-          content?: string | null;
           search_vector?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -396,12 +386,10 @@ export interface Database {
           bookshelves?: string[];
           languages?: string[];
           copyright?: boolean;
-          media_type?: string;
           download_count?: number;
           max_author_death_year?: number | null;
           min_author_birth_year?: number | null;
           quotes?: Json | null;
-          content?: string | null;
           search_vector?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -414,27 +402,18 @@ export interface Database {
           book_id: number;
           language: string;
           is_original: boolean;
-          confidence_score: number;
-          source: string;
-          created_at: string;
         };
         Insert: {
           work_id: string;
           book_id: number;
           language: string;
           is_original?: boolean;
-          confidence_score?: number;
-          source?: string;
-          created_at?: string;
         };
         Update: {
           work_id?: string;
           book_id?: number;
           language?: string;
           is_original?: boolean;
-          confidence_score?: number;
-          source?: string;
-          created_at?: string;
         };
         Relationships: [
           {

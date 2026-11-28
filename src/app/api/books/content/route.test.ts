@@ -419,45 +419,56 @@ describe('GET /api/books/content', () => {
     expect(res.status).toBe(502);
   });
 
-  it('streams content directly from Supabase (Tier 1) without external network fetch', async () => {
+  it('routes cold text reads directly to private R2 without querying retired public.books.content', async () => {
     const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://valid-project.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'valid-anon-key-12345';
+    stubR2Credentials();
 
     const mockMaybeSingle = vi.fn().mockResolvedValue({
-      data: { content: 'The Project Gutenberg eBook of Pride and Prejudice, by Jane Austen...' },
+      data: {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        translators: [],
+        copyright: false,
+      },
       error: null,
     });
     const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+    const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal, maybeSingle: mockMaybeSingle });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
     const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
-
     const supabaseClientModule = await import('@/lib/supabase/client');
     const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
       from: mockFrom,
     } as any);
 
-    const fetchSpy = vi.spyOn(global, 'fetch');
+    const gzipped = zlib.gzipSync(Buffer.from(sampleBookText, 'utf8'));
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(new Uint8Array(gzipped), {
+        status: 200,
+        headers: { 'Content-Type': 'application/gzip' },
+      })
+    );
 
     try {
       const req = new NextRequest('http://localhost:3000/api/books/content?id=1342');
       const res = await GET(req);
 
       expect(res.status).toBe(200);
-      expect(res.headers.get('X-Bookarium-Source')).toBe('supabase');
-      expect(mockFrom).toHaveBeenCalledWith('books');
-      expect(mockSelect).toHaveBeenCalledWith('content');
-      expect(mockEq).toHaveBeenCalledWith('id', 1342);
-      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
+      expect(mockSelect).not.toHaveBeenCalledWith('content');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
 
       const text = await res.text();
-      expect(text).toContain('Pride and Prejudice, by Jane Austen');
+      expect(text).toContain('Pride and Prejudice');
     } finally {
       process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey;
       clientSpy.mockRestore();
+      fetchSpy.mockRestore();
     }
   });
 
@@ -538,19 +549,25 @@ describe('GET /api/books/content', () => {
       fetchSpy.mockRestore();
     });
 
-    it('degrades cleanly from Tier 1 Supabase abortSignal timeout to Tier 1.5 Cloudflare R2 without contacting Gutenberg', async () => {
+    it('streams directly from private Cloudflare R2 without querying books.content or contacting Project Gutenberg', async () => {
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://valid-project.supabase.co');
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'valid-anon-key-12345');
       stubR2Credentials();
 
-      const mockMaybeSingle = vi
-        .fn()
-        .mockRejectedValue(new DOMException('Signal timed out', 'TimeoutError'));
+      const mockMaybeSingle = vi.fn().mockResolvedValue({
+        data: {
+          id: 1342,
+          title: 'Pride and Prejudice',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          copyright: false,
+        },
+        error: null,
+      });
       const mockAbortSignal = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-      const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal });
+      const mockEq = vi.fn().mockReturnValue({ abortSignal: mockAbortSignal, maybeSingle: mockMaybeSingle });
       const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
       const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
-
       const supabaseClientModule = await import('@/lib/supabase/client');
       const clientSpy = vi.spyOn(supabaseClientModule, 'createClient').mockReturnValue({
         from: mockFrom,
@@ -571,6 +588,7 @@ describe('GET /api/books/content', () => {
         const res = await GET(req);
         expect(res.status).toBe(200);
         expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
+        expect(mockSelect).not.toHaveBeenCalledWith('content');
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(String(fetchSpy.mock.calls[0][0])).not.toContain('gutenberg');
         expect(await res.text()).toContain('Pride and Prejudice');
@@ -782,7 +800,7 @@ describe('GET /api/books/content', () => {
   describe('Tier 0 LRU Cache-Control headers', () => {
     it('serves warm Tier 0 cached book text with max-age=86400 for browser + edge parity', async () => {
       const { setCachedBookContent } = await import('./metadata-cache');
-      setCachedBookContent(1342, sampleBookText, 'supabase');
+      setCachedBookContent(1342, sampleBookText, 'r2');
 
       const fetchSpy = vi.spyOn(global, 'fetch');
       const req = new NextRequest('http://localhost:3000/api/books/content?id=1342', {
@@ -795,7 +813,7 @@ describe('GET /api/books/content', () => {
         'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800'
       );
       expect(res.headers.get('Vercel-Cache-Tag')).toBe('book-content');
-      expect(res.headers.get('X-Bookarium-Source')).toBe('supabase');
+      expect(res.headers.get('X-Bookarium-Source')).toBe('r2');
       expect(res.headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
       expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
       expect(fetchSpy).not.toHaveBeenCalled();

@@ -8,7 +8,6 @@ const {
   CURATED_CLASSICS,
   computeLifespanBounds,
   generateSql,
-  generateContentUpdateSql,
 } = ingestCatalog;
 
 interface CuratedClassicEntry {
@@ -99,8 +98,8 @@ describe('scripts/ingest-catalog CLI helpers & invariants', () => {
     });
   });
 
-  describe('generateSql & generateContentUpdateSql', () => {
-    it('emits idempotent ON CONFLICT upsert SQL and escapes single quotes safely', () => {
+  describe('generateSql', () => {
+    it('emits idempotent ON CONFLICT metadata upsert SQL, escapes single quotes safely, and omits retired columns', () => {
       const sql = generateSql([
         {
           id: 84,
@@ -117,25 +116,13 @@ describe('scripts/ingest-catalog CLI helpers & invariants', () => {
         },
       ]);
 
-      expect(sql).toContain('ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;');
-      expect(sql).toContain("INSERT INTO public.books (");
+      expect(sql).toContain('INSERT INTO public.books (');
       expect(sql).toContain("'Frankenstein''s Monster'");
       expect(sql).toContain("'Gothic ''Horror'''");
       expect(sql).toContain('ON CONFLICT (id) DO UPDATE SET');
       expect(sql).not.toContain('formats');
-    });
-
-    it('emits dollar-quoted idempotent content UPDATE statements only for books with content', () => {
-      const updateSql = generateContentUpdateSql([
-        { id: 11, title: "Alice's Adventures", content: 'Chapter I text body' },
-        { id: 84, title: 'Frankenstein' },
-      ]);
-
-      expect(updateSql).toContain('-- Total Volumes: 1');
-      expect(updateSql).toContain(
-        'UPDATE public.books SET content = $bookarium_txt_11$Chapter I text body$bookarium_txt_11$, updated_at = NOW() WHERE id = 11;'
-      );
-      expect(updateSql).not.toContain('WHERE id = 84');
+      expect(sql).not.toContain('content');
+      expect(sql).not.toContain('media_type');
     });
   });
 

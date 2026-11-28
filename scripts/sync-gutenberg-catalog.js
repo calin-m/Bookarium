@@ -9,9 +9,9 @@
  * @module scripts/sync-gutenberg-catalog
  * @scope Weekly streaming ingestion pipeline reconciling Project Gutenberg metadata (`pg_catalog.csv.gz` + `rdf-files.tar.bz2`) into `public.books`.
  * @invariant Prioritize PGLAF/Aleph feed mirrors exclusively (never `www.gutenberg.org`, pinned or ordered via `--feed-source`), reject HTML outage responses, fail closed on truncated `Content-Length` streams or non-zero `tar` exit codes while computing feed wire `SHA-256` digests, extract both `<pgterms:downloads>` and `<dcterms:rights>` (`copyright: true` for copyrighted PG entries), preserve cached and live DB `copyright` flags when RDF feeds are unavailable (including under `--update-existing`), and defer unverified brand-new books during unexpected RDF outages (`reconcileBatchWithoutRdfRights`).
- * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts, and stripping deprecated `formats` fields before `.upsert()`) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
+ * @invariant Diff in RAM against `gutenberg-catalog-cache.json.gz` (emitting companion `.sha256` sidecars verified via `crypto.timingSafeEqual` on restore, preserving existing `quotes` column on `ignoreDuplicates: false` upserts, and stripping deprecated `formats`, `media_type`, and `content` fields before `.upsert()`) and emit `--diff-output=quote-diff.json` for zero-scan downstream quote sync.
  * @invariant Gate withdrawn-book deletion (`reconcileWithdrawnCatalogBooks`) behind `MIN_ACTIVE_CATALOG_FOR_PRUNE`, `MAX_WITHDRAWN_PRUNE_PER_RUN`, and `PROTECTED_HERO_BOOK_IDS`.
- * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, eliminates retired template `formats` writes from PostgREST upserts and cache snapshots, and avoids exhausting Supabase read egress during partial upstream outages.
+ * @rationale Prevents copyrighted Project Gutenberg titles from bypassing US public-domain filters (even when both RDF mirrors fail during `--update-existing` or new releases), detects truncated/corrupted mirror streams or tampered snapshot caches fail-closed, keeps heavy archive sync strictly on official mirrors rather than `www.gutenberg.org`, eliminates retired template `formats`, `content`, and constant `media_type` writes from PostgREST upserts and cache snapshots, and avoids exhausting Supabase read egress during partial upstream outages.
  * @adr ADR-040, ADR-073, ADR-080, ADR-084, ADR-085, ADR-087
  *
  * Usage:
@@ -289,7 +289,6 @@ function normalizeCsvRow(row, rdfSignalsOrCountsMap = null, cachedBook = null) {
     bookshelves,
     languages,
     copyright: isCopyrighted,
-    media_type: 'Text',
     max_author_death_year: maxDeath,
     min_author_birth_year: minBirth,
   };
@@ -937,7 +936,7 @@ async function streamGutenbergCatalog(
 
 // 7. Exact-Diff Catalog Metadata Comparison & Safe Supabase Batch Upsert
 const CATALOG_DIFF_SELECT_COLUMNS =
-  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, max_author_death_year, min_author_birth_year, download_count';
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, max_author_death_year, min_author_birth_year, download_count';
 
 const MIN_ACTIVE_CATALOG_FOR_PRUNE = 50000;
 const MAX_WITHDRAWN_PRUNE_PER_RUN = 500;
@@ -974,7 +973,6 @@ function hasCatalogMetadataChanged(existingRow, incomingBook) {
   if (!existingRow || !incomingBook) return true;
   if ((existingRow.title || '') !== (incomingBook.title || '')) return true;
   if (Boolean(existingRow.copyright) !== Boolean(incomingBook.copyright)) return true;
-  if ((existingRow.media_type || 'Text') !== (incomingBook.media_type || 'Text')) return true;
   if ((existingRow.max_author_death_year ?? null) !== (incomingBook.max_author_death_year ?? null)) return true;
   if ((existingRow.min_author_birth_year ?? null) !== (incomingBook.min_author_birth_year ?? null)) return true;
   if (
@@ -996,9 +994,11 @@ function deduplicateBatchById(batch) {
   const byId = new Map();
   for (const item of batch) {
     if (item && Number.isInteger(item.id) && item.id > 0) {
-      if ('formats' in item) {
+      if ('formats' in item || 'media_type' in item || 'content' in item) {
         const cleanItem = { ...item };
         delete cleanItem.formats;
+        delete cleanItem.media_type;
+        delete cleanItem.content;
         byId.set(item.id, cleanItem);
       } else {
         byId.set(item.id, item);
@@ -1503,7 +1503,6 @@ function extractCacheableBookRecord(book) {
     bookshelves: Array.isArray(book.bookshelves) ? book.bookshelves : [],
     languages: Array.isArray(book.languages) ? book.languages : [],
     copyright: Boolean(book.copyright),
-    media_type: book.media_type || 'Text',
     download_count: typeof book.download_count === 'number' ? book.download_count : 0,
     max_author_death_year: book.max_author_death_year ?? null,
     min_author_birth_year: book.min_author_birth_year ?? null,

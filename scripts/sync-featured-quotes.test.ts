@@ -612,6 +612,11 @@ describe('sync-featured-quotes pipeline', () => {
       },
       {
         supabaseClient: mockSupabase,
+        fetchBookFromR2: vi.fn(async (bookId: number) =>
+          bookId === 84
+            ? { status: 'ok', text: SAMPLE_GUTENBERG_BOOK }
+            : { status: 'missing' }
+        ),
         fetchFn: fetchMock,
         sleepFn: sleepMock,
         logger: silentLogger,
@@ -621,7 +626,7 @@ describe('sync-featured-quotes pipeline', () => {
 
     expect(summary.processed).toBe(5);
     expect(summary.skippedExisting).toBe(0); // 1342 already filtered out of Two-Tier candidate pool (>=10 quotes)
-    expect(summary.fromSupabaseContent).toBe(1); // 84 extracted from books.content
+    expect(summary.fromR2).toBe(1); // 84 extracted directly from Cloudflare R2
     expect(summary.fromMirrors).toBe(3); // 2701, 64317, 11 downloaded across healthy mirrors
     expect(summary.sentinelMarked).toBe(1); // 99999 marked with 1-item sentinel spread after 404
     expect(summary.updated).toBe(4); // 84, 2701, 64317, 11 updated with multi-quote spreads
@@ -1038,11 +1043,16 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
     const summaryFile = path.join(tmpDir, 'step-summary.md');
     const logger = { log: vi.fn(), error: vi.fn() };
     try {
+      const fetchBookFromR2 = vi.fn().mockResolvedValue({
+        status: 'ok',
+        text: SAMPLE_GUTENBERG_BOOK,
+      });
       const summary = await quotesSync.runFeaturedQuotesSync(
         { ids: [1342, 84, 999999], limit: 10 },
         {
           env: {},
           supabaseClient: client,
+          fetchBookFromR2,
           logger,
           writeSeedFile: false,
           stepSummaryPath: summaryFile,
@@ -1059,7 +1069,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       expect(byId.get(84)).toMatchObject({
         tier: 'top',
         outcome: 'updated',
-        source: 'supabase-content',
+        source: 'r2',
         existingQuoteCount: 6,
       });
       expect(byId.get(84)!.quoteCount).toBeGreaterThan(6);
@@ -1087,7 +1097,7 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
       logger.log.mockClear();
       const forced = await quotesSync.runFeaturedQuotesSync(
         { ids: [75012], limit: 10, force: true },
-        { env: {}, supabaseClient: client, logger, writeSeedFile: false }
+        { env: {}, supabaseClient: client, fetchBookFromR2, logger, writeSeedFile: false }
       );
       expect(forced.books[0]).toMatchObject({
         id: 75012,
@@ -1251,6 +1261,10 @@ describe('sync-featured-quotes run report: tier progress & per-book ledger', () 
         {
           env: {},
           supabaseClient: client,
+          fetchBookFromR2: vi.fn().mockResolvedValue({
+            status: 'ok',
+            text: SAMPLE_GUTENBERG_BOOK,
+          }),
           logger,
           writeSeedFile: false,
         }

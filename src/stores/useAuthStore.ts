@@ -3,9 +3,9 @@
  * @scope Authentication lifecycle, Cloudflare Turnstile & honeypot bot guards, active session verification, session revocation RPCs, fail-closed GDPR account deletion, guest device wipe, and 4-layer Rule 9 parity.
  * @invariant Non-wipe `resetClientAuthState` teardown must clear all user collections BEFORE setting `user: null` while preserving IndexedDB `offline_books`; `wipeDeviceStorage: true` during `deleteAccount` (or guest `clearGuestDeviceData`) must fail closed on non-unavailable server deletion errors (`delete_current_user` / 11-table fallback `{ error }`) and reset auth session/profile state alongside all 8 user/preference Zustand stores (`useJurisdictionStore` preserved), localStorage keys/quote caches, cookies, and IndexedDB in lockstep (`Rule 9`).
  * @invariant Persist `STORAGE_KEYS.PENDING_STORE_CLEANUP` synchronously across teardowns so interrupted reloads finish cleanup in `initializeAuth()` without affecting offline signed-in sessions or guest users.
- * @invariant Verify `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions, and honor optional `minSyncIntervalMs` cooldown in `syncWithCloud` after live `fetchProfile` completion unless `pendingProfileUpdates` or dirty markers exist.
- * @rationale Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
- * @adr ADR-005, ADR-072, ADR-080, ADR-086
+ * @invariant Verify `verifyActiveCloudSession` strictly read-only/coalesced across tabs, ignoring transient offline/`5xx` errors while tearing down dead/cleared sessions, honor optional `minSyncIntervalMs` cooldown in `syncWithCloud` after live `fetchProfile` completion unless `pendingProfileUpdates` or dirty markers exist, and strip retired `preferred_theme`/`font_size` keys via `sanitizeProfileUpdatePayload` on persistence rehydration and prior to every `profiles.update` flush.
+ * @rationale Ordering collection resets before nullifying `user` prevents guest persistence leaks or stale UI flashes, reload-safe cleanup markers eliminate orphaned personal records after tab close mid-signout, sanitizing persisted offline `pendingProfileUpdates` prevents post-migration `PGRST204` sync loops, and opt-in `minSyncIntervalMs` skips duplicate bootstrap/token-refresh profile queries without blocking offline flush recovery.
+ * @adr ADR-005, ADR-072, ADR-080, ADR-086, ADR-087
  */
 
 import { create } from 'zustand';
@@ -345,8 +345,6 @@ export interface AuthState {
   syncWithCloud: (userId?: string, options?: { minSyncIntervalMs?: number }) => Promise<void>;
   updateProfile: (updates: {
     display_name?: string;
-    preferred_theme?: string;
-    font_size?: number;
     preferences?: Json;
     username?: string | null;
     bio?: string | null;
@@ -365,6 +363,25 @@ export interface AuthState {
   requestAccountDeletion: () => Promise<{ error: AuthError | null }>;
   deleteAccount: () => Promise<{ error: Error | null }>;
   clearGuestDeviceData: () => Promise<void>;
+}
+
+const RETIRED_PROFILE_COLUMNS = new Set(['preferred_theme', 'font_size']);
+
+function sanitizeProfileUpdatePayload(
+  raw: Record<string, unknown> | null | undefined
+): Partial<Profile> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!RETIRED_PROFILE_COLUMNS.has(key) && value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  const meaningfulKeys = Object.keys(cleaned).filter((k) => k !== 'updated_at');
+  if (meaningfulKeys.length === 0) {
+    return null;
+  }
+  return cleaned as Partial<Profile>;
 }
 
 const SIGNED_OUT_AUTH_STATE = {
@@ -1306,16 +1323,27 @@ export const useAuthStore = create<AuthState>()(
           const supabase = createClient();
 
           if (pendingProfileUpdates && Object.keys(pendingProfileUpdates).length > 0) {
-            const { error: flushErr } = await supabase
-              .from('profiles')
-              .update(pendingProfileUpdates)
-              .eq('id', user.id);
-            if (!flushErr) {
+            const sanitizedPending = sanitizeProfileUpdatePayload(
+              pendingProfileUpdates as Record<string, unknown>
+            );
+            if (!sanitizedPending) {
               set((s) =>
                 s.pendingProfileUpdates === pendingProfileUpdates
                   ? { pendingProfileUpdates: null }
                   : {}
               );
+            } else {
+              const { error: flushErr } = await supabase
+                .from('profiles')
+                .update(sanitizedPending)
+                .eq('id', user.id);
+              if (!flushErr) {
+                set((s) =>
+                  s.pendingProfileUpdates === pendingProfileUpdates
+                    ? { pendingProfileUpdates: null }
+                    : {}
+                );
+              }
             }
           }
 
@@ -1362,15 +1390,24 @@ export const useAuthStore = create<AuthState>()(
 
       if (hasPending && pending && targetUserId !== get().user?.id) {
         lastProfileSyncByUser.delete(targetUserId);
-        const supabase = createClient();
-        const { error } = await supabase
-          .from('profiles')
-          .update(pending)
-          .eq('id', targetUserId);
-        if (!error) {
+        const sanitizedPending = sanitizeProfileUpdatePayload(
+          pending as Record<string, unknown>
+        );
+        if (!sanitizedPending) {
           set((s) =>
             s.pendingProfileUpdates === pending ? { pendingProfileUpdates: null } : {}
           );
+        } else {
+          const supabase = createClient();
+          const { error } = await supabase
+            .from('profiles')
+            .update(sanitizedPending)
+            .eq('id', targetUserId);
+          if (!error) {
+            set((s) =>
+              s.pendingProfileUpdates === pending ? { pendingProfileUpdates: null } : {}
+            );
+          }
         }
       }
       if (hasPending) {
@@ -1400,11 +1437,15 @@ export const useAuthStore = create<AuthState>()(
       }
     }
 
-    const payload = {
+    const rawPayload = {
       ...updates,
       ...(updates.username !== undefined ? { username: normalizedUsername } : {}),
       updated_at: new Date().toISOString(),
     };
+    const payload =
+      sanitizeProfileUpdatePayload(rawPayload as Record<string, unknown>) || {
+        updated_at: rawPayload.updated_at,
+      };
 
     const mergeProfile = (current: Profile | null): Profile =>
       ({ ...(current || { id: user.id }), ...payload }) as Profile;
@@ -1675,6 +1716,17 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => (state) => {
         if (state?.user) {
           syncAuthCookieHint(true);
+        }
+        if (state?.pendingProfileUpdates) {
+          const cleaned = sanitizeProfileUpdatePayload(
+            state.pendingProfileUpdates as Record<string, unknown>
+          );
+          if (
+            cleaned === null ||
+            Object.keys(cleaned).length !== Object.keys(state.pendingProfileUpdates).length
+          ) {
+            state.pendingProfileUpdates = cleaned;
+          }
         }
       },
       partialize: (state) => ({

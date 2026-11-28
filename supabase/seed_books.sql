@@ -1,15 +1,12 @@
 --
 -- Bookarium — Idempotent Gutenberg Book Catalog Seed
--- Generated: 2026-11-27T10:08:59.394Z
+-- Generated: 2026-11-28T09:23:19.475Z
 -- Total Volumes: 10
 --
 
--- Ensure content column exists on public.books
-ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;
-
 INSERT INTO public.books (
   id, title, authors, translators, subjects, bookshelves, languages,
-  copyright, media_type, download_count, max_author_death_year, min_author_birth_year
+  copyright, download_count, max_author_death_year, min_author_birth_year
 ) VALUES
   -- Volume #1342: Pride and Prejudice
   (
@@ -21,7 +18,6 @@ INSERT INTO public.books (
     ARRAY['Best Books Ever', 'Harvard Classics']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     55420,
     1817,
     1775
@@ -37,7 +33,6 @@ INSERT INTO public.books (
     ARRAY['Gothic Fiction', 'Precursors of Science Fiction']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     85210,
     1851,
     1797
@@ -53,7 +48,6 @@ INSERT INTO public.books (
     ARRAY['Best Books Ever']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     42150,
     1891,
     1819
@@ -69,7 +63,6 @@ INSERT INTO public.books (
     ARRAY['Best Books Ever']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     41200,
     1940,
     1896
@@ -85,7 +78,6 @@ INSERT INTO public.books (
     ARRAY['Children''s Literature']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     31200,
     1898,
     1832
@@ -101,7 +93,6 @@ INSERT INTO public.books (
     ARRAY['Detective Fiction']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     36400,
     1930,
     1859
@@ -117,7 +108,6 @@ INSERT INTO public.books (
     ARRAY['Gothic Fiction', 'Horror']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     29800,
     1912,
     1847
@@ -133,7 +123,6 @@ INSERT INTO public.books (
     ARRAY['Historical Fiction']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     22400,
     1939,
     1828
@@ -149,7 +138,6 @@ INSERT INTO public.books (
     ARRAY['Crime Fiction']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     26500,
     1946,
     1821
@@ -165,7 +153,6 @@ INSERT INTO public.books (
     ARRAY['Historical Fiction']::text[],
     ARRAY['en']::text[],
     false,
-    'Text',
     21900,
     1870,
     1812
@@ -178,7 +165,6 @@ ON CONFLICT (id) DO UPDATE SET
   bookshelves = EXCLUDED.bookshelves,
   languages = EXCLUDED.languages,
   copyright = EXCLUDED.copyright,
-  media_type = EXCLUDED.media_type,
   download_count = EXCLUDED.download_count,
   max_author_death_year = EXCLUDED.max_author_death_year,
   min_author_birth_year = EXCLUDED.min_author_birth_year,

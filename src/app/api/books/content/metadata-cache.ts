@@ -22,7 +22,7 @@ export interface CachedMetadata {
 
 export interface CachedBookContentEntry {
   text: string;
-  source: 'supabase' | 'r2';
+  source: 'r2';
   cachedAt: number;
 }
 
@@ -57,7 +57,7 @@ export function getCachedBookContent(bookId: number): CachedBookContentEntry | u
 export function setCachedBookContent(
   bookId: number,
   text: string,
-  source: 'supabase' | 'r2'
+  source: 'r2'
 ): void {
   if (!text || text.length > MAX_CACHEABLE_BOOK_CHARS) {
     return;

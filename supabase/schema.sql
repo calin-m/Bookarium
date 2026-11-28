@@ -38,8 +38,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   show_bookshelves BOOLEAN NOT NULL DEFAULT true,
   show_saved_books BOOLEAN NOT NULL DEFAULT true,
   show_custom_shelves BOOLEAN NOT NULL DEFAULT true,
-  preferred_theme TEXT DEFAULT 'light',
-  font_size INTEGER DEFAULT 18,
   preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -445,8 +443,8 @@ CREATE POLICY "Users can delete their own book curation"
   TO authenticated
   USING ((select auth.uid()) = user_id);
 
-CREATE INDEX IF NOT EXISTS idx_user_book_curation_user_book 
-  ON public.user_book_curation(user_id, book_id);
+-- Note: idx_user_book_curation_user_book is dropped because UNIQUE(user_id, book_id) already backs an identical B-Tree index
+DROP INDEX IF EXISTS public.idx_user_book_curation_user_book;
 
 -- ============================================================================
 -- 8. Auto-Provisioning User Trigger (Profile + Default General Shelf)
@@ -459,7 +457,7 @@ SET search_path = ''
 AS $$
 BEGIN
   -- 1. Create user profile
-  INSERT INTO public.profiles (id, display_name, preferred_theme)
+  INSERT INTO public.profiles (id, display_name)
   VALUES (
     NEW.id,
     COALESCE(
@@ -467,8 +465,7 @@ BEGIN
       NULLIF(TRIM(NEW.raw_user_meta_data->>'full_name'), ''),
       NULLIF(TRIM(NEW.raw_user_meta_data->>'name'), ''),
       'Reader'
-    ),
-    'light'
+    )
   )
   ON CONFLICT (id) DO NOTHING;
 
@@ -689,25 +686,23 @@ CREATE TABLE IF NOT EXISTS public.books (
   bookshelves TEXT[] NOT NULL DEFAULT '{}'::text[],
   languages TEXT[] NOT NULL DEFAULT '{en}'::text[],
   copyright BOOLEAN NOT NULL DEFAULT false,
-  media_type TEXT NOT NULL DEFAULT 'Text',
   download_count INTEGER NOT NULL DEFAULT 0,
   -- Joint-authorship invariant (Berne Convention Art. 7bis): NULL if any contributor has unlisted dates
   max_author_death_year INTEGER,
   min_author_birth_year INTEGER,
   quotes JSONB NOT NULL DEFAULT '[]'::jsonb,
-  content TEXT,
   search_vector TSVECTOR,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Idempotent column evolution for existing public.books tables
-ALTER TABLE public.books ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE public.books ADD COLUMN IF NOT EXISTS quotes JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 -- Trigger to automatically populate and maintain search_vector on insert/update
 -- Guards UPDATE with IS DISTINCT FROM so download_count-only upserts never recompute
 -- to_tsvector() or dirty the idx_books_search_vector GIN index.
+-- Preserves exact phrase positions on title while stripping unneeded positions from subjects & bookshelves.
 CREATE OR REPLACE FUNCTION public.books_search_vector_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -720,12 +715,17 @@ BEGIN
      OR NEW.subjects IS DISTINCT FROM OLD.subjects
      OR NEW.bookshelves IS DISTINCT FROM OLD.bookshelves
   THEN
-    NEW.search_vector := pg_catalog.to_tsvector(
-      'pg_catalog.english'::pg_catalog.regconfig,
-      COALESCE(NEW.title, '') || ' ' ||
-      COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '') || ' ' ||
-      COALESCE(pg_catalog.array_to_string(NEW.bookshelves, ' '), '')
-    );
+    NEW.search_vector :=
+      pg_catalog.to_tsvector(
+        'pg_catalog.english'::pg_catalog.regconfig,
+        COALESCE(NEW.title, '')
+      ) || pg_catalog.strip(
+        pg_catalog.to_tsvector(
+          'pg_catalog.english'::pg_catalog.regconfig,
+          COALESCE(pg_catalog.array_to_string(NEW.subjects, ' '), '') || ' ' ||
+          COALESCE(pg_catalog.array_to_string(NEW.bookshelves, ' '), '')
+        )
+      );
   END IF;
   RETURN NEW;
 END;
@@ -744,11 +744,33 @@ CREATE TRIGGER trigger_books_search_vector
 -- Full-text search and query performance indexes
 -- Note: idx_books_subjects (0005_unused_index) is dropped because topic/subject searches query search_vector via idx_books_search_vector
 DROP INDEX IF EXISTS public.idx_books_subjects;
+-- Upgrade legacy full era B-Tree indexes to compact partial indexes (<= / >= never match NULL)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class c ON c.oid = i.indexrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'idx_books_author_death_year' AND i.indpred IS NULL
+  ) THEN
+    DROP INDEX public.idx_books_author_death_year;
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_index i
+    JOIN pg_catalog.pg_class c ON c.oid = i.indexrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'idx_books_author_birth_year' AND i.indpred IS NULL
+  ) THEN
+    DROP INDEX public.idx_books_author_birth_year;
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_books_search_vector ON public.books USING GIN(search_vector);
 CREATE INDEX IF NOT EXISTS idx_books_languages ON public.books USING GIN(languages);
 CREATE INDEX IF NOT EXISTS idx_books_download_count ON public.books(download_count DESC);
-CREATE INDEX IF NOT EXISTS idx_books_author_death_year ON public.books(max_author_death_year);
-CREATE INDEX IF NOT EXISTS idx_books_author_birth_year ON public.books(min_author_birth_year);
+CREATE INDEX IF NOT EXISTS idx_books_author_death_year ON public.books(max_author_death_year) WHERE max_author_death_year IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_books_author_birth_year ON public.books(min_author_birth_year) WHERE min_author_birth_year IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_books_with_quotes_popular ON public.books(download_count DESC) WHERE quotes <> '[]'::jsonb;
 
 -- Row Level Security (RLS)
@@ -778,16 +800,13 @@ CREATE TABLE IF NOT EXISTS public.book_translations (
   book_id INTEGER NOT NULL REFERENCES public.books(id) ON DELETE CASCADE,
   language VARCHAR(10) NOT NULL,
   is_original BOOLEAN DEFAULT false,
-  confidence_score NUMERIC(3, 2) DEFAULT 1.00,
-  source VARCHAR(32) DEFAULT 'authority_wikidata',
-  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
   PRIMARY KEY (work_id, book_id)
 );
 
--- Note: idx_book_translations_work_id (0005_unused_index) is dropped because work_id is the leading column of PRIMARY KEY (work_id, book_id) and idx_book_translations_work_lang
+-- Note: idx_book_translations_work_id and idx_book_translations_work_lang are dropped because work_id is the leading column of PRIMARY KEY (work_id, book_id) and runtime queries never filter by (work_id, language) in SQL
 DROP INDEX IF EXISTS public.idx_book_translations_work_id;
+DROP INDEX IF EXISTS public.idx_book_translations_work_lang;
 CREATE INDEX IF NOT EXISTS idx_book_translations_book_id ON public.book_translations (book_id);
-CREATE INDEX IF NOT EXISTS idx_book_translations_work_lang ON public.book_translations (work_id, language);
 
 ALTER TABLE public.book_translations ENABLE ROW LEVEL SECURITY;
 
@@ -826,7 +845,8 @@ ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS requester_display_nam
 ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS recipient_username TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.reader_circles ADD COLUMN IF NOT EXISTS recipient_display_name TEXT NOT NULL DEFAULT 'Scholar';
 
-CREATE INDEX IF NOT EXISTS idx_reader_circles_requester ON public.reader_circles(requester_id);
+-- Note: idx_reader_circles_requester is dropped because requester_id is the leading column of UNIQUE(requester_id, recipient_id)
+DROP INDEX IF EXISTS public.idx_reader_circles_requester;
 CREATE INDEX IF NOT EXISTS idx_reader_circles_recipient ON public.reader_circles(recipient_id);
 
 ALTER TABLE public.reader_circles ENABLE ROW LEVEL SECURITY;
@@ -893,7 +913,8 @@ ALTER TABLE public.symposium_sessions ADD COLUMN IF NOT EXISTS fellow_progress I
 
 CREATE INDEX IF NOT EXISTS idx_symposium_sessions_host ON public.symposium_sessions(host_id);
 CREATE INDEX IF NOT EXISTS idx_symposium_sessions_fellow ON public.symposium_sessions(fellow_id);
-CREATE INDEX IF NOT EXISTS idx_symposium_sessions_book ON public.symposium_sessions(book_id);
+-- Note: idx_symposium_sessions_book is dropped because book_id is the leading column of UNIQUE(book_id, host_id, fellow_id)
+DROP INDEX IF EXISTS public.idx_symposium_sessions_book;
 
 ALTER TABLE public.symposium_sessions ENABLE ROW LEVEL SECURITY;
 
@@ -1420,6 +1441,57 @@ GRANT EXECUTE ON FUNCTION public.revoke_user_session(UUID) TO authenticated;
 -- Idempotent Public Books Formats Retirement & Legacy User Cover Cleanup (ADR-087):
 -- Run in production strictly AFTER deploying code that omits formats from CATALOG_METADATA_COLUMNS & ingestion.
 ALTER TABLE public.books DROP COLUMN IF EXISTS formats;
+
+-- Idempotent Phase-2 Storage & Schema Hygiene Retirement (ADR-087):
+-- 1. Backfill any legacy profiles rows that still store preferred_theme/font_size without structured preferences JSONB, then drop both legacy columns.
+DO $$
+DECLARE
+  has_pref_theme BOOLEAN;
+  has_font_size BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'preferred_theme'
+  ) INTO has_pref_theme;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'font_size'
+  ) INTO has_font_size;
+
+  IF has_pref_theme AND has_font_size THEN
+    EXECUTE $backfill$
+      UPDATE public.profiles
+      SET preferences = jsonb_build_object(
+        'active', jsonb_strip_nulls(jsonb_build_object(
+          'theme', CASE WHEN preferred_theme IN ('light', 'sepia', 'dark', 'midnight') THEN preferred_theme ELSE NULL END,
+          'fontSize', CASE WHEN font_size IS NOT NULL AND font_size BETWEEN 12 AND 36 THEN font_size ELSE NULL END
+        )),
+        'customDefaults', NULL,
+        'updatedAt', to_char(COALESCE(updated_at, NOW()) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+      )
+      WHERE (preferences IS NULL OR preferences = '{}'::jsonb)
+        AND (
+          (preferred_theme IS NOT NULL AND preferred_theme IN ('light', 'sepia', 'dark', 'midnight'))
+          OR (font_size IS NOT NULL AND font_size BETWEEN 12 AND 36)
+        )
+    $backfill$;
+  END IF;
+END $$;
+
+ALTER TABLE public.profiles
+  DROP COLUMN IF EXISTS preferred_theme,
+  DROP COLUMN IF EXISTS font_size;
+
+-- 2. Retire unused books.content (served strictly via private Cloudflare R2 & IndexedDB) and constant books.media_type ('Text')
+ALTER TABLE public.books
+  DROP COLUMN IF EXISTS content,
+  DROP COLUMN IF EXISTS media_type;
+
+-- 3. Retire unread constant metadata columns from public.book_translations
+ALTER TABLE public.book_translations
+  DROP COLUMN IF EXISTS confidence_score,
+  DROP COLUMN IF EXISTS source,
+  DROP COLUMN IF EXISTS created_at;
 
 DO $$
 BEGIN

@@ -1,10 +1,10 @@
 /**
  * @module src/lib/catalog/supabase-provider
- * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 10-column metadata projection, deterministic R2 format synthesis, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
+ * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 9-column metadata projection, deterministic R2 format & media_type synthesis, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
  * @invariant Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
  * @invariant Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, short-circuit unsupported `?mime_type=` requests (`isSupportedR2MimeTypeFilter`) before touching PostgreSQL, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
  * @invariant Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
- * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; omitting the retired `formats` JSONB column from `CATALOG_METADATA_COLUMNS` and short-circuiting unsupported MIME filters before DB queries prevents backfill amplification and cuts Supabase catalog egress cleanly.
+ * @rationale Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; omitting the retired `formats` and constant `media_type` columns from `CATALOG_METADATA_COLUMNS` and short-circuiting unsupported MIME filters before DB queries prevents backfill amplification and cuts Supabase catalog egress cleanly.
  * @adr ADR-037, ADR-038, ADR-043, ADR-080, ADR-086, ADR-087
  */
 
@@ -28,11 +28,11 @@ import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { LITERARY_QUOTES } from '@/config/literary-quotes';
 
 /**
- * Columns explicitly selected for catalog search to prevent transferring large unabridged text,
- * unrendered quote arrays, retired template format maps, or internal indexing/timestamp columns.
+ * Columns explicitly selected for catalog search to prevent transferring unrendered quote arrays,
+ * retired template format/constant media_type columns, or internal indexing/timestamp columns.
  */
 export const CATALOG_METADATA_COLUMNS =
-  'id, title, authors, translators, subjects, bookshelves, languages, copyright, media_type, download_count' as const;
+  'id, title, authors, translators, subjects, bookshelves, languages, copyright, download_count' as const;
 
 /**
  * Checks whether any requested comma-delimited MIME type matches Bookarium's active R2 assets
@@ -278,7 +278,7 @@ export function mapDatabaseBookToCatalogBook(row: DatabaseBook): CatalogBook {
     bookshelves: Array.isArray(row.bookshelves) ? row.bookshelves : [],
     languages: Array.isArray(row.languages) ? row.languages : [],
     copyright: row.copyright,
-    media_type: row.media_type || 'Text',
+    media_type: 'Text',
     formats: buildR2BookFormats(row.id),
     download_count: row.download_count ?? 0,
   };

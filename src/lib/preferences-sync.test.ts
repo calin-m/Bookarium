@@ -219,15 +219,11 @@ describe('preferences-sync', () => {
 
         vi.advanceTimersByTime(300);
         expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
-        expect(mockUpdateProfile).toHaveBeenCalledWith(
-          expect.objectContaining({
-            preferred_theme: 'dark',
-            font_size: 20,
-            preferences: expect.objectContaining({
-              active: expect.objectContaining({ theme: 'dark', fontSize: 20 }),
-            }),
-          })
-        );
+        expect(mockUpdateProfile).toHaveBeenCalledWith({
+          preferences: expect.objectContaining({
+            active: expect.objectContaining({ theme: 'dark', fontSize: 20 }),
+          }),
+        });
       } finally {
         vi.useRealTimers();
       }
@@ -250,8 +246,6 @@ describe('preferences-sync', () => {
         show_streak: true,
         show_challenge: true,
         show_bookshelves: true,
-        preferred_theme: 'sepia',
-        font_size: 20,
         preferences: {
           active: remotePreset,
           customDefaults: remotePreset,
@@ -292,8 +286,6 @@ describe('preferences-sync', () => {
         show_streak: true,
         show_challenge: true,
         show_bookshelves: true,
-        preferred_theme: 'light',
-        font_size: 18,
         preferences: {
           active: FACTORY_PREFERENCES,
           customDefaults: null,
@@ -307,16 +299,15 @@ describe('preferences-sync', () => {
 
       expect(useThemeStore.getState().theme).toBe('dark');
       expect(useReaderStore.getState().fontSize).toBe(24);
-      expect(mockUpdateProfile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          preferred_theme: 'dark',
-          font_size: 24,
-        })
-      );
+      expect(mockUpdateProfile).toHaveBeenCalledWith({
+        preferences: expect.objectContaining({
+          active: expect.objectContaining({ theme: 'dark', fontSize: 24 }),
+        }),
+      });
     });
 
-    it('falls back to legacy profile.preferred_theme and profile.font_size when structured preferences is empty', () => {
-      const legacyProfile: Profile = {
+    it('supports non-writing fallback reads on pre-migration legacy profile payloads and emits preferences-only updates', () => {
+      const legacyProfile = {
         id: 'u1',
         display_name: 'Scholar',
         username: 'scholar',
@@ -330,7 +321,7 @@ describe('preferences-sync', () => {
         preferences: {},
         created_at: '2026-01-01T00:00:00.000Z',
         updated_at: '2026-10-31T10:00:00.000Z',
-      };
+      } as unknown as Profile;
 
       reconcileCloudPreferencesWithLocal(legacyProfile);
       expect(useThemeStore.getState().theme).toBe('sepia');
@@ -338,11 +329,17 @@ describe('preferences-sync', () => {
       expect(usePreferencesStore.getState().preferencesUpdatedAt).toBe('2026-10-31T10:00:00.000Z');
 
       const payload = buildProfilePreferencesPayload('2026-10-31T12:00:00.000Z');
-      expect(payload.preferred_theme).toBe('sepia');
-      expect(payload.font_size).toBe(22);
+      expect(payload).toEqual({
+        preferences: expect.objectContaining({
+          active: expect.objectContaining({ theme: 'sepia', fontSize: 22 }),
+          updatedAt: '2026-10-31T12:00:00.000Z',
+        }),
+      });
+      expect(payload).not.toHaveProperty('preferred_theme');
+      expect(payload).not.toHaveProperty('font_size');
     });
 
-    it('self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over default legacy light on refresh', () => {
+    it('self-heals divergent useThemeStore vs useReaderStore theme and preserves local dark/sepia over empty cloud preferences on refresh', () => {
       const mockUpdateProfile = vi.fn().mockResolvedValue({ error: null });
       useAuthStore.setState({
         user: { id: 'u1' } as unknown as NonNullable<ReturnType<typeof useAuthStore.getState>['user']>,
@@ -362,8 +359,6 @@ describe('preferences-sync', () => {
         show_streak: true,
         show_challenge: true,
         show_bookshelves: true,
-        preferred_theme: 'light',
-        font_size: 18,
         preferences: {
           active: FACTORY_PREFERENCES,
           customDefaults: null,
@@ -376,32 +371,31 @@ describe('preferences-sync', () => {
       reconcileCloudPreferencesWithLocal(staleStructuredProfile);
       expect(useThemeStore.getState().theme).toBe('dark');
       expect(useReaderStore.getState().theme).toBe('dark');
-      expect(mockUpdateProfile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          preferred_theme: 'dark',
-        })
-      );
+      expect(mockUpdateProfile).toHaveBeenCalledWith({
+        preferences: expect.objectContaining({
+          active: expect.objectContaining({ theme: 'dark' }),
+        }),
+      });
 
-      // 2. Legacy profile with default preferred_theme: 'light' and null localUpdatedAt while local theme is sepia
+      // 2. Empty cloud preferences with null localUpdatedAt while local theme is sepia
       mockUpdateProfile.mockClear();
       usePreferencesStore.getState().setPreferencesUpdatedAt(null);
       useThemeStore.getState().setTheme('sepia');
       useReaderStore.setState({ theme: 'sepia' });
 
-      const uninitializedLegacyProfile: Profile = {
+      const uninitializedProfile: Profile = {
         ...staleStructuredProfile,
-        preferred_theme: 'light',
         preferences: {},
       };
 
-      reconcileCloudPreferencesWithLocal(uninitializedLegacyProfile);
+      reconcileCloudPreferencesWithLocal(uninitializedProfile);
       expect(useThemeStore.getState().theme).toBe('sepia');
       expect(useReaderStore.getState().theme).toBe('sepia');
-      expect(mockUpdateProfile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          preferred_theme: 'sepia',
-        })
-      );
+      expect(mockUpdateProfile).toHaveBeenCalledWith({
+        preferences: expect.objectContaining({
+          active: expect.objectContaining({ theme: 'sepia' }),
+        }),
+      });
     });
   });
 });
