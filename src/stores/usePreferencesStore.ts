@@ -3,7 +3,7 @@
  * @scope Persisted UI/accessibility preferences (`stickyScrollEnabled`, `exitBookmarkReminderEnabled`, Web Speech narration voice/rate settings), saved user `customDefaults` snapshot, and `preferencesUpdatedAt` watermark.
  * @invariant Keep `FACTORY_PREFERENCES` alignment for sticky scroll, exit bookmark reminder, and TTS settings, and reset every field to factory defaults on `resetAllPreferencesStore()` during account deletion (`Rule 9`).
  * @invariant Coordinate cross-store preset capture/restore and Supabase `profiles.preferences` JSONB sync exclusively through `src/lib/preferences-sync.ts`.
- * @rationale Separating durable user presets and audio settings from volatile reader positions ensures full 10-store local erasure parity (`clearLocalUserStores({ wipeDeviceStorage: true })`) without cross-store cycles.
+ * @rationale Separating durable user presets and audio settings from volatile reader positions ensures full `clearLocalUserStores({ wipeDeviceStorage: true })` local erasure parity across all 8 user/preference stores plus auth session state (preserving `useJurisdictionStore`) without cross-store cycles.
  * @adr ADR-009, ADR-018, ADR-072, ADR-080
  */
 

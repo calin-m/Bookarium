@@ -1,5 +1,11 @@
 /**
  * Centralized Configuration Constants for Reader Typography, Gestures & Layout
+ *
+ * @module src/config/reader-config
+ * @scope Immutable Focus Reader typography/brightness limits (`READER_FONT_CONFIG`), tactile swipe/pinch/tap thresholds (`READER_GESTURE_CONFIG`), and viewport-adaptive `resolveDefaultReaderFontSize`.
+ * @invariant Keep `MIN_SIZE`/`MAX_SIZE`, `MIN_BRIGHTNESS`/`MAX_BRIGHTNESS`, and `PINCH_DEADZONE_PX`/`PINCH_PIXELS_PER_STEP` authoritative across stores/gestures, and fall back safely to `DEFAULT_SIZE` during SSR when `viewportWidth` and `window` are unavailable.
+ * @rationale Concentrating typography bounds and pinch-zoom ergonomics in one pure config prevents store presets, controls UI, and gesture hooks from diverging.
+ * @adr ADR-001, ADR-009, ADR-018
  */
 
 export const READER_FONT_CONFIG = {

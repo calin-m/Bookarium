@@ -6,8 +6,8 @@
  * and dependency topologies with mathematical zero-drift.
  *
  * @module scripts/lib/ast-parser
- * @scope Central Babel 8 AST, SQL, YAML & config static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs, `@scope`/`@invariant` contracts (across `src/`, `scripts/`, `next.config.ts`, and `public/sw.js`), SQL<->TS entities (incl. `userScopedTables` cascade targets), live runtime/CI specs (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), shared governance & architecture corpus registries (`REQUIRED_GOVERNANCE_DOCS`, `GENERATOR_LOOKUP_MAP_COUNT`, `loadArchitectureCorpus`), `.env.example` consumer discovery (`src/`, `next.config.ts`, `scripts/` incl. `lib/` & `eslint-rules/`, workflows), and Markdown Mermaid diagram syntax/cycle validation.
- * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`) across dependency graphs, cross-boundary catalogs, and pending contract queues, detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), resolve `process.env`, defaulted parameter (`env = process.env`/`loadEnv`), and local `loadEnv()` variable bindings cleanly across `scripts/` (`collectScriptFiles`), extract declared constants/thresholds/triggers read-only from configs/sources/workflows (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
+ * @scope Central Babel 8 AST, SQL, YAML & config static analysis engine compiling module dependency graphs, cross-boundary coupling catalogs (incl. internal routes, SSR cookies, and cache wrappers), `@scope`/`@invariant` contracts (across `src/`, `scripts/`, `next.config.ts`, and `public/sw.js`), SQL<->TS entities (incl. `userScopedTables` cascade targets), live runtime/CI specs (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), shared governance & architecture corpus registries (`REQUIRED_GOVERNANCE_DOCS`, `GENERATOR_LOOKUP_MAP_COUNT`, `loadArchitectureCorpus`), `.env.example` consumer discovery (`src/`, `next.config.ts`, `scripts/` incl. `lib/` & `eslint-rules/`, workflows), and Markdown Mermaid diagram syntax/cycle validation.
+ * @invariant Separate runtime edges from `_(type)_` edges cleanly (`analyzeDependencyGraph`) with OS-independent codepoint sorting (`compareCodepoint`) across dependency graphs, cross-boundary catalogs, and pending contract queues, detect import cycles (`hasCycles` strictly matches `cycles.length > 0`), normalize LF byte counts for text assets (`getDeterministicTextOrBinaryBytes`), classify all Next.js App Router HTTP `route.ts` handlers alongside `src/proxy.ts` under `'Edge Proxy & API Routes'`, resolve `process.env`, defaulted parameter (`env = process.env`/`loadEnv`), and local `loadEnv()` variable bindings cleanly across `scripts/` (`collectScriptFiles`), extract declared constants/thresholds/triggers read-only from configs/sources/workflows (`extractRuntimeSpecConstants`, `extractWorkflowTriggerBranches`, `extractWorkflowSpecCatalog`), and surface Babel syntax parse failures (`getAstParseErrors`) rather than silently swallowing broken modules.
  * @invariant Audit all `14` `generate-architecture-matrix.js` lookup registries plus `varMetaMap`, `workerRoleMap`, and `roleMap` (`findOrphanedGeneratorLookupKeys`), load the hub-and-subdoc living architecture corpus deterministically (`loadArchitectureCorpus` spanning `docs/ARCHITECTURE.md` and `docs/architecture/*.md`), reject fatal Mermaid subgraph cycles, unquoted special-char edge labels, HTML-swallowed tags, undeclared endpoints, and strictly orphan nodes via quote-aware linear tokenization (`validateMermaidDiagramsInMarkdown` / `splitMermaidEdgeChainSegments`), enforce placeholder guards in JSDoc contract tags (`parseJsDocContractTags`), and expose `PROTECTED_CONTRACTED_MODULES` (`TIER_1`..`TIER_4`).
  * @rationale Providing one shared AST engine across `docs:sync` generators and `Pass 5` guarantees that architecture diagrams, contract docs, schema parity, and CI verification never diverge on different parsers or regexes.
  * @adr ADR-078, ADR-079, ADR-081, ADR-084
@@ -1340,7 +1340,7 @@ function extractTestHarnessCatalog(srcDir, rootDir) {
       layer: 'Zustand Persistent State Stores',
       scope: '`src/stores/*.test.ts`',
       match: (f) => f.startsWith('src/stores/'),
-      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, per-user in-flight coalescing (`coalesceInFlightByUser`), pre-sync active JWT session verification (`verifyActiveCloudSession`), batched multi-book `reading_progress` upserts, and 10-store session teardown.',
+      strategy: 'Local storage hydration, optimistic outbox mutations, tombstone filtering, LWW conflict resolution, per-user in-flight coalescing (`coalesceInFlightByUser`), pre-sync active JWT session verification (`verifyActiveCloudSession`), batched multi-book `reading_progress` upserts, and local user/preference store & session teardown (preserving `useJurisdictionStore`).',
     },
     {
       id: 'hooks',
@@ -1894,7 +1894,10 @@ function canonicalizeInternalApiRoute(urlStr) {
   if (urlStr.includes('/api/books/translations')) return '/api/books/translations';
   if (urlStr.includes('/api/books/content')) return '/api/books/content';
   if (/(?:^|[^a-zA-Z0-9_-])\/api\/books(?:$|[?#&])/.test(urlStr)) return '/api/books';
+  if (urlStr.includes('/api/profiles/card')) return '/api/profiles/card';
   if (urlStr.includes('/auth/callback')) return '/auth/callback';
+  if (/(?:^|[^a-zA-Z0-9_-])\/covers\/[^/]+/.test(urlStr)) return '/covers/[file]';
+  if (/(?:^|[^a-zA-Z0-9_-])\/og\/books\/[^/]+/.test(urlStr)) return '/og/books/[file]';
   return null;
 }
 
@@ -2229,9 +2232,9 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
         const { node } = astPath;
         const callee = node.callee;
 
-        // 1. Direct fetch(...) and buildAuthRedirectUrl(...) callers -> internal API route
-        if (!isExcludedApiCallerFile && callee && callee.type === 'Identifier') {
-          if ((callee.name === 'fetch' || callee.name === 'buildAuthRedirectUrl') && node.arguments[0]) {
+        // 1. Direct fetch(...), buildAuthRedirectUrl(...), and cache/cookie helper calls
+        if (callee && callee.type === 'Identifier') {
+          if (!isExcludedApiCallerFile && (callee.name === 'fetch' || callee.name === 'buildAuthRedirectUrl') && node.arguments[0]) {
             const urlStr = resolveAstStringExpression(
               node.arguments[0],
               localConsts,
@@ -2240,6 +2243,30 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
             );
             const routeKey = canonicalizeInternalApiRoute(urlStr);
             if (routeKey) addSetEntry(apiCallerMap, routeKey, rel);
+          } else if (callee.name === 'getCookieValue' && node.arguments[0]) {
+            const cookieName = resolveAstStringExpression(
+              node.arguments[0],
+              localConsts,
+              globalConsts,
+              globalMemberConsts
+            );
+            if (cookieName && cookieName.startsWith('bookarium')) {
+              ensureStorage(cookieName).readers.add(rel);
+            }
+          } else if (rel !== 'src/hooks/useBookPassageShuffle.ts' && callee.name === 'readCachedBookPassages') {
+            ensureStorage('bookarium-extracted-passages-v1').readers.add(rel);
+          } else if (
+            rel !== 'src/hooks/useBookPassageShuffle.ts' &&
+            (callee.name === 'writeCachedBookPassages' || callee.name === 'clearCachedBookPassages')
+          ) {
+            ensureStorage('bookarium-extracted-passages-v1').writers.add(rel);
+          } else if (rel !== 'src/hooks/queries/useBooks.ts' && callee.name === 'readCachedQuoteEnrichedBooks') {
+            ensureStorage('bookarium-quote-enriched-books-v1').readers.add(rel);
+          } else if (
+            rel !== 'src/hooks/queries/useBooks.ts' &&
+            (callee.name === 'writeCachedQuoteEnrichedBooks' || callee.name === 'clearCachedQuotePool')
+          ) {
+            ensureStorage('bookarium-quote-enriched-books-v1').writers.add(rel);
           }
         }
 
@@ -2247,6 +2274,20 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
           return;
         }
         const propName = callee.property.name;
+
+        // 1B. ROUTES helper builders (ROUTES.COVER_ASSET(...) / ROUTES.OG_BOOK_CARD(...))
+        if (
+          !isExcludedApiCallerFile &&
+          callee.object &&
+          callee.object.type === 'Identifier' &&
+          callee.object.name === 'ROUTES'
+        ) {
+          if (propName === 'COVER_ASSET') {
+            addSetEntry(apiCallerMap, '/covers/[file]', rel);
+          } else if (propName === 'OG_BOOK_CARD') {
+            addSetEntry(apiCallerMap, '/og/books/[file]', rel);
+          }
+        }
 
         // 2. Supabase .from('table') & .rpc('fn')
         if (propName === 'from' && node.arguments[0]) {
@@ -2291,12 +2332,32 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
           fileBroadcastOps.hasPostMessage = true;
         }
 
-        // 4. localStorage / sessionStorage / indexedDB.open string keys
+        // 4. localStorage / sessionStorage / indexedDB.open / NextRequest & cookies() string keys
         if (
-          (propName === 'getItem' || propName === 'setItem' || propName === 'removeItem' || propName === 'open') &&
+          (propName === 'getItem' ||
+            propName === 'setItem' ||
+            propName === 'removeItem' ||
+            propName === 'open' ||
+            propName === 'get' ||
+            propName === 'set' ||
+            propName === 'delete') &&
           node.arguments[0]
         ) {
           const objName = callee.object && callee.object.type === 'Identifier' ? callee.object.name : '';
+          const parentProp =
+            callee.object &&
+            callee.object.type === 'MemberExpression' &&
+            callee.object.property &&
+            callee.object.property.type === 'Identifier'
+              ? callee.object.property.name
+              : '';
+          if (
+            (propName === 'get' || propName === 'set' || propName === 'delete') &&
+            !/cookies?/i.test(objName) &&
+            parentProp !== 'cookies'
+          ) {
+            return;
+          }
           if (
             propName === 'open' &&
             objName !== 'indexedDB' &&
@@ -2320,7 +2381,7 @@ function extractCrossBoundaryCouplingCatalog(srcDir, rootDir) {
             if (propName === 'open') {
               entry.writers.add(rel);
               entry.readers.add(rel);
-            } else if (propName === 'setItem' || propName === 'removeItem') {
+            } else if (propName === 'setItem' || propName === 'removeItem' || propName === 'set' || propName === 'delete') {
               entry.writers.add(rel);
             } else {
               entry.readers.add(rel);
@@ -2562,6 +2623,13 @@ const TIER_3_CONTRACTED_MODULES = [
   'src/lib/safe-storage.ts',
   'src/lib/book-metadata.ts',
   'src/lib/server-data-cache.ts',
+  'src/config/site-config.ts',
+  'src/config/routes.ts',
+  'src/lib/utils.ts',
+  'src/lib/adapters/book.adapter.ts',
+  'src/lib/reading-analytics.ts',
+  'src/hooks/useHasMounted.ts',
+  'src/hooks/useBookCopyright.ts',
 ];
 
 const TIER_4_CONTRACTED_MODULES = [
@@ -2575,6 +2643,15 @@ const TIER_4_CONTRACTED_MODULES = [
   'src/lib/reader-bookmark-geometry.ts',
   'src/hooks/reader/useReaderSession.ts',
   'src/hooks/reader/useContinueReadingLedger.ts',
+  'src/types/book.types.ts',
+  'src/types/database.types.ts',
+  'src/config/featured-books.ts',
+  'src/config/reader-themes.ts',
+  'src/config/reader-config.ts',
+  'src/lib/scroll-utils.ts',
+  'src/components/ui/Button.tsx',
+  'src/components/ui/Modal.tsx',
+  'src/components/ui/CursorTooltip.tsx',
   'scripts/approval-gate.js',
   'scripts/verify-build.js',
   'scripts/ingest-catalog.js',
@@ -2613,7 +2690,7 @@ function classifyContractLayer(relPath) {
   if (relPath.startsWith('scripts/')) return 'CLI Pipelines & Governance';
   if (relPath === 'public/sw.js' || relPath.startsWith('src/workers/')) return 'Web Workers';
   if (relPath === 'next.config.ts') return 'Config & Type Contracts';
-  if (relPath === 'src/proxy.ts' || relPath.startsWith('src/app/api/')) {
+  if (relPath === 'src/proxy.ts' || /^src\/app\/(?:.*\/)?route\.[jt]sx?$/.test(relPath)) {
     return 'Edge Proxy & API Routes';
   }
   if (relPath.startsWith('src/app/')) return 'App Router Pages & Layouts';
@@ -4340,6 +4417,13 @@ function extractRouteCacheDirectives(rootDirPath) {
   const translationsRouteAst = parseModuleAstQuiet(
     path.join(rootDirPath, 'src', 'app', 'api', 'books', 'translations', 'route.ts')
   );
+  const assetRendersDecl = collectDeclaredAstValues(
+    path.join(rootDirPath, 'src', 'app', 'api', 'books', 'content', 'asset-renders.ts'),
+    ['CONTENT_CARD_CACHE_CONTROL', 'CONTENT_COVER_CACHE_CONTROL']
+  );
+  const profileCardRouteAst = parseModuleAstQuiet(
+    path.join(rootDirPath, 'src', 'app', 'api', 'profiles', 'card', 'route.ts')
+  );
 
   const booksCacheStrings = new Set();
   if (booksRouteAst) {
@@ -4347,6 +4431,17 @@ function extractRouteCacheDirectives(rootDirPath) {
       StringLiteral({ node }) {
         if (/s-maxage=\d+/.test(node.value)) {
           booksCacheStrings.add(node.value);
+        }
+      },
+    });
+  }
+
+  const profileCardCacheStrings = new Set();
+  if (profileCardRouteAst) {
+    traverse(profileCardRouteAst, {
+      StringLiteral({ node }) {
+        if (/s-maxage=\d+/.test(node.value)) {
+          profileCardCacheStrings.add(node.value);
         }
       },
     });
@@ -4406,12 +4501,23 @@ function extractRouteCacheDirectives(rootDirPath) {
   const contentTextCC =
     contentHeadersByMode.textOrCard?.['Cache-Control'] ||
     'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800';
+  const contentCardCC =
+    assetRendersDecl.scalars.get('CONTENT_CARD_CACHE_CONTROL') ||
+    'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800';
   const contentCoverCC =
     contentHeadersByMode.cover?.['Cache-Control'] ||
+    assetRendersDecl.scalars.get('CONTENT_COVER_CACHE_CONTROL') ||
     'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=2592000';
   const translationsCC =
     translationsHeaders?.['Cache-Control'] ||
     'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000';
+  const profileCardCCs = [...profileCardCacheStrings];
+  const profileCardPublicCC =
+    profileCardCCs.find((s) => s.includes('s-maxage=86400')) ||
+    'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800';
+  const profileCardNeutralCC =
+    profileCardCCs.find((s) => s.includes('s-maxage=300')) ||
+    'public, max-age=300, s-maxage=300, stale-while-revalidate=3600';
 
   return {
     booksQuotePool: {
@@ -4438,11 +4544,29 @@ function extractRouteCacheDirectives(rootDirPath) {
       sMaxAge: extractSMaxAge(contentTextCC),
       swr: extractSwr(contentTextCC),
     },
+    contentCard: {
+      raw: contentCardCC,
+      maxAge: extractMaxAge(contentCardCC),
+      sMaxAge: extractSMaxAge(contentCardCC),
+      swr: extractSwr(contentCardCC),
+    },
     contentCover: {
       raw: contentCoverCC,
       maxAge: extractMaxAge(contentCoverCC),
       sMaxAge: extractSMaxAge(contentCoverCC),
       swr: extractSwr(contentCoverCC),
+    },
+    profileCardPublic: {
+      raw: profileCardPublicCC,
+      maxAge: extractMaxAge(profileCardPublicCC),
+      sMaxAge: extractSMaxAge(profileCardPublicCC),
+      swr: extractSwr(profileCardPublicCC),
+    },
+    profileCardNeutral: {
+      raw: profileCardNeutralCC,
+      maxAge: extractMaxAge(profileCardNeutralCC),
+      sMaxAge: extractSMaxAge(profileCardNeutralCC),
+      swr: extractSwr(profileCardNeutralCC),
     },
     translations: {
       raw: translationsCC,

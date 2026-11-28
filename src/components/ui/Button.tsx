@@ -1,3 +1,11 @@
+/**
+ * @module src/components/ui/Button
+ * @scope Polymorphic accessible button primitive (`Button`) supporting `ButtonVariant` and `ButtonSize` design tokens alongside loading state disablement.
+ * @invariant Lock interactive clicks (`disabled || isLoading`) during asynchronous submission (`isLoading`), forward refs safely across polymorphic `as` targets, and render deterministic Tailwind styling via `cn`.
+ * @rationale Keeping button variants, focus-visible rings, and loading locks in one isolated `src/components/ui/` primitive guarantees uniform WCAG focus styling across forms, modals, and toolbars without coupling UI atoms to stores or app routes.
+ * @adr ADR-079, ADR-081
+ */
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 

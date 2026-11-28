@@ -56,6 +56,8 @@ describe('src/lib/book-metadata', () => {
       expect(isPlaceholderTitle('Unknown Volume')).toBe(true);
       expect(isPlaceholderTitle('Public Domain Classic')).toBe(true);
       expect(isPlaceholderTitle('Gutenberg Volume #1342')).toBe(true);
+      expect(isPlaceholderTitle('Volume #1342')).toBe(true);
+      expect(isPlaceholderTitle('volume #79835')).toBe(true);
       expect(isPlaceholderTitle('The Project Gutenberg eBook')).toBe(true);
       expect(isPlaceholderTitle('Project Gutenberg eBook')).toBe(true);
 

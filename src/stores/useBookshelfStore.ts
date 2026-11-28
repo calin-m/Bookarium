@@ -1,7 +1,7 @@
 /**
  * @module src/stores/useBookshelfStore
  * @scope Personal library state (saved volumes, queue, favorites, custom named shelves, ratings, statuses), tombstone tracking, and offline outbox orchestration.
- * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`), scrub retired bibliographic fields from persisted `outbox` and `cloudBookshelfItems` entries on rehydration (`sanitizeBookshelfOutboxAction`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
+ * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) and heal placeholder titles (`isPlaceholderTitle`, `"Volume #<id>"`) during `enrichSavedBooks` and `syncFavoriteBooks`, register the cycle-free in-memory lookup pool (`registerLocalBookPoolResolver`) for Reader cloud sync, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`), scrub retired bibliographic fields from persisted `outbox` and `cloudBookshelfItems` entries on rehydration (`sanitizeBookshelfOutboxAction`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
  * @invariant Route all Supabase persistence through `bookshelf-cloud-sync.ts` lean relational outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
  * @rationale Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and stripping retired metadata columns from persisted outboxes keeps returning offline PWAs 100% compatible.
  * @adr ADR-003, ADR-069, ADR-071, ADR-080, ADR-087
@@ -22,11 +22,17 @@ import {
   sanitizeCatalogBookCover,
 } from '@/lib/adapters/book.adapter';
 import { removeOfflineBook } from '@/lib/offline-storage';
-import { isPlaceholderAuthor } from '@/lib/book-metadata';
+import {
+  hasAuthenticAuthors,
+  hasAuthorLifespans,
+  isPlaceholderAuthor,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
 import {
   extractBookPositionMetadata,
   hasAuthenticPositionAuthors,
   hasAuthenticPositionTitle,
+  registerLocalBookPoolResolver,
 } from '@/lib/reader-cloud-sync';
 
 function notifyOfflineUpdated(): void {
@@ -350,6 +356,9 @@ export const useBookshelfStore = create<BookshelfState>()(
           }
 
           const sanitizedFresh = sanitizeCatalogBookCover(fresh);
+          const hasNewTitle =
+            isPlaceholderTitle(sanitizedExisting.title) &&
+            !isPlaceholderTitle(sanitizedFresh.title);
           const itemHasLifespans = Boolean(item.authors?.some((a) => a.birth_year != null || a.death_year != null));
           const freshHasLifespans = Boolean(sanitizedFresh.authors?.some((a) => a.birth_year != null || a.death_year != null));
           const itemHasAuthors = Boolean(item.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name)));
@@ -370,6 +379,7 @@ export const useBookshelfStore = create<BookshelfState>()(
 
           if (
             hasNormalizedCover ||
+            hasNewTitle ||
             hasNewLifespans ||
             hasNewAuthors ||
             hasNewFormats ||
@@ -379,6 +389,7 @@ export const useBookshelfStore = create<BookshelfState>()(
             markChanged();
             return {
               ...sanitizedExisting,
+              title: hasNewTitle ? sanitizedFresh.title : sanitizedExisting.title,
               authors: (hasNewLifespans || hasNewAuthors) && sanitizedFresh.authors ? sanitizedFresh.authors : sanitizedExisting.authors,
               translators: hasNewTranslators && sanitizedFresh.translators ? sanitizedFresh.translators : sanitizedExisting.translators,
               subjects: hasNewSubjects && sanitizedFresh.subjects ? sanitizedFresh.subjects : sanitizedExisting.subjects,
@@ -523,19 +534,26 @@ export const useBookshelfStore = create<BookshelfState>()(
           } else {
             const sanitizedExisting = sanitizeCatalogBookCover(existing);
             const coverNormalized = sanitizedExisting !== existing;
+            const hasNewTitle =
+              isPlaceholderTitle(sanitizedExisting.title) &&
+              !isPlaceholderTitle(sanitizedFresh.title);
             const existingHasDates = Boolean(
               sanitizedExisting.authors?.some((a) => a.birth_year != null || a.death_year != null)
             );
             const freshHasDates = Boolean(
               sanitizedFresh.authors?.some((a) => a.birth_year != null || a.death_year != null)
             );
-            if ((freshHasDates && !existingHasDates) || coverNormalized) {
+            const hasNewAuthors =
+              !hasAuthenticAuthors(sanitizedExisting.authors) &&
+              hasAuthenticAuthors(sanitizedFresh.authors);
+            if (hasNewTitle || hasNewAuthors || (freshHasDates && !existingHasDates) || coverNormalized) {
               const idx = nextFavorites.findIndex((b) => b.id === sanitizedFresh.id);
               if (idx !== -1) {
                 nextFavorites[idx] = {
                   ...sanitizedExisting,
+                  title: hasNewTitle ? sanitizedFresh.title : sanitizedExisting.title,
                   authors:
-                    freshHasDates && !existingHasDates
+                    (freshHasDates && !existingHasDates) || hasNewAuthors
                       ? sanitizedFresh.authors
                       : sanitizedExisting.authors,
                   translators:
@@ -841,6 +859,20 @@ export const useBookshelfStore = create<BookshelfState>()(
     }
   )
 );
+
+registerLocalBookPoolResolver((bookId: number) => {
+  const { savedBooks, favoriteBooks, recentBooks } = useBookshelfStore.getState();
+  const candidates = [
+    savedBooks.find((b) => b.id === bookId),
+    favoriteBooks.find((b) => b.id === bookId),
+    recentBooks.find((b) => b.id === bookId),
+  ].filter(
+    (b): b is CatalogBook =>
+      Boolean(b && !isPlaceholderTitle(b.title) && hasAuthenticAuthors(b.authors))
+  );
+  if (candidates.length === 0) return undefined;
+  return candidates.find((b) => hasAuthorLifespans(b.authors)) || candidates[0];
+});
 
 /**
  * SSR-safe, hydration-guarded hook for accessing bookshelf state without hydration mismatches.

@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/components/ui/Modal
+ * @scope Accessible portal modal shell (`Modal`, `ModalProps`) rendering backdrop blur, `role="dialog"`, header controls, and `useDialogFocusTrap` keyboard isolation.
+ * @invariant Return `null` cleanly during SSR (`typeof document === 'undefined'`), mount into `document.body` via `createPortal` with `aria-modal="true"`, `data-no-swipe`, and `useDialogFocusTrap` Escape/focus management whenever `isOpen` is active.
+ * @rationale Isolating portal mounting, focus trapping, and swipe-blocking inside one shared dialog primitive prevents keyboard focus leaks and tactile view-swipe collisions across reader and account modals.
+ * @adr ADR-079, ADR-081
+ */
+
 import React, { useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';

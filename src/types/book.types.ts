@@ -1,5 +1,11 @@
 /**
  * Canonical Domain & Catalog DTO Types for Project Gutenberg Entities
+ *
+ * @module src/types/book.types
+ * @scope Core domain TypeScript contracts (`Author`, `BookPassage`, `CatalogBook`, `CatalogResponse`, `ReadingStatus`, `BookCuration`, `Book`, `LedgerFilter`, `ActiveReadingVolume`).
+ * @invariant Preserve optional contributor lifespan bounds (`birth_year`, `death_year`) on `Author`, nullable PostgreSQL `copyright` flags on `CatalogBook` and `Book`, and finite progress/bookmark coordinates on `ActiveReadingVolume`.
+ * @rationale Keeping provider DTOs (`CatalogBook`) and UI entities (`Book`) strictly typed in one dependency-free contract file enables bidirectional adapters and multi-jurisdictional evaluation without circular imports.
+ * @adr ADR-036, ADR-071, ADR-087
  */
 
 export interface Author {

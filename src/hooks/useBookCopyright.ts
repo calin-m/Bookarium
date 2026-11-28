@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/hooks/useBookCopyright
+ * @scope Reactive React copyright facade (`useBookCopyright`) combining active `useJurisdiction` country/rule state with `isBookPublicDomainInJurisdiction` evaluations and accessible restricted ARIA copy.
+ * @invariant Recompute `isAllowed`/`isRestricted`, `badgeLabel`, `ruleDescription`, and `formatActionAriaLabel` memoized against `[book, country, rule]` so regional switches immediately lock or unlock download/read actions cleanly.
+ * @rationale Centralizing territorial evaluation and accessible restricted-action labels prevents individual cards, spines, and drawers from drifting on badge strings or jurisdiction checks.
+ * @adr ADR-036, ADR-044
+ */
+
 import { useMemo } from 'react';
 import { useJurisdiction } from '@/stores/useJurisdictionStore';
 import {

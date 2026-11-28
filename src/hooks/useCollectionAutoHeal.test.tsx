@@ -592,5 +592,74 @@ describe('useCollectionAutoHeal', () => {
 
     expect(useReaderStore.getState().readingPositions[9202]?.bookTitle).toBe('Northanger Abbey');
   });
+
+  it('heals placeholder Volume #<id> titles on savedBooks and favoriteBooks even when author lifespans already exist', async () => {
+    useBookshelfStore.setState({
+      favoriteBookIds: [1342, 79835],
+      favoriteBooks: [
+        {
+          ...mockCompleteBook,
+          id: 1342,
+          title: 'Volume #1342',
+          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+        },
+        {
+          ...mockCompleteBook,
+          id: 79835,
+          title: 'Volume #79835',
+          authors: [{ name: 'Classic, Author', birth_year: 1815, death_year: 1888 }],
+        },
+      ],
+      savedBooks: [
+        {
+          ...mockCompleteBook,
+          id: 79835,
+          title: 'Volume #79835',
+          authors: [{ name: 'Classic, Author', birth_year: 1815, death_year: 1888 }],
+        },
+      ],
+      recentBooks: [],
+    });
+
+    mockUseBooks.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    });
+
+    const { result, rerender } = renderHook(() => useCollectionAutoHeal(), {
+      wrapper: createWrapper(),
+    });
+
+    // 1342 heals synchronously from FEATURED_HERO_BOOKS; 79835 is queued for batched API recovery
+    expect(useBookshelfStore.getState().favoriteBooks.find((b) => b.id === 1342)?.title).toBe(
+      'Pride and Prejudice'
+    );
+    expect(result.current.missingFavoriteIds).toEqual([79835]);
+    expect(result.current.incompleteSavedIds).toEqual([79835]);
+
+    mockUseBooks.mockReturnValue({
+      data: {
+        results: [
+          {
+            ...mockCompleteBook,
+            id: 79835,
+            title: 'Healed Non-Featured Volume',
+            authors: [{ name: 'Classic, Author', birth_year: 1815, death_year: 1888 }],
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(useBookshelfStore.getState().favoriteBooks.find((b) => b.id === 79835)?.title).toBe(
+        'Healed Non-Featured Volume'
+      );
+      expect(useBookshelfStore.getState().savedBooks.find((b) => b.id === 79835)?.title).toBe(
+        'Healed Non-Featured Volume'
+      );
+    });
+  });
 });
 

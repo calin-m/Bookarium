@@ -1,6 +1,12 @@
 /**
  * Centralized Route Registry for Bookarium
  * Provides type-safe internal route builders, view targets, and canonical paths.
+ *
+ * @module src/config/routes
+ * @scope Single source of truth (`ROUTES`) for static navigation views, parameterized reader/sanctuary builders (`READ`, `PUBLIC_PROFILE`), clean image gateways (`COVER_ASSET`, `OG_BOOK_CARD`), and internal API routes (`API_BOOKS`, `API_CONTENT`, `API_PROFILE_CARD`).
+ * @invariant Normalize and URL-encode handles in `PUBLIC_PROFILE`, keep `/covers/<id>.jpg` (`COVER_ASSET`) and `/og/books/<id>.png` (`OG_BOOK_CARD`) synchronized with root crawler handlers, and map `'catalog'` cleanly to `'/'` inside `VIEW`.
+ * @rationale Centralizing route templates prevents broken internal links across App Router transitions, crawlers, share cards, and ESLint open-redirect exemptions (`no-tainted-request-sink`).
+ * @adr ADR-016, ADR-080, ADR-082
  */
 
 export const ROUTES = {

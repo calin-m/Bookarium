@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 28 Nov 2026 12:00:00 GMT  
+**Last Generated**: Sat, 28 Nov 2026 13:59:37 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2879 passed  
+**Total Verified Tests**: 2886 passed  
 
 ---
 
@@ -15,10 +15,10 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2879 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2886 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
-| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
+| **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 105 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
 | **Pass 6** | ESLint (9-Rule AST Security) & Knip | ✅ Passed | 0 lint errors, 0 lint warnings, 0 unused exports / dead files |
 | **Pass 7** | Next.js Production Build & Live HTTP Probe | ✅ Passed | Production bundle compiled within budget with `.next/routes-manifest.json` security header audit & live `127.0.0.1` loopback HTTP/redirect smoke verification |
 
@@ -26,14 +26,14 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.35%** (18085/18576) — *Target: $\ge$ 95%*
-- **Statements**: **95.97%** (19443/20259) — *Target: $\ge$ 95%*
-- **Functions**: **94.88%** (3762/3965) — *Target: $\ge$ 92%*
-- **Branches**: **88.12%** (18137/20582) — *Target: $\ge$ 85%*
+- **Lines**: **97.34%** (18150/18645) — *Target: $\ge$ 95%*
+- **Statements**: **95.96%** (19510/20331) — *Target: $\ge$ 95%*
+- **Functions**: **94.86%** (3772/3976) — *Target: $\ge$ 92%*
+- **Branches**: **88.18%** (18250/20694) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2879 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2886 Tests)
 
 ### 🚀 App Routes & Pages (34 Suites · 292 Tests)
 
@@ -1824,7 +1824,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 254 Tests)
+### ⚡ Zustand State Stores (10 Suites · 256 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -1952,7 +1952,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (52 tests)</summary>
+<summary><b><code>src/stores/useBookshelfStore.test.ts</code></b> (53 tests)</summary>
 
 - ✔ `should initialize with empty collections`
 - ✔ `should toggle save book in bookshelf`
@@ -2006,6 +2006,7 @@
 - ✔ `enriches savedBooks and favoriteBooks with authentic authors when incoming fresh books have authentic authors without lifespans`
 - ✔ `covers enrichSavedBooks with recentBooks, cloudBookshelfItems, authenticated userId, and clearCustomShelfBooks cloud delete`
 - ✔ `heals legacy Gutenberg cover URLs locally and strips retired cloud fields in onRehydrateStorage`
+- ✔ `heals placeholder Volume #<id> titles in savedBooks, recentBooks, and favoriteBooks via enrichSavedBooks and syncFavoriteBooks`
 
 </details>
 
@@ -2084,7 +2085,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (37 tests)</summary>
+<summary><b><code>src/stores/useReaderStore.test.ts</code></b> (38 tests)</summary>
 
 - ✔ `should initialize with default reader settings`
 - ✔ `should open and close reader modal with book`
@@ -2123,6 +2124,7 @@
 - ✔ `scrubs 0% Page-1 ghost positions from dirtyPositionBookIds across save, restart debounce, and early syncWithCloud while protecting concurrent real edits`
 - ✔ `sanitizes legacy Gutenberg cover URLs in readingPositions on rehydration while preserving custom URLs`
 - ✔ `protects authentic titles from placeholder overwrites, replaces placeholders when currentBook loads, and heals missing cloud metadata on sync`
+- ✔ `reuses in-memory bookshelf/featured metadata during cold syncWithCloud and restoreReadingPositionFromCloud with zero public.books queries`
 
 </details>
 
@@ -2140,7 +2142,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (61 Suites · 772 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 774 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2303,7 +2305,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (14 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (15 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
@@ -2319,6 +2321,7 @@
 - ✔ `enforces minSyncIntervalMs cooldown on passive syncs and flushes mid-flight dirty outbox mutations cleanly`
 - ✔ `exits offline cloud sync cleanly, skips flush/sync when session verification fails, and deletes orphaned shelf items when no default shelf remains`
 - ✔ `batch-hydrates cold-device lean bookshelf_items and user_favorites from public.books and falls back gracefully for withdrawn IDs`
+- ✔ `never lets placeholder Volume #<id> cloud stubs clobber authentic local titles and self-heals corrupted local titles on sync`
 
 </details>
 
@@ -2734,11 +2737,12 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/reader-cloud-sync.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/lib/reader-cloud-sync.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `identifies ghost reading positions and ghost cloud rows`
 - ✔ `decodes remote reading positions and preserves local lifespans when remote lacks them`
 - ✔ `extracts position metadata cleanly and hydrates lean cloud rows from public.books or local fallbacks`
+- ✔ `resolves cached book metadata in memory via registered local pool or FEATURED_HERO_BOOKS while rejecting placeholders`
 
 </details>
 
@@ -3280,7 +3284,7 @@
 
 </details>
 
-### 🔄 Hooks & React Query (36 Suites · 357 Tests)
+### 🔄 Hooks & React Query (36 Suites · 360 Tests)
 
 <details>
 <summary><b><code>src/hooks/queries/useBookContent.test.ts</code></b> (19 tests)</summary>
@@ -3364,7 +3368,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (32 tests)</summary>
+<summary><b><code>src/hooks/reader/useContinueReadingLedger.test.ts</code></b> (33 tests)</summary>
 
 - ✔ `returns empty list when no books have reading activity or saved state`
 - ✔ `aggregates reading activity and normalizes metadata into canonical Book`
@@ -3398,6 +3402,7 @@
 - ✔ `preserves existing authors and translators when candidate from offline has anonymous author and empty translators`
 - ✔ `covers bookmarkRow inclusion at 0% progress, position authorDetails healing on anonymous book, and Public Domain Author fallbacks`
 - ✔ `queues positions with placeholder bookTitle into missingIds so authentic titles hydrate`
+- ✔ `prevents placeholder Volume #<id> savedBooks titles from overriding authentic favorite/position titles`
 
 </details>
 
@@ -3639,7 +3644,7 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (14 tests)</summary>
+<summary><b><code>src/hooks/useCollectionAutoHeal.test.tsx</code></b> (15 tests)</summary>
 
 - ✔ `stays dormant with 0 query params when all collections are healthy`
 - ✔ `detects missing favorite IDs and queries /api/books`
@@ -3655,6 +3660,7 @@
 - ✔ `disables upstream network query when device is offline`
 - ✔ `recognizes embedded lifespans in book.authors, recentBooks, and readingPositions and skips hero books in favoriteBooks`
 - ✔ `heals sparse readingPositions from local collections without network requests and flags placeholder titles`
+- ✔ `heals placeholder Volume #<id> titles on savedBooks and favoriteBooks even when author lifespans already exist`
 
 </details>
 
@@ -3792,11 +3798,12 @@
 </details>
 
 <details>
-<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (3 tests)</summary>
+<summary><b><code>src/hooks/usePersonalCollectionsController.test.ts</code></b> (4 tests)</summary>
 
 - ✔ `filters, sorts, paginates, and clears bookshelf and favorites collections`
 - ✔ `excludes is_default shelves from bookshelfDrawerShelves and supports Favorites preset sorting in Bookshelf`
 - ✔ `handles toolbar direction promotion, favorites direction toggle, preset clear edges, page clamping, and downloaded favorites empty copy`
+- ✔ `prevents placeholder Volume #<id> savedBooks entries from overwriting authentic favorite or catalog titles`
 
 </details>
 

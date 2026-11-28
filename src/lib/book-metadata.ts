@@ -3,7 +3,7 @@
  * @scope Canonical bibliographic identity normalization, placeholder guard predicates (`isPlaceholderAuthor`,
  *        `isPlaceholderTitle`), canonical SERP title/excerpt formatters (`formatReaderDocumentTitle`,
  *        `truncateTextAtWordBoundary`, `resolveBookOpeningSnippet`), and multi-source book metadata resolution utilities.
- * @invariant Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata with placeholders.
+ * @invariant Identify generic fallback strings (`"Anonymous"`, `"Unknown Author"`, `"Classic Masterwork"`, `"Volume #N"`, `"Gutenberg Volume #N"`) consistently so storage, sync, and ledger layers never overwrite authentic author metadata or titles with placeholders.
  * @invariant Resolve authentic title/author identity in priority order `FEATURED_HERO_BOOKS` / `currentBook` -> `booksData` -> `localBook` -> `extractedMeta` while cleaning raw Project Gutenberg title preambles (`cleanBookTitle`).
  * @rationale Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
  * @adr ADR-016, ADR-070, ADR-074
@@ -84,7 +84,7 @@ export function isPlaceholderTitle(title?: string | null): boolean {
     trimmed === '' ||
     trimmed === 'unknown volume' ||
     trimmed === 'public domain classic' ||
-    /^gutenberg volume #\d+$/.test(trimmed) ||
+    /^(?:gutenberg\s+)?volume #\d+$/.test(trimmed) ||
     trimmed === 'the project gutenberg ebook' ||
     trimmed === 'the project gutenberg e-book' ||
     trimmed === 'project gutenberg ebook'

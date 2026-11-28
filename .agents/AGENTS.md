@@ -73,15 +73,26 @@ Never manually craft static component matrices, route catalogs, or architectural
   2. Run `git diff HEAD` (or `git diff --cached` + `git diff` if `HEAD` does not exist) to inspect both staged and unstaged changes in tracked files, and directly read/inspect all `??` untracked files (which `git diff` omits).
   3. Account for **100% of current pending changes** (`M`, `A`, `D`, `R`, `??`) in the commit header, `[WHY]`, and `[WHAT]` (omitting already-committed work from prior turns), accompanied by a concise grouped pending-file summary in chat alongside the command (printing raw unified diffs only when explicitly requested).
   4. Populate `[VERIFICATION]` strictly from checks observed after the latest pending edits (or explicitly note `"Pending verification: run npm run verify before committing"` if any edited file has not yet been verified).
-- **Structure & `[PHASE]` Truthfulness:** Formulate Conventional Commit commands with distinct multi-part `-m` flags for the user to review and execute (using Windows PowerShell backtick (`) line continuation). Only cite a Roadmap Milestone name in `[PHASE]` when the commit implements a planned deliverable listed under that milestone in `ROADMAP.md`; for tactical features, UI polish, refactors, or fixes outside roadmap checkboxes, use `[PHASE]: <Descriptive Tactical Scope> (v<version>)`:
+- **Structure & `[PHASE]` Truthfulness:** Formulate Conventional Commit commands using a Windows PowerShell single-quoted here-string piped into `git commit -F -` (preventing backtick/quote escaping bugs in multi-line bodies) for the user to review and execute. Include `(v<version>)` at the end of the subject line and `[PHASE]` header; only cite a Roadmap Milestone name in `[PHASE]` when the commit implements a planned deliverable listed under that milestone in `ROADMAP.md` (otherwise use `<Descriptive Tactical Scope> (v<version>)`). Structure `[WHAT]` with domain-grouped parent bullets (`- <Domain Group> (<files>):`) and indented `  - ` implementation sub-bullets, and structure `[VERIFICATION]` strictly from observed pass/metric outputs:
   ```powershell
   git add .
-  git commit `
-    -m "feat(scope): concise imperative summary" `
-    -m "[PHASE]: Descriptive Tactical Scope (v2.9.1) — or Milestone N when completing a roadmap item" `
-    -m "[WHY]: Motivation and business/architectural justification" `
-    -m "[WHAT]: Comprehensive bulleted list of modifications" `
-    -m "[VERIFICATION]: 7-Gateway verification command and test results"
+  @'
+  feat(scope): concise imperative summary (v2.9.x)
+
+  [PHASE] Descriptive Tactical Scope (v2.9.x) — or Milestone N when completing a roadmap item
+
+  [WHY]
+  Motivation and architectural justification explaining problem context and scalability/design impact.
+
+  [WHAT]
+  - Domain Group A (`file1.ts`, `file2.ts`):
+    - Specific behavioral, schema, or structural modification.
+  - Co-Located Tests & Living Governance Docs (`file1.test.ts`, `docs/DECISIONS.md`, `CHANGELOG.md`):
+    - Updated test cases, ADR entries, and generated documentation via `npm run docs:sync`.
+
+  [VERIFICATION]
+  - `npm run verify` (or executed subset) — pass counts, V8 coverage metrics, and lint/typecheck status
+  '@ | git commit -F -
   ```
 - **Living Documentation Auto-Staging:** Ensure auto-generated and synchronized documentation files (`docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `ROADMAP.md`, `CHANGELOG.md`, `README.md`, `docs/QUALITY_AUDIT_REPORT.md`, `docs/quality-audit-results.json`) are staged alongside the implementation.
 

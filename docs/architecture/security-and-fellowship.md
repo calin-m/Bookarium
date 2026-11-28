@@ -2,7 +2,7 @@
 
 > **Auto-Generated Living Architecture Slice** • [← Back to Architecture Hub](../ARCHITECTURE.md)  
 > **Last Synchronized**: `2026-11-28`  
-> **Topology Health**: `268` Modules Analyzed • `1161` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
+> **Topology Health**: `268` Modules Analyzed • `1163` Static Linkages • `0` Circular Dependencies • `0` Layer Violations • `0` Orphaned Modules
 
 ---
 
@@ -107,7 +107,7 @@ flowchart TD
     FelUI -->|"Invite by Handle"| FelLookup
     FelUI -->|"Public Sanctuary Toggle"| FelProfileLRU
     FelLookup -->|"Verified Minimal Identity"| FelStores
-    FelStores <-->|"Upsert Progress & Identity Sync"| FelTriggers
+    FelStores <-->|"Upsert Progress & Guarded Mutations"| FelTriggers
     FelTriggers -->|"Enforced Mutations"| FelRLS
     FelStores -->|"Symposium Active / Ended Events"| FelAnnot
     FelAnnot <-->|"Scoped Fellow Highlight SELECT"| FelRLS

@@ -332,4 +332,63 @@ describe('usePersonalCollectionsController', () => {
     });
     expect(result.current.favoritesPage).toBe(1);
   });
+
+  it('prevents placeholder Volume #<id> savedBooks entries from overwriting authentic favorite or catalog titles', () => {
+    const authenticCatalogBook: CatalogBook = {
+      ...sampleBooks[0],
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    };
+    const corruptedSavedBook: CatalogBook = {
+      ...sampleBooks[0],
+      id: 1342,
+      title: 'Volume #1342',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+    };
+
+    useBookshelfStore.setState({
+      savedBooks: [corruptedSavedBook],
+      favoriteBooks: [corruptedSavedBook],
+      favoriteBookIds: [1342],
+    });
+
+    const { result, unmount } = renderHook(() =>
+      usePersonalCollectionsController({
+        hasMounted: true,
+        activeView: 'favorites',
+        isMobile: false,
+        isOffline: false,
+        isBookOffline: () => false,
+        offlineBooks: [],
+        catalogResults: [authenticCatalogBook],
+      })
+    );
+
+    expect(result.current.paginatedFavoriteBooks).toHaveLength(1);
+    expect(result.current.paginatedFavoriteBooks[0].title).toBe('Pride and Prejudice');
+    unmount();
+
+    // Also verify authentic favoriteBooks is never overwritten by a placeholder catalog/saved entry
+    act(() => {
+      useBookshelfStore.setState({
+        savedBooks: [corruptedSavedBook],
+        favoriteBooks: [authenticCatalogBook],
+        favoriteBookIds: [1342],
+      });
+    });
+
+    const { result: secondResult } = renderHook(() =>
+      usePersonalCollectionsController({
+        hasMounted: true,
+        activeView: 'favorites',
+        isMobile: false,
+        isOffline: false,
+        isBookOffline: () => false,
+        offlineBooks: [],
+        catalogResults: [],
+      })
+    );
+    expect(secondResult.current.paginatedFavoriteBooks[0].title).toBe('Pride and Prejudice');
+  });
 });

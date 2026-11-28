@@ -2,7 +2,7 @@
 
 > **Deterministic AST-Verified Living Roadmap** — Synchronized programmatically with source code and tests (0% drift).
 
-[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.94-teal?style=flat-square)](CHANGELOG.md)
+[![Current Release](https://img.shields.io/badge/Current%20Release-v2.9.95-teal?style=flat-square)](CHANGELOG.md)
 [![Overall Progress](https://img.shields.io/badge/Roadmap%20Progress-88%25-brightgreen?style=flat-square)](ROADMAP.md)
 [![Total Features](https://img.shields.io/badge/Features-43_of_49-blue?style=flat-square)](ROADMAP.md)
 [![Drift](https://img.shields.io/badge/Drift-0%25%20Verified-blueviolet?style=flat-square)](ROADMAP.md)
@@ -162,7 +162,7 @@
 ### Milestone 9: Tactile Focus Reader, Unified Scholar Preferences & AST Security Governance (`v2.8.1 (Completed)`)
 `[████████████████████]` **5/5 (100%)**
 
-> Reflow-resilient `bookmarkText` row bookmarks, unified 13-key Scholar Preferences with custom default presets and `public.profiles.preferences` JSONB cloud sync, tactile overlay chrome, full 32-bookshelf Gutenberg taxonomy, and 9-rule AST security & request-taint governance.
+> Reflow-resilient `bookmarkText` row bookmarks, unified 14-key Scholar Preferences with custom default presets and `public.profiles.preferences` JSONB cloud sync, tactile overlay chrome, full 32-bookshelf Gutenberg taxonomy, and 9-rule AST security & request-taint governance.
 
 - [x] **Interactive Row-Snapping Silk Bookmark & `bookmarkText` Reflow-Resilient Resume (`ReaderRowBookmark.tsx` & `reader-bookmark-geometry.ts`)** `✅ VERIFIED`
   Permanently visible left-margin row-snapping silk bookmark tab (`ReaderRowBookmark.tsx`, `role="slider"`), multi-row (`startRow` -> `endRow`) wrapped passage highlights, `bookmarkText`-first canonical resume centering across Phone, Tablet, and Desktop with `bookmarkRow` duplicate-line disambiguation (`resolveTextRowSpanInElement`), cross-page font-reflow healing (`useReaderSession.ts`), and conditional bookmark reset notices when marking volumes `Finished`.
@@ -177,7 +177,7 @@
 
 ---
 
-### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader, Shareable Milestone Cards & Scalable SEO (`v2.9.x (Active: v2.9.94)`)
+### Milestone 10: Dedicated Literary Quote Treasury, Dual-Page Spread Reader, Shareable Milestone Cards & Scalable SEO (`v2.9.x (Active: v2.9.95)`)
 `[██████████░░░░░░░░░░]` **3/6 (50%)**
 
 > Dedicated Supabase `public.books.quotes` (`10–16` quotes/book) Two-Tier Bounded Quote Pool (`Top 500 Popular + Rolling 64 Most Recent`) with `40 Popular + 10 Recent` blended 50-book batch ingestion, official Project Gutenberg RDF archive popularity hydration (`rdf-files.tar.bz2`), post-batch `1-for-1` sliding window auto-pruning, instant `0ms` multi-quote spreads across Hero/Preview/Catalog surfaces, anonymized scholar-highlight promotion, dual-page spread reader mode for horizontal screens (`>= 1024px`), client-side shareable reading cards, and phased technical SEO scaling (Phase 1 Top-`5,000` SSR/image routes followed by GSC-validated `78,000+` keyset sitemap sharding).
@@ -222,7 +222,7 @@
 | **Redundant Secondary Indexes (`idx_books_subjects` & `idx_book_translations_work_id`)** | 🚫 **Retired (Architectural Decision ADR-073)** | Consolidated `subjects` / `bookshelves` into the single composite `idx_books_search_vector` GIN index and consolidated `idx_book_translations_work_id` into the composite primary key `book_translations_pkey(work_id, book_id)` (`0005_unused_index`), while retaining `idx_books_download_count` + `idx_books_with_quotes_popular` (`WHERE quotes <> '[]'::jsonb`) and Primary-Key-Scoped `books_pkey` lookups (`ADR-080`). |
 | **External Gutendex REST API (`gutendex-provider.ts` & `GUTENDEX_API_URL`)** | 🚫 **Retired (Architectural Decision ADR-080)** | Decommissioned all runtime, UI, CSP, and CLI dependencies on external `gutendex.com` endpoints in favor of Supabase PostgreSQL (`public.books`), 2-tier local metadata resolution (`metadata-cache.ts`), and bundled zero-network `curated-fallback.ts` (`FEATURED_HERO_BOOKS`), eliminating third-party outages and licensing/rate-limit drift while subsequently migrating internal DTO symbols cleanly to `CatalogBook` / `CatalogResponse` (`ADR-088`). |
 | **Runtime Project Gutenberg Mirror Proxying (`url-validator.ts` & `?url=`)** | 🚫 **Retired (Architectural Decision ADR-084)** | Removed all runtime Project Gutenberg / PG mirror plain-text fallbacks, SSRF URL proxy routes, and `ingest-catalog.js --with-content` HTTP text scraping so live reader traffic routes strictly through private Cloudflare R2 (`src/lib/r2-client.ts`) and browser IndexedDB, confining PG usage exclusively to `rsync` and official mirror CLI syncs. |
-| **Redundant Schema Columns & Duplicate Indexes (`books.{formats,content,media_type}`, `book_translations.{confidence_score,source,created_at}`, `profiles.{preferred_theme,font_size}`, 4 Duplicate Indexes)** | 🚫 **Retired (Architectural Decision ADR-087)** | Dropped redundant `public.books.formats`, `content`, and constant `media_type` columns (`11 -> 9` catalog projection, zero cold-read DB text probes), trimmed `book_translations` to 4 core columns, consolidated `profiles` onto unified `preferences` JSONB with offline outbox sanitization, pruned 4 duplicate B-Tree indexes (`20 -> 16`), converted era indexes to partial `WHERE ... IS NOT NULL` B-Trees, and compacted `search_vector` via `pg_catalog.strip(...)` on `subjects`/`bookshelves`. |
+| **Redundant Schema Columns, Surrogate UUID PKs, Duplicated Identity/Snapshot Data & Unaligned Indexes (`books.{formats,content,media_type}`, `book_translations.{confidence_score,source,created_at}`, `profiles.{preferred_theme,font_size}`, Fellowship `*_username`/`*_display_name` + cascade trigger, User-Table Book Snapshots, 4 Surrogate `id UUID` PKs, `JSONB` Habit Dates, 4 Duplicate Indexes)** | 🚫 **Retired (Architectural Decision ADR-087)** | Across `v2.9.92`–`v2.9.94`, dropped redundant `public.books.formats`, `content`, and constant `media_type` columns (`11 -> 9` catalog projection, zero cold-read DB text probes), trimmed `book_translations` to 4 core columns, consolidated `profiles` onto unified `preferences` JSONB with offline outbox sanitization, retired `8` duplicated identity columns + `trg_profile_identity_sync` on `reader_circles`/`symposium_sessions` via batched `public.profiles` hydration, dropped `9` duplicated `book_title`/`book_authors`/`cover_url` snapshot columns across user tables via batched `books_pkey` hydration, replaced `4` surrogate `id UUID` columns with natural composite PKs (`bookshelf_items`, `reading_progress`, `user_book_curation`, `user_reading_habits`), migrated `user_reading_habits.active_dates` from `JSONB` to native `DATE[]`, and tuned explicit indexes (`20 -> 16 -> 19` with partial era indexes, `idx_user_annotations_book_user`, undirected pair uniqueness, and `pg_catalog.strip(...)` on `search_vector`). |
 
 ---
 

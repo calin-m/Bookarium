@@ -1,3 +1,12 @@
+/**
+ * @module src/lib/utils
+ * @scope Core presentation, R2 asset URL derivation, protocol sanitization, author/LCSH normalization, and Tailwind class-merge utilities.
+ * @invariant Map missing and legacy Project Gutenberg cover hosts (`GUTENBERG_COVER_HOSTS`) to same-origin R2 endpoints (`buildR2CoverUrl`, `buildR2TextUrl`, `buildR2BookFormats`, `resolveBookCoverUrl`) for positive integer book IDs, preserve caller `blob:` / `data:` URIs when permitted, and fall back safely to R2 defaults inside `extractBookFormats`.
+ * @invariant Enforce strict protocol allowlisting inside `sanitizeBookFormatUrl` (permitting only `https:`, optional `blob:`, and same-origin `API_ENDPOINTS.INTERNAL_API_CONTENT` when `allowInternalContentPath` is set) while rejecting `javascript:`, `data:`, `vbscript:`, `//`, and unencrypted `http:` URLs; preserve lineage suffixes cleanly in `formatAuthorName`.
+ * @rationale Eliminating runtime Gutenberg cover URLs at the normalization boundary prevents browser mirror hotlinking and mixed-content/XSS URI injection across cards, shelves, bookmarks, and reader adapters.
+ * @adr ADR-070, ADR-080, ADR-084, ADR-087
+ */
+
 import { type ClassValue, clsx } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 import { API_ENDPOINTS } from '@/config/api-endpoints';

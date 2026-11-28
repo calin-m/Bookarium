@@ -5,16 +5,17 @@
 Closes #
 
 ### [PHASE]
-<!-- e.g. Milestone 2: Scholar Annotations & Offline Persistence (or Tactical Scope v2.9.3) -->
+<!-- e.g. Milestone 2: Scholar Annotations & Offline Persistence (v2.9.x) or Descriptive Tactical Scope (v2.9.x) -->
 
 ### [WHY]
 <!-- What problem does this change solve? Why is this modification necessary? -->
 
 ### [WHAT]
-<!-- Comprehensive bulleted list of modifications, components added/updated, or bugs fixed -->
-- 
-- 
-- 
+<!-- Group modifications by domain with affected file paths and indented sub-bullets -->
+- Domain Group (`file1.ts`, `file2.ts`):
+  - Specific change
+- Co-Located Tests & Living Governance Docs (`file1.test.ts`, `docs/*`):
+  - Test and doc updates via `npm run docs:sync`
 
 ---
 

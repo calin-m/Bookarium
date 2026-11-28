@@ -1,5 +1,12 @@
 /**
  * Centralized Site Branding, External Links & Storage Constants for Bookarium
+ *
+ * @module src/config/site-config
+ * @scope Canonical site identity constants (`SITE_CONFIG`), origin/repository/User-Agent resolvers, scholar bio length bounds (`SCHOLAR_BIO_MAX_LENGTH`), and `STORAGE_KEYS` registry.
+ * @invariant Enforce `http:`/`https:` scheme allowlists inside `normalizeSiteOrigin`, resolve canonical origins deterministically without exposing server-only `VERCEL_PROJECT_PRODUCTION_URL` in browser execution inside `resolveSiteUrl`, and construct descriptive `buildDescriptiveUserAgent` headers without hardcoding personal secrets or leaking `GUTENBERG_CONTACT_EMAIL` when omitted.
+ * @invariant Keep `STORAGE_KEYS` entries authoritative across persisted stores, SSR cookies (`AUTH_HINT`, `THEME`, `CLIENT_IP_SYNC`), and Rule 9 device cleanup markers (`PENDING_STORE_CLEANUP`).
+ * @rationale Centralizing canonical URLs, User-Agent construction, and storage keys prevents split-brain SSR/CSR origin drift, unencrypted scheme leaks, and broken localStorage key references across stores and layouts.
+ * @adr ADR-005, ADR-016, ADR-042, ADR-080
  */
 
 const DEFAULT_SITE_URL = 'https://bookarium.vercel.app';

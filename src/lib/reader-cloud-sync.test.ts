@@ -8,6 +8,8 @@ import {
   isGhostCloudRow,
   decodeRemoteReadingPosition,
   extractVerifiedAuthors,
+  registerLocalBookPoolResolver,
+  resolveLocalCachedBook,
 } from './reader-cloud-sync';
 
 describe('reader-cloud-sync', () => {
@@ -149,6 +151,60 @@ describe('reader-cloud-sync', () => {
     expect(decodedFromCatalog.position.bookTitle).toBe('Frankenstein');
     expect(decodedFromCatalog.position.bookAuthors).toEqual(['Shelley, Mary, 1797-1851']);
     expect(decodedFromCatalog.position.coverUrl).toBe('/api/books/content?id=84&type=cover');
+  });
+
+  it('resolves cached book metadata in memory via registered local pool or FEATURED_HERO_BOOKS while rejecting placeholders', () => {
+    try {
+      expect(resolveLocalCachedBook(0)).toBeUndefined();
+      expect(resolveLocalCachedBook(-5)).toBeUndefined();
+
+      // Bundled featured classic resolves with lifespans even without a registered pool
+      registerLocalBookPoolResolver(null);
+      const hero = resolveLocalCachedBook(1342);
+      expect(hero?.title).toBe('Pride and Prejudice');
+      expect(hero?.authors[0]?.death_year).toBe(1817);
+      expect(resolveLocalCachedBook(79835)).toBeUndefined();
+
+      // Registered pool serves authentic books with lifespans and ignores placeholder-titled entries
+      registerLocalBookPoolResolver((bookId) => {
+        if (bookId === 79835) {
+          return {
+            id: 79835,
+            title: 'Cached Monograph',
+            authors: [{ name: 'Scholar, Classic', birth_year: 1810, death_year: 1880 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 250,
+          };
+        }
+        if (bookId === 79836) {
+          return {
+            id: 79836,
+            title: 'Volume #79836',
+            authors: [{ name: 'Scholar, Classic', birth_year: 1810, death_year: 1880 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            media_type: 'Text',
+            formats: {},
+            download_count: 100,
+          };
+        }
+        return undefined;
+      });
+
+      expect(resolveLocalCachedBook(79835)?.title).toBe('Cached Monograph');
+      expect(resolveLocalCachedBook(79836)).toBeUndefined();
+    } finally {
+      registerLocalBookPoolResolver(null);
+    }
   });
 });
 

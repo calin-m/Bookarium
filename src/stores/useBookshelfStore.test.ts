@@ -2248,6 +2248,64 @@ describe('useBookshelfStore', () => {
         useAuthStore.setState({ user: null });
       });
     });
+
+    it('heals placeholder Volume #<id> titles in savedBooks, recentBooks, and favoriteBooks via enrichSavedBooks and syncFavoriteBooks', async () => {
+      useBookshelfStore.setState({
+        savedBooks: [
+          {
+            ...mockBooks[0],
+            id: 79835,
+            title: 'Volume #79835',
+            authors: [{ name: 'Author, Classic', birth_year: 1810, death_year: 1880 }],
+          },
+        ],
+        favoriteBooks: [
+          {
+            ...mockBooks[0],
+            id: 79835,
+            title: 'Volume #79835',
+            authors: [{ name: 'Author, Classic', birth_year: 1810, death_year: 1880 }],
+          },
+        ],
+        favoriteBookIds: [79835],
+        recentBooks: [
+          {
+            ...mockBooks[0],
+            id: 79835,
+            title: 'Volume #79835',
+            authors: [{ name: 'Author, Classic', birth_year: 1810, death_year: 1880 }],
+          },
+        ],
+      });
+
+      const healedBook = {
+        ...mockBooks[0],
+        id: 79835,
+        title: 'The Restored Volume',
+        authors: [{ name: 'Author, Classic', birth_year: 1810, death_year: 1880 }],
+      };
+
+      await useBookshelfStore.getState().enrichSavedBooks([healedBook]);
+      expect(useBookshelfStore.getState().savedBooks[0].title).toBe('The Restored Volume');
+      expect(useBookshelfStore.getState().recentBooks[0].title).toBe('The Restored Volume');
+      expect(useBookshelfStore.getState().favoriteBooks[0].title).toBe('The Restored Volume');
+
+      // Also verify syncFavoriteBooks directly heals placeholder titles & missing authors
+      useBookshelfStore.setState({
+        favoriteBooks: [
+          {
+            ...mockBooks[0],
+            id: 79835,
+            title: 'Volume #79835',
+            authors: [],
+          },
+        ],
+        favoriteBookIds: [79835],
+      });
+      useBookshelfStore.getState().syncFavoriteBooks([healedBook]);
+      expect(useBookshelfStore.getState().favoriteBooks[0].title).toBe('The Restored Volume');
+      expect(useBookshelfStore.getState().favoriteBooks[0].authors[0].name).toBe('Author, Classic');
+    });
   });
 });
 

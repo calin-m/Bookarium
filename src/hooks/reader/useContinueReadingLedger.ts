@@ -3,7 +3,7 @@
 /**
  * @module
  * @scope Headless Continue Reading ledger hook merging multi-store book metadata (`favorites -> saved -> recent -> offline -> currentBook -> API`), reading coordinates, and offline/status filtering for `/bookmarks`.
- * @invariant Merge metadata non-regressively inside `setOrMergeBook` using `hasAuthenticAuthors` and `hasLifespan` checks so offline or partial records never replace verified author lifespans with fallback placeholders.
+ * @invariant Merge metadata non-regressively inside `setOrMergeBook` using `isPlaceholderTitle`, `hasAuthenticAuthors`, and `hasLifespan` checks so offline or partial records never replace verified titles or author lifespans with fallback placeholders.
  * @invariant Hydrate remaining incomplete IDs only once mounted (`hasMounted`) via session-tracked `attemptedMissingIds` deduplication and expose accurate tab counts (`all`, `in_progress`, `completed`, `on_hold`, `downloaded`).
  * @rationale Reading ledgers combine data stored before and after metadata healing; prioritizing verified author lifespans preserves offline reading accuracy and non-US copyright clearance.
  * @adr ADR-013, ADR-070, ADR-071
@@ -20,6 +20,7 @@ import {
   resolveBookMetadata,
   cleanBookTitle,
   isPlaceholderAuthor,
+  isPlaceholderTitle,
   hasAuthenticAuthors,
 } from '@/lib/book-metadata';
 import { hasAuthenticPositionTitle } from '@/lib/reader-cloud-sync';
@@ -137,12 +138,14 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
 
   const missingIds = useMemo(() => {
     const known = new Set<number>();
-    savedBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
-    favoriteBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
-    recentBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
-    offlineBooks.forEach((b) => b?.id && hasAuthenticAuthors(b.authors) && known.add(b.id));
+    const hasCompleteLocalBook = (b?: CatalogBook | Book | null) =>
+      Boolean(b?.id && !isPlaceholderTitle(b.title) && hasAuthenticAuthors(b.authors));
+    savedBooks.forEach((b) => hasCompleteLocalBook(b) && known.add(b.id));
+    favoriteBooks.forEach((b) => hasCompleteLocalBook(b) && known.add(b.id));
+    recentBooks.forEach((b) => hasCompleteLocalBook(b) && known.add(b.id));
+    offlineBooks.forEach((b) => hasCompleteLocalBook(b) && known.add(b.id));
     const current = useReaderStore.getState().currentBook;
-    if (current?.id && hasAuthenticAuthors(current.authors)) known.add(current.id);
+    if (hasCompleteLocalBook(current) && current?.id) known.add(current.id);
 
     Object.entries(readingPositions).forEach(([idStr, pos]) => {
       const id = parseInt(idStr, 10);
@@ -229,11 +232,19 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       const candidateHasAuthors = hasAuthenticDomainAuthors(candidate);
       const existingHasLifespan = hasLifespan(existing);
       const candidateHasLifespan = hasLifespan(candidate);
+      const existingHasTitle = !isPlaceholderTitle(existing.title);
+      const candidateHasTitle = !isPlaceholderTitle(candidate.title);
+      const resolvedTitle = candidateHasTitle
+        ? candidate.title
+        : existingHasTitle
+          ? existing.title
+          : candidate.title;
 
       // If existing has authentic authors and candidate only has placeholder (e.g. offline Anonymous fallback)
       if (existingHasAuthors && !candidateHasAuthors) {
         bookDictionary.set(candidate.id, {
           ...candidate,
+          title: resolvedTitle,
           authors: existing.authors,
           authorDetails: existing.authorDetails,
           translators: candidate.translators?.length ? candidate.translators : existing.translators,
@@ -245,6 +256,7 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
       if (existingHasLifespan && !candidateHasLifespan) {
         bookDictionary.set(candidate.id, {
           ...candidate,
+          title: resolvedTitle,
           authors: candidateHasAuthors ? candidate.authors : existing.authors,
           authorDetails: existing.authorDetails,
           translators: candidate.translators?.length ? candidate.translators : existing.translators,
@@ -252,7 +264,10 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
         return;
       }
 
-      bookDictionary.set(candidate.id, candidate);
+      bookDictionary.set(candidate.id, {
+        ...candidate,
+        title: resolvedTitle,
+      });
     };
 
     // Prioritize metadata sources while never overwriting verified authorDetails lifespans with partial data
@@ -390,9 +405,19 @@ export function useContinueReadingLedger(): UseContinueReadingLedgerReturn {
             }
           }
         }
+        const resolvedFallback = isPlaceholderTitle(book.title)
+          ? resolveBookMetadata({ id: bookId })
+          : null;
+        const effectiveTitle = !isPlaceholderTitle(book.title)
+          ? cleanBookTitle(book.title)
+          : hasAuthenticPositionTitle(position?.bookTitle)
+            ? cleanBookTitle(position!.bookTitle)
+            : resolvedFallback && !isPlaceholderTitle(resolvedFallback.title)
+              ? cleanBookTitle(resolvedFallback.title)
+              : cleanBookTitle(book.title);
         book = {
           ...book,
-          title: cleanBookTitle(book.title),
+          title: effectiveTitle,
           coverUrl: resolveBookCoverUrl(bookId, book.coverUrl || position?.coverUrl),
           ...(enrichedDetails ? { authorDetails: enrichedDetails } : {}),
         };

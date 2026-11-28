@@ -7,7 +7,7 @@
  * @module src/lib/bookshelf-cloud-sync
  * @scope Supabase bi-directional synchronization and offline outbox engine for `bookshelves`, `bookshelf_items`, `user_favorites`, and `user_book_curation`.
  * @invariant Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), strip retired bibliographic columns from persisted `INSERT_BOOK` / `UPSERT_FAVORITE` outbox actions (`sanitizeBookshelfOutboxAction`) prior to `.upsert()`, guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
- * @invariant Hydrate missing cold-device book metadata from `public.books` in one batched primary-key query (`fetchCatalogBooksByIds`) while preserving richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal`, delete tombstoned shelf items via composite `(bookshelf_id, book_id)` keys, and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
+ * @invariant Hydrate missing or placeholder-titled (`isPlaceholderTitle`) cold-device book metadata from `public.books` in one batched primary-key query (`fetchCatalogBooksByIds`) while preserving authentic local `CatalogBook` titles, lifespans, and subjects non-regressively on warm syncs (`mergeCloudBookWithLocal`, `sanitizeCatalogBookCover`), delete tombstoned shelf items via composite `(bookshelf_id, book_id)` keys, and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
  * @rationale Single-commit atomic state reconciliation, batched `public.books` hydration, and sanitized lean outbox queues eliminate duplicated shelf/favorite metadata columns without breaking returning offline PWAs or withdrawn volume IDs.
  * @adr ADR-005, ADR-069, ADR-071, ADR-080, ADR-087
  */
@@ -24,6 +24,7 @@ import {
   toCatalogBookFromCloudRow,
   toCloudBookInsert,
   normalizeCloudCoverUrl,
+  sanitizeCatalogBookCover,
   type CloudBookRow,
 } from '@/lib/adapters/book.adapter';
 import { fetchCatalogBooksByIds } from '@/lib/catalog/supabase-provider';
@@ -254,13 +255,36 @@ export function mergeCloudBookWithLocal(
   const localHasLifespans = Boolean(
     localBook.authors?.some((a) => a.birth_year != null || a.death_year != null)
   );
+  const cloudHasAuthenticAuthors = Boolean(
+    cloudBook.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name))
+  );
+  const localHasAuthenticAuthors = Boolean(
+    localBook.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name))
+  );
 
-  const authors =
-    cloudHasLifespans || !localHasLifespans
-      ? cloudBook.authors?.length
+  const authors = cloudHasLifespans
+    ? cloudBook.authors
+    : localHasLifespans
+      ? localBook.authors
+      : cloudHasAuthenticAuthors
         ? cloudBook.authors
-        : localBook.authors
-      : localBook.authors;
+        : localHasAuthenticAuthors
+          ? localBook.authors
+          : cloudBook.authors?.length
+            ? cloudBook.authors
+            : localBook.authors;
+
+  const cloudHasAuthenticTitle = Boolean(
+    cloudBook.title && !isPlaceholderTitle(cloudBook.title)
+  );
+  const localHasAuthenticTitle = Boolean(
+    localBook.title && !isPlaceholderTitle(localBook.title)
+  );
+  const resolvedTitle = cloudHasAuthenticTitle
+    ? cloudBook.title
+    : localHasAuthenticTitle
+      ? localBook.title
+      : cloudBook.title || localBook.title;
 
   const hasRichLocalLanguages =
     Array.isArray(localBook.languages) &&
@@ -286,7 +310,7 @@ export function mergeCloudBookWithLocal(
   return {
     ...localBook,
     ...cloudBook,
-    title: cloudBook.title || localBook.title,
+    title: resolvedTitle,
     authors,
     translators:
       localBook.translators && localBook.translators.length > 0
@@ -554,6 +578,13 @@ export async function executeBookshelfCloudSync(
         const hydrated = hydratedBooksMap.get(row.book_id);
         if (hydrated) {
           return mergeCloudBookWithLocal(hydrated, local);
+        }
+        const hasLegacyRowTitle =
+          typeof row.book_title === 'string' &&
+          row.book_title.trim().length > 0 &&
+          !isPlaceholderTitle(row.book_title);
+        if (!hasLegacyRowTitle && !row.cover_url && local && !isPlaceholderTitle(local.title)) {
+          return sanitizeCatalogBookCover(local);
         }
         return mergeCloudBookWithLocal(toCatalogBookFromCloudRow(row), local);
       };

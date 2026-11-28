@@ -1,6 +1,12 @@
 /**
  * Featured Classic Books Fixtures for Bookarium
  * Centralized metadata for Hero spotlights and featured book cards.
+ *
+ * @module src/config/featured-books
+ * @scope Bundled 27-classic masterwork anthology (`FEATURED_HERO_BOOKS`, `FEATURED_HERO_ID_SET`), hourly/daily spotlight selectors (`selectHourlyHeroFromPool`, `selectDailyClassicFromPool`), and cold fallback lifespan/passage helpers.
+ * @invariant Filter every pool selection strictly through `isBookPublicDomainInJurisdiction` and `quotes.length > 0`, preserve deterministic `ssrMatch` -> `FEATURED_HERO_ID_SET` 12-hour sliding-cache guardrails without colliding `heroBookId` against `selectDailyClassicFromPool`, and wrap fallback items via `toFallbackHeroWithRawBook`.
+ * @rationale Bundling curated fallback classics with verified contributor lifespans enables zero-network offline previews, avoids SSR-to-client quote swaps, and heals missing database author dates deterministically.
+ * @adr ADR-036, ADR-070, ADR-074, ADR-086
  */
 
 import { formatAuthorNames, formatPrimarySubject } from '@/lib/utils';

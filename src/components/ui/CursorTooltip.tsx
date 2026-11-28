@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * @module src/components/ui/CursorTooltip
+ * @scope Cursor-tracking portal tooltip (`CursorTooltip`), cross-component `BOOK_LINK_COPIED_EVENT` clipboard feedback (`copyBookLinkToClipboard`, `handleCopyBookLinkClick`, `CopyBookLinkIndicator`), and global `[title]`/`[data-tooltip]` delegate (`GlobalTitleTooltip`).
+ * @invariant Skip hover delegation on coarse non-hover devices (`(hover: none)`), honor `[data-cursor-tooltip-zone="true"]` opt-outs, restore stashed `[data-original-title]` attributes safely before unmount/clear, construct share links exclusively via `buildBookShareUrl`, and clamp viewport flips against `window.innerWidth`/`window.innerHeight`.
+ * @rationale Upgrading native OS `title` hints and syncing copy indicators cleanly in one portal prevents parent overflow clipping and stale browser tooltips across interactive bookshelves and citation cards.
+ * @adr ADR-079, ADR-080
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Copy, Check } from 'lucide-react';

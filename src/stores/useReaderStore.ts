@@ -2,7 +2,7 @@
  * @module src/stores/useReaderStore
  * @scope Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
  * @invariant Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
- * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; persist strictly normalized coordinate columns to `public.reading_progress`, hydrate cold-device position metadata via `fetchCatalogBooksByIds`, and never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`) or replace authentic titles with placeholders.
+ * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; persist strictly normalized coordinate columns to `public.reading_progress`, hydrate cold-device position metadata via cycle-free in-memory cross-store lookup (`resolveLocalCachedBook`) ahead of `fetchCatalogBooksByIds`, and never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`) or replace authentic titles with placeholders.
  * @invariant Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
  * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses multi-volume cloud pushes into one conflict-resolved lean coordinate batch, eliminates duplicated metadata writes and runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
  * @adr ADR-003, ADR-014, ADR-068, ADR-080, ADR-087
@@ -25,7 +25,11 @@ import { safeLocalStorage } from '@/lib/safe-storage';
 import { useHasMounted } from '@/hooks/useHasMounted';
 import { fetchCatalogBooksByIds } from '@/lib/catalog/supabase-provider';
 import { resolveBookCoverUrl } from '@/lib/utils';
-import { isPlaceholderAuthor, isPlaceholderTitle } from '@/lib/book-metadata';
+import {
+  hasAuthorLifespans,
+  isPlaceholderAuthor,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
 import {
   type ReaderTheme,
   type ReaderFontFamily,
@@ -38,6 +42,7 @@ import {
   isGhostCloudRow,
   decodeRemoteReadingPosition,
   extractVerifiedAuthors,
+  resolveLocalCachedBook,
 } from '@/lib/reader-cloud-sync';
 
 export {
@@ -602,14 +607,21 @@ export const useReaderStore = create<ReaderState>()(
                 hasAuthenticPositionTitle(existingLocal.bookTitle) &&
                 hasAuthenticPositionAuthors(existingLocal.bookAuthors)
             );
-            const hydratedMap =
+            const localPoolBook =
               !hasLegacyRowTitle && !hasAuthenticLocal
-                ? await fetchCatalogBooksByIds(supabase, [bookId])
-                : new Map<number, CatalogBook>();
+                ? resolveLocalCachedBook(bookId)
+                : undefined;
+            const needsRemoteHydration =
+              !hasLegacyRowTitle &&
+              !hasAuthenticLocal &&
+              (!localPoolBook || !hasAuthorLifespans(localPoolBook.authors));
+            const hydratedMap = needsRemoteHydration
+              ? await fetchCatalogBooksByIds(supabase, [bookId])
+              : new Map<number, CatalogBook>();
             const { position: remotePosition, progress } = decodeRemoteReadingPosition(
               rowRecord,
               existingLocal,
-              hydratedMap.get(bookId)
+              hydratedMap.get(bookId) ?? localPoolBook
             );
             const remoteTime = remotePosition.lastReadAt
               ? new Date(remotePosition.lastReadAt).getTime()
@@ -728,9 +740,10 @@ export const useReaderStore = create<ReaderState>()(
                   .lte('scroll_offset', 1);
               }
 
-              // Batch-hydrate cold-device book metadata from public.books in one PK query
+              // Batch-hydrate cold-device book metadata (reusing in-memory bookshelf/featured cache first, then one PK query)
               const preSyncPositions = get().readingPositions;
               const preSyncTombstones = new Set(get().deletedPositionBookIds);
+              const localHydratedBooksMap = new Map<number, CatalogBook>();
               const idsToHydrate = new Set<number>();
               for (const row of data) {
                 if (isGhostCloudRow(row) || preSyncTombstones.has(row.book_id)) continue;
@@ -746,6 +759,13 @@ export const useReaderStore = create<ReaderState>()(
                     hasAuthenticPositionAuthors(localPos.bookAuthors)
                 );
                 if (!hasAuthenticLocal) {
+                  const localPoolBook = resolveLocalCachedBook(row.book_id);
+                  if (localPoolBook) {
+                    localHydratedBooksMap.set(row.book_id, localPoolBook);
+                    if (hasAuthorLifespans(localPoolBook.authors)) {
+                      continue;
+                    }
+                  }
                   idsToHydrate.add(row.book_id);
                 }
               }
@@ -814,7 +834,11 @@ export const useReaderStore = create<ReaderState>()(
                       progressDebounceTimers.delete(bookId);
                     }
                     const { position: mergedPosition, progress } =
-                      decodeRemoteReadingPosition(row, localPos, hydratedBooksMap.get(bookId));
+                      decodeRemoteReadingPosition(
+                        row,
+                        localPos,
+                        hydratedBooksMap.get(bookId) ?? localHydratedBooksMap.get(bookId)
+                      );
                     nextPositions[bookId] = mergedPosition;
                     nextProgress[bookId] = progress;
                     syncedRemoteSnapshots.push({ bookId, lastReadAt: localPos?.lastReadAt });

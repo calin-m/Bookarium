@@ -4,6 +4,11 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 import { useBookshelfCapacity } from '@/hooks/useBookshelfCapacity';
 import { filterBooksSmart } from '@/lib/smart-search';
+import {
+  hasAuthenticAuthors,
+  hasAuthorLifespans,
+  isPlaceholderTitle,
+} from '@/lib/book-metadata';
 import { runPreservingScrollPosition } from '@/lib/scroll-utils';
 import {
   sortBooks,
@@ -429,14 +434,49 @@ export function usePersonalCollectionsController({
   const uniqueKnownFavoriteBooks = useMemo(() => {
     const allKnown = [
       ...favoriteBooks,
+      ...savedBooks,
       ...offlineBooks,
       ...(catalogResults || []),
-      ...savedBooks,
     ];
-    const uniqueKnown = Array.from(
-      new Map(allKnown.map((b) => [b.id, b])).values()
+    const bestById = new Map<number, CatalogBook>();
+    for (const candidate of allKnown) {
+      if (!candidate || typeof candidate.id !== 'number') continue;
+      const existing = bestById.get(candidate.id);
+      if (!existing) {
+        bestById.set(candidate.id, candidate);
+        continue;
+      }
+      const existingHasTitle = !isPlaceholderTitle(existing.title);
+      const candidateHasTitle = !isPlaceholderTitle(candidate.title);
+      if (existingHasTitle && !candidateHasTitle) {
+        continue;
+      }
+      if (!existingHasTitle && candidateHasTitle) {
+        bestById.set(candidate.id, {
+          ...existing,
+          ...candidate,
+          authors:
+            hasAuthorLifespans(candidate.authors) || !hasAuthorLifespans(existing.authors)
+              ? candidate.authors
+              : existing.authors,
+        });
+        continue;
+      }
+      const existingHasLifespans = hasAuthorLifespans(existing.authors);
+      const candidateHasLifespans = hasAuthorLifespans(candidate.authors);
+      if (existingHasLifespans && !candidateHasLifespans) {
+        continue;
+      }
+      const existingHasAuthors = hasAuthenticAuthors(existing.authors);
+      const candidateHasAuthors = hasAuthenticAuthors(candidate.authors);
+      if (existingHasAuthors && !candidateHasAuthors) {
+        continue;
+      }
+      bestById.set(candidate.id, candidate);
+    }
+    return Array.from(bestById.values()).filter((b) =>
+      favoriteBookIds.includes(b.id)
     );
-    return uniqueKnown.filter((b) => favoriteBookIds.includes(b.id));
   }, [
     favoriteBooks,
     offlineBooks,

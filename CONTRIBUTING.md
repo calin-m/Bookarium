@@ -107,15 +107,48 @@ This runs all automated quality gateways:
 
 ## Commit & Branching Conventions
 
-Bookarium follows the **Conventional Commits** specification. Commits should be structured with distinct informational flags:
+Bookarium follows the **Conventional Commits** specification using structured multi-section commit messages (`[PHASE]`, `[WHY]`, grouped domain sub-bullets under `[WHAT]`, and `[VERIFICATION]`) piped via `git commit -F -` to avoid shell backtick/quote escaping issues:
+
+```powershell
+# Windows PowerShell
+@'
+feat(reader): concise imperative summary (v2.9.x)
+
+[PHASE] Implementation milestone or descriptive tactical scope (v2.9.x)
+
+[WHY]
+Architectural justification and problem context.
+
+[WHAT]
+- Domain Group (`path/to/module.ts`):
+  - Specific behavioral or structural modification.
+- Tests & Docs (`path/to/module.test.ts`, `CHANGELOG.md`):
+  - Co-located test coverage and `npm run docs:sync` outputs.
+
+[VERIFICATION]
+- `npm run verify` — 7-Gateway pass summary and V8 coverage metrics
+'@ | git commit -F -
+```
 
 ```bash
-git commit \
-  -m "feat(reader): concise imperative summary" \
-  -m "[PHASE]: Implementation milestone or phase" \
-  -m "[WHY]: Architectural justification and problem context" \
-  -m "[WHAT]: Bulleted list of modified modules and components" \
-  -m "[VERIFICATION]: Test results and 7-Gateway verification status"
+# POSIX / Bash / Zsh
+git commit -F - <<'EOF'
+feat(reader): concise imperative summary (v2.9.x)
+
+[PHASE] Implementation milestone or descriptive tactical scope (v2.9.x)
+
+[WHY]
+Architectural justification and problem context.
+
+[WHAT]
+- Domain Group (`path/to/module.ts`):
+  - Specific behavioral or structural modification.
+- Tests & Docs (`path/to/module.test.ts`, `CHANGELOG.md`):
+  - Co-located test coverage and `npm run docs:sync` outputs.
+
+[VERIFICATION]
+- `npm run verify` — 7-Gateway pass summary and V8 coverage metrics
+EOF
 ```
 
 ### Branch Naming:

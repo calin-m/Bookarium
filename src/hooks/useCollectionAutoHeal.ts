@@ -2,7 +2,7 @@
  * @module
  * @scope Background metadata recovery hook (`useCollectionAutoHeal`) healing missing author lifespans
  *        and titles across Bookshelf, Favorites, Reading Positions, Annotations, and IndexedDB offline books.
- * @invariant Synchronously enrich matching `FEATURED_HERO_BOOKS` and sparse `readingPositions` from local collections (`savedBooks`, `favoriteBooks`, `recentBooks`) first, then batch remaining incomplete IDs (`!hasAuthenticPositionTitle(pos?.bookTitle) || !hasAuthorLifespans(pos?.bookAuthors)`) into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
+ * @invariant Synchronously enrich matching `FEATURED_HERO_BOOKS` and sparse `readingPositions` from local collections (`savedBooks`, `favoriteBooks`, `recentBooks`) first, then batch remaining incomplete IDs (including `"Volume #<id>"` placeholder titles via `isBookIncomplete` and `!hasAuthenticPositionTitle(pos?.bookTitle) || !hasAuthorLifespans(pos?.bookAuthors)`) into a single deduplicated `/api/books?ids=...` request gated by `hasMounted` and `!isOffline`.
  * @invariant Record queried book IDs inside `sessionStorage` (`bookarium_auto_heal_attempted`) and guard store/offline patching behind `patchOfflineBookAuthors` so un-annotated works never trigger infinite refetch loops or metadata regressions.
  * @rationale Older localStorage snapshots or sparse mobile sync records may omit author lifespan bounds needed for non-US copyright evaluation or lose titles/authors on direct client navigation; session-bounded batch healing repairs them silently without UI blocking or redundant DB reads.
  * @adr ADR-070, ADR-071
@@ -39,7 +39,7 @@ export interface CollectionAutoHealResult {
 }
 
 function isBookIncomplete(b: CatalogBook): boolean {
-  return !hasAuthorLifespans(b.authors);
+  return isPlaceholderTitle(b.title) || !hasAuthorLifespans(b.authors);
 }
 
 function isPositionIncomplete(bookAuthors?: string[]): boolean {
@@ -212,11 +212,10 @@ export function useCollectionAutoHeal(): CollectionAutoHealResult {
     const completeBookIds = new Set<number>();
 
     for (const b of savedBooks) {
-      if (!isBookIncomplete(b) && !isPlaceholderTitle(b.title)) {
+      if (!isBookIncomplete(b)) {
         completeBookIds.add(b.id);
         continue;
       }
-      if (!isBookIncomplete(b)) continue;
       if (attemptedHealIds.has(b.id) || findFeaturedHero(b.id)) continue;
       ids.add(b.id);
     }

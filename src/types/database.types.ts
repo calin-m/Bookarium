@@ -1,3 +1,11 @@
+/**
+ * @module src/types/database.types
+ * @scope TypeScript mirror (`Database`, `Json`) of all Supabase PostgreSQL `public` tables, composite PKs, lean JSONB payloads, and `Functions` RPC signatures.
+ * @invariant Keep `Database['public']['Tables']` 1:1 with `supabase/schema.sql` (omitting retired `books.{content, media_type, formats}`, duplicated user snapshot columns, and `active_dates` JSONB in favor of `string[]` `DATE[]`) and match all RPC arg/return signatures.
+ * @rationale Enforcing compile-time parity between `supabase/schema.sql` (`Pass 5`) and Supabase client queries prevents accidental writes to retired columns from returning PostgREST errors in production.
+ * @adr ADR-073, ADR-084, ADR-087
+ */
+
 export type Json =
   | string
   | number

@@ -1134,5 +1134,147 @@ describe('bookshelf-cloud-sync', () => {
     expect(state.savedBooks.find((b) => b.id === 84)?.authors[0].death_year).toBe(1851);
     expect(state.savedBooks.find((b) => b.id === 888888)?.title).toBe('Volume #888888');
     expect(state.favoriteBooks.find((b) => b.id === 84)?.title).toBe('Frankenstein');
+
+    // Second warm sync: skips public.books for warm authentic ID (84), preserves authentic title/subjects/download_count,
+    // and only re-checks placeholder-titled withdrawn ID (888888) without clobbering 84 to "Volume #84".
+    booksInSpy.mockClear();
+    await executeBookshelfCloudSync('u-cold', get, set);
+
+    expect(booksInSpy).toHaveBeenCalledTimes(1);
+    expect(booksInSpy).toHaveBeenCalledWith('id', [888888]);
+    expect(state.savedBooks.find((b) => b.id === 84)?.title).toBe('Frankenstein');
+    expect(state.savedBooks.find((b) => b.id === 84)?.subjects).toEqual(['Gothic']);
+    expect(state.savedBooks.find((b) => b.id === 84)?.download_count).toBe(15000);
+    expect(state.favoriteBooks.find((b) => b.id === 84)?.title).toBe('Frankenstein');
+  });
+
+  it('never lets placeholder Volume #<id> cloud stubs clobber authentic local titles and self-heals corrupted local titles on sync', async () => {
+    const localAuthentic = {
+      id: 1342,
+      title: 'Pride and Prejudice',
+      authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+      translators: [],
+      subjects: ['Romance'],
+      bookshelves: [],
+      languages: ['en'],
+      copyright: false,
+      media_type: 'Text',
+      formats: { 'image/jpeg': '/api/books/content?id=1342&type=cover' },
+      download_count: 50000,
+    };
+    const merged = mergeCloudBookWithLocal(
+      {
+        id: 1342,
+        title: 'Volume #1342',
+        authors: [],
+        translators: [],
+        subjects: [],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 1000,
+      },
+      localAuthentic
+    );
+    expect(merged.title).toBe('Pride and Prejudice');
+    expect(merged.authors).toEqual(localAuthentic.authors);
+    expect(merged.download_count).toBe(50000);
+
+    // Pre-corrupted local state ("Volume #79835" with intact authors) triggers batched hydration and recovers real title
+    state.savedBooks = [
+      {
+        ...localAuthentic,
+        id: 79835,
+        title: 'Volume #79835',
+        authors: [{ name: 'Doe, Classic', birth_year: 1820, death_year: 1890 }],
+      },
+    ];
+    state.favoriteBooks = [
+      {
+        ...localAuthentic,
+        id: 79835,
+        title: 'Volume #79835',
+        authors: [{ name: 'Doe, Classic', birth_year: 1820, death_year: 1890 }],
+      },
+    ];
+    state.favoriteBookIds = [79835];
+
+    const booksInSpy = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 79835,
+          title: 'The Recovered Classic',
+          authors: [{ name: 'Doe, Classic', birth_year: 1820, death_year: 1890 }],
+          translators: [],
+          subjects: ['History'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 420,
+        },
+      ],
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'bookshelves') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ id: 'shelf-heal', user_id: 'u-heal', name: 'General', is_default: true }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelf_items') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ bookshelf_id: 'shelf-heal', user_id: 'u-heal', book_id: 79835, created_at: '' }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_favorites') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ user_id: 'u-heal', book_id: 79835, created_at: '' }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_book_curation') {
+        return {
+          select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+        };
+      }
+      if (table === 'books') {
+        return {
+          select: () => ({ in: booksInSpy }),
+        };
+      }
+      return {};
+    });
+
+    await executeBookshelfCloudSync('u-heal', get, set);
+
+    expect(booksInSpy).toHaveBeenCalledWith('id', [79835]);
+    expect(state.savedBooks[0]?.title).toBe('The Recovered Classic');
+    expect(state.favoriteBooks[0]?.title).toBe('The Recovered Classic');
   });
 });

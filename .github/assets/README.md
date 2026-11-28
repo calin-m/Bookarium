@@ -18,7 +18,7 @@ GitHub displays a social preview card whenever your repository link is shared on
 1. **Background**: Obsidian charcoal (`#0e1117`) or warm parchment (`#fcfbf9`).
 2. **Typography**: Clean serif editorial title (*Bookarium*) paired with monospace subhead (*Universal Public Domain Library & Focus Reader*).
 3. **Product Showcase**: Studio Bookshelf with 3D gilded spines, Text Highlighting popover, and Literary Notebook view.
-4. **Key Badges**: Zero Paid API Keys • 70,000+ Books • Next.js 16 • PWA Offline Ready.
+4. **Key Badges**: Zero Paid API Keys • 78,000+ Books • Next.js 16 • PWA Offline Ready.
 
 ### How to Apply in GitHub:
 1. Navigate to [github.com/calin-m/Bookarium/settings](https://github.com/calin-m/Bookarium/settings).

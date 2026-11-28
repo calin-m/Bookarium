@@ -1102,5 +1102,62 @@ describe('useContinueReadingLedger', () => {
       expect(result.current.volumes[0]?.book.title).toBe('The King in Yellow');
     });
   });
+
+  it('prevents placeholder Volume #<id> savedBooks titles from overriding authentic favorite/position titles', () => {
+    act(() => {
+      useBookshelfStore.setState({
+        favoriteBooks: [
+          {
+            ...mockBook,
+            id: 79835,
+            title: 'Authentic Favorite Title',
+            authors: [{ name: 'Classic, Author', birth_year: 1810, death_year: 1880 }],
+          },
+        ],
+        savedBooks: [
+          {
+            ...mockBook,
+            id: 79835,
+            title: 'Volume #79835',
+            authors: [{ name: 'Classic, Author', birth_year: 1810, death_year: 1880 }],
+          },
+          {
+            ...mockBook,
+            id: 79836,
+            title: 'Volume #79836',
+            authors: [{ name: 'Second, Author', birth_year: 1805, death_year: 1870 }],
+          },
+        ],
+        recentBooks: [],
+      });
+      useReaderStore.setState({
+        readingProgress: { 79835: 40, 79836: 25 },
+        readingPositions: {
+          79835: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 4,
+            lastReadAt: '2026-11-28T10:00:00Z',
+          },
+          79836: {
+            chapterIndex: 1,
+            chapterPage: 2,
+            globalPage: 4,
+            lastReadAt: '2026-11-28T09:00:00Z',
+            bookTitle: 'Authentic Position Title',
+            bookAuthors: ['Second, Author, 1805-1870'],
+          },
+        },
+      });
+    });
+
+    const { result } = renderLedgerHook();
+    expect(result.current.volumes.find((v) => v.book.id === 79835)?.book.title).toBe(
+      'Authentic Favorite Title'
+    );
+    expect(result.current.volumes.find((v) => v.book.id === 79836)?.book.title).toBe(
+      'Authentic Position Title'
+    );
+  });
 });
 

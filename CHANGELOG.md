@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.9.95] - 2026-11-28
+### *PowerShell Structured Commit Template & Full-Repository Living Documentation Alignment*
+
+### Changed
+- **PowerShell Structured Commit Template & PR Guidance (`AGENTS.md`, `.agents/AGENTS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`)**: Aligned Bookarium's commit conventions with Windows PowerShell single-quoted here-string execution (`@' ... '@ | git commit -F -`) and POSIX heredocs (`git commit -F - <<'EOF'`), standardizing standalone `[PHASE]`, `[WHY]`, `[WHAT]` domain-grouped sub-bullets, and `[VERIFICATION]` sections across contributor guides and PR templates (`ADR-079`).
+- **Full-Repository Living Documentation, Mermaid Diagram & Storage Key Parity (`scripts/generate-architecture-matrix.js`, `scripts/generate-roadmap.js`, `docs/DECISIONS.md`, `README.md`, `.github/assets/README.md`)**: Pruned retired `public.books.content` edges from Architecture Diagrams `1` & `6`, corrected `EdgeCatalog` (`9-Col Catalog`) and Fellowship trigger labels in Diagrams `13` & `15`, aligned `useHabitsStore` (`bookarium-habits-storage`, `activeDates[]`), `usePreferencesStore` / `useThemeStore` (`bookarium-navigation-preferences`, `bookarium-theme-preference`, `stickyScrollEnabled: true`), and `useFellowshipStore` rows in the Client Storage Matrix, updated `Rules 0–10`, Milestone 9 `14-key` counts, and `ADR-087` out-of-scope summaries, added in-place retirement notes across historical ADRs, and clarified `README.md` filter/status copy (`ADR-079`, `ADR-087`).
+- **Top-16 High-Coupling Contract Promotion, Layer Classification & AST Parity Audit (`scripts/lib/ast-parser.js`, `scripts/generate-architecture-matrix.js`, `16` `src/` modules, `usePreferencesStore.ts`)**: Fixed `classifyContractLayer` to match all App Router HTTP handlers and extended `canonicalizeInternalApiRoute`, `extractCrossBoundaryCouplingCatalog`, and `extractRouteCacheDirectives` across `/api/profiles/card`, `/covers/[file]`, `/og/books/[file]`, SSR geo cookies, and passage/quote storage wrappers; promoted the top 16 high-coupling pending modules (`score >= 15`; `89 -> 105` protected) into `TIER_3`/`TIER_4` contracts; repaired `layerDefs`, Diagram `3`/`9`/`12`/`13`, rate/cache tables, and 8-store teardown terminology across generator/store specs; and expanded `ast-parser.test.ts` coverage (`ADR-079`, `ADR-081`, `ADR-087`).
+
+### Fixed
+- **Bookshelf & Favorites Warm-Sync Title Preservation, Self-Healing & Cross-Store Lookup (`src/lib/book-metadata.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/lib/reader-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `src/stores/useReaderStore.ts`, `src/hooks/useCollectionAutoHeal.ts`, `src/hooks/usePersonalCollectionsController.ts`, `src/hooks/reader/useContinueReadingLedger.ts`)**: Fixed the `v2.9.94` warm-sync regression where lean `bookshelf_items`/`user_favorites` rows overwrote authentic local titles with synthesized `"Volume #<id>"` stubs in `reconstructCloudBook`/`mergeCloudBookWithLocal`; expanded `isPlaceholderTitle()` to match `"Volume #<id>"`, enabled placeholder-title self-healing in `enrichSavedBooks`, `syncFavoriteBooks`, and `useCollectionAutoHeal`, hardened Favorites and Continue Reading pool-merge precedence against placeholder regressions, and added cycle-free in-memory cross-store lookup (`registerLocalBookPoolResolver`/`resolveLocalCachedBook`) ahead of `fetchCatalogBooksByIds` in `useReaderStore` (`ADR-087`).
+
+
 ## [2.9.94] - 2026-11-28
 ### *Book Metadata Single Source of Truth, Natural Composite Primary Keys & Native DATE[] Active Dates*
 

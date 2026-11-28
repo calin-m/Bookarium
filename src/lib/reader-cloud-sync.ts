@@ -1,22 +1,60 @@
 /**
  * @module src/lib/reader-cloud-sync
- * @scope Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, position metadata extraction, and lifespan-preserving reconciliation for `public.reading_progress`.
+ * @scope Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, position metadata extraction, cycle-free in-memory cross-store lookup (`registerLocalBookPoolResolver`, `resolveLocalCachedBook`), and lifespan-preserving reconciliation for `public.reading_progress`.
  * @invariant Encode row bookmark offsets fractionally on `scroll_offset` (`page + row / 1000`) alongside reflow-anchored `bookmark_text`, and identify empty Page-1 rows cleanly via `isGhostReadingPosition` / `isGhostCloudRow`.
- * @invariant Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), hydrate lean `public.reading_progress` rows from authoritative `public.books` metadata (`hydratedBook`) while preserving local titles/lifespans when offline, and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
+ * @invariant Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), reuse authentic local bookshelf/favorite/recent or `FEATURED_HERO_BOOKS` metadata in memory (`resolveLocalCachedBook`) before hydrating lean `public.reading_progress` rows from `public.books` (`hydratedBook`), and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
  * @rationale Shared row encoding, zero-cycle metadata extraction, and authoritative `public.books` hydration keep `readingPositions` titles/authors intact across cold devices and offline reads without duplicating metadata columns in `public.reading_progress` or triggering `HTTP 451` lifespan regressions.
  * @adr ADR-014, ADR-068, ADR-070, ADR-080, ADR-087
  */
 
 import type { CatalogBook, Book, Author } from '@/types/book.types';
+import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { parseLifespansFromName } from '@/lib/copyright-engine';
 import {
   cleanBookTitle,
+  featuredHeroToCatalogBook,
+  hasAuthenticAuthors,
   hasAuthorLifespans,
   isPlaceholderAuthor,
   isPlaceholderTitle,
 } from '@/lib/book-metadata';
 import { formatAuthorWithLifespan } from '@/lib/adapters/book.adapter';
 import { resolveBookCoverUrl } from '@/lib/utils';
+
+export type LocalBookPoolResolver = (bookId: number) => CatalogBook | undefined;
+
+let localBookPoolResolver: LocalBookPoolResolver | null = null;
+
+/**
+ * Registers a cycle-free in-memory book metadata resolver (backed by `useBookshelfStore`)
+ * so `useReaderStore` cloud hydration can reuse already-cached local shelf/favorite/recent
+ * books without importing `useBookshelfStore` or querying `public.books`.
+ */
+export function registerLocalBookPoolResolver(resolver: LocalBookPoolResolver | null): void {
+  localBookPoolResolver = resolver;
+}
+
+/**
+ * Resolves authentic cached book metadata in memory from the registered local shelf/favorite/recent
+ * pool or bundled `FEATURED_HERO_BOOKS` (`0` DB queries, `0` circular imports).
+ */
+export function resolveLocalCachedBook(bookId: number): CatalogBook | undefined {
+  if (!Number.isInteger(bookId) || bookId <= 0) return undefined;
+  const localCandidate = localBookPoolResolver?.(bookId);
+  const localHasValidMeta = Boolean(
+    localCandidate &&
+      !isPlaceholderTitle(localCandidate.title) &&
+      hasAuthenticAuthors(localCandidate.authors)
+  );
+  if (localHasValidMeta && hasAuthorLifespans(localCandidate!.authors)) {
+    return localCandidate;
+  }
+  const featured = FEATURED_HERO_BOOKS.find((h) => h.id === bookId);
+  if (featured) {
+    return featuredHeroToCatalogBook(featured);
+  }
+  return localHasValidMeta ? localCandidate : undefined;
+}
 
 export type ReaderTheme = 'light' | 'dark' | 'sepia';
 export type ReaderFontFamily = 'serif' | 'sans' | 'mono';

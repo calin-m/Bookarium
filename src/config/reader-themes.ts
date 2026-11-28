@@ -1,3 +1,11 @@
+/**
+ * @module src/config/reader-themes
+ * @scope Focus Reader surface, chrome, drawer, scrollbar, and TTS highlight palettes (`READER_THEMES`, `NEXT_READER_THEME`, `getReaderTheme`) across `light`, `sepia`, and `dark` themes.
+ * @invariant Maintain complete `ReaderThemeConfig` token sets for all three themes (`light`, `sepia`, `dark`) and degrade cleanly to `READER_THEMES.light` inside `getReaderTheme` for null or unrecognized values.
+ * @rationale Centralizing reader theme Tailwind class tokens keeps contrast ratios and high-contrast popovers consistent across all drawers, surfaces, and audio narration states.
+ * @adr ADR-001, ADR-042
+ */
+
 import type { ReaderTheme } from '@/stores/useReaderStore';
 
 export interface ReaderThemeConfig {

@@ -1,3 +1,11 @@
+/**
+ * @module src/lib/adapters/book.adapter
+ * @scope Pure bidirectional DTO adapters (`toCanonicalBook`, `toCatalogBook`, `toCatalogBookFromCloudRow`, `toCloudBookInsert`, `sanitizeCatalogBookCover`, `normalizeCloudCoverUrl`) reconciling catalog DTOs, lean relational rows, and domain `Book` entities.
+ * @invariant Strip derivable R2 proxy paths, Gutenberg mirror URLs (`GUTENBERG_COVER_HOSTS`), and transient `blob:`/`data:` URIs inside `normalizeCloudCoverUrl`, rewrite legacy mirror covers to same-origin R2 defaults via `sanitizeCatalogBookCover` and `resolveBookCoverUrl`, preserve `authorDetails` lifespans idempotently, and emit metadata-free `(user_id, book_id[, bookshelf_id])` inserts via `toCloudBookInsert`.
+ * @rationale Keeping cloud rows normalized to IDs while deriving uniform R2 covers and preserving verified author lifespans in memory prevents metadata bloat and external Gutenberg hotlinking across local and cloud collections.
+ * @adr ADR-070, ADR-071, ADR-084, ADR-087
+ */
+
 import type { CatalogBook, Author, Book } from '@/types/book.types';
 import { API_ENDPOINTS } from '@/config/api-endpoints';
 import {

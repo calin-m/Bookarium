@@ -2147,6 +2147,107 @@ describe('useReaderStore', () => {
       });
       expect(cloudUpsert).not.toHaveBeenCalled();
     });
+
+    it('reuses in-memory bookshelf/featured metadata during cold syncWithCloud and restoreReadingPositionFromCloud with zero public.books queries', async () => {
+      const { registerLocalBookPoolResolver } = await import('@/lib/reader-cloud-sync');
+      registerLocalBookPoolResolver((bookId) =>
+        bookId === 79835
+          ? {
+              id: 79835,
+              title: 'Cached Shelf Treatise',
+              authors: [{ name: 'Treatise, Author', birth_year: 1800, death_year: 1875 }],
+              translators: [],
+              subjects: [],
+              bookshelves: [],
+              languages: ['en'],
+              copyright: false,
+              media_type: 'Text',
+              formats: {},
+              download_count: 100,
+            }
+          : undefined
+      );
+
+      try {
+        useReaderStore.setState({
+          readingPositions: {},
+          readingProgress: {},
+          dirtyPositionBookIds: [],
+          deletedPositionBookIds: [],
+          lastReaderSyncAt: null,
+        });
+
+        const booksInSpy = vi.fn().mockResolvedValue({ data: [], error: null });
+        const orderMock = vi.fn().mockResolvedValue({
+          data: [
+            {
+              book_id: 79835,
+              current_chapter_index: 2,
+              scroll_offset: 6,
+              progress_percent: 30,
+              bookmark_text: null,
+              last_read_at: '2026-11-28T10:00:00.000Z',
+            },
+            {
+              book_id: 1342,
+              current_chapter_index: 1,
+              scroll_offset: 3,
+              progress_percent: 15,
+              bookmark_text: null,
+              last_read_at: '2026-11-28T10:05:00.000Z',
+            },
+          ],
+          error: null,
+        });
+        mockFrom.mockImplementation((table: string) => {
+          if (table === 'books') {
+            return { select: vi.fn().mockReturnValue({ in: booksInSpy }) };
+          }
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: orderMock,
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: {
+                      book_id: 79835,
+                      current_chapter_index: 4,
+                      scroll_offset: 9,
+                      progress_percent: 55,
+                      bookmark_text: null,
+                      last_read_at: '2026-11-28T12:00:00.000Z',
+                    },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        });
+
+        await useReaderStore.getState().syncWithCloud('user-cross-store');
+
+        expect(booksInSpy).not.toHaveBeenCalled();
+        expect(useReaderStore.getState().readingPositions[79835]).toMatchObject({
+          bookTitle: 'Cached Shelf Treatise',
+          bookAuthors: ['Treatise, Author, 1800-1875'],
+        });
+        expect(useReaderStore.getState().readingPositions[1342]).toMatchObject({
+          bookTitle: 'Pride and Prejudice',
+          bookAuthors: ['Jane Austen, 1775-1817'],
+        });
+
+        // Also verify restoreReadingPositionFromCloud reuses the in-memory pool with 0 public.books calls
+        useReaderStore.setState({ readingPositions: {}, readingProgress: {} });
+        const restored = await useReaderStore
+          .getState()
+          .restoreReadingPositionFromCloud(79835, 'user-cross-store');
+        expect(booksInSpy).not.toHaveBeenCalled();
+        expect(restored?.bookTitle).toBe('Cached Shelf Treatise');
+      } finally {
+        registerLocalBookPoolResolver(null);
+      }
+    });
   });
 });
 

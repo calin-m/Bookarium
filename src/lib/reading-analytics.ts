@@ -4,6 +4,12 @@
  * Pure, deterministic mathematical calculations for consecutive reading streaks,
  * active reading duration, weekly activity sparklines, and annual reading goals.
  * Built to provide foundational telemetry for Milestone 4 accolades.
+ *
+ * @module src/lib/reading-analytics
+ * @scope Pure domain calculators for consecutive streaks (`calculateStreak`), duration formatting (`formatReadingDuration`), deduplicated completed counts (`calculateCompletedBooksCount`), and public sanctuary habit telemetry (`resolvePublicReadingHabits`).
+ * @invariant Validate strictly `YYYY-MM-DD` local dates via `formatLocalDate`, honor yesterday's grace period before zeroing `currentStreak` while keeping `longestStreak >= currentStreak`, deduplicate finished + `>= 100%` progress IDs in `calculateCompletedBooksCount`, and never fabricate unconfigured goals (`annual_goal` <= 0) inside `resolvePublicReadingHabits`.
+ * @rationale Keeping streak math, completion deduplication, and public stats projection pure and timezone-local prevents UTC midnight off-by-one streak breaks and client/SSR sanctuary stat discrepancies.
+ * @adr ADR-013, ADR-033, ADR-087
  */
 
 export interface DayActivity {

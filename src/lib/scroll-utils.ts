@@ -1,3 +1,11 @@
+/**
+ * @module src/lib/scroll-utils
+ * @scope Viewport-aware smooth scrolling (`smartScrollToContent`), grab/wheel horizontal scrolling (`attachHorizontalDragAndWheelScroll`), touch/pointer tab scrubber, and zero-drift `runPreservingScrollPosition`.
+ * @invariant Guard all DOM APIs cleanly against SSR (`typeof window === 'undefined'`), suppress trailing synthetic clicks after drag/scrub gestures (`suppressClick`), and restore pre-mutation vertical scroll synchronously and on `requestAnimationFrame` inside `runPreservingScrollPosition`.
+ * @rationale Standard `scrollIntoView` overshoots collection headers while dynamic card re-sorts trigger browser scroll jumps; preserving exact viewport coordinates keeps browsing and tab scrubbing jitter-free.
+ * @adr ADR-079, ADR-081
+ */
+
 export interface SmartScrollOptions {
   /** Offset in pixels from top of viewport, typically accounting for sticky navbar height (default: 80) */
   offsetTop?: number;
