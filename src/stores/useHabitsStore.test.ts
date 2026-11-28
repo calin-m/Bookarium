@@ -498,4 +498,44 @@ describe('useHabitsStore', () => {
       vi.useRealTimers();
     }
   });
+
+  it('filters malformed non-ISO calendar dates before upserting to native DATE[] user_reading_habits', async () => {
+    useHabitsStore.setState({
+      annualGoal: 12,
+      annualGoalYear: 2026,
+      goalUpdatedAt: '2026-11-28T10:00:00.000Z',
+      activeDates: ['2026-11-27', 'not-a-date', '2026-13-99', '2026-11-28'],
+      totalReadingSeconds: 600,
+      totalListeningSeconds: 0,
+    });
+
+    mockMaybeSingle.mockResolvedValue({
+      data: {
+        user_id: 'user-date-filter',
+        annual_goal: 12,
+        annual_goal_year: 2026,
+        active_dates: ['2026-11-26', 'bad-remote'],
+        total_reading_seconds: 300,
+        total_listening_seconds: 0,
+        completed_books_count: 0,
+        updated_at: '2026-11-27T10:00:00.000Z',
+      },
+      error: null,
+    });
+
+    await useHabitsStore.getState().syncWithCloud('user-date-filter');
+
+    expect(useHabitsStore.getState().activeDates).toEqual([
+      '2026-11-26',
+      '2026-11-27',
+      '2026-11-28',
+    ]);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'user-date-filter',
+        active_dates: ['2026-11-26', '2026-11-27', '2026-11-28'],
+      }),
+      { onConflict: 'user_id' }
+    );
+  });
 });

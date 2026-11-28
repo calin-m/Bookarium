@@ -2,9 +2,9 @@
  * @module src/lib/reader-cloud-sync
  * @scope Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, position metadata extraction, and lifespan-preserving reconciliation for `public.reading_progress`.
  * @invariant Encode row bookmark offsets fractionally on `scroll_offset` (`page + row / 1000`) alongside reflow-anchored `bookmark_text`, and identify empty Page-1 rows cleanly via `isGhostReadingPosition` / `isGhostCloudRow`.
- * @invariant Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), preserve local titles/authors when remote `public.reading_progress` rows lack them (`shouldHealRemoteMetadata`), and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
- * @rationale Shared row encoding, zero-cycle metadata extraction, and ghost classification keep `public.reading_progress` titles/authors intact across direct navigation, offline reads, and multi-device syncs without `HTTP 451` lifespan regressions.
- * @adr ADR-014, ADR-068, ADR-070, ADR-080
+ * @invariant Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), hydrate lean `public.reading_progress` rows from authoritative `public.books` metadata (`hydratedBook`) while preserving local titles/lifespans when offline, and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
+ * @rationale Shared row encoding, zero-cycle metadata extraction, and authoritative `public.books` hydration keep `readingPositions` titles/authors intact across cold devices and offline reads without duplicating metadata columns in `public.reading_progress` or triggering `HTTP 451` lifespan regressions.
+ * @adr ADR-014, ADR-068, ADR-070, ADR-080, ADR-087
  */
 
 import type { CatalogBook, Book, Author } from '@/types/book.types';
@@ -113,31 +113,45 @@ export function isGhostCloudRow(row: Record<string, unknown>): boolean {
 
 export function decodeRemoteReadingPosition(
   row: Record<string, unknown>,
-  localPos?: BookReadingPosition
+  localPos?: BookReadingPosition,
+  hydratedBook?: CatalogBook
 ): {
   position: BookReadingPosition;
   progress: number;
   shouldKeepLocalAuthors: boolean;
-  shouldHealRemoteMetadata: boolean;
 } {
+  const bookId = Number(row.book_id);
+  const hydratedMeta = hydratedBook ? extractBookPositionMetadata(bookId, hydratedBook) : {};
   const remoteTitle = typeof row.book_title === 'string' ? row.book_title : null;
   const hasExplicitRemoteAuthorArray = Array.isArray(row.book_authors);
   const remoteAuthors = hasExplicitRemoteAuthorArray
     ? (row.book_authors as string[])
     : null;
   const hasRemoteTitle = hasAuthenticPositionTitle(remoteTitle);
-  const hasLocalTitle = hasAuthenticPositionTitle(localPos?.bookTitle);
+  const hasHydratedTitle = hasAuthenticPositionTitle(hydratedMeta.bookTitle);
   const hasRemoteAuthors = hasAuthenticPositionAuthors(remoteAuthors);
+  const hasHydratedAuthors = hasAuthenticPositionAuthors(hydratedMeta.bookAuthors);
   const hasLocalAuthors = hasAuthenticPositionAuthors(localPos?.bookAuthors);
+
+  const authoritativeAuthors =
+    hasHydratedAuthors && hasEmbeddedLifespans(hydratedMeta.bookAuthors)
+      ? hydratedMeta.bookAuthors
+      : hasRemoteAuthors && hasEmbeddedLifespans(remoteAuthors ?? undefined)
+        ? remoteAuthors!
+        : hasHydratedAuthors
+          ? hydratedMeta.bookAuthors
+          : hasRemoteAuthors
+            ? remoteAuthors!
+            : undefined;
+
   const shouldKeepLocalAuthors =
-    !hasEmbeddedLifespans(remoteAuthors ?? undefined) &&
+    !hasEmbeddedLifespans(authoritativeAuthors) &&
     hasEmbeddedLifespans(localPos?.bookAuthors);
-  const shouldHealMissingAuthors = !hasRemoteAuthors && hasLocalAuthors;
-  const shouldHealRemoteMetadata = Boolean(
-    shouldKeepLocalAuthors ||
-      ((row.book_title == null || !hasRemoteTitle) && hasLocalTitle) ||
-      (hasExplicitRemoteAuthorArray && shouldHealMissingAuthors)
-  );
+  const resolvedAuthors =
+    shouldKeepLocalAuthors
+      ? localPos?.bookAuthors
+      : authoritativeAuthors || (hasLocalAuthors ? localPos?.bookAuthors : remoteAuthors || undefined);
+
   const rawOffset = Math.max(1, Number(row.scroll_offset));
   const decodedPage = Math.max(1, Math.floor(rawOffset));
   const decodedRow = Math.round((rawOffset - decodedPage) * 1000);
@@ -165,17 +179,15 @@ export function decodeRemoteReadingPosition(
     ...(resolvedBookmarkText ? { bookmarkText: resolvedBookmarkText } : {}),
     lastReadAt: String(row.last_read_at),
     bookTitle:
+      (hasHydratedTitle ? hydratedMeta.bookTitle : undefined) ||
       (hasRemoteTitle ? remoteTitle! : undefined) ||
       localPos?.bookTitle ||
       remoteTitle ||
       undefined,
-    bookAuthors:
-      (shouldKeepLocalAuthors || shouldHealMissingAuthors
-        ? localPos?.bookAuthors
-        : remoteAuthors) || localPos?.bookAuthors,
+    bookAuthors: resolvedAuthors,
     coverUrl: resolveBookCoverUrl(
-      Number(row.book_id),
-      (row.cover_url as string | null) || localPos?.coverUrl
+      bookId,
+      (row.cover_url as string | null) || hydratedMeta.coverUrl || localPos?.coverUrl
     ),
   };
   const progress = Math.min(
@@ -186,7 +198,6 @@ export function decodeRemoteReadingPosition(
     position,
     progress,
     shouldKeepLocalAuthors,
-    shouldHealRemoteMetadata,
   };
 }
 

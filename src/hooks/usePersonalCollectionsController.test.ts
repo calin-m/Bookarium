@@ -136,8 +136,8 @@ describe('usePersonalCollectionsController', () => {
         },
       ],
       cloudBookshelfItems: [
-        { id: 'item-1', bookshelf_id: 'default-shelf', user_id: 'u1', book_id: 1342, book_title: 'Pride and Prejudice', book_authors: [], cover_url: null, added_at: '' },
-        { id: 'item-2', bookshelf_id: 'custom-shelf', user_id: 'u1', book_id: 84, book_title: 'Frankenstein', book_authors: [], cover_url: null, added_at: '' },
+        { bookshelf_id: 'default-shelf', user_id: 'u1', book_id: 1342, created_at: '' },
+        { bookshelf_id: 'custom-shelf', user_id: 'u1', book_id: 84, created_at: '' },
       ],
     });
 

@@ -85,7 +85,7 @@ describe('PrivacyPage', () => {
     expect(screen.getAllByText(/is_public = false/i)).toHaveLength(2);
     expect(screen.getByText(/Google OAuth identity metadata/i)).toBeInTheDocument();
     expect(screen.getByText(/user_book_curation/i)).toBeInTheDocument();
-    expect(screen.getByText(/book_title/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/book_id/i).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/user_annotations/i)).toBeInTheDocument();
     expect(screen.getByText(/symposium_sessions/i)).toBeInTheDocument();
     expect(

@@ -367,6 +367,21 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     });
 
     useBookshelfStore.setState({
+      savedBooks: [
+        {
+          id: 1342,
+          title: 'Emma',
+          authors: [{ name: 'Jane Austen', birth_year: 1775, death_year: 1817 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          media_type: 'Text',
+          formats: {},
+          download_count: 1000,
+        },
+      ],
       cloudBookshelves: [
         {
           id: 'local-shelf-1',
@@ -380,14 +395,10 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
       ],
       cloudBookshelfItems: [
         {
-          id: 'local-item-1',
           bookshelf_id: 'local-shelf-1',
           user_id: 'u-self-1',
           book_id: 1342,
-          book_title: 'Emma',
-          book_authors: [{ name: 'Jane Austen' } as unknown as string],
-          cover_url: null,
-          added_at: '',
+          created_at: '',
         },
       ],
       syncWithCloud: vi.fn().mockResolvedValue(undefined),
@@ -673,6 +684,104 @@ describe('PublicScholarProfilePage (/u/[username])', () => {
     await waitFor(() => {
       expect(screen.getByRole('region', { name: /scholar sanctuary not found/i })).toBeInTheDocument();
     });
+  });
+
+  it('hydrates normalized bookshelf_items from public.books in one batch and falls back cleanly for withdrawn IDs', async () => {
+    mockParams = { username: 'reader_hydrated' };
+    const booksInSpy = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Mary Shelley', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: [],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 5000,
+        },
+      ],
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    id: 'u-hydrated-1',
+                    display_name: 'Mary Reader',
+                    username: 'reader_hydrated',
+                    is_public: true,
+                    show_streak: false,
+                    show_challenge: false,
+                    show_bookshelves: true,
+                    show_saved_books: true,
+                    show_custom_shelves: true,
+                    created_at: '2025-01-01T00:00:00.000Z',
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_accolades') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelves') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({
+                data: [{ id: 'shelf-pub-1', name: 'Gothic Favorites', is_default: false, is_public: true }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelf_items') {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({
+              data: [
+                { bookshelf_id: 'shelf-pub-1', book_id: 84 },
+                { bookshelf_id: 'shelf-pub-1', book_id: 999999 },
+              ],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'books') {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: booksInSpy,
+          }),
+        };
+      }
+      return { select: vi.fn() };
+    });
+
+    render(<PublicScholarProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Frankenstein')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Volume #999999')).toBeInTheDocument();
+    expect(booksInSpy).toHaveBeenCalledWith('id', [84, 999999]);
   });
 });
 

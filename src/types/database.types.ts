@@ -98,48 +98,29 @@ export interface Database {
       };
       bookshelf_items: {
         Row: {
-          id: string;
           bookshelf_id: string;
           user_id: string;
           book_id: number;
-          book_title: string;
-          book_authors: string[];
-          cover_url: string | null;
-          created_at?: string;
-          added_at?: string;
+          created_at: string;
         };
         Insert: {
-          id?: string;
           bookshelf_id: string;
           user_id: string;
           book_id: number;
-          book_title: string;
-          book_authors?: string[];
-          cover_url?: string | null;
           created_at?: string;
-          added_at?: string;
         };
         Update: {
-          id?: string;
           bookshelf_id?: string;
           user_id?: string;
           book_id?: number;
-          book_title?: string;
-          book_authors?: string[];
-          cover_url?: string | null;
           created_at?: string;
-          added_at?: string;
         };
         Relationships: [];
       };
       reading_progress: {
         Row: {
-          id: string;
           user_id: string;
           book_id: number;
-          book_title: string | null;
-          book_authors: string[];
-          cover_url: string | null;
           current_chapter_index: number;
           progress_percent: number;
           scroll_offset: number;
@@ -147,12 +128,8 @@ export interface Database {
           last_read_at: string;
         };
         Insert: {
-          id?: string;
           user_id: string;
           book_id: number;
-          book_title?: string | null;
-          book_authors?: string[];
-          cover_url?: string | null;
           current_chapter_index?: number;
           progress_percent?: number;
           scroll_offset?: number;
@@ -160,12 +137,8 @@ export interface Database {
           last_read_at?: string;
         };
         Update: {
-          id?: string;
           user_id?: string;
           book_id?: number;
-          book_title?: string | null;
-          book_authors?: string[];
-          cover_url?: string | null;
           current_chapter_index?: number;
           progress_percent?: number;
           scroll_offset?: number;
@@ -178,25 +151,16 @@ export interface Database {
         Row: {
           user_id: string;
           book_id: number;
-          book_title: string;
-          book_authors: string[];
-          cover_url: string | null;
           created_at: string;
         };
         Insert: {
           user_id: string;
           book_id: number;
-          book_title: string;
-          book_authors?: string[];
-          cover_url?: string | null;
           created_at?: string;
         };
         Update: {
           user_id?: string;
           book_id?: number;
-          book_title?: string;
-          book_authors?: string[];
-          cover_url?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -242,7 +206,6 @@ export interface Database {
       };
       user_book_curation: {
         Row: {
-          id: string;
           user_id: string;
           book_id: number;
           rating: number | null;
@@ -251,7 +214,6 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
-          id?: string;
           user_id: string;
           book_id: number;
           rating?: number | null;
@@ -260,7 +222,6 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
-          id?: string;
           user_id?: string;
           book_id?: number;
           rating?: number | null;
@@ -272,11 +233,10 @@ export interface Database {
       };
       user_reading_habits: {
         Row: {
-          id: string;
           user_id: string;
           annual_goal: number;
           annual_goal_year: number;
-          active_dates: Json;
+          active_dates: string[];
           total_reading_seconds: number;
           total_listening_seconds: number;
           completed_books_count: number;
@@ -284,11 +244,10 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
-          id?: string;
           user_id: string;
           annual_goal?: number;
           annual_goal_year?: number;
-          active_dates?: Json;
+          active_dates?: string[];
           total_reading_seconds?: number;
           total_listening_seconds?: number;
           completed_books_count?: number;
@@ -296,11 +255,10 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
-          id?: string;
           user_id?: string;
           annual_goal?: number;
           annual_goal_year?: number;
-          active_dates?: Json;
+          active_dates?: string[];
           total_reading_seconds?: number;
           total_listening_seconds?: number;
           completed_books_count?: number;

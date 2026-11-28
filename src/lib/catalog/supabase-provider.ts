@@ -1,6 +1,6 @@
 /**
  * @module src/lib/catalog/supabase-provider
- * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 9-column metadata projection, deterministic R2 format & media_type synthesis, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
+ * @scope Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 9-column metadata projection, deterministic R2 format & media_type synthesis, batched primary-key metadata hydration (`fetchCatalogBooksByIds`), 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
  * @invariant Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
  * @invariant Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, short-circuit unsupported `?mime_type=` requests (`isSupportedR2MimeTypeFilter`) before touching PostgreSQL, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
  * @invariant Use `{ count: 'planned' }` on multi-predicate filtered initial queries (`search`/`topic`/`languages`/`era`), omit count options during `backfillQuery` chunks, fail fast with `HTTP 504` without retrying SQLSTATE `57014` (`isStatementTimeoutError`), short-circuit deep pagination past `MAX_CATALOG_OFFSET` (`160_000`), and enforce `limit + 1` dynamic backfill under non-US copyright filters.
@@ -26,6 +26,7 @@ import {
 } from '@/lib/copyright-engine';
 import { FEATURED_HERO_BOOKS } from '@/config/featured-books';
 import { LITERARY_QUOTES } from '@/config/literary-quotes';
+import { featuredHeroToCatalogBook } from '@/lib/book-metadata';
 
 /**
  * Columns explicitly selected for catalog search to prevent transferring unrendered quote arrays,
@@ -294,6 +295,64 @@ export function mapDatabaseBookToCatalogBook(row: DatabaseBook): CatalogBook {
     }
   }
   return mapped;
+}
+
+const BOOK_HYDRATION_CHUNK_SIZE = 100;
+
+/**
+ * Batch-hydrates authoritative `CatalogBook` metadata from `public.books` via primary-key
+ * `.in('id', chunk)` lookups (`100` IDs/chunk), warming the shared metadata cache and
+ * falling back gracefully to bundled `FEATURED_HERO_BOOKS` when offline or unmocked.
+ */
+export async function fetchCatalogBooksByIds(
+  supabase: ReturnType<typeof createClient>,
+  bookIds: Iterable<number>
+): Promise<Map<number, CatalogBook>> {
+  const uniqueIds = Array.from(
+    new Set(
+      Array.from(bookIds).filter((id): id is number => Number.isInteger(id) && id > 0)
+    )
+  );
+  const result = new Map<number, CatalogBook>();
+  if (uniqueIds.length === 0) return result;
+
+  try {
+    const booksTable = supabase?.from?.('books');
+    if (booksTable && typeof booksTable.select === 'function') {
+      for (let i = 0; i < uniqueIds.length; i += BOOK_HYDRATION_CHUNK_SIZE) {
+        const chunk = uniqueIds.slice(i, i + BOOK_HYDRATION_CHUNK_SIZE);
+        const selectQuery = booksTable.select(CATALOG_METADATA_COLUMNS);
+        if (!selectQuery || typeof selectQuery.in !== 'function') break;
+        const { data, error } = await selectQuery.in('id', chunk);
+        if (!error && Array.isArray(data)) {
+          const mappedChunk: CatalogBook[] = [];
+          for (const rawRow of data) {
+            if (rawRow && typeof rawRow.id === 'number') {
+              const mapped = mapDatabaseBookToCatalogBook(rawRow as DatabaseBook);
+              result.set(mapped.id, mapped);
+              mappedChunk.push(mapped);
+            }
+          }
+          if (mappedChunk.length > 0) {
+            warmBookMetadataCache(mappedChunk);
+          }
+        }
+      }
+    }
+  } catch {
+    // Fail open: offline or unmocked clients fall back cleanly to local/featured metadata
+  }
+
+  for (const id of uniqueIds) {
+    if (!result.has(id)) {
+      const hero = FEATURED_HERO_BOOKS.find((h) => h.id === id);
+      if (hero) {
+        result.set(id, featuredHeroToCatalogBook(hero));
+      }
+    }
+  }
+
+  return result;
 }
 
 /**

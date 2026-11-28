@@ -261,7 +261,7 @@ describe('BookshelfSpine Component', () => {
           { id: 'shelf-regency', user_id: 'u1', name: 'Regency Classics', is_default: false, is_public: true, created_at: '', updated_at: '' },
         ]}
         cloudBookshelfItems={[
-          { id: 'item-1', bookshelf_id: 'shelf-def', user_id: 'u1', book_id: 1342, book_title: 'Pride and Prejudice', book_authors: ['Jane Austen'], cover_url: null, added_at: '' },
+          { bookshelf_id: 'shelf-def', user_id: 'u1', book_id: 1342, created_at: '' },
         ]}
         userId="u1"
         onMoveBookToShelf={onMoveBookToShelf}

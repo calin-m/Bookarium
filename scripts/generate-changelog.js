@@ -9,6 +9,17 @@ const readmePath = path.join(rootDir, 'README.md');
 // Exhaustive milestone catalog adhering to Keep a Changelog 1.0.0 & SemVer
 const RELEASES = [
   {
+    version: '2.9.94',
+    date: '2026-11-28',
+    title: 'Book Metadata Single Source of Truth, Natural Composite Primary Keys & Native DATE[] Active Dates',
+    sections: {
+      Changed: [
+        '**Book Metadata Single Source of Truth Across User Tables (`supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/adapters/book.adapter.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `src/lib/reader-cloud-sync.ts`, `src/stores/useReaderStore.ts`, `src/app/u/[username]/page.tsx`, `src/app/privacy/page.tsx`)**: Retired `9` duplicated `book_title`, `book_authors`, and `cover_url` snapshot columns across `public.bookshelf_items`, `public.user_favorites`, and `public.reading_progress` (dropping the `3` obsolete snapshot `CHECK` constraints in `schema.sql` & `verify-build.js`), added chunked `O(log N)` primary-key batch hydration (`fetchCatalogBooksByIds`) for cold devices and `/u/[username]` public shelves with offline/withdrawn-ID fallbacks (`Volume #<id>` and no `ON DELETE CASCADE`), eliminated redundant cloud metadata-healing writes from `enrichSavedBooks` and `enrichReadingPositions`, added persisted offline outbox & `cloudBookshelfItems` sanitization (`sanitizeBookshelfOutboxAction`), and updated `/privacy` Section 4 disclosures (`ADR-087`).',
+        '**Natural Composite Primary Keys & Native `DATE[]` Reading Habits (`supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useHabitsStore.ts`, `scripts/generate-architecture-matrix.js`, `README.md`, `docs/DECISIONS.md`)**: Dropped `4` redundant surrogate `id UUID` columns and duplicate `UNIQUE` B-Tree indexes across `public.bookshelf_items` (`PRIMARY KEY (bookshelf_id, book_id)`), `public.reading_progress` (`PRIMARY KEY (user_id, book_id)`), `public.user_book_curation` (`PRIMARY KEY (user_id, book_id)`), and `public.user_reading_habits` (`PRIMARY KEY (user_id)`), simplified `public.enforce_user_row_quota()` and tombstoned shelf deletes to composite `(bookshelf_id, book_id)` keys, and migrated `public.user_reading_habits.active_dates` from `JSONB` string arrays to native `DATE[]` with `COALESCE(array_length(active_dates, 1), 0) <= 5000` and strict client `YYYY-MM-DD` validation (`filterValidIsoDates`) (`ADR-073`, `ADR-087`).',
+      ],
+    },
+  },
+  {
     version: '2.9.93',
     date: '2026-11-28',
     title: 'PostgreSQL Index/RLS Scalability Hardening, Fellowship Identity Normalization & Full-Stack Scalability Governance',

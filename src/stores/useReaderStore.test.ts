@@ -279,17 +279,26 @@ describe('useReaderStore', () => {
 
       vi.advanceTimersByTime(2000);
 
+      expect(useReaderStore.getState().readingPositions[1342]).toMatchObject({
+        bookTitle: 'Pride and Prejudice',
+        bookAuthors: ['Austen, Jane, 1775-1817'],
+        coverUrl: '/api/books/content?id=1342&type=cover',
+      });
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: 'test-user-123',
           book_id: 1342,
-          book_title: 'Pride and Prejudice',
-          book_authors: ['Austen, Jane, 1775-1817'],
-          cover_url: null,
+          current_chapter_index: 0,
           progress_percent: 10,
+          scroll_offset: 1,
+          bookmark_text: null,
         }),
         { onConflict: 'user_id,book_id' }
       );
+      const sentPayload = mockUpsert.mock.calls[0][0] as Record<string, unknown>;
+      expect('book_title' in sentPayload).toBe(false);
+      expect('book_authors' in sentPayload).toBe(false);
+      expect('cover_url' in sentPayload).toBe(false);
     });
 
     it('upgrades stored readingPositions with author lifespans via enrichReadingPositions', () => {
@@ -800,9 +809,10 @@ describe('useReaderStore', () => {
       expect(useReaderStore.getState().getReadingPosition(11)?.bookAuthors).toEqual([
         'Carroll, Lewis, 1832-1898',
       ]);
-      expect(mockUpsert).toHaveBeenCalled();
+      // Normalized reading_progress no longer stores metadata columns -> zero cloud metadata write-back
+      expect(mockUpsert).not.toHaveBeenCalled();
 
-      // 6. enrichReadingPositions syncs healed book_authors back to cloud when user is logged in
+      // 6. enrichReadingPositions enriches local bookAuthors without firing redundant reading_progress upserts
       useReaderStore.setState({
         readingPositions: {
           84: {
@@ -835,7 +845,7 @@ describe('useReaderStore', () => {
       expect(useReaderStore.getState().getReadingPosition(84)?.bookAuthors).toEqual([
         'Shelley, Mary, 1797-1851',
       ]);
-      expect(mockUpsert).toHaveBeenCalled();
+      expect(mockUpsert).not.toHaveBeenCalled();
 
       // 7. enrichReadingPositions heals Anonymous author and missing coverUrl
       useReaderStore.setState({
@@ -1276,7 +1286,7 @@ describe('useReaderStore', () => {
       expect(Array.isArray(firstBatchArg)).toBe(true);
       expect(firstBatchArg).toHaveLength(2);
 
-      // Also verify multi-book enrichReadingPositions batches into 1 upsert call
+      // Verify multi-book enrichReadingPositions updates local state cleanly with zero cloud reading_progress writes
       mockUpsert.mockClear();
       useReaderStore.getState().enrichReadingPositions([
         {
@@ -1291,11 +1301,13 @@ describe('useReaderStore', () => {
         },
       ]);
 
-      await vi.waitFor(() => {
-        expect(mockUpsert).toHaveBeenCalledTimes(1);
-      });
-      expect(Array.isArray(mockUpsert.mock.calls[0][0])).toBe(true);
-      expect(mockUpsert.mock.calls[0][0]).toHaveLength(2);
+      expect(useReaderStore.getState().readingPositions[1342]?.bookAuthors).toEqual([
+        'Austen, Jane, 1775-1817',
+      ]);
+      expect(useReaderStore.getState().readingPositions[84]?.bookAuthors).toEqual([
+        'Shelley, Mary, 1797-1851',
+      ]);
+      expect(mockUpsert).not.toHaveBeenCalled();
       useAuthStore.setState({ user: null });
     });
 
@@ -1740,7 +1752,7 @@ describe('useReaderStore', () => {
       expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
       expect(useReaderStore.getState().readingProgress[11]).toBe(55);
 
-      // 3. enrichReadingPositions retains dirty IDs on failure and clears them on batch and single-book success
+      // 3. enrichReadingPositions enriches local readingPositions without dirtying or upserting reading_progress
       useReaderStore.setState({
         readingPositions: {
           1342: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
@@ -1749,47 +1761,19 @@ describe('useReaderStore', () => {
         readingProgress: { 1342: 10, 84: 10 },
         dirtyPositionBookIds: [],
       });
+      const enrichUpsertSpy = vi.fn().mockResolvedValue({ error: null });
       mockFrom.mockReturnValue({
-        upsert: vi.fn().mockResolvedValue({ error: { message: 'offline' } }),
+        upsert: enrichUpsertSpy,
       });
       useReaderStore.getState().enrichReadingPositions([
         { ...mockBooks[0], id: 1342, authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }] },
         { ...mockBooks[1], id: 84, authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] },
       ]);
-      await vi.waitFor(() => {
-        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([1342, 84]);
-      });
-
-      mockFrom.mockReturnValue({
-        upsert: vi.fn().mockResolvedValue({ error: null }),
-      });
-      useReaderStore.setState({
-        readingPositions: {
-          1342: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
-          84: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
-        },
-      });
-      useReaderStore.getState().enrichReadingPositions([
-        { ...mockBooks[0], id: 1342, authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }] },
-        { ...mockBooks[1], id: 84, authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }] },
+      expect(useReaderStore.getState().readingPositions[1342]?.bookAuthors).toEqual([
+        'Austen, Jane, 1775-1817',
       ]);
-      await vi.waitFor(() => {
-        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
-      });
-
-      // Single-book enrichReadingPositions dedupes already-dirty ID and clears on success
-      useReaderStore.setState({
-        readingPositions: {
-          1342: { chapterIndex: 1, chapterPage: 1, globalPage: 2, lastReadAt: '2026-11-13T18:00:00.000Z' },
-        },
-        dirtyPositionBookIds: [1342],
-      });
-      useReaderStore.getState().enrichReadingPositions([
-        { ...mockBooks[0], id: 1342, authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }] },
-      ]);
-      await vi.waitFor(() => {
-        expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
-      });
+      expect(useReaderStore.getState().dirtyPositionBookIds).toEqual([]);
+      expect(enrichUpsertSpy).not.toHaveBeenCalled();
 
       // Non-dirty local entry with localTime > lastSyncTime is uploaded instead of pruned
       useReaderStore.setState({
@@ -2097,24 +2081,52 @@ describe('useReaderStore', () => {
         data: [
           {
             book_id: 900,
-            book_title: null,
-            book_authors: [],
-            cover_url: null,
             current_chapter_index: 2,
             scroll_offset: 5,
             progress_percent: 40,
             bookmark_text: null,
             last_read_at: '2026-11-27T11:00:00.000Z',
           },
+          {
+            book_id: 905,
+            current_chapter_index: 1,
+            scroll_offset: 3,
+            progress_percent: 20,
+            bookmark_text: null,
+            last_read_at: '2026-11-27T11:05:00.000Z',
+          },
         ],
         error: null,
       });
       const cloudUpsert = vi.fn().mockResolvedValue({ error: null });
-      mockFrom.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ order: orderMock }),
-        }),
-        upsert: cloudUpsert,
+      const booksInSpy = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 905,
+            title: 'Persuasion',
+            authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
+            translators: [],
+            subjects: [],
+            bookshelves: [],
+            languages: ['en'],
+            copyright: false,
+            download_count: 1500,
+          },
+        ],
+        error: null,
+      });
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'books') {
+          return {
+            select: vi.fn().mockReturnValue({ in: booksInSpy }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ order: orderMock }),
+          }),
+          upsert: cloudUpsert,
+        };
       });
 
       await useReaderStore.getState().syncWithCloud('user-meta-heal');
@@ -2125,14 +2137,15 @@ describe('useReaderStore', () => {
         bookTitle: 'Emma',
         bookAuthors: ['Jane Austen'],
       });
-      expect(cloudUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          book_id: 900,
-          book_title: 'Emma',
-          book_authors: ['Jane Austen'],
-        }),
-        { onConflict: 'user_id,book_id' }
-      );
+      expect(booksInSpy).toHaveBeenCalledWith('id', [905]);
+      expect(useReaderStore.getState().readingPositions[905]).toMatchObject({
+        chapterIndex: 1,
+        chapterPage: 3,
+        bookTitle: 'Persuasion',
+        bookAuthors: ['Austen, Jane, 1775-1817'],
+        coverUrl: '/api/books/content?id=905&type=cover',
+      });
+      expect(cloudUpsert).not.toHaveBeenCalled();
     });
   });
 });

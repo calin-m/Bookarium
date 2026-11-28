@@ -2,9 +2,9 @@
  * @module src/stores/useReaderStore
  * @scope Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
  * @invariant Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
- * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`), never replace authentic titles with placeholder titles, and push locally recovered missing `book_title`/`book_authors` back to `reading_progress` during `syncWithCloud` (`shouldHealRemoteMetadata`).
+ * @invariant Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; persist strictly normalized coordinate columns to `public.reading_progress`, hydrate cold-device position metadata via `fetchCatalogBooksByIds`, and never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`) or replace authentic titles with placeholders.
  * @invariant Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
- * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
+ * @rationale Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses multi-volume cloud pushes into one conflict-resolved lean coordinate batch, eliminates duplicated metadata writes and runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
  * @adr ADR-003, ADR-014, ADR-068, ADR-080, ADR-087
  */
 
@@ -23,7 +23,7 @@ import { STORAGE_KEYS } from '@/config/site-config';
 import { READER_FONT_CONFIG, resolveDefaultReaderFontSize } from '@/config/reader-config';
 import { safeLocalStorage } from '@/lib/safe-storage';
 import { useHasMounted } from '@/hooks/useHasMounted';
-import { normalizeCloudCoverUrl } from '@/lib/adapters/book.adapter';
+import { fetchCatalogBooksByIds } from '@/lib/catalog/supabase-provider';
 import { resolveBookCoverUrl } from '@/lib/utils';
 import { isPlaceholderAuthor, isPlaceholderTitle } from '@/lib/book-metadata';
 import {
@@ -120,9 +120,6 @@ interface ReadingProgressCloudRowPair {
   basePayload: {
     user_id: string;
     book_id: number;
-    book_title: string | null;
-    book_authors: string[];
-    cover_url: string | null;
     current_chapter_index: number;
     progress_percent: number;
     scroll_offset: number;
@@ -131,9 +128,6 @@ interface ReadingProgressCloudRowPair {
   fullPayload: {
     user_id: string;
     book_id: number;
-    book_title: string | null;
-    book_authors: string[];
-    cover_url: string | null;
     current_chapter_index: number;
     progress_percent: number;
     scroll_offset: number;
@@ -159,9 +153,6 @@ function buildReadingProgressCloudRow(
   const basePayload = {
     user_id: userId,
     book_id: bookId,
-    book_title: position.bookTitle || null,
-    book_authors: position.bookAuthors || [],
-    cover_url: normalizeCloudCoverUrl(position.coverUrl),
     current_chapter_index: position.chapterIndex,
     progress_percent: progress,
     scroll_offset: encodedScrollOffset,
@@ -503,7 +494,6 @@ export const useReaderStore = create<ReaderState>()(
         const { readingPositions } = get();
         let hasChanges = false;
         const nextPositions = { ...readingPositions };
-        const enrichedBookIds: number[] = [];
 
         for (const fresh of freshBooks) {
           if (!fresh || typeof fresh.id !== 'number') continue;
@@ -534,7 +524,6 @@ export const useReaderStore = create<ReaderState>()(
             needsCoverUpdate
           ) {
             hasChanges = true;
-            enrichedBookIds.push(fresh.id);
             nextPositions[fresh.id] = {
               ...pos,
               bookTitle: needsTitleEnrichment
@@ -547,69 +536,7 @@ export const useReaderStore = create<ReaderState>()(
         }
 
         if (hasChanges) {
-          const currentUserId = useAuthStore.getState().user?.id;
           set({ readingPositions: nextPositions });
-          if (currentUserId) {
-            if (enrichedBookIds.length === 1) {
-              const bId = enrichedBookIds[0];
-              set((state) => ({
-                dirtyPositionBookIds: state.dirtyPositionBookIds.includes(bId)
-                  ? state.dirtyPositionBookIds
-                  : [...state.dirtyPositionBookIds, bId],
-              }));
-              void get().syncReadingPositionToCloud(bId, nextPositions[bId], currentUserId);
-            } else if (enrichedBookIds.length > 1) {
-              const progressMap = get().readingProgress;
-              const uploadedSnapshots: Array<{ bookId: number; lastReadAt?: string }> = [];
-              const batchRows = enrichedBookIds
-                .map((bId) => {
-                  const built = buildReadingProgressCloudRow(
-                    bId,
-                    nextPositions[bId],
-                    progressMap[bId] ?? 0,
-                    currentUserId
-                  );
-                  if (built) {
-                    uploadedSnapshots.push({
-                      bookId: bId,
-                      lastReadAt: nextPositions[bId].lastReadAt,
-                    });
-                  }
-                  return built;
-                })
-                .filter((row): row is ReadingProgressCloudRowPair => row !== null);
-              if (batchRows.length > 0) {
-                const batchBookIds = uploadedSnapshots.map((entry) => entry.bookId);
-                set((state) => ({
-                  dirtyPositionBookIds: Array.from(
-                    new Set([...state.dirtyPositionBookIds, ...batchBookIds])
-                  ),
-                }));
-                void (async () => {
-                  try {
-                    const supabase = createClient();
-                    if (
-                      shouldVerifyCloudSession(supabase) &&
-                      !(await verifyActiveCloudSession(supabase, currentUserId))
-                    ) {
-                      return;
-                    }
-                    const uploaded = await upsertReadingProgressBatch(supabase, batchRows);
-                    if (uploaded) {
-                      set((state) => ({
-                        dirtyPositionBookIds: clearUploadedDirtyPositions(
-                          state,
-                          uploadedSnapshots
-                        ),
-                      }));
-                    }
-                  } catch {
-                    // Silent non-blocking fallback; dirtyPositionBookIds retains enriched IDs for next sync
-                  }
-                })();
-              }
-            }
-          }
         }
       },
 
@@ -666,9 +593,23 @@ export const useReaderStore = create<ReaderState>()(
             if (isGhostCloudRow(data)) return null;
 
             const existingLocal = get().readingPositions[bookId];
+            const rowRecord = data as unknown as Record<string, unknown>;
+            const hasLegacyRowTitle = hasAuthenticPositionTitle(
+              typeof rowRecord.book_title === 'string' ? rowRecord.book_title : null
+            );
+            const hasAuthenticLocal = Boolean(
+              existingLocal &&
+                hasAuthenticPositionTitle(existingLocal.bookTitle) &&
+                hasAuthenticPositionAuthors(existingLocal.bookAuthors)
+            );
+            const hydratedMap =
+              !hasLegacyRowTitle && !hasAuthenticLocal
+                ? await fetchCatalogBooksByIds(supabase, [bookId])
+                : new Map<number, CatalogBook>();
             const { position: remotePosition, progress } = decodeRemoteReadingPosition(
-              data,
-              existingLocal
+              rowRecord,
+              existingLocal,
+              hydratedMap.get(bookId)
             );
             const remoteTime = remotePosition.lastReadAt
               ? new Date(remotePosition.lastReadAt).getTime()
@@ -787,6 +728,32 @@ export const useReaderStore = create<ReaderState>()(
                   .lte('scroll_offset', 1);
               }
 
+              // Batch-hydrate cold-device book metadata from public.books in one PK query
+              const preSyncPositions = get().readingPositions;
+              const preSyncTombstones = new Set(get().deletedPositionBookIds);
+              const idsToHydrate = new Set<number>();
+              for (const row of data) {
+                if (isGhostCloudRow(row) || preSyncTombstones.has(row.book_id)) continue;
+                const rowRecord = row as unknown as Record<string, unknown>;
+                const hasLegacyRowTitle = hasAuthenticPositionTitle(
+                  typeof rowRecord.book_title === 'string' ? rowRecord.book_title : null
+                );
+                if (hasLegacyRowTitle) continue;
+                const localPos = preSyncPositions[row.book_id];
+                const hasAuthenticLocal = Boolean(
+                  localPos &&
+                    hasAuthenticPositionTitle(localPos.bookTitle) &&
+                    hasAuthenticPositionAuthors(localPos.bookAuthors)
+                );
+                if (!hasAuthenticLocal) {
+                  idsToHydrate.add(row.book_id);
+                }
+              }
+              const hydratedBooksMap =
+                idsToHydrate.size > 0
+                  ? await fetchCatalogBooksByIds(supabase, idsToHydrate)
+                  : new Map<number, CatalogBook>();
+
               const healedInCloud: Array<{ bookId: number; position: BookReadingPosition }> = [];
               const remoteBookIds = new Set<number>();
               let maxRemoteTimeMs = 0;
@@ -839,21 +806,18 @@ export const useReaderStore = create<ReaderState>()(
                     : 0;
                   const localTime = Number.isFinite(rawLocalTime) ? rawLocalTime : 0;
 
-                  // Reconcile via Last-Write-Wins (LWW) while preserving enriched local author lifespans
+                  // Reconcile via Last-Write-Wins (LWW) while hydrating authoritative metadata from public.books
                   if (!localPos || remoteTime >= localTime) {
                     const pendingTimer = progressDebounceTimers.get(bookId);
                     if (pendingTimer) {
                       clearTimeout(pendingTimer);
                       progressDebounceTimers.delete(bookId);
                     }
-                    const { position: mergedPosition, progress, shouldHealRemoteMetadata } =
-                      decodeRemoteReadingPosition(row, localPos);
+                    const { position: mergedPosition, progress } =
+                      decodeRemoteReadingPosition(row, localPos, hydratedBooksMap.get(bookId));
                     nextPositions[bookId] = mergedPosition;
                     nextProgress[bookId] = progress;
                     syncedRemoteSnapshots.push({ bookId, lastReadAt: localPos?.lastReadAt });
-                    if (shouldHealRemoteMetadata) {
-                      healedInCloud.push({ bookId, position: mergedPosition });
-                    }
                   } else {
                     // Local position is newer than remote (e.g. read offline) -> push local to cloud
                     healedInCloud.push({ bookId, position: localPos });

@@ -242,10 +242,11 @@ describe('bookshelf-cloud-sync', () => {
           bookshelf_id: 's1',
           user_id: 'u1',
           book_id: 1342,
+          // Simulate legacy pre-Tier-2B persisted outbox metadata that must be stripped before upsert
           book_title: 'Pride',
           book_authors: ['Austen'],
           cover_url: null,
-        },
+        } as unknown as { bookshelf_id: string; user_id: string; book_id: number },
       },
       {
         id: 'a3',
@@ -257,7 +258,7 @@ describe('bookshelf-cloud-sync', () => {
           book_title: 'Pride',
           book_authors: ['Austen'],
           cover_url: null,
-        },
+        } as unknown as { user_id: string; book_id: number },
       },
       {
         id: 'a4',
@@ -288,11 +289,11 @@ describe('bookshelf-cloud-sync', () => {
     expect(delFavEqUser).toHaveBeenCalledWith('user_id', 'u1');
     expect(delFavEqBook).toHaveBeenCalledWith('book_id', 1342);
     expect(outboxUpsertSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ bookshelf_id: 's1', book_id: 1342 }),
+      { bookshelf_id: 's1', user_id: 'u1', book_id: 1342 },
       { onConflict: 'bookshelf_id,book_id' }
     );
     expect(outboxUpsertSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'u1', book_id: 1342, book_title: 'Pride' }),
+      { user_id: 'u1', book_id: 1342 },
       { onConflict: 'user_id,book_id' }
     );
     expect(outboxUpsertSpy).toHaveBeenCalledWith(
@@ -363,7 +364,9 @@ describe('bookshelf-cloud-sync', () => {
             }),
           }),
           delete: () => ({
-            eq: () => Promise.resolve({ error: null }),
+            eq: () => ({
+              eq: () => Promise.resolve({ error: null }),
+            }),
           }),
           upsert: () => Promise.resolve({ error: null }),
         };
@@ -499,14 +502,10 @@ describe('bookshelf-cloud-sync', () => {
     ];
     state.cloudBookshelfItems = [
       {
-        id: 'item-1',
         bookshelf_id: 's-def',
         user_id: 'u1',
         book_id: 1342,
-        book_title: 'Pride',
-        book_authors: [],
-        cover_url: null,
-        added_at: '',
+        created_at: '',
       },
     ];
     state.savedBooks = [
@@ -912,9 +911,6 @@ describe('bookshelf-cloud-sync', () => {
           payload: {
             user_id: 'u-cd',
             book_id: 11,
-            book_title: 'Alice',
-            book_authors: ['Carroll'],
-            cover_url: null,
           },
           timestamp: new Date().toISOString(),
         },
@@ -933,9 +929,6 @@ describe('bookshelf-cloud-sync', () => {
           payload: {
             user_id: 'u-cd',
             book_id: 84,
-            book_title: 'Frankenstein',
-            book_authors: ['Shelley'],
-            cover_url: null,
           },
           timestamp: new Date().toISOString(),
         },
@@ -999,14 +992,10 @@ describe('bookshelf-cloud-sync', () => {
     state.activeBookshelfId = 's-sole';
     state.cloudBookshelfItems = [
       {
-        id: 'item-sole',
         bookshelf_id: 's-sole',
         user_id: 'u-del',
         book_id: 1342,
-        book_title: 'Pride and Prejudice',
-        book_authors: ['Jane Austen'],
-        cover_url: null,
-        added_at: '',
+        created_at: '',
       },
     ];
 
@@ -1041,5 +1030,109 @@ describe('bookshelf-cloud-sync', () => {
     ]);
     expect(state.cloudBookshelves).toHaveLength(0);
     expect(state.activeBookshelfId).toBeNull();
+  });
+
+  it('batch-hydrates cold-device lean bookshelf_items and user_favorites from public.books and falls back gracefully for withdrawn IDs', async () => {
+    const { sanitizeBookshelfOutboxAction } = await import('./bookshelf-cloud-sync');
+    const cleanInsert = sanitizeBookshelfOutboxAction({
+      id: 's1',
+      type: 'INSERT_BOOK',
+      timestamp: '',
+      payload: {
+        bookshelf_id: 'shelf-1',
+        user_id: 'u-cold',
+        book_id: 84,
+        book_title: 'Legacy Title',
+        book_authors: ['Legacy Author'],
+        cover_url: 'https://www.gutenberg.org/x.jpg',
+      } as unknown as { bookshelf_id: string; user_id: string; book_id: number },
+    });
+    expect(cleanInsert.payload).toEqual({
+      bookshelf_id: 'shelf-1',
+      user_id: 'u-cold',
+      book_id: 84,
+    });
+
+    const booksInSpy = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 84,
+          title: 'Frankenstein',
+          authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+          translators: [],
+          subjects: ['Gothic'],
+          bookshelves: [],
+          languages: ['en'],
+          copyright: false,
+          download_count: 15000,
+        },
+      ],
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'bookshelves') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ id: 'shelf-1', user_id: 'u-cold', name: 'General', is_default: true }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'bookshelf_items') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [
+                    { bookshelf_id: 'shelf-1', user_id: 'u-cold', book_id: 84, created_at: '' },
+                    { bookshelf_id: 'shelf-1', user_id: 'u-cold', book_id: 888888, created_at: '' },
+                  ],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_favorites') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () =>
+                Promise.resolve({
+                  data: [{ user_id: 'u-cold', book_id: 84, created_at: '' }],
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_book_curation') {
+        return {
+          select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+        };
+      }
+      if (table === 'books') {
+        return {
+          select: () => ({ in: booksInSpy }),
+        };
+      }
+      return {};
+    });
+
+    await executeBookshelfCloudSync('u-cold', get, set);
+
+    expect(booksInSpy).toHaveBeenCalledTimes(1);
+    expect(booksInSpy).toHaveBeenCalledWith('id', [84, 888888]);
+    expect(state.savedBooks.find((b) => b.id === 84)?.title).toBe('Frankenstein');
+    expect(state.savedBooks.find((b) => b.id === 84)?.authors[0].death_year).toBe(1851);
+    expect(state.savedBooks.find((b) => b.id === 888888)?.title).toBe('Volume #888888');
+    expect(state.favoriteBooks.find((b) => b.id === 84)?.title).toBe('Frankenstein');
   });
 });

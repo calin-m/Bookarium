@@ -1,10 +1,10 @@
 /**
  * @module src/stores/useHabitsStore
  * @scope Reading streak telemetry (`MIN_STREAK_DURATION_SECONDS = 300`), daily activity calendar, annual reading goal tracking, and dual reading vs. listening immersion counters.
- * @invariant Require `>= 300` active daily immersion seconds to unlock a streak day, coalesce syncs via `coalesceInFlightByUser`, and skip redundant `user_reading_habits` upserts when `isRemoteAlreadyConverged` holds.
+ * @invariant Require `>= 300` active daily immersion seconds to unlock a streak day, validate calendar entries as strict `YYYY-MM-DD` strings (`filterValidIsoDates`) before native PostgreSQL `DATE[]` upserts, coalesce syncs via `coalesceInFlightByUser`, and skip redundant `user_reading_habits` upserts when `isRemoteAlreadyConverged` holds.
  * @invariant Bypass the `15,000ms` passive mount cooldown (`lastHabitsSyncByUser`) whenever debounce timers or dirty updates are pending, resetting timers cleanly on factory resets.
- * @rationale Skipping converged no-op upserts cuts redundant Postgres writes across navigation/account mounts while preserving monotonically merged dates and active immersion totals.
- * @adr ADR-027, ADR-029, ADR-032, ADR-080
+ * @rationale Skipping converged no-op upserts cuts redundant Postgres writes across navigation/account mounts while strict ISO date filtering protects native `DATE[]` storage against malformed local calendar strings.
+ * @adr ADR-027, ADR-029, ADR-032, ADR-080, ADR-087
  */
 
 import { create } from 'zustand';
@@ -32,6 +32,14 @@ import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
 
 export const MIN_STREAK_DURATION_SECONDS = 300; // 5 minutes of active immersion required for daily streak credit
+const ISO_CALENDAR_DATE_REGEX = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+function filterValidIsoDates(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (d): d is string => typeof d === 'string' && ISO_CALENDAR_DATE_REGEX.test(d)
+  );
+}
 
 export interface HabitsState {
   annualGoal: number;
@@ -246,7 +254,7 @@ export const useHabitsStore = create<HabitsState>()(
               }
 
               const localState = get();
-              let mergedDates = [...localState.activeDates];
+              let mergedDates = filterValidIsoDates(localState.activeDates);
               let mergedReadingSeconds = localState.totalReadingSeconds || 0;
               let mergedListeningSeconds = localState.totalListeningSeconds || 0;
               let mergedGoal = localState.annualGoal;
@@ -255,9 +263,7 @@ export const useHabitsStore = create<HabitsState>()(
               let remoteDates: string[] = [];
 
               if (data) {
-                remoteDates = Array.isArray(data.active_dates)
-                  ? data.active_dates.filter((d): d is string => typeof d === 'string')
-                  : [];
+                remoteDates = filterValidIsoDates(data.active_dates);
                 const dateSet = new Set<string>([...mergedDates, ...remoteDates]);
                 mergedDates = Array.from(dateSet).sort();
                 mergedReadingSeconds = Math.max(

@@ -191,7 +191,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Consistent placeholder detection across Reader, Bookshelf, Cloud Sync, and IndexedDB is foundational to preventing both metadata loss and false non-US `HTTP 451` copyright blocks.
 - **Governing Decisions (`@adr`)**: [ADR-016](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-074](DECISIONS.md)
-- **AST Blast Radius**: 21 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
+- **AST Blast Radius**: 23 runtime, 0 type-only ([`src/app/page.tsx`](../src/app/page.tsx), [`src/app/read/[id]/layout.tsx`](../src/app/read/[id]/layout.tsx), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/book-metadata.test.ts`](../src/lib/book-metadata.test.ts) (19 tests)
 
@@ -212,14 +212,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Supabase bi-directional synchronization and offline outbox engine for `bookshelves`, `bookshelf_items`, `user_favorites`, and `user_book_curation`.
 - **Behavioral Invariants (`@invariant`)**:
-  - Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
-  - Preserve richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
+  - Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), strip retired bibliographic columns from persisted `INSERT_BOOK` / `UPSERT_FAVORITE` outbox actions (`sanitizeBookshelfOutboxAction`) prior to `.upsert()`, guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
+  - Hydrate missing cold-device book metadata from `public.books` in one batched primary-key query (`fetchCatalogBooksByIds`) while preserving richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal`, delete tombstoned shelf items via composite `(bookshelf_id, book_id)` keys, and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
 - **Design Rationale (`@rationale`)**:
-  - Single-commit atomic state reconciliation plus snapshot-safe dirty-outbox queues prevent offline additions or custom shelf moves from flickering or being overwritten by concurrent pulls.
-- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Single-commit atomic state reconciliation, batched `public.books` hydration, and sanitized lean outbox queues eliminate duplicated shelf/favorite metadata columns without breaking returning offline PWAs or withdrawn volume IDs.
+- **Governing Decisions (`@adr`)**: [ADR-005](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 1 runtime, 0 type-only ([`src/stores/useBookshelfStore.ts`](../src/stores/useBookshelfStore.ts))
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.user_book_curation`, `public.user_favorites`
-- **Test Contract**: [`src/lib/bookshelf-cloud-sync.test.ts`](../src/lib/bookshelf-cloud-sync.test.ts) (13 tests)
+- **Test Contract**: [`src/lib/bookshelf-cloud-sync.test.ts`](../src/lib/bookshelf-cloud-sync.test.ts) (14 tests)
 
 #### [`src/lib/catalog/query-parser.ts`](../src/lib/catalog/query-parser.ts) *(Tier-1 Protected)*
 
@@ -235,7 +235,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 #### [`src/lib/catalog/supabase-provider.ts`](../src/lib/catalog/supabase-provider.ts) *(Tier-1 Protected)*
 
-- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 9-column metadata projection, deterministic R2 format & media_type synthesis, 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
+- **Intended Scope (`@scope`)**: Authoritative Supabase PostgreSQL catalog provider with GIN full-text search, pre-computed lifespan filtering, 9-column metadata projection, deterministic R2 format & media_type synthesis, batched primary-key metadata hydration (`fetchCatalogBooksByIds`), 2-spread quote projections, planner-safe counts, bounded L4 LRU caches (`__bookariumCatalogQueryCache`, `__bookariumTranslationCache`), and per-key in-flight request coalescing.
 - **Behavioral Invariants (`@invariant`)**:
   - Never chain `.order('id', { ascending: true })` onto `.order('download_count', { ascending: false })` in SQL across the 78k-row `public.books` table; perform deterministic `id ASC` tie-breaking in memory in JS.
   - Never combine `.neq('quotes', '[]')` with `ORDER BY download_count DESC` without a Primary Key `.in('id', chunk)` bound (`books_pkey`); cap quote pool transfers at `DEFAULT_QUOTE_POOL_LIMIT` (`48`) using `quote0:quotes->0, quote1:quotes->1`, strip 1-item bibliographic sentinel rows, short-circuit unsupported `?mime_type=` requests (`isSupportedR2MimeTypeFilter`) before touching PostgreSQL, share `fetchQuoteEnrichedPool` across countries while normalizing `searchBooks` and `getBookTranslations` L4 keys by `jurisdictionRule` (cloning caller `clientCountry` without caching `getBookTranslations` DB errors), and coalesce concurrent cold misses per key cleanly.
@@ -243,9 +243,9 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Design Rationale (`@rationale`)**:
   - Single-column `idx_books_download_count` has `77,500+` tied zero-download rows, while PostgREST `count: 'estimated'` executes a duplicate `LIMIT 1001` scan (`pgrst_source_count`) whenever fewer than 1,001 rows match selective filters; omitting the retired `formats` and constant `media_type` columns from `CATALOG_METADATA_COLUMNS` and short-circuiting unsupported MIME filters before DB queries prevents backfill amplification and cuts Supabase catalog egress cleanly.
 - **Governing Decisions (`@adr`)**: [ADR-037](DECISIONS.md), [ADR-038](DECISIONS.md), [ADR-043](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-086](DECISIONS.md), [ADR-087](DECISIONS.md)
-- **AST Blast Radius**: 7 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), …)
+- **AST Blast Radius**: 10 runtime, 0 type-only ([`src/app/api/books/content/metadata-cache.ts`](../src/app/api/books/content/metadata-cache.ts), [`src/app/api/books/route.ts`](../src/app/api/books/route.ts), [`src/app/api/books/translations/route.ts`](../src/app/api/books/translations/route.ts), [`src/app/read/[id]/reader-layout-utils.ts`](../src/app/read/[id]/reader-layout-utils.ts), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.book_translations`, `public.books` · Env Vars: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`
-- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (41 tests)
+- **Test Contract**: [`src/lib/catalog/supabase-provider.test.ts`](../src/lib/catalog/supabase-provider.test.ts) (42 tests)
 
 #### [`src/lib/copyright-engine.ts`](../src/lib/copyright-engine.ts) *(Tier-1 Protected)*
 
@@ -457,10 +457,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Serialization, fractional row-bookmark decoding, synthetic Page-1 ghost detection, position metadata extraction, and lifespan-preserving reconciliation for `public.reading_progress`.
 - **Behavioral Invariants (`@invariant`)**:
   - Encode row bookmark offsets fractionally on `scroll_offset` (`page + row / 1000`) alongside reflow-anchored `bookmark_text`, and identify empty Page-1 rows cleanly via `isGhostReadingPosition` / `isGhostCloudRow`.
-  - Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), preserve local titles/authors when remote `public.reading_progress` rows lack them (`shouldHealRemoteMetadata`), and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
+  - Reject placeholder titles/authors (`hasAuthenticPositionTitle`, `hasAuthenticPositionAuthors`), hydrate lean `public.reading_progress` rows from authoritative `public.books` metadata (`hydratedBook`) while preserving local titles/lifespans when offline, and keep embedded contributor lifespans (`hasEmbeddedLifespans`) during cloud merges (`extractVerifiedAuthors`).
 - **Design Rationale (`@rationale`)**:
-  - Shared row encoding, zero-cycle metadata extraction, and ghost classification keep `public.reading_progress` titles/authors intact across direct navigation, offline reads, and multi-device syncs without `HTTP 451` lifespan regressions.
-- **Governing Decisions (`@adr`)**: [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Shared row encoding, zero-cycle metadata extraction, and authoritative `public.books` hydration keep `readingPositions` titles/authors intact across cold devices and offline reads without duplicating metadata columns in `public.reading_progress` or triggering `HTTP 451` lifespan regressions.
+- **Governing Decisions (`@adr`)**: [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-070](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 6 runtime, 2 type-only ([`src/components/reader/BookReaderClient.tsx`](../src/components/reader/BookReaderClient.tsx), [`src/hooks/reader/useContinueReadingLedger.ts`](../src/hooks/reader/useContinueReadingLedger.ts), [`src/hooks/reader/useReaderHabitTelemetry.ts`](../src/hooks/reader/useReaderHabitTelemetry.ts), [`src/hooks/useCollectionAutoHeal.ts`](../src/hooks/useCollectionAutoHeal.ts), [`src/hooks/reader/useReaderExitBookmark.ts`](../src/hooks/reader/useReaderExitBookmark.ts) *(type)*, [`src/hooks/reader/useReaderSession.ts`](../src/hooks/reader/useReaderSession.ts) *(type)*, …)
 - **Cross-Boundary Coupling**: Self-contained / pure domain computation
 - **Test Contract**: [`src/lib/reader-cloud-sync.test.ts`](../src/lib/reader-cloud-sync.test.ts) (3 tests)
@@ -642,10 +642,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Personal library state (saved volumes, queue, favorites, custom named shelves, ratings, statuses), tombstone tracking, and offline outbox orchestration.
 - **Behavioral Invariants (`@invariant`)**:
-  - Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`) while scrubbing them to `null` in `cloudBookshelfItems` (`normalizeCloudCoverUrl`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
-  - Route all Supabase persistence through `bookshelf-cloud-sync.ts` outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
+  - Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`), scrub retired bibliographic fields from persisted `outbox` and `cloudBookshelfItems` entries on rehydration (`sanitizeBookshelfOutboxAction`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
+  - Route all Supabase persistence through `bookshelf-cloud-sync.ts` lean relational outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
 - **Design Rationale (`@rationale`)**:
-  - Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and non-blocking cover normalization heals pre-R2 persisted snapshots.
+  - Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and stripping retired metadata columns from persisted outboxes keeps returning offline PWAs 100% compatible.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-069](DECISIONS.md), [ADR-071](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 26 runtime, 0 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/HighlightBioPickerModal.tsx`](../src/components/account/HighlightBioPickerModal.tsx), …)
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.user_book_curation`, `public.user_favorites` · Signals: emits `CustomEvent:bookarium:offline-updated` · Storage/Cookies: `bookarium-bookshelf-storage`
@@ -668,14 +668,14 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 
 - **Intended Scope (`@scope`)**: Reading streak telemetry (`MIN_STREAK_DURATION_SECONDS = 300`), daily activity calendar, annual reading goal tracking, and dual reading vs. listening immersion counters.
 - **Behavioral Invariants (`@invariant`)**:
-  - Require `>= 300` active daily immersion seconds to unlock a streak day, coalesce syncs via `coalesceInFlightByUser`, and skip redundant `user_reading_habits` upserts when `isRemoteAlreadyConverged` holds.
+  - Require `>= 300` active daily immersion seconds to unlock a streak day, validate calendar entries as strict `YYYY-MM-DD` strings (`filterValidIsoDates`) before native PostgreSQL `DATE[]` upserts, coalesce syncs via `coalesceInFlightByUser`, and skip redundant `user_reading_habits` upserts when `isRemoteAlreadyConverged` holds.
   - Bypass the `15,000ms` passive mount cooldown (`lastHabitsSyncByUser`) whenever debounce timers or dirty updates are pending, resetting timers cleanly on factory resets.
 - **Design Rationale (`@rationale`)**:
-  - Skipping converged no-op upserts cuts redundant Postgres writes across navigation/account mounts while preserving monotonically merged dates and active immersion totals.
-- **Governing Decisions (`@adr`)**: [ADR-027](DECISIONS.md), [ADR-029](DECISIONS.md), [ADR-032](DECISIONS.md), [ADR-080](DECISIONS.md)
+  - Skipping converged no-op upserts cuts redundant Postgres writes across navigation/account mounts while strict ISO date filtering protects native `DATE[]` storage against malformed local calendar strings.
+- **Governing Decisions (`@adr`)**: [ADR-027](DECISIONS.md), [ADR-029](DECISIONS.md), [ADR-032](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 7 runtime, 1 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountHabitsCard.tsx`](../src/components/account/AccountHabitsCard.tsx), [`src/lib/accolades-engine.ts`](../src/lib/accolades-engine.ts) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.user_reading_habits` · Storage/Cookies: `bookarium-habits-storage`
-- **Test Contract**: [`src/stores/useHabitsStore.test.ts`](../src/stores/useHabitsStore.test.ts) (17 tests)
+- **Test Contract**: [`src/stores/useHabitsStore.test.ts`](../src/stores/useHabitsStore.test.ts) (18 tests)
 
 #### [`src/stores/useJurisdictionStore.ts`](../src/stores/useJurisdictionStore.ts) *(Tier-2 Protected)*
 
@@ -708,10 +708,10 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Intended Scope (`@scope`)**: Focus Reader persisted typography/theme state, reflow-safe reading positions, silk row-bookmark persistence, and batched `reading_progress` cloud reconciliation.
 - **Behavioral Invariants (`@invariant`)**:
   - Suppress and scrub synthetic `0%` Page-1 ghost coordinates (`isGhostReadingPosition` / `isGhostCloudRow`) from local dirty tracking and cloud writes while preserving explicit user `'finished'` statuses, and normalize persisted `readingPositions[*].coverUrl` away from legacy Gutenberg URLs (`resolveBookCoverUrl`) during save, enrichment, and rehydration.
-  - Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`), never replace authentic titles with placeholder titles, and push locally recovered missing `book_title`/`book_authors` back to `reading_progress` during `syncWithCloud` (`shouldHealRemoteMetadata`).
+  - Track dirty edits via `dirtyPositionBookIds` and clear uploaded IDs (`clearUploadedDirtyPositions`) before pruning stale non-dirty cloud deletions; persist strictly normalized coordinate columns to `public.reading_progress`, hydrate cold-device position metadata via `fetchCatalogBooksByIds`, and never erase authentic contributor lifespans (`hasEmbeddedLifespans` / `isPlaceholderAuthor`) or replace authentic titles with placeholders.
   - Batch multi-volume `reading_progress` synchronization via `upsertReadingProgressBatch` and cancel pending `progressDebounceTimers` whenever a newer cloud bookmark is adopted.
 - **Design Rationale (`@rationale`)**:
-  - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses 34+ parallel HTTP upserts into one conflict-resolved batch, eliminates runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
+  - Eliminates mount-reflow bookmark overwrites (`aad64bf`), collapses multi-volume cloud pushes into one conflict-resolved lean coordinate batch, eliminates duplicated metadata writes and runtime Gutenberg cover hotlinking on hydrated bookmarks, and prevents stale tabs from resurrecting deleted bookmarks.
 - **Governing Decisions (`@adr`)**: [ADR-003](DECISIONS.md), [ADR-014](DECISIONS.md), [ADR-068](DECISIONS.md), [ADR-080](DECISIONS.md), [ADR-087](DECISIONS.md)
 - **AST Blast Radius**: 28 runtime, 21 type-only ([`src/app/account/page.tsx`](../src/app/account/page.tsx), [`src/app/page.tsx`](../src/app/page.tsx), [`src/app/u/[username]/page.tsx`](../src/app/u/[username]/page.tsx), [`src/components/account/AccountAccoladesCard.tsx`](../src/components/account/AccountAccoladesCard.tsx), [`src/components/account/AccountPreferencesSection.tsx`](../src/components/account/AccountPreferencesSection.tsx) *(type)*, [`src/components/account/AccountTypographySubPanel.tsx`](../src/components/account/AccountTypographySubPanel.tsx) *(type)*, …)
 - **Cross-Boundary Coupling**: DB Tables: `public.reading_progress` · Storage/Cookies: `bookarium-reader-preferences`
@@ -988,7 +988,7 @@ Annotate a module header (above imports or tagged `@module`) or an exported func
 - **Governing Decisions (`@adr`)**: [ADR-033](DECISIONS.md), [ADR-053](DECISIONS.md)
 - **AST Blast Radius**: Entrypoint / zero static importers
 - **Cross-Boundary Coupling**: DB Tables: `public.bookshelf_items`, `public.bookshelves`, `public.profiles`, `public.user_accolades`, `public.user_reading_habits`
-- **Test Contract**: [`src/app/u/[username]/page.test.tsx`](../src/app/u/[username]/page.test.tsx) (10 tests)
+- **Test Contract**: [`src/app/u/[username]/page.test.tsx`](../src/app/u/[username]/page.test.tsx) (11 tests)
 
 #### [`src/app/u/[username]/profile-layout-utils.ts`](../src/app/u/[username]/profile-layout-utils.ts) *(Tier-3 Protected)*
 
@@ -1234,8 +1234,8 @@ Unannotated modules ranked automatically by AST **fan-in blast radius** and **cr
 | `30` | [`src/components/ui/CursorTooltip.tsx`](../src/components/ui/CursorTooltip.tsx) | UI & Feature Components | `11` / `0` | Signals: emits `CustomEvent:bookarium:book-link-copied`; listens `CustomEvent:bookarium:book-link-copied` |
 | `26` | [`src/lib/scroll-utils.ts`](../src/lib/scroll-utils.ts) | Domain Engines & Adapters | `11` / `0` | Pure / internal |
 | `22` | [`src/types/database.types.ts`](../src/types/database.types.ts) | Config & Type Contracts | `0` / `22` | Pure / internal |
-| `20` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `6` / `0` | API Calls: `/api/books/content` |
 | `18` | [`src/config/reader-config.ts`](../src/config/reader-config.ts) | Config & Type Contracts | `9` / `0` | Pure / internal |
+| `18` | [`src/lib/adapters/book.adapter.ts`](../src/lib/adapters/book.adapter.ts) | Domain Engines & Adapters | `5` / `0` | API Calls: `/api/books/content` |
 | `16` | [`src/components/presentation/Navbar.tsx`](../src/components/presentation/Navbar.tsx) | UI & Feature Components | `6` / `0` | Storage/Cookies: `bookarium-auth-hint` |
 | `16` | [`src/components/ui/ConfirmActionModal.tsx`](../src/components/ui/ConfirmActionModal.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |
 | `16` | [`src/components/ui/Select.tsx`](../src/components/ui/Select.tsx) | UI & Feature Components | `8` / `0` | Pure / internal |

@@ -188,20 +188,15 @@ CREATE POLICY "Users can delete their own bookshelves"
 -- 3. Bookshelf Items Table
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.bookshelf_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bookshelf_id UUID NOT NULL REFERENCES public.bookshelves(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   book_id INTEGER NOT NULL,
-  book_title TEXT NOT NULL,
-  book_authors JSONB NOT NULL DEFAULT '[]'::jsonb,
-  cover_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(bookshelf_id, book_id)
+  PRIMARY KEY (bookshelf_id, book_id)
 );
 
 -- Idempotent column additions for existing installations
 ALTER TABLE public.bookshelf_items
-  ADD COLUMN IF NOT EXISTS cover_url TEXT,
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_bookshelf_items_user_id
@@ -286,9 +281,6 @@ CREATE POLICY "Users can delete their own bookshelf items"
 CREATE TABLE IF NOT EXISTS public.user_favorites (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   book_id INTEGER NOT NULL,
-  book_title TEXT NOT NULL,
-  book_authors TEXT[] NOT NULL DEFAULT '{}',
-  cover_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, book_id)
 );
@@ -324,24 +316,17 @@ CREATE POLICY "Users can delete their own favorites"
 -- 5. Reading Progress Table
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.reading_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   book_id INTEGER NOT NULL,
-  book_title TEXT,
-  book_authors TEXT[] NOT NULL DEFAULT '{}',
-  cover_url TEXT,
   current_chapter_index INTEGER NOT NULL DEFAULT 0,
   progress_percent NUMERIC NOT NULL DEFAULT 0,
   scroll_offset NUMERIC NOT NULL DEFAULT 0,
   bookmark_text TEXT,
   last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, book_id)
+  PRIMARY KEY (user_id, book_id)
 );
 
 -- Idempotent column migrations for existing instances:
-ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS book_title TEXT;
-ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS book_authors TEXT[] NOT NULL DEFAULT '{}';
-ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS cover_url TEXT;
 ALTER TABLE public.reading_progress ADD COLUMN IF NOT EXISTS bookmark_text TEXT;
 
 ALTER TABLE public.reading_progress ENABLE ROW LEVEL SECURITY;
@@ -420,14 +405,13 @@ CREATE INDEX IF NOT EXISTS idx_user_annotations_book_user
 -- 7. User Book Curation Table (Personal 1-5 Star Ratings & Reading Statuses)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.user_book_curation (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   book_id INTEGER NOT NULL,
   rating SMALLINT CHECK (rating >= 1 AND rating <= 5),
   reading_status TEXT CHECK (reading_status IN ('want_to_read', 'currently_reading', 'finished')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  UNIQUE(user_id, book_id)
+  PRIMARY KEY (user_id, book_id)
 );
 
 ALTER TABLE public.user_book_curation ENABLE ROW LEVEL SECURITY;
@@ -574,18 +558,50 @@ END $$;
 -- 10. User Reading Habits Table (Streaks, Active Days & Annual Goals)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.user_reading_habits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   annual_goal INTEGER NOT NULL DEFAULT 12,
   annual_goal_year INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
-  active_dates JSONB NOT NULL DEFAULT '[]'::jsonb,
+  active_dates DATE[] NOT NULL DEFAULT '{}'::date[],
   total_reading_seconds BIGINT NOT NULL DEFAULT 0,
   total_listening_seconds BIGINT NOT NULL DEFAULT 0,
   completed_books_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-  UNIQUE(user_id)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Idempotent migration: convert legacy JSONB active_dates string arrays to native PostgreSQL DATE[] (ADR-087 Item 8)
+DO $$
+DECLARE
+  v_data_type TEXT;
+BEGIN
+  SELECT data_type INTO v_data_type
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'user_reading_habits'
+    AND column_name = 'active_dates';
+
+  IF v_data_type = 'jsonb' THEN
+    ALTER TABLE public.user_reading_habits
+      DROP CONSTRAINT IF EXISTS chk_user_reading_habits_active_dates_bound;
+    ALTER TABLE public.user_reading_habits
+      ADD COLUMN IF NOT EXISTS active_dates_migrated DATE[] NOT NULL DEFAULT '{}'::date[];
+    UPDATE public.user_reading_habits
+    SET active_dates_migrated = COALESCE(
+      (
+        SELECT ARRAY(
+          SELECT elem::date
+          FROM jsonb_array_elements_text(active_dates) AS elem
+          WHERE elem ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$'
+          ORDER BY elem
+        )
+      ),
+      '{}'::date[]
+    )
+    WHERE jsonb_typeof(active_dates) = 'array';
+    ALTER TABLE public.user_reading_habits DROP COLUMN active_dates;
+    ALTER TABLE public.user_reading_habits RENAME COLUMN active_dates_migrated TO active_dates;
+  END IF;
+END $$;
 
 ALTER TABLE public.user_reading_habits
   ADD COLUMN IF NOT EXISTS total_listening_seconds BIGINT NOT NULL DEFAULT 0;
@@ -1158,8 +1174,15 @@ BEGIN
       ADD CONSTRAINT chk_user_annotations_color_valid
       CHECK (color IN ('yellow', 'amber', 'mint', 'rose', 'sky', 'lavender', 'indigo'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_reading_habits_active_dates_bound') THEN
-    ALTER TABLE public.user_reading_habits ADD CONSTRAINT chk_user_reading_habits_active_dates_bound CHECK (jsonb_typeof(active_dates) = 'array' AND jsonb_array_length(active_dates) <= 5000);
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'chk_user_reading_habits_active_dates_bound'
+      AND conrelid = 'public.user_reading_habits'::regclass
+      AND pg_get_constraintdef(oid) LIKE '%array_length%'
+  ) THEN
+    ALTER TABLE public.user_reading_habits DROP CONSTRAINT IF EXISTS chk_user_reading_habits_active_dates_bound;
+    ALTER TABLE public.user_reading_habits ADD CONSTRAINT chk_user_reading_habits_active_dates_bound CHECK (COALESCE(array_length(active_dates, 1), 0) <= 5000);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_profiles_preferences_bound') THEN
     ALTER TABLE public.profiles ADD CONSTRAINT chk_profiles_preferences_bound CHECK (preferences IS NULL OR octet_length(preferences::text) <= 32768) NOT VALID;
@@ -1167,15 +1190,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_accolades_metadata_bound') THEN
     ALTER TABLE public.user_accolades ADD CONSTRAINT chk_user_accolades_metadata_bound CHECK (metadata IS NULL OR octet_length(metadata::text) <= 8192) NOT VALID;
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bookshelf_items_payload_bound') THEN
-    ALTER TABLE public.bookshelf_items ADD CONSTRAINT chk_bookshelf_items_payload_bound CHECK (char_length(book_title) <= 1000 AND (cover_url IS NULL OR char_length(cover_url) <= 2048) AND (book_authors IS NULL OR octet_length(book_authors::text) <= 8192)) NOT VALID;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_favorites_payload_bound') THEN
-    ALTER TABLE public.user_favorites ADD CONSTRAINT chk_user_favorites_payload_bound CHECK (char_length(book_title) <= 1000 AND (cover_url IS NULL OR char_length(cover_url) <= 2048) AND (book_authors IS NULL OR (COALESCE(array_length(book_authors, 1), 0) <= 50 AND char_length(array_to_string(book_authors, ',')) <= 8192))) NOT VALID;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_reading_progress_payload_bound') THEN
-    ALTER TABLE public.reading_progress ADD CONSTRAINT chk_reading_progress_payload_bound CHECK ((book_title IS NULL OR char_length(book_title) <= 1000) AND (cover_url IS NULL OR char_length(cover_url) <= 2048) AND (book_authors IS NULL OR (COALESCE(array_length(book_authors, 1), 0) <= 50 AND char_length(array_to_string(book_authors, ',')) <= 8192))) NOT VALID;
-  END IF;
+  ALTER TABLE public.bookshelf_items DROP CONSTRAINT IF EXISTS chk_bookshelf_items_payload_bound;
+  ALTER TABLE public.user_favorites DROP CONSTRAINT IF EXISTS chk_user_favorites_payload_bound;
+  ALTER TABLE public.reading_progress DROP CONSTRAINT IF EXISTS chk_reading_progress_payload_bound;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_symposium_sessions_title_length') THEN
     ALTER TABLE public.symposium_sessions ADD CONSTRAINT chk_symposium_sessions_title_length CHECK (book_title IS NULL OR char_length(book_title) <= 1000) NOT VALID;
   END IF;
@@ -1201,8 +1218,7 @@ BEGIN
     FROM public.bookshelves
     WHERE user_id = NEW.user_id;
   ELSIF TG_TABLE_NAME = 'bookshelf_items' THEN
-    IF (NEW.id IS NOT NULL AND EXISTS (SELECT 1 FROM public.bookshelf_items WHERE id = NEW.id))
-       OR EXISTS (SELECT 1 FROM public.bookshelf_items WHERE bookshelf_id = NEW.bookshelf_id AND book_id = NEW.book_id) THEN
+    IF EXISTS (SELECT 1 FROM public.bookshelf_items WHERE bookshelf_id = NEW.bookshelf_id AND book_id = NEW.book_id) THEN
       RETURN NEW;
     END IF;
     SELECT COUNT(*) INTO v_current_count
@@ -1444,37 +1460,82 @@ ALTER TABLE public.symposium_sessions
   DROP COLUMN IF EXISTS fellow_username,
   DROP COLUMN IF EXISTS fellow_display_name;
 
+-- 5. Retire duplicated book metadata snapshot columns across user tables (hydrated live from public.books, ADR-087 Item 8)
+ALTER TABLE public.bookshelf_items
+  DROP COLUMN IF EXISTS book_title,
+  DROP COLUMN IF EXISTS book_authors,
+  DROP COLUMN IF EXISTS cover_url;
+
+ALTER TABLE public.user_favorites
+  DROP COLUMN IF EXISTS book_title,
+  DROP COLUMN IF EXISTS book_authors,
+  DROP COLUMN IF EXISTS cover_url;
+
+ALTER TABLE public.reading_progress
+  DROP COLUMN IF EXISTS book_title,
+  DROP COLUMN IF EXISTS book_authors,
+  DROP COLUMN IF EXISTS cover_url;
+
+-- 6. Promote natural composite primary keys & drop redundant surrogate id UUID columns + duplicate UNIQUE constraints (ADR-087 Item 8)
 DO $$
+DECLARE
+  v_con RECORD;
 BEGIN
-  UPDATE public.user_favorites
-  SET cover_url = NULL
-  WHERE cover_url IS NOT NULL
-    AND (
-      cover_url ~* '^https?://(?:(?:www|aleph)\.)?gutenberg\.org/'
-      OR cover_url ~* '^https?://gutenberg\.(?:pglaf\.org|readingroo\.ms)/'
-      OR cover_url LIKE '/api/books/content%'
-      OR cover_url ~* '^(?:blob|data):'
-    );
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'bookshelf_items' AND column_name = 'id'
+  ) THEN
+    FOR v_con IN
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'public.bookshelf_items'::regclass AND contype IN ('p', 'u')
+    LOOP
+      EXECUTE format('ALTER TABLE public.bookshelf_items DROP CONSTRAINT IF EXISTS %I', v_con.conname);
+    END LOOP;
+    ALTER TABLE public.bookshelf_items DROP COLUMN IF EXISTS id;
+    ALTER TABLE public.bookshelf_items ADD PRIMARY KEY (bookshelf_id, book_id);
+  END IF;
 
-  UPDATE public.bookshelf_items
-  SET cover_url = NULL
-  WHERE cover_url IS NOT NULL
-    AND (
-      cover_url ~* '^https?://(?:(?:www|aleph)\.)?gutenberg\.org/'
-      OR cover_url ~* '^https?://gutenberg\.(?:pglaf\.org|readingroo\.ms)/'
-      OR cover_url LIKE '/api/books/content%'
-      OR cover_url ~* '^(?:blob|data):'
-    );
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'reading_progress' AND column_name = 'id'
+  ) THEN
+    FOR v_con IN
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'public.reading_progress'::regclass AND contype IN ('p', 'u')
+    LOOP
+      EXECUTE format('ALTER TABLE public.reading_progress DROP CONSTRAINT IF EXISTS %I', v_con.conname);
+    END LOOP;
+    ALTER TABLE public.reading_progress DROP COLUMN IF EXISTS id;
+    ALTER TABLE public.reading_progress ADD PRIMARY KEY (user_id, book_id);
+  END IF;
 
-  UPDATE public.reading_progress
-  SET cover_url = NULL
-  WHERE cover_url IS NOT NULL
-    AND (
-      cover_url ~* '^https?://(?:(?:www|aleph)\.)?gutenberg\.org/'
-      OR cover_url ~* '^https?://gutenberg\.(?:pglaf\.org|readingroo\.ms)/'
-      OR cover_url LIKE '/api/books/content%'
-      OR cover_url ~* '^(?:blob|data):'
-    );
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_book_curation' AND column_name = 'id'
+  ) THEN
+    FOR v_con IN
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'public.user_book_curation'::regclass AND contype IN ('p', 'u')
+    LOOP
+      EXECUTE format('ALTER TABLE public.user_book_curation DROP CONSTRAINT IF EXISTS %I', v_con.conname);
+    END LOOP;
+    ALTER TABLE public.user_book_curation DROP COLUMN IF EXISTS id;
+    ALTER TABLE public.user_book_curation ADD PRIMARY KEY (user_id, book_id);
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_reading_habits' AND column_name = 'id'
+  ) THEN
+    FOR v_con IN
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'public.user_reading_habits'::regclass AND contype IN ('p', 'u')
+    LOOP
+      EXECUTE format('ALTER TABLE public.user_reading_habits DROP CONSTRAINT IF EXISTS %I', v_con.conname);
+    END LOOP;
+    ALTER TABLE public.user_reading_habits DROP COLUMN IF EXISTS id;
+    ALTER TABLE public.user_reading_habits ADD PRIMARY KEY (user_id);
+  END IF;
 END $$;
 
 

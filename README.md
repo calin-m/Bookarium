@@ -17,7 +17,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Deployment-000000?style=flat-square&logo=vercel)](https://vercel.com/)
 [![CI Pipeline](https://img.shields.io/github/actions/workflow/status/calin-m/Bookarium/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=CI%20Pipeline)](https://github.com/calin-m/Bookarium/actions/workflows/ci.yml)
 [![Quality Gateways](https://img.shields.io/badge/7--Gateway-100%25%20Verified-success?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
-[![Vitest](https://img.shields.io/badge/Vitest-276%20Suites%20%7C%202875%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
+[![Vitest](https://img.shields.io/badge/Vitest-276%20Suites%20%7C%202879%20Tests-729B1B?style=flat-square&logo=vitest)](docs/QUALITY_AUDIT_REPORT.md)
 [![MSW](https://img.shields.io/badge/MSW-3.0.7-FF6A33?style=flat-square&logo=mockserviceworker&logoColor=white)](https://mswjs.io/)
 [![Code Coverage](https://img.shields.io/badge/Coverage-97.35%25-brightgreen?style=flat-square)](docs/QUALITY_AUDIT_REPORT.md)
 [![Roadmap](https://img.shields.io/badge/Roadmap-Living%20AST-blueviolet?style=flat-square)](ROADMAP.md)
@@ -73,7 +73,7 @@ Bookarium's visual identity and tactile layout are deeply inspired by classical 
 
 | Document / Artifact | Scope & Verification Status | Live Resource Link |
 |---|---|---|
-| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2875 tests across 276 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
+| 📋 **Quality Audit & Test Suite Catalog** | 7-Gateway status summary, live coverage metrics, and complete index of all 2879 tests across 276 test suites. | [`docs/QUALITY_AUDIT_REPORT.md`](docs/QUALITY_AUDIT_REPORT.md) |
 | 📊 **CI/CD Quality Telemetry** | Machine-readable JSON summary of build metrics, test suites, and coverage passes. | [`docs/quality-audit-results.json`](docs/quality-audit-results.json) |
 | 🏛️ **Living Architecture Matrix (C4)** | Hub overview (`Diagram 1`) and 7 modular `docs/architecture/` subsystem specs (`Diagrams 2–16`, component/store/hook/DB/AST inventories). | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 📖 **Gutenberg Parser & Segmentation Reference** | AST-compiled specification of the Gutenberg parser subsystem, heuristic regex contracts, pagination limits, and subtitle extraction rules. | [`docs/GUTENBERG_PARSER.md`](docs/GUTENBERG_PARSER.md) |
@@ -116,10 +116,10 @@ The repository enforces a closed-loop quality verification engine before any rel
 ---
 
 <!-- BEGIN:latest-release -->
-## 🛠️ Latest Improvements (v2.9.93)
+## 🛠️ Latest Improvements (v2.9.94)
 
-- **PostgreSQL RLS, Index-Alignment & Undirected Uniqueness Hardening (`supabase/schema.sql`, `scripts/generate-architecture-matrix.js`, `docs/DECISIONS.md`)**: Added the missing owner-scoped `UPDATE` RLS policy on `public.user_favorites` so cross-device `.upsert()` retries never hit `42501`, aligned `public.lookup_scholar_by_username()` with `lower(trim(p.username))` on `unique_profile_username_lower` while dropping the redundant case-sensitive `profiles_username_key` constraint, added `idx_user_annotations_book_user (book_id, user_id)` to prevent full-table scans on Symposium marginalia queries at scale, and added safe deduplication + undirected functional unique indexes (`unique_reader_circles_pair`, `unique_symposium_sessions_pair`; `16 -> 19` explicit indexes) blocking concurrent symmetric invite duplicates (`ADR-073`, `ADR-087`).
-- **Fellowship Identity Normalization & Full-Stack Scalability Governance (`supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/fellowship-cloud-sync.ts`, `src/stores/useFellowshipStore.ts`, `scripts/generate-roadmap.js`, `README.md`, `AGENTS.md`, `.agents/AGENTS.md`)**: Retired `8` duplicated `*_username`/`*_display_name` columns from `public.reader_circles` and `public.symposium_sessions` along with the 4-`UPDATE` `public.handle_profile_identity_sync()` cascade trigger, simplified `enforce_fellowship_update_guard()`, narrowed `Database["public"]["Tables"]` 1:1 with PostgreSQL while preserving hydrated client view-models (`hydrateReaderCircleRow`, `hydrateSymposiumSessionRow`) backed by authoritative batched `public.profiles` lookups (including cold-device self hydration and offline fallbacks), and codified a **Full-Stack Scalability & Growth Architecture Standard** across `AGENTS.md` and `.agents/AGENTS.md` (`ADR-087`).
+- **Book Metadata Single Source of Truth Across User Tables (`supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/catalog/supabase-provider.ts`, `src/lib/adapters/book.adapter.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useBookshelfStore.ts`, `src/lib/reader-cloud-sync.ts`, `src/stores/useReaderStore.ts`, `src/app/u/[username]/page.tsx`, `src/app/privacy/page.tsx`)**: Retired `9` duplicated `book_title`, `book_authors`, and `cover_url` snapshot columns across `public.bookshelf_items`, `public.user_favorites`, and `public.reading_progress` (dropping the `3` obsolete snapshot `CHECK` constraints in `schema.sql` & `verify-build.js`), added chunked `O(log N)` primary-key batch hydration (`fetchCatalogBooksByIds`) for cold devices and `/u/[username]` public shelves with offline/withdrawn-ID fallbacks (`Volume #<id>` and no `ON DELETE CASCADE`), eliminated redundant cloud metadata-healing writes from `enrichSavedBooks` and `enrichReadingPositions`, added persisted offline outbox & `cloudBookshelfItems` sanitization (`sanitizeBookshelfOutboxAction`), and updated `/privacy` Section 4 disclosures (`ADR-087`).
+- **Natural Composite Primary Keys & Native `DATE[]` Reading Habits (`supabase/schema.sql`, `src/types/database.types.ts`, `src/lib/bookshelf-cloud-sync.ts`, `src/stores/useHabitsStore.ts`, `scripts/generate-architecture-matrix.js`, `README.md`, `docs/DECISIONS.md`)**: Dropped `4` redundant surrogate `id UUID` columns and duplicate `UNIQUE` B-Tree indexes across `public.bookshelf_items` (`PRIMARY KEY (bookshelf_id, book_id)`), `public.reading_progress` (`PRIMARY KEY (user_id, book_id)`), `public.user_book_curation` (`PRIMARY KEY (user_id, book_id)`), and `public.user_reading_habits` (`PRIMARY KEY (user_id)`), simplified `public.enforce_user_row_quota()` and tombstoned shelf deletes to composite `(bookshelf_id, book_id)` keys, and migrated `public.user_reading_habits.active_dates` from `JSONB` string arrays to native `DATE[]` with `COALESCE(array_length(active_dates, 1), 0) <= 5000` and strict client `YYYY-MM-DD` validation (`filterValidIsoDates`) (`ADR-073`, `ADR-087`).
 
 > 📖 **Complete Historical Ledger**: For full chronological release notes, breaking changes, and migration details across all versions, see [**`CHANGELOG.md`**](CHANGELOG.md).
 <!-- END:latest-release -->
@@ -594,12 +594,12 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 |---|---|---|
 | `public.profiles` | Table (RLS) | Scholar display name, unique `@username`, bio (plus optional highlighted volume snapshot `bio_book_id`/`bio_book_title`/`bio_book_author`), public sanctuary toggles (`is_public`, `show_saved_books`, `show_custom_shelves`), and `preferences` JSONB (`active` & `customDefaults`). |
 | `public.bookshelves` | Table (RLS) | Default `'General'` shelf and custom collection shelves with granular public/private visibility (`is_public = true`) and owner-only write RLS. |
-| `public.bookshelf_items` | Table (RLS) | Volumes filed in bookshelves with parent shelf ownership verification, public shelf read isolation, and cascade-indexed `user_id`. |
-| `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited titles with authenticated user isolation. |
-| `public.reading_progress` | Table (RLS) | Chapter coordinates, progress %, row-snapped `bookmark_text`, and cached volume metadata. |
+| `public.bookshelf_items` | Table (RLS) | Normalized shelf-to-volume links (`PRIMARY KEY (bookshelf_id, book_id)`) hydrated from `public.books`, with parent shelf ownership verification, public shelf read isolation, and cascade-indexed `user_id`. |
+| `public.user_favorites` | Table (RLS) | Cross-device synchronized favorited volume IDs (`PRIMARY KEY (user_id, book_id)`) with authenticated user isolation and live `public.books` hydration. |
+| `public.reading_progress` | Table (RLS) | Normalized per-volume reading coordinates (`PRIMARY KEY (user_id, book_id)`): chapter index, progress %, fractional scroll offset, and row-snapped `bookmark_text`. |
 | `public.user_annotations` | Table (RLS) | 7-color archival highlights, scholarly notes, and consolidated Symposium Fellow marginalia RLS. |
-| `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status (`want_to_read`, `currently_reading`, `finished`, `on_hold`). |
-| `public.user_reading_habits` | Table (RLS) | Reading streaks, daily session dates, annual goal targets, `completed_books_count`, and dual reading/listening duration. |
+| `public.user_book_curation` | Table (RLS) | Personal 1–5 star ratings and reading status (`want_to_read`, `currently_reading`, `finished`, `PRIMARY KEY (user_id, book_id)`). |
+| `public.user_reading_habits` | Table (RLS) | Reading streaks, native `DATE[]` daily session dates, annual goal targets, `completed_books_count`, and dual reading/listening duration (`PRIMARY KEY (user_id)`). |
 | `public.user_accolades` | Table (RLS) | Unlocked literary accolades, timestamps, and 3-plate Ex-Libris showcase pinning. |
 | `public.reader_circles` | Table (RLS) | Two-way Fellow Scholar connections (`pending` / `accepted`) with `ON DELETE CASCADE` and participant-only RLS. |
 | `public.symposium_sessions` | Table (RLS) | Per-volume Literary Symposium pacts (`pending`, `active`, `completed`) with synchronized companion coordinates. |

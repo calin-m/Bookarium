@@ -1,9 +1,9 @@
 # Quality Audit & Test Suite Catalog Report
 
-**Last Generated**: Sat, 28 Nov 2026 11:10:10 GMT  
+**Last Generated**: Sat, 28 Nov 2026 12:00:00 GMT  
 **Overall Status**: 🟢 PASSED  
 **Total Test Suites**: 276 passed  
-**Total Verified Tests**: 2875 passed  
+**Total Verified Tests**: 2879 passed  
 
 ---
 
@@ -15,7 +15,7 @@
 | **Pass 0.75** | SAST, Lockfile, License & AST Taint Suite | ✅ Passed | 7-Pillar OWASP + Lockfile SRI + Offline `GPL`/`AGPL` License SCA + GitHub Actions Workflow Guard + `sast-validators.js` AST Suite + 9-Rule AST & Request-Taint verification across `src/` & `scripts/` |
 | **Pass 1** | TypeScript Compiler | ✅ Passed | Strict type checking (`tsc --noEmit`) 0 errors |
 | **Pass 2** | MSW Server & Queries | ✅ Passed | Mock Service Worker v3 network interception verified |
-| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2875 total tests) |
+| **Pass 3** | Vitest Test Suite | ✅ Passed | **276/276 test suites passed** (2879 total tests) |
 | **Pass 3.5** | Coverage Threshold | ✅ Passed | Tiered coverage thresholds met (Lines $\ge$ 95%, Statements $\ge$ 95%, Functions $\ge$ 92%, Branches $\ge$ 85%) |
 | **Pass 4** | Living Docs AST Sync | ✅ Passed | Content-idempotent `docs/ARCHITECTURE.md`, `docs/architecture/*.md`, `SECURITY.md` (`<!-- BEGIN:security-architecture -->`), `docs/GUTENBERG_PARSER.md`, `docs/SYSTEM_CONTRACTS.md`, `CHANGELOG.md`, `ROADMAP.md`, & `docs/QUALITY_AUDIT_REPORT.md` synced |
 | **Pass 5** | ADR, Schema Parity, Graph & Co-Location Gate | ✅ Passed | 88 sequential ADRs, 19 governance docs, circular `SECURITY.md` & dynamic legal/erasure parity (`auditLegalDocumentationParity`), 0 broken Mermaid diagrams, 89 Tier-1..Tier-4 `@scope`/`@invariant` contracts + bidirectional `SYSTEM_CONTRACTS.md` parity, 0 stale doc/workflow paths or orphan lookup keys (17 maps), 1:1 SQL<->TS schema parity, 0 circular/parse-error/layer-violation/orphan modules & 100% co-located test suites validated |
@@ -26,16 +26,16 @@
 
 ## 📊 Code Coverage Metrics
 
-- **Lines**: **97.35%** (18039/18529) — *Target: $\ge$ 95%*
-- **Statements**: **95.97%** (19392/20205) — *Target: $\ge$ 95%*
-- **Functions**: **94.87%** (3758/3961) — *Target: $\ge$ 92%*
-- **Branches**: **88.21%** (18080/20496) — *Target: $\ge$ 85%*
+- **Lines**: **97.35%** (18085/18576) — *Target: $\ge$ 95%*
+- **Statements**: **95.97%** (19443/20259) — *Target: $\ge$ 95%*
+- **Functions**: **94.88%** (3762/3965) — *Target: $\ge$ 92%*
+- **Branches**: **88.12%** (18137/20582) — *Target: $\ge$ 85%*
 
 ---
 
-## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2875 Tests)
+## 🧪 Comprehensive Test Suite Catalog (276 Suites / 2879 Tests)
 
-### 🚀 App Routes & Pages (34 Suites · 291 Tests)
+### 🚀 App Routes & Pages (34 Suites · 292 Tests)
 
 <details>
 <summary><b><code>src/app/account/layout.test.tsx</code></b> (2 tests)</summary>
@@ -501,7 +501,7 @@
 </details>
 
 <details>
-<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (10 tests)</summary>
+<summary><b><code>src/app/u/[username]/page.test.tsx</code></b> (11 tests)</summary>
 
 - ✔ `renders public scholar profile with habits, accolades, and bookshelves`
 - ✔ `renders PrivateProfileNotice when profile does not exist in Supabase`
@@ -513,6 +513,7 @@
 - ✔ `falls back to savedBooks General shelf when viewing own profile with no cloud shelves and handles Supabase query exceptions cleanly`
 - ✔ `falls back to local auth, accolades, habits, and bookshelf stores when offline query throws or errors`
 - ✔ `rejects wildcard handles (%) without querying Supabase and enforces exact case-insensitive handle equality against SQL _ wildcard matches`
+- ✔ `hydrates normalized bookshelf_items from public.books in one batch and falls back cleanly for withdrawn IDs`
 
 </details>
 
@@ -1823,7 +1824,7 @@
 
 </details>
 
-### ⚡ Zustand State Stores (10 Suites · 253 Tests)
+### ⚡ Zustand State Stores (10 Suites · 254 Tests)
 
 <details>
 <summary><b><code>src/stores/useAccoladesStore.test.ts</code></b> (11 tests)</summary>
@@ -2004,7 +2005,7 @@
 - ✔ `returns original query if query has no order function`
 - ✔ `enriches savedBooks and favoriteBooks with authentic authors when incoming fresh books have authentic authors without lifespans`
 - ✔ `covers enrichSavedBooks with recentBooks, cloudBookshelfItems, authenticated userId, and clearCustomShelfBooks cloud delete`
-- ✔ `heals legacy Gutenberg cover URLs in enrichSavedBooks and onRehydrateStorage while preserving custom URLs`
+- ✔ `heals legacy Gutenberg cover URLs locally and strips retired cloud fields in onRehydrateStorage`
 
 </details>
 
@@ -2031,7 +2032,7 @@
 </details>
 
 <details>
-<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (17 tests)</summary>
+<summary><b><code>src/stores/useHabitsStore.test.ts</code></b> (18 tests)</summary>
 
 - ✔ `initializes with default values`
 - ✔ `records daily activity without duplicates`
@@ -2050,6 +2051,7 @@
 - ✔ `skips redundant upsert when remote user_reading_habits already matches converged local state`
 - ✔ `coalesces passive concurrent syncs and executes one trailing pass when setAnnualGoal runs mid-flight`
 - ✔ `respects minSyncIntervalMs passive cooldown and invalidates cooldown after goal mutations`
+- ✔ `filters malformed non-ISO calendar dates before upserting to native DATE[] user_reading_habits`
 
 </details>
 
@@ -2138,7 +2140,7 @@
 
 </details>
 
-### 📚 Gutenberg Parsers & Metadata (61 Suites · 770 Tests)
+### 📚 Gutenberg Parsers & Metadata (61 Suites · 772 Tests)
 
 <details>
 <summary><b><code>src/lib/accolades-engine.test.ts</code></b> (14 tests)</summary>
@@ -2178,9 +2180,9 @@
 - ✔ `reconstructs CatalogBook with R2 format URLs and normalized author objects`
 - ✔ `routes legacy Gutenberg cover_url and null cover_url through same-origin R2 endpoints`
 - ✔ `formats a CatalogBook into a standardized Supabase insert payload`
-- ✔ `preserves birth and death years in author strings when present`
+- ✔ `reconstructs lifespans from legacy cloud rows and falls back cleanly on lean book_id-only rows`
 - ✔ `omits bookshelf_id when not provided`
-- ✔ `strips derivable Project Gutenberg and same-origin proxy cover URLs from cloud inserts while preserving custom URLs`
+- ✔ `normalizes derivable Project Gutenberg and same-origin proxy cover URLs while preserving custom URLs`
 - ✔ `formats Author objects with birth/death years, single bounds, and avoids duplicating existing lifespans`
 - ✔ `extracts authorDetails lifespans when toCanonicalBook receives string authors with embedded dates`
 - ✔ `covers string author input, birth-only lifespan, Author objects in cloud row, and partial hybrid books`
@@ -2301,7 +2303,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (13 tests)</summary>
+<summary><b><code>src/lib/bookshelf-cloud-sync.test.ts</code></b> (14 tests)</summary>
 
 - ✔ `applies deterministic item ordering when order method is single-level or chainable`
 - ✔ `flushes outbox actions and retains only actions that fail`
@@ -2316,6 +2318,7 @@
 - ✔ `preserves rich local metadata in mergeCloudBookWithLocal, deduplicates multi-shelf books, and coalesces concurrent syncs`
 - ✔ `enforces minSyncIntervalMs cooldown on passive syncs and flushes mid-flight dirty outbox mutations cleanly`
 - ✔ `exits offline cloud sync cleanly, skips flush/sync when session verification fails, and deletes orphaned shelf items when no default shelf remains`
+- ✔ `batch-hydrates cold-device lean bookshelf_items and user_favorites from public.books and falls back gracefully for withdrawn IDs`
 
 </details>
 
@@ -2346,7 +2349,7 @@
 </details>
 
 <details>
-<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (41 tests)</summary>
+<summary><b><code>src/lib/catalog/supabase-provider.test.ts</code></b> (42 tests)</summary>
 
 - ✔ `returns true when valid non-placeholder URL and key are set`
 - ✔ `returns false when NEXT_PUBLIC_SUPABASE_URL contains placeholder`
@@ -2389,6 +2392,7 @@
 - ✔ `handles backfill error/empty/saturation break paths, LRU cache eviction, and unexpected search exceptions`
 - ✔ `returns empty array on translation step errors and filters copyright=true editions in getBookTranslations`
 - ✔ `shares L4 searchBooks across countries with identical jurisdictionRule, shares quotePool globally, coalesces concurrent misses, and caches non-error getBookTranslations`
+- ✔ `hydrates books by ID via fetchCatalogBooksByIds with deduplication, chunking, and featured fallback on failure`
 
 </details>
 
@@ -2734,7 +2738,7 @@
 
 - ✔ `identifies ghost reading positions and ghost cloud rows`
 - ✔ `decodes remote reading positions and preserves local lifespans when remote lacks them`
-- ✔ `extracts position metadata cleanly and flags shouldHealRemoteMetadata when cloud lacks title or authors`
+- ✔ `extracts position metadata cleanly and hydrates lean cloud rows from public.books or local fallbacks`
 
 </details>
 

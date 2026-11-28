@@ -1,9 +1,9 @@
 /**
  * @module src/stores/useBookshelfStore
  * @scope Personal library state (saved volumes, queue, favorites, custom named shelves, ratings, statuses), tombstone tracking, and offline outbox orchestration.
- * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`) while scrubbing them to `null` in `cloudBookshelfItems` (`normalizeCloudCoverUrl`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
- * @invariant Route all Supabase persistence through `bookshelf-cloud-sync.ts` outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
- * @rationale Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and non-blocking cover normalization heals pre-R2 persisted snapshots.
+ * @invariant Preserve authentic contributor lifespans (`isPlaceholderAuthor`) during `enrichSavedBooks`, sanitize persisted legacy Gutenberg covers to same-origin R2 routes locally (`sanitizeCatalogBookCover`), scrub retired bibliographic fields from persisted `outbox` and `cloudBookshelfItems` entries on rehydration (`sanitizeBookshelfOutboxAction`), and retain IndexedDB `offline_books` whenever a removed book still exists on another shelf, in `favoriteBookIds`, or in active reading progress.
+ * @invariant Route all Supabase persistence through `bookshelf-cloud-sync.ts` lean relational outbox queues, tombstone filters (`deletedBookIds`, `deletedFavoriteBookIds`), and `15,000ms` passive mount cooldown invalidation (`invalidateBookshelfSyncCooldown`).
+ * @rationale Scoped IndexedDB retention prevents losing downloaded chapters while organizing multiple shelves, outbox + tombstone separation keeps offline edits deterministic across multi-device syncs, and stripping retired metadata columns from persisted outboxes keeps returning offline PWAs 100% compatible.
  * @adr ADR-003, ADR-069, ADR-071, ADR-080, ADR-087
  */
 
@@ -19,7 +19,6 @@ import { useAuthStore } from './useAuthStore';
 import { useReaderStore } from './useReaderStore';
 import {
   toCloudBookInsert,
-  normalizeCloudCoverUrl,
   sanitizeCatalogBookCover,
 } from '@/lib/adapters/book.adapter';
 import { removeOfflineBook } from '@/lib/offline-storage';
@@ -47,6 +46,7 @@ import {
   executeMoveBookToShelf,
   markBookshelfOutboxDirty,
   invalidateBookshelfSyncCooldown,
+  sanitizeBookshelfOutboxAction,
   type OutboxActionInput,
   type OutboxAction,
 } from '@/lib/bookshelf-cloud-sync';
@@ -175,19 +175,13 @@ export const useBookshelfStore = create<BookshelfState>()(
               (i) => !(i.book_id === book.id && i.bookshelf_id === targetShelfId)
             );
           } else {
-            const insertPayload = toCloudBookInsert(book, currentUserId || '', targetShelfId);
             nextItems = [
               ...cloudBookshelfItems,
               {
-                id: `local-${book.id}-${targetShelfId}`,
                 bookshelf_id: targetShelfId,
                 user_id: currentUserId || '',
                 book_id: book.id,
-                book_title: book.title,
-                book_authors: insertPayload.book_authors,
-                cover_url: insertPayload.cover_url,
                 created_at: new Date().toISOString(),
-                added_at: new Date().toISOString(),
               },
             ];
           }
@@ -327,7 +321,7 @@ export const useBookshelfStore = create<BookshelfState>()(
       },
 
       enrichSavedBooks: async (freshBooks) => {
-        const { savedBooks, recentBooks, favoriteBooks, cloudBookshelfItems } = get();
+        const { savedBooks, recentBooks, favoriteBooks } = get();
         if (
           !freshBooks ||
           freshBooks.length === 0 ||
@@ -424,28 +418,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           })
         );
 
-        const changedCloudItems: BookshelfItem[] = [];
-        const nextItems = cloudBookshelfItems.map((item) => {
-          const fresh = freshMap.get(item.book_id);
-          if (!fresh) return item;
-          const sanitizedFresh = sanitizeCatalogBookCover(fresh);
-          const payload = toCloudBookInsert(sanitizedFresh, item.user_id, item.bookshelf_id);
-          const nextCoverUrl = payload.cover_url ?? normalizeCloudCoverUrl(item.cover_url);
-          const authorsChanged = JSON.stringify(item.book_authors) !== JSON.stringify(payload.book_authors);
-          const coverChanged = item.cover_url !== nextCoverUrl;
-          if (!authorsChanged && !coverChanged) {
-            return item;
-          }
-          const updatedItem: BookshelfItem = {
-            ...item,
-            book_authors: payload.book_authors,
-            cover_url: nextCoverUrl,
-          };
-          changedCloudItems.push(updatedItem);
-          return updatedItem;
-        });
-
-        if (!hasSavedChanges && !hasRecentChanges && !hasFavoriteChanges && changedCloudItems.length === 0) {
+        if (!hasSavedChanges && !hasRecentChanges && !hasFavoriteChanges) {
           return;
         }
 
@@ -453,28 +426,7 @@ export const useBookshelfStore = create<BookshelfState>()(
           ...(hasSavedChanges ? { savedBooks: nextSaved } : {}),
           ...(hasRecentChanges ? { recentBooks: nextRecent } : {}),
           ...(hasFavoriteChanges ? { favoriteBooks: nextFavorites } : {}),
-          ...(changedCloudItems.length > 0 ? { cloudBookshelfItems: nextItems } : {}),
         });
-
-        const userId = useAuthStore.getState().user?.id;
-        if (userId && changedCloudItems.length > 0) {
-          try {
-            const supabase = createClient();
-            const updates = changedCloudItems.map((item) =>
-              supabase
-                .from('bookshelf_items')
-                .update({
-                  book_authors: item.book_authors,
-                  cover_url: item.cover_url,
-                })
-                .eq('id', item.id)
-                .eq('user_id', userId)
-            );
-            await Promise.allSettled(updates);
-          } catch {
-            // Non-blocking background persistence
-          }
-        }
       },
 
       addToQueue: (book) => {
@@ -850,19 +802,41 @@ export const useBookshelfStore = create<BookshelfState>()(
         let cloudChanged = false;
         const nextCloud = Array.isArray(state.cloudBookshelfItems)
           ? state.cloudBookshelfItems.map((item) => {
-              const cleanCover = normalizeCloudCoverUrl(item.cover_url);
-              if (cleanCover !== item.cover_url) {
+              const raw = item as unknown as Record<string, unknown>;
+              if (
+                'id' in raw ||
+                'book_title' in raw ||
+                'book_authors' in raw ||
+                'cover_url' in raw ||
+                'added_at' in raw
+              ) {
                 cloudChanged = true;
-                return { ...item, cover_url: cleanCover };
+                return {
+                  bookshelf_id: item.bookshelf_id,
+                  user_id: item.user_id,
+                  book_id: item.book_id,
+                  created_at:
+                    item.created_at ||
+                    (typeof raw.added_at === 'string' ? raw.added_at : new Date().toISOString()),
+                };
               }
               return item;
             })
           : state.cloudBookshelfItems;
+        let outboxChanged = false;
+        const nextOutbox = Array.isArray(state.outbox)
+          ? state.outbox.map((action) => {
+              const clean = sanitizeBookshelfOutboxAction(action);
+              if (clean !== action) outboxChanged = true;
+              return clean;
+            })
+          : state.outbox;
         if (savedRes.changed && savedRes.next) state.savedBooks = savedRes.next;
         if (favRes.changed && favRes.next) state.favoriteBooks = favRes.next;
         if (recentRes.changed && recentRes.next) state.recentBooks = recentRes.next;
         if (queueRes.changed && queueRes.next) state.readingQueue = queueRes.next;
         if (cloudChanged && nextCloud) state.cloudBookshelfItems = nextCloud;
+        if (outboxChanged && nextOutbox) state.outbox = nextOutbox;
       },
     }
   )

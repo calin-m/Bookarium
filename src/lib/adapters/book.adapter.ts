@@ -312,9 +312,9 @@ export function toCatalogBook(input: Book | CatalogBook): CatalogBook {
 
 export interface CloudBookRow {
   book_id: number;
-  book_title: string;
-  book_authors: (string | Author)[] | null;
-  cover_url: string | null;
+  book_title?: string | null;
+  book_authors?: (string | Author)[] | null;
+  cover_url?: string | null;
 }
 
 /**
@@ -380,7 +380,7 @@ export function toCatalogBookFromCloudRow(item: CloudBookRow): CatalogBook {
 
   return {
     id: item.book_id,
-    title: item.book_title,
+    title: item.book_title?.trim() || `Volume #${item.book_id}`,
     authors,
     translators: [],
     subjects: [],
@@ -424,9 +424,6 @@ export function sanitizeCatalogBookCover(book: CatalogBook): CatalogBook {
 export interface CloudFavoriteInsertPayload {
   user_id: string;
   book_id: number;
-  book_title: string;
-  book_authors: string[];
-  cover_url: string | null;
 }
 
 export interface CloudBookshelfItemInsertPayload extends CloudFavoriteInsertPayload {
@@ -436,8 +433,8 @@ export interface CloudBookshelfItemInsertPayload extends CloudFavoriteInsertPayl
 export type CloudBookInsertPayload = CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload;
 
 /**
- * Transforms a CatalogBook entity into a normalized Supabase insert payload,
- * preserving author lifespans in JSON/string representations.
+ * Transforms a CatalogBook entity into a lean normalized Supabase relational insert payload
+ * (`public.books` serves as the single source of truth for bibliographic metadata).
  */
 export function toCloudBookInsert(
   book: CatalogBook,
@@ -453,14 +450,9 @@ export function toCloudBookInsert(
   userId: string,
   bookshelfId?: string
 ): CloudFavoriteInsertPayload | CloudBookshelfItemInsertPayload {
-  const formattedAuthors: string[] = (book.authors || []).map(formatAuthorWithLifespan);
-
   const base: CloudFavoriteInsertPayload = {
     user_id: userId,
     book_id: book.id,
-    book_title: book.title,
-    book_authors: formattedAuthors,
-    cover_url: normalizeCloudCoverUrl(book.formats?.['image/jpeg']),
   };
   if (bookshelfId) {
     return {

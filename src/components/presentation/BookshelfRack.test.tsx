@@ -429,14 +429,10 @@ describe('BookshelfRack Component', () => {
       ],
       cloudBookshelfItems: [
         {
-          id: 'item-1',
           bookshelf_id: 'shelf-1',
           user_id: 'user-1',
           book_id: mockBooks[0].id,
-          book_title: mockBooks[0].title,
-          book_authors: [],
-          cover_url: null,
-          added_at: '',
+          created_at: '',
         },
       ],
       activeBookshelfId: 'shelf-1',
@@ -678,14 +674,10 @@ describe('BookshelfRack Component', () => {
       ],
       cloudBookshelfItems: [
         {
-          id: 'item-1',
           bookshelf_id: 'shelf-1',
           user_id: 'user-1',
           book_id: mockBooks[0].id,
-          book_title: mockBooks[0].title,
-          book_authors: [],
-          cover_url: null,
-          added_at: '',
+          created_at: '',
         },
       ],
       activeBookshelfId: 'shelf-1',
@@ -782,14 +774,10 @@ describe('BookshelfRack Component', () => {
       ],
       cloudBookshelfItems: [
         {
-          id: 'item-1',
           bookshelf_id: 'shelf-2',
           user_id: 'user-1',
           book_id: mockBooks[0].id,
-          book_title: mockBooks[0].title,
-          book_authors: mockBooks[0].authors.map((a) => a.name),
-          cover_url: null,
-          added_at: '',
+          created_at: '',
         },
       ],
       activeBookshelfId: 'shelf-2',
@@ -1012,14 +1000,10 @@ describe('BookshelfRack Component', () => {
         ],
         cloudBookshelfItems: [
           {
-            id: 'item-1',
             bookshelf_id: 'shelf-2',
             book_id: mockBooks[0].id,
             user_id: 'user-1',
             created_at: '',
-            book_title: mockBooks[0].title,
-            book_authors: mockBooks[0].authors.map((a) => a.name),
-            cover_url: null,
           },
         ],
         activeBookshelfId: null,

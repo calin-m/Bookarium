@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { fetchCatalogBooksByIds } from '@/lib/catalog/supabase-provider';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBookshelfStore } from '@/stores/useBookshelfStore';
 import { useReaderStore } from '@/stores/useReaderStore';
@@ -261,16 +262,38 @@ export default function PublicScholarProfilePage() {
               const shelfIds = eligibleShelves.map((s) => s.id);
               const { data: itemsData } = await supabase
                 .from('bookshelf_items')
-                .select('bookshelf_id, book_id, book_title, book_authors')
+                .select('bookshelf_id, book_id')
                 .in('bookshelf_id', shelfIds);
 
+              const rawItems = (itemsData || []) as Array<{
+                bookshelf_id: string;
+                book_id: number;
+                book_title?: string | null;
+                book_authors?: unknown;
+              }>;
+              const idsNeedingHydration = rawItems
+                .filter((item) => !item.book_title?.trim())
+                .map((item) => item.book_id);
+              const catalogBooksMap =
+                idsNeedingHydration.length > 0
+                  ? await fetchCatalogBooksByIds(supabase, idsNeedingHydration)
+                  : new Map();
+
               const itemsMap: Record<string, PublicBookshelfItem[]> = {};
-              (itemsData || []).forEach((item) => {
+              rawItems.forEach((item) => {
                 if (!itemsMap[item.bookshelf_id]) itemsMap[item.bookshelf_id] = [];
+                const catalogBook = catalogBooksMap.get(item.book_id);
+                const resolvedTitle =
+                  catalogBook?.title?.trim() ||
+                  item.book_title?.trim() ||
+                  `Volume #${item.book_id}`;
+                const resolvedAuthors = catalogBook
+                  ? catalogBook.authors.map((a: { name: string }) => a.name).filter(Boolean)
+                  : normalizeItemAuthors(item.book_authors);
                 itemsMap[item.bookshelf_id].push({
                   book_id: item.book_id,
-                  book_title: item.book_title,
-                  book_authors: normalizeItemAuthors(item.book_authors),
+                  book_title: resolvedTitle,
+                  book_authors: resolvedAuthors,
                 });
               });
 
@@ -288,16 +311,39 @@ export default function PublicScholarProfilePage() {
             const filteredLocalShelves = localStore.cloudBookshelves.filter(isShelfEligible);
 
             if (filteredLocalShelves.length > 0) {
+              const localBookById = new Map<number, { title: string; authors: string[] }>();
+              for (const b of [
+                ...localStore.recentBooks,
+                ...localStore.favoriteBooks,
+                ...localStore.savedBooks,
+              ]) {
+                localBookById.set(b.id, {
+                  title: b.title,
+                  authors: b.authors.map((a) => a.name).filter(Boolean),
+                });
+              }
+
               parsedShelves = filteredLocalShelves.map((s) => ({
                 id: s.id,
                 name: s.name,
                 items: localStore.cloudBookshelfItems
                   .filter((item) => item.bookshelf_id === s.id)
-                  .map((item) => ({
-                    book_id: item.book_id,
-                    book_title: item.book_title,
-                    book_authors: normalizeItemAuthors(item.book_authors),
-                  })),
+                  .map((item) => {
+                    const localBook = localBookById.get(item.book_id);
+                    const legacyItem = item as unknown as {
+                      book_title?: string;
+                      book_authors?: unknown;
+                    };
+                    return {
+                      book_id: item.book_id,
+                      book_title:
+                        localBook?.title ||
+                        legacyItem.book_title?.trim() ||
+                        `Volume #${item.book_id}`,
+                      book_authors:
+                        localBook?.authors || normalizeItemAuthors(legacyItem.book_authors),
+                    };
+                  }),
               }));
             } else if (showSavedBooks && localStore.savedBooks.length > 0) {
               parsedShelves = [

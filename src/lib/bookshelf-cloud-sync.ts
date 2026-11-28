@@ -6,10 +6,10 @@
  *
  * @module src/lib/bookshelf-cloud-sync
  * @scope Supabase bi-directional synchronization and offline outbox engine for `bookshelves`, `bookshelf_items`, `user_favorites`, and `user_book_curation`.
- * @invariant Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
- * @invariant Preserve richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal` and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
- * @rationale Single-commit atomic state reconciliation plus snapshot-safe dirty-outbox queues prevent offline additions or custom shelf moves from flickering or being overwritten by concurrent pulls.
- * @adr ADR-005, ADR-069, ADR-071, ADR-080
+ * @invariant Coalesce outbox flushes via `coalesceInFlightByUser` with dirty tracking (`dirtyOutboxFlushUsers`), strip retired bibliographic columns from persisted `INSERT_BOOK` / `UPSERT_FAVORITE` outbox actions (`sanitizeBookshelfOutboxAction`) prior to `.upsert()`, guard reads/writes behind `verifyActiveCloudSession`, and respect `15,000ms` passive mount cooldowns unless dirty outboxes exist.
+ * @invariant Hydrate missing cold-device book metadata from `public.books` in one batched primary-key query (`fetchCatalogBooksByIds`) while preserving richer local `CatalogBook` lifespans/subjects via `mergeCloudBookWithLocal`, delete tombstoned shelf items via composite `(bookshelf_id, book_id)` keys, and enforce tombstone filtering (`deletedBookIds`, `deletedFavoriteBookIds`) before committing multi-shelf deduplicated state.
+ * @rationale Single-commit atomic state reconciliation, batched `public.books` hydration, and sanitized lean outbox queues eliminate duplicated shelf/favorite metadata columns without breaking returning offline PWAs or withdrawn volume IDs.
+ * @adr ADR-005, ADR-069, ADR-071, ADR-080, ADR-087
  */
 
 import type { CatalogBook, ReadingStatus } from '@/types/book.types';
@@ -19,12 +19,15 @@ import {
   shouldVerifyCloudSession,
   verifyActiveCloudSession,
 } from '@/stores/useAuthStore';
-import type { Bookshelf, BookshelfItem, Database } from '@/types/database.types';
+import type { Bookshelf, BookshelfItem, UserFavorite, Database } from '@/types/database.types';
 import {
   toCatalogBookFromCloudRow,
   toCloudBookInsert,
   normalizeCloudCoverUrl,
+  type CloudBookRow,
 } from '@/lib/adapters/book.adapter';
+import { fetchCatalogBooksByIds } from '@/lib/catalog/supabase-provider';
+import { isPlaceholderAuthor, isPlaceholderTitle } from '@/lib/book-metadata';
 import { buildR2CoverUrl, resolveBookCoverUrl } from '@/lib/utils';
 
 export type OutboxActionInput =
@@ -38,9 +41,6 @@ export type OutboxActionInput =
         bookshelf_id: string;
         user_id: string;
         book_id: number;
-        book_title: string;
-        book_authors: string[];
-        cover_url: string | null;
       };
     }
   | {
@@ -52,9 +52,6 @@ export type OutboxActionInput =
       payload: {
         user_id: string;
         book_id: number;
-        book_title: string;
-        book_authors: string[];
-        cover_url: string | null;
       };
     }
   | {
@@ -97,6 +94,7 @@ export type OutboxAction = OutboxActionInput & {
 export interface BookshelfSyncSlice {
   savedBooks: CatalogBook[];
   favoriteBooks: CatalogBook[];
+  recentBooks?: CatalogBook[];
   favoriteBookIds: number[];
   bookRatings: Record<number, number>;
   bookStatuses: Record<number, ReadingStatus>;
@@ -122,6 +120,38 @@ type OutboxDispatcher = (
   payload: Record<string, unknown>
 ) => PromiseLike<{ error: unknown }>;
 
+/**
+ * Strips retired bibliographic snapshot fields (`book_title`, `book_authors`, `cover_url`)
+ * from persisted offline outbox mutations so returning PWAs never fail with `PGRST204`.
+ */
+export function sanitizeBookshelfOutboxAction(action: OutboxAction): OutboxAction {
+  if (action.type === 'INSERT_BOOK') {
+    const p = action.payload as Record<string, unknown>;
+    if ('book_title' in p || 'book_authors' in p || 'cover_url' in p) {
+      return {
+        ...action,
+        payload: {
+          bookshelf_id: String(p.bookshelf_id),
+          user_id: String(p.user_id),
+          book_id: Number(p.book_id),
+        },
+      };
+    }
+  } else if (action.type === 'UPSERT_FAVORITE') {
+    const p = action.payload as Record<string, unknown>;
+    if ('book_title' in p || 'book_authors' in p || 'cover_url' in p) {
+      return {
+        ...action,
+        payload: {
+          user_id: String(p.user_id),
+          book_id: Number(p.book_id),
+        },
+      };
+    }
+  }
+  return action;
+}
+
 const OUTBOX_DISPATCHERS: Record<OutboxAction['type'], OutboxDispatcher> = {
   DELETE_BOOK: (sb, p) =>
     sb
@@ -138,15 +168,28 @@ const OUTBOX_DISPATCHERS: Record<OutboxAction['type'], OutboxDispatcher> = {
   INSERT_BOOK: (sb, p) =>
     sb
       .from('bookshelf_items')
-      .upsert(p as Database['public']['Tables']['bookshelf_items']['Insert'], {
-        onConflict: 'bookshelf_id,book_id',
-      }),
+      .upsert(
+        {
+          bookshelf_id: String(p.bookshelf_id),
+          user_id: String(p.user_id),
+          book_id: Number(p.book_id),
+        } satisfies Database['public']['Tables']['bookshelf_items']['Insert'],
+        {
+          onConflict: 'bookshelf_id,book_id',
+        }
+      ),
   UPSERT_FAVORITE: (sb, p) =>
     sb
       .from('user_favorites')
-      .upsert(p as Database['public']['Tables']['user_favorites']['Insert'], {
-        onConflict: 'user_id,book_id',
-      }),
+      .upsert(
+        {
+          user_id: String(p.user_id),
+          book_id: Number(p.book_id),
+        } satisfies Database['public']['Tables']['user_favorites']['Insert'],
+        {
+          onConflict: 'user_id,book_id',
+        }
+      ),
   UPSERT_CURATION: (sb, p) =>
     sb
       .from('user_book_curation')
@@ -455,6 +498,9 @@ export async function executeBookshelfCloudSync(
         // Build lookup map of existing rich local books by id to prevent metadata loss on cloud sync
         const initialState = get();
         const localBookLookup = new Map<number, CatalogBook>();
+        for (const b of initialState.recentBooks || []) {
+          localBookLookup.set(b.id, b);
+        }
         for (const b of initialState.favoriteBooks) {
           localBookLookup.set(b.id, b);
         }
@@ -466,13 +512,51 @@ export async function executeBookshelfCloudSync(
         const [shelvesRes, itemsRes, favoritesRes, curationsRes] = await Promise.all([
           safeSelectByUser<Bookshelf>(supabase, 'bookshelves', userId, 'created_asc'),
           safeSelectByUser<BookshelfItem>(supabase, 'bookshelf_items', userId, 'deterministic_items'),
-          safeSelectByUser<BookshelfItem>(supabase, 'user_favorites', userId, 'deterministic_items'),
+          safeSelectByUser<UserFavorite>(supabase, 'user_favorites', userId, 'deterministic_items'),
           safeSelectByUser<Database['public']['Tables']['user_book_curation']['Row']>(
             supabase,
           'user_book_curation',
           userId
         ),
       ]);
+
+      // Batch-hydrate cold-device book metadata from public.books in one PK query (0 extra queries when warm)
+      const idsToHydrate = new Set<number>();
+      const checkRowNeedsHydration = (row: CloudBookRow) => {
+        const hasLegacyRowTitle =
+          typeof row.book_title === 'string' &&
+          row.book_title.trim().length > 0 &&
+          !isPlaceholderTitle(row.book_title);
+        if (hasLegacyRowTitle) return;
+        const local = localBookLookup.get(row.book_id);
+        const hasAuthenticLocal = Boolean(
+          local &&
+            !isPlaceholderTitle(local.title) &&
+            local.authors?.some((a) => a.name && !isPlaceholderAuthor(a.name))
+        );
+        if (!hasAuthenticLocal) {
+          idsToHydrate.add(row.book_id);
+        }
+      };
+      if (!itemsRes.error && !itemsRes.unmocked) {
+        for (const row of itemsRes.data || []) checkRowNeedsHydration(row as CloudBookRow);
+      }
+      if (!favoritesRes.error && !favoritesRes.unmocked) {
+        for (const row of favoritesRes.data || []) checkRowNeedsHydration(row as CloudBookRow);
+      }
+      const hydratedBooksMap =
+        idsToHydrate.size > 0
+          ? await fetchCatalogBooksByIds(supabase, idsToHydrate)
+          : new Map<number, CatalogBook>();
+
+      const reconstructCloudBook = (row: CloudBookRow): CatalogBook => {
+        const local = localBookLookup.get(row.book_id);
+        const hydrated = hydratedBooksMap.get(row.book_id);
+        if (hydrated) {
+          return mergeCloudBookWithLocal(hydrated, local);
+        }
+        return mergeCloudBookWithLocal(toCatalogBookFromCloudRow(row), local);
+      };
 
       const { data: shelves, error: shelvesError } = shelvesRes;
       let currentDefaultShelf: Bookshelf | undefined;
@@ -506,10 +590,7 @@ export async function executeBookshelfCloudSync(
           for (const row of items || []) {
             if (!seenBookIds.has(row.book_id)) {
               seenBookIds.add(row.book_id);
-              const stub = toCatalogBookFromCloudRow(row);
-              reconstructedBooks.push(
-                mergeCloudBookWithLocal(stub, localBookLookup.get(row.book_id))
-              );
+              reconstructedBooks.push(reconstructCloudBook(row as CloudBookRow));
             }
           }
 
@@ -517,14 +598,18 @@ export async function executeBookshelfCloudSync(
           const { lastBookshelfSyncAt, deletedBookIds } = get();
           const activeReconstructed = reconstructedBooks.filter((b) => !deletedBookIds[b.id]);
 
-          // Propagate deletions concurrently: remove locally tombstoned items from cloud
+          // Propagate deletions concurrently: remove locally tombstoned items from cloud using composite PK
           const itemsToDelete = (items || []).filter(
             (item: BookshelfItem) => deletedBookIds[item.book_id]
           );
           if (itemsToDelete.length > 0) {
             await Promise.allSettled(
               itemsToDelete.map((delItem) =>
-                supabase.from('bookshelf_items').delete().eq('id', delItem.id)
+                supabase
+                  .from('bookshelf_items')
+                  .delete()
+                  .eq('bookshelf_id', delItem.bookshelf_id)
+                  .eq('book_id', delItem.book_id)
               )
             );
           }
@@ -632,10 +717,7 @@ export async function executeBookshelfCloudSync(
         for (const row of favorites || []) {
           if (!seenFavIds.has(row.book_id)) {
             seenFavIds.add(row.book_id);
-            const stub = toCatalogBookFromCloudRow(row);
-            reconstructedFavorites.push(
-              mergeCloudBookWithLocal(stub, localBookLookup.get(row.book_id))
-            );
+            reconstructedFavorites.push(reconstructCloudBook(row as CloudBookRow));
           }
         }
 
@@ -1040,28 +1122,13 @@ export async function executeMoveBookToShelf(
       item.book_id === bookId ? { ...item, bookshelf_id: targetShelfId } : item
     );
   } else {
-    const insertPayload = bookObj
-      ? toCloudBookInsert(bookObj, userId || '', targetShelfId)
-      : {
-          book_authors: [],
-          cover_url: null,
-          book_title: '',
-          book_id: bookId,
-          bookshelf_id: targetShelfId,
-          user_id: userId || '',
-        };
     nextItems = [
       ...cloudBookshelfItems,
       {
-        id: `item-${bookId}-${targetShelfId}`,
         bookshelf_id: targetShelfId,
         user_id: userId || '',
         book_id: bookId,
-        book_title: bookObj?.title || '',
-        book_authors: insertPayload.book_authors,
-        cover_url: insertPayload.cover_url,
         created_at: new Date().toISOString(),
-        added_at: new Date().toISOString(),
       },
     ];
   }

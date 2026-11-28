@@ -165,13 +165,10 @@ describe('useBookshelfStore', () => {
     await act(async () => {
       await useBookshelfStore.getState().toggleFavoriteBook(book, 'user-1');
     });
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: 'user-1',
-        book_id: book.id,
-        book_title: book.title,
-      })
-    );
+    expect(mockUpsert).toHaveBeenCalledWith({
+      user_id: 'user-1',
+      book_id: book.id,
+    });
 
     // Unfavorite with userId
     await act(async () => {
@@ -227,24 +224,16 @@ describe('useBookshelfStore', () => {
         ],
         cloudBookshelfItems: [
           {
-            id: 'item-1',
             bookshelf_id: 'shelf-general',
             user_id: 'user-1',
             book_id: mockBooks[0].id,
-            book_title: mockBooks[0].title,
-            book_authors: [],
-            cover_url: null,
-            added_at: '',
+            created_at: '',
           },
           {
-            id: 'item-2',
             bookshelf_id: 'shelf-philosophy',
             user_id: 'user-1',
             book_id: mockBooks[1].id,
-            book_title: mockBooks[1].title,
-            book_authors: [],
-            cover_url: null,
-            added_at: '',
+            created_at: '',
           },
         ],
       });
@@ -552,27 +541,25 @@ describe('useBookshelfStore', () => {
         await useBookshelfStore.getState().syncWithCloud('user-1');
       });
 
-      // Verify books were uploaded to Supabase
+      // Verify books were uploaded to Supabase as lean relational rows
       expect(itemsUpsertMock).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({
+          {
             bookshelf_id: 'shelf-gen',
             user_id: 'user-1',
             book_id: mockBooks[0].id,
-            book_title: mockBooks[0].title,
-          }),
+          },
         ]),
         { onConflict: 'bookshelf_id,book_id' }
       );
 
-      // Verify favorites were uploaded to Supabase
+      // Verify favorites were uploaded to Supabase as lean relational rows
       expect(favsUpsertMock).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({
+          {
             user_id: 'user-1',
             book_id: mockBooks[1].id,
-            book_title: mockBooks[1].title,
-          }),
+          },
         ]),
         { onConflict: 'user_id,book_id' }
       );
@@ -783,14 +770,10 @@ describe('useBookshelfStore', () => {
       useBookshelfStore.setState({
         cloudBookshelfItems: [
           {
-            id: 'item-1',
             bookshelf_id: 'shelf-1',
             user_id: 'user-1',
             book_id: 84,
-            book_title: 'Frankenstein',
-            book_authors: ['Mary Shelley'],
-            cover_url: null,
-            added_at: '',
+            created_at: '',
           },
         ],
       });
@@ -871,14 +854,10 @@ describe('useBookshelfStore', () => {
         activeBookshelfId: 'shelf-1',
         savedBooks: [mockBooks[0]],
         cloudBookshelfItems: [{
-          id: 'item-1',
           bookshelf_id: 'shelf-1',
           user_id: 'user-1',
           book_id: mockBooks[0].id,
-          book_title: mockBooks[0].title,
-          book_authors: [],
-          cover_url: null,
-          added_at: '',
+          created_at: '',
         }],
       });
 
@@ -945,14 +924,10 @@ describe('useBookshelfStore', () => {
         ],
         cloudBookshelfItems: [
           {
-            id: 'item-84',
             bookshelf_id: 'shelf-1',
             user_id: 'user-1',
             book_id: 84,
-            book_title: 'Frankenstein',
-            book_authors: ['Mary Shelley'],
-            cover_url: null,
-            added_at: '',
+            created_at: '',
           },
         ],
         outbox: [],
@@ -1955,24 +1930,16 @@ describe('useBookshelfStore', () => {
         ],
         cloudBookshelfItems: [
           {
-            id: 'item-700',
             bookshelf_id: 'shelf-1',
             user_id: 'user-enrich-1',
             book_id: 700,
-            book_title: 'Book 700',
-            book_authors: [],
-            cover_url: null,
-            added_at: '',
+            created_at: '',
           },
           {
-            id: 'item-unmatched',
             bookshelf_id: 'shelf-1',
             user_id: 'user-enrich-1',
             book_id: 99999,
-            book_title: 'Other',
-            book_authors: [],
-            cover_url: 'https://example.com/existing.jpg',
-            added_at: '',
+            created_at: '',
           },
         ],
       });
@@ -2022,7 +1989,8 @@ describe('useBookshelfStore', () => {
 
       await useBookshelfStore.getState().enrichSavedBooks(freshBooks);
       expect(useBookshelfStore.getState().recentBooks[0].authors[0].name).toBe('Virgil');
-      expect(updateSpy).toHaveBeenCalled();
+      // Normalized bookshelf_items no longer stores duplicated metadata columns -> zero cloud UPDATE queries
+      expect(updateSpy).not.toHaveBeenCalled();
 
       // Second call with no new metadata returns early
       await useBookshelfStore.getState().enrichSavedBooks(freshBooks);
@@ -2071,13 +2039,9 @@ describe('useBookshelfStore', () => {
         useBookshelfStore.setState({
           cloudBookshelfItems: [
             {
-              id: 'item-clear-1',
               bookshelf_id: 'shelf-def',
               user_id: 'user-enrich-1',
               book_id: 700,
-              book_title: 'Book 700',
-              book_authors: [],
-              cover_url: null,
               created_at: '',
             },
           ],
@@ -2100,11 +2064,9 @@ describe('useBookshelfStore', () => {
       });
     });
 
-    it('heals legacy Gutenberg cover URLs in enrichSavedBooks and onRehydrateStorage while preserving custom URLs', async () => {
+    it('heals legacy Gutenberg cover URLs locally and strips retired cloud fields in onRehydrateStorage', async () => {
       const { useAuthStore } = await import('./useAuthStore');
-      const updateEq2 = vi.fn().mockResolvedValue({ error: null });
-      const updateEq1 = vi.fn().mockReturnValue({ eq: updateEq2 });
-      const updateSpy = vi.fn().mockReturnValue({ eq: updateEq1 });
+      const updateSpy = vi.fn();
       mockFrom.mockReturnValue({ update: updateSpy });
 
       useAuthStore.setState({
@@ -2144,23 +2106,15 @@ describe('useBookshelfStore', () => {
         ],
         cloudBookshelfItems: [
           {
-            id: 'item-pg-700',
             bookshelf_id: 'shelf-def',
             user_id: 'user-cover-heal',
             book_id: 700,
-            book_title: 'Book 700',
-            book_authors: ['Homer'],
-            cover_url: legacyPgCover,
             created_at: '',
           },
           {
-            id: 'item-custom-701',
             bookshelf_id: 'shelf-def',
             user_id: 'user-cover-heal',
             book_id: 701,
-            book_title: 'Book 701',
-            book_authors: ['Virgil'],
-            cover_url: customCover,
             created_at: '',
           },
         ],
@@ -2199,15 +2153,9 @@ describe('useBookshelfStore', () => {
         '/api/books/content?id=700&type=cover'
       );
       expect(useBookshelfStore.getState().savedBooks[1].formats['image/jpeg']).toBe(customCover);
-      expect(useBookshelfStore.getState().cloudBookshelfItems[0].cover_url).toBeNull();
-      expect(useBookshelfStore.getState().cloudBookshelfItems[1].cover_url).toBe(customCover);
-      expect(updateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cover_url: null,
-        })
-      );
+      expect(updateSpy).not.toHaveBeenCalled();
 
-      // Rehydration from persisted localStorage rewrites legacy PG URLs to R2 locally and null in cloud items
+      // Rehydration from persisted localStorage rewrites legacy PG URLs locally and strips retired cloud & outbox fields
       const persistName = useBookshelfStore.persist.getOptions().name || 'bookarium-bookshelf';
       localStorage.setItem(
         persistName,
@@ -2242,7 +2190,34 @@ describe('useBookshelfStore', () => {
                 book_title: 'Pride and Prejudice',
                 book_authors: ['Austen, Jane'],
                 cover_url: 'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg',
-                created_at: '',
+                created_at: '2026-11-28T00:00:00Z',
+              },
+            ],
+            outbox: [
+              {
+                id: 'legacy-ob-1',
+                type: 'INSERT_BOOK',
+                payload: {
+                  bookshelf_id: 'shelf-def',
+                  user_id: 'user-cover-heal',
+                  book_id: 1342,
+                  book_title: 'Pride and Prejudice',
+                  book_authors: ['Austen, Jane'],
+                  cover_url: null,
+                },
+                timestamp: '2026-11-28T00:00:00Z',
+              },
+              {
+                id: 'legacy-ob-2',
+                type: 'UPSERT_FAVORITE',
+                payload: {
+                  user_id: 'user-cover-heal',
+                  book_id: 84,
+                  book_title: 'Frankenstein',
+                  book_authors: ['Shelley, Mary'],
+                  cover_url: null,
+                },
+                timestamp: '2026-11-28T00:00:00Z',
               },
             ],
           },
@@ -2253,7 +2228,21 @@ describe('useBookshelfStore', () => {
       expect(useBookshelfStore.getState().savedBooks[0].formats['image/jpeg']).toBe(
         '/api/books/content?id=1342&type=cover'
       );
-      expect(useBookshelfStore.getState().cloudBookshelfItems[0].cover_url).toBeNull();
+      expect(useBookshelfStore.getState().cloudBookshelfItems[0]).toEqual({
+        bookshelf_id: 'shelf-def',
+        user_id: 'user-cover-heal',
+        book_id: 1342,
+        created_at: '2026-11-28T00:00:00Z',
+      });
+      expect(useBookshelfStore.getState().outbox[0].payload).toEqual({
+        bookshelf_id: 'shelf-def',
+        user_id: 'user-cover-heal',
+        book_id: 1342,
+      });
+      expect(useBookshelfStore.getState().outbox[1].payload).toEqual({
+        user_id: 'user-cover-heal',
+        book_id: 84,
+      });
 
       act(() => {
         useAuthStore.setState({ user: null });

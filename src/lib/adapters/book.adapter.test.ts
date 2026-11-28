@@ -257,41 +257,25 @@ describe('book.adapter', () => {
       expect(result).toEqual({
         user_id: 'user-123',
         book_id: 84,
-        book_title: 'Frankenstein',
-        book_authors: ['Mary Wollstonecraft Shelley'],
-        cover_url: 'https://example.com/cover.jpg',
         bookshelf_id: 'shelf-456',
       });
     });
 
-    it('preserves birth and death years in author strings when present', () => {
-      const bookWithDates: CatalogBook = {
-        id: 1342,
-        title: 'Pride and Prejudice',
-        authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-        translators: [],
-        subjects: ['Courtship'],
-        bookshelves: [],
-        languages: ['en'],
-        copyright: false,
-        media_type: 'Text',
-        formats: {},
-        download_count: 50000,
-      };
-
-      const insertPayload = toCloudBookInsert(bookWithDates, 'user-1');
-      expect(insertPayload.book_authors).toEqual(['Austen, Jane, 1775-1817']);
-
-      // Reconstruct and verify lifespans are recovered
-      const reconstructed = toCatalogBookFromCloudRow({
+    it('reconstructs lifespans from legacy cloud rows and falls back cleanly on lean book_id-only rows', () => {
+      const reconstructedLegacy = toCatalogBookFromCloudRow({
         book_id: 1342,
         book_title: 'Pride and Prejudice',
-        book_authors: insertPayload.book_authors,
+        book_authors: ['Austen, Jane, 1775-1817'],
         cover_url: null,
       });
 
-      expect(reconstructed.authors[0].birth_year).toBe(1775);
-      expect(reconstructed.authors[0].death_year).toBe(1817);
+      expect(reconstructedLegacy.authors[0].birth_year).toBe(1775);
+      expect(reconstructedLegacy.authors[0].death_year).toBe(1817);
+
+      const reconstructedLean = toCatalogBookFromCloudRow({ book_id: 1342 });
+      expect(reconstructedLean.title).toBe('Volume #1342');
+      expect(reconstructedLean.authors).toEqual([]);
+      expect(reconstructedLean.formats['image/jpeg']).toBe('/api/books/content?id=1342&type=cover');
     });
 
     it('omits bookshelf_id when not provided', () => {
@@ -310,28 +294,18 @@ describe('book.adapter', () => {
       };
 
       const result = toCloudBookInsert(book, 'user-123');
+      expect(result).toEqual({
+        user_id: 'user-123',
+        book_id: 11,
+      });
       expect('bookshelf_id' in result).toBe(false);
-      expect(result.cover_url).toBeNull();
     });
 
-    it('strips derivable Project Gutenberg and same-origin proxy cover URLs from cloud inserts while preserving custom URLs', () => {
+    it('normalizes derivable Project Gutenberg and same-origin proxy cover URLs while preserving custom URLs', () => {
       for (const host of GUTENBERG_COVER_HOSTS) {
-        const pgBook: CatalogBook = {
-          id: 1342,
-          title: 'Pride and Prejudice',
-          authors: [{ name: 'Austen, Jane', birth_year: 1775, death_year: 1817 }],
-          translators: [],
-          subjects: [],
-          bookshelves: [],
-          languages: ['en'],
-          copyright: false,
-          media_type: 'Text',
-          formats: {
-            'image/jpeg': `https://${host}/cache/epub/1342/pg1342.cover.medium.jpg`,
-          },
-          download_count: 50000,
-        };
-        expect(toCloudBookInsert(pgBook, 'user-1', 'shelf-1').cover_url).toBeNull();
+        expect(
+          normalizeCloudCoverUrl(`https://${host}/cache/epub/1342/pg1342.cover.medium.jpg`)
+        ).toBeNull();
       }
 
       expect(normalizeCloudCoverUrl('/api/books/content?id=1342&type=cover')).toBeNull();

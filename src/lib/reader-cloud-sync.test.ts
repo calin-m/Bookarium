@@ -76,7 +76,7 @@ describe('reader-cloud-sync', () => {
     ]);
   });
 
-  it('extracts position metadata cleanly and flags shouldHealRemoteMetadata when cloud lacks title or authors', () => {
+  it('extracts position metadata cleanly and hydrates lean cloud rows from public.books or local fallbacks', () => {
     expect(hasAuthenticPositionTitle(null)).toBe(false);
     expect(hasAuthenticPositionTitle('Gutenberg Volume #84')).toBe(false);
     expect(hasAuthenticPositionTitle('Pride and Prejudice')).toBe(true);
@@ -100,16 +100,13 @@ describe('reader-cloud-sync', () => {
       coverUrl: '/api/books/content?id=84&type=cover',
     });
 
-    const decodedWithMissingCloudMeta = decodeRemoteReadingPosition(
+    const decodedWithLocalFallback = decodeRemoteReadingPosition(
       {
         book_id: 901,
         current_chapter_index: 3,
         scroll_offset: 7,
         progress_percent: 55,
         last_read_at: '2026-11-27T12:00:00Z',
-        book_title: null,
-        book_authors: [],
-        cover_url: null,
       },
       {
         chapterIndex: 1,
@@ -122,10 +119,36 @@ describe('reader-cloud-sync', () => {
       }
     );
 
-    expect(decodedWithMissingCloudMeta.shouldKeepLocalAuthors).toBe(false);
-    expect(decodedWithMissingCloudMeta.shouldHealRemoteMetadata).toBe(true);
-    expect(decodedWithMissingCloudMeta.position.bookTitle).toBe('Persuasion');
-    expect(decodedWithMissingCloudMeta.position.bookAuthors).toEqual(['Jane Austen']);
+    expect(decodedWithLocalFallback.shouldKeepLocalAuthors).toBe(false);
+    expect(decodedWithLocalFallback.position.bookTitle).toBe('Persuasion');
+    expect(decodedWithLocalFallback.position.bookAuthors).toEqual(['Jane Austen']);
+
+    const decodedFromCatalog = decodeRemoteReadingPosition(
+      {
+        book_id: 84,
+        current_chapter_index: 2,
+        scroll_offset: 4,
+        progress_percent: 25,
+        last_read_at: '2026-11-28T12:00:00Z',
+      },
+      undefined,
+      {
+        id: 84,
+        title: 'Frankenstein',
+        authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+        translators: [],
+        subjects: [],
+        bookshelves: [],
+        languages: ['en'],
+        copyright: false,
+        media_type: 'Text',
+        formats: {},
+        download_count: 500,
+      }
+    );
+    expect(decodedFromCatalog.position.bookTitle).toBe('Frankenstein');
+    expect(decodedFromCatalog.position.bookAuthors).toEqual(['Shelley, Mary, 1797-1851']);
+    expect(decodedFromCatalog.position.coverUrl).toBe('/api/books/content?id=84&type=cover');
   });
 });
 

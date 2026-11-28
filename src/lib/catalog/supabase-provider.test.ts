@@ -1714,6 +1714,52 @@ describe('SupabaseCatalogProvider', () => {
       expect(await errRecoveryProvider.getBookTranslations(1342, 'US')).toEqual([]);
       expect(failingCalls).toBe(2); // Second call re-queried instead of hitting poisoned error cache
     });
+
+    it('hydrates books by ID via fetchCatalogBooksByIds with deduplication, chunking, and featured fallback on failure', async () => {
+      const { fetchCatalogBooksByIds, CATALOG_METADATA_COLUMNS } = await import('./supabase-provider');
+      const selectSpy = vi.fn().mockReturnValue({
+        in: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 84,
+              title: 'Frankenstein',
+              authors: [{ name: 'Shelley, Mary', birth_year: 1797, death_year: 1851 }],
+              translators: [],
+              subjects: ['Gothic fiction'],
+              bookshelves: [],
+              languages: ['en'],
+              copyright: false,
+              download_count: 25000,
+            },
+          ],
+          error: null,
+        }),
+      });
+      const mockClient = {
+        from: vi.fn().mockReturnValue({ select: selectSpy }),
+      } as never;
+
+      // Empty or invalid IDs short-circuit without querying
+      expect((await fetchCatalogBooksByIds(mockClient, [0, -1, 1.5])).size).toBe(0);
+      expect(selectSpy).not.toHaveBeenCalled();
+
+      // Deduplicates IDs and hydrates from public.books + featured hero fallback for missing hero ID 1342
+      const hydrated = await fetchCatalogBooksByIds(mockClient, [84, 84, 1342]);
+      expect(selectSpy).toHaveBeenCalledWith(CATALOG_METADATA_COLUMNS);
+      expect(hydrated.get(84)?.title).toBe('Frankenstein');
+      expect(hydrated.get(84)?.authors[0].death_year).toBe(1851);
+      expect(hydrated.get(1342)?.title).toBe('Pride and Prejudice');
+
+      // Fail-open when Supabase throws -> still returns featured hero fallback
+      const failingClient = {
+        from: vi.fn(() => {
+          throw new Error('offline');
+        }),
+      } as never;
+      const offlineHydrated = await fetchCatalogBooksByIds(failingClient, [1342, 999999]);
+      expect(offlineHydrated.get(1342)?.title).toBe('Pride and Prejudice');
+      expect(offlineHydrated.has(999999)).toBe(false);
+    });
   });
 });
 
